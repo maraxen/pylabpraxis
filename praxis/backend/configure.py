@@ -6,7 +6,6 @@ from typing import Any
 
 
 class PraxisConfiguration:
-
   """Configuration class to handle Praxis configuration settings."""
 
   def __init__(self, config_file: str = "praxis.ini") -> None:
@@ -174,9 +173,8 @@ class PraxisConfiguration:
 
     Priority: STORAGE_BACKEND env var > [storage] section > default "postgresql"
     """
-    return (
-      os.getenv("STORAGE_BACKEND")
-      or self._get_section_dict("storage").get("backend", "postgresql")
+    return os.getenv("STORAGE_BACKEND") or self._get_section_dict("storage").get(
+      "backend", "postgresql"
     )
 
   @property

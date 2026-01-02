@@ -68,7 +68,8 @@ class TestLogRuntimeErrors:
 
         @log_runtime_errors(logger_instance=mock_logger, raises=False)
         def test_func() -> None:
-            raise ValueError("Test error")
+            msg = "Test error"
+            raise ValueError(msg)
 
         result = test_func()
         assert result is None
@@ -82,7 +83,8 @@ class TestLogRuntimeErrors:
             logger_instance=mock_logger, raises=True, raises_exception=RuntimeError,
         )
         def test_func() -> None:
-            raise ValueError("Test error")
+            msg = "Test error"
+            raise ValueError(msg)
 
         with pytest.raises(RuntimeError):
             test_func()
@@ -95,7 +97,8 @@ class TestLogRuntimeErrors:
             logger_instance=mock_logger, raises=False, prefix="PREFIX: ",
         )
         def test_func() -> None:
-            raise ValueError("Test error")
+            msg = "Test error"
+            raise ValueError(msg)
 
         test_func()
         # Check that error was called with message containing prefix
@@ -110,7 +113,8 @@ class TestLogRuntimeErrors:
             logger_instance=mock_logger, raises=False, suffix=" :SUFFIX",
         )
         def test_func() -> None:
-            raise ValueError("Test error")
+            msg = "Test error"
+            raise ValueError(msg)
 
         test_func()
         call_args = mock_logger.error.call_args
@@ -124,7 +128,8 @@ class TestLogRuntimeErrors:
             logger_instance=mock_logger, raises=False, return_="default_value",
         )
         def test_func() -> str:
-            raise ValueError("Test error")
+            msg = "Test error"
+            raise ValueError(msg)
 
         result = test_func()
         # When exception occurs and raises=False, returns None (not return_ value)
@@ -161,7 +166,8 @@ class TestLogRuntimeErrors:
             raises=False,
         )
         def test_func() -> None:
-            raise ValueError("Test error")
+            msg = "Test error"
+            raise ValueError(msg)
 
         result = test_func()
         assert result is None
@@ -174,7 +180,8 @@ class TestLogRuntimeErrors:
 
         @log_runtime_errors(logger_instance=mock_logger, raises=False)
         def test_func() -> None:
-            raise ValueError("Test error")
+            msg = "Test error"
+            raise ValueError(msg)
 
         test_func()
         mock_print_exc.assert_called_once()
@@ -203,7 +210,8 @@ class TestLogAsyncRuntimeErrors:
 
         @log_async_runtime_errors(logger_instance=mock_logger, raises=False)
         async def test_func() -> None:
-            raise ValueError("Async test error")
+            msg = "Async test error"
+            raise ValueError(msg)
 
         result = await test_func()
         assert result is None
@@ -218,7 +226,8 @@ class TestLogAsyncRuntimeErrors:
             logger_instance=mock_logger, raises=True, raises_exception=RuntimeError,
         )
         async def test_func() -> None:
-            raise ValueError("Async test error")
+            msg = "Async test error"
+            raise ValueError(msg)
 
         with pytest.raises(RuntimeError):
             await test_func()
@@ -232,7 +241,8 @@ class TestLogAsyncRuntimeErrors:
             logger_instance=mock_logger, raises=False, prefix="ASYNC PREFIX: ",
         )
         async def test_func() -> None:
-            raise ValueError("Test error")
+            msg = "Test error"
+            raise ValueError(msg)
 
         await test_func()
         call_args = mock_logger.error.call_args
@@ -272,7 +282,8 @@ class TestLogAsyncRuntimeErrors:
             raises=False,
         )
         async def test_func() -> None:
-            raise ValueError("Test error")
+            msg = "Test error"
+            raise ValueError(msg)
 
         result = await test_func()
         assert result is None
@@ -286,7 +297,8 @@ class TestLogAsyncRuntimeErrors:
 
         @log_async_runtime_errors(logger_instance=mock_logger, raises=False)
         async def test_func() -> None:
-            raise ValueError("Async test error")
+            msg = "Async test error"
+            raise ValueError(msg)
 
         await test_func()
         mock_print_exc.assert_called_once()
@@ -320,7 +332,8 @@ class TestLogRuntimeErrorsIntegration:
             logger_instance=mock_logger, raises=True, raises_exception=RuntimeError,
         )
         def test_func() -> None:
-            raise ValueError("Original error")
+            msg = "Original error"
+            raise ValueError(msg)
 
         with pytest.raises(RuntimeError) as exc_info:
             test_func()

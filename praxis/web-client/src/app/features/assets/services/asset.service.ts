@@ -1,8 +1,12 @@
 
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, from, of, firstValueFrom } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { Machine, MachineCreate, Resource, ResourceCreate, MachineDefinition, ResourceDefinition, ActiveFilters } from '../models/asset.models';
+import { ModeService } from '../../../core/services/mode.service';
+import { SqliteService } from '../../../core/services/sqlite.service';
+import { ResourceDefinitionCatalog } from '../../../core/db/schema';
 
 // Facet item with value and count
 export interface FacetItem {
@@ -31,6 +35,8 @@ export interface MachineFacets {
 })
 export class AssetService {
   private http = inject(HttpClient);
+  private modeService = inject(ModeService);
+  private sqliteService = inject(SqliteService);
   private readonly API_URL = '/api/v1';
 
   // --- Machines ---
@@ -44,6 +50,10 @@ export class AssetService {
 
   deleteMachine(accessionId: string): Observable<void> {
     return this.http.delete<void>(`${this.API_URL}/machines/${accessionId}`);
+  }
+
+  updateMachine(accessionId: string, machine: Partial<MachineCreate>): Observable<Machine> {
+    return this.http.patch<Machine>(`${this.API_URL}/machines/${accessionId}`, machine);
   }
 
   // --- Resources ---
@@ -68,6 +78,74 @@ export class AssetService {
     return this.http.get<ResourceDefinition[]>(`${this.API_URL}/resources/definitions?type=resource`);
   }
 
+  /**
+   * Universal lookup for a single resource definition.
+   * Handles both API (Production) and SQLite (Browser) modes.
+   */
+  async getResourceDefinition(fqn?: string, partialName?: string): Promise<ResourceDefinition | null> {
+    if (this.modeService.isBrowserMode()) {
+      // Browser Mode: Use SqliteService
+      try {
+        const repo = await firstValueFrom(this.sqliteService.resourceDefinitions);
+        let def: ResourceDefinitionCatalog | null = null;
+
+        if (fqn) {
+          def = repo.findOneBy({ fqn } as Partial<ResourceDefinitionCatalog>);
+        }
+
+        if (!def && partialName) {
+          const all = repo.findBy({} as Partial<ResourceDefinitionCatalog>);
+          def = all.find(d =>
+            d.name?.toLowerCase().includes(partialName.toLowerCase()) ||
+            d.plr_category?.toLowerCase().includes(partialName.toLowerCase())
+          ) || null;
+        }
+
+        if (def) {
+          return {
+            ...def,
+            is_consumable: def.is_consumable ?? false,
+          } as ResourceDefinition;
+        }
+        return null;
+      } catch (err) {
+        console.warn('Sqlite lookup failed', err);
+        return null;
+      }
+    } else {
+      // Production Mode: Use API
+      try {
+        let params: any = { type: 'resource' };
+        if (fqn) params.fqn = fqn;
+
+        // Optimize: If FQN is known, we might be able to filter by it via API if supported
+        // But currently standard CRUD might not support exact match filtering on FQN without custom implementation
+        // So we might fetch list and filter in memory if FQN is not supported. 
+        // However, fetching All definitions is heavy.
+        // Let's assume we can fetch all for now as a safe fallback or that standard filtering works.
+        const allDefs = await firstValueFrom(this.http.get<ResourceDefinition[]>(`${this.API_URL}/resources/definitions`, { params }));
+
+        if (fqn) {
+          const match = allDefs.find(d => d.fqn === fqn);
+          if (match) return match;
+        }
+
+        if (partialName) {
+          const match = allDefs.find(d =>
+            d.name.toLowerCase().includes(partialName.toLowerCase()) ||
+            d.plr_category?.toLowerCase().includes(partialName.toLowerCase())
+          );
+          if (match) return match;
+        }
+
+        return null;
+      } catch (err) {
+        console.warn('API lookup failed', err);
+        return null;
+      }
+    }
+  }
+
   // --- Facets for dynamic filtering ---
   getFacets(filters: Partial<ActiveFilters> = {}): Observable<ResourceFacets> {
     let params = {};
@@ -83,5 +161,9 @@ export class AssetService {
 
   getMachineFacets(): Observable<MachineFacets> {
     return this.http.get<MachineFacets>(`${this.API_URL}/machines/definitions/facets`);
+  }
+
+  syncDefinitions(): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.API_URL}/discovery/sync-all`, {});
   }
 }

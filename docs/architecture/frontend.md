@@ -5,23 +5,38 @@ The Praxis frontend is built with Angular 19+ using standalone components, signa
 ## Architecture Overview
 
 ```
-praxis/web-client/src/app/
-├── core/                   # Singleton services, guards
-│   ├── services/           # Global services
-│   ├── components/         # Layout components
-│   └── guards/             # Route guards
-├── features/               # Feature modules
-│   ├── assets/             # Asset management
-│   ├── protocols/          # Protocol library
-│   ├── run-protocol/       # Execution wizard
-│   ├── home/               # Dashboard
-│   ├── data-viz/           # Data visualization
-│   └── auth/               # Authentication
-├── shared/                 # Shared utilities
-│   ├── components/         # Reusable components
-│   ├── constants/          # Static data
-│   └── models/             # TypeScript interfaces
-└── store/                  # State management
+
+## Component Architecture
+
+Below is the high-level component tree representing the Praxis frontend architecture.
+
+```mermaid
+graph TD
+    App[AppComponent] --> Layout[LayoutComponent]
+    Layout --> Nav[SideNavComponent]
+    Layout --> Header[HeaderComponent]
+    
+    Layout --> Dash[DashboardComponent]
+    Layout --> Lib[ProtocolLibraryComponent]
+    Layout --> Assets[AssetsComponent]
+    Layout --> Run[RunProtocolComponent]
+    
+    Assets --> MachineList[MachineListComponent]
+    Assets --> ResourceList[ResourceAccordionComponent]
+    Assets --> DefList[DefinitionsListComponent]
+    
+    Run --> ParamStep[ParameterStepComponent]
+    Run --> ResourceStep[ResourceStepComponent]
+    Run --> MachineStep[MachineStepComponent]
+    Run --> ReviewStep[ReviewStepComponent]
+    Run --> Monitor[ExecutionMonitorComponent]
+    
+    Monitor --> DeckViz[DeckVisualizerComponent]
+    Monitor --> LogView[LogViewerComponent]
+    
+    Shared[Shared Components] -.-> Dash
+    Shared -.-> Lib
+    Shared -.-> Assets
 ```
 
 ## Core Services

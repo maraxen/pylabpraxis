@@ -8,13 +8,11 @@ async def test_list_routes(client: AsyncClient):
     """List all registered routes in the app."""
     from main import app
 
-    print("\n=== Registered Routes ===")
     for route in app.routes:
         if hasattr(route, "methods"):
-            print(f"{route.methods} {route.path}")
+            pass
         else:
-            print(f"MOUNT {route.path}")
+            pass
 
     # Try to access the route
-    response = await client.get("/api/v1/decks/")
-    print(f"\nGET /api/v1/decks/ status: {response.status_code}")
+    await client.get("/api/v1/decks/")

@@ -2,7 +2,6 @@ from typing import IO, Any
 
 
 class RealFileSystem:
-
   """A real file system implementation."""
 
   def open(self, file: str, mode: str = "r", encoding: str | None = None) -> IO[Any]:

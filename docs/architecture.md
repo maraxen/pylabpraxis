@@ -1,10 +1,10 @@
 # System Architecture
 
-This document provides a comprehensive overview of the PyLabPraxis architecture, its core components, and how they interact to enable laboratory automation.
+This document provides a comprehensive overview of the Praxis architecture, its core components, and how they interact to enable laboratory automation.
 
 ## Overview
 
-PyLabPraxis is designed as a modular system to control and manage laboratory automation workflows. The architecture emphasizes separation of concerns, allowing for flexibility, scalability, and maintainability.
+Praxis is designed as a modular system to control and manage laboratory automation workflows. The architecture emphasizes separation of concerns, allowing for flexibility, scalability, and maintainability.
 
 ```mermaid
 graph TD
@@ -134,7 +134,7 @@ The backend service layer (`praxis/backend/services/`) abstracts database intera
 
 ## Data Structures
 
-PyLabPraxis utilizes two main types of data structures:
+Praxis utilizes two main types of data structures:
 
 1.  **ORM Models (SQLAlchemy)**: Define the database schema for persistent storage (e.g., `ProtocolRunOrm`, `MachineOrm`).
 2.  **Pydantic Models**: Used for API validation, serialization, and defining in-memory state objects (e.g., `ProtocolStartRequest`, `WorkcellDefinition`).
@@ -180,7 +180,7 @@ The FastAPI application (`praxis/backend/api/`) exposes endpoints for:
 
 ## Standardized API Filtering
 
-PyLabPraxis uses a standardized filtering mechanism for `GET` list endpoints:
+Praxis uses a standardized filtering mechanism for `GET` list endpoints:
 
 1.  **`SearchFilters`**: A generic Pydantic model for common filters (pagination, date ranges, relationship IDs).
 2.  **Entity-Specific Filters**: Defined as separate `Query()` parameters in endpoints.

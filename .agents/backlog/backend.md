@@ -1,7 +1,7 @@
 # Backend Backlog
 
 **Area Owner**: Backend
-**Last Updated**: 2025-12-30
+**Last Updated**: 2026-01-02
 
 ---
 
@@ -15,17 +15,19 @@
 - [x] Pyodide runtime with WebBridge integration
 - [ ] Disable the "+ Add Definition" button until sync is complete
 
-### Machine Autodiscovery + REPL - ✅ CORE COMPLETE
+### Machine Autodiscovery + REPL - ✅ COMPLETE (2026-01-02)
 
 - [x] Hardware discovery service (`services/hardware_discovery.py`)
   - [x] `discover_serial_ports()` - List available serial ports
   - [x] `discover_simulators()` - List PLR simulator backends
-  - [x] `discover_network_devices()` - mDNS/Zeroconf scanning (stub)
+  - [x] `discover_network_devices()` - mDNS/Zeroconf scanning (Opentrons, Tecan, Hamilton, Beckman, Agilent)
 - [x] Hardware API endpoints (`api/hardware.py`)
   - [x] `GET /api/v1/hardware/discover`
   - [x] `POST /api/v1/hardware/connect`
   - [x] `POST /api/v1/hardware/disconnect`
   - [x] `GET /api/v1/hardware/connections`
+  - [x] `POST /api/v1/hardware/heartbeat` - NEW: TTL-based connection keepalive
+  - [x] `GET /api/v1/hardware/connections/{device_id}` - NEW: Get specific connection
   - [x] `POST /api/v1/hardware/register`
   - [x] `POST /api/v1/hardware/repl`
 - [x] Frontend hardware service (`hardware-discovery.service.ts`)
@@ -33,8 +35,9 @@
   - [x] WebUSB API integration
   - [x] PLR device inference from VID/PID
   - [x] Configuration schema support
-- [ ] Hardware connection UI component (polish)
-- [ ] Hardware connection management (Redis state)
+  - [x] Backend connection management (connectViaBackend, disconnectViaBackend, sendHeartbeat)
+- [x] Hardware connection UI component (polish) - connecting/error states with animations
+- [x] Hardware connection management (Redis/SQLite state) - `HardwareConnectionManager` service
 - [ ] Full REPL WebSocket interface (Production mode)
 
 ### Browser Runtime & Analysis - ✅ COMPLETE
@@ -48,24 +51,59 @@
   - [x] `WebBridgeIO` for generic machine IO
   - [x] CDN package loading (micropip, etc.)
 
-### Protocol Decorator Enhancements
+### Protocol Decorator Enhancements - ✅ COMPLETE (2026-01-02)
 
-- [ ] Parameterized data views in `@protocol` decorator
-- [ ] Example protocols demonstrating data view usage
-- [ ] Minimal implementation for demo
+- [x] Parameterized data views in `@protocol` decorator
+  - [x] `DataViewDefinition` dataclass for defining input data requirements
+  - [x] `data_views` parameter added to `protocol_function` decorator
+  - [x] `DataViewMetadataModel` Pydantic model for API serialization
+  - [x] `data_views_json` column added to `FunctionProtocolDefinitionOrm`
+  - [x] Support for PLR state data and function data outputs
+  - [x] Schema validation with non-blocking warnings
+- [x] Example protocols demonstrating data view usage (documented in decorator)
+- [x] Minimal implementation for demo
 
-### User-Specified Deck Configuration
+### User-Specified Deck Configuration - ✅ COMPLETE (2026-01-02)
 
-- [ ] Support fully user-specified deck via functions in protocol file
-- [ ] Deck constraint validation
-- [ ] Deck constraint validation
-- [ ] Override auto-layout with explicit positions
+- [x] Support fully user-specified deck via JSON or functions in protocol file
+  - [x] `deck_layout_path` parameter in `@protocol_function` decorator
+  - [x] `deck_config.py` module with `DeckLayoutConfig` and `ResourcePlacement` models
+  - [x] `load_deck_layout()` function for JSON parsing
+  - [x] `build_deck_from_config()` function for deck construction
+- [x] Deck constraint validation (`validate_deck_layout_config()`)
+- [x] Override auto-layout with explicit positions
+
+### Cached PLR Definitions for Frontend - ✅ COMPLETE (2026-01-02)
+
+- [x] **Goal**: Allow `DeckGeneratorService` (frontend) to use actual cached PLR definitions for dimensions, rather than hardcoded defaults.
+- [x] **Strategy**:
+  - [x] `SqliteService.resourceDefinitions()` provides typed repository access
+  - [x] `DeckGeneratorService.getResourceDimensions()` method for dimension lookup
+  - [x] Async `generateDeckForProtocolAsync()` variant using cached dimensions
+  - [x] Fallback to `DEFAULT_DIMENSIONS` if lookup fails
+
+### Consumables Auto-Assignment - ✅ COMPLETE (2026-01-02)
+
+- [x] `ConsumableAssignmentService` class in `core/consumable_assignment.py`
+  - [x] `find_compatible_consumable()` - Smart matching with scoring
+  - [x] `auto_assign_consumables()` - Batch assignment
+- [x] Compatibility checking logic:
+  - [x] Volume capacity matching
+  - [x] Plate type compatibility
+  - [x] Availability checking (not reserved)
+  - [x] Expiration date scoring
+  - [x] Batch/lot number tracking
+- [x] Integration into `ProtocolScheduler.analyze_protocol_requirements()`
+- [x] `suggested_asset_id` field added to `RuntimeAssetRequirement`
+- [ ] Frontend browser-mode equivalent (P3)
+- [ ] Unit tests for assignment logic (P3)
+- [ ] Integration tests (P3)
 
 ### Full Implementation of VMP Features (Stubs)
 
 - [ ] **Scheduler**: Eliminate ~22% coverage; implement robust scheduling logic (currently VMP). Test files exist but need DB.
 - [x] **Persistent Reservations**: ✅ Complete - Now uses `AssetReservationOrm` database storage.
-- [ ] **Hardware Scanning**: ⚠️ Stubbed - `discover_network_devices()` returns empty list.
+- [x] **Hardware Scanning**: ✅ Complete (2026-01-02) - mDNS/Zeroconf discovery for Opentrons, Tecan, Hamilton, Beckman, Agilent.
 - [ ] **Asset Resolution**: Improve logic for resolving abstract requirements to physical assets.
 
 ---
@@ -88,19 +126,32 @@
 - [ ] **scheduler.py** - ~22% coverage (tests exist but need DB)
 - [ ] Other services - audit needed
 
-### Dual DB Testing (P2)
+### Dual DB Testing (P2) - ✅ COMPLETE
 
-- [ ] **SQLite Support**: Ensure test suite runs with SQLite (current).
-- [ ] **PostgreSQL Support**: Run test suite against PostgreSQL.
-- [ ] **CI Configuration**: Add GitHub Actions matrix for both DBs.
-- [ ] **Migration Testing**: Verify Alembic migrations on both DBs.
+- [x] **SQLite Support**: Test suite runs with in-memory SQLite via `TEST_DB_TYPE=sqlite`.
+- [x] **PostgreSQL Support**: Test suite runs against PostgreSQL (default with Docker).
+- [x] **CI Configuration**: GitHub Actions matrix runs both `test-sqlite` and `test-postgresql` jobs.
+- [x] **Migration Testing**: Alembic env.py supports `DATABASE_URL` override for both DBs.
+- [x] **Markers**: Added `@pytest.mark.postgresql_only` and `@pytest.mark.sqlite_only` markers.
+- [x] **Documentation**: Updated DEVELOPMENT_MATRIX.md and backend.md with implementation details.
+
+**Usage**:
+
+```bash
+# SQLite (fast, in-memory, no Docker)
+TEST_DB_TYPE=sqlite pytest
+
+# PostgreSQL (production-like, requires Docker)
+TEST_DATABASE_URL=postgresql+asyncpg://... pytest
+```
 
 ### Technical Debt (from TECHNICAL_DEBT.md)
 
 - [x] **Persistent asset reservations** - ✅ Complete (uses `AssetReservationOrm`)
 - [ ] POST /resources/ API error fix
 - [ ] Reservation inspection/clearing APIs
-- [ ] Consumables auto-assignment improvements
+- [x] **Consumables auto-assignment improvements** - ✅ Complete (2026-01-02)
+- [ ] Cost optimization for consumables (Deferred to P4)
 
 ---
 
@@ -134,11 +185,7 @@
 - [x] LibCST-based PLR static analysis (21 frontends, 70 backends, 15 machine types)
 - [x] Pyodide WebBridge with IO layer shimming
 - [x] Jedi-based REPL autocompletion
-
-### Cached PLR Definitions for Frontend
-
-- [ ] **Goal**: Allow `DeckGeneratorService` (frontend) to use actual cached PLR definitions for dimensions, rather than hardcoded defaults.
-- [ ] **Strategy**:
-  - [ ] Ensure `AssetService` can serve full `MachineDefinition` and `ResourceDefinition` objects (including dimensions) from `localStorage` (Browser Mode) or Backend (Production).
-  - [ ] Refactor `DeckGeneratorService` to be async or use a synchronized store to access these definitions.
-  - [ ] Pre-load definitions on app startup.
+- [x] **Protocol Decorator Data Views** (2026-01-02) - Schema-based input data definitions
+- [x] **User-Specified Deck Configuration** (2026-01-02) - JSON/function-based deck layouts
+- [x] **Cached PLR Definitions for Frontend** (2026-01-02) - SqliteService integration
+- [x] **Consumables Auto-Assignment** (2026-01-02) - Smart assignment with scoring

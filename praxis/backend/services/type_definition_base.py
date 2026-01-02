@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TypeDefinitionServiceBase(ABC):
-
   """Base class for services that discover and sync type definitions."""
 
   def __init__(self, db_session: AsyncSession) -> None:

@@ -57,30 +57,34 @@ import { CompletionItem } from '../../../core/services/repl-runtime.interface';
       position: absolute;
       z-index: 9999;
       background: var(--mat-sys-surface-container-high);
-      border: 1px solid var(--mat-sys-outline);
+      border: 1px solid var(--mat-sys-outline-variant);
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-      max-height: 200px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      max-height: 250px;
       overflow-y: auto;
-      min-width: 200px;
-      max-width: 400px;
+      min-width: 240px;
+      max-width: 500px;
+      display: flex;
+      flex-direction: column;
     }
 
     .completion-list {
       list-style: none;
       margin: 0;
-      padding: 4px 0;
+      padding: 0;
     }
 
     .completion-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
+      gap: 12px;
+      padding: 8px 12px;
       cursor: pointer;
       font-size: 13px;
       font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
       color: var(--mat-sys-on-surface);
+      border-bottom: 1px solid transparent;
+      transition: background 0.1s;
     }
 
     .completion-item:hover {
@@ -97,27 +101,40 @@ import { CompletionItem } from '../../../core/services/repl-runtime.interface';
       width: 16px;
       height: 16px;
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .type-function { color: #ab82ff; }
-    .type-class { color: #4ec9b0; }
-    .type-module { color: #dcdcaa; }
-    .type-instance { color: #9cdcfe; }
-    .type-keyword { color: #569cd6; }
-    .type-param { color: #9cdcfe; }
-    .type-statement { color: #c586c0; }
+    .type-function { color: #b794f6; }
+    .type-class { color: #f6c177; }
+    .type-module { color: #ebbcba; }
+    .type-instance { color: #9ccfd8; }
+    .type-keyword { color: #eb6f92; }
+    .type-param { color: #31748f; }
+    .type-statement { color: #c4a7e7; }
     .type-unknown { color: var(--mat-sys-on-surface-variant); }
 
     .completion-name {
       flex-shrink: 0;
+      font-weight: 500;
     }
 
     .completion-description {
       color: var(--mat-sys-on-surface-variant);
-      font-size: 11px;
+      font-size: 12px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      margin-left: auto; /* Push to right */
+      padding-left: 16px;
+      font-style: italic;
+      opacity: 0.8;
+    }
+    
+    .completion-item.selected .completion-description {
+        color: var(--mat-sys-on-primary-container);
+        opacity: 0.8;
     }
   `]
 })

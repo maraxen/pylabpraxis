@@ -10,6 +10,7 @@ type AppState = {
   sidebarOpen: boolean;
   isLoading: boolean;
   simulationMode: boolean;  // Global simulation mode for protocol execution
+  maintenanceEnabled: boolean; // Global maintenance feature toggle
 };
 
 const getSavedTheme = (): Theme => {
@@ -29,11 +30,21 @@ const getSavedSimulationMode = (): boolean => {
   }
 };
 
+const getSavedMaintenanceEnabled = (): boolean => {
+  try {
+    const saved = localStorage.getItem('maintenanceEnabled');
+    return saved === null ? true : saved === 'true'; // Default ON
+  } catch {
+    return true;
+  }
+};
+
 const initialState: AppState = {
   theme: getSavedTheme(),
   sidebarOpen: true,
   isLoading: false,
   simulationMode: getSavedSimulationMode(),
+  maintenanceEnabled: getSavedMaintenanceEnabled(),
 };
 
 export const AppStore = signalStore(
@@ -82,7 +93,7 @@ export const AppStore = signalStore(
               applyThemeClass('system');
             }
           };
-          
+
           mediaQuery.removeEventListener('change', listener);
           if (theme === 'system') {
             mediaQuery.addEventListener('change', listener);
@@ -109,6 +120,14 @@ export const AppStore = signalStore(
           localStorage.setItem('simulationMode', String(simulationMode));
         } catch (e) {
           console.error('Failed to save simulation mode preference', e);
+        }
+      },
+      setMaintenanceEnabled(enabled: boolean) {
+        patchState(store, { maintenanceEnabled: enabled });
+        try {
+          localStorage.setItem('maintenanceEnabled', String(enabled));
+        } catch (e) {
+          console.error('Failed to save maintenance enabled preference', e);
         }
       },
       // Login now delegates to Keycloak

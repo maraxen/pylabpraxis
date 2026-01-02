@@ -16,7 +16,6 @@ logger = get_logger(__name__)
 
 
 class AssetAcquisitionMixin:
-
   """Mixin for asset acquisition and deck configuration."""
 
   # Type hints for dependencies

@@ -7,7 +7,6 @@ from praxis.backend.models.orm.protocol import ProtocolRunOrm
 
 @runtime_checkable
 class IOrchestrator(Protocol):
-
   """A protocol for an orchestrator."""
 
   async def execute_protocol(

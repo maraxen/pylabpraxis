@@ -141,12 +141,12 @@ WebSocket /ws/execution/:runId  →  Real-time updates
 
 **Goal**: Filter runs by protocol, status, date
 
-- [ ] Create `RunFiltersComponent`
-  - Protocol dropdown (from available protocols)
-  - Status multi-select (COMPLETED, FAILED, CANCELLED, RUNNING, QUEUED)
+- [x] Create `RunFiltersComponent`
+  - [x] Protocol dropdown (from available protocols) - **Multi-select added 2026-01-02**
+  - [x] Status multi-select (COMPLETED, FAILED, CANCELLED, RUNNING, QUEUED)
   - Date range picker
   - Search by run ID
-- [ ] Implement query param synchronization
+- [x] Implement query param synchronization (Handled by Filters Component)
 - [ ] Persist filter state in URL
 
 ### Phase 5: Run Detail View
@@ -157,7 +157,7 @@ WebSocket /ws/execution/:runId  →  Real-time updates
   - Route: `/app/monitor/:runId`
   - Show full run info, parameters, machine used
   - Display deck configuration snapshot
-  - Show execution timeline
+  - [x] Show execution timeline - **Implemented 2026-01-02**
   - Full log viewer with search
   - Output data visualization (if available)
 - [ ] Add "Re-run with same parameters" action
@@ -167,13 +167,13 @@ WebSocket /ws/execution/:runId  →  Real-time updates
 
 **Goal**: Visual timeline and analytics
 
-- [ ] Create `RunTimelineComponent`
-  - Visual representation of run phases
-  - Hover for phase details
-- [ ] Add summary statistics to overview
-  - Runs today/this week
-  - Success rate
-  - Average duration by protocol
+- [ ] Create `RunTimelineComponent` (Implemented inline in `RunDetailComponent` 2026-01-02)
+  - [x] Visual representation of run phases
+  - [ ] Hover for phase details
+- [x] Add summary statistics to overview - **✅ Resolved 2026-01-01**
+  - [x] Runs today/this week - `RunStatsPanelComponent` shows runs today + total
+  - [x] Success rate - Shows percentage with completed/failed breakdown
+  - [x] Average duration by protocol - Shows avg duration from run history
 - [ ] Add mini-charts for trends
 
 ---
@@ -196,6 +196,7 @@ POST /api/v1/protocols/runs/:id/cancel
 ### Demo Mode Support
 
 Add to `demo.interceptor.ts`:
+
 - Mock run history data with various statuses
 - Support filtering by status and protocol
 - Pagination simulation
@@ -207,6 +208,7 @@ Add to `demo.interceptor.ts`:
 ### Layout Options
 
 **Option A: Tab-based**
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ [Active Runs] [History] [Analytics]                      │
@@ -218,6 +220,7 @@ Add to `demo.interceptor.ts`:
 ```
 
 **Option B: Split view (Recommended)**
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ Active Runs (2)                             [Filters ▾] │

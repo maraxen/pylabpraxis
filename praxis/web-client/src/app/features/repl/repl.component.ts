@@ -1,14 +1,19 @@
-import { Component, ElementRef, OnInit, OnDestroy, ViewChild, inject, AfterViewInit, effect, NgZone } from '@angular/core';
+import { Component, ElementRef, OnInit, OnDestroy, ViewChild, inject, AfterViewInit, effect, NgZone, ChangeDetectorRef } from '@angular/core';
 import { AppStore } from '../../core/store/app.store';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatListModule } from '@angular/material/list';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { ModeService } from '../../core/services/mode.service';
 import { PythonRuntimeService } from '../../core/services/python-runtime.service';
 import { BackendReplService } from '../../core/services/backend-repl.service';
-import { ReplRuntime, ReplOutput, CompletionItem, SignatureInfo } from '../../core/services/repl-runtime.interface';
+import { ReplRuntime, ReplOutput, CompletionItem, SignatureInfo, ReplacementVariable } from '../../core/services/repl-runtime.interface';
 import { Subscription } from 'rxjs';
 import { CompletionPopupComponent } from './components/completion-popup.component';
 import { SignatureHelpComponent } from './components/signature-help.component';
@@ -16,75 +21,208 @@ import { SignatureHelpComponent } from './components/signature-help.component';
 @Component({
   selector: 'app-repl',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatIconModule, CompletionPopupComponent, SignatureHelpComponent],
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatIconModule,
+    MatButtonModule,
+    MatTooltipModule,
+    MatSidenavModule,
+    MatListModule,
+    MatSnackBarModule,
+    CompletionPopupComponent,
+    SignatureHelpComponent
+  ],
   template: `
     <div class="repl-container">
-      <mat-card class="repl-card">
-        <div class="repl-header">
-          <mat-icon>terminal</mat-icon>
-          <h2>PyLabRobot REPL ({{ modeLabel() }})</h2>
-        </div>
-        <div class="repl-terminal-wrapper" #terminalContainer>
-          <div #terminalElement></div>
-          <app-completion-popup
-            [items]="completionItems"
-            [x]="popupX"
-            [y]="popupY"
-            (selected)="onCompletionSelected($event)"
-            (closed)="closeCompletionPopup()"
-            #completionPopup
-          ></app-completion-popup>
-          <app-signature-help
-            [signatures]="signatureItems"
-            [x]="popupX"
-            [y]="popupY"
-            (closed)="closeSignatureHelp()"
-          ></app-signature-help>
-        </div>
-      </mat-card>
+      <mat-drawer-container class="repl-drawer-container">
+        <!-- Variable Sidebar -->
+        <mat-drawer #drawer mode="side" [(opened)]="isSidebarOpen" position="end" class="variables-drawer">
+          <div class="drawer-header">
+            <h3>Variables</h3>
+            <button mat-icon-button (click)="loadVariables()" matTooltip="Refresh Variables">
+              <mat-icon>refresh</mat-icon>
+            </button>
+          </div>
+          <mat-list>
+            @for (v of variables; track v.name) {
+              <mat-list-item>
+                <div class="variable-item">
+                  <span class="var-name" matTooltip="{{v.type}}">{{ v.name }}</span>
+                  <span class="var-value">{{ v.value }}</span>
+                </div>
+              </mat-list-item>
+            }
+            @if (variables.length === 0) {
+              <div class="empty-state">No variables defined</div>
+            }
+          </mat-list>
+        </mat-drawer>
+
+        <!-- Main Content -->
+        <mat-drawer-content class="repl-main-content">
+          <mat-card class="repl-card">
+            <!-- Menu Bar -->
+            <div class="repl-header">
+              <div class="header-title">
+                <mat-icon>terminal</mat-icon>
+                <h2>PyLabRobot REPL ({{ modeLabel() }})</h2>
+              </div>
+              
+              <div class="header-actions">
+                <button mat-icon-button (click)="restartKernel()" matTooltip="Restart Kernel">
+                  <mat-icon>restart_alt</mat-icon>
+                </button>
+                <button mat-icon-button (click)="clearTerminal()" matTooltip="Clear Output">
+                  <mat-icon>delete_sweep</mat-icon>
+                </button>
+                <!--- <button mat-icon-button (click)="loadProtocol()" matTooltip="Load Protocol (Coming Soon)" disabled>
+                  <mat-icon>file_open</mat-icon>
+                </button> -->
+                <button mat-icon-button (click)="saveSession()" matTooltip="Save Session to Protocol" [disabled]="history.length === 0">
+                  <mat-icon>save</mat-icon>
+                </button>
+                <button mat-icon-button (click)="isSidebarOpen = !isSidebarOpen" matTooltip="Toggle Variables">
+                  <mat-icon>data_object</mat-icon>
+                </button>
+              </div>
+            </div>
+
+            <!-- Terminal -->
+            <div class="repl-terminal-wrapper" #terminalContainer>
+              <div #terminalElement></div>
+              <app-completion-popup
+                [items]="completionItems"
+                [x]="popupX"
+                [y]="popupY"
+                (selected)="onCompletionSelected($event)"
+                (closed)="closeCompletionPopup()"
+                #completionPopup
+              ></app-completion-popup>
+              <app-signature-help
+                [signatures]="signatureItems"
+                [x]="popupX"
+                [y]="popupY"
+                (closed)="closeSignatureHelp()"
+              ></app-signature-help>
+            </div>
+          </mat-card>
+        </mat-drawer-content>
+      </mat-drawer-container>
     </div>
   `,
   styles: [`
     .repl-container {
-      padding: 16px;
       height: 100%;
+      width: 100%;
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
     }
+    .repl-drawer-container {
+      height: 100%;
+      background: transparent;
+    }
+    .repl-main-content {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden; /* Prevent scrolling on content wrapper */
+    }
+    .variables-drawer {
+      width: 250px;
+      padding: 0;
+      background: var(--mat-sys-surface-container);
+      border-left: 1px solid var(--mat-sys-outline-variant);
+    }
+    .drawer-header {
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+    }
+    .drawer-header h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 500;
+    }
+    .variable-item {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      overflow: hidden;
+    }
+    .var-name {
+      font-family: monospace;
+      font-weight: bold;
+      color: var(--mat-sys-primary);
+    }
+    .var-value {
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: var(--mat-sys-on-surface-variant);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .empty-state {
+      padding: 16px;
+      color: var(--mat-sys-on-surface-variant);
+      text-align: center;
+      font-style: italic;
+    }
+
     .repl-card {
       height: 100%;
       display: flex;
       flex-direction: column;
-      padding: 16px;
+      padding: 0; 
       background: var(--mat-sys-surface-container);
       border: 1px solid var(--mat-sys-outline-variant);
       color: var(--mat-sys-on-surface);
       border-radius: 8px;
+      overflow: hidden;
     }
     .repl-header {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
+      justify-content: space-between; /* Space between title and actions */
+      padding: 8px 16px;
+      background: var(--mat-sys-surface-container-high);
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
       flex-shrink: 0;
+    }
+    .header-title {
+       display: flex;
+       align-items: center;
+       gap: 12px;
     }
     .repl-header mat-icon {
       color: var(--mat-sys-primary);
     }
     .repl-header h2 {
       margin: 0;
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       font-weight: 500;
     }
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
     .repl-terminal-wrapper {
       flex-grow: 1;
-      overflow: visible;
+      overflow: hidden; /* Terminal handles scrolling */
       background: var(--mat-sys-surface-container-low);
-      border: 1px solid var(--mat-sys-outline-variant);
-      border-radius: 4px;
       padding: 8px;
       position: relative; /* For popup positioning */
+      display: flex; /* Ensure terminal fills */
+    }
+    /* Target the terminal container div */
+    .repl-terminal-wrapper > div:first-child {
+        width: 100%;
+        height: 100%;
     }
   `]
 })
@@ -98,6 +236,8 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
   private backendRepl = inject(BackendReplService);
   private store = inject(AppStore);
   private ngZone = inject(NgZone);
+  private snackBar = inject(MatSnackBar);
+  private cdr = inject(ChangeDetectorRef);
 
   private terminal!: Terminal;
   private fitAddon!: FitAddon;
@@ -107,7 +247,7 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
   private isExecuting = false;
 
   // History management
-  private history: string[] = [];
+  history: string[] = [];
   private historyIndex = -1;
   private currentBufferBackup = '';
 
@@ -117,6 +257,10 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
   popupX = 0;
   popupY = 0;
   private currentToken = '';
+
+  // Variables
+  variables: ReplacementVariable[] = [];
+  isSidebarOpen = true;
 
   modeLabel = this.modeService.modeLabel;
 
@@ -139,21 +283,29 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
         this.updateTerminalTheme('system');
       }
     });
+
+    // Subscribe to variables if available
+    if (this.runtime.variables$) {
+      this.subscription.add(
+        this.runtime.variables$.subscribe(vars => {
+          this.ngZone.run(() => {
+            this.variables = vars;
+          });
+        })
+      );
+    }
   }
 
   ngAfterViewInit() {
     this.initTerminal();
     this.connectRuntime();
+    this.cdr.detectChanges();
   }
 
   private updateTerminalTheme(theme: string) {
     if (!this.terminal) return;
 
     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-    // Explicitly set background to transparent to let container background show through if needed, 
-    // or set specific colors matching our app theme.
-    // We use the CSS variables effectively where possible, but xterm needs hex strings.
 
     // Dark theme colors (matching App's dark theme)
     const darkTheme = {
@@ -224,11 +376,7 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
     this.terminal.open(this.terminalElement.nativeElement);
     this.fitAddon.fit();
 
-    this.terminal.writeln('\x1b[1;38;5;197mPyLabRobot Interactive REPL\r\n\x1b[0m');
-    this.terminal.writeln('  \x1b[90mShift+Enter:\x1b[0m New line');
-    this.terminal.writeln('  \x1b[90mCtrl+Enter / Enter:\x1b[0m Execute');
-    this.terminal.writeln('  \x1b[90mCtrl+L:\x1b[0m Clear terminal\r\n');
-    this.terminal.write('\x1b[1;32m>>> \x1b[0m');
+    this.printWelcome();
 
     this.terminal.onKey(({ key, domEvent }) => {
       const { keyCode, shiftKey, ctrlKey, metaKey } = domEvent;
@@ -324,7 +472,7 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
 
       // Ctrl + L (Clear)
       if (keyCode === 76 && ctrlKey) {
-        this.terminal.clear();
+        this.clearTerminal();
         return;
       }
 
@@ -352,17 +500,42 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    window.addEventListener('resize', () => {
-      if (this.fitAddon) this.fitAddon.fit();
+    const resizeObserver = new ResizeObserver(() => {
+      if (this.fitAddon) {
+        try {
+          this.fitAddon.fit();
+        } catch (e) {
+          // Ignore fit errors if element not visible/sized
+        }
+      }
     });
+    resizeObserver.observe(this.terminalContainer.nativeElement);
+  }
+
+  private printWelcome() {
+    this.terminal.writeln('\x1b[1;38;5;197mPyLabRobot Interactive REPL\r\n\x1b[0m');
+    this.terminal.writeln('  \x1b[90mShift+Enter:\x1b[0m New line');
+    this.terminal.writeln('  \x1b[90mCtrl+Enter / Enter:\x1b[0m Execute');
+    this.terminal.writeln('  \x1b[90mCtrl+L:\x1b[0m Clear terminal\r\n');
+    this.terminal.write('\x1b[1;32m>>> \x1b[0m');
   }
 
   private updateBufferFromHistory() {
     // Clear current line in terminal
-    const currentLen = this.inputBuffer.length;
-    for (let i = 0; i < currentLen; i++) {
-      this.terminal.write('\b \b');
-    }
+    // Only simple clearing for now, might break if line wraps
+    // proper way requires tracking cursor pos
+    // But since we just want to clear content relative to prompt...
+
+    // Quick hack: Move cursor to beginning of input start?
+    // Not easy without tracking columns.
+    // For now, assuming single line history interaction mainly.
+    // Or just clear whole line and reprint prompt + buffer.
+
+    // Better strategy for xterm.js:
+    // We can use \x1b[2K (erase line) + \r (CR) + Prompt + Input
+
+    this.terminal.write('\x1b[2K\r'); // Clear line and CR
+    this.terminal.write('\x1b[1;32m>>> \x1b[0m');
 
     if (this.historyIndex === -1) {
       this.inputBuffer = this.currentBufferBackup;
@@ -373,33 +546,28 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private updatePopupPosition() {
-    // Estimate cursor position in pixels
-    // xterm doesn't give public pixel coordinates cleanly, so we estimate
     const cursorX = this.terminal.buffer.active.cursorX;
     const cursorY = this.terminal.buffer.active.cursorY;
 
-    // Get dimensions of a cell
     const termEl = this.terminalElement.nativeElement;
-    // Fallback estimates if measurements fail
     const cellWidth = (termEl.clientWidth / this.terminal.cols) || 9;
     const cellHeight = (termEl.clientHeight / this.terminal.rows) || 17;
 
-    this.popupX = (cursorX * cellWidth) + 16; // + left padding
-    this.popupY = ((cursorY + 1) * cellHeight) + 8; // + top padding + 1 line down
+    // Relative to the terminal wrapper
+    this.popupX = (cursorX * cellWidth) + 8;
+    this.popupY = ((cursorY + 1) * cellHeight) + 8;
 
-    // Ensure it doesn't go off screen (basic check)
+    // Ensure it falls within container
     const containerWidth = this.terminalContainer.nativeElement.clientWidth;
-    if (this.popupX > containerWidth - 200) {
-      this.popupX = containerWidth - 220;
+    if (this.popupX > containerWidth - 250) {
+      this.popupX = containerWidth - 260; // align left of edge
     }
   }
 
   private handleTabCompletion() {
-    // Extract the token being completed (for filtering/replacing)
     const tokenMatch = this.inputBuffer.match(/[a-zA-Z_][a-zA-Z0-9_.]*$/);
     this.currentToken = tokenMatch ? tokenMatch[0] : '';
 
-    // Pass full source code for context-aware completions (Jedi needs full context)
     const fullSource = this.inputBuffer;
     const cursorPosition = this.inputBuffer.length;
 
@@ -410,10 +578,8 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         if (matches.length === 1) {
-          // Single match - auto-complete immediately
           this.applyCompletion(matches[0]);
         } else {
-          // Multiple matches - show popup
           this.completionItems = matches;
           this.updatePopupPosition();
         }
@@ -431,7 +597,6 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
         if (signatures && signatures.length > 0) {
           this.signatureItems = signatures;
           this.updatePopupPosition();
-          // Adjust Y up for signature help (above line)
           this.popupY -= 40;
         }
       });
@@ -501,27 +666,21 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
         next: (output: ReplOutput) => {
           if (output.type === 'stdout') {
             this.terminal.write(output.content.replace(/\n/g, '\r\n'));
-            this.terminal.scrollToBottom();
           } else if (output.type === 'stderr') {
-            // Red color for stderr
             this.terminal.write('\x1b[1;31m' + output.content.replace(/\n/g, '\r\n') + '\x1b[0m');
-            this.terminal.scrollToBottom();
           } else if (output.type === 'result') {
             if (output.content !== undefined && output.content !== null && output.content !== 'None') {
               this.terminal.writeln(`\x1b[1;36m${output.content}\x1b[0m`);
             }
             this.terminal.write('\x1b[1;32m>>> \x1b[0m');
-            this.terminal.scrollToBottom();
           } else if (output.type === 'error') {
             this.terminal.writeln(`\r\n\x1b[1;31mError: ${output.content}\x1b[0m`);
             this.terminal.write('\x1b[1;32m>>> \x1b[0m');
-            this.terminal.scrollToBottom();
           }
         },
         error: (err) => {
           this.terminal.writeln(`\r\n\x1b[1;31mSystem Error: ${err}\x1b[0m`);
           this.terminal.write('\x1b[1;32m>>> \x1b[0m');
-          this.terminal.scrollToBottom();
           this.isExecuting = false;
         },
         complete: () => {
@@ -529,6 +688,65 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       })
     );
+  }
+
+  clearTerminal() {
+    this.terminal.clear();
+    this.printWelcome();
+    this.inputBuffer = '';
+  }
+
+  restartKernel() {
+    if (this.runtime.restart) {
+      this.runtime.restart().subscribe(() => {
+        this.clearTerminal();
+        this.terminal.writeln('\x1b[90m# Runtime restarted.\x1b[0m\r\n');
+        this.terminal.write('\x1b[1;32m>>> \x1b[0m');
+      });
+    } else {
+      // Fallback for environment without explicit restart (e.g. browser)
+      // Maybe just reload page? Or just clear.
+      this.clearTerminal();
+      this.terminal.writeln('\x1b[90m# Restart not supported in this mode.\x1b[0m\r\n');
+      this.terminal.write('\x1b[1;32m>>> \x1b[0m');
+    }
+  }
+
+  saveSession() {
+    if (this.modeService.isBrowserMode()) {
+      this.snackBar.open('Save not supported in Browser Demo mode', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const backend = this.runtime as BackendReplService;
+    if (backend.saveSession) {
+      // Pass history in reverse chronological order (oldest first) ?
+      // Backend implementation expects FE order. FE stores newest first [0].
+      // Service should pass it as is, Backend reverses it.
+      // Wait, backend logic was: `for line in reversed(request.history):`
+      // If we send [Newest, ..., Oldest], then reversed is [Oldest, ... Newest].
+      // Correct.
+      backend.saveSession(this.history).subscribe({
+        next: (res) => {
+          this.snackBar.open(`Session saved as ${res.filename}`, 'Close', { duration: 5000 });
+        },
+        error: (err) => {
+          this.snackBar.open('Failed to save session', 'Close', { duration: 5000 });
+          console.error(err);
+        }
+      });
+    }
+  }
+
+  loadVariables() {
+    // Trigger a variable refresh?
+    // Currently the backend pushes updates on EXEC.
+    // We could add a `GET_VARS` command if needed, but for now just executing empty entry might work?
+    // Or just rely on auto-updates.
+    // Let's implement a dummy exec or just leave it for now.
+    if (!this.isExecuting) {
+      this.runtime.execute('').subscribe();
+    }
   }
 
   ngOnDestroy() {

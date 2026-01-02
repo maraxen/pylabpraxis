@@ -32,7 +32,6 @@ logger = get_logger(__name__)
 
 
 class ResourceManagerMixin:
-
   """Mixin for managing resource acquisition and release."""
 
   # Type hinting for dependencies expected on the main class

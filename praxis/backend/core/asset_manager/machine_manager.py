@@ -25,7 +25,6 @@ logger = get_logger(__name__)
 
 
 class MachineManagerMixin:
-
   """Mixin for managing machine acquisition and release."""
 
   # Type hinting for dependencies expected on the main class

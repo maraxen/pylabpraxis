@@ -6,19 +6,16 @@ Tests cover:
 - CapabilityMatcherService
 """
 
-import pytest
 
+from praxis.backend.services.capability_matcher import CapabilityMatcherService
 from praxis.backend.utils.plr_static_analysis.models import (
   CapabilityMatchResult,
   CapabilityRequirement,
   ProtocolRequirements,
 )
 from praxis.backend.utils.plr_static_analysis.visitors.protocol_requirement_extractor import (
-  ProtocolRequirementExtractor,
   extract_requirements_from_source,
 )
-from praxis.backend.services.capability_matcher import CapabilityMatcherService
-
 
 # =============================================================================
 # Pydantic Model Tests

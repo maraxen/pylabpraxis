@@ -182,12 +182,30 @@ import {
                                         </div>
                                     }
 
+                                    <!-- Error Message Display -->
+                                    @if (device.status === 'error' && device.errorMessage) {
+                                        <div class="error-message">
+                                            <mat-icon>error</mat-icon>
+                                            <span>{{ device.errorMessage }}</span>
+                                        </div>
+                                    }
+
                                     <!-- Device Actions -->
                                     <div class="device-actions">
-                                        @if (device.status === 'available' && device.connectionType === 'serial') {
-                                            <button mat-stroked-button (click)="connectDevice(device)">
-                                                <mat-icon>link</mat-icon>
-                                                Connect
+                                        @if (device.status === 'available' && (device.connectionType === 'serial' || device.connectionType === 'network')) {
+                                            <button mat-stroked-button (click)="connectDevice(device)" [disabled]="connectingDevices().has(device.id)">
+                                                @if (connectingDevices().has(device.id)) {
+                                                    <mat-spinner diameter="18"></mat-spinner>
+                                                } @else {
+                                                    <mat-icon>link</mat-icon>
+                                                }
+                                                {{ connectingDevices().has(device.id) ? 'Connecting...' : 'Connect' }}
+                                            </button>
+                                        }
+                                        @if (device.status === 'connecting') {
+                                            <button mat-stroked-button disabled>
+                                                <mat-spinner diameter="18"></mat-spinner>
+                                                Connecting...
                                             </button>
                                         }
                                         @if (device.status === 'connected') {
@@ -196,8 +214,14 @@ import {
                                                 Disconnect
                                             </button>
                                         }
-                                        @if (hardwareService.isPlrSupported(device) && device.status !== 'requires_config') {
-                                            <button mat-flat-button color="primary" (click)="registerAsMachine(device)">
+                                        @if (device.status === 'error') {
+                                            <button mat-stroked-button color="warn" (click)="retryConnection(device)">
+                                                <mat-icon>refresh</mat-icon>
+                                                Retry
+                                            </button>
+                                        }
+                                        @if (hardwareService.isPlrSupported(device) && device.status !== 'requires_config' && device.status !== 'error') {
+                                            <button mat-flat-button color="primary" (click)="registerAsMachine(device)" [disabled]="device.status === 'connecting'">
                                                 <mat-icon>add_circle</mat-icon>
                                                 Register as Machine
                                             </button>
@@ -369,6 +393,22 @@ import {
             color: var(--sys-on-error-container) !important;
         }
 
+        .status-connecting, .status-busy {
+            background: var(--sys-tertiary-container) !important;
+            color: var(--sys-on-tertiary-container) !important;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .status-disconnected, .status-unknown {
+            background: var(--sys-outline-variant) !important;
+            color: var(--sys-on-surface-variant) !important;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
         .plr-chip {
             background: var(--sys-primary) !important;
             color: var(--sys-on-primary) !important;
@@ -424,6 +464,25 @@ import {
             margin-bottom: 8px;
         }
 
+        .error-message {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            background: var(--sys-error-container);
+            color: var(--sys-on-error-container);
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .error-message mat-icon {
+            flex-shrink: 0;
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+        }
+
         .device-actions {
             display: flex;
             gap: 8px;
@@ -431,6 +490,10 @@ import {
             padding-top: 16px;
             border-top: 1px solid var(--sys-outline-variant);
             flex-wrap: wrap;
+        }
+
+        .device-actions button mat-spinner {
+            margin-right: 4px;
         }
 
         .summary-section {
@@ -455,6 +518,9 @@ export class HardwareDiscoveryDialogComponent {
     private readonly dialogRef = inject(MatDialogRef<HardwareDiscoveryDialogComponent>);
     private readonly snackBar = inject(MatSnackBar);
 
+    /** Tracks devices currently being connected */
+    readonly connectingDevices = signal<Set<string>>(new Set());
+
     async scanAll(): Promise<void> {
         await this.hardwareService.discoverAll();
     }
@@ -474,11 +540,27 @@ export class HardwareDiscoveryDialogComponent {
     }
 
     async connectDevice(device: DiscoveredDevice): Promise<void> {
-        const success = await this.hardwareService.openSerialConnection(device);
-        if (success) {
-            this.snackBar.open(`Connected to ${device.name}`, 'OK', { duration: 3000 });
-        } else {
-            this.snackBar.open(`Failed to connect to ${device.name}`, 'Dismiss', { duration: 5000 });
+        // Add to connecting set
+        this.connectingDevices.update(set => {
+            const newSet = new Set(set);
+            newSet.add(device.id);
+            return newSet;
+        });
+
+        try {
+            const success = await this.hardwareService.openSerialConnection(device);
+            if (success) {
+                this.snackBar.open(`Connected to ${device.name}`, 'OK', { duration: 3000 });
+            } else {
+                this.snackBar.open(`Failed to connect to ${device.name}`, 'Dismiss', { duration: 5000 });
+            }
+        } finally {
+            // Remove from connecting set
+            this.connectingDevices.update(set => {
+                const newSet = new Set(set);
+                newSet.delete(device.id);
+                return newSet;
+            });
         }
     }
 
@@ -487,6 +569,12 @@ export class HardwareDiscoveryDialogComponent {
         if (success) {
             this.snackBar.open(`Disconnected from ${device.name}`, 'OK', { duration: 3000 });
         }
+    }
+
+    async retryConnection(device: DiscoveredDevice): Promise<void> {
+        // Clear error state and retry
+        this.hardwareService.clearDeviceError(device.id);
+        await this.connectDevice(device);
     }
 
     async registerAsMachine(device: DiscoveredDevice): Promise<void> {

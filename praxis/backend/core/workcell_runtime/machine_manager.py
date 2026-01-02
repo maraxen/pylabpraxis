@@ -26,7 +26,6 @@ logger = get_logger(__name__)
 
 
 class MachineManagerMixin:
-
   """Mixin for managing machines in WorkcellRuntime."""
 
   @log_workcell_runtime_errors(

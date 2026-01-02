@@ -9,7 +9,6 @@ if TYPE_CHECKING:
 
 
 class IAssetLockManager(Protocol):
-
   """A protocol for the asset lock manager."""
 
   async def acquire_asset_lock(

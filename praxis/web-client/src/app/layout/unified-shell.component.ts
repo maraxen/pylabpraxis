@@ -6,6 +6,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { AppStore } from '@core/store/app.store';
 import { ModeService } from '@core/services/mode.service';
+import { BreadcrumbComponent } from '@core/components/breadcrumb/breadcrumb.component';
 import { ExecutionService } from '@features/run-protocol/services/execution.service';
 import { ExecutionStatus } from '@features/run-protocol/models/execution.models';
 import { filter } from 'rxjs/operators';
@@ -21,7 +22,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
     RouterLinkActive,
     MatIconModule,
     MatTooltipModule,
-    MatButtonModule
+    MatTooltipModule,
+    MatButtonModule,
+    BreadcrumbComponent
   ],
   template: `
     <div class="shell-layout">
@@ -138,6 +141,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
 
       <!-- Main Content -->
       <div class="main-wrapper">
+        <header class="px-6 py-4 flex items-center border-b border-[var(--mat-sys-outline-variant)] bg-[var(--mat-sys-surface)]">
+            <app-breadcrumb></app-breadcrumb>
+        </header>
         <main class="main-content">
           <router-outlet></router-outlet>
         </main>

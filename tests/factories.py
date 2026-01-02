@@ -34,7 +34,7 @@ def uuid7():
     if _last_v7_timestamp is not None and nanoseconds <= _last_v7_timestamp:
         nanoseconds = _last_v7_timestamp + 1
     _last_v7_timestamp = nanoseconds
-    timestamp_ms, timestamp_ns_frac = divmod(nanoseconds, 10**6)
+    timestamp_ms, _timestamp_ns_frac = divmod(nanoseconds, 10**6)
     rand_a = random.getrandbits(12)
     rand_b = random.getrandbits(62)
     uuid_int = (timestamp_ms & 0xFFFFFFFFFFFF) << 80

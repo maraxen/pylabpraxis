@@ -322,14 +322,11 @@ export const demoInterceptor = (req: HttpRequest<unknown>, next: HttpHandlerFn):
     const url = req.url;
     const method = req.method;
 
-    console.log(`[DemoInterceptor] Intercepting: ${method} ${url}`);
-
     // Route to mock handlers
     return getMockResponse(req, sqliteService).pipe(
         delay(LATENCY_MS),
         switchMap(response => {
             if (response !== null) {
-                console.log(`[DemoInterceptor] Returning mock data for: ${method} ${url}`);
                 return of(new HttpResponse({
                     status: 200,
                     body: response,

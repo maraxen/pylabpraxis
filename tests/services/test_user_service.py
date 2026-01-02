@@ -3,8 +3,6 @@
 Tests cover all CRUD operations, authentication, and user-specific functionality.
 """
 import pytest
-from asyncpg.exceptions import UniqueViolationError
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.user import UserOrm
@@ -59,7 +57,10 @@ async def test_user_service_create_user_minimal(db_session: AsyncSession) -> Non
 
 @pytest.mark.asyncio
 async def test_user_service_create_duplicate_username(db_session: AsyncSession) -> None:
-    """Test that creating user with duplicate username fails."""
+    """Test that creating user with duplicate username fails.
+
+    The @handle_db_transaction decorator converts IntegrityError to ValueError.
+    """
     user_data1 = UserCreate(
         username="duplicate",
         email="first@example.com",
@@ -74,13 +75,17 @@ async def test_user_service_create_duplicate_username(db_session: AsyncSession) 
         password="password456",
     )
 
-    with pytest.raises((IntegrityError, UniqueViolationError)):
+    # The decorator wraps IntegrityError in ValueError
+    with pytest.raises(ValueError, match="integrity error"):
         await user_service.create(db_session, obj_in=user_data2)
 
 
 @pytest.mark.asyncio
 async def test_user_service_create_duplicate_email(db_session: AsyncSession) -> None:
-    """Test that creating user with duplicate email fails."""
+    """Test that creating user with duplicate email fails.
+
+    The @handle_db_transaction decorator converts IntegrityError to ValueError.
+    """
     user_data1 = UserCreate(
         username="user1",
         email="duplicate@example.com",
@@ -95,7 +100,8 @@ async def test_user_service_create_duplicate_email(db_session: AsyncSession) -> 
         password="password456",
     )
 
-    with pytest.raises((IntegrityError, UniqueViolationError)):
+    # The decorator wraps IntegrityError in ValueError
+    with pytest.raises(ValueError, match="integrity error"):
         await user_service.create(db_session, obj_in=user_data2)
 
 

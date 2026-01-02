@@ -45,7 +45,8 @@ def get_class_members(library_name: str, subpackage, base_class_name: str):
 def new_init(self, *args, **kwargs):
   if isinstance(self, Machine):  # TODO: Change this to a more general check
     if args:
-      raise ValueError("All arguments must be keyword arguments when using praxis.")
+      msg = "All arguments must be keyword arguments when using praxis."
+      raise ValueError(msg)
     if "name" in kwargs:
       self.name = kwargs["name"]
       kwargs.pop("name")
@@ -77,9 +78,9 @@ def patch_subclasses() -> dict[str, type[Machine]]:
 
   """
   new_objs = {}
-  for _name, obj in get_class_members(
+  for obj in get_class_members(
     library_name="pylabrobot", subpackage="machines", base_class_name=Machine.__name__,
-  ).items():
+  ).values():
     if inspect.isclass(obj) and issubclass(obj, Machine):
       obj.__init__ = new_init  # type: ignore
       obj.serialize = new_serialize  # type: ignore

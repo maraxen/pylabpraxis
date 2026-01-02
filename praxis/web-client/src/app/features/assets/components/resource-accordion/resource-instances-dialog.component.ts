@@ -216,18 +216,15 @@ export class ResourceInstancesDialogComponent {
     return (this.data.definition as any).is_reusable ?? false;
   }
 
-  markDiscarded(instance: Resource) {
-    console.log('Mark discarded:', instance);
+  markDiscarded(_instance: Resource) {
     // TODO: Implement status update via service
   }
 
-  markForCleaning(instance: Resource) {
-    console.log('Mark for cleaning:', instance);
+  markForCleaning(_instance: Resource) {
     // TODO: Implement cleaning workflow
   }
 
   addInstance() {
-    console.log('Add instance for definition:', this.data.definition);
     // TODO: Open add resource dialog with pre-selected definition
     this.dialogRef.close();
   }

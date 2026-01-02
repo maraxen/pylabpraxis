@@ -36,7 +36,6 @@ class WorkcellRuntime(
   StateSyncMixin,
   IWorkcellRuntime,
 ):
-
   """Manages live PyLabRobot objects for an active workcell configuration.
 
   This class is responsible for initializing, maintaining, and shutting down

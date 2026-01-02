@@ -9,16 +9,27 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
-from praxis.backend.api import auth, decks, discovery, hardware, machines, outputs, protocols, resources, scheduler, workcell
+from praxis.backend.api import (
+  auth,
+  decks,
+  discovery,
+  hardware,
+  machines,
+  outputs,
+  protocols,
+  resources,
+  scheduler,
+  workcell,
+)
 from praxis.backend.configure import PraxisConfiguration
 from praxis.backend.core.asset_lock_manager import AssetLockManager
 from praxis.backend.core.asset_manager import AssetManager
 from praxis.backend.core.celery import celery_app, configure_celery_app
 from praxis.backend.core.filesystem import FileSystem
 from praxis.backend.core.orchestrator import Orchestrator
+from praxis.backend.core.storage import StorageBackend, StorageFactory
 from praxis.backend.core.workcell import Workcell
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
-from praxis.backend.core.storage import StorageFactory, StorageBackend
 from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
 from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.orm.resource import ResourceOrm
@@ -92,7 +103,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     storage_backend_str = praxis_config.storage_backend
     is_demo = praxis_config.is_demo_mode
     logger.info("Storage backend: %s (demo mode: %s)", storage_backend_str, is_demo)
-    
+
     # Map string to enum
     backend_map = {
       "postgresql": StorageBackend.POSTGRESQL,
@@ -101,13 +112,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       "redis": StorageBackend.REDIS,
     }
     storage_backend = backend_map.get(storage_backend_str, StorageBackend.POSTGRESQL)
-    
+
     # Create key-value store and task queue based on backend
     kv_store = StorageFactory.create_key_value_store(storage_backend)
     task_queue = StorageFactory.create_task_queue(storage_backend)
     app.state.kv_store = kv_store
     app.state.task_queue = task_queue
-    logger.info("Storage layer initialized: kv_store=%s, task_queue=%s", type(kv_store).__name__, type(task_queue).__name__)
+    logger.info(
+      "Storage layer initialized: kv_store=%s, task_queue=%s",
+      type(kv_store).__name__,
+      type(task_queue).__name__,
+    )
 
     logger.info("Initializing Praxis database schema...")
     engine = getattr(app.state, "async_engine", None)
@@ -159,6 +174,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       # Initialize DiscoveryService with all type definition services
       logger.info("Initializing DiscoveryService...")
       from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm
+
       protocol_definition_service = ProtocolDefinitionCRUDService(FunctionProtocolDefinitionOrm)
       discovery_service = DiscoveryService(
         db_session_factory=AsyncSessionLocal,
@@ -194,10 +210,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       # Initialize ProtocolExecutionService
       logger.info("Initializing ProtocolExecutionService...")
       from praxis.backend.core.protocol_execution_service import ProtocolExecutionService
-      from praxis.backend.services.protocols import ProtocolRunService
-      from praxis.backend.models.orm.protocol import ProtocolRunOrm
       from praxis.backend.core.scheduler import ProtocolScheduler
+      from praxis.backend.models.orm.protocol import ProtocolRunOrm
       from praxis.backend.services.mock_data_generator import MockTelemetryService
+      from praxis.backend.services.protocols import ProtocolRunService
 
       protocol_run_service = ProtocolRunService(ProtocolRunOrm)
       protocol_scheduler = ProtocolScheduler(
@@ -206,11 +222,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         protocol_run_service=protocol_run_service,
         protocol_definition_service=protocol_definition_service,
       )
-      
+
       # Inject scheduler into orchestrator
       # This addresses the circular dependency where Orchestrator needs Scheduler to release assets
       orchestrator.scheduler = protocol_scheduler
-      
+
       mock_telemetry_service = MockTelemetryService(protocol_run_service=protocol_run_service)
 
       protocol_execution_service = ProtocolExecutionService(
@@ -230,7 +246,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       app.state.praxis_config = praxis_config
       app.state.protocol_execution_service = protocol_execution_service
       app.state.mock_telemetry_service = mock_telemetry_service
-      logger.info("Orchestrator, DiscoveryService, and ProtocolExecutionService attached to application state.")
+      logger.info(
+        "Orchestrator, DiscoveryService, and ProtocolExecutionService attached to application state."
+      )
       logger.info("Application startup complete.")
 
       yield  # The application is now running
@@ -266,6 +284,18 @@ app = FastAPI(
   lifespan=lifespan,
 )
 
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError) -> Response:
+  """Handle ValueError exceptions."""
+  from fastapi.responses import JSONResponse
+
+  return JSONResponse(
+    status_code=400,
+    content={"detail": str(exc)},
+  )
+
+
 # CORS Middleware Configuration
 app.add_middleware(
   CORSMiddleware,
@@ -294,7 +324,8 @@ app.include_router(hardware.router, prefix="/api/v1/hardware", tags=["Hardware"]
 app.include_router(discovery.router, prefix="/api/v1/discovery", tags=["Discovery"])
 app.include_router(scheduler.router, prefix="/api/v1/scheduler", tags=["Scheduler"])
 
-from praxis.backend.api import websockets, repl
+from praxis.backend.api import repl, websockets
+
 app.include_router(websockets.router, prefix="/api/v1/ws", tags=["WebSockets"])
 app.include_router(repl.router, prefix="/api/v1/repl", tags=["REPL"])
 

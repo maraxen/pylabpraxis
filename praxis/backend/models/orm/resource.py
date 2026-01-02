@@ -49,7 +49,6 @@ if TYPE_CHECKING:
 
 
 class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
-
   """SQLAlchemy ORM model for cataloging PyLabRobot resource definitions.
 
   This model stores comprehensive metadata about various types of lab resources,
@@ -173,7 +172,6 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
     comment="All extracted PLR properties as structured JSON for faceted filtering.",
   )
 
-
   resource_list: Mapped[list["ResourceOrm"]] = relationship(
     "ResourceOrm",
     back_populates="resource_definition",
@@ -222,7 +220,6 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
 
 
 class ResourceOrm(AssetOrm):
-
   """SQLAlchemy ORM model representing a physical instance of a resource.
 
   This model tracks individual physical items of lab resources,
@@ -308,6 +305,13 @@ class ResourceOrm(AssetOrm):
     nullable=True,
     index=True,
     comment="Foreign key to the current protocol run this resource is used in, if applicable.",
+    default=None,
+  )
+
+  location_label: Mapped[str | None] = mapped_column(
+    String,
+    nullable=True,
+    comment="Physical location label (e.g., 'Freezer 1, Shelf 2').",
     default=None,
   )
 

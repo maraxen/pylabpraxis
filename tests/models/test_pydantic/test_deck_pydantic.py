@@ -41,7 +41,7 @@ def test_deck_base_with_all_fields() -> None:
 
     machine_id = uuid7()
     deck_type_id = uuid7()
-    resource_def_id = uuid7()
+    uuid7()
 
     deck = DeckBase(
         name="full_deck",

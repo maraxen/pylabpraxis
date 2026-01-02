@@ -25,7 +25,8 @@ class TestPraxisError:
     def test_can_raise_and_catch(self) -> None:
         """Test that PraxisError can be raised and caught."""
         with pytest.raises(PraxisError):
-            raise PraxisError("Test error")
+            msg = "Test error"
+            raise PraxisError(msg)
 
     def test_stores_message(self) -> None:
         """Test that error message is stored correctly."""
@@ -50,7 +51,8 @@ class TestOrchestratorError:
     def test_can_raise_and_catch(self) -> None:
         """Test that OrchestratorError can be raised and caught."""
         with pytest.raises(OrchestratorError):
-            raise OrchestratorError("Orchestrator failed")
+            msg = "Orchestrator failed"
+            raise OrchestratorError(msg)
 
     def test_stores_message(self) -> None:
         """Test that error message is stored correctly."""
@@ -75,7 +77,8 @@ class TestDataError:
     def test_can_raise_and_catch(self) -> None:
         """Test that DataError can be raised and caught."""
         with pytest.raises(DataError):
-            raise DataError("Database error")
+            msg = "Database error"
+            raise DataError(msg)
 
     def test_stores_message(self) -> None:
         """Test that error message is stored correctly."""
@@ -95,7 +98,8 @@ class TestModelError:
     def test_can_raise_and_catch(self) -> None:
         """Test that ModelError can be raised and caught."""
         with pytest.raises(ModelError):
-            raise ModelError("Model validation failed")
+            msg = "Model validation failed"
+            raise ModelError(msg)
 
     def test_stores_message(self) -> None:
         """Test that error message is stored correctly."""
@@ -115,7 +119,8 @@ class TestAssetAcquisitionError:
     def test_can_raise_and_catch(self) -> None:
         """Test that AssetAcquisitionError can be raised and caught."""
         with pytest.raises(AssetAcquisitionError):
-            raise AssetAcquisitionError("Cannot acquire asset")
+            msg = "Cannot acquire asset"
+            raise AssetAcquisitionError(msg)
 
     def test_stores_message(self) -> None:
         """Test that error message is stored correctly."""
@@ -140,7 +145,8 @@ class TestAssetReleaseError:
     def test_can_raise_and_catch(self) -> None:
         """Test that AssetReleaseError can be raised and caught."""
         with pytest.raises(AssetReleaseError):
-            raise AssetReleaseError("Cannot release asset")
+            msg = "Cannot release asset"
+            raise AssetReleaseError(msg)
 
     def test_stores_message(self) -> None:
         """Test that error message is stored correctly."""
@@ -165,7 +171,7 @@ class TestProtocolCancelledError:
     def test_can_raise_and_catch(self) -> None:
         """Test that ProtocolCancelledError can be raised and caught."""
         with pytest.raises(ProtocolCancelledError):
-            raise ProtocolCancelledError()
+            raise ProtocolCancelledError
 
     def test_default_message(self) -> None:
         """Test that default cancellation message is set."""
@@ -190,7 +196,8 @@ class TestWorkcellRuntimeError:
     def test_can_raise_and_catch(self) -> None:
         """Test that WorkcellRuntimeError can be raised and caught."""
         with pytest.raises(WorkcellRuntimeError):
-            raise WorkcellRuntimeError("Workcell runtime failed")
+            msg = "Workcell runtime failed"
+            raise WorkcellRuntimeError(msg)
 
     def test_stores_message(self) -> None:
         """Test that error message is stored correctly."""
@@ -210,7 +217,8 @@ class TestPylabRobotError:
     def test_can_raise_and_catch(self) -> None:
         """Test that PylabRobotError can be raised and caught."""
         with pytest.raises(PylabRobotError):
-            raise PylabRobotError("PyLabRobot error")
+            msg = "PyLabRobot error"
+            raise PylabRobotError(msg)
 
     def test_stores_message(self) -> None:
         """Test that error message is stored correctly."""
@@ -241,7 +249,7 @@ class TestPyLabRobotVolumeError:
     def test_can_raise_and_catch(self) -> None:
         """Test that PyLabRobotVolumeError can be raised and caught."""
         with pytest.raises(PyLabRobotVolumeError):
-            raise PyLabRobotVolumeError()
+            raise PyLabRobotVolumeError
 
     def test_default_message(self) -> None:
         """Test that default message is set."""
@@ -283,7 +291,7 @@ class TestPyLabRobotGenericError:
     def test_can_raise_and_catch(self) -> None:
         """Test that PyLabRobotGenericError can be raised and caught."""
         with pytest.raises(PyLabRobotGenericError):
-            raise PyLabRobotGenericError()
+            raise PyLabRobotGenericError
 
     def test_default_message(self) -> None:
         """Test that default message is set."""
@@ -314,7 +322,8 @@ class TestPraxisAPIError:
     def test_can_raise_and_catch(self) -> None:
         """Test that PraxisAPIError can be raised and caught."""
         with pytest.raises(PraxisAPIError):
-            raise PraxisAPIError("API error")
+            msg = "API error"
+            raise PraxisAPIError(msg)
 
     def test_stores_message(self) -> None:
         """Test that error message is stored correctly."""

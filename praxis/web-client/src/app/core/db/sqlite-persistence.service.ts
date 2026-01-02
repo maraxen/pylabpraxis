@@ -288,7 +288,8 @@ export class SqlitePersistenceService implements OnDestroy {
      */
     public exportToFile(db: Database, filename: string = 'praxis-browser.db'): void {
         const data = db.export();
-        const blob = new Blob([data], { type: 'application/x-sqlite3' });
+        // Create blob from the Uint8Array (cast needed for strict TS)
+        const blob = new Blob([data as unknown as BlobPart], { type: 'application/x-sqlite3' });
         const url = URL.createObjectURL(blob);
 
         const a = document.createElement('a');

@@ -5,11 +5,11 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from praxis.backend.core.orchestrator import Orchestrator
+from praxis.backend.models import ProtocolRunStatusEnum
+from praxis.backend.models.orm.protocol import ProtocolRunOrm
 from praxis.backend.services.state import PraxisState
 from praxis.backend.utils.errors import AssetAcquisitionError, ProtocolCancelledError
 from praxis.backend.utils.uuid import uuid7
-from praxis.backend.models import ProtocolRunStatusEnum
-from praxis.backend.models.orm.protocol import ProtocolRunOrm
 
 
 class TestOrchestratorInit:
@@ -763,7 +763,6 @@ class TestOrchestratorExecutionFlow:
     @pytest.mark.asyncio
     async def test_full_protocol_lifecycle(self) -> None:
         """Test a full protocol lifecycle: Initialize -> Prepare -> Run -> Complete."""
-
         # 1. Setup Mocks
         mock_db_session = AsyncMock()
         mock_db_session.commit = AsyncMock()
@@ -1188,7 +1187,7 @@ class TestExecuteProtocolErrors:
         orchestrator._finalize_protocol_run = AsyncMock()
 
         # Execute - should not raise, error should be handled
-        result = await orchestrator.execute_protocol(
+        await orchestrator.execute_protocol(
             protocol_name="test_protocol",
         )
 
@@ -1259,7 +1258,7 @@ class TestExecuteProtocolErrors:
         orchestrator._finalize_protocol_run = AsyncMock()
 
         # Execute
-        result = await orchestrator.execute_protocol(
+        await orchestrator.execute_protocol(
             protocol_name="test_protocol",
         )
 
@@ -1297,7 +1296,8 @@ class TestExecuteProtocolErrors:
         async def mock_commit():
             commit_call_count.append(1)
             if len(commit_call_count) >= 2:  # Final commit fails
-                raise Exception("Database commit failed")
+                msg = "Database commit failed"
+                raise Exception(msg)
 
         mock_db_session.commit = mock_commit
         mock_db_session.rollback = AsyncMock()
@@ -1331,7 +1331,7 @@ class TestExecuteProtocolErrors:
         orchestrator._finalize_protocol_run = AsyncMock()
 
         # Execute - should not raise despite commit failure
-        result = await orchestrator.execute_protocol(
+        await orchestrator.execute_protocol(
             protocol_name="test_protocol",
         )
 
@@ -1382,8 +1382,7 @@ class TestExecuteProtocolErrors:
         orchestrator._handle_pre_execution_checks = AsyncMock()
 
         # Mock main logic to raise exception
-        asset_id = uuid7()
-        acquired_assets = {asset_id: {"name": "test_asset"}}
+        uuid7()
         orchestrator._execute_protocol_main_logic = AsyncMock(
             side_effect=RuntimeError("Protocol execution failed")
         )
@@ -1400,7 +1399,7 @@ class TestExecuteProtocolErrors:
         orchestrator._finalize_protocol_run = mock_finalize
 
         # Execute
-        result = await orchestrator.execute_protocol(
+        await orchestrator.execute_protocol(
             protocol_name="test_protocol",
         )
 
@@ -1469,7 +1468,7 @@ class TestExecuteExistingProtocolRun:
         orchestrator._finalize_protocol_run = AsyncMock()
 
         # Execute
-        result = await orchestrator.execute_existing_protocol_run(
+        await orchestrator.execute_existing_protocol_run(
             protocol_run_orm=mock_run,
             user_input_params={"param": "value"},
             initial_state_data={"state": "data"},
@@ -1617,7 +1616,7 @@ class TestExecuteExistingProtocolRun:
         orchestrator._finalize_protocol_run = AsyncMock()
 
         # Execute - should not raise
-        result = await orchestrator.execute_existing_protocol_run(protocol_run_orm=mock_run)
+        await orchestrator.execute_existing_protocol_run(protocol_run_orm=mock_run)
 
         # Verify finalization still called
         orchestrator._finalize_protocol_run.assert_called_once()
@@ -1668,7 +1667,7 @@ class TestExecuteExistingProtocolRun:
         orchestrator._finalize_protocol_run = AsyncMock()
 
         # Execute
-        result = await orchestrator.execute_existing_protocol_run(protocol_run_orm=mock_run)
+        await orchestrator.execute_existing_protocol_run(protocol_run_orm=mock_run)
 
         # Verify error handler called
         orchestrator._handle_protocol_execution_error.assert_called_once()
@@ -1716,7 +1715,7 @@ class TestExecuteExistingProtocolRun:
         orchestrator._finalize_protocol_run = AsyncMock()
 
         # Execute - should not crash even if ORM not found
-        result = await orchestrator.execute_existing_protocol_run(protocol_run_orm=mock_run)
+        await orchestrator.execute_existing_protocol_run(protocol_run_orm=mock_run)
 
         # Verify finalization NOT called (ORM was None)
         orchestrator._finalize_protocol_run.assert_not_called()
@@ -1741,7 +1740,8 @@ class TestExecuteExistingProtocolRun:
         async def mock_commit():
             commit_call_count.append(1)
             if len(commit_call_count) >= 2:  # Final commit fails
-                raise Exception("Database commit failed")
+                msg = "Database commit failed"
+                raise Exception(msg)
 
         mock_db_session = AsyncMock()
         mock_db_session.__aenter__ = AsyncMock(return_value=mock_db_session)
@@ -1772,7 +1772,7 @@ class TestExecuteExistingProtocolRun:
         orchestrator._finalize_protocol_run = AsyncMock()
 
         # Execute
-        result = await orchestrator.execute_existing_protocol_run(protocol_run_orm=mock_run)
+        await orchestrator.execute_existing_protocol_run(protocol_run_orm=mock_run)
 
         # Verify rollback was called after commit failure
         mock_db_session.rollback.assert_called_once()

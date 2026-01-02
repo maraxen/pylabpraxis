@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
+import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 
 import { RunHistoryService } from '../services/run-history.service';
 import { RunSummary, RunStatus } from '../models/monitor.models';
@@ -16,28 +17,31 @@ import { FilterState } from './run-filters.component';
  * Displays a paginated table of historical protocol runs.
  */
 @Component({
-    selector: 'app-run-history-table',
-    standalone: true,
-    imports: [
-        CommonModule,
-        RouterLink,
-        MatTableModule,
-        MatPaginatorModule,
-        MatIconModule,
-        MatButtonModule,
-        MatProgressSpinnerModule,
-        MatChipsModule,
-    ],
-    template: `
+  selector: 'app-run-history-table',
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterLink,
+    MatTableModule,
+    MatPaginatorModule,
+    MatIconModule,
+    MatButtonModule,
+    MatProgressSpinnerModule,
+    MatChipsModule,
+    NgxSkeletonLoaderModule,
+  ],
+  template: `
     <div class="history-container">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-xl font-semibold text-sys-text-primary">Run History</h2>
-        @if (isLoading()) {
-          <mat-spinner diameter="20"></mat-spinner>
-        }
       </div>
 
-      @if (runs().length === 0 && !isLoading()) {
+      @if (isLoading() && runs().length === 0) {
+        <div class="skeleton-container flex flex-col gap-3">
+             <ngx-skeleton-loader count="1" appearance="line" [theme]="{ height: '48px', 'border-radius': '12px', 'margin-bottom': '0' }"></ngx-skeleton-loader>
+             <ngx-skeleton-loader count="5" appearance="line" [theme]="{ height: '64px', 'border-radius': '12px', 'margin-bottom': '0' }"></ngx-skeleton-loader>
+        </div>
+      } @else if (runs().length === 0 && !isLoading()) {
         <div class="empty-state text-center py-12 text-sys-text-tertiary border border-[var(--theme-border)] rounded-2xl bg-surface">
           <mat-icon class="!w-16 !h-16 !text-[64px] opacity-30 mb-4">history</mat-icon>
           <p class="text-lg">No runs yet</p>
@@ -113,7 +117,7 @@ import { FilterState } from './run-filters.component';
       }
     </div>
   `,
-    styles: [`
+  styles: [`
     .history-container {
       margin-top: 24px;
     }
@@ -130,76 +134,76 @@ import { FilterState } from './run-filters.component';
   `],
 })
 export class RunHistoryTableComponent implements OnInit {
-    readonly runHistoryService = inject(RunHistoryService);
+  readonly runHistoryService = inject(RunHistoryService);
 
-    /** Filter state from parent */
-    readonly filters = input<FilterState | null>(null);
+  /** Filter state from parent */
+  readonly filters = input<FilterState | null>(null);
 
-    readonly runs = signal<RunSummary[]>([]);
-    readonly isLoading = signal(true);
-    readonly totalRuns = signal(0);
+  readonly runs = signal<RunSummary[]>([]);
+  readonly isLoading = signal(true);
+  readonly totalRuns = signal(0);
 
-    readonly displayedColumns = ['status', 'protocol', 'started', 'duration', 'actions'];
-    readonly pageSize = 10;
-    private currentOffset = 0;
+  readonly displayedColumns = ['status', 'protocol', 'started', 'duration', 'actions'];
+  readonly pageSize = 10;
+  private currentOffset = 0;
 
-    constructor() {
-        // React to filter changes
-        effect(() => {
-            const currentFilters = this.filters();
-            // Reset to first page when filters change
-            this.currentOffset = 0;
-            this.loadRuns();
-        });
+  constructor() {
+    // React to filter changes
+    effect(() => {
+      const currentFilters = this.filters();
+      // Reset to first page when filters change
+      this.currentOffset = 0;
+      this.loadRuns();
+    });
+  }
+
+  ngOnInit(): void {
+    // Initial load handled by effect
+  }
+
+  loadRuns(): void {
+    this.isLoading.set(true);
+    const currentFilters = this.filters();
+
+    this.runHistoryService
+      .getRunHistory({
+        limit: this.pageSize,
+        offset: this.currentOffset,
+        status: currentFilters?.status?.length ? currentFilters.status : undefined,
+        protocol_id: currentFilters?.protocol_id ?? undefined,
+        sort_by: currentFilters?.sort_by ?? 'created_at',
+        sort_order: currentFilters?.sort_order ?? 'desc',
+      })
+      .subscribe({
+        next: (runs) => {
+          this.runs.set(runs);
+          // For now, estimate total; backend should return this
+          this.totalRuns.set(runs.length < this.pageSize ? this.currentOffset + runs.length : this.currentOffset + runs.length + 1);
+          this.isLoading.set(false);
+        },
+        error: (err) => {
+          console.error('[RunHistoryTable] Error loading runs:', err);
+          this.isLoading.set(false);
+        },
+      });
+  }
+
+  onPageChange(event: PageEvent): void {
+    this.currentOffset = event.pageIndex * event.pageSize;
+    this.loadRuns();
+  }
+
+  formatDate(isoDate?: string): string {
+    if (!isoDate) return '-';
+    try {
+      return new Date(isoDate).toLocaleString([], {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return isoDate;
     }
-
-    ngOnInit(): void {
-        // Initial load handled by effect
-    }
-
-    loadRuns(): void {
-        this.isLoading.set(true);
-        const currentFilters = this.filters();
-
-        this.runHistoryService
-            .getRunHistory({
-                limit: this.pageSize,
-                offset: this.currentOffset,
-                status: currentFilters?.status?.length ? currentFilters.status : undefined,
-                protocol_id: currentFilters?.protocol_id ?? undefined,
-                sort_by: currentFilters?.sort_by ?? 'created_at',
-                sort_order: currentFilters?.sort_order ?? 'desc',
-            })
-            .subscribe({
-                next: (runs) => {
-                    this.runs.set(runs);
-                    // For now, estimate total; backend should return this
-                    this.totalRuns.set(runs.length < this.pageSize ? this.currentOffset + runs.length : this.currentOffset + runs.length + 1);
-                    this.isLoading.set(false);
-                },
-                error: (err) => {
-                    console.error('[RunHistoryTable] Error loading runs:', err);
-                    this.isLoading.set(false);
-                },
-            });
-    }
-
-    onPageChange(event: PageEvent): void {
-        this.currentOffset = event.pageIndex * event.pageSize;
-        this.loadRuns();
-    }
-
-    formatDate(isoDate?: string): string {
-        if (!isoDate) return '-';
-        try {
-            return new Date(isoDate).toLocaleString([], {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-            });
-        } catch {
-            return isoDate;
-        }
-    }
+  }
 }

@@ -1,8 +1,9 @@
 import asyncio
-import websockets
-import uuid
 import json
 import logging
+import uuid
+
+import websockets
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ws_client")

@@ -143,7 +143,7 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --mat-sys-on-tertiary-container: #cce5ff;
 
   // Default to dark theme - Refined Gradient
-  --theme-bg-gradient: radial-gradient(circle at 50% 0%, #1a1a2e 0%, #0f0f1a 100%);
+  --theme-bg-gradient: linear-gradient(135deg, #12121e 0%, #1a1a2e 50%, #0f0f1a 100%);
   --theme-surface: rgba(255, 255, 255, 0.03); // More subtle
   --theme-surface-elevated: rgba(255, 255, 255, 0.06);
   --theme-text-primary: rgba(255, 255, 255, 0.95);
@@ -181,7 +181,7 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --mat-sys-tertiary-container: #e0f2fe;
   --mat-sys-on-tertiary-container: #0c4a6e;
 
-  --theme-bg-gradient: radial-gradient(circle at 50% 0%, #ffffff 0%, #fffdf5 100%);
+  --theme-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f1f5f9 100%);
   --theme-surface: rgba(255, 255, 255, 0.7);
   --theme-surface-elevated: #ffffff;
   --theme-text-primary: #020617; // Slate 950

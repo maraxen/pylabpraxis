@@ -221,9 +221,9 @@ class TestScheduleEnumsIntegration:
     @pytest.mark.slow
     def test_all_enums_are_independent(self) -> None:
         """Test that all schedule enums are independent."""
-        status_names = set(member.name for member in ScheduleStatusEnum)
-        event_names = set(member.name for member in ScheduleHistoryEventEnum)
-        trigger_names = set(member.name for member in ScheduleHistoryEventTriggerEnum)
+        status_names = {member.name for member in ScheduleStatusEnum}
+        event_names = {member.name for member in ScheduleHistoryEventEnum}
+        trigger_names = {member.name for member in ScheduleHistoryEventTriggerEnum}
 
         # Some overlap expected between status and events
         # but trigger should be completely independent

@@ -1,12 +1,9 @@
 """Additional runtime tests for protocol_decorator.py to achieve 80% coverage."""
-import asyncio
-import json
-import uuid
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from praxis.backend.core.decorators import protocol_function, praxis_run_context_cv
+from praxis.backend.core.decorators import praxis_run_context_cv, protocol_function
 from praxis.backend.core.decorators.protocol_decorator import (
     _handle_control_commands,
     _handle_pause_state,
@@ -61,7 +58,7 @@ class TestLogCallStart:
         parent_log_id = uuid7()
 
         # Mock the log_function_call_start service call
-        with patch('praxis.backend.core.decorators.protocol_decorator.log_function_call_start') as mock_log:
+        with patch("praxis.backend.core.decorators.protocol_decorator.log_function_call_start") as mock_log:
             mock_log_entry = Mock()
             mock_log_entry.accession_id = uuid7()
             mock_log.return_value = mock_log_entry
@@ -71,7 +68,7 @@ class TestLogCallStart:
                 function_def_db_id=function_def_id,
                 parent_log_id=parent_log_id,
                 args=(1, 2),
-                kwargs={'volume': 100},
+                kwargs={"volume": 100},
             )
 
             assert result == mock_log_entry.accession_id
@@ -82,7 +79,7 @@ class TestLogCallStart:
         """Test that logging exceptions are caught and handled gracefully."""
         function_def_id = uuid7()
 
-        with patch('praxis.backend.core.decorators.protocol_decorator.log_function_call_start') as mock_log:
+        with patch("praxis.backend.core.decorators.protocol_decorator.log_function_call_start") as mock_log:
             mock_log.side_effect = Exception("Database error")
 
             result = await _log_call_start(
@@ -103,7 +100,9 @@ class TestProcessWrapperArguments:
     async def test_process_wrapper_arguments_basic(self, mock_run_context):
         """Test processing wrapper arguments."""
         from praxis.backend.core.decorators.models import ProtocolRuntimeInfo
-        from praxis.backend.models.pydantic_internals.protocol import FunctionProtocolDefinitionCreate
+        from praxis.backend.models.pydantic_internals.protocol import (
+            FunctionProtocolDefinitionCreate,
+        )
 
         # Create mock runtime info
         protocol_def = FunctionProtocolDefinitionCreate(
@@ -128,7 +127,7 @@ class TestProcessWrapperArguments:
         def test_func():
             pass
 
-        with patch('praxis.backend.core.decorators.protocol_decorator._log_call_start') as mock_log:
+        with patch("praxis.backend.core.decorators.protocol_decorator._log_call_start") as mock_log:
             mock_log.return_value = uuid7()
 
             call_id, context, token = await _process_wrapper_arguments(
@@ -149,7 +148,9 @@ class TestProcessWrapperArguments:
     async def test_process_wrapper_arguments_missing_db_id(self, mock_run_context):
         """Test error when DB accession ID is missing."""
         from praxis.backend.core.decorators.models import ProtocolRuntimeInfo
-        from praxis.backend.models.pydantic_internals.protocol import FunctionProtocolDefinitionCreate
+        from praxis.backend.models.pydantic_internals.protocol import (
+            FunctionProtocolDefinitionCreate,
+        )
 
         protocol_def = FunctionProtocolDefinitionCreate(
             name="test_protocol",
@@ -185,7 +186,9 @@ class TestProcessWrapperArguments:
     async def test_process_wrapper_arguments_with_state_param(self, mock_run_context):
         """Test processing with state parameter details."""
         from praxis.backend.core.decorators.models import ProtocolRuntimeInfo
-        from praxis.backend.models.pydantic_internals.protocol import FunctionProtocolDefinitionCreate
+        from praxis.backend.models.pydantic_internals.protocol import (
+            FunctionProtocolDefinitionCreate,
+        )
 
         protocol_def = FunctionProtocolDefinitionCreate(
             name="test_protocol",
@@ -219,10 +222,10 @@ class TestProcessWrapperArguments:
 
         kwargs = {"state": {}, "volume": 100}
 
-        with patch('praxis.backend.core.decorators.protocol_decorator._log_call_start') as mock_log:
+        with patch("praxis.backend.core.decorators.protocol_decorator._log_call_start") as mock_log:
             mock_log.return_value = uuid7()
 
-            call_id, context, token = await _process_wrapper_arguments(
+            _call_id, _context, _token = await _process_wrapper_arguments(
                 parent_context=mock_run_context,
                 current_meta=runtime_info,
                 processed_args=[],
@@ -245,11 +248,11 @@ class TestHandlePauseState:
         run_id = uuid7()
 
         # Mock get_control_command to return RESUME
-        with patch('praxis.backend.core.decorators.protocol_decorator.get_control_command') as mock_get_cmd:
+        with patch("praxis.backend.core.decorators.protocol_decorator.get_control_command") as mock_get_cmd:
             mock_get_cmd.return_value = "RESUME"
 
             # Mock asyncio.sleep to avoid delays
-            with patch('praxis.backend.core.decorators.protocol_decorator.asyncio.sleep', new_callable=AsyncMock):
+            with patch("praxis.backend.core.decorators.protocol_decorator.asyncio.sleep", new_callable=AsyncMock):
                 result = await _handle_pause_state(run_id, mock_db_session)
 
                 assert result == "RESUME"
@@ -259,10 +262,10 @@ class TestHandlePauseState:
         """Test handling CANCEL command while paused."""
         run_id = uuid7()
 
-        with patch('praxis.backend.core.decorators.protocol_decorator.get_control_command') as mock_get_cmd:
+        with patch("praxis.backend.core.decorators.protocol_decorator.get_control_command") as mock_get_cmd:
             mock_get_cmd.return_value = "CANCEL"
 
-            with patch('praxis.backend.core.decorators.protocol_decorator.asyncio.sleep', new_callable=AsyncMock):
+            with patch("praxis.backend.core.decorators.protocol_decorator.asyncio.sleep", new_callable=AsyncMock):
                 result = await _handle_pause_state(run_id, mock_db_session)
 
                 assert result == "CANCEL"
@@ -273,14 +276,14 @@ class TestHandlePauseState:
         run_id = uuid7()
 
         # First INTERVENE, then RESUME
-        with patch('praxis.backend.core.decorators.protocol_decorator.get_control_command') as mock_get_cmd:
+        with patch("praxis.backend.core.decorators.protocol_decorator.get_control_command") as mock_get_cmd:
             mock_get_cmd.side_effect = ["INTERVENE", "RESUME"]
 
-            with patch('praxis.backend.core.decorators.protocol_decorator.clear_control_command', new_callable=AsyncMock):
-                with patch('praxis.backend.core.decorators.protocol_decorator.protocol_run_service') as mock_service:
+            with patch("praxis.backend.core.decorators.protocol_decorator.clear_control_command", new_callable=AsyncMock):
+                with patch("praxis.backend.core.decorators.protocol_decorator.protocol_run_service") as mock_service:
                     mock_service.update_run_status = AsyncMock()
 
-                    with patch('praxis.backend.core.decorators.protocol_decorator.asyncio.sleep', new_callable=AsyncMock):
+                    with patch("praxis.backend.core.decorators.protocol_decorator.asyncio.sleep", new_callable=AsyncMock):
                         result = await _handle_pause_state(run_id, mock_db_session)
 
                         assert result == "RESUME"
@@ -293,10 +296,10 @@ class TestHandlePauseState:
         run_id = uuid7()
 
         # PAUSE then RESUME
-        with patch('praxis.backend.core.decorators.protocol_decorator.get_control_command') as mock_get_cmd:
+        with patch("praxis.backend.core.decorators.protocol_decorator.get_control_command") as mock_get_cmd:
             mock_get_cmd.side_effect = ["PAUSE", "RESUME"]
 
-            with patch('praxis.backend.core.decorators.protocol_decorator.asyncio.sleep', new_callable=AsyncMock):
+            with patch("praxis.backend.core.decorators.protocol_decorator.asyncio.sleep", new_callable=AsyncMock):
                 result = await _handle_pause_state(run_id, mock_db_session)
 
                 assert result == "RESUME"
@@ -307,11 +310,11 @@ class TestHandlePauseState:
         run_id = uuid7()
 
         # Invalid command, then RESUME
-        with patch('praxis.backend.core.decorators.protocol_decorator.get_control_command') as mock_get_cmd:
+        with patch("praxis.backend.core.decorators.protocol_decorator.get_control_command") as mock_get_cmd:
             mock_get_cmd.side_effect = ["INVALID", "RESUME"]
 
-            with patch('praxis.backend.core.decorators.protocol_decorator.clear_control_command', new_callable=AsyncMock) as mock_clear:
-                with patch('praxis.backend.core.decorators.protocol_decorator.asyncio.sleep', new_callable=AsyncMock):
+            with patch("praxis.backend.core.decorators.protocol_decorator.clear_control_command", new_callable=AsyncMock) as mock_clear:
+                with patch("praxis.backend.core.decorators.protocol_decorator.asyncio.sleep", new_callable=AsyncMock):
                     result = await _handle_pause_state(run_id, mock_db_session)
 
                     assert result == "RESUME"
@@ -327,7 +330,7 @@ class TestHandleControlCommands:
         """Test when there's no control command."""
         run_id = uuid7()
 
-        with patch('praxis.backend.core.decorators.protocol_decorator.get_control_command') as mock_get_cmd:
+        with patch("praxis.backend.core.decorators.protocol_decorator.get_control_command") as mock_get_cmd:
             mock_get_cmd.return_value = None
 
             # Should return immediately without error
@@ -340,11 +343,11 @@ class TestHandleControlCommands:
         """Test that invalid commands are cleared and loop continues."""
         run_id = uuid7()
 
-        with patch('praxis.backend.core.decorators.protocol_decorator.get_control_command') as mock_get_cmd:
+        with patch("praxis.backend.core.decorators.protocol_decorator.get_control_command") as mock_get_cmd:
             # Invalid command, then None
             mock_get_cmd.side_effect = ["INVALID_CMD", None]
 
-            with patch('praxis.backend.core.decorators.protocol_decorator.clear_control_command', new_callable=AsyncMock) as mock_clear:
+            with patch("praxis.backend.core.decorators.protocol_decorator.clear_control_command", new_callable=AsyncMock) as mock_clear:
                 await _handle_control_commands(run_id, mock_db_session)
 
                 assert mock_clear.called
@@ -354,15 +357,15 @@ class TestHandleControlCommands:
         """Test handling PAUSE command."""
         run_id = uuid7()
 
-        with patch('praxis.backend.core.decorators.protocol_decorator.get_control_command') as mock_get_cmd:
+        with patch("praxis.backend.core.decorators.protocol_decorator.get_control_command") as mock_get_cmd:
             # PAUSE, then None (after resume)
             mock_get_cmd.side_effect = ["PAUSE", None]
 
-            with patch('praxis.backend.core.decorators.protocol_decorator.clear_control_command', new_callable=AsyncMock):
-                with patch('praxis.backend.core.decorators.protocol_decorator.protocol_run_service') as mock_service:
+            with patch("praxis.backend.core.decorators.protocol_decorator.clear_control_command", new_callable=AsyncMock):
+                with patch("praxis.backend.core.decorators.protocol_decorator.protocol_run_service") as mock_service:
                     mock_service.update_run_status = AsyncMock()
 
-                    with patch('praxis.backend.core.decorators.protocol_decorator._handle_pause_state') as mock_pause:
+                    with patch("praxis.backend.core.decorators.protocol_decorator._handle_pause_state") as mock_pause:
                         mock_pause.return_value = "RESUME"
 
                         await _handle_control_commands(run_id, mock_db_session)
@@ -375,11 +378,11 @@ class TestHandleControlCommands:
         """Test handling CANCEL command."""
         run_id = uuid7()
 
-        with patch('praxis.backend.core.decorators.protocol_decorator.get_control_command') as mock_get_cmd:
+        with patch("praxis.backend.core.decorators.protocol_decorator.get_control_command") as mock_get_cmd:
             mock_get_cmd.return_value = "CANCEL"
 
-            with patch('praxis.backend.core.decorators.protocol_decorator.clear_control_command', new_callable=AsyncMock):
-                with patch('praxis.backend.core.decorators.protocol_decorator.protocol_run_service') as mock_service:
+            with patch("praxis.backend.core.decorators.protocol_decorator.clear_control_command", new_callable=AsyncMock):
+                with patch("praxis.backend.core.decorators.protocol_decorator.protocol_run_service") as mock_service:
                     mock_service.update_run_status = AsyncMock()
 
                     with pytest.raises(ProtocolCancelledError, match="cancelled by user"):
@@ -393,12 +396,12 @@ class TestHandleControlCommands:
         """Test handling INTERVENE command."""
         run_id = uuid7()
 
-        with patch('praxis.backend.core.decorators.protocol_decorator.get_control_command') as mock_get_cmd:
+        with patch("praxis.backend.core.decorators.protocol_decorator.get_control_command") as mock_get_cmd:
             # INTERVENE, then None
             mock_get_cmd.side_effect = ["INTERVENE", None]
 
-            with patch('praxis.backend.core.decorators.protocol_decorator.clear_control_command', new_callable=AsyncMock):
-                with patch('praxis.backend.core.decorators.protocol_decorator.protocol_run_service') as mock_service:
+            with patch("praxis.backend.core.decorators.protocol_decorator.clear_control_command", new_callable=AsyncMock):
+                with patch("praxis.backend.core.decorators.protocol_decorator.protocol_run_service") as mock_service:
                     mock_service.update_run_status = AsyncMock()
 
                     await _handle_control_commands(run_id, mock_db_session)
@@ -415,14 +418,14 @@ class TestHandleControlCommands:
         """Test PAUSE followed by CANCEL."""
         run_id = uuid7()
 
-        with patch('praxis.backend.core.decorators.protocol_decorator.get_control_command') as mock_get_cmd:
+        with patch("praxis.backend.core.decorators.protocol_decorator.get_control_command") as mock_get_cmd:
             mock_get_cmd.return_value = "PAUSE"
 
-            with patch('praxis.backend.core.decorators.protocol_decorator.clear_control_command', new_callable=AsyncMock):
-                with patch('praxis.backend.core.decorators.protocol_decorator.protocol_run_service') as mock_service:
+            with patch("praxis.backend.core.decorators.protocol_decorator.clear_control_command", new_callable=AsyncMock):
+                with patch("praxis.backend.core.decorators.protocol_decorator.protocol_run_service") as mock_service:
                     mock_service.update_run_status = AsyncMock()
 
-                    with patch('praxis.backend.core.decorators.protocol_decorator._handle_pause_state') as mock_pause:
+                    with patch("praxis.backend.core.decorators.protocol_decorator._handle_pause_state") as mock_pause:
                         mock_pause.return_value = "CANCEL"
 
                         with pytest.raises(ProtocolCancelledError):
@@ -447,14 +450,14 @@ class TestProtocolFunctionWrapperRuntime:
         token = praxis_run_context_cv.set(mock_run_context)
 
         try:
-            with patch('praxis.backend.core.decorators.protocol_decorator._process_wrapper_arguments') as mock_process:
+            with patch("praxis.backend.core.decorators.protocol_decorator._process_wrapper_arguments") as mock_process:
                 call_id = uuid7()
                 nested_context = mock_run_context.create_context_for_nested_call.return_value
                 # Create a real token by setting a nested context
                 nested_token = praxis_run_context_cv.set(nested_context)
                 mock_process.return_value = (call_id, nested_context, nested_token)
 
-                with patch('praxis.backend.core.decorators.protocol_decorator.log_function_call_end', new_callable=AsyncMock):
+                with patch("praxis.backend.core.decorators.protocol_decorator.log_function_call_end", new_callable=AsyncMock):
                     result = await async_protocol(volume=100)
 
                     assert result == {"result": 200}
@@ -473,14 +476,14 @@ class TestProtocolFunctionWrapperRuntime:
         token = praxis_run_context_cv.set(mock_run_context)
 
         try:
-            with patch('praxis.backend.core.decorators.protocol_decorator._process_wrapper_arguments') as mock_process:
+            with patch("praxis.backend.core.decorators.protocol_decorator._process_wrapper_arguments") as mock_process:
                 call_id = uuid7()
                 nested_context = mock_run_context.create_context_for_nested_call.return_value
                 # Create a real token by setting a nested context
                 nested_token = praxis_run_context_cv.set(nested_context)
                 mock_process.return_value = (call_id, nested_context, nested_token)
 
-                with patch('praxis.backend.core.decorators.protocol_decorator.log_function_call_end', new_callable=AsyncMock):
+                with patch("praxis.backend.core.decorators.protocol_decorator.log_function_call_end", new_callable=AsyncMock):
                     result = await sync_protocol(volume=50)
 
                     assert result == {"result": 150}
@@ -492,29 +495,30 @@ class TestProtocolFunctionWrapperRuntime:
         """Test that errors in protocol functions are properly logged."""
         @protocol_function(name="test_error_protocol", is_top_level=False)  # Not top-level
         async def error_protocol():
-            raise ValueError("Test error")
+            msg = "Test error"
+            raise ValueError(msg)
 
         error_protocol._protocol_runtime_info.db_accession_id = uuid7()
 
         token = praxis_run_context_cv.set(mock_run_context)
 
         try:
-            with patch('praxis.backend.core.decorators.protocol_decorator._process_wrapper_arguments') as mock_process:
+            with patch("praxis.backend.core.decorators.protocol_decorator._process_wrapper_arguments") as mock_process:
                 call_id = uuid7()
                 nested_context = mock_run_context.create_context_for_nested_call.return_value
                 # Create a real token by setting a nested context
                 nested_token = praxis_run_context_cv.set(nested_context)
                 mock_process.return_value = (call_id, nested_context, nested_token)
 
-                with patch('praxis.backend.core.decorators.protocol_decorator.log_function_call_end', new_callable=AsyncMock) as mock_log:
+                with patch("praxis.backend.core.decorators.protocol_decorator.log_function_call_end", new_callable=AsyncMock) as mock_log:
                     with pytest.raises(ValueError, match="Test error"):
                         await error_protocol()
 
                     # Should log the error
                     assert mock_log.called
                     call_args = mock_log.call_args[1]
-                    assert call_args['status'] == FunctionCallStatusEnum.ERROR
-                    assert "Test error" in call_args['error_message']
+                    assert call_args["status"] == FunctionCallStatusEnum.ERROR
+                    assert "Test error" in call_args["error_message"]
         finally:
             praxis_run_context_cv.reset(token)
 
@@ -554,21 +558,22 @@ class TestProtocolFunctionWrapperRuntime:
         """Test that ProtocolCancelledError is propagated correctly."""
         @protocol_function(name="test_cancelled", is_top_level=False)  # Not top-level
         async def cancelled_protocol():
-            raise ProtocolCancelledError("Cancelled")
+            msg = "Cancelled"
+            raise ProtocolCancelledError(msg)
 
         cancelled_protocol._protocol_runtime_info.db_accession_id = uuid7()
 
         token = praxis_run_context_cv.set(mock_run_context)
 
         try:
-            with patch('praxis.backend.core.decorators.protocol_decorator._process_wrapper_arguments') as mock_process:
+            with patch("praxis.backend.core.decorators.protocol_decorator._process_wrapper_arguments") as mock_process:
                 call_id = uuid7()
                 nested_context = mock_run_context.create_context_for_nested_call.return_value
                 # Create a real token by setting a nested context
                 nested_token = praxis_run_context_cv.set(nested_context)
                 mock_process.return_value = (call_id, nested_context, nested_token)
 
-                with patch('praxis.backend.core.decorators.protocol_decorator.log_function_call_end', new_callable=AsyncMock):
+                with patch("praxis.backend.core.decorators.protocol_decorator.log_function_call_end", new_callable=AsyncMock):
                     with pytest.raises(ProtocolCancelledError):
                         await cancelled_protocol()
         finally:
@@ -586,7 +591,7 @@ class TestProtocolFunctionWrapperRuntime:
         token = praxis_run_context_cv.set(mock_run_context)
 
         try:
-            with patch('praxis.backend.core.decorators.protocol_decorator._process_wrapper_arguments') as mock_process:
+            with patch("praxis.backend.core.decorators.protocol_decorator._process_wrapper_arguments") as mock_process:
                 call_id = uuid7()
                 nested_context = mock_run_context.create_context_for_nested_call.return_value
                 # Create a real token by setting a nested context
@@ -594,7 +599,7 @@ class TestProtocolFunctionWrapperRuntime:
                 mock_process.return_value = (call_id, nested_context, nested_token)
 
                 # Make logging fail
-                with patch('praxis.backend.core.decorators.protocol_decorator.log_function_call_end', new_callable=AsyncMock) as mock_log:
+                with patch("praxis.backend.core.decorators.protocol_decorator.log_function_call_end", new_callable=AsyncMock) as mock_log:
                     mock_log.side_effect = Exception("Logging failed")
 
                     # Should still return result despite logging failure

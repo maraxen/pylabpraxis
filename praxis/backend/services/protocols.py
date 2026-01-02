@@ -46,7 +46,6 @@ logger = logging.getLogger(__name__)
 
 
 class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRunUpdate]):
-
   """Service for protocol run operations."""
 
   @handle_db_transaction
@@ -232,6 +231,7 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
           from praxis.backend.api.global_dependencies import (  # noqa: PLC0415
             get_scheduler,
           )
+
           scheduler = None
           try:
             scheduler = get_scheduler()

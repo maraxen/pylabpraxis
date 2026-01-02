@@ -164,7 +164,8 @@ class TestAcquireLock:
         mock_redis.get.return_value = b"1234567890"
 
         with pytest.raises(ValueError), acquire_lock(mock_redis, "test_resource"):
-            raise ValueError("Error in protected code")
+            msg = "Error in protected code"
+            raise ValueError(msg)
 
         # Lock should still be released
         mock_redis.delete.assert_called_once()

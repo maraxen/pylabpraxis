@@ -31,7 +31,6 @@ logger = get_logger(__name__)
 
 
 class Workcell(IWorkcell):
-
   """A dynamic, in-memory container for live PyLabRobot objects.
 
   This class is the runtime representation of a workcell. It is populated by the
@@ -201,7 +200,6 @@ class Workcell(IWorkcell):
 
 
 class WorkcellView:
-
   """A protocol's sandboxed view into a shared workcell.
 
   This class acts as a secure proxy, providing access ONLY to the assets that

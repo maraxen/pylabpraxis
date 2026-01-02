@@ -22,7 +22,6 @@ from .asset import AssetBase, AssetResponse, AssetUpdate
 
 
 class MachineBase(AssetBase):
-
   """Defines the base properties for a machine."""
 
   status: MachineStatusEnum | None = Field(default=MachineStatusEnum.OFFLINE)
@@ -45,12 +44,14 @@ class MachineBase(AssetBase):
   connection_info: dict[str, Any] | None = None
   is_simulation_override: bool | None = None
   user_configured_capabilities: dict[str, Any] | None = None
-  last_seen_online: Any | None = None
   current_protocol_run_accession_id: UUID7 | None = None
+  location_label: str | None = None
+  maintenance_enabled: bool | None = Field(default=True)
+  maintenance_schedule_json: dict[str, Any] | None = None
+  last_maintenance_json: dict[str, Any] | None = None
 
 
 class MachineCreate(MachineBase):
-
   """Represents a machine for creation requests.
 
   Extends `MachineBase` with fields required for creating a new machine,
@@ -75,7 +76,6 @@ class MachineCreate(MachineBase):
 
 
 class MachineUpdate(AssetUpdate):
-
   """Represents a machine for update requests."""
 
   status: MachineStatusEnum | None = None
@@ -92,8 +92,11 @@ class MachineUpdate(AssetUpdate):
   connection_info: dict[str, Any] | None = None
   is_simulation_override: bool | None = None
   user_configured_capabilities: dict[str, Any] | None = None
-  last_seen_online: Any | None = None
   current_protocol_run_accession_id: UUID7 | None = None
+  location_label: str | None = None
+  maintenance_enabled: bool | None = None
+  maintenance_schedule_json: dict[str, Any] | None = None
+  last_maintenance_json: dict[str, Any] | None = None
 
   resource_def_name: str | None = None
   resource_properties_json: dict[str, Any] | None = None
@@ -112,7 +115,6 @@ class MachineResponse(AssetResponse, MachineBase):
 
 
 class MachineDefinitionBase(PLRTypeDefinitionBase):
-
   """Defines the base properties for a machine definition."""
 
   machine_category: MachineCategoryEnum | None = Field(
@@ -174,12 +176,10 @@ class MachineDefinitionBase(PLRTypeDefinitionBase):
 
 
 class MachineDefinitionCreate(MachineDefinitionBase, PLRTypeDefinitionCreate):
-
   """Represents a machine definition for creation requests."""
 
 
 class MachineDefinitionUpdate(PLRTypeDefinitionUpdate):
-
   """Specifies the fields that can be updated for an existing machine definition."""
 
   machine_category: MachineCategoryEnum | None = None
@@ -202,7 +202,6 @@ class MachineDefinitionUpdate(PLRTypeDefinitionUpdate):
 
 
 class MachineDefinitionResponse(MachineDefinitionBase, PLRTypeDefinitionResponse):
-
   """Represents a machine definition for API responses."""
 
 
@@ -211,4 +210,3 @@ MachineBase.model_rebuild()
 MachineCreate.model_rebuild()
 MachineUpdate.model_rebuild()
 MachineResponse.model_rebuild()
-

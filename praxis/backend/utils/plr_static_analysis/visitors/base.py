@@ -86,10 +86,14 @@ class BasePLRVisitor(cst.CSTVisitor):
       if isinstance(arg.value, cst.Name) and arg.value.value in ("ABC", "ABCMeta"):
         return True
       # Check metaclass=ABCMeta
-      if arg.keyword and isinstance(arg.keyword, cst.Name):
-        if arg.keyword.value == "metaclass":
-          if isinstance(arg.value, cst.Name) and arg.value.value == "ABCMeta":
-            return True
+      if (
+        arg.keyword
+        and isinstance(arg.keyword, cst.Name)
+        and arg.keyword.value == "metaclass"
+        and isinstance(arg.value, cst.Name)
+        and arg.value.value == "ABCMeta"
+      ):
+        return True
 
     # Check for @abstractmethod decorators on methods (would need body traversal)
     # For now, we'll detect this in the capability extractor

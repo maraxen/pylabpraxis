@@ -10,7 +10,6 @@ from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOr
 @pytest.mark.asyncio
 async def test_resource_orm_creation_with_defaults(db_session: AsyncSession) -> None:
     """Test creating a ResourceOrm with default values."""
-
     # Create a resource definition first
     resource_def = ResourceDefinitionOrm(
         name="test_resource_def",
@@ -42,7 +41,6 @@ async def test_resource_orm_creation_with_defaults(db_session: AsyncSession) -> 
 @pytest.mark.asyncio
 async def test_resource_orm_persist_to_database(db_session: AsyncSession) -> None:
     """Test that a ResourceOrm can be persisted to the database."""
-
     # Create resource definition
     resource_def = ResourceDefinitionOrm(
         name="persist_def",
@@ -121,7 +119,6 @@ async def test_resource_orm_unique_name_constraint(db_session: AsyncSession) -> 
 @pytest.mark.asyncio
 async def test_resource_orm_status_enum_values(db_session: AsyncSession) -> None:
     """Test that resource status enum values are stored correctly."""
-
     # Create resource definition
     resource_def = ResourceDefinitionOrm(
         name="status_def",
@@ -156,7 +153,6 @@ async def test_resource_orm_status_enum_values(db_session: AsyncSession) -> None
 @pytest.mark.asyncio
 async def test_resource_orm_parent_child_relationship(db_session: AsyncSession) -> None:
     """Test self-referential parent-child relationship between resources."""
-
     # Create resource definition
     resource_def = ResourceDefinitionOrm(
         name="hierarchy_def",
@@ -240,7 +236,6 @@ async def test_resource_orm_with_workcell_relationship(db_session: AsyncSession)
 @pytest.mark.asyncio
 async def test_resource_orm_plr_state_json(db_session: AsyncSession) -> None:
     """Test that resource plr_state JSONB field works correctly."""
-
     # Create resource definition
     resource_def = ResourceDefinitionOrm(
         name="plr_state_def",

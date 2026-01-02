@@ -22,7 +22,6 @@ logger = get_logger(__name__)
 
 
 class ResourceManagerMixin:
-
   """Mixin for managing resources in WorkcellRuntime."""
 
   @log_workcell_runtime_errors(

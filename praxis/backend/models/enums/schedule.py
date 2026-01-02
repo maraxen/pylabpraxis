@@ -10,7 +10,6 @@ import enum
 
 
 class ScheduleStatusEnum(enum.Enum):
-
   """Enumeration for the status of a scheduled protocol run."""
 
   QUEUED = "queued"  # Waiting for assets
@@ -26,7 +25,6 @@ class ScheduleStatusEnum(enum.Enum):
 
 
 class ScheduleHistoryEventEnum(enum.Enum):
-
   """Enumeration for the types of events in schedule history."""
 
   SCHEDULE_CREATED = "schedule_created"  # Initial creation of the schedule
@@ -46,7 +44,6 @@ class ScheduleHistoryEventEnum(enum.Enum):
 
 
 class ScheduleHistoryEventTriggerEnum(enum.Enum):
-
   """Enumeration for the types of events in schedule history."""
 
   USER = "user"  # Triggered by a user action

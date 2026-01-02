@@ -216,14 +216,12 @@ export class ResourceListComponent {
     this.contextMenuTrigger.openMenu();
   }
 
-  editResource(resource: Resource) {
-    console.log('Edit resource:', resource);
-    // Placeholder for future implementation
+  editResource(_resource: Resource) {
+    // TODO: Implement resource editing
   }
 
-  duplicateResource(resource: Resource) {
-    console.log('Duplicate resource:', resource);
-    // Placeholder for future implementation
+  duplicateResource(_resource: Resource) {
+    // TODO: Implement resource duplication
   }
 
   deleteResource(resource: Resource) {

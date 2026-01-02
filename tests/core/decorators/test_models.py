@@ -129,7 +129,8 @@ class TestGetCallableFqn:
 
     def test_get_callable_fqn_with_lambda(self) -> None:
         """Test getting FQN from a lambda function."""
-        test_lambda = lambda x: x + 1
+        def test_lambda(x):
+            return x + 1
         fqn = get_callable_fqn(test_lambda)
         assert "<lambda>" in fqn
 

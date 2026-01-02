@@ -4,7 +4,9 @@ import datetime
 import json
 import traceback
 import uuid
-from typing import Any
+from typing import Any, cast
+
+from praxis.backend.core.protocols.scheduler import IProtocolScheduler
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,7 +27,6 @@ logger = get_logger(__name__)
 
 
 class ErrorHandlingMixin:
-
   """Mixin for error handling and protocol finalization."""
 
   # Type hints for dependencies
@@ -182,9 +183,9 @@ class ErrorHandlingMixin:
 
     # Release scheduler reservations
     # Note: self.scheduler is typed as Any | None in Orchestrator, so we check for existence
-    if hasattr(self, "scheduler") and getattr(self, "scheduler"):
+    if hasattr(self, "scheduler") and self.scheduler:
       try:
-        await getattr(self, "scheduler").complete_scheduled_run(run_accession_id)
+        await cast(IProtocolScheduler, self.scheduler).complete_scheduled_run(run_accession_id)
       except Exception:
         logger.exception(
           "ORCH: Failed to complete scheduled run %s in scheduler",

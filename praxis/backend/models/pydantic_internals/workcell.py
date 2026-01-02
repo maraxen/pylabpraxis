@@ -23,7 +23,6 @@ from praxis.backend.models.pydantic_internals.resource import ResourceResponse
 
 
 class WorkcellBase(BaseModel):
-
   """Defines the base properties for a workcell."""
 
   model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
@@ -53,7 +52,6 @@ class WorkcellBase(BaseModel):
 
 
 class WorkcellCreate(WorkcellBase):
-
   """Represents a workcell for creation requests.
 
   This model inherits all properties from `WorkcellBase` and is used
@@ -62,7 +60,6 @@ class WorkcellCreate(WorkcellBase):
 
 
 class WorkcellUpdate(BaseModel):
-
   """Specifies the fields that can be updated for an existing workcell.
 
   All fields are optional, allowing for partial updates to a workcell's
@@ -91,7 +88,6 @@ class WorkcellUpdate(BaseModel):
 
 
 class WorkcellResponse(WorkcellBase, PraxisBaseModel):
-
   """Represents a workcell for API responses.
 
   This model extends `WorkcellBase` by adding system-generated identifiers
@@ -122,4 +118,3 @@ WorkcellBase.model_rebuild()
 WorkcellCreate.model_rebuild()
 WorkcellUpdate.model_rebuild()
 WorkcellResponse.model_rebuild()
-

@@ -8,7 +8,6 @@ from pylabrobot.resources.resource import Resource
 
 @runtime_checkable
 class IWorkcell(Protocol):
-
   """A protocol for a workcell."""
 
   name: str

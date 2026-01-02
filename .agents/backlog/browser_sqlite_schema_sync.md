@@ -4,6 +4,63 @@
 **Difficulty**: XL (Extra Large - 3+ days)
 **Owner**: Full Stack
 **Last Updated**: 2026-01-01
+**Status**: COMPLETE (100%)
+
+---
+
+## Implementation Progress
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| Phase 1: Schema Codegen | **COMPLETE** | `scripts/generate_browser_schema.py` |
+| Phase 2: TypeScript Generation | **COMPLETE** | `schema.ts`, `enums.ts` generated |
+| Phase 3: Enhanced SqliteService | **COMPLETE** | Repository pattern implemented |
+| Phase 4: Persistence Layer | **COMPLETE** | IndexedDB integration done |
+| Phase 5: PLR-Preloaded DB | **COMPLETE** | `scripts/generate_browser_db.py`, `praxis.db` (672KB) |
+| Phase 6: Integration | **COMPLETE** | All TS types fixed |
+
+### Files Created
+
+```
+scripts/
+├── generate_browser_schema.py    # SQLAlchemy → SQLite DDL + TypeScript
+└── generate_browser_db.py        # PLR-preloaded database generator
+
+praxis/web-client/src/
+├── assets/db/
+│   ├── schema.sql               # Generated (26KB, 19 tables)
+│   └── praxis.db                # Generated (672KB with PLR data)
+└── app/core/db/
+    ├── schema.ts                # Generated interfaces (26KB)
+    ├── enums.ts                 # Generated enums (10KB)
+    ├── sqlite-repository.ts     # Generic repository pattern
+    ├── repositories.ts          # Entity-specific repositories
+    ├── sqlite-persistence.service.ts  # IndexedDB persistence
+    └── index.ts                 # Module exports
+```
+
+### Generated Content Summary
+
+- **Tables**: 19 (excluding 5 server-only tables)
+- **Resource Definitions**: 36 PLR resources
+- **Machine Definitions**: 1 PLR machine
+- **Deck Definitions**: 4 PLR decks
+- **TypeScript Enums**: 12 union types
+
+### Remaining Work (Follow-up)
+
+1. ~~**Minor TS type fix** - `ArrayBufferLike` type assertion in persistence service~~ DONE
+2. **Future**: `generate_browser_db.py` uses `plr_inspection` (runtime) - consider migrating to `plr_static_analysis` (CST-based) to avoid import side effects and get more PLR definitions
+
+### How to Regenerate
+
+```bash
+# Regenerate schema and TypeScript interfaces
+uv run scripts/generate_browser_schema.py
+
+# Regenerate preloaded database with PLR definitions
+uv run scripts/generate_browser_db.py
+```
 
 ---
 

@@ -218,8 +218,8 @@ class TestResourceEnumsIntegration:
 
     def test_status_and_category_are_independent(self) -> None:
         """Test that status and category enums are independent."""
-        status_names = set(member.name for member in ResourceStatusEnum)
-        category_names = set(member.name for member in ResourceCategoryEnum)
+        status_names = {member.name for member in ResourceStatusEnum}
+        category_names = {member.name for member in ResourceCategoryEnum}
         # No overlap expected
         assert len(status_names.intersection(category_names)) == 0
 

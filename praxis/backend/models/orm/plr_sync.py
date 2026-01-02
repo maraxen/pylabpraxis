@@ -7,7 +7,6 @@ from praxis.backend.utils.db import Base
 
 
 class PLRTypeDefinitionOrm(Base):
-
   """Base ORM model for a PyLabRobot type definition.
 
   This is an abstract class that provides common columns for ORM models

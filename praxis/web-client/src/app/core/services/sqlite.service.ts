@@ -167,6 +167,10 @@ export class SqliteService {
                 db = this.createLegacyDb(SQL);
             }
 
+            // --- MVP Schema Sync ---
+            this.checkAndMigrate(db);
+            // -----------------------
+
             const tableCount = this.getTableCount(db);
             console.log(`[SqliteService] Database initialized with ${tableCount} tables`);
 
@@ -180,6 +184,87 @@ export class SqliteService {
                 error: error instanceof Error ? error.message : 'Unknown error'
             });
             throw new Error(`SQLite initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+
+    // ============================================
+    // Schema Migration (MVP)
+    // ============================================
+
+    private checkAndMigrate(db: Database): void {
+        try {
+            // 1. Ensure version table exists
+            db.run(`CREATE TABLE IF NOT EXISTS local_schema_versions (version INTEGER PRIMARY KEY)`);
+
+            // 2. Get current version
+            const res = db.exec(`SELECT MAX(version) FROM local_schema_versions`);
+            let currentVersion = 0;
+            if (res.length > 0 && res[0].values.length > 0 && res[0].values[0][0] !== null) {
+                currentVersion = res[0].values[0][0] as number;
+            }
+
+            console.log(`[SqliteService] Current DB Schema Version: ${currentVersion}`);
+
+            // 3. Define Migrations
+            // NOTE: Keep distinct from backend revisions. This is for browser-db specifically.
+            // Ideally we align version numbers or use timestamp-based IDs similar to alembic.
+            // For MVP, simple integer increment is sufficient.
+            const MIGRATIONS = [
+                {
+                    version: 1,
+                    name: 'add_maintenance_and_location',
+                    run: (d: Database) => {
+                        this.safeAddColumn(d, 'machines', 'location_label', 'TEXT');
+                        this.safeAddColumn(d, 'machines', 'maintenance_enabled', 'BOOLEAN DEFAULT 1');
+                        this.safeAddColumn(d, 'machines', 'maintenance_schedule_json', 'TEXT');
+                        this.safeAddColumn(d, 'machines', 'last_maintenance_json', 'TEXT');
+                        this.safeAddColumn(d, 'resources', 'location_label', 'TEXT');
+                    }
+                }
+            ];
+
+            // 4. Run pending migrations
+            let migratedCount = 0;
+            MIGRATIONS.sort((a, b) => a.version - b.version);
+
+            for (const m of MIGRATIONS) {
+                if (m.version > currentVersion) {
+                    console.log(`[SqliteService] Applying migration v${m.version}: ${m.name}`);
+                    try {
+                        m.run(db);
+                        db.run(`INSERT INTO local_schema_versions (version) VALUES (?)`, [m.version]);
+                        migratedCount++;
+                    } catch (err) {
+                        console.error(`[SqliteService] Migration v${m.version} failed:`, err);
+                        // Decide whether to halt or continue. For now, log and continue might be safer for partial loads,
+                        // but risky for data integrity. Halting is strictly safer.
+                        throw err;
+                    }
+                }
+            }
+
+            if (migratedCount > 0) {
+                console.log(`[SqliteService] applied ${migratedCount} migrations successfully.`);
+            }
+
+        } catch (error) {
+            console.error('[SqliteService] Schema Migration Error:', error);
+            // Non-blocking for now, as broken DB might be better than no DB for some users
+        }
+    }
+
+    private safeAddColumn(db: Database, table: string, column: string, type: string) {
+        try {
+            // Check if column exists first
+            const res = db.exec(`PRAGMA table_info(${table})`);
+            const columns = res[0].values.map(v => v[1]); // Index 1 is name
+            if (!columns.includes(column)) {
+                db.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+                console.log(`[SqliteService] Added column ${table}.${column}`);
+            }
+        } catch (e) {
+            // Log but don't crash if table missing etc (though that shouldn't happen here)
+            console.warn(`[SqliteService] Failed to add column ${table}.${column}`, e);
         }
     }
 
@@ -529,8 +614,8 @@ export class SqliteService {
                     if (res.length > 0) {
                         return this.resultToObjects(res[0]).map(p => ({
                             ...p,
-                            is_top_level: p.is_top_level === 1 || p.is_top_level === true,
-                            parameters: p.hardware_requirements_json ? JSON.parse(p.hardware_requirements_json as string) : null
+                            is_top_level: p['is_top_level'] === 1 || p['is_top_level'] === true,
+                            parameters: p['hardware_requirements_json'] ? JSON.parse(p['hardware_requirements_json'] as string) : null
                         }));
                     }
                 } catch {
@@ -541,8 +626,8 @@ export class SqliteService {
                 if (res.length === 0) return [];
                 return this.resultToObjects(res[0]).map(p => ({
                     ...p,
-                    is_top_level: p.is_top_level === 1 || p.is_top_level === 'true',
-                    parameters: p.parameters_json ? JSON.parse(p.parameters_json as string) : null
+                    is_top_level: p['is_top_level'] === 1 || p['is_top_level'] === 'true',
+                    parameters: p['parameters_json'] ? JSON.parse(p['parameters_json'] as string) : null
                 }));
             })
         );
@@ -555,9 +640,9 @@ export class SqliteService {
                 if (res.length === 0) return [];
                 return this.resultToObjects(res[0]).map(r => ({
                     ...r,
-                    parameters: r.parameters_json ? JSON.parse(r.parameters_json as string) : null,
-                    user_params: r.user_params_json ? JSON.parse(r.user_params_json as string) : null,
-                    protocol: { accession_id: r.protocol_accession_id || r.top_level_protocol_definition_accession_id, name: 'Unknown' }
+                    parameters: r['parameters_json'] ? JSON.parse(r['parameters_json'] as string) : null,
+                    user_params: r['user_params_json'] ? JSON.parse(r['user_params_json'] as string) : null,
+                    protocol: { accession_id: r['protocol_accession_id'] || r['top_level_protocol_definition_accession_id'], name: 'Unknown' }
                 }));
             })
         );

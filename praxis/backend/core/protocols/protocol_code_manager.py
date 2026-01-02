@@ -11,7 +11,6 @@ from praxis.backend.models import (
 
 @runtime_checkable
 class IProtocolCodeManager(Protocol):
-
   """A protocol for a protocol code manager."""
 
   async def prepare_protocol_code(

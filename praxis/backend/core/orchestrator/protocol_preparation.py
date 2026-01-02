@@ -22,7 +22,6 @@ logger = get_logger(__name__)
 
 
 class ProtocolPreparationMixin:
-
   """Mixin for protocol preparation and argument processing."""
 
   # Type hints for dependencies expected from the main class
@@ -83,7 +82,7 @@ class ProtocolPreparationMixin:
       raise RuntimeError(error_msg)
 
     current_workcell_snapshot = self.workcell_runtime.get_state_snapshot()
-    await praxis_state.set(
+    praxis_state.set(
       "workcell_last_successful_snapshot",
       current_workcell_snapshot,
     )

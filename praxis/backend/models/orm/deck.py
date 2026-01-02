@@ -56,7 +56,6 @@ generate_deck_name = partial(
 
 
 class DeckOrm(ResourceOrm):
-
   """Represents a physical deck instance in the lab.
 
   A deck is a specialized resource that holds other resources and is
@@ -153,7 +152,6 @@ class DeckOrm(ResourceOrm):
 
 
 class DeckDefinitionOrm(PLRTypeDefinitionOrm):
-
   """Define a type of deck, its properties, and its positions.
 
   This ORM model stores definitions for different types of decks that can be
@@ -279,7 +277,6 @@ class DeckDefinitionOrm(PLRTypeDefinitionOrm):
 
 
 class DeckPositionDefinitionOrm(Base):
-
   """Define a position on a deck, such as a slot or location.
 
   This model represents a specific, addressable location on a deck type. For

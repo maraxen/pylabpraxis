@@ -12,18 +12,18 @@ from praxis.backend.utils.plr_static_analysis.manufacturer_inference import (
   infer_vendor,
 )
 from praxis.backend.utils.plr_static_analysis.models import (
-  DiscoveredBackend,
-  DiscoveredClass,
   MACHINE_BACKEND_TYPES,
   MACHINE_FRONTEND_TYPES,
+  DiscoveredBackend,
+  DiscoveredClass,
   PLRClassType,
 )
 from praxis.backend.utils.plr_static_analysis.visitors.capability_extractor import (
   CapabilityExtractorVisitor,
 )
 from praxis.backend.utils.plr_static_analysis.visitors.class_discovery import (
-  ClassDiscoveryVisitor,
   EXCLUDED_BASE_CLASS_NAMES,
+  ClassDiscoveryVisitor,
 )
 
 logger = logging.getLogger(__name__)
@@ -57,9 +57,7 @@ class PLRSourceParser:
     "pylabrobot/arms/**/*.py",
   )
 
-  RESOURCE_PATTERNS = (
-    "pylabrobot/resources/**/*.py",
-  )
+  RESOURCE_PATTERNS = ("pylabrobot/resources/**/*.py",)
 
   def __init__(self, plr_source_root: Path, use_cache: bool = True) -> None:
     """Initialize the parser.
@@ -119,8 +117,7 @@ class PLRSourceParser:
     # Use the comprehensive machine type sets from models
     machine_types = MACHINE_FRONTEND_TYPES | MACHINE_BACKEND_TYPES
     self._machine_classes = [
-      c for c in all_classes
-      if c.class_type in machine_types and not c.is_abstract
+      c for c in all_classes if c.class_type in machine_types and not c.is_abstract
     ]
     return self._machine_classes
 
@@ -141,7 +138,8 @@ class PLRSourceParser:
       PLRClassType.DECK,
     }
     self._resource_classes = [
-      c for c in all_classes
+      c
+      for c in all_classes
       if c.class_type in resource_types
       and not c.is_abstract
       and c.name not in EXCLUDED_BASE_CLASS_NAMES
@@ -161,8 +159,7 @@ class PLRSourceParser:
     all_classes = self.discover_all_classes()
     # Use the comprehensive backend type set from models
     self._backend_classes = [
-      c for c in all_classes
-      if c.class_type in MACHINE_BACKEND_TYPES and not c.is_abstract
+      c for c in all_classes if c.class_type in MACHINE_BACKEND_TYPES and not c.is_abstract
     ]
     return self._backend_classes
 
@@ -175,11 +172,51 @@ class PLRSourceParser:
     """
     all_classes = self.discover_all_classes()
     return [
-      c for c in all_classes
-      if c.class_type == PLRClassType.DECK
-      and not c.is_abstract
-      and c.name != "Deck"
+      c
+      for c in all_classes
+      if c.class_type == PLRClassType.DECK and not c.is_abstract and c.name != "Deck"
     ]
+
+  def discover_resource_factories(self) -> list[DiscoveredClass]:
+    """Discover factory functions that return PLR resource types.
+
+    This finds functions like:
+        def Cor_96_wellplate_360ul_Fb(name: str) -> Plate: ...
+
+    Returns:
+      List of discovered resource factory functions.
+
+    """
+    from praxis.backend.utils.plr_static_analysis.visitors.resource_factory import (
+      ResourceFactoryVisitor,
+    )
+
+    discovered: list[DiscoveredClass] = []
+
+    for pattern in self.RESOURCE_PATTERNS:
+      for py_file in self.plr_source_root.glob(pattern):
+        if py_file.name.startswith("_") and py_file.name != "__init__.py":
+          continue
+        try:
+          source = py_file.read_text(encoding="utf-8")
+          module_path = self._path_to_module(py_file)
+
+          tree = cst.parse_module(source)
+          visitor = ResourceFactoryVisitor(module_path, str(py_file))
+          try:
+            wrapper = MetadataWrapper(tree)
+            wrapper.visit(visitor)
+          except Exception:
+            # Fall back to simple visit if metadata fails
+            for node in tree.body:
+              if isinstance(node, cst.FunctionDef):
+                visitor.visit_FunctionDef(node)
+
+          discovered.extend(visitor.discovered_resources)
+        except Exception as e:
+          logger.debug("Failed to parse factory functions in %s: %s", py_file, e)
+
+    return discovered
 
   def _parse_file(self, file_path: Path) -> list[DiscoveredClass]:
     """Parse a single Python file.
@@ -292,7 +329,9 @@ class PLRSourceParser:
       if isinstance(node, cst.ClassDef):
         visitor.visit_ClassDef(node)
 
-  def _visit_class_manually(self, class_node: cst.ClassDef, visitor: CapabilityExtractorVisitor) -> None:
+  def _visit_class_manually(
+    self, class_node: cst.ClassDef, visitor: CapabilityExtractorVisitor
+  ) -> None:
     """Manually visit class body for capability extraction.
 
     Args:
@@ -328,9 +367,9 @@ class PLRSourceParser:
 
     """
     backends = [
-      c for c in classes
-      if c.class_type in (PLRClassType.LH_BACKEND, PLRClassType.PR_BACKEND)
-      and not c.is_abstract
+      c
+      for c in classes
+      if c.class_type in (PLRClassType.LH_BACKEND, PLRClassType.PR_BACKEND) and not c.is_abstract
     ]
 
     for cls in classes:
@@ -377,14 +416,19 @@ class PLRSourceParser:
           continue
 
       # Match by class type (LH frontend → LH backend)
-      if frontend.class_type == PLRClassType.LIQUID_HANDLER:
-        if backend.class_type == PLRClassType.LH_BACKEND:
-          # Loose name matching as fallback
-          frontend_lower = frontend.name.lower().replace("liquidhandler", "")
-          backend_lower = backend.name.lower().replace("backend", "")
-          if frontend_lower and backend_lower:
-            if frontend_lower in backend_lower or backend_lower in frontend_lower:
-              compatible.append(backend.fqn)
+      if (
+        frontend.class_type == PLRClassType.LIQUID_HANDLER
+        and backend.class_type == PLRClassType.LH_BACKEND
+      ):
+        # Loose name matching as fallback
+        frontend_lower = frontend.name.lower().replace("liquidhandler", "")
+        backend_lower = backend.name.lower().replace("backend", "")
+        if (
+          frontend_lower
+          and backend_lower
+          and (frontend_lower in backend_lower or backend_lower in frontend_lower)
+        ):
+          compatible.append(backend.fqn)
 
     return compatible
 
@@ -407,10 +451,7 @@ class PLRSourceParser:
     module_path = str(relative.with_suffix("")).replace("/", ".").replace("\\", ".")
 
     # Remove __init__ suffix
-    if module_path.endswith(".__init__"):
-      module_path = module_path[:-9]
-
-    return module_path
+    return module_path.removesuffix(".__init__")
 
   def clear_cache(self) -> None:
     """Clear the parse cache."""
@@ -443,6 +484,7 @@ def find_plr_source_root() -> Path:
   # Check site-packages
   try:
     import pylabrobot
+
     plr_path = Path(pylabrobot.__file__).parent.parent
     if (plr_path / "pylabrobot").is_dir():
       return plr_path

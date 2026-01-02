@@ -39,7 +39,10 @@ export class RunHistoryService {
             httpParams = httpParams.set('status', statusStr);
         }
         if (params?.protocol_id) {
-            httpParams = httpParams.set('protocol_id', params.protocol_id);
+            const protocolStr = Array.isArray(params.protocol_id)
+                ? params.protocol_id.join(',')
+                : params.protocol_id;
+            httpParams = httpParams.set('protocol_id', protocolStr);
         }
         if (params?.sort_by) {
             httpParams = httpParams.set('sort_by', params.sort_by);

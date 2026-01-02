@@ -31,7 +31,8 @@ async def split_along_columns(resources: list[Container]) -> list[list[Resource]
 
   """
   if not all(isinstance(resources, Resource) for resource in resources):
-    raise ValueError("Invalid well type.")
+    msg = "Invalid well type."
+    raise ValueError(msg)
   if all(isinstance(resource, Plate) for resource in resources):
     return [list(resource) for resource in resources]
   if all(isinstance(resource, Well) for resource in resources):
@@ -49,7 +50,8 @@ async def inspect_mix_parameters(
   if mix_volumes is None and mix_proportion is None:
     mix_proportion = 0.5
   elif mix_volumes is not None and mix_proportion is not None:
-    raise ValueError("Use either mix proportion or mix volumes, not both.")
+    msg = "Use either mix proportion or mix volumes, not both."
+    raise ValueError(msg)
   mix_volumes = (
     [mix_volumes]
     if mix_volumes is not None and not isinstance(mix_volumes, list)
@@ -65,7 +67,8 @@ async def generate_mix_volumes(
 ) -> list[float]:
   """ """
   if mix_volumes is None and mix_proportion is None:
-    raise ValueError("Either mix_proportion or mix_volumes must be provided.")
+    msg = "Either mix_proportion or mix_volumes must be provided."
+    raise ValueError(msg)
   if mix_volumes is not None and mix_proportion is not None:
     warnings.warn("Mix proportion and mix volumes are both set, using mix volumes.", stacklevel=2)
   if mix_volumes is not None:
@@ -208,13 +211,16 @@ async def transfer_with_mixing96(
     )
   # mix_proportion, mix_volume = await inspect_mix_parameters(mix_proportion, mix_volume)
   if any(isinstance(i, list) for i in [volume, transfer_tips, mix_cycles, mix_volume]):
-    raise ValueError("All arguments must be single values for 96 head use, not lists.")
+    msg = "All arguments must be single values for 96 head use, not lists."
+    raise ValueError(msg)
   if not isinstance(source, ItemizedResource) or not isinstance(
     target, ItemizedResource,
   ):
-    raise ValueError("Sources and targets must be ItemizedResource objects.")
+    msg = "Sources and targets must be ItemizedResource objects."
+    raise ValueError(msg)
   if not isinstance(transfer_tips, TipRack):
-    raise ValueError("Transfer tips must be a TipRack object.")
+    msg = "Transfer tips must be a TipRack object."
+    raise ValueError(msg)
   # mix_volume = mix_proportion * volume if mix_volume is None else mix_volume
   await type_check(
     items=[source, target, volume, transfer_tips],  # , mix_cycles, mix_volumes],

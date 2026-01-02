@@ -8,9 +8,21 @@ export enum ExecutionStatus {
 }
 
 export interface ExecutionMessage {
-  type: 'status' | 'log' | 'progress' | 'error' | 'complete';
+  type: 'status' | 'log' | 'progress' | 'error' | 'complete' | 'telemetry' | 'well_state_update';
   payload: any;
   timestamp: string;
+}
+
+/**
+ * Compressed well state update from backend.
+ * Keys are resource names (e.g., "plate_1", "tip_rack_1").
+ */
+export interface WellStateUpdate {
+  [resourceName: string]: {
+    liquid_mask?: string;  // Hex bitmask of wells with liquid
+    volumes?: number[];    // Sparse array of volumes for wells with liquid
+    tip_mask?: string;     // Hex bitmask of tips present
+  };
 }
 
 export interface ExecutionState {
@@ -22,4 +34,12 @@ export interface ExecutionState {
   logs: string[];
   startTime?: string;
   endTime?: string;
+  /** Latest telemetry data */
+  telemetry?: {
+    temperature?: number;
+    absorbance?: number;
+  };
+  /** Compressed well state updates */
+  wellState?: WellStateUpdate;
 }
+

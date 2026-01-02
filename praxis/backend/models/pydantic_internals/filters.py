@@ -7,7 +7,6 @@ from pydantic import UUID7, BaseModel, ConfigDict, Field
 
 
 class SearchFilters(BaseModel):
-
   """A general-purpose model for search and filtering criteria across service layers."""
 
   limit: int = Field(default=100, ge=1, le=1000, description="Maximum number of results to return.")
@@ -36,10 +35,12 @@ class SearchFilters(BaseModel):
     description="Filter by associated protocol run ID.",
   )
   machine_accession_id: UUID7 | None = Field(
-    default=None, description="Filter by associated machine ID.",
+    default=None,
+    description="Filter by associated machine ID.",
   )
   resource_accession_id: UUID7 | None = Field(
-    default=None, description="Filter by associated resource ID.",
+    default=None,
+    description="Filter by associated resource ID.",
   )
   parent_accession_id: UUID7 | None = Field(default=None, description="Filter by parent asset ID.")
 

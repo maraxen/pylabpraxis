@@ -38,7 +38,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PraxisRunContext:
-
   """Context for a Praxis protocol run.
 
   It is progressively updated as calls are nested.

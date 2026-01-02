@@ -10,7 +10,6 @@ from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseMod
 
 
 class UserBase(PraxisBaseModel):
-
   """Defines the base properties for a user."""
 
   username: str = Field(description="The unique name of the user.")
@@ -20,14 +19,12 @@ class UserBase(PraxisBaseModel):
 
 
 class UserCreate(UserBase):
-
   """Represents a user for creation requests."""
 
   password: str = Field(description="The user's password.")
 
 
 class UserUpdate(PraxisBaseModel):
-
   """Specifies the fields that can be updated for an existing user."""
 
   username: str | None = Field(None, description="The new unique name of the user.")
@@ -38,5 +35,4 @@ class UserUpdate(PraxisBaseModel):
 
 
 class UserResponse(UserBase):
-
   """Represents a user for API responses."""

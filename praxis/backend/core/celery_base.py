@@ -9,7 +9,6 @@ if TYPE_CHECKING:
 
 
 class PraxisTask(Task):
-
   """A custom Celery Task class for Praxis that integrates with the dependency injection container."""
 
   @property

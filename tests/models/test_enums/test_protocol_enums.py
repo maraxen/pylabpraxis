@@ -175,9 +175,9 @@ class TestProtocolEnumsIntegration:
 
     def test_all_enums_are_independent(self) -> None:
         """Test that all three protocol enums are independent."""
-        source_names = set(member.name for member in ProtocolSourceStatusEnum)
-        run_names = set(member.name for member in ProtocolRunStatusEnum)
-        call_names = set(member.name for member in FunctionCallStatusEnum)
+        source_names = {member.name for member in ProtocolSourceStatusEnum}
+        run_names = {member.name for member in ProtocolRunStatusEnum}
+        call_names = {member.name for member in FunctionCallStatusEnum}
 
         # Some overlap is expected (PENDING appears in both run and call)
         # but they should be mostly independent

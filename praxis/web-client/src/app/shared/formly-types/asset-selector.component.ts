@@ -271,7 +271,6 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
     if (type === 'machine') {
       this.assetService.getMachines().subscribe({
         next: (assets) => {
-          console.log('[AssetSelector] Loaded machines:', assets.length);
           this.allAssets.set(assets);
           this.selectBestAuto(assets);
         },
@@ -286,7 +285,6 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
         definitions: this.assetService.getResourceDefinitions()
       }).subscribe({
         next: ({ resources, definitions }) => {
-          console.log('[AssetSelector] Loaded resources:', resources.length, 'definitions:', definitions.length);
           definitions.forEach(d => this.definitionsMap.set(d.accession_id, d));
 
           let filtered = resources;
@@ -306,7 +304,6 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
 
               return false;
             });
-            console.log('[AssetSelector] After filter for', typeFilter, ':', filtered.length, 'resources');
           }
 
           this.allAssets.set(filtered);
@@ -331,8 +328,6 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
     const autoIndex = this.props['autoSelectIndex'] || 0;
     const assetIndex = Math.min(autoIndex, assets.length - 1);
     const best = assets[assetIndex];
-
-    console.log('[AssetSelector] Auto-selecting index', assetIndex, 'of', assets.length, ':', best?.name);
 
     this.autoAsset.set(best);
     this.autoAssetTags.set(this.getAssetTags(best));

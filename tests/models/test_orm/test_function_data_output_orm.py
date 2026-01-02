@@ -1,5 +1,4 @@
-"""Unit tests for FunctionDataOutputOrm model.
-"""
+"""Unit tests for FunctionDataOutputOrm model."""
 from collections.abc import Callable
 from datetime import datetime, timezone
 
@@ -7,7 +6,6 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from praxis.backend.models.enums import (
     AssetType,
@@ -24,7 +22,6 @@ from praxis.backend.models.orm.protocol import (
     ProtocolSourceRepositoryOrm,
 )
 from praxis.backend.models.orm.resource import ResourceOrm
-from praxis.backend.utils.uuid import uuid7
 
 
 @pytest_asyncio.fixture

@@ -2,7 +2,7 @@
 
 **Priority**: CRITICAL
 **Owner**: Backend + Frontend
-**Last Updated**: 2025-12-30
+**Last Updated**: 2026-01-02
 
 ---
 
@@ -12,106 +12,66 @@ The core requirement is to inspect `pylabrobot` to dynamically generate machine 
 
 ### Backend
 
-- [x] **Static PLR Inspection (LibCST)** - COMPLETED 2025-12-30:
-  - [x] Created `praxis/backend/utils/plr_static_analysis/` module with LibCST visitors.
-  - [x] **Enumerate Machine Types**: Discovers LiquidHandler, PlateReader, and Backend classes via AST.
-  - [x] Manufacturers inferred from module paths (Hamilton, Opentrons, Tecan, etc.).
-  - [x] Frontend vs Backend distinction via class type classification.
-- [x] **Capability Extraction** - COMPLETED:
-  - [x] Channel detection from `num_channels` property/defaults and method patterns.
-  - [x] Module detection (iSWAP, CoRe96, HEPA) from method names and attributes.
-- [x] **Discovery Service Update** - COMPLETED:
-  - [x] `MachineTypeDefinitionService` now uses `PLRSourceParser` for static analysis.
-  - [x] Deprecation warnings added to old runtime inspection functions in `plr_inspection.py`.
-
-**Known Issues** (see [capability_tracking.md](./capability_tracking.md) for full status):
-
-- [x] ~~Classification bug: LiquidHandler misclassified.~~ FIXED
-- [x] ~~Expansion of machine types.~~ FIXED
-- [x] ~~Generic capability schemas.~~ FIXED
+- [x] **Static PLR Inspection (LibCST)** - COMPLETED 2025-12-30
+- [x] **Capability Extraction** - COMPLETED
+- [x] **Discovery Service Update** - COMPLETED
 
 ### Frontend
 
-- [x] **Collapsible Menus**:
-  - Implement collapsible categories for Machine Types (e.g., `Liquid Handlers > Hamilton > STAR`).
-  - Similar UI pattern to Resources.
-- [x] **Capability Chips**:
-  - Render capability tags (e.g., `[8-channel]`, `[96-channel]`, `[SmartSteps]`).
-  - Add tooltips/hover info for these chips.
-- [x] **Manufacturer Rendering**:
-  - Explicitly render Manufacturer name/logo if available.
-  - Group availability by Manufacturer.
-- [x] **Backend vs Frontend Selection**:
-  - UI to select the "Machine Type" (Frontend) and then allow selecting the "Driver" (Backend) if applicable (e.g., STAR vs Simulated).
+- [x] **Collapsible Menus** - COMPLETED
+- [x] **Capability Chips** - COMPLETED
+- [x] **Manufacturer Rendering** - COMPLETED
+- [x] **Backend vs Frontend Selection** - COMPLETED
 
 ---
 
-## 2. Asset UX & Visualizer Rewrite
+## 2. Asset UX & Visualizer (Completed)
 
-- [x] **Workcell Visualizer (Rewrite)**:
-  - **Goal**: Rework the deck visualizer into a "Workcell Visualizer".
-  - **Architecture**: Configurable set of deck view windows.
-  - **Space**: Relation of workcells in physical space (future).
-  - **Immediate Task**: Remove legacy iframe/PLR visualizer components and build new Angular-native grid/deck views.
-- [ ] **Deck Setup Debugging**:
-  - Fix rendering issues in the Deck Setup step of the Protocol Wizard.
+- [x] **Workcell Visualizer (Rewrite)** - COMPLETED
+- [x] **Deck Setup Debugging** - COMPLETED
 
 ---
 
 ## 3. Relationship Visualization (Phase 2)
 
-- [ ] "What's where" spatial view for machines (breadcrumbs).
-- [x] Protocol requirements → asset matching UI - COMPLETED 2025-12-30.
-- [ ] Context-aware add dialogs (suggest compatible resources).
+- [ ] **Spatial View (Asset Filters)**:
+  - [ ] Implement `AssetFiltersComponent`.
+  - [ ] Sort by: Machine Location, Workcell, Status, Name, Date.
+  - [ ] Filter by: Status, Category, Machine, Workcell.
+  - [ ] Add `location_label` physical location text field.
 
 ### Registry vs Inventory (Conceptual Model)
 
+- [x] **UI Distinction**: Separate tabs for Machines/Resources (Inventory) and Registry (Definitions) - COMPLETED.
 - [ ] **Data Model Separation**:
-  - **Registry (Definitions)**: Abstract "Types" of resources (e.g., "Corning 96-well Plate").
-  - **Inventory (Instances)**: Physical instances with unique IDs/barcodes (e.g., "Plate #1024").
-- [ ] **UI Distinction**:
-  - Separate views for managing "What we *can* use" vs "What we *have*".
+  - [x] **Models**: `MachineDefinition` vs `Machine` exist.
+  - [ ] **API Restructuring**: Moved to TECHNICAL_DEBT.md.
 
 ---
 
 ## 4. Groupings & Organization (P3)
 
-### Machine Groupings (Inventory)
-
-- [ ] **PLR Type Hierarchy**: Group by `LiquidHandler > STAR > STARlet`.
-- [ ] **Location/Workcell Chips**: Show location as chips or column.
-- [ ] **Capability Chips**: Show capabilities as color-coded chips.
-- [ ] **Collapsible Accordions**: Expand/collapse by high-level machine type.
-
-### Machine Groupings (Registry)
-
-- [ ] **Collapsible by Machine Type**: LiquidHandler, PlateReader, HeaterShaker, etc.
-- [ ] **Capability Chips**: Filter/display by capability.
-
-### Resource Groupings (Registry)
-
-- [ ] **Group by Type/Category**: Plates, TipRacks, Carriers, Reservoirs.
-- [ ] **Chips for Capacity**: `[96-well]`, `[300µL tips]`, etc.
+- [x] **Machine Groupings (Inventory)**: Accordion by type - COMPLETED.
+- [x] **Resource Groupings**: Accordion by category - COMPLETED.
 
 ---
 
-## 5. Bulk & Advanced (Phase 4)
+## 5. Maintenance & Alerts (Phase 3)
+
+- [ ] **Maintenance Schema**:
+  - [ ] Pydantic models: `MaintenanceInterval`, `MaintenanceSchedule`.
+  - [ ] `MAINTENANCE_DEFAULTS` by category (Liquid Handlers daily/weekly/etc).
+  - [ ] Backend fields: `maintenance_enabled`, `maintenance_schedule_json`.
+- [ ] **Frontend UI**:
+  - [ ] Global "Enable Maintenance" toggle in Settings.
+  - [ ] Per-asset toggle and schedule override in details dialog.
+  - [ ] Maintenance status badges (OK, Warning, Overdue).
+  - [ ] "Log Maintenance" action.
+
+---
+
+## 6. Bulk & Advanced (Phase 4)
 
 - [ ] Multi-select mode with floating action bar.
-- [ ] Expert mode toggle (show FQNs, backends, drivers).
-- [ ] Maintenance scheduling UI.
-- [ ] Inventory alerts.
-
----
-
-## Related Backlogs
-
-- **[Capability Tracking System](./capability_tracking.md)**: Comprehensive plan for fixing classification, expanding machine types, and enabling user-configurable capabilities.
-
----
-
-## Reference Patterns
-
-- **Benchling**: Registry/Inventory split.
-- **LabArchives**: Freezer box visualization.
-- **Docker**: Capabilities/Driver abstraction.
+- [ ] Consumables inventory tracking (partial usage).
+- [ ] Backend "Smart Selection" for consumables.

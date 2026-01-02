@@ -11,7 +11,6 @@ import enum
 
 
 class AssetType(str, enum.Enum):
-
   """Enum for the different types of assets."""
 
   MACHINE = "MACHINE"
@@ -22,7 +21,6 @@ class AssetType(str, enum.Enum):
 
 
 class AssetReservationStatusEnum(enum.Enum):
-
   """Enumeration for the status of a asset reservation."""
 
   RESERVED = "reserved"  # Asset successfully reserved

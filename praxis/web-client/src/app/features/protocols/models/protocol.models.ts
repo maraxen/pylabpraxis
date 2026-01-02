@@ -29,6 +29,7 @@ export interface AssetConstraints {
   required_attributes: string[];
   required_method_signatures: Record<string, string>;
   required_method_args: Record<string, string[]>;
+  min_volume_ul?: number;
 }
 
 export interface LocationConstraints {

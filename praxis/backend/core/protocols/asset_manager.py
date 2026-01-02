@@ -13,7 +13,6 @@ from praxis.backend.models.pydantic_internals.protocol import AssetRequirementMo
 
 @runtime_checkable
 class IAssetManager(Protocol):
-
   """A protocol for an asset manager."""
 
   async def apply_deck(

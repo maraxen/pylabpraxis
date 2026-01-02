@@ -5,13 +5,14 @@ including protocol definitions, protocol runs, and protocol execution.
 """
 
 from typing import Annotated, Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from uuid import UUID
 
 from praxis.backend.api.dependencies import get_db, get_protocol_execution_service
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
+from praxis.backend.core.protocol_execution_service import ProtocolExecutionService
 from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm, ProtocolRunOrm
 from praxis.backend.models.pydantic_internals.protocol import (
   FunctionProtocolDefinitionCreate,
@@ -23,14 +24,16 @@ from praxis.backend.models.pydantic_internals.protocol import (
 )
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
-from praxis.backend.core.protocol_execution_service import ProtocolExecutionService
 
 router = APIRouter()
 
 
 class StartRunRequest(BaseModel):
   """Request body for starting a protocol run."""
-  protocol_definition_accession_id: str = Field(..., description="Accession ID of the protocol definition")
+
+  protocol_definition_accession_id: str = Field(
+    ..., description="Accession ID of the protocol definition"
+  )
   name: str | None = Field(None, description="Name for the run")
   parameters: dict[str, Any] | None = Field(None, description="Input parameters for the protocol")
   simulation_mode: bool = Field(True, description="If True, run in simulation mode")
@@ -38,6 +41,7 @@ class StartRunRequest(BaseModel):
 
 class StartRunResponse(BaseModel):
   """Response body for starting a protocol run."""
+
   run_id: str
 
 
@@ -52,7 +56,7 @@ async def start_protocol_run(
   execution_service: Annotated[ProtocolExecutionService, Depends(get_protocol_execution_service)],
 ) -> StartRunResponse:
   """Start a new protocol run.
-  
+
   Creates a protocol run record and begins execution. If simulation_mode is True,
   the protocol will run without triggering actual hardware actions.
   """
@@ -72,12 +76,14 @@ async def start_protocol_run(
 
 class CancelRunResponse(BaseModel):
   """Response body for cancelling a protocol run."""
+
   success: bool
   message: str
 
 
 class QueuedRunResponse(BaseModel):
   """Response body for a queued run."""
+
   accession_id: str
   name: str | None
   status: str
@@ -96,9 +102,9 @@ async def cancel_protocol_run(
   execution_service: Annotated[ProtocolExecutionService, Depends(get_protocol_execution_service)],
 ) -> CancelRunResponse:
   """Cancel a running or queued protocol run.
-  
+
   Releases reserved assets and updates the run status to CANCELLED.
-  
+
   TODO: Add permission check - only admin or run owner can cancel.
   """
   try:
@@ -123,13 +129,14 @@ async def get_protocol_queue(
   execution_service: Annotated[ProtocolExecutionService, Depends(get_protocol_execution_service)],
 ) -> list[QueuedRunResponse]:
   """Get list of active/queued protocol runs.
-  
+
   Returns runs with status: PENDING, PREPARING, QUEUED, RUNNING.
   """
   from sqlalchemy import select
   from sqlalchemy.orm import selectinload
+
   from praxis.backend.models.enums import ProtocolRunStatusEnum
-  
+
   async with execution_service.db_session_factory() as db_session:
     active_statuses = [
       ProtocolRunStatusEnum.PENDING,
@@ -137,7 +144,7 @@ async def get_protocol_queue(
       ProtocolRunStatusEnum.QUEUED,
       ProtocolRunStatusEnum.RUNNING,
     ]
-    
+
     stmt = (
       select(ProtocolRunOrm)
       .options(selectinload(ProtocolRunOrm.top_level_protocol_definition))
@@ -146,21 +153,22 @@ async def get_protocol_queue(
     )
     result = await db_session.execute(stmt)
     runs = result.scalars().all()
-    
+
     return [
       QueuedRunResponse(
         accession_id=str(run.accession_id),
         name=run.name,
         status=run.status.value if run.status else "unknown",
         created_at=run.created_at.isoformat() if run.created_at else "",
-        protocol_name=run.top_level_protocol_definition.name if run.top_level_protocol_definition else None,
+        protocol_name=run.top_level_protocol_definition.name
+        if run.top_level_protocol_definition
+        else None,
       )
       for run in runs
     ]
 
 
 router.include_router(
-
   create_crud_router(
     service=ProtocolDefinitionCRUDService(FunctionProtocolDefinitionOrm),
     prefix="/definitions",
@@ -189,6 +197,7 @@ router.include_router(
 # Capability Matching
 # =============================================================================
 
+
 @router.get(
   "/{accession_id}/compatibility",
   response_model=list[dict[str, Any]],  # TODO: Use proper Pydantic model
@@ -203,10 +212,11 @@ async def get_protocol_compatibility(
 
   Returns a list of compatibility results for each available machine.
   """
-  from praxis.backend.models.orm.machine import MachineDefinitionOrm, MachineOrm
-  from praxis.backend.services.capability_matcher import capability_matcher
   from sqlalchemy import select
   from sqlalchemy.orm import selectinload
+
+  from praxis.backend.models.orm.machine import MachineOrm
+  from praxis.backend.services.capability_matcher import capability_matcher
 
   # 1. Fetch protocol
   protocol = await db.get(FunctionProtocolDefinitionOrm, accession_id)
@@ -217,10 +227,7 @@ async def get_protocol_compatibility(
     )
 
   # 2. Fetch all machines with definitions
-  stmt = (
-    select(MachineOrm)
-    .options(selectinload(MachineOrm.definition))
-  )
+  stmt = select(MachineOrm).options(selectinload(MachineOrm.definition))
   result = await db.execute(stmt)
   machines = result.scalars().all()
 
@@ -236,15 +243,16 @@ async def get_protocol_compatibility(
   # But we also want to return the machine details for the UI.
   response = []
   for machine, match_result in results:
-    response.append({
-      "machine": {
-        "accession_id": str(machine.accession_id),
-        "name": machine.name,
-        "machine_type": machine.definition.class_type if machine.definition else "unknown",
-        # Add other machine details as needed
-      },
-      "compatibility": match_result.model_dump(),
-    })
+    response.append(
+      {
+        "machine": {
+          "accession_id": str(machine.accession_id),
+          "name": machine.name,
+          "machine_type": machine.definition.plr_category if machine.definition else "unknown",
+          # Add other machine details as needed
+        },
+        "compatibility": match_result.model_dump(),
+      }
+    )
 
   return response
-

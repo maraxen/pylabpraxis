@@ -13,7 +13,6 @@ from praxis.backend.utils.uuid import uuid7
 
 
 class PraxisBaseModel(BaseModel):
-
   """A base model that includes timestamp fields for API responses."""
 
   accession_id: UUID7 = Field(

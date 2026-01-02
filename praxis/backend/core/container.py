@@ -41,7 +41,6 @@ from .workcell_runtime import WorkcellRuntime
 
 
 class Container(containers.DeclarativeContainer):
-
   """Main DI container for the application.
 
   This container holds the providers for all services, repositories, and configurations.
@@ -129,10 +128,10 @@ class Container(containers.DeclarativeContainer):
   # It uses a Resource provider, which will call the async_sessionmaker
   # as a context manager to create and close the session.
   # `pyright` struggles to infer the provided type from the Resource provider,
-  # so we use `# type: ignore` to suppress the incorrect error.
+  # so we use a type-ignore directive to suppress the incorrect error.
   db_session: providers.Provider[AsyncSession] = providers.Resource(
     db_session_factory,
-  )  # type: ignore[assignment]
+  )  # type: ignore [assignment]
 
   # --- Service Providers ---
   # Services will be registered here as we refactor them.
@@ -187,7 +186,7 @@ class Container(containers.DeclarativeContainer):
   scheduler: providers.Singleton[IProtocolScheduler] = providers.Singleton(
     ProtocolScheduler,
     db_session_factory=db_session_factory,
-    celery_app=celery_app,
+    task_queue=celery_app,
     protocol_run_service=protocol_run_service,
     protocol_definition_service=protocol_definition_service,
   )

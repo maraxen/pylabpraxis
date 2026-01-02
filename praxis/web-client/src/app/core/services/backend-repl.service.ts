@@ -2,15 +2,23 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, Subject, map, tap } from 'rxjs';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { environment } from '@env/environment';
-import { ReplOutput, ReplRuntime, CompletionItem, SignatureInfo } from './repl-runtime.interface';
+import { HttpClient } from '@angular/common/http';
+import { ReplOutput, ReplRuntime, CompletionItem, SignatureInfo, ReplacementVariable } from './repl-runtime.interface';
+import { BehaviorSubject, filter } from 'rxjs';
 
 @Injectable({
     providedIn: 'root'
 })
 export class BackendReplService implements ReplRuntime {
     private readonly WS_URL = `${environment.wsUrl}/repl/session`;
+    private readonly API_URL = `${environment.apiUrl}/repl`;
     private socket$: WebSocketSubject<any> | null = null;
     private connectionSubject = new Subject<void>();
+    private variablesSubject = new BehaviorSubject<ReplacementVariable[]>([]);
+
+    variables$ = this.variablesSubject.asObservable();
+
+    private http = inject(HttpClient);
 
     connect(): Observable<void> {
         if (this.socket$) {
@@ -24,6 +32,15 @@ export class BackendReplService implements ReplRuntime {
                     console.log('REPL WebSocket connected');
                     this.connectionSubject.next();
                 }
+            }
+        });
+
+        // Listen for global updates (like variables) on the main socket observable
+        // Note: Creating a subscription here might consume messages intended for execute()
+        // if execute() uses multiplexing. However, webSocket subject multicasts.
+        this.socket$.subscribe(msg => {
+            if (msg.type === 'VARS_UPDATE') {
+                this.variablesSubject.next(msg.payload.variables);
             }
         });
 
@@ -50,28 +67,39 @@ export class BackendReplService implements ReplRuntime {
         });
 
         return this.socket$.asObservable().pipe(
-            // Filter by ID if we want multiplexing, but standard REPL is serial
-            // We check if the message corresponds to our execution
+            filter(msg => msg.id === commandId),
             map(msg => {
-                if (msg.id === commandId) {
-                    if (msg.type === 'RESULT') {
-                        return {
-                            type: 'result' as const,
-                            content: msg.payload.output,
-                            more: msg.payload.more // backend push() returns more
-                        };
-                    } else if (msg.type === 'ERROR') {
-                        return {
-                            type: 'error' as const,
-                            content: msg.payload.error
-                        };
-                    }
+                if (msg.type === 'RESULT') {
+                    return {
+                        type: 'result' as const,
+                        content: msg.payload.output,
+                        more: msg.payload.more // backend push() returns more
+                    };
+                } else if (msg.type === 'ERROR') {
+                    return {
+                        type: 'error' as const,
+                        content: msg.payload.error
+                    };
                 }
-                return null;
-            }),
-            // Filter out nulls (messages for other requests if any)
-            map(val => val as any as ReplOutput)
+                return { type: 'error' as const, content: 'Unknown response' };
+            })
         );
+    }
+
+    restart(): Observable<void> {
+        if (!this.socket$) return new Observable();
+
+        const id = crypto.randomUUID();
+        this.socket$.next({ type: 'RESTART', id });
+
+        return this.socket$.asObservable().pipe(
+            filter(msg => msg.id === id),
+            map(() => void 0)
+        );
+    }
+
+    saveSession(history: string[]) {
+        return this.http.post<{ filename: string }>(`${this.API_URL}/save_session`, { history });
     }
 
     interrupt(): void {

@@ -1,5 +1,4 @@
-"""
-WebBridge - PyLabRobot IO shim for browser-based hardware control.
+"""WebBridge - PyLabRobot IO shim for browser-based hardware control.
 
 This module provides:
 1. WebBridgeIO: A transport layer that routes raw bytes through WebWorker messages
@@ -10,11 +9,11 @@ This module provides:
 3. patch_io_for_browser: Helper to patch any PLR machine's IO layer for browser mode.
 """
 
-import json
 import asyncio
+import json
 import sys
 import uuid
-from typing import Optional, Dict, Any
+from typing import Any
 
 # Check if we're running in browser/Pyodide mode
 IS_BROWSER_MODE = "pyodide" in sys.modules
@@ -24,7 +23,7 @@ if IS_BROWSER_MODE:
 else:
   # Mock for local testing
   def postMessage(msg):
-    print(f"[MockPostMessage] {msg}")
+    pass
 
 
 # =============================================================================
@@ -32,12 +31,11 @@ else:
 # =============================================================================
 
 # Global registry for pending read requests (used by worker to route responses)
-_pending_reads: Dict[str, asyncio.Future] = {}
+_pending_reads: dict[str, asyncio.Future] = {}
 
 
 class WebBridgeIO:
-  """
-  A PLR-compatible IO transport that routes raw bytes through the WebWorker
+  """A PLR-compatible IO transport that routes raw bytes through the WebWorker
   message interface to Angular's WebSerialService.
 
   This class implements the same interface as pylabrobot.io.serial.Serial and
@@ -48,6 +46,7 @@ class WebBridgeIO:
       backend = STAR()
       backend.io = WebBridgeIO(port_id='serial-port-1')
       await backend.setup()  # Now uses WebSerial!
+
   """
 
   def __init__(
@@ -57,14 +56,14 @@ class WebBridgeIO:
     read_timeout: float = 30.0,
     write_timeout: float = 30.0,
   ):
-    """
-    Initialize WebBridgeIO.
+    """Initialize WebBridgeIO.
 
     Args:
         port_id: Identifier for the WebSerial port (from hardware discovery)
         baudrate: Baud rate for serial communication
         read_timeout: Default timeout for read operations (seconds)
         write_timeout: Default timeout for write operations (seconds)
+
     """
     self.port_id = port_id
     self.baudrate = baudrate
@@ -76,18 +75,15 @@ class WebBridgeIO:
     """Initialize the connection. Opens the WebSerial port."""
     await self._send_io_command("OPEN", {"baudRate": self.baudrate})
     self._is_open = True
-    print(f"WebBridgeIO: Opened port {self.port_id} at {self.baudrate} baud")
 
   async def stop(self) -> None:
     """Close the connection."""
     if self._is_open:
       await self._send_io_command("CLOSE", {})
       self._is_open = False
-      print(f"WebBridgeIO: Closed port {self.port_id}")
 
-  async def write(self, data: bytes, timeout: Optional[float] = None) -> int:
-    """
-    Write raw bytes to the device via WebSerial.
+  async def write(self, data: bytes, timeout: float | None = None) -> int:
+    """Write raw bytes to the device via WebSerial.
 
     Args:
         data: Bytes to write
@@ -95,6 +91,7 @@ class WebBridgeIO:
 
     Returns:
         Number of bytes written
+
     """
     await self._send_io_command(
       "WRITE",
@@ -104,9 +101,8 @@ class WebBridgeIO:
     )
     return len(data)
 
-  async def read(self, num_bytes: int = 1, timeout: Optional[float] = None) -> bytes:
-    """
-    Read bytes from the device. Waits for data from WebSerial via JS bridge.
+  async def read(self, num_bytes: int = 1, timeout: float | None = None) -> bytes:
+    """Read bytes from the device. Waits for data from WebSerial via JS bridge.
 
     Args:
         num_bytes: Number of bytes to read
@@ -117,6 +113,7 @@ class WebBridgeIO:
 
     Raises:
         TimeoutError: If read times out
+
     """
     if timeout is None:
       timeout = self.read_timeout
@@ -134,16 +131,17 @@ class WebBridgeIO:
       result = await asyncio.wait_for(future, timeout=timeout + 1)
       return bytes(result)
     except asyncio.TimeoutError:
-      raise TimeoutError(f"Read timeout after {timeout}s on port {self.port_id}")
+      msg = f"Read timeout after {timeout}s on port {self.port_id}"
+      raise TimeoutError(msg)
     finally:
       _pending_reads.pop(request_id, None)
 
   async def readline(self) -> bytes:
-    """
-    Read a line from the device (until newline character).
+    """Read a line from the device (until newline character).
 
     Returns:
         Bytes including the newline character
+
     """
     request_id = str(uuid.uuid4())
     loop = asyncio.get_event_loop()
@@ -158,7 +156,8 @@ class WebBridgeIO:
       result = await asyncio.wait_for(future, timeout=self.read_timeout + 1)
       return bytes(result)
     except asyncio.TimeoutError:
-      raise TimeoutError(f"Readline timeout on port {self.port_id}")
+      msg = f"Readline timeout on port {self.port_id}"
+      raise TimeoutError(msg)
     finally:
       _pending_reads.pop(request_id, None)
 
@@ -179,8 +178,7 @@ class WebBridgeIO:
 
 
 def handle_io_response(request_id: str, data: list) -> None:
-  """
-  Called by the worker when JS sends data back from WebSerial.
+  """Called by the worker when JS sends data back from WebSerial.
 
   This function is invoked from python.worker.ts when a RAW_IO_RESPONSE
   message is received from the Angular main thread.
@@ -188,12 +186,13 @@ def handle_io_response(request_id: str, data: list) -> None:
   Args:
       request_id: The request ID that was sent with the READ command
       data: List of byte values received from the device
+
   """
   future = _pending_reads.get(request_id)
   if future and not future.done():
     future.set_result(data)
   elif request_id not in _pending_reads:
-    print(f"WebBridgeIO: Received response for unknown request {request_id}")
+    pass
 
 
 # =============================================================================
@@ -202,8 +201,7 @@ def handle_io_response(request_id: str, data: list) -> None:
 
 
 def patch_io_for_browser(machine: Any, port_id: str, baudrate: int = 9600) -> Any:
-  """
-  Patch a PLR machine's transport layer to use WebBridgeIO.
+  """Patch a PLR machine's transport layer to use WebBridgeIO.
 
   This function replaces the `self.io` attribute on a machine's backend
   with a WebBridgeIO instance, allowing the machine to communicate with
@@ -221,14 +219,13 @@ def patch_io_for_browser(machine: Any, port_id: str, baudrate: int = 9600) -> An
       lh = LiquidHandler(backend=STAR())
       patch_io_for_browser(lh, 'serial-port-1')
       await lh.setup()  # Now uses WebSerial!
+
   """
   if not IS_BROWSER_MODE:
-    print("patch_io_for_browser: Not in browser mode, skipping patch")
     return machine
 
   backend = getattr(machine, "backend", None)
   if backend is None:
-    print(f"patch_io_for_browser: {type(machine).__name__} has no backend attribute")
     return machine
 
   web_io = WebBridgeIO(port_id=port_id, baudrate=baudrate)
@@ -239,14 +236,11 @@ def patch_io_for_browser(machine: Any, port_id: str, baudrate: int = 9600) -> An
   for attr in io_attrs:
     if hasattr(backend, attr):
       setattr(backend, attr, web_io)
-      print(
-        f"patch_io_for_browser: Patched {type(backend).__name__}.{attr} with WebBridgeIO(port_id='{port_id}')"
-      )
       patched = True
       break
 
   if not patched:
-    print(f"patch_io_for_browser: Could not find IO attribute on {type(backend).__name__}")
+    pass
 
   return machine
 
@@ -254,8 +248,7 @@ def patch_io_for_browser(machine: Any, port_id: str, baudrate: int = 9600) -> An
 def create_browser_machine(
   machine_class, backend_class, port_id: str, baudrate: int = 9600, **kwargs
 ):
-  """
-  Factory function to create a PLR machine pre-configured for browser mode.
+  """Factory function to create a PLR machine pre-configured for browser mode.
 
   Args:
       machine_class: The machine class (e.g., LiquidHandler)
@@ -270,6 +263,7 @@ def create_browser_machine(
   Example:
       lh = create_browser_machine(LiquidHandler, STAR, 'serial-port-1')
       await lh.setup()
+
   """
   backend = backend_class(**kwargs)
   machine = machine_class(backend=backend)
@@ -291,8 +285,7 @@ except ImportError:
 
 
 class WebBridgeBackend(LiquidHandlerBackend if _HAS_PLR else object):
-  """
-  A PyLabRobot backend that routes commands to the browser's main thread via WebWorker messages.
+  """A PyLabRobot backend that routes commands to the browser's main thread via WebWorker messages.
   This allows the Python code running in WASM to control hardware connected to the browser (WebSerial).
   """
 
@@ -307,9 +300,7 @@ class WebBridgeBackend(LiquidHandlerBackend if _HAS_PLR else object):
     self.send_command("stop", {})
 
   def send_command(self, command: str, data: dict):
-    """
-    Sends a command to the JavaScript main thread.
-    """
+    """Sends a command to the JavaScript main thread."""
     message = {"type": "PLR_COMMAND", "payload": {"command": command, "data": data}}
     # In Pyodide worker, postMessage is available globally or via js module
     # We use a synchronous conversion to dict/json for safety across the boundary
@@ -354,8 +345,9 @@ class WebBridgeBackend(LiquidHandlerBackend if _HAS_PLR else object):
     return self._num_channels
 
 
-import sys
 import io
+import sys
+
 from js import postMessage
 
 
@@ -371,14 +363,14 @@ class StdoutRedirector(io.TextIOBase):
 
 
 def bootstrap_repl(namespace=None):
-  """
-  Sets up the environment for the web REPL:
+  """Sets up the environment for the web REPL:
   1. Redirects stdout/stderr to the browser.
   2. Imports common PyLabRobot classes.
 
   Args:
       namespace: Optional dictionary to inject variables into (e.g. console.globals).
                  If None, temporarily injects into __main__ (legacy behavior).
+
   """
   sys.stdout = StdoutRedirector("STDOUT")
   sys.stderr = StdoutRedirector("STDERR")
@@ -387,8 +379,8 @@ def bootstrap_repl(namespace=None):
 
   try:
     import pylabrobot.liquid_handling
-    import pylabrobot.resources
     import pylabrobot.liquid_handling.backends
+    import pylabrobot.resources
 
     # Core classes
     target["LiquidHandler"] = pylabrobot.liquid_handling.LiquidHandler
@@ -422,9 +414,8 @@ def bootstrap_repl(namespace=None):
       for k, v in target.items():
         setattr(__main__, k, v)
 
-    print("PyLabRobot initialized. Available classes: LiquidHandler, Plate, TipRack, etc.")
-  except ImportError as e:
-    print(f"PyLabRobot not found/installed: {e}. Running in basic Python mode.")
+  except ImportError:
+    pass
 
 
 # =============================================================================
@@ -436,8 +427,7 @@ _jedi_install_attempted = False
 
 
 def _ensure_jedi():
-  """
-  Ensure Jedi is installed and available.
+  """Ensure Jedi is installed and available.
   Returns True if Jedi is ready, False otherwise.
   """
   global _jedi_available, _jedi_install_attempted
@@ -459,8 +449,9 @@ def _ensure_jedi():
     # Try to install jedi via micropip
     if IS_BROWSER_MODE:
       try:
-        import micropip
         import asyncio
+
+        import micropip
 
         async def install_jedi():
           await micropip.install("jedi")
@@ -469,20 +460,18 @@ def _ensure_jedi():
         loop = asyncio.get_event_loop()
         loop.run_until_complete(install_jedi())
 
-        import jedi
 
         _jedi_available = True
         return True
-      except Exception as e:
+      except Exception:
         # Jedi is optional for signature help
         return False
     else:
       return False
 
 
-def get_signatures(source: str, line: int = 1, column: int = None) -> list:
-  """
-  Get function signatures for the code at cursor position.
+def get_signatures(source: str, line: int = 1, column: int | None = None) -> list:
+  """Get function signatures for the code at cursor position.
   Used for showing parameter hints when typing function calls.
 
   Args:
@@ -492,12 +481,14 @@ def get_signatures(source: str, line: int = 1, column: int = None) -> list:
 
   Returns:
       List of signature dicts with name, params, docstring
+
   """
   if not _ensure_jedi():
     return []
 
   try:
     import jedi
+
     import __main__
 
     if column is None:
@@ -517,5 +508,5 @@ def get_signatures(source: str, line: int = 1, column: int = None) -> list:
       }
       for sig in signatures
     ]
-  except Exception as e:
+  except Exception:
     return []

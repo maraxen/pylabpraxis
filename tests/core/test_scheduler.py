@@ -16,7 +16,7 @@ from praxis.backend.utils.uuid import uuid7
 
 def create_async_session_factory() -> MagicMock:
     """Create a mock async session factory suitable for `async with` usage.
-    
+
     Returns a MagicMock that supports `async with session_factory() as session:` pattern
     with an AsyncMock session that has common DB methods mocked.
     """
@@ -27,11 +27,11 @@ def create_async_session_factory() -> MagicMock:
     mock_session.delete = AsyncMock()
     mock_session.flush = AsyncMock()
     mock_session.commit = AsyncMock()
-    
+
     mock_factory = MagicMock()
     mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
     mock_factory.return_value.__aexit__ = AsyncMock(return_value=None)
-    
+
     return mock_factory
 
 
@@ -635,7 +635,7 @@ class TestScheduleProtocolExecution:
     @pytest.mark.asyncio
     async def test_schedule_protocol_execution_success(self) -> None:
         """Test successful protocol scheduling workflow."""
-        from unittest.mock import AsyncMock, MagicMock, patch
+        from unittest.mock import AsyncMock, MagicMock
 
         from praxis.backend.models.orm.protocol import (
             FunctionProtocolDefinitionOrm,

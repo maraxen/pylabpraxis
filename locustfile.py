@@ -1,6 +1,7 @@
-from locust import HttpUser, task, between
 import uuid
-import random
+
+from locust import HttpUser, between, task
+
 
 class PraxisUser(HttpUser):
     wait_time = between(1, 3)
@@ -29,7 +30,7 @@ class PraxisUser(HttpUser):
         }
         # Create
         with self.client.post("/api/v1/machines", json=payload, catch_response=True) as response:
-            if response.status_code == 200 or response.status_code == 201:
+            if response.status_code in {200, 201}:
                 machine_id = response.json().get("accession_id") or response.json().get("id")
                 if machine_id:
                     # Delete

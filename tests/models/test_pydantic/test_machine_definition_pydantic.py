@@ -210,8 +210,6 @@ def test_machine_definition_response_roundtrip_serialization() -> None:
 @pytest.mark.asyncio
 async def test_machine_definition_response_from_orm(db_session: AsyncSession) -> None:
     """Test converting MachineDefinitionOrm to MachineDefinitionResponse."""
-    from praxis.backend.utils.uuid import uuid7
-
     plr_details = {"backend": "STAR", "channels": 8}
     rotation = {"x_deg": 0, "y_deg": 0, "z_deg": 0}
     setup_method = {"method": "setup"}
@@ -262,8 +260,6 @@ async def test_machine_definition_response_from_orm(db_session: AsyncSession) ->
 @pytest.mark.asyncio
 async def test_machine_definition_response_from_orm_minimal(db_session: AsyncSession) -> None:
     """Test ORM-to-Pydantic conversion with minimal fields."""
-    from praxis.backend.utils.uuid import uuid7
-
     orm_machine_def = MachineDefinitionOrm(
         name="minimal_machine",
         fqn="test.minimal.Machine",

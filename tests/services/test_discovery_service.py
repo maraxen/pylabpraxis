@@ -19,8 +19,7 @@ def mock_db_session_factory():
     """Mock database session factory."""
     session = AsyncMock(spec=AsyncSession)
     # The factory returns an async context manager that yields the session
-    factory = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock()))
-    return factory
+    return MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock()))
 
 
 @pytest.fixture
@@ -37,15 +36,13 @@ def mock_protocol_service():
 @pytest.fixture
 def mock_resource_service():
     """Mock resource type definition service."""
-    service = AsyncMock(spec=ResourceTypeDefinitionService)
-    return service
+    return AsyncMock(spec=ResourceTypeDefinitionService)
 
 
 @pytest.fixture
 def mock_machine_service():
     """Mock machine type definition service."""
-    service = AsyncMock(spec=MachineTypeDefinitionService)
-    return service
+    return AsyncMock(spec=MachineTypeDefinitionService)
 
 
 @pytest.fixture
@@ -74,7 +71,7 @@ def test_extract_protocol_definitions_from_paths(discovery_service, tmp_path):
     protocol_file = protocol_dir / "proto.py"
     protocol_content = dedent("""
         def protocol_function(f): return f
-        
+
         @protocol_function
         def my_protocol(volume: float):
             '''A test protocol.'''
@@ -322,7 +319,7 @@ def test_extract_protocol_definitions_with_hardware_requirements(discovery_servi
     protocol_file = protocol_dir / "proto_reqs.py"
     protocol_content = dedent("""
         def protocol_function(f): return f
-        
+
         @protocol_function
         def my_req_protocol(lh):
             lh.pick_up_tips96(tips)

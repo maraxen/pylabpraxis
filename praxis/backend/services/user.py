@@ -29,7 +29,6 @@ password_hash = PasswordHash((BcryptHasher(),))
 
 
 class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
-
   """Service for user-related operations.
 
   Provides CRUD operations for users with additional functionality for:

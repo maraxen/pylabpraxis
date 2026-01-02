@@ -16,6 +16,8 @@ import { AssetService } from './services/asset.service';
 import { switchMap, filter, finalize } from 'rxjs/operators';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router } from '@angular/router';
+import { ModeService } from '@core/services/mode.service';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-assets',
@@ -28,6 +30,7 @@ import { ActivatedRoute, Router } from '@angular/router';
     MatDialogModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
+    MatSnackBarModule,
     MachineListComponent,
     ResourceAccordionComponent,
     DefinitionsListComponent,
@@ -47,15 +50,15 @@ import { ActivatedRoute, Router } from '@angular/router';
               Discover Hardware
             </button>
           }
-          <span [matTooltip]="selectedIndex === 3 ? 'Adding definitions manually is not supported yet. Please sync from backend.' : ''">
+          <span [matTooltip]="selectedIndex === 3 ? (modeService.isBrowserMode() ? 'Definitions are pre-synced in Browser Mode.' : 'Sync all hardware and protocol definitions from the backend.') : ''">
             <button 
               mat-flat-button 
               class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-5 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" 
               (click)="openAddAsset()" 
-              [disabled]="isLoading() || selectedIndex === 3"
+              [disabled]="isLoading() || isSyncing()"
             >
-              <mat-icon>add</mat-icon>
-              Add {{ assetTypeLabel() }}
+              <mat-icon>{{ selectedIndex === 3 ? 'sync' : 'add' }}</mat-icon>
+              {{ selectedIndex === 3 ? 'Sync Definitions' : 'Add ' + assetTypeLabel() }}
             </button>
           </span>
         </div>
@@ -187,6 +190,8 @@ export class AssetsComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private ngZone = inject(NgZone);
+  public modeService = inject(ModeService);
+  private snackBar = inject(MatSnackBar);
 
   @ViewChild('machineList') machineList!: MachineListComponent;
   @ViewChild('resourceAccordion') resourceAccordion!: ResourceAccordionComponent;
@@ -194,6 +199,7 @@ export class AssetsComponent implements OnInit, OnDestroy {
   selectedIndex = 0;
   assetTypeLabel = signal('Machine');
   isLoading = signal(false);
+  isSyncing = signal(false);
 
   private hardwareDiscoveryListener = () => {
     this.ngZone.run(() => this.openHardwareDiscovery());
@@ -281,8 +287,28 @@ export class AssetsComponent implements OnInit, OnDestroy {
       // For now let's open machine dialog as default
       this.openAddMachine();
     } else {
-      // Registry tab - button is disabled, but keeping this for safety
+      // Registry tab
+      if (this.modeService.isBrowserMode()) {
+        this.snackBar.open('Definitions are pre-synced in Browser Mode.', 'Close', { duration: 3000 });
+        return;
+      }
+      this.triggerSyncDefinitions();
     }
+  }
+
+  private triggerSyncDefinitions() {
+    this.isSyncing.set(true);
+    this.assetService.syncDefinitions().pipe(
+      finalize(() => this.isSyncing.set(false))
+    ).subscribe({
+      next: (resp) => {
+        this.snackBar.open(resp.message || 'Synchronization started successfully.', 'Close', { duration: 3000 });
+      },
+      error: (err) => {
+        console.error('Error during synchronization', err);
+        this.snackBar.open('Failed to initiate synchronization. See console for details.', 'Close', { duration: 5000 });
+      }
+    });
   }
 
   private openAddMachine() {

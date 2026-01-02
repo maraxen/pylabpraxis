@@ -1,5 +1,6 @@
 """Service layer for Resource Type Definition Management."""
 
+import contextlib
 import importlib
 import inspect
 import pkgutil
@@ -96,7 +97,6 @@ class ResourceTypeDefinitionService(
     ResourceDefinitionUpdate,
   ],
 ):
-
   """Service for discovering and syncing resource type definitions.
 
   This service discovers PyLabRobot resource definitions and syncs them to the database.
@@ -108,32 +108,32 @@ class ResourceTypeDefinitionService(
   # Generic base classes that should NOT be cataloged as resource definitions.
   # These are abstract or intermediate types, not usable resource definitions.
   EXCLUDED_BASE_CLASSES: tuple[type[Resource], ...] = (
-    Carrier,         # Base carrier type
-    Container,       # Base container type
-    Deck,            # Base deck type
+    Carrier,  # Base carrier type
+    Container,  # Base container type
+    Deck,  # Base deck type
     ItemizedResource,  # Resources with indexed items
-    Lid,             # Base lid type
-    MFXCarrier,      # Base MFX carrier type
-    NestedTipRack,   # Nested tip rack base
-    PetriDish,       # Base petri dish type
+    Lid,  # Base lid type
+    MFXCarrier,  # Base MFX carrier type
+    NestedTipRack,  # Nested tip rack base
+    PetriDish,  # Base petri dish type
     PetriDishHolder,  # Petri dish holder base
-    Plate,           # Base plate type - concrete plates are factory functions
-    PlateAdapter,    # Plate adapter base
-    PlateCarrier,    # Plate carrier base
-    PlateHolder,     # Plate holder base
-    Resource,        # Root resource type
+    Plate,  # Base plate type - concrete plates are factory functions
+    PlateAdapter,  # Plate adapter base
+    PlateCarrier,  # Plate carrier base
+    PlateHolder,  # Plate holder base
+    Resource,  # Root resource type
     ResourceHolder,  # Resource holder base
-    ResourceStack,   # Resource stack base
-    TipCarrier,      # Tip carrier base
-    TipRack,         # Base tip rack - concrete tip racks are factory functions
-    TipSpot,         # Individual tip spots
-    Trash,           # Base trash type
-    Trough,          # Base trough type
-    TroughCarrier,   # Trough carrier base
-    Tube,            # Base tube type
-    TubeCarrier,     # Tube carrier base
-    TubeRack,        # Base tube rack type
-    Well,            # Individual wells in plates
+    ResourceStack,  # Resource stack base
+    TipCarrier,  # Tip carrier base
+    TipRack,  # Base tip rack - concrete tip racks are factory functions
+    TipSpot,  # Individual tip spots
+    Trash,  # Base trash type
+    Trough,  # Base trough type
+    TroughCarrier,  # Trough carrier base
+    Tube,  # Base tube type
+    TubeCarrier,  # Tube carrier base
+    TubeRack,  # Base tube rack type
+    Well,  # Individual wells in plates
   )
 
   def __init__(self, db: AsyncSession) -> None:
@@ -179,9 +179,11 @@ class ResourceTypeDefinitionService(
         if "tip_rack" in category and category != "tip_rack":
           return "tip_rack"
         if "carrier" in category and category != "carrier":
-           # Keep specific carrier types if needed, but for now normalize if it's just vendor_carrier
-           if category.endswith("_carrier") and category != "plate_carrier" and category != "tip_carrier" and category != "tube_carrier":
-             return "carrier"
+          # Keep specific carrier types if needed, but for now normalize if it's just vendor_carrier
+          if (
+            category.endswith("_carrier") and category not in {"plate_carrier", "tip_carrier", "tube_carrier"}
+          ):
+            return "carrier"
       return category
     return None
 
@@ -265,10 +267,7 @@ class ResourceTypeDefinitionService(
     # Check docstring for hints about return type
     doc = inspect.getdoc(func) or ""
     resource_indicators = ["Plate", "TipRack", "Trough", "Tube", "Lid", "Carrier", "Deck"]
-    if any(ind in doc for ind in resource_indicators):
-      return True
-
-    return False
+    return bool(any(ind in doc for ind in resource_indicators))
 
   def _extract_vendor_from_fqn(self, fqn: str) -> str | None:
     """Extract vendor name from FQN like 'pylabrobot.resources.corning.plates.Cor_96'."""
@@ -360,10 +359,8 @@ class ResourceTypeDefinitionService(
 
     # ItemizedResource (Plate, TipRack) - item count
     if hasattr(instance, "num_items"):
-      try:
+      with contextlib.suppress(Exception):
         props["num_items"] = instance.num_items
-      except Exception:
-        pass
       if hasattr(instance, "num_items_x"):
         try:
           props["num_items_x"] = instance.num_items_x
@@ -382,10 +379,14 @@ class ResourceTypeDefinitionService(
           props["well_volume_ul"] = getattr(first_well, "max_volume", None)
           bottom_type = getattr(first_well, "bottom_type", None)
           if bottom_type is not None:
-            props["well_bottom_type"] = bottom_type.value if hasattr(bottom_type, "value") else str(bottom_type)
+            props["well_bottom_type"] = (
+              bottom_type.value if hasattr(bottom_type, "value") else str(bottom_type)
+            )
           cross_section = getattr(first_well, "cross_section_type", None)
           if cross_section is not None:
-            props["well_cross_section"] = cross_section.value if hasattr(cross_section, "value") else str(cross_section)
+            props["well_cross_section"] = (
+              cross_section.value if hasattr(cross_section, "value") else str(cross_section)
+            )
       except Exception:
         pass
 
@@ -407,20 +408,14 @@ class ResourceTypeDefinitionService(
       props["max_volume_ul"] = getattr(instance, "max_volume", None)
 
     # Clean up None values and non-JSON-serializable floats (infinity)
-    import math
     def is_json_serializable(v: Any) -> bool:
       if v is None:
         return False
-      if isinstance(v, float) and (math.isinf(v) or math.isnan(v)):
-        return False
-      return True
+      return not (isinstance(v, float) and (math.isinf(v) or math.isnan(v)))
 
     return {k: v for k, v in props.items() if is_json_serializable(v)}
 
-
-  def _get_metadata_from_factory_function(
-    self, func: Any, fqn: str
-  ) -> dict[str, Any]:
+  def _get_metadata_from_factory_function(self, func: Any, fqn: str) -> dict[str, Any]:
     """Extract metadata from a resource factory function by instantiating it."""
     name = func.__name__
     metadata: dict[str, Any] = {
@@ -645,29 +640,28 @@ class ResourceTypeDefinitionService(
       self.db.add(existing_resource_def)
       logger.debug("Updated resource definition: %s", fqn)
       return existing_resource_def
-    else:
-      new_resource_def = ResourceDefinitionOrm(
-        name=short_name,
-        fqn=fqn,
-        description=description,
-        plr_category=category,
-        ordering=ordering,
-        size_x_mm=size_x_mm,
-        size_y_mm=size_y_mm,
-        size_z_mm=size_z_mm,
-        nominal_volume_ul=nominal_volume_ul,
-        num_items=num_items,
-        plate_type=plate_type,
-        well_volume_ul=well_volume_ul,
-        tip_volume_ul=tip_volume_ul,
-        vendor=vendor,
-      )
-      # Set properties_json after creation (init=False in ORM model)
-      if properties_json is not None:
-        new_resource_def.properties_json = properties_json
-      self.db.add(new_resource_def)
-      logger.debug("Added new resource definition: %s", fqn)
-      return new_resource_def
+    new_resource_def = ResourceDefinitionOrm(
+      name=short_name,
+      fqn=fqn,
+      description=description,
+      plr_category=category,
+      ordering=ordering,
+      size_x_mm=size_x_mm,
+      size_y_mm=size_y_mm,
+      size_z_mm=size_z_mm,
+      nominal_volume_ul=nominal_volume_ul,
+      num_items=num_items,
+      plate_type=plate_type,
+      well_volume_ul=well_volume_ul,
+      tip_volume_ul=tip_volume_ul,
+      vendor=vendor,
+    )
+    # Set properties_json after creation (init=False in ORM model)
+    if properties_json is not None:
+      new_resource_def.properties_json = properties_json
+    self.db.add(new_resource_def)
+    logger.debug("Added new resource definition: %s", fqn)
+    return new_resource_def
 
 
 class ResourceTypeDefinitionCRUDService(
@@ -677,7 +671,6 @@ class ResourceTypeDefinitionCRUDService(
     ResourceDefinitionUpdate,
   ],
 ):
-
   """CRUD service for resource type definitions."""
 
   async def update(

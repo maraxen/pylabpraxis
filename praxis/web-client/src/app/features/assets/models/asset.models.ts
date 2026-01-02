@@ -17,11 +17,33 @@ export enum ResourceStatus {
   UNKNOWN = 'unknown'
 }
 
+export interface MaintenanceInterval {
+  type: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
+  interval_days: number;
+  description?: string;
+  checklist?: string[];
+  required: boolean;
+}
+
+export interface MaintenanceSchedule {
+  intervals: MaintenanceInterval[];
+  enabled: boolean;
+  notes?: string;
+}
+
+export interface MaintenanceRecord {
+  type: string;
+  completed_at: string; // ISO date string
+  completed_by?: string;
+  notes?: string;
+}
+
 export interface AssetBase {
   accession_id: string;
   name: string;
   fqn?: string;
   location?: string;
+  location_label?: string; // e.g. "Room 101, Bench A"
   plr_state?: any;
   plr_definition?: any;
   created_at?: string;
@@ -38,6 +60,11 @@ export interface Machine extends AssetBase {
   connection_info?: Record<string, any>;
   is_simulation_override?: boolean;
   user_configured_capabilities?: Record<string, any>;
+
+  // Maintenance fields
+  maintenance_enabled?: boolean;
+  maintenance_schedule_json?: MaintenanceSchedule;
+  last_maintenance_json?: Record<string, MaintenanceRecord>;
 }
 
 export interface MachineCreate {
@@ -51,6 +78,9 @@ export interface MachineCreate {
   is_simulation_override?: boolean;
   user_configured_capabilities?: Record<string, any>;
   machine_definition_accession_id?: string;
+  maintenance_enabled?: boolean;
+  maintenance_schedule_json?: MaintenanceSchedule;
+  last_maintenance_json?: Record<string, MaintenanceRecord>;
 }
 
 export interface Resource extends AssetBase {
@@ -120,6 +150,9 @@ export interface ResourceDefinition {
   tip_volume_ul?: number;
   vendor?: string;
   plr_category?: string;
+  size_x_mm?: number;
+  size_y_mm?: number;
+  size_z_mm?: number;
 }
 
 // Active facet filters for dynamic querying

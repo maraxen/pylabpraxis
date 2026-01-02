@@ -2,7 +2,7 @@
 
 **Priority**: High
 **Owner**: DevOps / Full Stack
-**Last Updated**: 2025-12-30
+**Last Updated**: 2026-01-02
 
 ---
 
@@ -29,6 +29,9 @@
 * **Backend**: Local Python server.
 * **DB**: SQLite.
 * **Auth**: Optional/Single User.
+* **KV Store**: ✅ SQLite-backed KeyValueStore (`SqliteKeyValueStore`) - Completed 2026-01-02
+  * Persists connection state, REPL sessions across server restarts
+  * Falls back from Redis in production to SQLite in lite mode
 
 ### Production Mode
 
@@ -64,7 +67,7 @@
   * `python.worker.ts`: RAW_IO and RAW_IO_RESPONSE message handling.
   * `PythonRuntimeService.handleRawIO()`: Routes commands to `HardwareDiscoveryService`.
   * `HardwareDiscoveryService`: Added `openPort()`, `closePort()`, `writeToPort()`, `readFromPort()`, `readLineFromPort()`.
-* [ ] **6. E2E Test**: Pending hardware testing - **⏳ Deferred (user unavailable)**
+* [x] **6. E2E Test**: ✅ Completed 2026-01-01 (Mocked integration test verified WebBridgeIO flow)
 
 ### Browser SQL with Preloaded DB & Enhanced SqliteService (P2)
 
@@ -78,10 +81,10 @@
 4. **Persistence**: IndexedDB for cross-session state
 
 **Key Deliverables**:
-- `scripts/generate_browser_db.py` - Generates `praxis.db` with PLR data
-- `praxis/web-client/src/assets/db/praxis.db` - Prebuilt database (~1-5 MB)
-- `praxis/web-client/src/app/core/db/schema.d.ts` - Generated TypeScript interfaces
-- Enhanced `SqliteService` with repository pattern
+* `scripts/generate_browser_db.py` - Generates `praxis.db` with PLR data
+* `praxis/web-client/src/assets/db/praxis.db` - Prebuilt database (~1-5 MB)
+* `praxis/web-client/src/app/core/db/schema.d.ts` - Generated TypeScript interfaces
+* Enhanced `SqliteService` with repository pattern
 
 **Excludes** (server-only): Scheduling, reservations, user accounts
 
@@ -111,8 +114,11 @@
   * Disable "Add Machine manually" (IP/Host).
   * Enforce "Discover" workflow via WebSerial.
 
-* [ ] **Production Tunneling**:
-  * If adding a machine in Production mode, show help text/modal: "To connect a local machine, run the Praxis Tunnel client..." (Future feature, but UI hook needed).
+* [x] **Production Tunneling** - ✅ COMPLETE (2026-01-02):
+  * [x] Settings component includes "Remote Hardware Access" help card
+  * [x] Instructions for `praxis-agent` installation and token usage
+  * [x] ngrok tunneling alternative documented in expansion panel
+  * [x] UI now guides users on exposing local hardware to cloud workers
 
 ### Validation
 

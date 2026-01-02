@@ -37,6 +37,7 @@ class AsyncPraxisState:
     store_key (str): The key used to store the state in the KeyValueStore.
     _store (KeyValueStore): The storage backend.
     _data (dict[str, Any]): The internal dictionary holding the state data.
+
   """
 
   def __init__(
@@ -51,6 +52,7 @@ class AsyncPraxisState:
       store: The KeyValueStore backend to use for persistence.
       run_accession_id: A unique identifier for this run. Generated if None.
       key_prefix: Prefix for the storage key.
+
     """
     self._store = store
     self.run_accession_id: uuid.UUID = run_accession_id or uuid7()
@@ -199,6 +201,7 @@ async def create_async_state(
 
   Returns:
     An initialized AsyncPraxisState instance.
+
   """
   state = AsyncPraxisState(store=store, run_accession_id=run_accession_id)
   await state.initialize()

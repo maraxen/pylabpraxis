@@ -25,7 +25,6 @@ logger = get_logger(__name__)
 
 
 class GlobalDependencies:
-
   """A class to hold global dependencies."""
 
   def __init__(self) -> None:

@@ -184,9 +184,11 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
 
       .meta-container {
         display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 4px;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+        margin-left: 12px;
       }
 
       .shortcut-badge {
@@ -194,19 +196,24 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
         font-weight: 600;
         background: var(--theme-surface);
         color: var(--theme-text-secondary);
-        padding: 2px 6px;
+        padding: 3px 8px;
         border-radius: 4px;
         border: 1px solid var(--theme-border);
-        font-family: monospace;
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        white-space: nowrap;
+        letter-spacing: 0.02em;
       }
 
       .category-chip {
-        font-size: 0.7rem;
-        background: var(--theme-surface);
-        padding: 2px 8px;
-        border-radius: 4px;
+        font-size: 0.65rem;
+        background: var(--mat-sys-surface-variant);
+        padding: 3px 8px;
+        border-radius: 12px;
         color: var(--theme-text-tertiary);
         text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-weight: 500;
+        white-space: nowrap;
       }
     }
 

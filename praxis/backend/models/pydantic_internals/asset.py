@@ -10,7 +10,6 @@ from .pydantic_base import PraxisBaseModel
 
 
 class AssetBase(PraxisBaseModel):
-
   """Define the base properties for an asset."""
 
   asset_type: AssetType | None = Field(description="The type of the asset.")
@@ -22,7 +21,6 @@ class AssetBase(PraxisBaseModel):
 
 
 class AssetResponse(AssetBase, PraxisBaseModel):
-
   """Represent an asset for API responses."""
 
   plr_state: dict[str, Any] | None = Field(
@@ -36,7 +34,6 @@ class AssetResponse(AssetBase, PraxisBaseModel):
 
 
 class AssetUpdate(BaseModel):
-
   """Define the properties for updating an asset."""
 
   model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
@@ -62,7 +59,6 @@ class AssetUpdate(BaseModel):
 
 
 class AcquireAssetLock(PraxisBaseModel):
-
   """Model for acquiring an asset lock."""
 
   asset_type: str
@@ -74,7 +70,6 @@ class AcquireAssetLock(PraxisBaseModel):
 
 
 class AcquireAsset(PraxisBaseModel):
-
   """Model for acquiring an asset."""
 
   protocol_run_accession_id: UUID7
@@ -86,7 +81,6 @@ class AcquireAsset(PraxisBaseModel):
 
 
 class ReleaseAsset(PraxisBaseModel):
-
   """Model for releasing an asset."""
 
   asset_accession_id: UUID7

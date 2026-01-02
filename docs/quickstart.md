@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-This guide will help you get started with PyLabPraxis quickly.
+This guide will help you get started with Praxis quickly.
 
 ## Basic Usage
 

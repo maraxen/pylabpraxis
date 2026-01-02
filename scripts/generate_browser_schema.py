@@ -17,16 +17,11 @@ Outputs:
 
 from __future__ import annotations
 
-import enum
 import re
-import textwrap
 from datetime import datetime
 from pathlib import Path
-from typing import Any, get_args, get_origin
+from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, inspect
-from sqlalchemy import Enum as SAEnum
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.engine import create_engine
 from sqlalchemy.schema import CreateIndex, CreateTable
 
@@ -249,9 +244,8 @@ def convert_ddl_to_sqlite(ddl: str, table: Any) -> str:
     # SQLAlchemy compiles enums as VARCHAR for SQLite, which is fine
 
     # Remove PostgreSQL-specific extensions
-    ddl = re.sub(r"SERIAL\b", "INTEGER", ddl, flags=re.IGNORECASE)
+    return re.sub(r"SERIAL\b", "INTEGER", ddl, flags=re.IGNORECASE)
 
-    return ddl
 
 
 def generate_typescript_interfaces(metadata: Any) -> str:
@@ -299,9 +293,9 @@ def generate_typescript_interfaces(metadata: Any) -> str:
         elif interface_name.endswith("s") and not interface_name.endswith("ss"):
             interface_name = interface_name[:-1]
 
-        lines.append(f"/**")
+        lines.append("/**")
         lines.append(f" * Interface for the '{table.name}' table")
-        lines.append(f" */")
+        lines.append(" */")
         lines.append(f"export interface {interface_name} {{")
 
         for column in table.columns:
@@ -332,9 +326,6 @@ def generate_typescript_enums() -> str:
         ProtocolSourceStatusEnum,
         ResourceCategoryEnum,
         ResourceStatusEnum,
-        ScheduleHistoryEventEnum,
-        ScheduleHistoryEventTriggerEnum,
-        ScheduleStatusEnum,
         SpatialContextEnum,
         WorkcellStatusEnum,
     )
@@ -369,9 +360,9 @@ def generate_typescript_enums() -> str:
 
     for enum_class in all_enums:
         enum_name = enum_class.__name__.replace("Enum", "")
-        lines.append(f"/**")
+        lines.append("/**")
         lines.append(f" * {enum_class.__doc__ or f'Enum: {enum_name}'}")
-        lines.append(f" */")
+        lines.append(" */")
 
         # Generate as union type for better TypeScript ergonomics
         values = [f"'{member.value}'" for member in enum_class]
@@ -396,30 +387,8 @@ def generate_typescript_enums() -> str:
 
 def main() -> None:
     """Main entry point for schema generation."""
-    print("Generating browser schema from SQLAlchemy ORM models...")
-
     # Import all ORM models to populate metadata
     # This import triggers registration of all tables with Base.metadata
-    from praxis.backend.models.orm import (
-        AssetOrm,
-        AssetRequirementOrm,
-        DeckDefinitionOrm,
-        DeckOrm,
-        DeckPositionDefinitionOrm,
-        FileSystemProtocolSourceOrm,
-        FunctionCallLogOrm,
-        FunctionDataOutputOrm,
-        FunctionProtocolDefinitionOrm,
-        MachineDefinitionOrm,
-        MachineOrm,
-        ParameterDefinitionOrm,
-        ProtocolRunOrm,
-        ProtocolSourceRepositoryOrm,
-        ResourceDefinitionOrm,
-        ResourceOrm,
-        WellDataOutputOrm,
-        WorkcellOrm,
-    )
     from praxis.backend.utils.db import Base
 
     # Ensure output directories exist
@@ -427,36 +396,27 @@ def main() -> None:
     CORE_DB_DIR.mkdir(parents=True, exist_ok=True)
 
     # Generate SQLite DDL
-    print(f"Generating SQLite DDL -> {SCHEMA_SQL_PATH}")
     sqlite_ddl = generate_sqlite_ddl(Base.metadata)
     SCHEMA_SQL_PATH.write_text(sqlite_ddl)
-    print(f"  Created {SCHEMA_SQL_PATH.name} ({len(sqlite_ddl)} bytes)")
 
     # Generate TypeScript interfaces
-    print(f"Generating TypeScript interfaces -> {SCHEMA_TS_PATH}")
     ts_interfaces = generate_typescript_interfaces(Base.metadata)
     SCHEMA_TS_PATH.write_text(ts_interfaces)
-    print(f"  Created {SCHEMA_TS_PATH.name} ({len(ts_interfaces)} bytes)")
 
     # Generate TypeScript enums
-    print(f"Generating TypeScript enums -> {ENUMS_TS_PATH}")
     ts_enums = generate_typescript_enums()
     ENUMS_TS_PATH.write_text(ts_enums)
-    print(f"  Created {ENUMS_TS_PATH.name} ({len(ts_enums)} bytes)")
 
     # Print summary
     included_tables = [
         t.name for t in Base.metadata.tables.values() if t.name not in EXCLUDED_TABLES
     ]
-    print(f"\nGenerated schema for {len(included_tables)} tables:")
-    for table_name in sorted(included_tables):
-        print(f"  - {table_name}")
+    for _table_name in sorted(included_tables):
+        pass
 
-    print(f"\nExcluded {len(EXCLUDED_TABLES)} server-only tables:")
-    for table_name in sorted(EXCLUDED_TABLES):
-        print(f"  - {table_name}")
+    for _table_name in sorted(EXCLUDED_TABLES):
+        pass
 
-    print("\nDone!")
 
 
 if __name__ == "__main__":

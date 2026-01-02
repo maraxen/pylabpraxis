@@ -143,8 +143,8 @@ class TestMachineEnumsIntegration:
 
     def test_status_and_category_are_independent(self) -> None:
         """Test that status and category enums are independent."""
-        status_names = set(member.name for member in MachineStatusEnum)
-        category_names = set(member.name for member in MachineCategoryEnum)
+        status_names = {member.name for member in MachineStatusEnum}
+        category_names = {member.name for member in MachineCategoryEnum}
         # No overlap between status and category names
         assert len(status_names.intersection(category_names)) == 0
 

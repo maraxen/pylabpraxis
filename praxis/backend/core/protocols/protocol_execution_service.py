@@ -8,7 +8,6 @@ from praxis.backend.models.orm.protocol import ProtocolRunOrm
 
 @runtime_checkable
 class IProtocolExecutionService(Protocol):
-
   """A protocol for a protocol execution service."""
 
   async def execute_protocol_immediately(

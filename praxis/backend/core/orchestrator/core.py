@@ -28,7 +28,6 @@ class Orchestrator(
   ExecutionMixin,
   ErrorHandlingMixin,
 ):
-
   """Central component for managing and executing laboratory protocols.
 
   The Orchestrator is responsible for coordinating the execution of protocols.
@@ -70,11 +69,13 @@ class Orchestrator(
     self.scheduler = scheduler
 
     if not protocol_run_service or not protocol_definition_service:
-       # For backwards compatibility with tests that might not provide them yet,
-       # we allow None but execution might fail if they are needed.
-       # However, to fix typing, we should hint them as proper types or handle check.
-       logger.warning("Orchestrator initialized without required services. Execution might fail.")
+      # For backwards compatibility with tests that might not provide them yet,
+      # we allow None but execution might fail if they are needed.
+      # However, to fix typing, we should hint them as proper types or handle check.
+      logger.warning("Orchestrator initialized without required services. Execution might fail.")
 
     self.protocol_run_service = cast("ProtocolRunService", protocol_run_service)
-    self.protocol_definition_service = cast("ProtocolDefinitionCRUDService", protocol_definition_service)
+    self.protocol_definition_service = cast(
+      "ProtocolDefinitionCRUDService", protocol_definition_service
+    )
     logger.info("Orchestrator initialized.")

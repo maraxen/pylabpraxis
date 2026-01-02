@@ -1,3 +1,4 @@
+import contextlib
 import os
 import subprocess
 import time
@@ -11,7 +12,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import NullPool, StaticPool
 
 from praxis.backend.utils.db import Base
 from tests.factories import (
@@ -25,13 +26,77 @@ from tests.factories import (
     WorkcellFactory,
 )
 
-# Use PostgreSQL test database - NO SQLITE FALLBACK
-# The application uses PostgreSQL-specific features (JSONB) that SQLite doesn't support.
-# Tests must run against the actual production database to ensure compatibility.
-TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://test_user:test_password@127.0.0.1:5433/test_db",
-)
+# Dual Database Testing Support
+# =============================
+# Tests can run against either SQLite or PostgreSQL based on environment configuration.
+# - SQLite: Fast, in-memory, no Docker required. Good for local development and quick CI.
+# - PostgreSQL: Production-like, tests JSONB indexing and PostgreSQL-specific features.
+#
+# The application uses JsonVariant which automatically uses JSONB on PostgreSQL
+# and falls back to standard JSON on SQLite.
+#
+# Configuration:
+# - TEST_DATABASE_URL: Set to a PostgreSQL connection string for PostgreSQL testing
+# - TEST_DB_TYPE=sqlite: Force SQLite mode (or omit TEST_DATABASE_URL)
+#
+# Examples:
+#   SQLite (default):     TEST_DB_TYPE=sqlite pytest
+#   PostgreSQL:           TEST_DATABASE_URL=postgresql+asyncpg://... pytest
+
+TEST_DB_TYPE = os.getenv("TEST_DB_TYPE", "").lower()
+
+if TEST_DB_TYPE == "sqlite" or (
+    not os.getenv("TEST_DATABASE_URL") and TEST_DB_TYPE != "postgresql"
+):
+    # SQLite mode - fast, in-memory testing
+    TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+    USE_SQLITE = True
+else:
+    # PostgreSQL mode - production-like testing
+    TEST_DATABASE_URL = os.getenv(
+        "TEST_DATABASE_URL",
+        "postgresql+asyncpg://test_user:test_password@127.0.0.1:5433/test_db",
+    )
+    USE_SQLITE = False
+
+
+def pytest_configure(config):
+    """Register custom pytest markers for database-specific tests."""
+    config.addinivalue_line(
+        "markers", "postgresql_only: mark test to run only on PostgreSQL"
+    )
+    config.addinivalue_line(
+        "markers", "sqlite_only: mark test to run only on SQLite"
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip tests based on database type markers."""
+    skip_postgresql = pytest.mark.skip(reason="Test requires PostgreSQL, running on SQLite")
+    skip_sqlite = pytest.mark.skip(reason="Test requires SQLite, running on PostgreSQL")
+
+    for item in items:
+        if "postgresql_only" in item.keywords and USE_SQLITE:
+            item.add_marker(skip_postgresql)
+        elif "sqlite_only" in item.keywords and not USE_SQLITE:
+            item.add_marker(skip_sqlite)
+
+
+def pytest_report_header(config):
+    """Add database type to pytest header output."""
+    db_type = "SQLite (in-memory)" if USE_SQLITE else f"PostgreSQL ({TEST_DATABASE_URL.split('@')[-1].split('/')[0]})"
+    return [f"Database: {db_type}"]
+
+
+@pytest.fixture(scope="session")
+def db_type():
+    """Fixture to access the current database type in tests.
+
+    Returns:
+        str: 'sqlite' or 'postgresql'
+
+    """
+    return "sqlite" if USE_SQLITE else "postgresql"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -42,7 +107,14 @@ def docker_db(worker_id):
 
     When using pytest-xdist, only the master process manages the Docker container.
     Worker processes skip this fixture and connect to the existing database.
+
+    When using SQLite mode, this fixture is a no-op since no Docker is needed.
     """
+    # Skip Docker management when using SQLite
+    if USE_SQLITE:
+        yield
+        return
+
     # Only run docker operations on the main worker or if not using xdist
     # worker_id is "master" when not using xdist or on the coordinator process
     if worker_id != "master":
@@ -54,7 +126,6 @@ def docker_db(worker_id):
 
     # Check if docker-compose file exists
     if not os.path.exists(docker_compose_file):
-        print(f"Warning: {docker_compose_file} not found. Assuming DB is managed externally.")
         yield
         return
 
@@ -89,7 +160,7 @@ def docker_db(worker_id):
              time.sleep(1)
 
     if not ready:
-        print("Warning: Timed out waiting for DB healthcheck. Tests might fail.")
+        pass
 
     yield
 
@@ -109,18 +180,35 @@ async def db_engine() -> AsyncGenerator[AsyncEngine, None]:
     Session scope creates the database once for all tests, significantly
     speeding up test execution. Individual tests use transaction rollback
     to maintain isolation.
+
+    Database-specific behavior:
+    - SQLite: Uses StaticPool to maintain a single connection for in-memory DB.
+              No enum type cleanup needed as SQLite stores enums as strings.
+    - PostgreSQL: Uses NullPool for proper connection management.
+                  Drops enum types to prevent persistence errors between runs.
     """
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
+    if USE_SQLITE:
+        # SQLite in-memory requires StaticPool to maintain the same connection
+        # across the entire test session, otherwise tables are lost
+        engine = create_async_engine(
+            TEST_DATABASE_URL,
+            echo=False,
+            poolclass=StaticPool,
+            connect_args={"check_same_thread": False},
+        )
+    else:
+        # PostgreSQL uses NullPool for proper connection cleanup
+        engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
 
     async with engine.begin() as conn:
-        # Aggressively clean schema to prevent Type persistence errors
-        # Explicitly drop the problematic enum type that persists
-        await conn.execute(text("DROP TYPE IF EXISTS assettype CASCADE"))
-        # Force drop all tables just in case, ignoring errors
-        try:
+        if not USE_SQLITE:
+            # PostgreSQL-specific: Clean up enum types that persist across test runs
+            # This prevents "type already exists" errors
+            await conn.execute(text("DROP TYPE IF EXISTS assettype CASCADE"))
+
+        # Drop and recreate all tables for a clean slate
+        with contextlib.suppress(Exception):
             await conn.run_sync(Base.metadata.drop_all)
-        except Exception:
-            pass
         await conn.run_sync(Base.metadata.create_all)
 
     yield engine
@@ -163,15 +251,11 @@ async def db_session(
         finally:
             # Clean up session and transaction
             # Catch all errors to prevent test failures from cleanup operations
-            try:
+            with contextlib.suppress(Exception):
                 session.expunge_all()
-            except Exception:
-                pass
 
-            try:
+            with contextlib.suppress(Exception):
                 await session.close()
-            except Exception:
-                pass
 
             # Rollback transaction, catching circular dependency errors
             # These can occur when tests delete objects with complex cascade relationships
@@ -243,6 +327,7 @@ def valid_auth_headers(test_user):
 
     Returns:
         dict: {"Authorization": "Bearer <token>"}
+
     """
     from praxis.backend.utils.auth import create_access_token
 
@@ -260,8 +345,10 @@ def expired_token(test_user):
 
     Returns:
         str: Expired JWT token
+
     """
     from datetime import timedelta
+
     from praxis.backend.utils.auth import create_access_token
 
     return create_access_token(

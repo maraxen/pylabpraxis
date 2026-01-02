@@ -13,7 +13,6 @@ from praxis.backend.models.orm.resource import ResourceOrm
 
 @runtime_checkable
 class IWorkcellRuntime(Protocol):
-
   """A protocol for a workcell runtime."""
 
   async def start_workcell_state_sync(self) -> None: ...

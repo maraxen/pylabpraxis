@@ -1,7 +1,8 @@
 import contextvars
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
+import types
 
 from praxis.backend.core.run_context import PraxisRunContext
 from praxis.backend.models.pydantic_internals.protocol import (
@@ -24,8 +25,53 @@ praxis_run_context_cv: contextvars.ContextVar[PraxisRunContext] = contextvars.Co
 
 
 @dataclass
+class DataViewDefinition:
+  """Defines a data view required by a protocol for input data.
+
+  Data views allow protocols to declare what input data they need in a structured way.
+  The views can reference:
+  - PLR state data (e.g., liquid volume tracking, resource positions)
+  - Function data outputs from previous protocol runs (e.g., plate reader reads)
+
+  Attributes:
+    name: Unique identifier for this data view within the protocol.
+    description: Human-readable description of what data this view provides.
+    source_type: Type of data source - 'plr_state', 'function_output', or 'external'.
+    source_filter: Filter criteria to select specific data.
+      For 'plr_state': {"state_key": "tracker.volumes", "resource_pattern": "*plate*"}
+      For 'function_output': {"function_fqn": "...", "output_type": "absorbance"}
+    schema: Expected data schema for validation (column names, types).
+    required: Whether this data view is required for protocol execution.
+    default_value: Default value if data is not available and not required.
+
+  """
+
+  name: str
+  description: str | None = None
+  source_type: str = "function_output"  # "plr_state", "function_output", "external"
+  source_filter: dict[str, Any] | None = None
+  schema: dict[str, Any] | None = None  # Column definitions for validation
+  required: bool = False  # If True, warn (but don't block) if missing
+  default_value: Any = None
+
+
+@runtime_checkable
+class DecoratedProtocolFunc(Protocol):
+  """A protocol for a function that has been decorated for use as a Praxis protocol."""
+
+  __name__: str
+  __module__: str
+  __qualname__: str
+  __code__: types.CodeType
+  _protocol_runtime_info: "ProtocolRuntimeInfo"
+  _protocol_definition: Any
+
+  def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+
+
+@dataclass
 class CreateProtocolDefinitionData:
-  func: Callable
+  func: DecoratedProtocolFunc | Callable
   name: str | None
   version: str
   description: str | None
@@ -34,6 +80,8 @@ class CreateProtocolDefinitionData:
   preconfigure_deck: bool
   deck_param_name: str
   deck_construction: Callable | None
+  deck_layout_path: str | None  # Path to JSON deck layout configuration
+  data_views: list[DataViewDefinition] | None  # Input data view definitions
   state_param_name: str
   param_metadata: dict[str, Any]
   category: str | None
@@ -42,7 +90,6 @@ class CreateProtocolDefinitionData:
 
 
 class ProtocolRuntimeInfo:
-
   """A container for runtime information about a protocol function."""
 
   def __init__(
@@ -78,4 +125,5 @@ def get_callable_fqn(func: Callable) -> str:
       str: The fully qualified name (e.g., "module.submodule.function_name").
 
   """
-  return f"{func.__module__}.{func.__qualname__}"
+  f = cast(DecoratedProtocolFunc, func)
+  return f"{f.__module__}.{f.__qualname__}"

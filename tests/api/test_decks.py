@@ -77,8 +77,7 @@ async def test_get_multi_decks(client: AsyncClient, db_session: AsyncSession) ->
 
     # 3. ASSERT: Check the response
     if response.status_code != 200:
-        print(f"DEBUG: Response status: {response.status_code}")
-        print(f"DEBUG: Response body: {response.text}")
+        pass
     assert response.status_code == 200
     data = response.json()
     assert len(data) >= 3
@@ -99,8 +98,7 @@ async def test_update_deck(client: AsyncClient, db_session: AsyncSession) -> Non
 
     # 3. ASSERT: Check the response and database state
     if response.status_code != 200:
-        print(f"DEBUG Response status: {response.status_code}")
-        print(f"DEBUG Response body: {response.json()}")
+        pass
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == new_name

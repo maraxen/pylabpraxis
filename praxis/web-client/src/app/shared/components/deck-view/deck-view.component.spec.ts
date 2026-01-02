@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DeckViewComponent } from './deck-view.component';
 import { PlrResource } from '@core/models/plr.models';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 describe('DeckViewComponent', () => {
   let component: DeckViewComponent;
@@ -51,8 +52,8 @@ describe('DeckViewComponent', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     const children = compiled.querySelectorAll('.resource-node');
     // One for root, one for child
-    expect(children.length).toBe(2); 
-    
+    expect(children.length).toBe(2);
+
     // Check child positioning (10, 10) * 0.5 = 5px
     // Find the child element (not the root)
     const childNode = Array.from(children).find(el => (el as HTMLElement).title.includes('child1')) as HTMLElement;

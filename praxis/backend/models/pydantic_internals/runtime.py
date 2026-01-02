@@ -11,7 +11,6 @@ from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseMod
 
 
 class RuntimeAssetRequirement(PraxisBaseModel):
-
   """Represents a specific asset requirement for a *protocol run*.
 
   This wraps the static AssetRequirementModel definition with runtime details
@@ -24,6 +23,7 @@ class RuntimeAssetRequirement(PraxisBaseModel):
   estimated_duration_ms: int | None = None
   priority: int = 1
   reservation_id: uuid.UUID | None = None
+  suggested_asset_id: uuid.UUID | None = None  # Auto-assigned consumable suggestion
 
   @property
   def asset_name(self) -> str:

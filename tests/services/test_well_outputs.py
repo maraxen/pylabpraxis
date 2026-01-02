@@ -1,15 +1,21 @@
 """Tests for the well_outputs service."""
+
 import pytest
-from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.outputs import WellDataOutputOrm
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.outputs import WellDataOutputCreate, WellDataOutputUpdate
-from praxis.backend.services.well_outputs import WellDataOutputCRUDService, create_well_data_outputs, create_well_data_outputs_from_flat_array
+from praxis.backend.models.pydantic_internals.outputs import (
+    WellDataOutputCreate,
+    WellDataOutputUpdate,
+)
+from praxis.backend.services.well_outputs import (
+    WellDataOutputCRUDService,
+    create_well_data_outputs,
+    create_well_data_outputs_from_flat_array,
+)
 from tests.factories import (
     FunctionDataOutputFactory,
-    ProtocolRunFactory,
     ResourceFactory,
     WellDataOutputFactory,
 )

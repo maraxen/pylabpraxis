@@ -412,7 +412,7 @@ async def test_resource_service_get_multi_filters_extended(db_session: AsyncSess
     ))
 
     # Create another independent resource
-    other = await resource_service.create(db_session, obj_in=ResourceCreate(
+    await resource_service.create(db_session, obj_in=ResourceCreate(
         name="other_filter", fqn="resources.other_filter", asset_type=AssetType.RESOURCE,
         status=ResourceStatusEnum.IN_USE
     ))

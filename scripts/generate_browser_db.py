@@ -4,10 +4,12 @@
 This script creates a complete SQLite database file that can be loaded directly
 by the browser-mode SqliteService, containing:
 1. Schema from SQLAlchemy ORM models
-2. All PLR machine definitions (from PLR inspection)
-3. All PLR resource definitions (from PLR inspection)
-4. All PLR deck definitions (from PLR inspection)
-5. Capability schemas for each machine type
+2. All PLR machine definitions (from LibCST static analysis)
+3. All PLR resource definitions (from LibCST static analysis)
+4. All PLR deck definitions (from LibCST static analysis)
+
+Uses PLRSourceParser (LibCST-based) for static analysis without runtime imports,
+avoiding deprecation warnings and side effects.
 
 Usage:
     uv run scripts/generate_browser_db.py
@@ -19,13 +21,10 @@ Output:
 from __future__ import annotations
 
 import hashlib
-import inspect
 import json
-import re
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 from uuid import uuid4
 
 # Project paths
@@ -38,25 +37,12 @@ OUTPUT_DB_PATH = ASSETS_DB_DIR / "praxis.db"
 
 def generate_uuid_from_fqn(fqn: str) -> str:
     """Generate a deterministic UUID from a fully qualified name."""
-    # Use MD5 to generate consistent UUIDs from FQN
     hash_bytes = hashlib.md5(fqn.encode()).digest()
-    # Format as UUID (8-4-4-4-12)
     hex_str = hash_bytes.hex()
     return f"{hex_str[:8]}-{hex_str[8:12]}-{hex_str[12:16]}-{hex_str[16:20]}-{hex_str[20:32]}"
 
 
-def is_json_serializable(val: Any) -> bool:
-    """Check if a value is JSON serializable."""
-    if val is None or isinstance(val, (str, int, float, bool)):
-        return True
-    if isinstance(val, (list, tuple)):
-        return all(is_json_serializable(v) for v in val)
-    if isinstance(val, dict):
-        return all(isinstance(k, str) and is_json_serializable(v) for k, v in val.items())
-    return False
-
-
-def safe_json_dumps(obj: Any) -> str:
+def safe_json_dumps(obj: object) -> str:
     """Safely serialize an object to JSON."""
     try:
         return json.dumps(obj)
@@ -64,248 +50,305 @@ def safe_json_dumps(obj: Any) -> str:
         return "{}"
 
 
-def extract_category(fqn: str, klass: type) -> str:
-    """Determine the PLR category from class hierarchy."""
-    from pylabrobot.machines.machine import Machine
-    from pylabrobot.resources import Carrier, Deck, Plate, TipRack, Trough
-
-    if issubclass(klass, TipRack):
-        return "TipRack"
-    if issubclass(klass, Plate):
-        return "Plate"
-    if issubclass(klass, Trough):
-        return "Trough"
-    if issubclass(klass, Carrier):
-        return "Carrier"
-    if issubclass(klass, Deck):
-        return "Deck"
-    if issubclass(klass, Machine):
-        return "Machine"
-    return "Resource"
-
-
-def extract_vendor(fqn: str) -> str | None:
-    """Extract vendor name from FQN."""
-    match = re.search(r"pylabrobot\.resources\.(\w+)\.", fqn)
-    if match:
-        vendor = match.group(1)
-        if vendor not in {"carrier", "plate", "tip_rack", "trough", "resource", "deck"}:
-            return vendor.replace("_", " ").title()
-    return None
-
-
-def extract_properties(klass: type) -> dict[str, Any]:
-    """Extract key properties from class definition."""
-    from praxis.backend.utils.plr_inspection import get_constructor_params_with_defaults
-
-    props = {}
-
-    for attr in ["num_items", "size_x", "size_y", "size_z", "well_volume"]:
-        try:
-            class_attr = getattr(type(klass), attr, None)
-            if isinstance(class_attr, property):
-                continue
-            val = getattr(klass, attr, None)
-            if val is not None and not callable(val) and is_json_serializable(val):
-                props[attr] = val
-        except Exception:
-            continue
-
-    try:
-        ctor_params = get_constructor_params_with_defaults(klass)
-        for name, default in ctor_params.items():
-            if default is not inspect.Parameter.empty and default is not None:
-                if is_json_serializable(default):
-                    props[name] = default
-    except Exception:
-        pass
-
-    return props
-
-
-def extract_dimensions(klass: type) -> dict[str, float | None]:
-    """Extract dimension information from a class."""
-    dims = {"size_x_mm": None, "size_y_mm": None, "size_z_mm": None}
-
-    for attr, key in [("size_x", "size_x_mm"), ("size_y", "size_y_mm"), ("size_z", "size_z_mm")]:
-        try:
-            val = getattr(klass, attr, None)
-            if val is not None and isinstance(val, (int, float)):
-                dims[key] = float(val)
-        except Exception:
-            pass
-
-    return dims
-
-
-def discover_resources(conn: sqlite3.Connection) -> int:
-    """Discover and insert all PLR resource definitions."""
-    from praxis.backend.utils.plr_inspection import (
-        get_all_carrier_classes,
-        get_class_fqn,
-        get_deck_classes,
-        get_resource_classes,
+def discover_resources_static(conn: sqlite3.Connection) -> int:
+    """Discover and insert all PLR resource definitions using static analysis."""
+    from praxis.backend.utils.plr_static_analysis import (
+        PLRSourceParser,
+        find_plr_source_root,
     )
 
-    resources = get_resource_classes(concrete_only=True)
-    carriers = get_all_carrier_classes(concrete_only=True)
-    decks = get_deck_classes(concrete_only=True)
+    parser = PLRSourceParser(find_plr_source_root())
 
-    all_classes = {**resources, **carriers, **decks}
+    # Get class-based resources
+    class_resources = parser.discover_resource_classes()
+
+    # Get factory function-based resources
+    factory_resources = parser.discover_resource_factories()
+
+    # Combine and deduplicate by FQN
+    all_resources = {r.fqn: r for r in class_resources}
+    for r in factory_resources:
+        if r.fqn not in all_resources:
+            all_resources[r.fqn] = r
+
 
     now = datetime.now().isoformat()
     count = 0
 
-    for fqn, klass in all_classes.items():
+    for res in all_resources.values():
         try:
-            category = extract_category(fqn, klass)
-            vendor = extract_vendor(fqn)
-            props = extract_properties(klass)
-            dims = extract_dimensions(klass)
+            accession_id = generate_uuid_from_fqn(res.fqn)
 
-            accession_id = generate_uuid_from_fqn(fqn)
+            # Determine category
+            category = res.category or res.class_type.value
 
-            # Insert into resource_definition_catalog
+            # Extract capabilities as properties
+            props = {}
+            if res.capabilities:
+                if res.capabilities.channels:
+                    props["channels"] = res.capabilities.channels
+                if res.capabilities.modules:
+                    props["modules"] = res.capabilities.modules
+
             conn.execute(
                 """
                 INSERT OR REPLACE INTO resource_definition_catalog (
                     accession_id, fqn, name, description, plr_category,
-                    is_consumable, vendor,
-                    size_x_mm, size_y_mm, size_z_mm,
+                    is_consumable, vendor, manufacturer,
                     properties_json, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    accession_id,
-                    fqn,
-                    klass.__name__,
-                    inspect.getdoc(klass) or "",
-                    category,
-                    category in ["TipRack", "Plate"],
-                    vendor,
-                    dims["size_x_mm"],
-                    dims["size_y_mm"],
-                    dims["size_z_mm"],
-                    safe_json_dumps(props),
-                    now,
-                    now,
-                ),
-            )
-            count += 1
-        except Exception as e:
-            print(f"  Warning: Could not process resource {fqn}: {e}")
-
-    conn.commit()
-    return count
-
-
-def discover_machines(conn: sqlite3.Connection) -> int:
-    """Discover and insert all PLR machine definitions."""
-    from praxis.backend.utils.plr_inspection import get_class_fqn, get_machine_classes
-
-    machines = get_machine_classes(concrete_only=True)
-
-    now = datetime.now().isoformat()
-    count = 0
-
-    for fqn, klass in machines.items():
-        try:
-            props = extract_properties(klass)
-            dims = extract_dimensions(klass)
-            has_deck = hasattr(klass, "deck") or "deck" in str(inspect.signature(klass.__init__))
-
-            accession_id = generate_uuid_from_fqn(f"machine:{fqn}")
-
-            # Determine machine category
-            category = "Unknown"
-            lower_name = klass.__name__.lower()
-            if "liquidhandler" in lower_name or "star" in lower_name or "ot2" in lower_name:
-                category = "LiquidHandler"
-            elif "reader" in lower_name:
-                category = "PlateReader"
-            elif "shaker" in lower_name:
-                category = "Shaker"
-            elif "centrifuge" in lower_name:
-                category = "Centrifuge"
-            elif "incubator" in lower_name:
-                category = "Incubator"
-
-            # Insert into machine_definition_catalog
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO machine_definition_catalog (
-                    accession_id, fqn, name, description, plr_category,
-                    machine_category, has_deck,
-                    size_x_mm, size_y_mm, size_z_mm,
-                    properties_json, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    accession_id,
-                    fqn,
-                    klass.__name__,
-                    inspect.getdoc(klass) or "",
-                    "Machine",
-                    category,
-                    1 if has_deck else 0,
-                    dims["size_x_mm"],
-                    dims["size_y_mm"],
-                    dims["size_z_mm"],
-                    safe_json_dumps(props),
-                    now,
-                    now,
-                ),
-            )
-            count += 1
-        except Exception as e:
-            print(f"  Warning: Could not process machine {fqn}: {e}")
-
-    conn.commit()
-    return count
-
-
-def discover_decks(conn: sqlite3.Connection) -> int:
-    """Discover and insert all PLR deck definitions."""
-    from praxis.backend.utils.plr_inspection import get_class_fqn, get_deck_classes
-
-    decks = get_deck_classes(concrete_only=True)
-
-    now = datetime.now().isoformat()
-    count = 0
-
-    for fqn, klass in decks.items():
-        try:
-            props = extract_properties(klass)
-            dims = extract_dimensions(klass)
-
-            accession_id = generate_uuid_from_fqn(f"deck:{fqn}")
-
-            # Insert into deck_definition_catalog
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO deck_definition_catalog (
-                    accession_id, fqn, name, description, plr_category,
-                    default_size_x_mm, default_size_y_mm, default_size_z_mm,
-                    additional_properties_json, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     accession_id,
-                    fqn,
-                    klass.__name__,
-                    inspect.getdoc(klass) or "",
-                    "Deck",
-                    dims["size_x_mm"],
-                    dims["size_y_mm"],
-                    dims["size_z_mm"],
+                    res.fqn,
+                    res.name,
+                    res.docstring or "",
+                    category,
+                    category in ["TipRack", "Plate", "Trough"],
+                    res.vendor,
+                    res.manufacturer,
                     safe_json_dumps(props),
                     now,
                     now,
                 ),
             )
             count += 1
-        except Exception as e:
-            print(f"  Warning: Could not process deck {fqn}: {e}")
+        except Exception:
+            pass
+
+    conn.commit()
+    return count
+
+
+def discover_machines_static(conn: sqlite3.Connection) -> int:
+    """Discover and insert all PLR machine definitions using static analysis."""
+    from praxis.backend.utils.plr_static_analysis import (
+        MACHINE_FRONTEND_TYPES,
+        PLRClassType,
+        PLRSourceParser,
+        find_plr_source_root,
+    )
+
+    parser = PLRSourceParser(find_plr_source_root())
+    machines = parser.discover_machine_classes()
+
+    now = datetime.now().isoformat()
+    count = 0
+
+    # Filter to frontend types only (exclude backends for the definition catalog)
+    frontend_machines = [m for m in machines if m.class_type in MACHINE_FRONTEND_TYPES]
+
+    for machine in frontend_machines:
+        try:
+            from praxis.backend.models.pydantic_internals.maintenance import MAINTENANCE_DEFAULTS
+
+            accession_id = generate_uuid_from_fqn(f"machine:{machine.fqn}")
+
+            # Determine machine category from class type
+            category_map = {
+                PLRClassType.LIQUID_HANDLER: "LiquidHandler",
+                PLRClassType.PLATE_READER: "PlateReader",
+                PLRClassType.HEATER_SHAKER: "HeaterShaker",
+                PLRClassType.SHAKER: "Shaker",
+                PLRClassType.TEMPERATURE_CONTROLLER: "TemperatureController",
+                PLRClassType.CENTRIFUGE: "Centrifuge",
+                PLRClassType.THERMOCYCLER: "Thermocycler",
+                PLRClassType.PUMP: "Pump",
+                PLRClassType.PUMP_ARRAY: "PumpArray",
+                PLRClassType.FAN: "Fan",
+                PLRClassType.SEALER: "Sealer",
+                PLRClassType.PEELER: "Peeler",
+                PLRClassType.POWDER_DISPENSER: "PowderDispenser",
+                PLRClassType.INCUBATOR: "Incubator",
+                PLRClassType.SCARA: "Arm",
+            }
+            category = category_map.get(machine.class_type, "Unknown")
+            
+            # Get default maintenance schedule
+            maintenance_schedule = MAINTENANCE_DEFAULTS.get(category, MAINTENANCE_DEFAULTS["DEFAULT"]).model_dump()
+
+
+            # Check if has deck (liquid handlers typically have decks)
+            has_deck = machine.class_type == PLRClassType.LIQUID_HANDLER
+
+            # Get capabilities dict
+            caps_dict = machine.to_capabilities_dict() if hasattr(machine, "to_capabilities_dict") else {}
+
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO machine_definition_catalog (
+                    accession_id, fqn, name, description, plr_category,
+                    machine_category, has_deck, manufacturer,
+                    capabilities, compatible_backends, properties_json, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    accession_id,
+                    machine.fqn,
+                    machine.name,
+                    machine.docstring or "",
+                    "Machine",
+                    category,
+                    1 if has_deck else 0,
+                    machine.manufacturer,
+                    safe_json_dumps(caps_dict),
+                    safe_json_dumps(machine.compatible_backends),
+                    safe_json_dumps({}),
+                    now,
+                    now,
+                ),
+            )
+            
+            # Seed a sample instance for this definition to demo maintenance
+            instance_id = generate_uuid_from_fqn(f"instance:{machine.fqn}")
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO machines (
+                    accession_id, name, status, machine_definition_accession_id, 
+                    created_at, updated_at, maintenance_enabled, maintenance_schedule_json, 
+                    location_label
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    instance_id,
+                    f"Demo {machine.name}",
+                    "available",
+                    accession_id,
+                    now,
+                    now,
+                    1,
+                    safe_json_dumps(maintenance_schedule),
+                    "Main Lab, Bench 1"
+                )
+            )
+
+            count += 1
+        except Exception:
+            pass
+
+    conn.commit()
+    return count
+
+
+def discover_decks_static(conn: sqlite3.Connection) -> int:
+    """Discover and insert all PLR deck definitions using static analysis."""
+    from praxis.backend.utils.plr_static_analysis import (
+        PLRClassType,
+        PLRSourceParser,
+        find_plr_source_root,
+    )
+
+    parser = PLRSourceParser(find_plr_source_root())
+    all_resources = parser.discover_resource_classes()
+
+    # Filter to deck classes only
+    decks = [r for r in all_resources if r.class_type == PLRClassType.DECK]
+
+    now = datetime.now().isoformat()
+    count = 0
+
+    for deck in decks:
+        try:
+            accession_id = generate_uuid_from_fqn(f"deck:{deck.fqn}")
+
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO deck_definition_catalog (
+                    accession_id, fqn, name, description, plr_category,
+                    additional_properties_json, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    accession_id,
+                    deck.fqn,
+                    deck.name,
+                    deck.docstring or "",
+                    "Deck",
+                    safe_json_dumps({"manufacturer": deck.manufacturer, "vendor": deck.vendor}),
+                    now,
+                    now,
+                ),
+            )
+            count += 1
+        except Exception:
+            pass
+
+    conn.commit()
+    return count
+
+
+def discover_backends_static(conn: sqlite3.Connection) -> int:
+    """Discover and insert all PLR backend definitions using static analysis."""
+    from praxis.backend.utils.plr_static_analysis import (
+        MACHINE_BACKEND_TYPES,
+        PLRClassType,
+        PLRSourceParser,
+        find_plr_source_root,
+    )
+
+    parser = PLRSourceParser(find_plr_source_root())
+    machines = parser.discover_machine_classes()
+
+    # Filter to backend types only
+    backends = [m for m in machines if m.class_type in MACHINE_BACKEND_TYPES]
+
+    now = datetime.now().isoformat()
+    count = 0
+
+    # Map backend types to frontend category names
+    backend_category_map = {
+        PLRClassType.LH_BACKEND: "LiquidHandlerBackend",
+        PLRClassType.PR_BACKEND: "PlateReaderBackend",
+        PLRClassType.HS_BACKEND: "HeaterShakerBackend",
+        PLRClassType.SHAKER_BACKEND: "ShakerBackend",
+        PLRClassType.TEMP_BACKEND: "TemperatureControllerBackend",
+        PLRClassType.CENTRIFUGE_BACKEND: "CentrifugeBackend",
+        PLRClassType.THERMOCYCLER_BACKEND: "ThermocyclerBackend",
+        PLRClassType.PUMP_BACKEND: "PumpBackend",
+        PLRClassType.PUMP_ARRAY_BACKEND: "PumpArrayBackend",
+        PLRClassType.FAN_BACKEND: "FanBackend",
+        PLRClassType.SEALER_BACKEND: "SealerBackend",
+        PLRClassType.PEELER_BACKEND: "PeelerBackend",
+        PLRClassType.POWDER_DISPENSER_BACKEND: "PowderDispenserBackend",
+        PLRClassType.INCUBATOR_BACKEND: "IncubatorBackend",
+        PLRClassType.SCARA_BACKEND: "ScaraBackend",
+    }
+
+    for backend in backends:
+        try:
+            accession_id = generate_uuid_from_fqn(f"backend:{backend.fqn}")
+            category = backend_category_map.get(backend.class_type, "UnknownBackend")
+
+            # Get capabilities dict
+            caps_dict = backend.to_capabilities_dict() if hasattr(backend, "to_capabilities_dict") else {}
+
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO machine_definition_catalog (
+                    accession_id, fqn, name, description, plr_category,
+                    machine_category, has_deck, manufacturer,
+                    capabilities, compatible_backends, properties_json, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    accession_id,
+                    backend.fqn,
+                    backend.name,
+                    backend.docstring or "",
+                    "Backend",
+                    category,
+                    0,  # backends don't have decks
+                    backend.manufacturer,
+                    safe_json_dumps(caps_dict),
+                    safe_json_dumps([]),  # backends don't have compatible_backends
+                    safe_json_dumps({}),
+                    now,
+                    now,
+                ),
+            )
+            count += 1
+        except Exception:
+            pass
 
     conn.commit()
     return count
@@ -325,7 +368,7 @@ def insert_metadata(conn: sqlite3.Connection) -> None:
     )
     conn.execute(
         "INSERT OR REPLACE INTO _schema_metadata (key, value) VALUES (?, ?)",
-        ("generator", "generate_browser_db.py"),
+        ("generator", "generate_browser_db.py (LibCST static analysis)"),
     )
     conn.commit()
 
@@ -354,53 +397,39 @@ def add_sample_workcell(conn: sqlite3.Connection) -> None:
         ),
     )
     conn.commit()
-    print(f"  Added sample workcell: Demo Workcell")
 
 
 def main() -> None:
     """Main entry point for database generation."""
-    print("Generating browser database with PLR definitions...")
-
     # Ensure output directory exists
     ASSETS_DB_DIR.mkdir(parents=True, exist_ok=True)
 
     # Check for schema file
     if not SCHEMA_SQL_PATH.exists():
-        print(f"Schema file not found at {SCHEMA_SQL_PATH}")
-        print("Run 'uv run scripts/generate_browser_schema.py' first")
         return
 
     # Remove existing database
     if OUTPUT_DB_PATH.exists():
         OUTPUT_DB_PATH.unlink()
-        print(f"Removed existing database at {OUTPUT_DB_PATH}")
 
     # Create new database
-    print(f"Creating database at {OUTPUT_DB_PATH}")
     conn = sqlite3.connect(OUTPUT_DB_PATH)
 
     try:
         # Load and execute schema
-        print("Loading schema from schema.sql...")
         schema = SCHEMA_SQL_PATH.read_text()
         conn.executescript(schema)
-        print("  Schema applied successfully")
 
-        # Discover and insert PLR definitions
-        print("\nDiscovering PLR resource definitions...")
-        resource_count = discover_resources(conn)
-        print(f"  Inserted {resource_count} resource definitions")
+        # Discover and insert PLR definitions using static analysis
+        discover_resources_static(conn)
 
-        print("\nDiscovering PLR machine definitions...")
-        machine_count = discover_machines(conn)
-        print(f"  Inserted {machine_count} machine definitions")
+        discover_machines_static(conn)
 
-        print("\nDiscovering PLR deck definitions...")
-        deck_count = discover_decks(conn)
-        print(f"  Inserted {deck_count} deck definitions")
+        discover_decks_static(conn)
+
+        discover_backends_static(conn)
 
         # Add sample workcell
-        print("\nAdding sample data...")
         add_sample_workcell(conn)
 
         # Update metadata
@@ -408,20 +437,10 @@ def main() -> None:
 
         # Get database size
         conn.commit()
-        db_size = OUTPUT_DB_PATH.stat().st_size
+        OUTPUT_DB_PATH.stat().st_size
 
-        print(f"\n{'=' * 50}")
-        print("Database generation complete!")
-        print(f"{'=' * 50}")
-        print(f"Output: {OUTPUT_DB_PATH}")
-        print(f"Size: {db_size / 1024:.1f} KB")
-        print(f"\nContents:")
-        print(f"  - Resource definitions: {resource_count}")
-        print(f"  - Machine definitions: {machine_count}")
-        print(f"  - Deck definitions: {deck_count}")
 
         # Show table statistics
-        print("\nTable row counts:")
         cursor = conn.execute(
             """
             SELECT name FROM sqlite_master
@@ -433,15 +452,13 @@ def main() -> None:
             count_cursor = conn.execute(f"SELECT COUNT(*) FROM {table_name}")
             count = count_cursor.fetchone()[0]
             if count > 0:
-                print(f"  {table_name}: {count} rows")
+                pass
 
-    except Exception as e:
-        print(f"Error generating database: {e}")
+    except Exception:
         raise
     finally:
         conn.close()
 
-    print("\nDone!")
 
 
 if __name__ == "__main__":

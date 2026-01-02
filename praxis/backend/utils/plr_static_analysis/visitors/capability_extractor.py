@@ -51,7 +51,7 @@ class CapabilityExtractorVisitor(cst.CSTVisitor):
     # Type-specific capability signals
     self._signals: dict[str, Any] = {}
 
-  def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
+  def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:  # noqa: N802
     """Visit function definitions to extract capabilities.
 
     Args:
@@ -83,7 +83,7 @@ class CapabilityExtractorVisitor(cst.CSTVisitor):
 
     return True
 
-  def leave_FunctionDef(self, node: cst.FunctionDef) -> None:
+  def leave_FunctionDef(self, node: cst.FunctionDef) -> None:  # noqa: N802
     """Leave function definition.
 
     Args:
@@ -93,7 +93,7 @@ class CapabilityExtractorVisitor(cst.CSTVisitor):
     if node.name.value == "__init__":
       self._in_init = False
 
-  def visit_Assign(self, node: cst.Assign) -> bool:
+  def visit_Assign(self, node: cst.Assign) -> bool:  # noqa: N802
     """Detect instance attribute assignments for capability detection.
 
     Args:
@@ -113,7 +113,7 @@ class CapabilityExtractorVisitor(cst.CSTVisitor):
             self._detect_capability_from_attribute(attr_name, attr_value)
     return True
 
-  def visit_AnnAssign(self, node: cst.AnnAssign) -> bool:
+  def visit_AnnAssign(self, node: cst.AnnAssign) -> bool:  # noqa: N802
     """Detect annotated assignments for capability detection.
 
     Args:
@@ -144,7 +144,8 @@ class CapabilityExtractorVisitor(cst.CSTVisitor):
     if node is None:
       return None
     if isinstance(node, cst.Integer):
-      return int(node.value)
+      # Use base=0 to auto-detect hex (0x), octal (0o), binary (0b) prefixes
+      return int(node.value, 0)
     if isinstance(node, cst.Float):
       return float(node.value)
     if isinstance(node, (cst.SimpleString, cst.FormattedString, cst.ConcatenatedString)):
@@ -275,17 +276,18 @@ class CapabilityExtractorVisitor(cst.CSTVisitor):
       if 96 not in self.capabilities.channels:
         self.capabilities.channels.append(96)
 
-    if "384" in func_name:
-      if 384 not in self.capabilities.channels:
-        self.capabilities.channels.append(384)
+    if "384" in func_name and 384 not in self.capabilities.channels:
+      self.capabilities.channels.append(384)
 
-    if "pick_up_tips96" in func_lower or "drop_tips96" in func_lower:
-      if 96 not in self.capabilities.channels:
-        self.capabilities.channels.append(96)
+    if (
+      "pick_up_tips96" in func_lower or "drop_tips96" in func_lower
+    ) and 96 not in self.capabilities.channels:
+      self.capabilities.channels.append(96)
 
-    if "pick_up_tips384" in func_lower or "drop_tips384" in func_lower:
-      if 384 not in self.capabilities.channels:
-        self.capabilities.channels.append(384)
+    if (
+      "pick_up_tips384" in func_lower or "drop_tips384" in func_lower
+    ) and 384 not in self.capabilities.channels:
+      self.capabilities.channels.append(384)
 
     if "hepa" in func_lower:
       self._found_modules.add("hepa")
@@ -322,9 +324,7 @@ class CapabilityExtractorVisitor(cst.CSTVisitor):
     if "set_speed" in func_lower or "variable_speed" in func_lower:
       self._signals["variable_speed"] = True
 
-  def _detect_capability_from_attribute(
-    self, attr_name: str, attr_value: Any = None
-  ) -> None:
+  def _detect_capability_from_attribute(self, attr_name: str, attr_value: Any = None) -> None:
     """Detect capabilities from instance attributes.
 
     Args:
@@ -339,11 +339,7 @@ class CapabilityExtractorVisitor(cst.CSTVisitor):
       self._found_modules.add("swap")
       self.capabilities.has_iswap = True
 
-    if (
-      attr_name == "core96_head_installed"
-      or "core96" in attr_lower
-      or "core_96" in attr_lower
-    ):
+    if attr_name == "core96_head_installed" or "core96" in attr_lower or "core_96" in attr_lower:
       self.capabilities.has_core96 = True
       if 96 not in self.capabilities.channels:
         self.capabilities.channels.append(96)
@@ -376,9 +372,11 @@ class CapabilityExtractorVisitor(cst.CSTVisitor):
     self.capabilities.modules = list(self._found_modules)
 
     # If we found num_channels default, add it
-    if self.num_channels_default is not None:
-      if self.num_channels_default not in self.capabilities.channels:
-        self.capabilities.channels.append(self.num_channels_default)
+    if (
+      self.num_channels_default is not None
+      and self.num_channels_default not in self.capabilities.channels
+    ):
+      self.capabilities.channels.append(self.num_channels_default)
 
     return self.capabilities
 
@@ -517,11 +515,11 @@ class CapabilityExtractorVisitor(cst.CSTVisitor):
         field.default_value = self._signals[field.field_name]
 
       # Special handling for liquid handler capabilities
-      if field.field_name == "has_iswap" and self.capabilities.has_iswap:
-        field.default_value = True
-      elif field.field_name == "has_core96" and self.capabilities.has_core96:
-        field.default_value = True
-      elif field.field_name == "has_hepa" and "hepa" in self._found_modules:
+      if (
+        (field.field_name == "has_iswap" and self.capabilities.has_iswap)
+        or (field.field_name == "has_core96" and self.capabilities.has_core96)
+        or (field.field_name == "has_hepa" and "hepa" in self._found_modules)
+      ):
         field.default_value = True
       elif field.field_name == "num_channels" and self.capabilities.channels:
         # Use the primary channel count

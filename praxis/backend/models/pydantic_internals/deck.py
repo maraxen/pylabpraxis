@@ -26,7 +26,6 @@ from .resource import (
 
 
 class DeckBase(ResourceCommon):
-
   """Base model for a deck."""
 
   machine_id: UUID7 | None = None
@@ -34,7 +33,6 @@ class DeckBase(ResourceCommon):
 
 
 class DeckCreate(DeckBase):
-
   """Model for creating a new deck."""
 
   resource_definition_accession_id: UUID7
@@ -50,9 +48,7 @@ class DeckCreate(DeckBase):
   )
 
 
-
 class DeckUpdate(ResourceUpdate):
-
   """Model for updating a deck."""
 
 
@@ -70,9 +66,7 @@ DeckUpdate.model_rebuild()
 DeckResponse.model_rebuild()
 
 
-
 class PositioningConfig(BaseModel):
-
   """Configuration for how positions are calculated/managed for this deck type.
 
   A general configuration for methods that follow the pattern:
@@ -100,7 +94,6 @@ class PositioningConfig(BaseModel):
 
 
 class DeckPositionDefinitionBase(BaseModel):
-
   """Define the base properties for a deck position definition.
 
   This model specifies the characteristics of a specific position or "position"
@@ -114,7 +107,6 @@ class DeckPositionDefinitionBase(BaseModel):
 
 
 class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
-
   """Model for creating a new deck position definition."""
 
   pylabrobot_position_type_name: str | None = Field(
@@ -146,14 +138,12 @@ class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
 
 
 class DeckPositionDefinitionResponse(DeckPositionDefinitionBase, PraxisBaseModel):
-
   """Model for API responses for a deck position definition."""
 
   deck_type_accession_id: UUID7
 
 
 class DeckTypeDefinitionCreate(PLRTypeDefinitionCreate):
-
   """Model for creating a new deck type definition."""
 
   name: str
@@ -162,7 +152,6 @@ class DeckTypeDefinitionCreate(PLRTypeDefinitionCreate):
 
 
 class DeckTypeDefinitionResponse(PLRTypeDefinitionResponse):
-
   """Model for API responses for a deck type definition."""
 
   positioning_config: PositioningConfig | None = None
@@ -170,7 +159,6 @@ class DeckTypeDefinitionResponse(PLRTypeDefinitionResponse):
 
 
 class DeckTypeDefinitionUpdate(PLRTypeDefinitionUpdate):
-
   """Model for updating a deck type definition."""
 
   description: str | None = None

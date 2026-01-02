@@ -20,7 +20,6 @@ from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseMod
 
 
 class FunctionDataOutputBase(PraxisBaseModel):
-
   """Base fields for function data outputs."""
 
   data_type: DataOutputTypeEnum = Field(..., description="Type of data output")
@@ -142,7 +141,6 @@ class FunctionDataOutputCreate(FunctionDataOutputBase):
 
 
 class FunctionDataOutputUpdate(BaseModel):
-
   """Model for updating function data outputs."""
 
   data_quality_score: float | None = Field(
@@ -164,7 +162,6 @@ class FunctionDataOutputUpdate(BaseModel):
 
 
 class FunctionDataOutputResponse(FunctionDataOutputBase):
-
   """Model for function data output responses."""
 
   function_call_log_accession_id: UUID7 = Field(
@@ -211,7 +208,6 @@ class FunctionDataOutputResponse(FunctionDataOutputBase):
 
 
 class WellDataOutputBase(PraxisBaseModel):
-
   """Base fields for well-specific data outputs."""
 
   well_name: str = Field(..., max_length=10, description="Well name (e.g., 'A1')")
@@ -234,7 +230,6 @@ class WellDataOutputBase(PraxisBaseModel):
 
 
 class WellDataOutputCreate(WellDataOutputBase):
-
   """Model for creating well data outputs."""
 
   function_data_output_accession_id: UUID7 = Field(
@@ -249,7 +244,6 @@ class WellDataOutputCreate(WellDataOutputBase):
 
 
 class WellDataOutputResponse(WellDataOutputBase):
-
   """Model for well data output responses."""
 
   function_data_output_accession_id: UUID7 = Field(
@@ -264,7 +258,6 @@ class WellDataOutputResponse(WellDataOutputBase):
 
 
 class WellDataOutputUpdate(BaseModel):
-
   """Model for updating well data outputs."""
 
   data_value: float | None = Field(None, description="Updated data value")
@@ -276,7 +269,6 @@ class WellDataOutputUpdate(BaseModel):
 
 
 class PlateDataVisualization(PraxisBaseModel):
-
   """Model for plate-based data visualization."""
 
   plate_resource_accession_id: UUID7 = Field(
@@ -315,7 +307,6 @@ class PlateDataVisualization(PraxisBaseModel):
 
 
 class ProtocolRunDataSummary(PraxisBaseModel):
-
   """Model for summarizing all data from a protocol run."""
 
   protocol_run_accession_id: UUID7 = Field(..., description="ID of the protocol run")
@@ -352,7 +343,6 @@ class ProtocolRunDataSummary(PraxisBaseModel):
 
 
 class DataExportRequest(PraxisBaseModel):
-
   """Model for requesting data export."""
 
   filters: SearchFilters = Field(..., description="Filters for data selection")
@@ -373,7 +363,6 @@ class DataExportRequest(PraxisBaseModel):
 
 
 class FunctionDataOutputFilters(PraxisBaseModel):
-
   """Model for filtering function data outputs."""
 
   search_filters: SearchFilters = Field(..., description="Search filters for data selection")
@@ -393,7 +382,6 @@ class FunctionDataOutputFilters(PraxisBaseModel):
 
 
 class WellDataOutputFilters(PraxisBaseModel):
-
   """Model for filtering well data outputs."""
 
   plate_resource_id: UUID | None = Field(None)

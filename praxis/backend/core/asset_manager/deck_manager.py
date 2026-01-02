@@ -31,7 +31,6 @@ logger = get_logger(__name__)
 
 
 class DeckManagerMixin:
-
   """Mixin for managing deck application and validation."""
 
   # Type hinting for dependencies expected on the main class

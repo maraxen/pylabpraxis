@@ -1,19 +1,49 @@
 """Mock data generator service for simulating telemetry data."""
 
 import asyncio
-import logging
 import random
 import uuid
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from praxis.backend.utils.logging import get_logger
 from praxis.backend.models import ProtocolRunStatusEnum
 from praxis.backend.utils.db import AsyncSessionLocal
+from praxis.backend.utils.logging import get_logger
 
 if TYPE_CHECKING:
-    from praxis.backend.services.protocols import ProtocolRunService
+  from praxis.backend.services.protocols import ProtocolRunService
 
 logger = get_logger(__name__)
+
+
+def tips_to_hex(tips: list[bool]) -> str:
+  """Convert a list of booleans to a hex bitmask string.
+
+  Example: [True, True, False, True] -> "b" (binary 1011 = 0xb)
+  """
+  value = 0
+  for i, has_tip in enumerate(tips):
+    if has_tip:
+      value |= 1 << i
+  return hex(value)
+
+
+def wells_to_compressed(volumes: list[float], threshold: float = 0.1) -> dict[str, Any]:
+  """Compress well volumes to a bitmask + sparse volume array.
+
+  Returns a dict with:
+    - liquid_mask: hex string of which wells have liquid
+    - volumes: list of volumes for wells that have liquid (in order)
+  """
+  mask = 0
+  sparse_volumes: list[float] = []
+  for i, vol in enumerate(volumes):
+    if vol > threshold:
+      mask |= 1 << i
+      sparse_volumes.append(round(vol, 2))
+  return {
+    "liquid_mask": hex(mask),
+    "volumes": sparse_volumes,
+  }
 
 
 class MockTelemetryService:
@@ -23,6 +53,7 @@ class MockTelemetryService:
     """Initialize the mock telemetry service."""
     self._active_streams: dict[uuid.UUID, asyncio.Task] = {}
     self._current_telemetry: dict[uuid.UUID, dict[str, Any]] = {}
+    self._well_states: dict[uuid.UUID, dict[str, Any]] = {}
     self.protocol_run_service = protocol_run_service
     logger.info("MockTelemetryService initialized.")
 
@@ -43,38 +74,51 @@ class MockTelemetryService:
       logger.info("Stopping mock telemetry stream for run %s", run_id)
       self._active_streams[run_id].cancel()
       del self._active_streams[run_id]
-    
+
     if run_id in self._current_telemetry:
-        del self._current_telemetry[run_id]
+      del self._current_telemetry[run_id]
+    if run_id in self._well_states:
+      del self._well_states[run_id]
 
   def get_latest_data(self, run_id: uuid.UUID) -> dict[str, Any] | None:
     """Get the latest telemetry data for a run."""
     return self._current_telemetry.get(run_id)
 
+  def get_well_state_update(self, run_id: uuid.UUID) -> dict[str, Any] | None:
+    """Get the latest well state update for a run (compressed format)."""
+    return self._well_states.get(run_id)
+
   async def _generate_data_loop(self, run_id: uuid.UUID) -> None:
     """Background loop to generate random data."""
     iteration = 0
+    # Initialize mock tip rack state (96 tips, all present initially)
+    tip_states = [True] * 96
+    # Initialize mock plate volumes (96 wells, initially empty)
+    well_volumes = [0.0] * 96
+
     try:
       while True:
         # Check status every 10 iterations (5 seconds)
         if iteration % 10 == 0 and self.protocol_run_service:
-             try:
-                async with AsyncSessionLocal() as db_session:
-                    run = await self.protocol_run_service.get(db_session, accession_id=run_id)
-                    if run and run.status in [
-                        ProtocolRunStatusEnum.COMPLETED,
-                        ProtocolRunStatusEnum.FAILED,
-                        ProtocolRunStatusEnum.CANCELLED
-                    ]:
-                        logger.info("Run %s finished (status: %s), stopping telemetry.", run_id, run.status.name)
-                        break # Exit loop
-             except Exception as e:
-                logger.warning("Error checking run status for %s: %s", run_id, e)
+          try:
+            async with AsyncSessionLocal() as db_session:
+              run = await self.protocol_run_service.get(db_session, accession_id=run_id)
+              if run and run.status in [
+                ProtocolRunStatusEnum.COMPLETED,
+                ProtocolRunStatusEnum.FAILED,
+                ProtocolRunStatusEnum.CANCELLED,
+              ]:
+                logger.info(
+                  "Run %s finished (status: %s), stopping telemetry.", run_id, run.status.name
+                )
+                break  # Exit loop
+          except Exception as e:
+            logger.warning("Error checking run status for %s: %s", run_id, e)
 
         # Generate random data
         # Temperature: 20-40°C with some noise
         temp = 20.0 + (random.random() * 20.0)
-        
+
         # Absorbance: 0-4.0 OD
         absorbance = random.random() * 4.0
 
@@ -85,18 +129,38 @@ class MockTelemetryService:
         }
 
         self._current_telemetry[run_id] = data
-        
+
+        # Simulate tip picking and liquid dispensing (every 5 iterations)
+        if iteration % 5 == 0 and iteration > 0:
+          # Randomly pick a tip (mark as absent)
+          available_tips = [i for i, t in enumerate(tip_states) if t]
+          if available_tips:
+            tip_idx = random.choice(available_tips)
+            tip_states[tip_idx] = False
+
+          # Randomly dispense into a well
+          well_idx = random.randint(0, 95)
+          well_volumes[well_idx] = min(well_volumes[well_idx] + random.uniform(10, 50), 300)
+
+          # Create compressed well state update
+          self._well_states[run_id] = {
+            "plate_1": wells_to_compressed(well_volumes),
+            "tip_rack_1": {"tip_mask": tips_to_hex(tip_states)},
+          }
+
         # Update frequency (e.g., every 0.5 seconds)
         await asyncio.sleep(0.5)
         iteration += 1
 
     except asyncio.CancelledError:
       logger.debug("Telemetry loop cancelled for run %s", run_id)
-    except Exception as e:
+    except Exception:
       logger.exception("Error in telemetry loop for run %s", run_id)
     finally:
-        # Cleanup when loop exits
-        if run_id in self._current_telemetry:
-            del self._current_telemetry[run_id]
-        if run_id in self._active_streams:
-             del self._active_streams[run_id]
+      # Cleanup when loop exits
+      if run_id in self._current_telemetry:
+        del self._current_telemetry[run_id]
+      if run_id in self._active_streams:
+        del self._active_streams[run_id]
+      if run_id in self._well_states:
+        del self._well_states[run_id]

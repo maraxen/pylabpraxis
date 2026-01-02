@@ -1,11 +1,9 @@
 """Pydantic models for PLR static analysis results."""
 
 from enum import Enum
-
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
-
 
 # =============================================================================
 # Capability Configuration Schemas (User Input)
@@ -206,7 +204,7 @@ class SealerCapabilities(BaseModel):
 class PeelerCapabilities(BaseModel):
   """Capabilities for plate peelers."""
 
-  pass  # Most peelers have no configurable capabilities
+  # Most peelers have no configurable capabilities
 
 
 class PowderDispenserCapabilities(BaseModel):
@@ -390,41 +388,45 @@ class DiscoveredBackend(DiscoveredClass):
 
 # Populate type sets after class definition
 # Using object.__setattr__ to work around module-level frozenset reassignment
-_frontend_types = frozenset({
-  PLRClassType.LIQUID_HANDLER,
-  PLRClassType.PLATE_READER,
-  PLRClassType.HEATER_SHAKER,
-  PLRClassType.SHAKER,
-  PLRClassType.TEMPERATURE_CONTROLLER,
-  PLRClassType.CENTRIFUGE,
-  PLRClassType.THERMOCYCLER,
-  PLRClassType.PUMP,
-  PLRClassType.PUMP_ARRAY,
-  PLRClassType.FAN,
-  PLRClassType.SEALER,
-  PLRClassType.PEELER,
-  PLRClassType.POWDER_DISPENSER,
-  PLRClassType.INCUBATOR,
-  PLRClassType.SCARA,
-})
+_frontend_types = frozenset(
+  {
+    PLRClassType.LIQUID_HANDLER,
+    PLRClassType.PLATE_READER,
+    PLRClassType.HEATER_SHAKER,
+    PLRClassType.SHAKER,
+    PLRClassType.TEMPERATURE_CONTROLLER,
+    PLRClassType.CENTRIFUGE,
+    PLRClassType.THERMOCYCLER,
+    PLRClassType.PUMP,
+    PLRClassType.PUMP_ARRAY,
+    PLRClassType.FAN,
+    PLRClassType.SEALER,
+    PLRClassType.PEELER,
+    PLRClassType.POWDER_DISPENSER,
+    PLRClassType.INCUBATOR,
+    PLRClassType.SCARA,
+  }
+)
 
-_backend_types = frozenset({
-  PLRClassType.LH_BACKEND,
-  PLRClassType.PR_BACKEND,
-  PLRClassType.HS_BACKEND,
-  PLRClassType.SHAKER_BACKEND,
-  PLRClassType.TEMP_BACKEND,
-  PLRClassType.CENTRIFUGE_BACKEND,
-  PLRClassType.THERMOCYCLER_BACKEND,
-  PLRClassType.PUMP_BACKEND,
-  PLRClassType.PUMP_ARRAY_BACKEND,
-  PLRClassType.FAN_BACKEND,
-  PLRClassType.SEALER_BACKEND,
-  PLRClassType.PEELER_BACKEND,
-  PLRClassType.POWDER_DISPENSER_BACKEND,
-  PLRClassType.INCUBATOR_BACKEND,
-  PLRClassType.SCARA_BACKEND,
-})
+_backend_types = frozenset(
+  {
+    PLRClassType.LH_BACKEND,
+    PLRClassType.PR_BACKEND,
+    PLRClassType.HS_BACKEND,
+    PLRClassType.SHAKER_BACKEND,
+    PLRClassType.TEMP_BACKEND,
+    PLRClassType.CENTRIFUGE_BACKEND,
+    PLRClassType.THERMOCYCLER_BACKEND,
+    PLRClassType.PUMP_BACKEND,
+    PLRClassType.PUMP_ARRAY_BACKEND,
+    PLRClassType.FAN_BACKEND,
+    PLRClassType.SEALER_BACKEND,
+    PLRClassType.PEELER_BACKEND,
+    PLRClassType.POWDER_DISPENSER_BACKEND,
+    PLRClassType.INCUBATOR_BACKEND,
+    PLRClassType.SCARA_BACKEND,
+  }
+)
 
 _frontend_to_backend = {
   PLRClassType.LIQUID_HANDLER: PLRClassType.LH_BACKEND,

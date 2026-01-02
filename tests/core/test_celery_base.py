@@ -23,7 +23,7 @@ class TestPraxisTask:
 
     def test_praxis_task_has_call_method(self) -> None:
         """Test that PraxisTask has __call__ method."""
-        assert hasattr(PraxisTask, "__call__")
+        assert callable(PraxisTask)
         assert callable(PraxisTask.__call__)
 
     def test_container_property_definition(self) -> None:

@@ -24,14 +24,12 @@ from pylabrobot.resources import (
     Carrier,
     Deck,
     Plate,
-    Resource,
     TipRack,
     Trough,
 )
 
 from praxis.backend.utils.plr_inspection import (
     get_all_carrier_classes,
-    get_class_fqn,
     get_constructor_params_with_defaults,
     get_deck_classes,
     get_machine_classes,
@@ -139,8 +137,8 @@ def generate_resource_definitions() -> list[dict]:
                 "properties_json": props,
             }
             definitions.append(definition)
-        except Exception as e:
-            print(f"Warning: Could not process {fqn}: {e}")
+        except Exception:
+            pass
 
     return definitions
 
@@ -164,8 +162,8 @@ def generate_machine_definitions() -> list[dict]:
                 "properties_json": props,
             }
             definitions.append(definition)
-        except Exception as e:
-            print(f"Warning: Could not process machine {fqn}: {e}")
+        except Exception:
+            pass
 
     return definitions
 
@@ -175,36 +173,28 @@ def main():
     output_dir = Path(__file__).parent.parent / "praxis" / "web-client" / "src" / "assets" / "demo-data"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print("Generating resource definitions...")
     resources = generate_resource_definitions()
-    print(f"  Found {len(resources)} resource definitions")
 
-    print("Generating machine definitions...")
     machines = generate_machine_definitions()
-    print(f"  Found {len(machines)} machine definitions")
 
     # Write resource definitions
     resource_file = output_dir / "plr-resource-definitions.json"
     with open(resource_file, "w") as f:
         json.dump(resources, f, indent=2)
-    print(f"Wrote {resource_file}")
 
     # Write machine definitions
     machine_file = output_dir / "plr-machine-definitions.json"
     with open(machine_file, "w") as f:
         json.dump(machines, f, indent=2)
-    print(f"Wrote {machine_file}")
 
     # Print summary by category
-    print("\nResource summary by category:")
     categories = {}
     for r in resources:
         cat = r["plr_category"]
         categories[cat] = categories.get(cat, 0) + 1
-    for cat, count in sorted(categories.items()):
-        print(f"  {cat}: {count}")
+    for cat, _count in sorted(categories.items()):
+        pass
 
-    print(f"\nTotal: {len(resources)} resources, {len(machines)} machines")
 
 
 if __name__ == "__main__":

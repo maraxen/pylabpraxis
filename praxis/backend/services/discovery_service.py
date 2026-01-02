@@ -8,11 +8,7 @@ via the protocol_data_service. It also updates the in-memory PROTOCOL_REGISTRY
 with the database ID of the discovered protocols.
 """
 
-
 # LibCST-based extraction
-import libcst as cst
-from libcst.metadata import MetadataWrapper
-
 import logging
 import os
 import uuid
@@ -20,6 +16,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+import libcst as cst
+from libcst.metadata import MetadataWrapper
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from praxis.backend.models.pydantic_internals.protocol import (
@@ -34,13 +32,11 @@ from praxis.backend.services.resource_type_definition import (
 from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
   ProtocolFunctionVisitor,
 )
-from praxis.backend.utils.uuid import uuid7
 
 logger = logging.getLogger(__name__)
 
 
 class DiscoveryService:
-
   """Service for discovering and managing protocol functions and PLR type definitions."""
 
   def __init__(
@@ -71,7 +67,7 @@ class DiscoveryService:
         # Create fresh service instances with the new session
         # This prevents ConnectionRefusedError from stale sessions
         logger.info("Created new DB session for synchronization.")
-        
+
         resource_service = ResourceTypeDefinitionService(session)
         machine_service = MachineTypeDefinitionService(session)
 
@@ -82,7 +78,7 @@ class DiscoveryService:
         logger.info("Synchronizing machine type definitions...")
         await machine_service.discover_and_synchronize_type_definitions()
         logger.info("Machine type definitions synchronized.")
-    
+
     else:
       # Fallback to existing services if factory not provided (legacy/testing)
       logger.warning("No DB session factory provided. Using injected services (may be stale).")
@@ -134,7 +130,7 @@ class DiscoveryService:
               # Use MetadataWrapper to enable advanced features in visitors later if needed
               wrapper = MetadataWrapper(tree)
               wrapper.visit(visitor)
-              
+
               # Convert ProtocolFunctionInfo models back to raw dicts for existing upsert logic
               for def_info in visitor.definitions:
                 definition_dict = {

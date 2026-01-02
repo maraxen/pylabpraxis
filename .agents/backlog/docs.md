@@ -15,8 +15,8 @@
 - [x] **Mermaid Theming**:
   - Debug diagram displays to be more consistent. - **✅ Complete**
   - Implement full light/dark mode toggling for diagrams. - **✅ Complete**
-- [ ] Add `mkdocstrings` for automatic API documentation from docstrings
-- [ ] Deprecate and remove remaining Sphinx configuration - **⚠️ 17 .rst files still in docs/**
+- [x] **2. API Documentation (mkdocstrings)**: ✅ Completed 2026-01-01 (Configured mkdocstrings plugin and migrated Service Layer reference)
+- [x] **Sphinx Deprecation**: Removed all .rst files globally - **✅ Complete 2026-01-02**
 - [ ] Build pipeline (CI/CD integration for MkDocs)
 
 ### Demo Documentation
@@ -33,7 +33,7 @@
 - [x] Document execution flow (`docs/architecture/execution-flow.md`)
 - [x] Document Application Modes (Production, Browser, Demo)
 - [ ] Document WebSocket protocol in detail
-- [ ] Add frontend component architecture diagrams
+- [x] Add frontend component architecture diagrams - **✅ Added Mermaid diagrams to docs/architecture/**
 
 ---
 
@@ -41,7 +41,7 @@
 
 ### User Guides
 
-- [ ] Audit and rename legacy "PyLabPraxis" to "Praxis" in all documents - **⚠️ 32 refs remain**
+- [x] Audit and rename legacy "PyLabPraxis" to "Praxis" in all documents - **✅ Complete 2026-01-02**
 - [x] Getting started guide (Quickstart)
 - [x] Protocol authoring guide - **✅ `docs/user-guide/protocols.md` (339 lines)**
 - [ ] Resource management guide
@@ -67,7 +67,7 @@
 
 ### Tutorials
 
-- [ ] "Hello World" protocol tutorial
+- [x] "Hello World" protocol tutorial - **✅ Created docs/tutorials/hello-world.md**
 - [ ] Custom machine driver tutorial
 - [ ] Data visualization tutorial
 

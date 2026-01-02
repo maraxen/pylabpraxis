@@ -35,7 +35,6 @@ CELLPHONE_CARRIER_GATEWAYS = {
 
 
 class Notifier:
-
   """A utility class for sending email and SMS notifications."""
 
   def __init__(self, smtp_server, smtp_port, smtp_username, smtp_password) -> None:

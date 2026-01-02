@@ -4,6 +4,31 @@ This document tracks known technical debt items that need future attention.
 
 ---
 
+## Asset API Restructuring (Registry vs Inventory)
+
+**Added:** 2026-01-02
+**Priority:** Medium
+**Area:** Backend - API Design
+
+**Issue:**
+The current API structure mixes definition/registry endpoints with physical/inventory endpoints under similar paths. A cleaner separation would align better with the "Registry (Definitions)" vs "Inventory (Instances)" conceptual model.
+
+**Proposed Changes:**
+
+- Create distinct API routers: `/api/v1/registry/*` and `/api/v1/inventory/*`.
+- `/api/v1/registry/`: For `MachineDefinition` and `ResourceDefinition` CRUD.
+- `/api/v1/inventory/`: For `Machine` and `Resource` physical instance CRUD.
+- Migrate existing endpoints from `/api/v1/machines` and `/api/v1/resources` to these new paths.
+- Update frontend services (`AssetService`) to use new paths.
+
+**Files Affected:**
+
+- `praxis/backend/api/resources.py`
+- `praxis/backend/api/machines.py`
+- `praxis/backend/services/assets.py`
+
+---
+
 ## Consumables and Auto-Assignment
 
 **Added:** 2024-12-24  

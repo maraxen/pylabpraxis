@@ -11,6 +11,12 @@ import { AssetStatusChipComponent } from '../asset-status-chip/asset-status-chip
 import { LocationBreadcrumbComponent } from '../location-breadcrumb/location-breadcrumb.component';
 import { SparklineComponent } from '@shared/components/sparkline/sparkline.component';
 import { JsonPipe } from '@angular/common';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { FormsModule } from '@angular/forms';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MaintenanceBadgeComponent } from '../maintenance-badge/maintenance-badge.component';
+import { AppStore } from '../../../../core/store/app.store';
+import { AssetService } from '../../services/asset.service';
 
 @Component({
   selector: 'app-machine-details-dialog',
@@ -26,7 +32,12 @@ import { JsonPipe } from '@angular/common';
     AssetStatusChipComponent,
     LocationBreadcrumbComponent,
     SparklineComponent,
-    JsonPipe
+    SparklineComponent,
+    JsonPipe,
+    MatSlideToggleModule,
+    FormsModule,
+    MatSnackBarModule,
+    MaintenanceBadgeComponent
   ],
   template: `
     <h2 mat-dialog-title>
@@ -102,6 +113,64 @@ import { JsonPipe } from '@angular/common';
               </mat-chip>
             </div>
           </div>
+        </mat-tab>
+
+        <mat-tab label="Maintenance">
+           <div class="maintenance-container" *ngIf="store.maintenanceEnabled(); else maintenanceDisabled">
+              <div class="maintenance-header">
+                <app-maintenance-badge [machine]="data.machine" [showLabel]="true" />
+                <span class="spacer"></span>
+                <mat-slide-toggle 
+                  [(ngModel)]="maintenanceEnabled"
+                  color="primary">
+                  Enable Maintenance Tracking
+                </mat-slide-toggle>
+              </div>
+
+              <div class="config-section" *ngIf="maintenanceEnabled">
+                <h3>Schedule</h3>
+                <p class="hint">Edit the maintenance schedule JSON configuration.</p>
+                <textarea 
+                  class="json-editor" 
+                  [(ngModel)]="scheduleJsonString" 
+                  spellcheck="false">
+                </textarea>
+                
+                <div class="actions">
+                  <button mat-stroked-button (click)="resetSchedule()">Reset to Default</button>
+                  <button mat-flat-button color="primary" (click)="saveMaintenanceSettings()" [disabled]="isSaving">
+                    {{ isSaving ? 'Saving...' : 'Save Changes' }}
+                  </button>
+                </div>
+              </div>
+              
+              <div class="history-section" *ngIf="maintenanceEnabled">
+                 <h3>Recent History</h3>
+                 <div class="history-list">
+                    <div *ngFor="let entry of historyEntries" class="history-item">
+                        <mat-icon class="text-green-500">check_circle</mat-icon>
+                        <div class="history-details">
+                            <span class="type">{{ entry.type | titlecase }}</span>
+                            <span class="date">{{ entry.completed_at | date:'medium' }}</span>
+                        </div>
+                    </div>
+                    <p *ngIf="historyEntries.length === 0" class="no-history">No maintenance history recorded.</p>
+                 </div>
+              </div>
+
+              <div class="disabled-msg" *ngIf="!maintenanceEnabled">
+                 <mat-icon>off</mat-icon>
+                 <p>Maintenance tracking is disabled for this machine.</p>
+              </div>
+           </div>
+
+           <ng-template #maintenanceDisabled>
+              <div class="global-disabled-msg">
+                 <mat-icon>settings_off</mat-icon>
+                 <h3>Maintenance Tracking Globally Disabled</h3>
+                 <p>Enable maintenance tracking in <span class="link" (click)="dialogRef.close()">Settings</span> to manage schedules.</p>
+              </div>
+           </ng-template>
         </mat-tab>
       </mat-tab-group>
     </mat-dialog-content>
@@ -224,17 +293,161 @@ import { JsonPipe } from '@angular/common';
       font-weight: 500;
       white-space: nowrap;
     }
+    .maintenance-container {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .maintenance-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+    }
+    
+    .spacer { flex: 1; }
+
+    .config-section h3, .history-section h3 {
+       margin: 0 0 8px 0;
+       font-size: 1rem;
+       font-weight: 500;
+    }
+
+    .hint {
+       margin: 0 0 8px 0;
+       font-size: 0.8rem;
+       color: var(--mat-sys-on-surface-variant);
+    }
+
+    .json-editor {
+      width: 100%;
+      height: 200px;
+      font-family: monospace;
+      font-size: 13px;
+      padding: 12px;
+      background: var(--mat-sys-surface-container);
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: 8px;
+      resize: vertical;
+      color: var(--mat-sys-on-surface);
+    }
+
+    .actions {
+       display: flex;
+       justify-content: flex-end;
+       gap: 8px;
+       margin-top: 12px;
+    }
+
+    .disabled-msg, .global-disabled-msg {
+       display: flex;
+       flex-direction: column;
+       align-items: center;
+       justify-content: center;
+       padding: 32px;
+       color: var(--mat-sys-on-surface-variant);
+       text-align: center;
+       background: var(--mat-sys-surface-container-low);
+       border-radius: 8px;
+    }
+    
+    .history-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .history-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px;
+        background: var(--mat-sys-surface-container);
+        border-radius: 6px;
+    }
+    
+    .history-details {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .type { font-weight: 500; font-size: 0.9rem; }
+    .date { font-size: 0.8rem; color: var(--mat-sys-on-surface-variant); }
+    .no-history { font-style: italic; color: var(--mat-sys-outline); font-size: 0.9rem; }
   `]
 })
 export class MachineDetailsDialogComponent {
+  store = inject(AppStore);
+  private assetService = inject(AssetService);
+  private snackBar = inject(MatSnackBar);
+
   mockUtilization: number[] = [];
   averageUtilization = 0;
+
+  // Maintenance State
+  maintenanceEnabled = true;
+  scheduleJsonString = '';
+  isSaving = false;
+  historyEntries: any[] = [];
 
   constructor(
     public dialogRef: MatDialogRef<MachineDetailsDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { machine: Machine }
   ) {
     this.generateMockData();
+    this.initMaintenanceState();
+  }
+
+  private initMaintenanceState() {
+    this.maintenanceEnabled = this.data.machine.maintenance_enabled ?? true;
+    this.scheduleJsonString = JSON.stringify(this.data.machine.maintenance_schedule_json || {}, null, 2);
+
+    const history = this.data.machine.last_maintenance_json || {};
+    this.historyEntries = Object.values(history).sort((a: any, b: any) =>
+      new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
+    );
+  }
+
+  resetSchedule() {
+    // Determine default based on manufacturer/model or category if available
+    // For now, reset to empty enabled schedule as we don't have access to defaults map here easily without importing
+    // Ideally we would fetch default definition again. 
+    // Simplified: Just keep current or provide a basic template.
+    this.scheduleJsonString = JSON.stringify({
+      intervals: [
+        { type: 'yearly', interval_days: 365, description: 'Annual Inspection', required: true }
+      ],
+      enabled: true
+    }, null, 2);
+  }
+
+  saveMaintenanceSettings() {
+    try {
+      const schedule = JSON.parse(this.scheduleJsonString);
+      this.isSaving = true;
+
+      this.assetService.updateMachine(this.data.machine.accession_id, {
+        maintenance_enabled: this.maintenanceEnabled,
+        maintenance_schedule_json: schedule
+      }).subscribe({
+        next: (updated) => {
+          this.data.machine = updated; // Update local reference
+          this.isSaving = false;
+          this.snackBar.open('Maintenance settings saved', 'Close', { duration: 3000 });
+          this.initMaintenanceState(); // Re-init to ensure consistency
+        },
+        error: (err) => {
+          this.isSaving = false;
+          console.error('Failed to save settings', err);
+          this.snackBar.open('Error saving settings', 'Close', { duration: 3000 });
+        }
+      });
+    } catch (e) {
+      this.snackBar.open('Invalid JSON format', 'Close', { duration: 3000 });
+    }
   }
 
   private generateMockData() {

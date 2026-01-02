@@ -40,6 +40,8 @@ from .models import (
   DEFAULT_STATE_PARAM_NAME,
   TOP_LEVEL_NAME_REGEX,
   CreateProtocolDefinitionData,
+  DataViewDefinition,
+  DecoratedProtocolFunc,
   ProtocolRuntimeInfo,
   praxis_run_context_cv,
 )
@@ -67,7 +69,7 @@ async def _prepare_function_arguments(
 
   if (
     "__praxis_run_context__" in processed_kwargs_for_call
-    and "__praxis_run_context__" not in func.__code__.co_varnames
+    and "__praxis_run_context__" not in cast(DecoratedProtocolFunc, func).__code__.co_varnames
     and not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig_check.parameters.values())
   ):
     del processed_kwargs_for_call["__praxis_run_context__"]
@@ -160,6 +162,8 @@ def protocol_function(
   preconfigure_deck: bool = False,
   deck_param_name: str = DEFAULT_DECK_PARAM_NAME,
   deck_construction: Callable | None = None,
+  deck_layout_path: str | None = None,
+  data_views: list[dict[str, Any]] | None = None,
   state_param_name: str = DEFAULT_STATE_PARAM_NAME,
   param_metadata: dict[str, Any] | None = None,
   category: str | None = None,
@@ -184,6 +188,12 @@ def protocol_function(
     deck_param_name (str): Name of the deck parameter if preconfigure_deck is True.
     deck_construction (Optional[Callable]): Function to construct the deck.
       This is used when preconfigure_deck is True.
+    deck_layout_path (Optional[str]): Path to a JSON file defining the deck
+      layout. This overrides auto-layout when specified.
+    data_views (Optional[list[dict]]): List of data view definitions declaring
+      what input data this protocol needs. Each view can reference PLR state
+      (liquid volumes, positions) or function data outputs (plate reader reads).
+      Schema validation errors warn but do not block execution.
     state_param_name (str): Name of the state parameter for top-level protocols.
     param_metadata (Optional[dict[str, dict[str, Any]]]): Metadata for parameters.
     category (Optional[str]): Category for organizing protocols.
@@ -193,6 +203,13 @@ def protocol_function(
   """
   actual_param_metadata = param_metadata or {}
   actual_tags = tags or []
+
+  # Convert data_views dicts to DataViewDefinition objects
+  actual_data_views: list[DataViewDefinition] | None = None
+  if data_views:
+    actual_data_views = [
+      DataViewDefinition(**view) if isinstance(view, dict) else view for view in data_views
+    ]
 
   def decorator(func: Callable) -> Callable:
     protocol_definition, found_state_param_details = _create_protocol_definition(
@@ -206,6 +223,8 @@ def protocol_function(
         preconfigure_deck=preconfigure_deck,
         deck_param_name=deck_param_name,
         deck_construction=deck_construction,
+        deck_layout_path=deck_layout_path,
+        data_views=actual_data_views,
         state_param_name=state_param_name,
         param_metadata=actual_param_metadata,
         category=category,
@@ -213,7 +232,7 @@ def protocol_function(
         top_level_name_format=top_level_name_format,
       ),
     )
-    cast("Any", func)._protocol_definition = protocol_definition
+    cast(DecoratedProtocolFunc, func)._protocol_definition = protocol_definition
 
     # TODO: The protocol registration should be handled by a discovery service.
     # _register_protocol(protocol_definition, func, found_state_param_details)
@@ -225,12 +244,12 @@ def protocol_function(
       function_ref=func,
       found_state_param_details=found_state_param_details,
     )
-    cast("Any", func)._protocol_runtime_info = protocol_runtime_info
+    cast(DecoratedProtocolFunc, func)._protocol_runtime_info = protocol_runtime_info
 
     @functools.wraps(func)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
       # Get the runtime metadata from the function itself, not a global registry.
-      current_meta = func._protocol_runtime_info
+      current_meta = cast(DecoratedProtocolFunc, func)._protocol_runtime_info
       protocol_unique_key = (
         f"{current_meta.pydantic_definition.name}_v{current_meta.pydantic_definition.version}"
       )
@@ -269,8 +288,7 @@ def protocol_function(
       # This allows the protocol to be interrupted at any decorated step
       try:
         await _handle_control_commands(
-            context_for_this_call.run_accession_id,
-            context_for_this_call.current_db_session
+          context_for_this_call.run_accession_id, context_for_this_call.current_db_session
         )
       except ProtocolCancelledError:
         # Re-raise cancellation to be caught by the outer try/except block

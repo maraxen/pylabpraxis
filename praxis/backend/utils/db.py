@@ -158,7 +158,6 @@ AsyncSessionLocal = async_sessionmaker(
 
 
 class Base(MappedAsDataclass, DeclarativeBase):
-
   """Base class for all ORM models."""
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
@@ -241,7 +240,6 @@ async def init_praxis_db_schema(engine=None) -> None:
 
 
 class CreateMaterializedView(DDLElement):
-
   """SQLAlchemy DDL element to create a materialized view."""
 
   def __init__(self, name: str, selectable: Select) -> None:
@@ -251,7 +249,6 @@ class CreateMaterializedView(DDLElement):
 
 
 class DropMaterializedView(DDLElement):
-
   """SQLAlchemy DDL element to drop a materialized view."""
 
   def __init__(self, name: str) -> None:

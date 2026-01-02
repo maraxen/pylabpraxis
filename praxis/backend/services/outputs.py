@@ -48,7 +48,6 @@ class FunctionDataOutputCRUDService(
     FunctionDataOutputUpdate,
   ],
 ):
-
   """CRUD service for function data outputs."""
 
   @handle_db_transaction

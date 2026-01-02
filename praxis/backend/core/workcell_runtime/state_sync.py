@@ -20,7 +20,6 @@ logger = get_logger(__name__)
 
 
 class StateSyncMixin:
-
   """Mixin providing state synchronization capabilities for WorkcellRuntime."""
 
   db_session_factory: async_sessionmaker[AsyncSession]

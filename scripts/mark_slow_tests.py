@@ -24,16 +24,14 @@ def find_slow_tests_from_pytest(threshold_seconds: float = 1.0) -> dict[str, flo
 
   Returns:
       Dictionary mapping test file paths to their durations
-  """
-  print(f"Running pytest to find tests slower than {threshold_seconds}s...")
-  print("This may take several minutes...")
 
+  """
   # Run pytest with durations=0 to get all test timings
   cmd = ["uv", "run", "pytest", "--durations=0", "-v", "--tb=no", "--no-cov"]
 
   result = subprocess.run(
     cmd,
-    capture_output=True,
+    check=False, capture_output=True,
     text=True,
     timeout=600,  # 10 minute timeout
   )
@@ -73,18 +71,16 @@ def add_slow_marker_to_file(file_path: Path, dry_run: bool = True) -> None:
   Args:
       file_path: Path to test file
       dry_run: If True, only print what would be done
+
   """
   if not file_path.exists():
-    print(f"  ⚠️  File not found: {file_path}")
     return
 
   content = file_path.read_text()
 
   # Check if already has pytest import
-  has_pytest_import = "import pytest" in content
 
   # Pattern to match test functions (async or sync)
-  test_func_pattern = r"^(async\s+)?def\s+(test_\w+)"
 
   lines = content.split("\n")
   modified_lines = []
@@ -103,21 +99,17 @@ def add_slow_marker_to_file(file_path: Path, dry_run: bool = True) -> None:
       marker = " " * indent + "@pytest.mark.slow"
       modified_lines.append(marker)
       modified = True
-      print(f"    Would add @pytest.mark.slow to {line.strip()[:50]}...")
 
     modified_lines.append(line)
 
   if not modified:
-    print(f"  ℹ️  No test functions found or already marked in {file_path.name}")
     return
 
   if dry_run:
-    print(f"  📝 DRY RUN: Would modify {file_path}")
-    print(f"     Run with --apply to actually modify the file")
+    pass
   else:
     new_content = "\n".join(modified_lines)
     file_path.write_text(new_content)
-    print(f"  ✅ Modified {file_path}")
 
 
 def main():
@@ -155,40 +147,30 @@ def main():
   if args.manual:
     # Manual mode: user specifies which files to mark
     if not args.files:
-      print("❌ Error: --manual requires file paths as arguments")
       sys.exit(1)
 
-    print(f"Manual mode: Marking {len(args.files)} files as slow...")
     for file_path_str in args.files:
       file_path = Path(file_path_str)
       if not file_path.is_absolute():
         file_path = tests_dir / file_path
 
-      print(f"\n📄 Processing {file_path.relative_to(root)}:")
       add_slow_marker_to_file(file_path, dry_run=not args.apply)
 
   else:
     # Automatic mode: run pytest to find slow tests
-    print("🔍 Scanning for slow tests...\n")
 
     try:
       slow_tests = find_slow_tests_from_pytest(args.threshold)
     except subprocess.TimeoutExpired:
-      print("❌ Error: pytest timed out (>10 minutes)")
       sys.exit(1)
-    except Exception as e:
-      print(f"❌ Error running pytest: {e}")
-      print("\n💡 Tip: Make sure the test database is running:")
-      print("   make db-test")
+    except Exception:
       sys.exit(1)
 
     if not slow_tests:
-      print(f"✅ No tests found slower than {args.threshold}s!")
       sys.exit(0)
 
-    print(f"\n📊 Found {len(slow_tests)} test files with slow tests:\n")
 
-    for file_path_str, duration in sorted(
+    for file_path_str, _duration in sorted(
       slow_tests.items(),
       key=lambda x: x[1],
       reverse=True,
@@ -197,18 +179,14 @@ def main():
       if not file_path.is_absolute():
         file_path = tests_dir / file_path
 
-      print(f"\n📄 {file_path.relative_to(root)} (slowest: {duration:.2f}s)")
 
       if check_if_marked_slow(file_path):
-        print("  ✓ Already has @pytest.mark.slow markers")
+        pass
       else:
         add_slow_marker_to_file(file_path, dry_run=not args.apply)
 
   if not args.apply:
-    print("\n" + "=" * 70)
-    print("📝 DRY RUN MODE - No files were modified")
-    print("   Run with --apply to actually modify files")
-    print("=" * 70)
+    pass
 
 
 if __name__ == "__main__":

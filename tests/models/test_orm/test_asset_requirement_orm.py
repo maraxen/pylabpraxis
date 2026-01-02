@@ -14,8 +14,6 @@ from praxis.backend.models.orm.protocol import (
 @pytest_asyncio.fixture
 async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
     """Create a FunctionProtocolDefinitionOrm for testing."""
-    from praxis.backend.utils.uuid import uuid7
-
     protocol = FunctionProtocolDefinitionOrm(
         name="test_protocol",
         fqn="test.protocols.test_protocol",
@@ -35,8 +33,6 @@ async def test_asset_requirement_orm_creation_minimal(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test creating AssetRequirementOrm with minimal required fields."""
-    from praxis.backend.utils.uuid import uuid7
-
     asset = AssetRequirementOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
@@ -64,8 +60,6 @@ async def test_asset_requirement_orm_creation_with_all_fields(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test creating AssetRequirementOrm with all fields populated."""
-    from praxis.backend.utils.uuid import uuid7
-
     constraints = {"capacity_min": 96, "type": "wellplate"}
     location_constraints = {"allowed_positions": ["A1", "A2", "A3"]}
 
@@ -105,8 +99,6 @@ async def test_asset_requirement_orm_persist_to_database(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test full persistence cycle for AssetRequirementOrm."""
-    from praxis.backend.utils.uuid import uuid7
-
     asset = AssetRequirementOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
@@ -143,8 +135,6 @@ async def test_asset_requirement_orm_unique_constraint(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test unique constraint on (protocol_definition_accession_id, name)."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Create first asset
     asset1 = AssetRequirementOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
@@ -179,8 +169,6 @@ async def test_asset_requirement_orm_optional_flag(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test optional flag for asset requirements."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Required asset
     required_asset = AssetRequirementOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
@@ -218,8 +206,6 @@ async def test_asset_requirement_orm_type_hints(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test type_hint_str vs actual_type_str fields."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Asset with abstract type hint and concrete actual type
     asset = AssetRequirementOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
@@ -243,8 +229,6 @@ async def test_asset_requirement_orm_jsonb_constraints(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test JSONB constraints field for asset validation rules."""
-    from praxis.backend.utils.uuid import uuid7
-
     constraints = {
         "capacity": 96,
         "well_volume_ul": 360,
@@ -277,8 +261,6 @@ async def test_asset_requirement_orm_jsonb_location_constraints(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test JSONB location_constraints field for asset placement rules."""
-    from praxis.backend.utils.uuid import uuid7
-
     location_constraints = {
         "allowed_positions": ["A1", "B1", "C1"],
         "required_carrier": "PlateCarrier",
@@ -309,8 +291,6 @@ async def test_asset_requirement_orm_relationship_to_protocol(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test relationship between AssetRequirementOrm and FunctionProtocolDefinitionOrm."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Create multiple assets for the same protocol
     asset1 = AssetRequirementOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
@@ -355,8 +335,6 @@ async def test_asset_requirement_orm_query_by_protocol(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test querying asset requirements by protocol definition."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Create assets for this protocol
     asset1 = AssetRequirementOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
@@ -402,8 +380,6 @@ async def test_asset_requirement_orm_repr(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test string representation of AssetRequirementOrm."""
-    from praxis.backend.utils.uuid import uuid7
-
     asset = AssetRequirementOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,

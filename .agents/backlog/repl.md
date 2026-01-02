@@ -56,21 +56,18 @@ These items are needed to make the REPL feel production-ready:
   * [x] Ensure correct context (e.g. `LiquidHandler`, `Plate`) is available in REPL.
 * [x] **Manual Autocomplete / Signature Help**
   * [x] Debug why `os.` + Tab works in test but fail in manual.
+* [x] **Integration with PLR Tooling**
+  * [x] Ensure `await lh.setup()` works in browser shim.
+  * [x] Verify `WebBridgeIO` routing.
+  * [x] Ensure correct context (e.g. `LiquidHandler`, `Plate`) is available in REPL.
+* [x] **Manual Autocomplete / Signature Help**
+  * [x] Debug why `os.` + Tab works in test but fail in manual.
   * [x] Verify popup positioning and Z-index within terminal container.
   * [x] Ensure `ngZone` change detection triggers for async worker responses.
 * [x] **Resource/Machine Context**:
   * [x] Auto-import `LiquidHandler`, `Plate`, `TipRack` (via `web_bridge.py` bootstrap).
 
 ### 4. Advanced REPL Features
-
-* [ ] **Machine Availability Display (P3)**:
-  * Show available machines in REPL sidebar or panel.
-  * Easy access to what machines can be used.
-
-* [ ] **Security Sandbox (P3)**:
-  * Restrict dangerous modules (sys, os, subprocess, etc.).
-  * Secure enclosure for Python execution.
-  * Only native Python functionality + allowed PLR imports.
 
 * [ ] **Save to Protocol / Export (P3)**:
   * Export REPL session as protocol file.

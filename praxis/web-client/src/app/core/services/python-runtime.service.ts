@@ -47,10 +47,9 @@ export class PythonRuntimeService implements ReplRuntime {
       };
 
       this.sendMessage('INIT').then(() => {
-        console.log('Pyodide Runtime Initialized');
         this.isReady.set(true);
       }).catch(err => {
-        console.error('Failed to initialize Pyodide', err);
+        console.error('[PythonRuntime] Failed to initialize Pyodide:', err);
       });
     } else {
       console.warn('Web Workers are not supported in this environment.');
@@ -101,17 +100,15 @@ export class PythonRuntimeService implements ReplRuntime {
   }
 
   async getCompletions(code: string, _cursor: number): Promise<CompletionItem[]> {
-    console.log('PythonRuntimeService.getCompletions called with:', code);
     if (!this.worker) return [];
 
     const id = crypto.randomUUID();
     const worker = this.worker; // Capture for closure
     return new Promise((resolve) => {
-      let timeoutId: any;
+      let timeoutId: ReturnType<typeof setTimeout>;
 
       const handler = ({ data }: MessageEvent) => {
         if (data.id === id && data.type === 'COMPLETE_RESULT') {
-          console.log('Component received COMPLETE_RESULT:', data.payload);
           worker?.removeEventListener('message', handler);
           clearTimeout(timeoutId);
           // Matches are now CompletionItem[] from the updated worker
@@ -125,7 +122,6 @@ export class PythonRuntimeService implements ReplRuntime {
 
       // Timeout
       timeoutId = setTimeout(() => {
-        console.warn('Completion timed out');
         worker?.removeEventListener('message', handler);
         resolve([]);
       }, 5000);
@@ -133,17 +129,15 @@ export class PythonRuntimeService implements ReplRuntime {
   }
 
   async getSignatures(code: string, _cursor: number): Promise<SignatureInfo[]> {
-    console.log('PythonRuntimeService.getSignatures called with:', code);
     if (!this.worker) return [];
 
     const id = crypto.randomUUID();
     const worker = this.worker;
     return new Promise((resolve) => {
-      let timeoutId: any;
+      let timeoutId: ReturnType<typeof setTimeout>;
 
       const handler = ({ data }: MessageEvent) => {
         if (data.id === id && data.type === 'SIGNATURE_RESULT') {
-          console.log('Component received SIGNATURE_RESULT:', data.payload);
           worker?.removeEventListener('message', handler);
           clearTimeout(timeoutId);
           resolve(data.payload.signatures || []);
@@ -154,7 +148,6 @@ export class PythonRuntimeService implements ReplRuntime {
       worker!.postMessage({ type: 'SIGNATURES', id, payload: { code } });
 
       timeoutId = setTimeout(() => {
-        console.warn('Signature help timed out');
         worker?.removeEventListener('message', handler);
         resolve([]);
       }, 5000);

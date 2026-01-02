@@ -38,7 +38,8 @@ class TestHandleDbTransaction:
 
         @handle_db_transaction
         async def test_func(db: AsyncSession) -> None:
-            raise ValueError("Test error")
+            msg = "Test error"
+            raise ValueError(msg)
 
         with pytest.raises(ValueError, match="Test error"):
             await test_func(mock_session)
@@ -55,7 +56,8 @@ class TestHandleDbTransaction:
 
         @handle_db_transaction
         async def test_func(db: AsyncSession) -> None:
-            raise RuntimeError("Original error")
+            msg = "Original error"
+            raise RuntimeError(msg)
 
         with pytest.raises(RuntimeError, match="Original error"):
             await test_func(mock_session)
@@ -203,7 +205,8 @@ class TestHandleDbTransaction:
 
         @handle_db_transaction
         async def test_func(db: AsyncSession) -> None:
-            raise ValueError("Error")
+            msg = "Error"
+            raise ValueError(msg)
 
         try:
             await test_func(mock_session)

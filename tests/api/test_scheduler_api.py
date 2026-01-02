@@ -4,11 +4,12 @@ This module tests the scheduler API endpoints, including CRUD operations
 (via crud_router_factory) and custom endpoints for status and priority updates.
 """
 
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import uuid4
 
 from praxis.backend.models.enums import ScheduleStatusEnum
 from praxis.backend.models.orm.protocol import (
@@ -19,7 +20,6 @@ from praxis.backend.models.orm.protocol import (
 )
 from praxis.backend.models.orm.schedule import ScheduleEntryOrm
 from praxis.backend.utils.uuid import uuid7
-
 
 # ============================================================================
 # Fixtures

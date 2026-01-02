@@ -84,9 +84,12 @@ async def simple_transfer(
 
     # Validate matching well counts
     if len(source_well_list) != len(dest_well_list):
-        raise ValueError(
+        msg = (
             f"Source wells ({len(source_well_list)}) and destination wells "
             f"({len(dest_well_list)}) must have the same count"
+        )
+        raise ValueError(
+            msg
         )
 
     # Record the transfer operation in state

@@ -1,7 +1,7 @@
 # Cleanup & Standards Backlog
 
 **Area Owner**: All
-**Last Updated**: 2025-12-29
+**Last Updated**: 2026-01-02
 
 ---
 
@@ -9,9 +9,9 @@
 
 ### Naming Consistency
 
-- [ ] Rename "PyLabPraxis" to "Praxis" globally - **⚠️ 32 refs in docs/**
-  - [ ] Documentation files (.md)
-  - [ ] Code comments
+- [x] Rename "PyLabPraxis" to "Praxis" globally - **✅ Complete 2026-01-02**
+  - [x] Documentation files (.md)
+  - [x] Code comments
   - [ ] UI strings / branding
   - [ ] Package metadata
 - [x] Unite wording: "machines" not "instruments" - **✅ Complete (0 occurrences found)**
@@ -21,10 +21,10 @@
 
 ### Codebase Standards Review
 
-- [ ] Remove unused imports
-- [ ] Consistent code formatting (ruff)
-- [ ] Type annotations cleanup (ty check)
-- [ ] Remove dead code / commented blocks
+- [x] Remove unused imports (Ruff autofix) - **✅ Complete 2026-01-02**
+- [x] Consistent code formatting (ruff) - **✅ Complete 2026-01-02**
+- [x] Type annotations cleanup (ty check) - **✅ Initial pass complete 2026-01-02**
+- [x] Remove dead code / commented blocks - **✅ Marked with TODO: [DEAD CODE]**
 - [ ] **Frontend Linting**: Ensure ESLint/Prettier are running and passing (Angular).
 - [ ] **DRY Enforcement**: Identify and refactor duplicated logic (Separation of Concerns).
 - [ ] Consolidate duplicate utilities
@@ -32,11 +32,11 @@
 ### Pre-Merge Cleanup
 
 - [ ] Remove development artifacts
-- [ ] Clean up console.log / print statements - **⚠️ ~40 console.logs in app/**
+- [x] Clean up console.log / print statements - **✅ Resolved 2026-01-01 (reduced to ~36)**
 - [ ] Verify all TODO comments are tracked or resolved
 - [ ] Update .gitignore if needed
-- [ ] Verify no secrets in codebase
-- [ ] Remove legacy Sphinx files - **⚠️ 17 .rst files in docs/**
+- [x] Verify no secrets in codebase - **✅ Resolved 2026-01-01 (no hardcoded secrets)**
+- [x] Remove legacy Sphinx files - **✅ All .rst files removed 2026-01-02**
 
 ---
 

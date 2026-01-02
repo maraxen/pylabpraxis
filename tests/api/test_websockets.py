@@ -1,5 +1,4 @@
 """Tests for WebSocket endpoints."""
-import asyncio
 import uuid
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -62,7 +61,7 @@ class TestWebSocketEndpoint:
         )
 
         # Patch asyncio.sleep to avoid delays
-        with patch('praxis.backend.api.websockets.asyncio.sleep', new_callable=AsyncMock):
+        with patch("praxis.backend.api.websockets.asyncio.sleep", new_callable=AsyncMock):
             await websocket_endpoint(websocket, run_id)
 
         # Verify websocket was accepted
@@ -110,7 +109,7 @@ class TestWebSocketEndpoint:
             side_effect=get_status_side_effect
         )
 
-        with patch('asyncio.sleep', new_callable=AsyncMock):
+        with patch("asyncio.sleep", new_callable=AsyncMock):
             await websocket_endpoint(websocket, run_id)
 
         # Verify status messages for each state
@@ -151,7 +150,7 @@ class TestWebSocketEndpoint:
             side_effect=get_status_side_effect
         )
 
-        with patch('asyncio.sleep', new_callable=AsyncMock):
+        with patch("asyncio.sleep", new_callable=AsyncMock):
             await websocket_endpoint(websocket, run_id)
 
         # Verify log messages were sent
@@ -183,7 +182,7 @@ class TestWebSocketEndpoint:
             }
         )
 
-        with patch('asyncio.sleep', new_callable=AsyncMock):
+        with patch("asyncio.sleep", new_callable=AsyncMock):
             await websocket_endpoint(websocket, run_id)
 
         # Verify error message was sent
@@ -212,7 +211,7 @@ class TestWebSocketEndpoint:
             }
         )
 
-        with patch('asyncio.sleep', new_callable=AsyncMock):
+        with patch("asyncio.sleep", new_callable=AsyncMock):
             await websocket_endpoint(websocket, run_id)
 
         # Verify status message
@@ -264,7 +263,7 @@ class TestWebSocketEndpoint:
             side_effect=get_status_side_effect
         )
 
-        with patch('asyncio.sleep', new_callable=AsyncMock):
+        with patch("asyncio.sleep", new_callable=AsyncMock):
             await websocket_endpoint(websocket, run_id)
 
         # Verify progress messages sent for each poll
@@ -289,7 +288,8 @@ class TestWebSocketEndpoint:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                raise Exception("Database connection error")
+                msg = "Database connection error"
+                raise Exception(msg)
             return {
                 "status": "COMPLETED",
                 "progress": 100,
@@ -301,7 +301,7 @@ class TestWebSocketEndpoint:
             side_effect=get_status_side_effect
         )
 
-        with patch('asyncio.sleep', new_callable=AsyncMock):
+        with patch("asyncio.sleep", new_callable=AsyncMock):
             await websocket_endpoint(websocket, run_id)
 
         # After the exception, it should retry and get the status
@@ -329,7 +329,7 @@ class TestWebSocketEndpoint:
             }
         )
 
-        with patch('asyncio.sleep', new_callable=AsyncMock):
+        with patch("asyncio.sleep", new_callable=AsyncMock):
             await websocket_endpoint(websocket, run_id)
 
         # Verify log was converted to string
@@ -353,7 +353,7 @@ class TestWebSocketEndpoint:
             ]
         )
 
-        with patch('asyncio.sleep', new_callable=AsyncMock):
+        with patch("asyncio.sleep", new_callable=AsyncMock):
             await websocket_endpoint(websocket, run_id)
 
         # Should only have 2 status messages (RUNNING once, then COMPLETED)

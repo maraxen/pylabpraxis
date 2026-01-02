@@ -14,8 +14,6 @@ from praxis.backend.models.orm.protocol import (
 @pytest_asyncio.fixture
 async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
     """Create a FunctionProtocolDefinitionOrm for testing."""
-    from praxis.backend.utils.uuid import uuid7
-
     protocol = FunctionProtocolDefinitionOrm(
         name="test_protocol",
         fqn="test.protocols.test_protocol",
@@ -35,8 +33,6 @@ async def test_parameter_definition_orm_creation_minimal(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test creating ParameterDefinitionOrm with minimal required fields."""
-    from praxis.backend.utils.uuid import uuid7
-
     param = ParameterDefinitionOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
@@ -64,8 +60,6 @@ async def test_parameter_definition_orm_creation_with_all_fields(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test creating ParameterDefinitionOrm with all fields populated."""
-    from praxis.backend.utils.uuid import uuid7
-
     constraints = {"min_value": 0, "max_value": 100}
     ui_hint = {"widget_type": "slider"}
 
@@ -105,8 +99,6 @@ async def test_parameter_definition_orm_persist_to_database(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test full persistence cycle for ParameterDefinitionOrm."""
-    from praxis.backend.utils.uuid import uuid7
-
     param = ParameterDefinitionOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
@@ -143,8 +135,6 @@ async def test_parameter_definition_orm_unique_constraint(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test unique constraint on (protocol_definition_accession_id, name)."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Create first parameter
     param1 = ParameterDefinitionOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
@@ -177,8 +167,6 @@ async def test_parameter_definition_orm_deck_param_flag(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test is_deck_param flag for deck parameters."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Regular parameter (not deck)
     regular_param = ParameterDefinitionOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
@@ -212,8 +200,6 @@ async def test_parameter_definition_orm_optional_flag(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test optional flag for parameters."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Required parameter
     required_param = ParameterDefinitionOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
@@ -249,8 +235,6 @@ async def test_parameter_definition_orm_jsonb_constraints(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test JSONB constraints field for parameter validation rules."""
-    from praxis.backend.utils.uuid import uuid7
-
     constraints = {
         "min_value": 0,
         "max_value": 100,
@@ -281,8 +265,6 @@ async def test_parameter_definition_orm_jsonb_ui_hint(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test JSONB ui_hint field for UI rendering hints."""
-    from praxis.backend.utils.uuid import uuid7
-
     ui_hint = {
         "widget_type": "slider",
         "step": 5,
@@ -312,8 +294,6 @@ async def test_parameter_definition_orm_relationship_to_protocol(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test relationship between ParameterDefinitionOrm and FunctionProtocolDefinitionOrm."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Create multiple parameters for the same protocol
     param1 = ParameterDefinitionOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
@@ -356,8 +336,6 @@ async def test_parameter_definition_orm_query_by_protocol(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test querying parameters by protocol definition."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Create parameters for this protocol
     param1 = ParameterDefinitionOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
@@ -401,8 +379,6 @@ async def test_parameter_definition_orm_repr(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test string representation of ParameterDefinitionOrm."""
-    from praxis.backend.utils.uuid import uuid7
-
     param = ParameterDefinitionOrm(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,

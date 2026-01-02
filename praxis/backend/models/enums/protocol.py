@@ -14,7 +14,6 @@ import enum
 
 
 class ProtocolSourceStatusEnum(enum.Enum):
-
   """Enumeration for the status of a protocol source (repository or file system)."""
 
   ACTIVE = "active"
@@ -26,7 +25,6 @@ class ProtocolSourceStatusEnum(enum.Enum):
 
 
 class ProtocolRunStatusEnum(enum.Enum):
-
   """Enumeration for the operational status of a protocol run."""
 
   QUEUED = "queued"
@@ -45,7 +43,6 @@ class ProtocolRunStatusEnum(enum.Enum):
 
 
 class FunctionCallStatusEnum(enum.Enum):
-
   """Enumeration for the outcome status of an individual function call."""
 
   SUCCESS = "success"

@@ -1,10 +1,10 @@
-# State Management in PyLabPraxis
+# State Management in Praxis
 
-State management is a critical aspect of PyLabPraxis, ensuring that the system accurately reflects the status of the laboratory automation workcell, protocols, and assets at all times. It involves several interconnected components and layers, from in-memory representations to persistent storage and real-time updates.
+State management is a critical aspect of Praxis, ensuring that the system accurately reflects the status of the laboratory automation workcell, protocols, and assets at all times. It involves several interconnected components and layers, from in-memory representations to persistent storage and real-time updates.
 
 ## Core State Management Components
 
-PyLabPraxis employs a multi-faceted approach to state management, utilizing:
+Praxis employs a multi-faceted approach to state management, utilizing:
 
 1.  **`PraxisState` (Redis-backed run-specific data)**: A dictionary-like object, persisted to Redis, for storing and retrieving JSON-serializable data specific to a single protocol run. It facilitates sharing simple state across different function calls or steps within that run. It also allows for other programs to access this data and that it persists between runs with ease.
 2.  **`WorkcellRuntime` (Live Operational State)**: Manages the real-time operational state of PyLabRobot device objects, their connections, and interactions. This includes handling the live status of hardware.
@@ -63,7 +63,7 @@ The `WorkcellRuntime` is responsible for the dynamic, real-time aspects of the w
 
 ## 3. Database (PostgreSQL with SQLAlchemy ORM)
 
-The database serves as the persistent backbone for PyLabPraxis, storing data that needs to survive beyond a single session or execution. SQLAlchemy ORM is used to map Python objects to database tables.
+The database serves as the persistent backbone for Praxis, storing data that needs to survive beyond a single session or execution. SQLAlchemy ORM is used to map Python objects to database tables.
 
 ### Key Data Stored in Database
 
@@ -144,7 +144,7 @@ Understanding how state evolves during the lifecycle of a protocol is key:
 
 ## Summary
 
-PyLabPraxis employs a layered and distributed state management strategy:
+Praxis employs a layered and distributed state management strategy:
 -   **`PraxisState`** provides run-specific, Redis-backed storage for simple, JSON-serializable data shared across protocol steps.
 -   **`WorkcellRuntime`** manages the live, operational state of hardware.
 -   The **Database (PostgreSQL)** is the source of truth for persistent configurations, historical data, and the canonical state of assets.

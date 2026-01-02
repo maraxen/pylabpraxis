@@ -1,10 +1,10 @@
-# PyLabPraxis Testing Strategy
+# Praxis Testing Strategy
 
 > **⚡ Performance Optimizations Added (Dec 11, 2025)**
 > This document has been significantly expanded with a comprehensive "Test Suite Performance Optimizations" section.
 > For quick reference on running tests efficiently, see the [Quick Performance Commands](#quick-performance-commands) section.
 
-This document outlines the testing strategy for the PyLabPraxis backend components. Our goal is to ensure reliability, maintainability, and correctness of the application through a comprehensive testing approach.
+This document outlines the testing strategy for the Praxis backend components. Our goal is to ensure reliability, maintainability, and correctness of the application through a comprehensive testing approach.
 
 ## Guiding Principles
 

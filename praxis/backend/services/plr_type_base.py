@@ -18,7 +18,6 @@ class DiscoverableTypeServiceBase(
   ABC,
   Generic[ModelType, CreateSchemaType, UpdateSchemaType],
 ):
-
   """An abstract base class for services that handle discoverable pylabrobot type definitions."""
 
   @property

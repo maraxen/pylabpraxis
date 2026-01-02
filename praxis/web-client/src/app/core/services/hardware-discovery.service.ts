@@ -11,7 +11,7 @@ import { firstValueFrom } from 'rxjs';
 import { PLR_MACHINE_DEFINITIONS, PlrMachineDefinition } from '@assets/demo-data/plr-definitions';
 
 export type ConnectionType = 'serial' | 'usb' | 'network' | 'simulator';
-export type DeviceStatus = 'available' | 'connected' | 'busy' | 'error' | 'requires_config';
+export type DeviceStatus = 'available' | 'connected' | 'connecting' | 'disconnected' | 'busy' | 'error' | 'requires_config' | 'unknown';
 
 export interface DiscoveredDevice {
     id: string;
@@ -30,6 +30,8 @@ export interface DiscoveredDevice {
     requiresConfiguration?: boolean;
     configurationSchema?: Record<string, ConfigurationField>;
     configuration?: Record<string, unknown>;
+    errorMessage?: string;
+    ipAddress?: string;
 }
 
 export interface ConfigurationField {
@@ -486,10 +488,149 @@ export class HardwareDiscoveryService {
     }
 
     /**
+     * Clear error state for a device
+     */
+    clearDeviceError(deviceId: string): void {
+        this.discoveredDevices.update(devices =>
+            devices.map(d => d.id === deviceId
+                ? { ...d, status: 'available' as DeviceStatus, errorMessage: undefined }
+                : d
+            )
+        );
+    }
+
+    /**
+     * Set device error state
+     */
+    setDeviceError(deviceId: string, errorMessage: string): void {
+        this.discoveredDevices.update(devices =>
+            devices.map(d => d.id === deviceId
+                ? { ...d, status: 'error' as DeviceStatus, errorMessage }
+                : d
+            )
+        );
+    }
+
+    /**
      * Check if a device is a recognized PLR-supported device
      */
     isPlrSupported(device: DiscoveredDevice): boolean {
         return !!(device.plrBackend && device.plrBackend.length > 0);
+    }
+
+    // =========================================================================
+    // Backend Connection Management
+    // =========================================================================
+
+    /**
+     * Connect to a device via backend API (persists connection state)
+     */
+    async connectViaBackend(device: DiscoveredDevice): Promise<boolean> {
+        try {
+            const response = await firstValueFrom(
+                this.http.post<{ status: string; message: string }>('/api/v1/hardware/connect', {
+                    device_id: device.id,
+                    backend_class: device.plrBackend,
+                    config: {
+                        port: device.port ? 'webserial' : undefined,
+                        ip_address: device.ipAddress,
+                        ...device.configuration,
+                    },
+                })
+            );
+
+            if (response.status === 'connected') {
+                this.discoveredDevices.update(devices =>
+                    devices.map(d => d.id === device.id
+                        ? { ...d, status: 'connected' as DeviceStatus, errorMessage: undefined }
+                        : d
+                    )
+                );
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Backend connection failed:', error);
+            this.setDeviceError(device.id, (error as Error).message || 'Connection failed');
+            return false;
+        }
+    }
+
+    /**
+     * Disconnect from a device via backend API
+     */
+    async disconnectViaBackend(device: DiscoveredDevice): Promise<boolean> {
+        try {
+            await firstValueFrom(
+                this.http.post('/api/v1/hardware/disconnect', {
+                    device_id: device.id,
+                })
+            );
+
+            this.discoveredDevices.update(devices =>
+                devices.map(d => d.id === device.id
+                    ? { ...d, status: 'available' as DeviceStatus }
+                    : d
+                )
+            );
+            return true;
+        } catch (error) {
+            console.error('Backend disconnection failed:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Fetch active connections from backend
+     */
+    async fetchBackendConnections(): Promise<void> {
+        try {
+            const connections = await firstValueFrom(
+                this.http.get<Array<{
+                    device_id: string;
+                    status: string;
+                    connected_at: string | null;
+                    last_heartbeat: string;
+                    backend_class: string | null;
+                    error_message: string | null;
+                }>>('/api/v1/hardware/connections')
+            );
+
+            // Update device statuses based on backend state
+            this.discoveredDevices.update(devices =>
+                devices.map(d => {
+                    const conn = connections.find(c => c.device_id === d.id);
+                    if (conn) {
+                        return {
+                            ...d,
+                            status: conn.status as DeviceStatus,
+                            errorMessage: conn.error_message || undefined,
+                        };
+                    }
+                    return d;
+                })
+            );
+        } catch (error) {
+            // Silently fail - backend might not be available
+            console.debug('Could not fetch backend connections:', error);
+        }
+    }
+
+    /**
+     * Send heartbeat for a connected device
+     */
+    async sendHeartbeat(deviceId: string): Promise<boolean> {
+        try {
+            const response = await firstValueFrom(
+                this.http.post<{ success: boolean }>('/api/v1/hardware/heartbeat', {
+                    device_id: deviceId,
+                })
+            );
+            return response.success;
+        } catch (error) {
+            console.debug('Heartbeat failed:', error);
+            return false;
+        }
     }
 
     // =========================================================================

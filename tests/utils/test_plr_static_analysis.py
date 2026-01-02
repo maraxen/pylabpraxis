@@ -1,12 +1,12 @@
 """Tests for PLR static analysis module."""
 
-import pytest
 import libcst as cst
+import pytest
 
 from praxis.backend.utils.plr_static_analysis import (
-  DiscoveredClass,
   MACHINE_BACKEND_TYPES,
   MACHINE_FRONTEND_TYPES,
+  DiscoveredClass,
   PLRClassType,
   PLRSourceParser,
   find_plr_source_root,
@@ -414,7 +414,7 @@ class TestProtocolFunctionVisitor:
     from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
       ProtocolFunctionVisitor,
     )
-    
+
     source = """
 @protocol_function
 def my_protocol():
@@ -424,7 +424,7 @@ def my_protocol():
     tree = cst.parse_module(source.strip())
     visitor = ProtocolFunctionVisitor("test_module", "/path/to/file.py")
     tree.visit(visitor)
-    
+
     assert len(visitor.definitions) == 1
     info = visitor.definitions[0]
     assert info.name == "my_protocol"
@@ -436,7 +436,7 @@ def my_protocol():
     from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
       ProtocolFunctionVisitor,
     )
-    
+
     source = """
 @protocol_function
 def my_protocol(vol: float, name: str = "test"):
@@ -445,11 +445,11 @@ def my_protocol(vol: float, name: str = "test"):
     tree = cst.parse_module(source.strip())
     visitor = ProtocolFunctionVisitor("test_module", "/path/to/file.py")
     tree.visit(visitor)
-    
+
     assert len(visitor.definitions) == 1
     info = visitor.definitions[0]
     assert len(info.parameters) == 2
-    
+
     # Check regular param
     p1 = info.parameters[0]
     assert p1.name == "vol"
@@ -470,7 +470,7 @@ def my_protocol(vol: float, name: str = "test"):
     from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
       ProtocolFunctionVisitor,
     )
-    
+
     source = """
 @protocol_function
 def my_protocol(plate: Plate, tips: TipRack):
@@ -479,17 +479,17 @@ def my_protocol(plate: Plate, tips: TipRack):
     tree = cst.parse_module(source.strip())
     visitor = ProtocolFunctionVisitor("test_module", "/path/to/file.py")
     tree.visit(visitor)
-    
+
     assert len(visitor.definitions) == 1
     info = visitor.definitions[0]
     assert len(info.parameters) == 2
-    
+
     # Check assets
     p1 = info.parameters[0]
     assert p1.name == "plate"
     assert p1.is_asset
     assert p1.asset_type == "Plate"
-    
+
     p2 = info.parameters[1]
     assert p2.name == "tips"
     assert p2.is_asset

@@ -28,8 +28,6 @@ from praxis.backend.services.resource_type_definition import ResourceTypeDefinit
 router = APIRouter()
 
 
-
-
 @router.get(
   "/definitions/facets",
   tags=["Resource Definitions"],
@@ -47,7 +45,7 @@ async def get_resource_definition_facets(
 
   Used for dynamically generating filter chips in the frontend.
   Returns facets for: plr_category, vendor, num_items, plate_type, well_volume_ul, tip_volume_ul.
-  
+
   Supports dynamic filtering: passing a filter (e.g. plr_category='plate') will update
   the counts for other facets (e.g. only showing vendors that make plates).
   """
@@ -67,29 +65,29 @@ async def get_resource_definition_facets(
 
   # Helper to build base query with filters applied
   def build_query(exclude_field: str | None = None):
-      q = select(model)
-      
-      # Apply all active filters EXCEPT the one we are currently calculating counts for.
-      # This allows seeing other options within a selected category (e.g. seeing other Vendors even if one is selected)
-      # BUT for the progressive disclosure flow, we might want strict filtering. 
-      # Let's start with strict filtering but exclude the current field to allow switching.
-      
-      if plr_category and exclude_field != "plr_category":
-          q = q.where(model.plr_category == plr_category)
-      if vendor and exclude_field != "vendor":
-          q = q.where(model.vendor == vendor)
-      if num_items is not None and exclude_field != "num_items":
-          q = q.where(model.num_items == num_items)
-      if plate_type and exclude_field != "plate_type":
-          q = q.where(model.plate_type == plate_type)
-          
-      return q
+    q = select(model)
 
-  for facet_name, column in facet_fields.items():
+    # Apply all active filters EXCEPT the one we are currently calculating counts for.
+    # This allows seeing other options within a selected category (e.g. seeing other Vendors even if one is selected)
+    # BUT for the progressive disclosure flow, we might want strict filtering.
+    # Let's start with strict filtering but exclude the current field to allow switching.
+
+    if plr_category and exclude_field != "plr_category":
+      q = q.where(model.plr_category == plr_category)
+    if vendor and exclude_field != "vendor":
+      q = q.where(model.vendor == vendor)
+    if num_items is not None and exclude_field != "num_items":
+      q = q.where(model.num_items == num_items)
+    if plate_type and exclude_field != "plate_type":
+      q = q.where(model.plate_type == plate_type)
+
+    return q
+
+  for facet_name in facet_fields:
     # Build query excluding the current facet field (so we get counts for all options in this facet)
     base_query = build_query(exclude_field=facet_name)
     subq = base_query.subquery()
-    
+
     # Get the column from the subquery
     # Note: DB columns match the keys in facet_fields
     subq_col = getattr(subq.c, facet_name)
@@ -101,7 +99,7 @@ async def get_resource_definition_facets(
       .group_by(subq_col)
       .order_by(func.count().desc())
     )
-    
+
     result = await db.execute(stmt)
     rows = result.all()
 
@@ -133,4 +131,3 @@ router.include_router(
     response_schema=ResourceResponse,
   ),
 )
-

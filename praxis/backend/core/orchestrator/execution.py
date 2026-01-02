@@ -30,7 +30,6 @@ logger = get_logger(__name__)
 
 
 class ExecutionMixin:
-
   """Mixin for executing protocols."""
 
   # Type hints for dependencies
@@ -209,6 +208,7 @@ class ExecutionMixin:
 
     Returns:
         ProtocolRunOrm: The completed protocol run record.
+
     """
     input_parameters = input_parameters or {}
     initial_state_data = initial_state_data or {}
@@ -341,6 +341,7 @@ class ExecutionMixin:
 
     Returns:
         ProtocolRunOrm: The completed protocol run record.
+
     """
     user_input_params = user_input_params or {}
     initial_state_data = initial_state_data or {}

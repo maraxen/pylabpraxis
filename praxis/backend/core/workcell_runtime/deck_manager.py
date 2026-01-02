@@ -26,7 +26,6 @@ COORDINATE_TUPLE_LENGTH = 3
 
 
 class DeckManagerMixin:
-
   """Mixin for managing decks in WorkcellRuntime."""
 
   def get_active_deck_accession_id(self, deck: Deck) -> uuid.UUID:

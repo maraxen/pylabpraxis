@@ -320,6 +320,38 @@ Link protocol discovery to capability matching (see [protocol_inspection.md](./p
 
 ---
 
+## Consumable Matching Improvements ✅ COMPLETE (2026-01-02)
+
+**Module**: `praxis/backend/core/consumable_assignment.py`
+
+The `ConsumableAssignmentService` provides intelligent consumable assignment based on:
+
+### Scoring Factors
+
+| Factor | Weight | Description |
+|--------|--------|-------------|
+| **Volume Match** | 1.0 | Capacity meets or exceeds requirement |
+| **Type Match** | 1.0 | Exact FQN > Partial > Keyword |
+| **Availability** | 1.0 | Not reserved by another run |
+| **Expiration** | 1.0 | Days until expiration (0 if expired) |
+| **Batch Tracking** | 1.0 | Has batch/lot number, dates |
+
+### Integration Points
+
+- `ProtocolScheduler.analyze_protocol_requirements()` - Auto-suggests consumables
+- `RuntimeAssetRequirement.suggested_asset_id` - Carries suggestion to frontend
+- Frontend browser-mode equivalent (pending)
+
+### Supported Consumable Types
+
+- Plates (well plates, microplates)
+- Tip racks
+- Troughs/reservoirs
+- Tubes
+- Generic wells
+
+---
+
 ## Success Metrics
 
 1. ✅ All 15+ PLR machine types discoverable (21 frontends, 70 backends across 15 types)
@@ -327,3 +359,4 @@ Link protocol discovery to capability matching (see [protocol_inspection.md](./p
 3. ✅ User can configure optional capabilities during machine setup (Phase 3 Complete)
 4. ✅ Protocol requirements match to available hardware (Phase 4 - Complete)
 5. ✅ Deep Protocol Inspection (Phase 5 - Phase 1 & 2 Complete)
+6. ✅ Consumable auto-assignment with scoring (2026-01-02)

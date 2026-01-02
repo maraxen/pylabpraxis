@@ -38,7 +38,8 @@ class PlateReaderTask(StandaloneTask):
     if buffer_time is None:
       buffer_time = datetime.timedelta(minutes=5)  # 5-minute buffer
     if next_use and earliest_finish_time + buffer_time > next_use:
-      raise Exception("Plate reader will be needed by the main experiment soon.")
+      msg = "Plate reader will be needed by the main experiment soon."
+      raise Exception(msg)
 
     # Acquire the plate reader lock
     if not self.registry.acquire_lock(
@@ -48,15 +49,12 @@ class PlateReaderTask(StandaloneTask):
       lock_timeout=self.estimated_duration,
       acquire_timeout=10,
     ):
-      raise Exception("Failed to acquire lock on plate reader.")
+      msg = "Failed to acquire lock on plate reader."
+      raise Exception(msg)
 
   async def _execute(self):
     # Simulate performing plate reader operation
-    print(
-      f"Performing {self.measurement_type} on plate {self.plate_name} for wells {self.wells}.",
-    )
     await asyncio.sleep(self.estimated_duration)  # Simulate time taken for operation
-    print(f"Finished {self.measurement_type} on plate {self.plate_name}.")
 
     # Insert usage data into the database
     try:
@@ -75,13 +73,11 @@ class PlateReaderTask(StandaloneTask):
         ),
       )
       self._data.conn.commit()
-      print("Plate reader usage data saved successfully.")
-    except Exception as e:
-      print(f"Failed to save plate reader usage data: {e}")
+    except Exception:
+      pass
 
   async def _stop(self):
     # Release the plate reader lock
     self.registry.release_lock(
       "plate_reader", self.experiment_name, self.task_accession_id,
     )
-    print("Plate reader lock released.")

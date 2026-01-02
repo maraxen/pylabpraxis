@@ -143,8 +143,8 @@ class TestOutputEnumsIntegration:
 
     def test_enums_are_independent(self) -> None:
         """Test that output type and spatial context are independent."""
-        type_names = set(member.name for member in DataOutputTypeEnum)
-        context_names = set(member.name for member in SpatialContextEnum)
+        type_names = {member.name for member in DataOutputTypeEnum}
+        context_names = {member.name for member in SpatialContextEnum}
         assert len(type_names.intersection(context_names)) == 0
 
     def test_can_combine_type_and_context(self) -> None:

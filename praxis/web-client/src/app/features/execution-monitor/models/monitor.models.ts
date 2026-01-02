@@ -58,7 +58,7 @@ export interface RunHistoryParams {
     limit?: number;
     offset?: number;
     status?: RunStatus | RunStatus[];
-    protocol_id?: string;
+    protocol_id?: string | string[];
     sort_by?: 'created_at' | 'start_time' | 'status';
     sort_order?: 'asc' | 'desc';
 }

@@ -49,7 +49,6 @@ if TYPE_CHECKING:
 
 
 class FunctionDataOutputOrm(Base):
-
   """ORM model for capturing data outputs from protocol function calls.
 
   This model links data outputs to specific function calls and allows association
@@ -294,7 +293,6 @@ class FunctionDataOutputOrm(Base):
 
 
 class WellDataOutputOrm(Base):
-
   """Specialized model for well-specific data outputs with plate context.
 
   This model provides a convenient interface for data that's specifically tied

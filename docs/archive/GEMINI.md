@@ -40,7 +40,7 @@ Provide your feedback as a JSON array of objects. Each object should represent a
 
 ## Type Definition Management
 
-A key feature of PyLabPraxis is its ability to understand the capabilities of the laboratory hardware. This is achieved through a "discover and sync" process that introspects the `pylabrobot` library to identify available resources, machines, and decks. This information is then stored in the database as "type definitions."
+A key feature of Praxis is its ability to understand the capabilities of the laboratory hardware. This is achieved through a "discover and sync" process that introspects the `pylabrobot` library to identify available resources, machines, and decks. This information is then stored in the database as "type definitions."
 
 This process is managed by a set of specialized services that inherit from a common `TypeDefinitionServiceBase`. Each service is responsible for a specific type of asset:
 

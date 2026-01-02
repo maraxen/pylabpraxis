@@ -17,17 +17,13 @@ async def test_create_workcell(client: AsyncClient, db_session: AsyncSession) ->
 
     # DEBUG: Verify data is in session before API call
     result = await db_session.execute(select(WorkcellOrm).where(WorkcellOrm.accession_id == workcell.accession_id))
-    found = result.scalars().first()
-    print(f"DEBUG: Workcell in session before API call: {found}")
-    print(f"DEBUG: Workcell ID: {workcell.accession_id}")
-    print(f"DEBUG: Session ID: {id(db_session)}")
+    result.scalars().first()
 
     # DEBUG: List all routes
     from main import app as main_app
-    print("DEBUG: Available routes:")
     for route in main_app.routes:
         if hasattr(route, "path") and "workcell" in route.path.lower():
-            print(f"  {route.path} - {route.methods if hasattr(route, 'methods') else 'N/A'}")
+            pass
 
     # For now, just verify the workcell can be retrieved from the session
     # The Pydantic serialization issue with nested models needs separate investigation

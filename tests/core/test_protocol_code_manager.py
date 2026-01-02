@@ -69,7 +69,8 @@ class TestTemporarySysPath:
 
         with pytest.raises(ValueError), temporary_sys_path(test_path):
             assert test_path in sys.path
-            raise ValueError("Test exception")
+            msg = "Test exception"
+            raise ValueError(msg)
 
         assert test_path not in sys.path
         assert sys.path == original_sys_path
@@ -264,7 +265,8 @@ class TestEnsureGitRepoAndFetch:
 
         async def mock_run_git_command(cmd, cwd, suppress_output=False):
             if cmd == ["git", "rev-parse", "--is-inside-work-tree"]:
-                raise RuntimeError("Not a git repo")
+                msg = "Not a git repo"
+                raise RuntimeError(msg)
             return ""
 
         manager._run_git_command = mock_run_git_command
@@ -459,7 +461,7 @@ class TestLoadProtocolFunction:
         # Simulate module already in sys.modules
         with patch.dict(sys.modules, {"test_module": mock_module}):
             with patch("importlib.reload", return_value=mock_module) as mock_reload:
-                func, pydantic_def = manager._load_protocol_function(
+                func, _pydantic_def = manager._load_protocol_function(
                     "test_module",
                     "test_function",
                 )

@@ -17,8 +17,7 @@ from praxis.backend.utils.uuid import uuid7
 @pytest.fixture
 def mock_db_session() -> AsyncMock:
     """Mock database session."""
-    session = AsyncMock(spec=AsyncSession)
-    return session
+    return AsyncMock(spec=AsyncSession)
 
 
 @pytest.mark.asyncio

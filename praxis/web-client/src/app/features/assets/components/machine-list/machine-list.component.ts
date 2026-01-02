@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal, ViewChild } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, ViewChild, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,10 +13,14 @@ import { AssetService } from '../../services/asset.service';
 import { Machine, MachineStatus } from '../../models/asset.models';
 import { AssetStatusChipComponent, AssetStatusType } from '../asset-status-chip/asset-status-chip.component';
 import { LocationBreadcrumbComponent } from '../location-breadcrumb/location-breadcrumb.component';
+import { AssetFiltersComponent, AssetFilterState } from '../asset-filters/asset-filters.component';
+import { MaintenanceBadgeComponent } from '../maintenance-badge/maintenance-badge.component';
+import { calculateMaintenanceStatus } from '../../utils/maintenance.utils';
 import { MachineDetailsDialogComponent } from './machine-details-dialog.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, startWith, switchMap, filter, finalize } from 'rxjs/operators';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { AppStore } from '../../../../core/store/app.store';
 
 @Component({
   selector: 'app-machine-list',
@@ -32,17 +36,18 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
     MatMenuModule,
     MatDividerModule,
     ReactiveFormsModule,
-    ReactiveFormsModule,
     AssetStatusChipComponent,
-    LocationBreadcrumbComponent
+    LocationBreadcrumbComponent,
+    AssetFiltersComponent,
+    MaintenanceBadgeComponent
   ],
   template: `
     <div class="machine-list-container">
-      <mat-form-field appearance="outline" class="filter-field">
-        <mat-label>Filter Machines</mat-label>
-        <input matInput [formControl]="filterControl">
-        <mat-icon matSuffix>search</mat-icon>
-      </mat-form-field>
+      <app-asset-filters
+        [categories]="categories()"
+        [showMachineFilter]="false"
+        (filtersChange)="onFiltersChange($event)">
+      </app-asset-filters>
 
       <table mat-table [dataSource]="filteredMachines()" class="mat-elevation-z2">
         <!-- Name Column -->
@@ -79,6 +84,14 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
           </td>
         </ng-container>
 
+        <!-- Maintenance Column -->
+        <ng-container matColumnDef="maintenance">
+          <th mat-header-cell *matHeaderCellDef> Maintenance </th>
+          <td mat-cell *matCellDef="let machine">
+              <app-maintenance-badge [machine]="machine" />
+          </td>
+        </ng-container>
+
         <!-- Actions Column -->
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef> Actions </th>
@@ -95,14 +108,14 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
           </td>
         </ng-container>
 
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;" 
+        <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns();" 
             (contextmenu)="onContextMenu($event, row)"
             class="machine-row"></tr>
 
         <!-- Row shown when there is no matching data. -->
         <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell" colspan="5">No machines matching the filter "{{ filterControl.value }}"</td>
+          <td class="mat-cell" colspan="5">No machines matching the selected filters</td>
         </tr>
       </table>
 
@@ -136,9 +149,8 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
       padding: 16px;
     }
 
-    .filter-field {
-      width: 100%;
-      margin-bottom: 16px;
+    .machine-list-container {
+      padding: 16px;
     }
 
     .mat-elevation-z2 {
@@ -161,33 +173,39 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 export class MachineListComponent {
   private assetService = inject(AssetService);
   private dialog = inject(MatDialog);
+  private store = inject(AppStore);
+
   machines = signal<Machine[]>([]);
   filteredMachines = signal<Machine[]>([]);
-  filterControl = new FormControl('', { nonNullable: true });
+  categories = signal<string[]>([]);
+  activeFilters = signal<AssetFilterState | null>(null);
 
-  displayedColumns: string[] = ['name', 'status', 'model', 'manufacturer', 'location', 'actions'];
+  displayedColumns = computed(() => {
+    const cols = ['name', 'status', 'model', 'manufacturer', 'location'];
+    if (this.store.maintenanceEnabled()) {
+      cols.push('maintenance');
+    }
+    cols.push('actions');
+    return cols;
+  });
 
   @ViewChild(MatMenuTrigger) contextMenuTrigger!: MatMenuTrigger;
   contextMenuPosition = { x: '0px', y: '0px' };
 
   constructor() {
     this.loadMachines();
-
-    this.filterControl.valueChanges.pipe(
-      takeUntilDestroyed(),
-      debounceTime(300),
-      distinctUntilChanged(),
-      startWith('')
-    ).subscribe(filterValue => {
-      this.applyFilter(filterValue);
-    });
   }
 
   loadMachines(): void {
     this.assetService.getMachines().subscribe(
       (data) => {
         this.machines.set(data);
-        this.applyFilter(this.filterControl.value);
+        this.updateCategories(data);
+        if (this.activeFilters()) {
+          this.applyFilters(this.activeFilters()!);
+        } else {
+          this.filteredMachines.set(data);
+        }
       },
       (error) => {
         console.error('Error fetching machines:', error);
@@ -195,16 +213,76 @@ export class MachineListComponent {
     );
   }
 
-  private applyFilter(filterValue: string): void {
-    const lowerCaseFilter = filterValue.toLowerCase();
-    this.filteredMachines.set(
-      this.machines().filter(machine =>
-        machine.name.toLowerCase().includes(lowerCaseFilter) ||
-        machine.status.toLowerCase().includes(lowerCaseFilter) ||
-        machine.model?.toLowerCase().includes(lowerCaseFilter) ||
-        machine.manufacturer?.toLowerCase().includes(lowerCaseFilter)
-      )
-    );
+  private updateCategories(machines: Machine[]): void {
+    const cats = new Set<string>();
+    machines.forEach(m => {
+      if (m.manufacturer) cats.add(m.manufacturer);
+      if (m.model) cats.add(m.model);
+    });
+    this.categories.set(Array.from(cats).sort());
+  }
+
+  onFiltersChange(filters: AssetFilterState) {
+    this.activeFilters.set(filters);
+    this.applyFilters(filters);
+  }
+
+  private applyFilters(filters: AssetFilterState): void {
+    let filtered = this.machines();
+
+    // 1. Status Filter
+    if (filters.status.length > 0) {
+      filtered = filtered.filter(m => filters.status.includes(m.status));
+    }
+
+    // 2. Category Filter (checking manufacturer/model as proxy for now)
+    if (filters.category.length > 0) {
+      filtered = filtered.filter(m =>
+        (m.manufacturer && filters.category.includes(m.manufacturer)) ||
+        (m.model && filters.category.includes(m.model))
+      );
+    }
+
+    // 3. Maintenance Due Filter
+    if (filters.maintenance_due && this.store.maintenanceEnabled()) {
+      filtered = filtered.filter(m => {
+        const status = calculateMaintenanceStatus(m);
+        return status === 'overdue' || status === 'warning';
+      });
+    }
+
+    // 4. Sort
+    filtered.sort((a, b) => {
+      let valA: any = '';
+      let valB: any = '';
+
+      switch (filters.sort_by) {
+        case 'name':
+          valA = a.name.toLowerCase();
+          valB = b.name.toLowerCase();
+          break;
+        case 'category':
+          valA = (a.manufacturer || '').toLowerCase();
+          valB = (b.manufacturer || '').toLowerCase();
+          break;
+        case 'created_at':
+          valA = new Date(a.created_at || 0).getTime();
+          valB = new Date(b.created_at || 0).getTime();
+          break;
+        case 'status':
+          valA = a.status;
+          valB = b.status;
+          break;
+      }
+
+      if (filters.sort_order === 'asc') {
+        return valA > valB ? 1 : -1;
+      } else {
+        return valA < valB ? 1 : -1;
+      }
+    });
+
+    this.filteredMachines.set(filtered);
   }
 
   onContextMenu(event: MouseEvent, machine: Machine) {
@@ -222,14 +300,12 @@ export class MachineListComponent {
     });
   }
 
-  editMachine(machine: Machine) {
-    console.log('Edit machine:', machine);
-    // Placeholder for future implementation
+  editMachine(_machine: Machine) {
+    // TODO: Implement machine editing
   }
 
-  duplicateMachine(machine: Machine) {
-    console.log('Duplicate machine:', machine);
-    // Placeholder for future implementation
+  duplicateMachine(_machine: Machine) {
+    // TODO: Implement machine duplication
   }
 
   deleteMachine(machine: Machine) {

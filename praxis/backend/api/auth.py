@@ -5,7 +5,7 @@ from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,7 +14,6 @@ from praxis.backend.models.pydantic_internals.user import UserResponse
 from praxis.backend.services.user import user_service
 from praxis.backend.utils.auth import (
   ACCESS_TOKEN_EXPIRE_MINUTES,
-  Token,
   create_access_token,
   verify_token,
 )

@@ -14,22 +14,21 @@ Usage:
 """
 
 from praxis.backend.core.storage.factory import (
-    StorageBackend,
-    StorageFactory,
+  StorageBackend,
+  StorageFactory,
 )
 from praxis.backend.core.storage.protocols import (
-    KeyValueStore,
-    PubSub,
-    Subscription,
-    TaskQueue,
+  KeyValueStore,
+  PubSub,
+  Subscription,
+  TaskQueue,
 )
 
 __all__ = [
-    "KeyValueStore",
-    "PubSub",
-    "StorageBackend",
-    "StorageFactory",
-    "Subscription",
-    "TaskQueue",
+  "KeyValueStore",
+  "PubSub",
+  "StorageBackend",
+  "StorageFactory",
+  "Subscription",
+  "TaskQueue",
 ]
-

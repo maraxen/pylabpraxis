@@ -198,8 +198,6 @@ def test_resource_definition_response_roundtrip_serialization() -> None:
 @pytest.mark.asyncio
 async def test_resource_definition_response_from_orm(db_session: AsyncSession) -> None:
     """Test converting ResourceDefinitionOrm to ResourceDefinitionResponse."""
-    from praxis.backend.utils.uuid import uuid7
-
     plr_details = {"num_items": 96}
     rotation = {"x_deg": 0, "y_deg": 0, "z_deg": 0}
 
@@ -250,8 +248,6 @@ async def test_resource_definition_response_from_orm(db_session: AsyncSession) -
 @pytest.mark.asyncio
 async def test_resource_definition_response_from_orm_minimal(db_session: AsyncSession) -> None:
     """Test ORM-to-Pydantic conversion with minimal fields."""
-    from praxis.backend.utils.uuid import uuid7
-
     orm_resource_def = ResourceDefinitionOrm(
         name="minimal_plate",
         fqn="test.minimal.Plate",

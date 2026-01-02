@@ -24,7 +24,6 @@ logger = get_logger(__name__)
 
 
 class LocationHandlerMixin:
-
   """Mixin for handling location constraints during asset acquisition."""
 
   # Type hinting for dependencies expected on the main class

@@ -4,7 +4,6 @@ import inspect
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
 from pylabrobot.machines.machine import Machine
 from pylabrobot.resources import Deck, Plate, Resource, ResourceHolder
 from pylabrobot.resources.carrier import Carrier, PlateCarrier, TipCarrier, TroughCarrier
@@ -765,7 +764,7 @@ class TestGetCapabilities:
         """Test channel extraction."""
         class Mock96(Machine):
             """A 96-channel mock."""
-            pass
+
 
         caps = get_capabilities(Mock96)
         assert 96 in caps["channels"]
@@ -774,7 +773,7 @@ class TestGetCapabilities:
         """Test module extraction."""
         class MockSwap(Machine):
             """Has a swap capability."""
-            pass
+
 
         caps = get_capabilities(MockSwap)
         assert "swap" in caps["modules"]
@@ -783,7 +782,7 @@ class TestGetCapabilities:
         """Test the capabilities dict structure."""
         class MockEmpty(Machine):
             pass
-        
+
         caps = get_capabilities(MockEmpty)
         assert "channels" in caps
         assert isinstance(caps["channels"], list)

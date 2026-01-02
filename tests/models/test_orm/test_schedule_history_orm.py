@@ -620,7 +620,7 @@ async def test_schedule_history_orm_cascade_delete(
     entry_id = schedule_entry.accession_id
 
     # Create history entries
-    for i in range(3):
+    for _i in range(3):
         history = ScheduleHistoryOrm(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,

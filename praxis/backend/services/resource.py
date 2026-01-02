@@ -35,7 +35,6 @@ UUID = uuid.UUID
 
 
 class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
-
   """Service for resource-related operations."""
 
   @handle_db_transaction

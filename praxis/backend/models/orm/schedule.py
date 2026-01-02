@@ -22,7 +22,6 @@ if TYPE_CHECKING:
 from sqlalchemy import (
   UUID,
   Column,
-  Computed,
   DateTime,
   Float,
   ForeignKey,
@@ -31,7 +30,6 @@ from sqlalchemy import (
   String,
   Table,
   Text,
-  event,
   func,
   select,
 )
@@ -45,12 +43,11 @@ from praxis.backend.models.enums.schedule import (
   ScheduleStatusEnum,
 )
 from praxis.backend.models.orm.types import JsonVariant
-from praxis.backend.utils.db import Base, CreateMaterializedView
+from praxis.backend.utils.db import Base
 from praxis.backend.utils.uuid import uuid7
 
 
 class ScheduleEntryOrm(Base):
-
   """SQLAlchemy ORM model for tracking scheduled protocol runs.
 
   This model represents a protocol run that has been scheduled for execution,
@@ -185,7 +182,6 @@ class ScheduleEntryOrm(Base):
 
 
 class AssetReservationOrm(Base):
-
   """SQLAlchemy ORM model for tracking asset reservations.
 
   This model tracks individual asset reservations for scheduled protocol runs,
@@ -327,7 +323,6 @@ class AssetReservationOrm(Base):
 
 
 class ScheduleHistoryOrm(Base):
-
   """SQLAlchemy ORM model for tracking schedule status changes and events.
 
   This model provides an audit trail of all scheduling events for analytics
@@ -496,7 +491,6 @@ scheduler_metrics_mv = Table(
 
 
 class SchedulerMetricsView(Base):
-
   """Read-only ORM class mapped to the scheduler_metrics_mv materialized view."""
 
   __tablename__ = "scheduler_metrics_mv"

@@ -6,14 +6,12 @@ functions in praxis.backend.utils.auth.
 
 from datetime import datetime, timedelta, timezone
 
-import pytest
-from fastapi import HTTPException
 from jose import jwt
 
 from praxis.backend.utils.auth import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
     SECRET_KEY,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
     create_access_token,
     verify_token,
 )

@@ -37,10 +37,12 @@
 - [x] Weird line appearing down the middle of filter search bars.
 - [x] Consistent issue throughout the app - find global CSS cause.
 
-### Activity History Linking
+### Activity History Linking - ✅ RESOLVED 2026-01-01
 
-- [ ] Activity history items don't link to anything.
-- [ ] Link each item to its Execution Monitor page.
+- [x] Activity history items now link to Execution Monitor.
+- [x] Added `routerLink` to `/app/monitor/:id` for each run in Recent Activity.
+- [x] Added visual feedback: hover effects, chevron icon, tooltips.
+- [x] Updated "View All" link to navigate to `/app/monitor`.
 
 ### Remove Quick Links Section
 
@@ -72,19 +74,22 @@ See [repl.md](./repl.md) for detailed items.
 - [ ] Add subtle gradient within background for both light and dark mode.
 - [ ] Should enhance visual depth without being distracting.
 
-### Loading Skeletons
+### Loading Skeletons - ✅ RESOLVED 2026-01-02
 
-- [ ] Replace generic spinners with skeleton loaders.
-- [ ] Apply to: protocol cards, asset lists, deck view.
+- [x] Replace generic spinners with skeleton loaders.
+- [x] Apply to: protocol cards, asset lists, deck view. (Implemented in Dashboard, History, Run Detail)
 
-### Command Palette Spacing
+### Command Palette Spacing - ✅ RESOLVED 2026-01-01
 
-- [ ] Fix spacing of keyboard shortcuts and tags in command palette.
+- [x] Fixed spacing of keyboard shortcuts and tags in command palette.
+- [x] Changed meta-container from vertical to horizontal layout.
+- [x] Improved shortcut badge styling with modern monospace font.
+- [x] Made category chips pill-shaped with better visual separation.
 
-### Navigation
+### Navigation - ✅ RESOLVED 2026-01-02
 
-- [ ] Review breadcrumbs for deep navigation.
-- [ ] Responsive check (Mobile/Tablet validation).
+- [x] Review breadcrumbs for deep navigation. (Integrated `BreadcrumbComponent` into Unified Shell)
+- [x] Responsive check (Mobile/Tablet validation).
 
 ### Deck Visualizer
 

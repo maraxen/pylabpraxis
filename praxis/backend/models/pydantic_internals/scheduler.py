@@ -18,7 +18,6 @@ from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseMod
 
 
 class ResourceReservationStatus(str, Enum):
-
   """Resource reservation status enum for API."""
 
   PENDING = "PENDING"
@@ -30,7 +29,6 @@ class ResourceReservationStatus(str, Enum):
 
 
 class ResourceRequirementRequest(PraxisBaseModel):
-
   """Request model for defining resource requirements."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -52,7 +50,6 @@ class ResourceRequirementRequest(PraxisBaseModel):
 
 
 class ResourceReservationResponse(PraxisBaseModel):
-
   """Response model for resource reservations."""
 
   # Remove accession_id and created_at fields, they are inherited.
@@ -84,7 +81,6 @@ class ResourceReservationResponse(PraxisBaseModel):
 
 
 class ScheduleProtocolRequest(PraxisBaseModel):
-
   """Request model for scheduling a protocol run."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -114,7 +110,6 @@ class ScheduleProtocolRequest(PraxisBaseModel):
 
 
 class ScheduleEntryResponse(PraxisBaseModel):
-
   """Response model for schedule entries."""
 
   protocol_run_accession_id: uuid.UUID
@@ -153,7 +148,6 @@ class ScheduleEntryResponse(PraxisBaseModel):
 
 
 class ScheduleStatusResponse(PraxisBaseModel):
-
   """Response model for schedule status queries."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -167,7 +161,6 @@ class ScheduleStatusResponse(PraxisBaseModel):
 
 
 class CancelScheduleRequest(PraxisBaseModel):
-
   """Request model for cancelling a scheduled run."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -177,7 +170,6 @@ class CancelScheduleRequest(PraxisBaseModel):
 
 
 class ScheduleAnalysisResponse(PraxisBaseModel):
-
   """Response model for schedule analysis."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -192,7 +184,6 @@ class ScheduleAnalysisResponse(PraxisBaseModel):
 
 
 class SchedulerSystemStatusResponse(PraxisBaseModel):
-
   """Response model for scheduler system status."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -226,7 +217,6 @@ class SchedulerSystemStatusResponse(PraxisBaseModel):
 
 
 class ScheduleHistoryResponse(PraxisBaseModel):
-
   """Response model for schedule history entries."""
 
   schedule_entry_accession_id: uuid.UUID
@@ -248,7 +238,6 @@ class ScheduleHistoryResponse(PraxisBaseModel):
 
 
 class ScheduleListRequest(PraxisBaseModel):
-
   """Request model for listing schedules with filters."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -284,7 +273,6 @@ class ScheduleListRequest(PraxisBaseModel):
 
 
 class ScheduleListResponse(PraxisBaseModel):
-
   """Response model for schedule listing."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -297,7 +285,6 @@ class ScheduleListResponse(PraxisBaseModel):
 
 
 class AssetAvailabilityResponse(PraxisBaseModel):
-
   """Response model for asset availability check."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -311,7 +298,6 @@ class AssetAvailabilityResponse(PraxisBaseModel):
 
 
 class SchedulePriorityUpdateRequest(PraxisBaseModel):
-
   """Request model for updating schedule priority."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -321,7 +307,6 @@ class SchedulePriorityUpdateRequest(PraxisBaseModel):
 
 
 class SchedulerMetricsResponse(PraxisBaseModel):
-
   """Response model for scheduler performance metrics."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -358,7 +343,6 @@ class SchedulerMetricsResponse(PraxisBaseModel):
 
 
 class ScheduleListFilters(PraxisBaseModel):
-
   """Model for filtering schedule lists."""
 
   search_filters: SearchFilters
@@ -371,7 +355,6 @@ class ScheduleListFilters(PraxisBaseModel):
 
 
 class ScheduleEntryCreate(PraxisBaseModel):
-
   """Request model for creating a schedule entry."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -399,11 +382,12 @@ class ScheduleEntryCreate(PraxisBaseModel):
     default=None,
     description="User-provided scheduling parameters",
   )
-  status: ScheduleStatusEnum = Field(default=ScheduleStatusEnum.QUEUED, description="Initial status")
+  status: ScheduleStatusEnum = Field(
+    default=ScheduleStatusEnum.QUEUED, description="Initial status"
+  )
 
 
 class ScheduleEntryUpdate(PraxisBaseModel):
-
   """Request model for updating a schedule entry."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -416,7 +400,6 @@ class ScheduleEntryUpdate(PraxisBaseModel):
 
 
 class AssetReservationResponse(PraxisBaseModel):
-
   """Response model for asset reservations (from AssetReservationOrm)."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -439,7 +422,6 @@ class AssetReservationResponse(PraxisBaseModel):
 
 
 class AssetReservationListResponse(PraxisBaseModel):
-
   """Response model for listing asset reservations."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -450,7 +432,6 @@ class AssetReservationListResponse(PraxisBaseModel):
 
 
 class ReleaseReservationResponse(PraxisBaseModel):
-
   """Response model for releasing an asset reservation."""
 
   model_config = ConfigDict(from_attributes=True)

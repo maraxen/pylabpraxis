@@ -6,7 +6,7 @@ a complete user flow: uploading a protocol, creating a run, and monitoring its p
 import asyncio
 import os
 import tempfile
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import pytest
 from httpx import AsyncClient

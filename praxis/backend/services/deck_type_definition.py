@@ -14,7 +14,6 @@ from praxis.backend.utils.uuid import uuid7
 class DeckTypeDefinitionService(
   CRUDBase[DeckDefinitionOrm, DeckTypeDefinitionCreate, DeckTypeDefinitionUpdate],
 ):
-
   """Service for managing deck type definitions."""
 
   async def create(

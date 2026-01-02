@@ -24,7 +24,6 @@ async def create_tables():
     await conn.run_sync(Base.metadata.create_all)
 
   await engine.dispose()
-  print("\n✅ All tables created successfully!")
 
 
 if __name__ == "__main__":

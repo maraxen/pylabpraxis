@@ -44,26 +44,36 @@ async def dilution_checks(
 
   """
   if len(source_wells) != len(target_wells):
-    raise ValueError("Number of source wells does not match number of target wells")
+    msg = "Number of source wells does not match number of target wells"
+    raise ValueError(msg)
   if not source_plate:
-    raise ValueError("No source plate specified")
+    msg = "No source plate specified"
+    raise ValueError(msg)
   if not target_plate:
-    raise ValueError("No target plate specified")
+    msg = "No target plate specified"
+    raise ValueError(msg)
   if not isinstance(dilution_factor, float):
-    raise ValueError("Dilution factor must be a float")
+    msg = "Dilution factor must be a float"
+    raise ValueError(msg)
   if not isinstance(source_wells, list) or not isinstance(target_wells, list):
-    raise ValueError("Source and target wells must be lists")
+    msg = "Source and target wells must be lists"
+    raise ValueError(msg)
   if not isinstance(mix_cycles, int):
-    raise ValueError("Mix cycles must be an integer")
+    msg = "Mix cycles must be an integer"
+    raise ValueError(msg)
   if not isinstance(tip_rack, TipRack):
-    raise ValueError("Tip rack must be a TipRack object")
+    msg = "Tip rack must be a TipRack object"
+    raise ValueError(msg)
   if source_volumes:
     if not isinstance(source_volumes, (float, list)):
-      raise ValueError("Source volumes must be a float or list of floats")
+      msg = "Source volumes must be a float or list of floats"
+      raise ValueError(msg)
     if isinstance(source_volumes, list) and len(source_volumes) != len(source_wells):
-      raise ValueError("Number of source volumes does not match number of source wells")
+      msg = "Number of source volumes does not match number of source wells"
+      raise ValueError(msg)
   if dilution_axis not in ["row", "column", "x", "y", 0, 1, "optimal"]:
-    raise ValueError("Invalid dilution axis")
+    msg = "Invalid dilution axis"
+    raise ValueError(msg)
 
 
 async def find_optimal_dilution_strategy(
@@ -94,11 +104,13 @@ async def find_optimal_dilution_strategy(
 
   """
   if n_dilutions * n_variables > target_plate.num_items:
-    raise ValueError("Number of dilutions exceeds number of wells in plate")
+    msg = "Number of dilutions exceeds number of wells in plate"
+    raise ValueError(msg)
   dilution_factors, variables_volumes = await coerce_to_list(
     [dilution_factors, variables_volumes],
   )
-  assert isinstance(dilution_factors, list) and isinstance(variables_volumes, list)
+  assert isinstance(dilution_factors, list)
+  assert isinstance(variables_volumes, list)
   dilution_factors, variables_volumes = await check_list_length(
     items=[dilution_factors, variables_volumes],
     coerce_length=True,
@@ -109,7 +121,8 @@ async def find_optimal_dilution_strategy(
       if len(dilution_factor) == 1:
         dilution_factor = dilution_factor * n_dilutions
       if len(dilution_factor) != n_dilutions:
-        raise ValueError("Number of dilutions does not match with dilution factors")
+        msg = "Number of dilutions does not match with dilution factors"
+        raise ValueError(msg)
     else:
       dilution_factor = [dilution_factor] * n_dilutions
   if (
@@ -145,8 +158,7 @@ async def find_optimal_dilution_strategy(
         )
         variable_details[var]["dilution_strategy"] = "snake"
     for var in variable_details:
-      column, row = await parse_well_name(variable_details[var]["initial_well"])
-      print(f"Variable {var}: {chr(row + 65)}{column}")
+      _column, _row = await parse_well_name(variable_details[var]["initial_well"])
   return variable_details
 
 
@@ -204,9 +216,8 @@ async def antigen_dilution_series(
       undiluted_source=True,
     )
   else:
-    raise NotImplementedError("Only optimal dilution strategy implemented currently")
-  print("Antigen dilution details:")
-  print(antigen_dilution_details)
+    msg = "Only optimal dilution strategy implemented currently"
+    raise NotImplementedError(msg)
   proceed = input("Proceed with dilution series? (y/n)")
   proceed = proceed.lower()
 
@@ -221,7 +232,8 @@ async def antigen_dilution_series(
   proceed = await check_input(proceed)
   if proceed == "n":
     return antigen_dilution_details
-    raise RuntimeError("Dilution series aborted")
+    msg = "Dilution series aborted"
+    raise RuntimeError(msg)
   buffer_transfer_volumes = [
     antigen_volumes[i] - antigen_volumes[i] / dilution_factors[i]
     for i in range(len(antigen_accession_ids))
@@ -229,7 +241,8 @@ async def antigen_dilution_series(
   if len(set(buffer_transfer_volumes)) == 1:
     if use_96:
       if not single_buffer:
-        raise ValueError("Single buffer not specified but 96 transfer head specified")
+        msg = "Single buffer not specified but 96 transfer head specified"
+        raise ValueError(msg)
       buffer_transfer_volume = buffer_transfer_volumes[0]
       await transfer_buffer96(
         liquid_handler=liquid_handler,
@@ -241,7 +254,8 @@ async def antigen_dilution_series(
         return_tips=True,
       )
     else:
-      raise NotImplementedError("8-well transfer head not implemented")
+      msg = "8-well transfer head not implemented"
+      raise NotImplementedError(msg)
     await serial_dilution(
       liquid_handler=liquid_handler,
       tips=dilution_tips,
@@ -253,14 +267,19 @@ async def antigen_dilution_series(
       mix_cycles=mix_cycles,
     )
   elif len(set(buffer_transfer_volumes)) != 1 and use_96:
-    raise ValueError(
+    msg = (
       "Buffer transfer volumes not equal but 96 transfer head was specified \
-      for buffer transfer",
+      for buffer transfer"
+    )
+    raise ValueError(
+      msg,
     )
   else:
+    msg = "More complex dilution factors per variable not implemented"
     raise NotImplementedError(
-      "More complex dilution factors per variable not implemented",
+      msg,
     )
+  return None
 
 
 @liquid_handler_setup_check
@@ -274,7 +293,8 @@ async def transfer_buffer96(
   return_tips: bool = False,
 ):
   if buffer_transfer_volume * 96 > buffer_total_volume:
-    raise RuntimeError("Buffer volume insufficient")
+    msg = "Buffer volume insufficient"
+    raise RuntimeError(msg)
   await liquid_handler.pick_up_tips96(tip_rack=tip_rack)
   await liquid_handler.aspirate96(
     resource=buffer_reservoir, volume=buffer_transfer_volume,
@@ -316,7 +336,8 @@ async def serial_dilution(
   dilution_factors, source_volumes = await coerce_to_list(
     [dilution_factors, source_volumes],
   )
-  assert isinstance(dilution_factors, list) and isinstance(source_volumes, list)
+  assert isinstance(dilution_factors, list)
+  assert isinstance(source_volumes, list)
   dilution_factors, source_volumes = await check_list_length(
     [dilution_factors, source_volumes], True, len(variable_dict),
   )
@@ -333,8 +354,8 @@ async def serial_dilution(
     elif variable_dict[var]["dilution_strategy"] == "snake":
       snaked.append(var)
     else:
-      raise ValueError("Invalid dilution strategy")
-  print([variable_dict[var]["tip_spot"] for var in single_row])
+      msg = "Invalid dilution strategy"
+      raise ValueError(msg)
   await liquid_handler.pick_up_tips(
     tip_spots=[variable_dict[var]["tip_spot"] for var in single_row],
   )
@@ -379,7 +400,8 @@ async def serial_dilution(
   if len(snaked) == 0:
     return
   if len(snaked) > tips.num_items_y:
-    raise NotImplementedError("More variables than tips in tip rack")
+    msg = "More variables than tips in tip rack"
+    raise NotImplementedError(msg)
   await liquid_handler.pick_up_tips(
     tip_spots=[variable_dict[var]["tip_spot"] for var in snaked],
   )
@@ -466,8 +488,9 @@ async def handle_dilution(
         antigen_volumes[i] - antigen_volumes[i] / dilution_factors[i],
       ] * n_dilutions
     else:
+      msg = "More complex dilution factors per variable not implemented"
       raise NotImplementedError(
-        "More complex dilution factors per variable not implemented",
+        msg,
       )
     column_index = i * dilution_plate.num_items_y
     dilution_wells = [j + (column_index) for j in range(n_dilutions)]
@@ -512,13 +535,14 @@ async def transfer_buffer(
   single_buffer: bool = True,
 ):
   if single_buffer:
-    if isinstance(buffer_total_volume, list):
-      if len(buffer_total_volume) > 1:
-        raise ValueError(
-          "Total buffer volume variable list, but single buffer specified",
-        )
+    if isinstance(buffer_total_volume, list) and len(buffer_total_volume) > 1:
+      msg = "Total buffer volume variable list, but single buffer specified"
+      raise ValueError(
+        msg,
+      )
     if sum(buffer_transfer_volumes) > buffer_total_volume:
-      raise Value("Buffer volume insufficient")
+      msg = "Buffer volume insufficient"
+      raise Value(msg)
   await liquid_handler.aspirate(
     resources=buffer_reservoir[buffer_wells], vols=buffer_volumes,
   )
@@ -534,9 +558,12 @@ async def transfer_top_row(
 ):
   n_columns = source_plate.num_items_x
   if source_plate.num_items_x < n_columns or target_plate.num_items_x < n_columns:
-    raise ExperimentError(
+    msg = (
       f"{'Source' if source_plate.num_items_x < n_columns else 'Target'} \
-      plate does not have enough columns",
+      plate does not have enough columns"
+    )
+    raise ExperimentError(
+      msg,
     )
   for i in range(n_columns):
     liquid_handler.pick_up_tips(tip_spots=tips[i * n_columns])
@@ -577,20 +604,25 @@ async def dilution_series(
 
   """
   if isinstance(dilution_factors, list) and len(dilution_factors) != n_replicates:
-    raise ExperimentError("Number of dilutions does not match with dilution factors.")
+    msg = "Number of dilutions does not match with dilution factors."
+    raise ExperimentError(msg)
   if isinstance(source_volumes, int):
     source_volumes = [source_volumes] * n_replicates
   if isinstance(source_volumes, list) and len(source_volumes) != n_replicates:
-    raise ExperimentError("Number of dilutions does not match with source volumes.")
+    msg = "Number of dilutions does not match with source volumes."
+    raise ExperimentError(msg)
   if not liquid_handler.setup_finished:
-    raise ExperimentError("Liquid handler not set up.")
+    msg = "Liquid handler not set up."
+    raise ExperimentError(msg)
   if n_dilutions > source_plate.num_items_y + 1:
+    msg = "Number of dilutions exceeds number of wells per column in plate."
     raise ExperimentError(
-      "Number of dilutions exceeds number of wells per column in plate.",
+      msg,
     )
   if n_replicates > source_plate.num_items_x:
+    msg = "Number of replicates exceeds number of wells per row in plate."
     raise ExperimentError(
-      "Number of replicates exceeds number of wells per row in plate.",
+      msg,
     )
   if not target_plate or target_plate == source_plate:
     target_plate = source_plate

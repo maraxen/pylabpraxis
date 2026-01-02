@@ -44,7 +44,6 @@ def raise_connection_error(
 
 
 class PraxisDBService:
-
   """Provides a singleton service for Praxis database interactions.
 
   This class manages connections to the main Praxis database via SQLAlchemy

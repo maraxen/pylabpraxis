@@ -34,7 +34,6 @@ UUID = uuid.UUID
 
 
 class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
-
   """Service for deck-related operations."""
 
   def _prepare_deck_data(self, obj_in: DeckCreate) -> dict:

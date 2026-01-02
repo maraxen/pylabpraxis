@@ -21,7 +21,6 @@ if TYPE_CHECKING:
 
 
 class AssetOrm(Base):
-
   """Abstract base class representing any physical asset in the lab.
 
   This serves as an umbrella for both machines and resource instances.

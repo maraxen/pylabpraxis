@@ -21,68 +21,98 @@ from praxis.backend.utils.plr_static_analysis.visitors.base import BasePLRVisito
 # check machine bases BEFORE resource bases in classification.
 # -----------------------------------------------------------------------------
 
-LIQUID_HANDLER_BASES: frozenset[str] = frozenset({
-  "LiquidHandler",
-})
+LIQUID_HANDLER_BASES: frozenset[str] = frozenset(
+  {
+    "LiquidHandler",
+  }
+)
 
-PLATE_READER_BASES: frozenset[str] = frozenset({
-  "PlateReader",
-  "ImageReader",
-  "Imager",
-})
+PLATE_READER_BASES: frozenset[str] = frozenset(
+  {
+    "PlateReader",
+    "ImageReader",
+    "Imager",
+  }
+)
 
-HEATER_SHAKER_BASES: frozenset[str] = frozenset({
-  "HeaterShaker",
-})
+HEATER_SHAKER_BASES: frozenset[str] = frozenset(
+  {
+    "HeaterShaker",
+  }
+)
 
-SHAKER_BASES: frozenset[str] = frozenset({
-  "Shaker",
-})
+SHAKER_BASES: frozenset[str] = frozenset(
+  {
+    "Shaker",
+  }
+)
 
-TEMPERATURE_CONTROLLER_BASES: frozenset[str] = frozenset({
-  "TemperatureController",
-})
+TEMPERATURE_CONTROLLER_BASES: frozenset[str] = frozenset(
+  {
+    "TemperatureController",
+  }
+)
 
-CENTRIFUGE_BASES: frozenset[str] = frozenset({
-  "Centrifuge",
-})
+CENTRIFUGE_BASES: frozenset[str] = frozenset(
+  {
+    "Centrifuge",
+  }
+)
 
-THERMOCYCLER_BASES: frozenset[str] = frozenset({
-  "Thermocycler",
-})
+THERMOCYCLER_BASES: frozenset[str] = frozenset(
+  {
+    "Thermocycler",
+  }
+)
 
-PUMP_BASES: frozenset[str] = frozenset({
-  "Pump",
-})
+PUMP_BASES: frozenset[str] = frozenset(
+  {
+    "Pump",
+  }
+)
 
-PUMP_ARRAY_BASES: frozenset[str] = frozenset({
-  "PumpArray",
-})
+PUMP_ARRAY_BASES: frozenset[str] = frozenset(
+  {
+    "PumpArray",
+  }
+)
 
-FAN_BASES: frozenset[str] = frozenset({
-  "Fan",
-})
+FAN_BASES: frozenset[str] = frozenset(
+  {
+    "Fan",
+  }
+)
 
-SEALER_BASES: frozenset[str] = frozenset({
-  "Sealer",
-})
+SEALER_BASES: frozenset[str] = frozenset(
+  {
+    "Sealer",
+  }
+)
 
-PEELER_BASES: frozenset[str] = frozenset({
-  "Peeler",
-})
+PEELER_BASES: frozenset[str] = frozenset(
+  {
+    "Peeler",
+  }
+)
 
-POWDER_DISPENSER_BASES: frozenset[str] = frozenset({
-  "PowderDispenser",
-})
+POWDER_DISPENSER_BASES: frozenset[str] = frozenset(
+  {
+    "PowderDispenser",
+  }
+)
 
-INCUBATOR_BASES: frozenset[str] = frozenset({
-  "Incubator",
-})
+INCUBATOR_BASES: frozenset[str] = frozenset(
+  {
+    "Incubator",
+  }
+)
 
-SCARA_BASES: frozenset[str] = frozenset({
-  "ExperimentalSCARA",
-  "SCARA",
-})
+SCARA_BASES: frozenset[str] = frozenset(
+  {
+    "ExperimentalSCARA",
+    "SCARA",
+  }
+)
 
 # Combined set of all machine frontend bases
 # Used for priority classification - if a class inherits from any of these,
@@ -111,68 +141,98 @@ ALL_MACHINE_FRONTEND_BASES: frozenset[str] = (
 # Hardware driver implementations
 # -----------------------------------------------------------------------------
 
-LH_BACKEND_BASES: frozenset[str] = frozenset({
-  "LiquidHandlerBackend",
-  "HamiltonLiquidHandler",  # Hamilton-specific abstract base
-})
+LH_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "LiquidHandlerBackend",
+    "HamiltonLiquidHandler",  # Hamilton-specific abstract base
+  }
+)
 
-PR_BACKEND_BASES: frozenset[str] = frozenset({
-  "PlateReaderBackend",
-  "ImageReaderBackend",
-})
+PR_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "PlateReaderBackend",
+    "ImageReaderBackend",
+  }
+)
 
-HS_BACKEND_BASES: frozenset[str] = frozenset({
-  "HeaterShakerBackend",
-})
+HS_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "HeaterShakerBackend",
+  }
+)
 
-SHAKER_BACKEND_BASES: frozenset[str] = frozenset({
-  "ShakerBackend",
-})
+SHAKER_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "ShakerBackend",
+  }
+)
 
-TEMP_BACKEND_BASES: frozenset[str] = frozenset({
-  "TemperatureControllerBackend",
-})
+TEMP_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "TemperatureControllerBackend",
+  }
+)
 
-CENTRIFUGE_BACKEND_BASES: frozenset[str] = frozenset({
-  "CentrifugeBackend",
-  "LoaderBackend",  # Centrifuge loader
-})
+CENTRIFUGE_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "CentrifugeBackend",
+    "LoaderBackend",  # Centrifuge loader
+  }
+)
 
-THERMOCYCLER_BACKEND_BASES: frozenset[str] = frozenset({
-  "ThermocyclerBackend",
-})
+THERMOCYCLER_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "ThermocyclerBackend",
+  }
+)
 
-PUMP_BACKEND_BASES: frozenset[str] = frozenset({
-  "PumpBackend",
-})
+PUMP_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "PumpBackend",
+  }
+)
 
-PUMP_ARRAY_BACKEND_BASES: frozenset[str] = frozenset({
-  "PumpArrayBackend",
-})
+PUMP_ARRAY_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "PumpArrayBackend",
+  }
+)
 
-FAN_BACKEND_BASES: frozenset[str] = frozenset({
-  "FanBackend",
-})
+FAN_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "FanBackend",
+  }
+)
 
-SEALER_BACKEND_BASES: frozenset[str] = frozenset({
-  "SealerBackend",
-})
+SEALER_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "SealerBackend",
+  }
+)
 
-PEELER_BACKEND_BASES: frozenset[str] = frozenset({
-  "PeelerBackend",
-})
+PEELER_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "PeelerBackend",
+  }
+)
 
-POWDER_DISPENSER_BACKEND_BASES: frozenset[str] = frozenset({
-  "PowderDispenserBackend",
-})
+POWDER_DISPENSER_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "PowderDispenserBackend",
+  }
+)
 
-INCUBATOR_BACKEND_BASES: frozenset[str] = frozenset({
-  "IncubatorBackend",
-})
+INCUBATOR_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "IncubatorBackend",
+  }
+)
 
-SCARA_BACKEND_BASES: frozenset[str] = frozenset({
-  "SCARABackend",
-})
+SCARA_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "SCARABackend",
+  }
+)
 
 # Combined set of all machine backend bases
 ALL_MACHINE_BACKEND_BASES: frozenset[str] = (
@@ -199,67 +259,75 @@ ALL_MACHINE_BACKEND_BASES: frozenset[str] = (
 # Decks, carriers, and resources
 # -----------------------------------------------------------------------------
 
-DECK_BASES: frozenset[str] = frozenset({
-  "Deck",
-})
+DECK_BASES: frozenset[str] = frozenset(
+  {
+    "Deck",
+  }
+)
 
-CARRIER_BASES: frozenset[str] = frozenset({
-  "Carrier",
-  "PlateCarrier",
-  "TipCarrier",
-  "TroughCarrier",
-  "TubeCarrier",
-  "MFXCarrier",
-})
+CARRIER_BASES: frozenset[str] = frozenset(
+  {
+    "Carrier",
+    "PlateCarrier",
+    "TipCarrier",
+    "TroughCarrier",
+    "TubeCarrier",
+    "MFXCarrier",
+  }
+)
 
-RESOURCE_BASES: frozenset[str] = frozenset({
-  "Resource",
-  "ResourceHolder",
-  "Plate",
-  "TipRack",
-  "Trough",
-  "Tube",
-  "TubeRack",
-  "Container",
-  "ItemizedResource",
-  "Well",
-  "TipSpot",
-  "Lid",
-  "Trash",
-  "PetriDish",
-  "PlateAdapter",
-  "NestedTipRack",
-})
+RESOURCE_BASES: frozenset[str] = frozenset(
+  {
+    "Resource",
+    "ResourceHolder",
+    "Plate",
+    "TipRack",
+    "Trough",
+    "Tube",
+    "TubeRack",
+    "Container",
+    "ItemizedResource",
+    "Well",
+    "TipSpot",
+    "Lid",
+    "Trash",
+    "PetriDish",
+    "PlateAdapter",
+    "NestedTipRack",
+  }
+)
 
 # Base classes that should be excluded from cataloging (they're abstract/generic)
-EXCLUDED_BASE_CLASS_NAMES: frozenset[str] = frozenset({
-  "Resource",
-  "ResourceHolder",
-  "Carrier",
-  "Container",
-  "Deck",
-  "ItemizedResource",
-  "Lid",
-  "MFXCarrier",
-  "NestedTipRack",
-  "PetriDish",
-  "PetriDishHolder",
-  "Plate",
-  "PlateAdapter",
-  "PlateCarrier",
-  "PlateHolder",
-  "ResourceStack",
-  "TipCarrier",
-  "TipRack",
-  "TipSpot",
-  "Trash",
-  "Trough",
-  "TroughCarrier",
-  "Tube",
-  "TubeCarrier",
-  "TubeRack",
-  "Well",
-})
+EXCLUDED_BASE_CLASS_NAMES: frozenset[str] = frozenset(
+  {
+    "Resource",
+    "ResourceHolder",
+    "Carrier",
+    "Container",
+    "Deck",
+    "ItemizedResource",
+    "Lid",
+    "MFXCarrier",
+    "NestedTipRack",
+    "PetriDish",
+    "PetriDishHolder",
+    "Plate",
+    "PlateAdapter",
+    "PlateCarrier",
+    "PlateHolder",
+    "ResourceStack",
+    "TipCarrier",
+    "TipRack",
+    "TipSpot",
+    "Trash",
+    "Trough",
+    "TroughCarrier",
+    "Tube",
+    "TubeCarrier",
+    "TubeRack",
+    "Well",
+  }
+)
 
 
 class ClassDiscoveryVisitor(BasePLRVisitor):
@@ -277,7 +345,7 @@ class ClassDiscoveryVisitor(BasePLRVisitor):
     self.discovered_classes: list[DiscoveredClass] = []
     self._has_abstractmethod = False
 
-  def visit_ClassDef(self, node: cst.ClassDef) -> bool:
+  def visit_ClassDef(self, node: cst.ClassDef) -> bool:  # noqa: N802
     """Visit a class definition and extract information.
 
     Args:

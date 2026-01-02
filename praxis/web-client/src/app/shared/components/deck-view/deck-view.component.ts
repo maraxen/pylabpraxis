@@ -1,37 +1,73 @@
-import { Component, ChangeDetectionStrategy, Input, computed, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, Input, computed, signal, inject, output, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { PlrResource, PlrState } from '@core/models/plr.models';
+import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
+import { PlrResource, PlrState, PlrResourceDetails } from '@core/models/plr.models';
+import { DeckCatalogService } from '@features/run-protocol/services/deck-catalog.service';
+import { DeckRail } from '@features/run-protocol/models/deck-layout.models';
+
+/** Tooltip position state */
+interface TooltipState {
+  visible: boolean;
+  x: number;
+  y: number;
+  resource: PlrResource | null;
+  parent: PlrResource | null;
+}
 
 @Component({
   selector: 'app-deck-view',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DragDropModule],
   template: `
     <div class="deck-container" [style.width.px]="containerWidth()" [style.height.px]="containerHeight()">
       <!-- Background Rails/Slots -->
       @if (resource()?.num_rails) {
          <div class="rails-container absolute inset-0 pointer-events-none">
-           @for (rail of getRails(); track $index) {
-             <div class="rail-line" [style.left.px]="scaleX(100 + ($index * 22.5))"></div>
+           @for (rail of getRails(); track rail.index) {
+             <div class="rail-line"
+                  [style.left.px]="scaleLeft(rail.xPosition)"
+                  [attr.data-rail-index]="rail.index"></div>
            }
          </div>
       }
 
       <!-- Render the root resource and its children recursively -->
-      <ng-container *ngTemplateOutlet="resourceTpl; context: { $implicit: resource() }"></ng-container>
+      <ng-container *ngTemplateOutlet="resourceTpl; context: { $implicit: resource(), parent: null }"></ng-container>
+
+      <!-- Hover Tooltip -->
+      @if (tooltip().visible && tooltip().resource) {
+        <div class="resource-tooltip"
+             [style.left.px]="tooltip().x + 12"
+             [style.top.px]="tooltip().y + 12">
+          <div class="tooltip-header">{{ tooltip().resource!.name }}</div>
+          <div class="tooltip-type">{{ tooltip().resource!.type }}</div>
+          <div class="tooltip-dims">{{ tooltip().resource!.size_x | number:'1.1-1' }} × {{ tooltip().resource!.size_y | number:'1.1-1' }} mm</div>
+          @if (hasLiquid(tooltip().resource!)) {
+            <div class="tooltip-volume">Volume: {{ getVolume(tooltip().resource!) | number:'1.0-1' }} µL</div>
+          }
+          @if (hasTip(tooltip().resource!, tooltip().parent)) {
+            <div class="tooltip-tip">Tip: Present</div>
+          }
+        </div>
+      }
     </div>
 
-    <ng-template #resourceTpl let-res>
+    <ng-template #resourceTpl let-res let-parent="parent">
       <div class="resource-node"
+           cdkDropList
+           [cdkDropListDisabled]="!isGhost(res)"
+           (cdkDropListDropped)="onDrop($event)"
+           (mouseenter)="onResourceHover($event, res, parent)"
+           (mouseleave)="onResourceLeave()"
+           (click)="onResourceClick($event, res, parent)"
            [attr.data-type]="res.type"
-           [title]="res.name + ' (' + res.type + ')'"
-           [style.left.px]="scaleX(res.location.x)"
-           [style.top.px]="scaleY(res.location.y)"
+           [style.left.px]="scaleLeft(res.location.x)"
+           [style.bottom.px]="scaleBottom(res.location.y)"
            [style.width.px]="scaleDim(res.size_x)"
            [style.height.px]="scaleDim(res.size_y)"
            [class.is-root]="res === resource()"
            [class.is-ghost]="isGhost(res)"
-           [class.is-well]="res.type === 'Well'"
+           [class.is-well]="isWellOrSpot(res.type)"
            [class.type-plate]="isPlateType(res.type)"
            [class.type-tiprack]="isTipRackType(res.type)"
            [class.type-trough]="isTroughType(res.type)"
@@ -41,10 +77,12 @@ import { PlrResource, PlrState } from '@core/models/plr.models';
            [class.type-petridish]="isPetriDishType(res.type)"
            [class.type-tube]="isTubeType(res.type)"
            [class.type-adapter]="isPlateAdapterType(res.type)"
-           [class.has-liquid]="res.type === 'Well' && hasLiquid(res)"
-           [class.has-tip]="res.type === 'Well' && hasTip(res)"
-           [class.empty]="res.type === 'Well' && isEmpty(res)"
-           [style.background-color]="getCustomColor(res)">
+           [class.has-liquid]="hasLiquid(res)"
+           [class.has-tip]="isWellOrSpot(res.type) && hasTip(res, parent)"
+           [class.empty]="isWellOrSpot(res.type) && isEmpty(res, parent)"
+           [class.is-selected]="selectedResource() === res"
+           [style.background]="hasLiquid(res) ? getLiquidStyle(res) : getCustomColor(res)"
+           [style.background-color]="!hasLiquid(res) ? getCustomColor(res) : null">
 
         <!-- Label for significant resources -->
         <div class="resource-label" *ngIf="shouldShowLabel(res)">
@@ -53,7 +91,7 @@ import { PlrResource, PlrState } from '@core/models/plr.models';
 
         <!-- Recursively render children -->
         @for (child of res.children; track child.name) {
-          <ng-container *ngTemplateOutlet="resourceTpl; context: { $implicit: child }"></ng-container>
+          <ng-container *ngTemplateOutlet="resourceTpl; context: { $implicit: child, parent: res }"></ng-container>
         }
       </div>
     </ng-template>
@@ -121,6 +159,55 @@ import { PlrResource, PlrState } from '@core/models/plr.models';
         0 0 0 2px var(--plr-hover-glow),
         0 4px 12px rgba(0, 0, 0, 0.3);
       transform: translateY(-1px);
+      cursor: pointer;
+    }
+
+    .resource-node.is-selected {
+      z-index: 15;
+      box-shadow:
+        0 0 0 3px var(--sys-primary, #6366f1),
+        0 4px 16px rgba(99, 102, 241, 0.4);
+    }
+
+    /* Tooltip styles */
+    .resource-tooltip {
+      position: fixed;
+      z-index: 1000;
+      background: var(--sys-surface-container-highest, #1e1e2e);
+      border: 1px solid var(--sys-outline-variant, #444);
+      border-radius: 8px;
+      padding: 8px 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      pointer-events: none;
+      max-width: 200px;
+    }
+
+    .tooltip-header {
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--sys-on-surface, #fff);
+      margin-bottom: 2px;
+    }
+
+    .tooltip-type {
+      font-size: 10px;
+      color: var(--sys-on-surface-variant, #aaa);
+      margin-bottom: 4px;
+    }
+
+    .tooltip-dims,
+    .tooltip-volume,
+    .tooltip-tip {
+      font-size: 10px;
+      color: var(--sys-on-surface-variant, #ccc);
+    }
+
+    .tooltip-volume {
+      color: var(--sys-tertiary, #60a5fa);
+    }
+
+    .tooltip-tip {
+      color: var(--sys-secondary, #fbbf24);
     }
 
     .is-root {
@@ -304,7 +391,10 @@ import { PlrResource, PlrState } from '@core/models/plr.models';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DeckViewComponent {
-  // Inputs
+  /* Services */
+  private deckCatalog = inject(DeckCatalogService);
+
+  /* Inputs */
   resource = signal<PlrResource | null>(null);
   state = signal<PlrState | null>(null);
 
@@ -316,8 +406,61 @@ export class DeckViewComponent {
     this.state.set(val);
   }
 
-  // Configuration
-  pixelsPerMm = 0.5; // Scale factor
+  itemDropped = output<CdkDragDrop<any>>();
+  resourceSelected = output<PlrResourceDetails>();
+
+  /* Tooltip State */
+  tooltip = signal<TooltipState>({ visible: false, x: 0, y: 0, resource: null, parent: null });
+  selectedResource = signal<PlrResource | null>(null);
+
+  onDrop(event: CdkDragDrop<any>) {
+    this.itemDropped.emit(event);
+  }
+
+  onResourceHover(event: MouseEvent, res: PlrResource, parent: PlrResource | null) {
+    if (res === this.resource()) return; // Don't show tooltip for root
+    this.tooltip.set({
+      visible: true,
+      x: event.clientX,
+      y: event.clientY,
+      resource: res,
+      parent
+    });
+  }
+
+  onResourceLeave() {
+    this.tooltip.set({ visible: false, x: 0, y: 0, resource: null, parent: null });
+  }
+
+  @HostListener('mousemove', ['$event'])
+  onMouseMove(event: MouseEvent) {
+    if (this.tooltip().visible) {
+      this.tooltip.update(t => ({ ...t, x: event.clientX, y: event.clientY }));
+    }
+  }
+
+  onResourceClick(event: MouseEvent, res: PlrResource, parent: PlrResource | null) {
+    if (res === this.resource()) return; // Don't select root
+    event.stopPropagation();
+    this.selectedResource.set(res);
+
+    const state = this.getAllState(res);
+    const details: PlrResourceDetails = {
+      name: res.name,
+      type: res.type,
+      location: res.location,
+      dimensions: { x: res.size_x, y: res.size_y, z: res.size_z },
+      volume: state?.volume,
+      maxVolume: res.max_volume,
+      hasTip: this.hasTip(res, parent),
+      parentName: parent?.name,
+      slotId: res.slot_id
+    };
+    this.resourceSelected.emit(details);
+  }
+
+  /* Configuration */
+  readonly pixelsPerMm = 0.5;
 
   containerWidth = computed(() => {
     const res = this.resource();
@@ -329,37 +472,21 @@ export class DeckViewComponent {
     return res ? res.size_y * this.pixelsPerMm : 0;
   });
 
-  scaleX(val: number): number {
-    return val * this.pixelsPerMm;
-  }
-
-  // PLR Y-axis is usually bottom-up. Web is top-down.
-  // However, usually PLR resources children coordinates are relative to parent.
-  // Standard transformation: (0,0) in PLR is bottom-left. 
-  // If we render strictly as nested divs, top-left (0,0) in CSS works if we assume 
-  // the data is already transformed OR if we transform it.
-  // 
-  // If PLR gives us "x=100, y=100" relative to parent bottom-left...
-  // CSS top = parentHeight - (y + height).
-  // 
-  // For now, I will assume a direct mapping (x->left, y->top) to see what happens.
-  // If it's inverted, I'll fix it. usually Deck visualizers flip the Y axis.
-  // Let's implement the flip logic assuming standard Cartesian (bottom-left origin).
-  // But wait, the recursive structure means I need to know parent height to flip.
-  // 
-  // Simplification: Let's assume direct mapping first (top-left origin) as many 
-  // web-facing conversions do this. If it looks upside down, I'll invert.
-
-  scaleY(val: number): number {
-    return val * this.pixelsPerMm;
-    // To flip Y (Cartesian to Screen):
-    // We need parent height. 
-    // This is hard in a recursive template without passing parent context.
-    // For this MVP, let's try direct mapping. 
-  }
-
   scaleDim(val: number): number {
     return val * this.pixelsPerMm;
+  }
+
+  /**
+   * PLR uses a Cartesian coordinate system (origin at bottom-left).
+   * Web uses top-left. To map correctly without complex transforms,
+   * we position children using 'bottom' and 'left'.
+   */
+  scaleBottom(y: number): number {
+    return y * this.pixelsPerMm;
+  }
+
+  scaleLeft(x: number): number {
+    return x * this.pixelsPerMm;
   }
 
   /**
@@ -367,16 +494,13 @@ export class DeckViewComponent {
    * Otherwise returns null to let CSS classes handle theming.
    */
   getCustomColor(res: PlrResource): string | null {
-    // Only return color if explicitly set and not a standard type
     if (res.color && !this.isStandardType(res.type)) {
       return res.color;
     }
     return null;
   }
 
-  /**
-   * Check if type is a standard PLR type with CSS styling
-   */
+  /* Type Checks */
   isStandardType(type: string): boolean {
     const standardTypes = [
       'Plate', 'Microplate', 'WellPlate',
@@ -393,87 +517,170 @@ export class DeckViewComponent {
     );
   }
 
-  /**
-   * Type classification helpers for CSS classes
-   */
   isPlateType(type: string): boolean {
-    return type === 'Plate' ||
-           type === 'Microplate' ||
-           type === 'WellPlate' ||
-           type.includes('Plate') ||
-           type.endsWith('Plate');
+    return type.includes('Plate') || type === 'Microplate';
   }
 
   isTipRackType(type: string): boolean {
-    return type === 'TipRack' ||
-           type.includes('TipRack') ||
-           type.includes('Tips') ||
-           type.endsWith('Tips');
+    return type.includes('TipRack') || type.includes('Tips');
   }
 
   isTroughType(type: string): boolean {
-    return type === 'Trough' ||
-           type === 'Reservoir' ||
-           type.includes('Trough') ||
-           type.includes('Reservoir');
+    return type.includes('Trough') || type.includes('Reservoir');
   }
 
   isCarrierType(type: string): boolean {
-    return type === 'Carrier' ||
-           type.includes('Carrier') ||
-           type.endsWith('Carrier');
+    return type.includes('Carrier');
   }
 
   isLidType(type: string): boolean {
-    return type === 'Lid' || type.endsWith('Lid');
+    return type.includes('Lid');
   }
 
   isPetriDishType(type: string): boolean {
-    return type === 'PetriDish' ||
-           type === 'PetriDishHolder' ||
-           type.includes('PetriDish');
+    return type.includes('PetriDish');
   }
 
   isTubeType(type: string): boolean {
-    return type === 'Tube' ||
-           type === 'TubeRack' ||
-           type.includes('Tube');
+    return type.includes('Tube');
   }
 
   isPlateAdapterType(type: string): boolean {
-    return type === 'PlateAdapter' || type.includes('Adapter');
+    return type.includes('Adapter');
+  }
+
+  isWellOrSpot(type: string): boolean {
+    return type === 'Well' || type === 'TipSpot' || type === 'Container';
+  }
+
+  /* State Helpers */
+
+  hasLiquid(res: PlrResource): boolean {
+    const s = this.getAllState(res);
+    return !!s && typeof s.volume === 'number' && s.volume > 0;
   }
 
   /**
-   * Well state helpers
+   * Calculates the background gradient for liquid fill.
    */
-  hasLiquid(res: PlrResource): boolean {
-    const state = this.state();
-    if (!state || !state[res.name]) return false;
-    return !!state[res.name].volume && state[res.name].volume > 0;
+  getLiquidStyle(res: PlrResource): string {
+    const s = this.getAllState(res);
+    if (!s || !s.volume) return '';
+
+    const maxVol = res.max_volume || 1000; // default if missing
+    const fillRatio = Math.min(s.volume / maxVol, 1) * 100;
+
+    // Default liquid color (blue-ish) or specific if available
+    const liquidColor = res.color || 'rgba(59, 130, 246, 0.8)';
+
+    return `linear-gradient(to top, ${liquidColor} ${fillRatio}%, transparent ${fillRatio}%)`;
   }
 
-  hasTip(res: PlrResource): boolean {
-    const state = this.state();
-    if (!state || !state[res.name]) return false;
-    return !!state[res.name].has_tip;
+  hasTip(res: PlrResource, parent: PlrResource | null): boolean {
+    // 1. Check individual state
+    const s = this.getAllState(res);
+    if (s && s.has_tip !== undefined) {
+      return !!s.has_tip;
+    }
+
+    // 2. Check parent state (bitmask/array logic) if applicable
+    // Usually PLR TipRacks manage child state.
+    if (parent && this.isTipRackType(parent.type)) {
+      const parentState = this.getAllState(parent);
+      // Example: parentState.tips might be a boolean array matching children order
+      // We'd need to know the index of this child.
+      // Since we don't strictly know the index in the filtered children list vs logic,
+      // this is a fallback.
+      if (parentState && Array.isArray(parentState.tips)) {
+        // Try to find index in parent's children
+        const idx = parent.children.indexOf(res);
+        if (idx >= 0 && idx < parentState.tips.length) {
+          return !!parentState.tips[idx];
+        }
+      }
+    }
+
+    // Default to false if unknown
+    return false;
   }
 
-  isEmpty(res: PlrResource): boolean {
-    return !this.hasLiquid(res) && !this.hasTip(res);
+  isEmpty(res: PlrResource, parent: PlrResource | null): boolean {
+    return !this.hasLiquid(res) && !this.hasTip(res, parent);
   }
 
   shouldShowLabel(res: PlrResource): boolean {
-    // Only show labels for larger items, not wells/tips
-    return res.size_x > 20 && res.size_y > 20 && !['Well', 'Tip'].includes(res.type);
+    return res.size_x > 20 && res.size_y > 20 && !this.isWellOrSpot(res.type);
   }
 
   isGhost(res: PlrResource): boolean {
     return res.name.startsWith('ghost_');
   }
 
-  getRails(): number[] {
-    const num = this.resource()?.num_rails || 0;
-    return Array(num).fill(0);
+  /**
+   * Consolidated state lookup
+   */
+  getAllState(res: PlrResource): any {
+    const stateMap = this.state();
+    return stateMap ? stateMap[res.name] : null;
+  }
+
+  getVolume(res: PlrResource): number {
+    const s = this.getAllState(res);
+    return s?.volume ?? 0;
+  }
+
+  /* =========================================
+     Bitmask Decoding Utilities (P4 Optimization)
+     ========================================= */
+
+  /**
+   * Decode a hex bitmask string to a boolean array.
+   * Used for tip_mask and liquid_mask fields.
+   * @param hexMask Hex string like "fff" or "0xfff"
+   * @param length Expected length of the boolean array
+   */
+  decodeBitmask(hexMask: string, length: number): boolean[] {
+    const cleanHex = hexMask.replace(/^0x/i, '');
+    const bigInt = BigInt('0x' + cleanHex);
+    const result: boolean[] = [];
+    for (let i = 0; i < length; i++) {
+      result.push((bigInt & (1n << BigInt(i))) !== 0n);
+    }
+    return result;
+  }
+
+  /**
+   * Check tip presence using bitmask from parent state.
+   * Falls back to individual state if no bitmask.
+   */
+  hasTipFromBitmask(res: PlrResource, parent: PlrResource | null, childIndex: number): boolean {
+    if (!parent) return false;
+    const parentState = this.getAllState(parent);
+    if (parentState?.tip_mask) {
+      const numChildren = parent.children?.length || 96;
+      const tips = this.decodeBitmask(parentState.tip_mask, numChildren);
+      return childIndex >= 0 && childIndex < tips.length ? tips[childIndex] : false;
+    }
+    return false;
+  }
+
+  /* Rails Helper */
+  getRails(): DeckRail[] {
+    const res = this.resource();
+    if (!res?.num_rails) return [];
+
+    const spec = this.deckCatalog.getDeckDefinition(res.type);
+    const defaultSpec = this.deckCatalog.getHamiltonSTARSpec();
+
+    const railPositions = spec?.railPositions || defaultSpec?.railPositions || [];
+    const spacing = spec?.railSpacing || defaultSpec?.railSpacing || 22.5;
+    const compatible = spec?.compatibleCarriers || defaultSpec?.compatibleCarriers || [];
+
+    return railPositions.slice(0, res.num_rails).map((xPos, i) => ({
+      index: i,
+      xPosition: xPos,
+      width: spacing,
+      compatibleCarrierTypes: compatible
+    }));
   }
 }

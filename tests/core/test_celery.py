@@ -1,8 +1,6 @@
 """Tests for core/celery.py."""
 
-import json
 import uuid
-from typing import Any
 
 import pytest
 from celery import Celery

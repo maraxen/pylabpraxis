@@ -73,8 +73,50 @@ jobs:
         source $HOME/.cargo/env
         pyright praxis
 
-  test:
-    name: Tests (Python ${{ matrix.python-version }})
+  # SQLite tests - Fast, no Docker, good for quick validation
+  test-sqlite:
+    name: Tests (SQLite, Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Install dependencies
+      run: |
+        source $HOME/.cargo/env
+        uv venv
+        uv pip install -e ".[dev]"
+
+    - name: Run tests (SQLite)
+      env:
+        PYTHONDONTWRITEBYTECODE: 1
+        TEST_DB_TYPE: sqlite
+      run: |
+        source $HOME/.cargo/env
+        pytest -n auto -m "not slow and not postgresql_only" --cov=praxis --cov-report=xml --cov-report=term-missing
+      timeout-minutes: 10
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        file: ./coverage.xml
+        flags: sqlite
+        name: codecov-sqlite
+
+  # PostgreSQL tests - Production-like, tests JSONB and PostgreSQL-specific features
+  test-postgresql:
+    name: Tests (PostgreSQL, Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -149,8 +191,8 @@ jobs:
       uses: codecov/codecov-action@v5
       with:
         file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
+        flags: postgresql
+        name: codecov-postgresql
 
   smoke-test:
     name: Smoke Tests

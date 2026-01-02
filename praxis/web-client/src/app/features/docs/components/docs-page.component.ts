@@ -485,11 +485,7 @@ export class DocsPageComponent {
   viewSource(): void {
     const path = this.sourcePath();
     if (path) {
-      // In a real app, this could open GitHub or a local editor protocol
-      // For now, we'll just log it or provide a visual hint
-      console.log('Viewing source at:', path);
-
-      // If we assume a GitHub repo:
+      // Open source file on GitHub
       const githubRepo = 'https://github.com/maraxen/pylabpraxis/blob/main/';
       window.open(`${githubRepo}${path}`, '_blank');
     }

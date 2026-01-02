@@ -29,7 +29,6 @@ class MachineTypeDefinitionService(
     MachineDefinitionUpdate,
   ],
 ):
-
   """Service for discovering and syncing machine type definitions.
 
   Uses LibCST-based static analysis to discover machine types from PyLabRobot
@@ -109,7 +108,9 @@ class MachineTypeDefinitionService(
         manufacturer=cls.manufacturer,
         capabilities=capabilities,
         compatible_backends=cls.compatible_backends,
-        capabilities_config=cls.capabilities_config.model_dump() if cls.capabilities_config else None,
+        capabilities_config=cls.capabilities_config.model_dump()
+        if cls.capabilities_config
+        else None,
       )
       for key, value in update_data.model_dump(exclude_unset=True).items():
         setattr(existing_def, key, value)
@@ -128,7 +129,14 @@ class MachineTypeDefinitionService(
     )
     obj_in_data = create_data.model_dump()
     # Remove fields that are not accepted by ORM init
-    for field in ("accession_id", "created_at", "updated_at", "nominal_volume_ul", "ordering", "has_deck"):
+    for field in (
+      "accession_id",
+      "created_at",
+      "updated_at",
+      "nominal_volume_ul",
+      "ordering",
+      "has_deck",
+    ):
       obj_in_data.pop(field, None)
 
     new_def = MachineDefinitionOrm(**obj_in_data)

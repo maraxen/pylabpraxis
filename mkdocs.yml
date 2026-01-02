@@ -38,6 +38,7 @@ nav:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md
     - Demo Mode: getting-started/demo-mode.md
+    - Demo Script: getting-started/demo-script.md
   - Architecture:
     - Overview: architecture/overview.md
     - Backend Components: architecture/backend.md
@@ -92,6 +93,16 @@ markdown_extensions:
 plugins:
   - search
   - autorefs
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_signature_annotations: true
 
 extra:
   social:

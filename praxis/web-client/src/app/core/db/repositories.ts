@@ -5,7 +5,7 @@
  */
 
 import type { Database } from 'sql.js';
-import { SqliteRepository } from './sqlite-repository';
+import { SqliteRepository, type BaseEntity } from './sqlite-repository';
 import type {
     Asset,
     ProtocolRun,
@@ -23,10 +23,13 @@ import type {
 } from './schema';
 import type { ProtocolRunStatus, MachineStatus, ResourceStatus } from './enums';
 
+// Re-type interfaces with index signature for repository compatibility
+type WithIndex<T> = T & BaseEntity;
+
 /**
  * Repository for Protocol Runs with specialized queries
  */
-export class ProtocolRunRepository extends SqliteRepository<ProtocolRun> {
+export class ProtocolRunRepository extends SqliteRepository<WithIndex<ProtocolRun>> {
     constructor(db: Database) {
         super(db, 'protocol_runs', 'accession_id');
     }
@@ -85,7 +88,7 @@ export class ProtocolRunRepository extends SqliteRepository<ProtocolRun> {
 /**
  * Repository for Protocol Definitions
  */
-export class ProtocolDefinitionRepository extends SqliteRepository<FunctionProtocolDefinition> {
+export class ProtocolDefinitionRepository extends SqliteRepository<WithIndex<FunctionProtocolDefinition>> {
     constructor(db: Database) {
         super(db, 'function_protocol_definitions', 'accession_id');
     }
@@ -128,7 +131,7 @@ export class ProtocolDefinitionRepository extends SqliteRepository<FunctionProto
 /**
  * Repository for Function Call Logs
  */
-export class FunctionCallLogRepository extends SqliteRepository<FunctionCallLog> {
+export class FunctionCallLogRepository extends SqliteRepository<WithIndex<FunctionCallLog>> {
     constructor(db: Database) {
         super(db, 'function_call_logs', 'accession_id');
     }
@@ -157,7 +160,7 @@ export class FunctionCallLogRepository extends SqliteRepository<FunctionCallLog>
 /**
  * Repository for Machines
  */
-export class MachineRepository extends SqliteRepository<Machine> {
+export class MachineRepository extends SqliteRepository<WithIndex<Machine>> {
     constructor(db: Database) {
         super(db, 'machines', 'accession_id');
     }
@@ -196,7 +199,7 @@ export class MachineRepository extends SqliteRepository<Machine> {
 /**
  * Repository for Machine Definitions (catalog)
  */
-export class MachineDefinitionRepository extends SqliteRepository<MachineDefinitionCatalog> {
+export class MachineDefinitionRepository extends SqliteRepository<WithIndex<MachineDefinitionCatalog>> {
     constructor(db: Database) {
         super(db, 'machine_definition_catalog', 'accession_id');
     }
@@ -226,7 +229,7 @@ export class MachineDefinitionRepository extends SqliteRepository<MachineDefinit
 /**
  * Repository for Resources
  */
-export class ResourceRepository extends SqliteRepository<Resource> {
+export class ResourceRepository extends SqliteRepository<WithIndex<Resource>> {
     constructor(db: Database) {
         super(db, 'resources', 'accession_id');
     }
@@ -258,7 +261,7 @@ export class ResourceRepository extends SqliteRepository<Resource> {
 /**
  * Repository for Resource Definitions (catalog)
  */
-export class ResourceDefinitionRepository extends SqliteRepository<ResourceDefinitionCatalog> {
+export class ResourceDefinitionRepository extends SqliteRepository<WithIndex<ResourceDefinitionCatalog>> {
     constructor(db: Database) {
         super(db, 'resource_definition_catalog', 'accession_id');
     }
@@ -315,7 +318,7 @@ export class ResourceDefinitionRepository extends SqliteRepository<ResourceDefin
 /**
  * Repository for Decks
  */
-export class DeckRepository extends SqliteRepository<Deck> {
+export class DeckRepository extends SqliteRepository<WithIndex<Deck>> {
     constructor(db: Database) {
         super(db, 'decks', 'accession_id');
     }
@@ -331,7 +334,7 @@ export class DeckRepository extends SqliteRepository<Deck> {
 /**
  * Repository for Deck Definitions (catalog)
  */
-export class DeckDefinitionRepository extends SqliteRepository<DeckDefinitionCatalog> {
+export class DeckDefinitionRepository extends SqliteRepository<WithIndex<DeckDefinitionCatalog>> {
     constructor(db: Database) {
         super(db, 'deck_definition_catalog', 'accession_id');
     }
@@ -347,7 +350,7 @@ export class DeckDefinitionRepository extends SqliteRepository<DeckDefinitionCat
 /**
  * Repository for Deck Position Definitions
  */
-export class DeckPositionRepository extends SqliteRepository<DeckPositionDefinition> {
+export class DeckPositionRepository extends SqliteRepository<WithIndex<DeckPositionDefinition>> {
     constructor(db: Database) {
         super(db, 'deck_position_definitions', 'accession_id');
     }
@@ -363,7 +366,7 @@ export class DeckPositionRepository extends SqliteRepository<DeckPositionDefinit
 /**
  * Repository for Workcells
  */
-export class WorkcellRepository extends SqliteRepository<Workcell> {
+export class WorkcellRepository extends SqliteRepository<WithIndex<Workcell>> {
     constructor(db: Database) {
         super(db, 'workcells', 'accession_id');
     }
@@ -379,7 +382,7 @@ export class WorkcellRepository extends SqliteRepository<Workcell> {
 /**
  * Repository for Function Data Outputs
  */
-export class DataOutputRepository extends SqliteRepository<FunctionDataOutput> {
+export class DataOutputRepository extends SqliteRepository<WithIndex<FunctionDataOutput>> {
     constructor(db: Database) {
         super(db, 'function_data_outputs', 'accession_id');
     }

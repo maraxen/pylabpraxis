@@ -13,17 +13,18 @@ from pylabrobot.resources.errors import ResourceNotFoundError
 
 
 async def plate_accession_idx_to_well(plate: Plate, index: int | str | Well) -> Well:
-  if isinstance(index, str) or isinstance(index, int):
+  if isinstance(index, (str, int)):
     well = plate[index][0]
   elif isinstance(index, Well):
     well = index
   else:
-    raise ValueError("Invalid index type")
+    msg = "Invalid index type"
+    raise ValueError(msg)
   return well
 
 
 def get_all_wells(plate: Plate) -> list[Well]:
-  return [well for well in plate.get_wells(range(plate.num_items))]
+  return list(plate.get_wells(range(plate.num_items)))
 
 
 async def well_to_int(well: Well, plate: Plate) -> int:
@@ -35,7 +36,8 @@ async def well_axes(
   wells: list[Well], axis: Literal[0, 1] | None = None,
 ) -> list[int | tuple[int, int]]:
   if not all(isinstance(well, Well) for well in wells):
-    raise ValueError("Invalid well type.")
+    msg = "Invalid well type."
+    raise ValueError(msg)
   if axis is None:
     return [
       (int(well.name.split("_")[-2]), int(well.name.split("_")[-1])) for well in wells
@@ -45,8 +47,9 @@ async def well_axes(
 
 async def wells_along_axis(wells: list[Well], axis: int) -> bool:
   if not all(isinstance(well, Well) for well in wells):
-    raise ValueError("Invalid well type.")
-  return len(set(well.name.split("_")[-1 - axis] for well in wells)) == 1
+    msg = "Invalid well type."
+    raise ValueError(msg)
+  return len({well.name.split("_")[-1 - axis] for well in wells}) == 1
 
 
 async def plate_sufficient_for_transfer(
@@ -58,23 +61,29 @@ async def plate_sufficient_for_transfer(
 ):
   if replicate_axis == 0:
     if any(target_plate.num_items_x < n_replicates * len(wells) for wells in wells):
+      msg = "Number of replicates exceeds number of wells per row in target plate"
       raise ExperimentError(
-        "Number of replicates exceeds number of wells per row in target plate",
+        msg,
       )
     if any(
       target_plate.num_items_y < len(wells) + (offset * len(wells)) for wells in wells
     ):
-      raise ExperimentError("Number of wells exceeds number of columns in target plate")
+      msg = "Number of wells exceeds number of columns in target plate"
+      raise ExperimentError(msg)
   else:
     if any(target_plate.num_items_y < n_replicates * len(wells) for wells in wells):
-      raise ExperimentError(
+      msg = (
         "Number of replicates exceeds number of wells per column in target \
-        plate",
+        plate"
+      )
+      raise ExperimentError(
+        msg,
       )
     if any(
       target_plate.num_items_x < len(wells) + (offset * len(wells)) for wells in wells
     ):
-      raise ExperimentError("Number of wells exceeds number of columns in target plate")
+      msg = "Number of wells exceeds number of columns in target plate"
+      raise ExperimentError(msg)
   return True
 
 
@@ -82,7 +91,8 @@ async def group_wells_by_variables(
   wells: list[Well], key: str, variables: list[str],
 ) -> list[list[Well]]:
   if not all(isinstance(well, Well) for well in wells):
-    raise ValueError("Invalid well type.")
+    msg = "Invalid well type."
+    raise ValueError(msg)
   return [
     [well for well in wells if getattr(well, key, None) == var] for var in variables
   ]
@@ -97,18 +107,21 @@ async def well_check(
     await plate_accession_idx_to_well(plate, well) for well in wells
   ]
   if not all(isinstance(well, Well) for well in _wells):
-    raise ValueError("Invalid well type.")
+    msg = "Invalid well type."
+    raise ValueError(msg)
   if not all(well in plate.get_wells(range(plate.num_items)) for well in _wells):
-    raise ResourceNotFoundError("Well not in source plate")
-  if replicate_axis is not None:
-    if not await wells_along_axis(_wells, int(not replicate_axis)):
-      raise ExperimentError("Wells not along specified axis")
+    msg = "Well not in source plate"
+    raise ResourceNotFoundError(msg)
+  if replicate_axis is not None and not await wells_along_axis(_wells, int(not replicate_axis)):
+    msg = "Wells not along specified axis"
+    raise ExperimentError(msg)
   return _wells
 
 
 async def split_wells_along_columns(wells: list[Well]) -> list[list[Well]]:
   if not all(isinstance(well, Well) for well in wells):
-    raise ValueError("Invalid well type.")
+    msg = "Invalid well type."
+    raise ValueError(msg)
   columns = [(await parse_well_name(well))[0] for well in wells]
   return [
     [well for column, well in zip(columns, wells, strict=False) if column == i]
@@ -139,9 +152,11 @@ async def simple_interplate_transfer(
   if use_96:
     if n_replicates:
       if target_plate.num_items < n_replicates * len(source_wells):
-        raise ValueError("Target plate does not have enough wells")
+        msg = "Target plate does not have enough wells"
+        raise ValueError(msg)
       if n_replicates * 96 > target_plate.num_items:
-        raise ValueError("Target plate does not have enough wells")
+        msg = "Target plate does not have enough wells"
+        raise ValueError(msg)
       if not all(tip.has_tip for tip in liquid_handler.head96.values()):
         await liquid_handler.pick_up_tips96(tip_rack=tips)
       for i in range(n_replicates):
@@ -173,7 +188,8 @@ async def simple_interplate_transfer(
       if return_tips:
         await liquid_handler.drop_tips96(resource=tips)
   else:
-    raise NotImplementedError("Use of 8 channel not implemented")
+    msg = "Use of 8 channel not implemented"
+    raise NotImplementedError(msg)
 
 
 async def read_plate(
@@ -210,7 +226,8 @@ async def read_plate(
       final_location = plate.parent
 
   if not isinstance(final_location, (CarrierSite, Coordinate)):
-    raise ValueError("Invalid final location")
+    msg = "Invalid final location"
+    raise ValueError(msg)
 
   await plate_reader.open()
   await liquid_handler.move_plate(

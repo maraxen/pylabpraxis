@@ -1,23 +1,50 @@
 import inspect
 import re
-from typing import Any
+from typing import Any, cast
 
 from praxis.backend.models.pydantic_internals.protocol import (
   AssetRequirementModel,
+  DataViewMetadataModel,
   FunctionProtocolDefinitionCreate,
   ParameterMetadataModel,
 )
 from praxis.backend.utils.uuid import uuid7
 
-from .models import CreateProtocolDefinitionData, get_callable_fqn
+from .models import (
+  CreateProtocolDefinitionData,
+  DataViewDefinition,
+  DecoratedProtocolFunc,
+  get_callable_fqn,
+)
 from .parameter_processor import _process_parameter
+
+
+def _convert_data_views(
+  data_views: list[DataViewDefinition] | None,
+) -> list[DataViewMetadataModel]:
+  """Convert DataViewDefinition objects to DataViewMetadataModel Pydantic models."""
+  if not data_views:
+    return []
+
+  return [
+    DataViewMetadataModel(
+      name=dv.name,
+      description=dv.description,
+      source_type=dv.source_type,
+      source_filter_json=dv.source_filter,
+      data_schema_json=dv.schema,
+      required=dv.required,
+      default_value_json=dv.default_value,
+    )
+    for dv in data_views
+  ]
 
 
 def _create_protocol_definition(
   data: CreateProtocolDefinitionData,
 ) -> tuple[FunctionProtocolDefinitionCreate, dict[str, Any] | None]:
   """Parse a function signature and decorator args to create a protocol definition."""
-  resolved_name = data.name or data.func.__name__
+  resolved_name = data.name or cast(DecoratedProtocolFunc, data.func).__name__
   if not resolved_name:
     msg = (
       "Protocol function name cannot be empty (either provide 'name' argument or use "
@@ -69,6 +96,9 @@ def _create_protocol_definition(
       msg,
     )
 
+  # Convert data views from dataclass to Pydantic model
+  data_views_models = _convert_data_views(data.data_views)
+
   protocol_definition = FunctionProtocolDefinitionCreate(
     accession_id=uuid7(),
     name=resolved_name,
@@ -76,8 +106,8 @@ def _create_protocol_definition(
     description=(data.description or inspect.getdoc(data.func) or "No description provided."),
     fqn=get_callable_fqn(data.func),
     source_file_path=inspect.getfile(data.func),
-    module_name=data.func.__module__,
-    function_name=data.func.__name__,
+    module_name=cast(DecoratedProtocolFunc, data.func).__module__,
+    function_name=cast(DecoratedProtocolFunc, data.func).__name__,
     is_top_level=data.is_top_level,
     solo_execution=data.solo,
     preconfigure_deck=data.preconfigure_deck,
@@ -85,6 +115,8 @@ def _create_protocol_definition(
     deck_construction_function_fqn=(
       get_callable_fqn(data.deck_construction) if data.deck_construction else None
     ),
+    deck_layout_path=data.deck_layout_path,
+    data_views=data_views_models,
     state_param_name=data.state_param_name,
     category=data.category,
     tags=data.tags,

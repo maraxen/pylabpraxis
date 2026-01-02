@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable
 from functools import wraps
 from typing import Any, TypeVar, cast
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
@@ -60,8 +61,16 @@ def handle_db_transaction(func: F) -> F:
       result = await func(*args, **kwargs)
       await db.commit()
       return result
-    except Exception:
+    except IntegrityError as e:
+      await db.rollback()
+      msg = f"Database integrity error: {e.orig}" if hasattr(e, "orig") else str(e)
+      raise ValueError(msg) from e
+    except ValueError:
       await db.rollback()
       raise
+    except Exception as e:
+      await db.rollback()
+      msg = f"An unexpected error occurred: {e!s}"
+      raise ValueError(msg) from e
 
   return cast("F", wrapper)

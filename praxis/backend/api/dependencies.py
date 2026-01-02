@@ -1,6 +1,7 @@
 """Dependencies for FastAPI application."""
 
 from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING
 
 from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,9 @@ from praxis.backend.core.workcell_runtime import (
   WorkcellRuntime,  # Added for get_workcell_runtime
 )
 from praxis.backend.utils.db import AsyncSessionLocal
+
+if TYPE_CHECKING:
+  from praxis.backend.core.protocol_execution_service import ProtocolExecutionService
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -49,8 +53,6 @@ def get_workcell_runtime(request: Request) -> WorkcellRuntime:
 
 def get_protocol_execution_service(request: Request):
   """Get ProtocolExecutionService instance from request state."""
-  from praxis.backend.core.protocol_execution_service import ProtocolExecutionService
-  
   app = request.app
   execution_service: ProtocolExecutionService | None = getattr(
     app.state,

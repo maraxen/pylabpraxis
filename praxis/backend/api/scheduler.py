@@ -137,11 +137,13 @@ async def list_reservations(
   # Filter by status unless include_released
   if not include_released:
     query = query.where(
-      AssetReservationOrm.status.in_([
-        AssetReservationStatusEnum.PENDING,
-        AssetReservationStatusEnum.RESERVED,
-        AssetReservationStatusEnum.ACTIVE,
-      ])
+      AssetReservationOrm.status.in_(
+        [
+          AssetReservationStatusEnum.PENDING,
+          AssetReservationStatusEnum.RESERVED,
+          AssetReservationStatusEnum.ACTIVE,
+        ]
+      )
     )
 
   # Filter by asset key if provided
@@ -156,8 +158,10 @@ async def list_reservations(
 
   # Count active reservations
   active_count = sum(
-    1 for r in reservations
-    if r.status in [
+    1
+    for r in reservations
+    if r.status
+    in [
       AssetReservationStatusEnum.PENDING,
       AssetReservationStatusEnum.RESERVED,
       AssetReservationStatusEnum.ACTIVE,
@@ -179,7 +183,7 @@ async def list_reservations(
       reserved_at=r.reserved_at,
       released_at=r.released_at,
       expires_at=r.expires_at,
-      required_capabilities_json=r.required_capabilities_json,
+      required_capabilities=r.required_capabilities_json,
       estimated_usage_duration_ms=r.estimated_usage_duration_ms,
     )
     for r in reservations

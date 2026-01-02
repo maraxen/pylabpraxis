@@ -12,7 +12,6 @@ async def test_file_system_protocol_source_orm_creation_minimal(
     db_session: AsyncSession,
 ) -> None:
     """Test creating FileSystemProtocolSourceOrm with minimal required fields."""
-
     source = FileSystemProtocolSourceOrm(
         name="test_fs_source",
     )
@@ -32,7 +31,6 @@ async def test_file_system_protocol_source_orm_creation_with_all_fields(
     db_session: AsyncSession,
 ) -> None:
     """Test creating FileSystemProtocolSourceOrm with all fields populated."""
-
     source = FileSystemProtocolSourceOrm(
         name="full_fs_source",
         base_path="/opt/protocols/library",
@@ -55,7 +53,6 @@ async def test_file_system_protocol_source_orm_persist_to_database(
     db_session: AsyncSession,
 ) -> None:
     """Test full persistence cycle for FileSystemProtocolSourceOrm."""
-
     source = FileSystemProtocolSourceOrm(
         name="persistence_test_fs",
         base_path="/var/protocols/test",
@@ -112,7 +109,6 @@ async def test_file_system_protocol_source_orm_status_transitions(
     db_session: AsyncSession,
 ) -> None:
     """Test different status values for file system protocol source."""
-
     statuses = [
         (ProtocolSourceStatusEnum.ACTIVE, "active_fs"),
         (ProtocolSourceStatusEnum.SYNCING, "syncing_fs"),
@@ -138,7 +134,6 @@ async def test_file_system_protocol_source_orm_is_recursive_flag(
     db_session: AsyncSession,
 ) -> None:
     """Test is_recursive flag for scanning subdirectories."""
-
     # Source with recursive scanning (default)
     recursive_source = FileSystemProtocolSourceOrm(
         name="recursive_fs",
@@ -165,7 +160,6 @@ async def test_file_system_protocol_source_orm_query_by_name(
     db_session: AsyncSession,
 ) -> None:
     """Test querying sources by name."""
-
     source = FileSystemProtocolSourceOrm(
         name="queryable_fs",
         base_path="/opt/protocols/queryable",
@@ -191,7 +185,6 @@ async def test_file_system_protocol_source_orm_update_base_path(
     db_session: AsyncSession,
 ) -> None:
     """Test updating base_path field."""
-
     source = FileSystemProtocolSourceOrm(
         name="path_update_fs",
         base_path="/opt/protocols/old_path",
@@ -219,7 +212,6 @@ async def test_file_system_protocol_source_orm_update_base_path(
 @pytest.mark.asyncio
 async def test_file_system_protocol_source_orm_repr(db_session: AsyncSession) -> None:
     """Test string representation of FileSystemProtocolSourceOrm."""
-
     source = FileSystemProtocolSourceOrm(
         name="repr_fs",
         base_path="/opt/protocols/repr",
@@ -237,7 +229,6 @@ async def test_file_system_protocol_source_orm_query_by_status(
     db_session: AsyncSession,
 ) -> None:
     """Test querying sources by status."""
-
     # Create sources with different statuses
     active_source = FileSystemProtocolSourceOrm(
         name="active_status_fs",

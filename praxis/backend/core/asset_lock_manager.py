@@ -8,7 +8,6 @@ from praxis.backend.models.pydantic_internals.asset import AcquireAssetLock
 
 
 class AssetLockManager(IAssetLockManager):
-
   """A simple in-memory asset lock manager."""
 
   def __init__(self, redis_url: str | None = None) -> None:

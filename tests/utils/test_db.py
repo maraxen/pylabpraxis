@@ -71,9 +71,10 @@ class TestGetAsyncDbSession:
     async def test_get_async_db_session_propagates_exceptions(self) -> None:
         """Test that exceptions are propagated."""
         with pytest.raises(ValueError, match="Test error"):
-            async for session in get_async_db_session():
+            async for _session in get_async_db_session():
                 # Simulate an error during session use
-                raise ValueError("Test error")
+                msg = "Test error"
+                raise ValueError(msg)
 
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.db.AsyncSessionLocal")
@@ -300,7 +301,6 @@ class TestDbIntegration:
     async def test_async_session_context_manager_workflow(self) -> None:
         """Test complete workflow of using async session context manager."""
         session_created = False
-        session_closed = False
 
         async for session in get_async_db_session():
             session_created = True

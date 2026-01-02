@@ -187,21 +187,25 @@ interface RecentRun {
                 <mat-icon class="text-blue-400">history</mat-icon>
                 Recent Activity
               </h2>
-              <a mat-button class="!text-sys-text-secondary hover:!text-sys-text-primary" routerLink="/app/protocols">View All</a>
+              <a mat-button class="!text-sys-text-secondary hover:!text-sys-text-primary" routerLink="/app/monitor">View All</a>
             </div>
 
             <div class="p-2">
               @if (recentRuns().length > 0) {
                 @for (run of recentRuns(); track run.id) {
-                  <div class="flex items-center gap-3 p-3 hover:bg-[var(--mat-sys-surface-variant)] rounded-xl transition-colors cursor-pointer group">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" [class]="getStatusBgClass(run.status)">
+                  <a class="flex items-center gap-3 p-3 hover:bg-[var(--mat-sys-surface-variant)] rounded-xl transition-all cursor-pointer group no-underline hover:shadow-md hover:-translate-y-0.5"
+                     [routerLink]="['/app/monitor', run.id]"
+                     [matTooltip]="'View run details'"
+                     matTooltipPosition="left">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105" [class]="getStatusBgClass(run.status)">
                       <mat-icon class="!text-sys-text-primary !w-5 !h-5 !text-[20px]">{{ getStatusIcon(run.status) }}</mat-icon>
                     </div>
                     <div class="flex-1 min-w-0">
                       <div class="font-medium text-sys-text-primary truncate group-hover:text-primary transition-colors">{{ run.name }}</div>
                       <div class="text-xs text-sys-text-tertiary truncate">{{ run.protocolName }} • {{ run.duration }}</div>
                     </div>
-                  </div>
+                    <mat-icon class="!text-sys-text-tertiary !w-4 !h-4 !text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</mat-icon>
+                  </a>
                 }
               } @else {
                 <div class="p-8 text-center text-sys-text-tertiary">

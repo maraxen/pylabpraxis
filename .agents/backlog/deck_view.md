@@ -2,7 +2,12 @@
 
 **Focus**: Accurate physical representation of the deck, carriers, slots, and labware status.
 **Created**: 2025-12-30
-**Last Updated**: 2025-12-30
+**Last Updated**: 2026-01-02
+
+> 📋 **Detailed Implementation Plan Available**
+>
+> For the **Enhanced Guided Deck Setup** feature and related phases (Semantic Deck Model, Slot-Based Rendering, Carrier Inference), see:
+> **[guided_deck_setup.md](./guided_deck_setup.md)** - Full 5-phase implementation plan with architecture, code examples, and success criteria.
 
 ---
 
@@ -25,14 +30,14 @@
 
 ### 2. Itemized Resource Status
 
-- [x] **Tip Status** - ⚠️ PARTIAL:
+- [x] **Tip Status** - ✅ COMPLETE:
   - `hasTip(res)` helper exists in deck-view.component.ts
   - `.has-tip` CSS class with styling exists
-  - **Remaining**: Support "Tip Masks" or bitmasks to render partial racks efficiently.
-- [x] **Well Status** - ⚠️ PARTIAL:
-  - `hasLiquid(res)` helper checks for volume > 0
+  - Bitmask/Parent state support added.
+- [x] **Well Status** - ✅ COMPLETE:
+  - `hasLiquid(res)` helper checks for volume > 0 and renders gradient fill.
   - `.has-liquid` and `.empty` CSS classes exist
-  - **Remaining**: Color-coding based on liquid type/sample group.
+  - Color-coding based on resource color or default liquid blue.
 - [ ] **State Data**:
   - Ensure `DeckGeneratorService` or the backend state includes granular tip/well data.
 
@@ -70,9 +75,9 @@
 
 ### 6. Itemized Resource Spacing
 
-- [ ] **Proper Spacing/Rendering**:
-  - Fix spacing and rendering of items in itemized resources (wells, tips).
-  - Ensure consistent visual alignment.
+- [x] **Proper Spacing/Rendering** - ✅ COMPLETE:
+  - Fixed spacing and rendering of items in itemized resources (wells, tips).
+  - Implemented `scaleBottom` to correctly map PLR Bottom-Left coordinate system.
 
 ---
 
@@ -80,9 +85,9 @@
 
 ### 7. Interaction & UX
 
-- [ ] **Drag & Drop**: Allow dragging labware from a sidebar into an Empty Slot.
-- [ ] **Hover Details**: Hovering a slot should show its ID/Coordinate (e.g., "Carrier 1, Pos 3").
-- [ ] **Resource Properties**: Click to inspect specific well data.
+- [x] **Drag & Drop**: ✅ COMPLETE (2026-01-01) - Drag labware into slots.
+- [x] **Hover Details**: ✅ COMPLETE (2026-01-02) - Rich tooltip with name, type, dimensions, volume, tip status.
+- [x] **Resource Properties**: ✅ COMPLETE (2026-01-02) - Click-to-inspect side panel with detailed properties.
 
 ---
 
@@ -107,8 +112,8 @@
 
 ## Technical Refactoring
 
-- [ ] **Deck Model**: Update `PlrDeckData` to explicitly model `rails` and `slots` if they aren't native PLR resources (PLR often treats Carrier Sites as child resources).
-- [ ] **State Sync**: Optimize sending status for 96-well plates (don't send 96 objects if 1 bitmask works).
+- [x] **Deck Model**: ✅ COMPLETE (2026-01-02) - Updated `PlrDeckData` to include optional `rails` and `carriers` fields. Added `PlrResourceDetails` interface.
+- [x] **State Sync**: ✅ COMPLETE (2026-01-02) - Implemented bitmask encoding (`tip_mask`, `liquid_mask`) for efficient 96-well state transmission.
 
 ---
 

@@ -295,10 +295,11 @@ def get_liquid_handler_classes(
   # Import locally to avoid circular imports or import errors if PLR is broken
   try:
     from pylabrobot.liquid_handling import LiquidHandler
+
     return get_all_classes(  # type: ignore
       base_module_names=[
         "pylabrobot.liquid_handling",
-        "pylabrobot.resources", # some definitions might be here
+        "pylabrobot.resources",  # some definitions might be here
       ],
       parent_class=LiquidHandler,
       concrete_only=concrete_only,
@@ -324,6 +325,7 @@ def get_backend_classes(
   )
   try:
     from pylabrobot.liquid_handling.backends import LiquidHandlerBackend
+
     return get_all_classes(  # type: ignore
       base_module_names=[
         "pylabrobot.liquid_handling.backends",
@@ -364,9 +366,9 @@ def get_capabilities(class_obj: type[Any]) -> dict[str, Any]:
     capabilities["channels"].append(96)
   if "384" in name or "384" in doc_lower:
     capabilities["channels"].append(384)
-  if "8" in name or "8" in doc_lower or "channels" in doc_lower: # Basic assumption
-     # Refine this: check for 'num_channels' attribute if instantiated, but we are static here
-     pass
+  if "8" in name or "8" in doc_lower or "channels" in doc_lower:  # Basic assumption
+    # Refine this: check for 'num_channels' attribute if instantiated, but we are static here
+    pass
 
   # Modules
   if "swap" in name or "swap" in doc_lower:
@@ -707,8 +709,6 @@ def get_deck_details(deck_class: type[Deck]) -> dict[str, Any]:
           "doc": inspect.getdoc(method),
         },
       )
-
-
 
   details["assignment_methods"] = assignment_methods
 

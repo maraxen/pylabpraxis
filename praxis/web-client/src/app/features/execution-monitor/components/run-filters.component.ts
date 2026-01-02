@@ -13,10 +13,10 @@ import { ProtocolDefinition } from '../../protocols/models/protocol.models';
 import { RunStatus, RunHistoryParams } from '../models/monitor.models';
 
 export interface FilterState {
-    status: RunStatus[];
-    protocol_id: string | null;
-    sort_by: 'created_at' | 'start_time' | 'status';
-    sort_order: 'asc' | 'desc';
+  status: RunStatus[];
+  protocol_id: string | string[] | null;
+  sort_by: 'created_at' | 'start_time' | 'status';
+  sort_order: 'asc' | 'desc';
 }
 
 /**
@@ -24,19 +24,19 @@ export interface FilterState {
  * Emits filter changes to parent component.
  */
 @Component({
-    selector: 'app-run-filters',
-    standalone: true,
-    imports: [
-        CommonModule,
-        FormsModule,
-        MatSelectModule,
-        MatFormFieldModule,
-        MatChipsModule,
-        MatIconModule,
-        MatButtonModule,
-        MatButtonToggleModule,
-    ],
-    template: `
+  selector: 'app-run-filters',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatSelectModule,
+    MatFormFieldModule,
+    MatChipsModule,
+    MatIconModule,
+    MatButtonModule,
+    MatButtonToggleModule,
+  ],
+  template: `
     <div class="filters-container flex flex-wrap items-center gap-4 p-4 rounded-xl border border-[var(--theme-border)] bg-surface-container mb-4">
       <!-- Status Filter -->
       <div class="filter-group">
@@ -59,10 +59,11 @@ export interface FilterState {
         <mat-form-field appearance="outline" class="w-full dense-field">
           <mat-label>Protocol</mat-label>
           <mat-select
-            [(ngModel)]="selectedProtocolId"
+            [multiple]="true"
+            [(ngModel)]="selectedProtocolIds"
             (selectionChange)="onFilterChange()"
             placeholder="All protocols">
-            <mat-option [value]="null">All protocols</mat-option>
+            <!-- <mat-option [value]="null">All protocols</mat-option> -->
             @for (protocol of protocols(); track protocol.accession_id) {
               <mat-option [value]="protocol.accession_id">
                 {{ protocol.name }}
@@ -115,7 +116,7 @@ export interface FilterState {
       }
     </div>
   `,
-    styles: [`
+  styles: [`
     .filters-container {
       container-type: inline-size;
     }
@@ -180,75 +181,75 @@ export interface FilterState {
   `],
 })
 export class RunFiltersComponent implements OnInit {
-    private readonly protocolService = inject(ProtocolService);
+  private readonly protocolService = inject(ProtocolService);
 
-    /** Emits when filters change */
-    readonly filtersChange = output<FilterState>();
+  /** Emits when filters change */
+  readonly filtersChange = output<FilterState>();
 
-    readonly protocols = signal<ProtocolDefinition[]>([]);
+  readonly protocols = signal<ProtocolDefinition[]>([]);
 
-    readonly allStatuses: RunStatus[] = [
-        'RUNNING',
-        'QUEUED',
-        'PENDING',
-        'COMPLETED',
-        'FAILED',
-        'CANCELLED',
-        'PAUSED',
-    ];
+  readonly allStatuses: RunStatus[] = [
+    'RUNNING',
+    'QUEUED',
+    'PENDING',
+    'COMPLETED',
+    'FAILED',
+    'CANCELLED',
+    'PAUSED',
+  ];
 
-    // Filter state
-    selectedStatuses: RunStatus[] = [];
-    selectedProtocolId: string | null = null;
-    sortBy: 'created_at' | 'start_time' | 'status' = 'created_at';
-    sortOrder: 'asc' | 'desc' = 'desc';
+  // Filter state
+  selectedStatuses: RunStatus[] = [];
+  selectedProtocolIds: string[] = [];
+  sortBy: 'created_at' | 'start_time' | 'status' = 'created_at';
+  sortOrder: 'asc' | 'desc' = 'desc';
 
-    ngOnInit(): void {
-        this.loadProtocols();
-    }
+  ngOnInit(): void {
+    this.loadProtocols();
+  }
 
-    private loadProtocols(): void {
-        this.protocolService.getProtocols().subscribe({
-            next: (protocols) => {
-                this.protocols.set(protocols);
-            },
-            error: (err) => {
-                console.error('[RunFilters] Failed to load protocols:', err);
-            },
-        });
-    }
+  private loadProtocols(): void {
+    this.protocolService.getProtocols().subscribe({
+      next: (protocols) => {
+        this.protocols.set(protocols);
+      },
+      error: (err) => {
+        console.error('[RunFilters] Failed to load protocols:', err);
+      },
+    });
+  }
 
-    onFilterChange(): void {
-        this.filtersChange.emit(this.getCurrentFilters());
-    }
+  onFilterChange(): void {
+    this.filtersChange.emit(this.getCurrentFilters());
+  }
 
-    getCurrentFilters(): FilterState {
-        return {
-            status: this.selectedStatuses,
-            protocol_id: this.selectedProtocolId,
-            sort_by: this.sortBy,
-            sort_order: this.sortOrder,
-        };
-    }
+  getCurrentFilters(): FilterState {
+    return {
+      status: this.selectedStatuses,
+      protocol_id: this.selectedProtocolIds.length ? this.selectedProtocolIds : null,
+      sort_by: this.sortBy,
+      sort_order: this.sortOrder,
+    };
+  }
 
-    hasActiveFilters(): boolean {
-        return (
-            this.selectedStatuses.length > 0 ||
-            this.selectedProtocolId !== null ||
-            this.sortBy !== 'created_at' ||
-            this.sortOrder !== 'desc'
-        );
-    }
+  hasActiveFilters(): boolean {
+    return (
+      this.selectedStatuses.length > 0 ||
+      this.selectedProtocolIds.length > 0 ||
+      this.sortBy !== 'created_at' ||
+      this.sortOrder !== 'desc'
+    );
+  }
 
-    clearFilters(): void {
-        this.selectedStatuses = [];
-        this.selectedProtocolId = null;
-        this.sortBy = 'created_at';
-        this.sortOrder = 'desc';
-        this.onFilterChange();
-    }
+  clearFilters(): void {
+    this.selectedStatuses = [];
+    this.selectedProtocolIds = [];
+    this.sortBy = 'created_at';
+    this.sortOrder = 'desc';
+    this.onFilterChange();
+  }
 
-    getStatusChipClass(status: RunStatus): string {
-        return `status-${status.toLowerCase()}`;
-    }
+  getStatusChipClass(status: RunStatus): string {
+    return `status-${status.toLowerCase()}`;
+  }
 }

@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { ActiveRunsPanelComponent } from './components/active-runs-panel.component';
 import { RunHistoryTableComponent } from './components/run-history-table.component';
 import { RunFiltersComponent, FilterState } from './components/run-filters.component';
+import { RunStatsPanelComponent } from './components/run-stats-panel.component';
 
 /**
  * Main dashboard for the Execution Monitor feature.
@@ -21,6 +22,7 @@ import { RunFiltersComponent, FilterState } from './components/run-filters.compo
     ActiveRunsPanelComponent,
     RunHistoryTableComponent,
     RunFiltersComponent,
+    RunStatsPanelComponent,
   ],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto">
@@ -34,6 +36,9 @@ import { RunFiltersComponent, FilterState } from './components/run-filters.compo
           <p class="text-sys-text-secondary">Track and analyze protocol executions</p>
         </div>
       </div>
+
+      <!-- Summary Statistics -->
+      <app-run-stats-panel></app-run-stats-panel>
 
       <!-- Active Runs Panel -->
       <app-active-runs-panel></app-active-runs-panel>

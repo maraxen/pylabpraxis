@@ -1,5 +1,4 @@
-"""Unit tests for AssetReservationOrm model.
-"""
+"""Unit tests for AssetReservationOrm model."""
 from collections.abc import Callable
 from datetime import datetime, timezone
 
@@ -20,7 +19,6 @@ from praxis.backend.models.orm.protocol import (
     ProtocolSourceRepositoryOrm,
 )
 from praxis.backend.models.orm.schedule import AssetReservationOrm, ScheduleEntryOrm
-from praxis.backend.utils.uuid import uuid7
 
 
 @pytest_asyncio.fixture

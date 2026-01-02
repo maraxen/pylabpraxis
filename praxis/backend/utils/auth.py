@@ -44,6 +44,7 @@ class Token(BaseModel):
   access_token: str
   token_type: str = "bearer"
 
+
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
   """Create a JWT access token."""
   to_encode = data.copy()
@@ -104,7 +105,7 @@ def verify_token(token: str) -> TokenData | None:
         token,
         public_key,
         algorithms=["RS256"],
-        options={"verify_aud": False} # Keycloak access tokens might have different audience
+        options={"verify_aud": False},  # Keycloak access tokens might have different audience
       )
 
       # Map Keycloak claims

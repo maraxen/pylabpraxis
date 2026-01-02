@@ -151,6 +151,24 @@ export class ExecutionService {
         });
         this.disconnect();
         break;
+
+      case 'telemetry':
+        this._currentRun.set({
+          ...currentState,
+          telemetry: {
+            temperature: message.payload.temperature,
+            absorbance: message.payload.absorbance
+          }
+        });
+        break;
+
+      case 'well_state_update':
+        // Compressed bitmask format for efficient well/tip state sync
+        this._currentRun.set({
+          ...currentState,
+          wellState: message.payload
+        });
+        break;
     }
   }
 

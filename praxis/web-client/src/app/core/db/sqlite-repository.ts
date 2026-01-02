@@ -7,7 +7,14 @@
  * @module sqlite-repository
  */
 
-import type { Database } from 'sql.js';
+import type { Database, SqlValue } from 'sql.js';
+
+/**
+ * Base entity interface that all database entities must satisfy
+ */
+export interface BaseEntity {
+    [key: string]: unknown;
+}
 
 /**
  * Query criteria for filtering entities
@@ -52,7 +59,7 @@ export interface PaginatedResult<T> {
  *
  * @template T - The entity type (interface from schema.ts)
  */
-export class SqliteRepository<T extends Record<string, unknown>> {
+export class SqliteRepository<T extends BaseEntity> {
     constructor(
         protected db: Database,
         protected tableName: string,
@@ -136,7 +143,7 @@ export class SqliteRepository<T extends Record<string, unknown>> {
         const { whereClause, params } = this.buildWhereClause(criteria);
         const sql = `SELECT COUNT(*) as count FROM ${this.tableName} WHERE ${whereClause}`;
         const stmt = this.db.prepare(sql);
-        stmt.bind(params);
+        stmt.bind(params as SqlValue[]);
         stmt.step();
         const count = stmt.get()[0] as number;
         stmt.free();
@@ -160,7 +167,7 @@ export class SqliteRepository<T extends Record<string, unknown>> {
      */
     create(entity: Omit<T, 'created_at' | 'updated_at'>): T {
         const columns = Object.keys(entity);
-        const values = Object.values(entity).map(v => this.serializeValue(v));
+        const values = Object.values(entity).map(v => this.serializeValue(v)) as SqlValue[];
         const placeholders = columns.map(() => '?').join(', ');
 
         const sql = `INSERT INTO ${this.tableName} (${columns.join(', ')}) VALUES (${placeholders})`;
@@ -185,7 +192,7 @@ export class SqliteRepository<T extends Record<string, unknown>> {
         const values = [
             ...Object.values(updates).map(v => this.serializeValue(v)),
             id
-        ];
+        ] as SqlValue[];
 
         const sql = `UPDATE ${this.tableName} SET ${setClause} WHERE ${this.primaryKey} = ?`;
         const stmt = this.db.prepare(sql);
@@ -214,7 +221,7 @@ export class SqliteRepository<T extends Record<string, unknown>> {
         const { whereClause, params } = this.buildWhereClause(criteria);
         const sql = `DELETE FROM ${this.tableName} WHERE ${whereClause}`;
         const stmt = this.db.prepare(sql);
-        stmt.run(params);
+        stmt.run(params as SqlValue[]);
         const changes = this.db.getRowsModified();
         stmt.free();
         return changes;
@@ -233,7 +240,7 @@ export class SqliteRepository<T extends Record<string, unknown>> {
     rawExecute(sql: string, params?: unknown[]): number {
         const stmt = this.db.prepare(sql);
         if (params) {
-            stmt.run(params.map(v => this.serializeValue(v)));
+            stmt.run(params.map(v => this.serializeValue(v)) as SqlValue[]);
         } else {
             stmt.run();
         }
@@ -246,7 +253,7 @@ export class SqliteRepository<T extends Record<string, unknown>> {
 
     protected executeQuery(sql: string, params?: unknown[]): T[] {
         const result = params
-            ? this.db.exec(sql, params.map(v => this.serializeValue(v)))
+            ? this.db.exec(sql, params.map(v => this.serializeValue(v)) as SqlValue[])
             : this.db.exec(sql);
 
         if (result.length === 0) return [];
@@ -353,7 +360,7 @@ export class SqliteRepository<T extends Record<string, unknown>> {
 /**
  * Create a typed repository for a specific entity type
  */
-export function createRepository<T extends Record<string, unknown>>(
+export function createRepository<T extends BaseEntity>(
     db: Database,
     tableName: string,
     primaryKey: string = 'accession_id'

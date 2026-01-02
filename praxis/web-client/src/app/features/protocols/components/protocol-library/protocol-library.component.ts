@@ -218,11 +218,10 @@ export class ProtocolLibraryComponent {
         this.protocolService.uploadProtocol(file).pipe(
           finalize(() => this.isLoading.set(false)) // Set loading false after API call completes
         ).subscribe({
-          next: (response) => {
-            console.log('Upload successful', response);
+          next: () => {
             this.loadProtocols(); // Refresh list
           },
-          error: (err) => console.error('Upload failed', err)
+          error: (err) => console.error('[ProtocolLibrary] Upload failed:', err)
         });
       }
     };

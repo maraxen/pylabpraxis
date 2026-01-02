@@ -31,7 +31,6 @@ from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseMod
 
 
 class ProtocolStartRequest(BaseModel):
-
   """Represents a request to start a protocol run.
 
   This includes details about the protocol to be run, its parameters,
@@ -52,7 +51,6 @@ class ProtocolStartRequest(BaseModel):
 
 
 class ProtocolStatus(BaseModel):
-
   """Provides a simple status update for a protocol."""
 
   model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
@@ -62,14 +60,12 @@ class ProtocolStatus(BaseModel):
 
 
 class ProtocolDirectories(BaseModel):
-
   """Lists directories associated with protocols."""
 
   directories: list[str]
 
 
 class ProtocolPrepareRequest(BaseModel):
-
   """Represents a request to prepare a protocol for execution.
 
   This includes the protocol's path or ID, along with any necessary
@@ -84,7 +80,6 @@ class ProtocolPrepareRequest(BaseModel):
 
 
 class ProtocolInfo(BaseModel):
-
   """Provides essential information about a protocol.
 
   This includes its name, source path, description, and whether it has
@@ -103,7 +98,6 @@ class ProtocolInfo(BaseModel):
 
 
 class UIHint(BaseModel):
-
   """Provides hints for parameter/asset rendering in a user interface."""
 
   model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
@@ -111,8 +105,38 @@ class UIHint(BaseModel):
   widget_type: str | None = None
 
 
-class ParameterConstraintsModel(BaseModel):
+class DataViewMetadataModel(BaseModel):
+  """Defines a data view required by a protocol for input data.
 
+  Data views allow protocols to declare what input data they need in a structured way.
+  They can reference:
+  - PLR state data (e.g., liquid volume tracking, resource positions)
+  - Function data outputs from previous protocol runs (e.g., plate reader reads)
+
+  Schema validation errors during protocol setup generate warnings but do not
+  block protocol execution.
+  """
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True, from_attributes=True)
+
+  name: str
+  description: str | None = None
+  source_type: str = "function_output"  # "plr_state", "function_output", "external"
+  source_filter_json: dict[str, Any] | None = Field(
+    default=None,
+    description="Filter criteria to select specific data. "
+    "For 'plr_state': {'state_key': 'tracker.volumes', 'resource_pattern': '*plate*'}. "
+    "For 'function_output': {'function_fqn': '...', 'output_type': 'absorbance'}.",
+  )
+  data_schema_json: dict[str, Any] | None = Field(
+    default=None,
+    description="Expected data schema for validation (column names, types).",
+  )
+  required: bool = False
+  default_value_json: Any = None
+
+
+class ParameterConstraintsModel(BaseModel):
   """Defines validation constraints for a protocol parameter."""
 
   min_value: int | float | None = None
@@ -129,7 +153,6 @@ class ParameterConstraintsModel(BaseModel):
 
 
 class ParameterMetadataModel(BaseModel):
-
   """Provides comprehensive metadata for a protocol parameter.
 
   This includes its name, type information, default value, description,
@@ -152,7 +175,6 @@ class ParameterMetadataModel(BaseModel):
 
 
 class LocationConstraintsModel(BaseModel):
-
   """Defines constraints for the location of an asset in a protocol.
 
   This includes required locations, optional locations, and any specific
@@ -172,7 +194,6 @@ class LocationConstraintsModel(BaseModel):
 
 
 class AssetConstraintsModel(BaseModel):
-
   """Defines constraints for an asset required by a protocol."""
 
   model_config = ConfigDict(use_enum_values=True, validate_assignment=True, from_attributes=True)
@@ -181,10 +202,10 @@ class AssetConstraintsModel(BaseModel):
   required_attributes: list[str] = Field(default_factory=list)
   required_method_signatures: dict[str, str] = Field(default_factory=dict)
   required_method_args: dict[str, list[str]] = Field(default_factory=dict)
+  min_volume_ul: float | None = None
 
 
 class AssetRequirementModel(BaseModel):
-
   """Describes a single asset required by a protocol.
 
   This includes its name, type information, optionality, default value,
@@ -192,8 +213,8 @@ class AssetRequirementModel(BaseModel):
   """
 
   model_config = ConfigDict(
-    use_enum_values=True, 
-    validate_assignment=True, 
+    use_enum_values=True,
+    validate_assignment=True,
     from_attributes=True,
     populate_by_name=True,
   )
@@ -216,7 +237,6 @@ class AssetRequirementModel(BaseModel):
 
 
 class FunctionProtocolDefinitionBase(BaseModel):
-
   """Base model for a function protocol definition."""
 
   model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
@@ -238,7 +258,8 @@ class FunctionProtocolDefinitionBase(BaseModel):
   solo_execution: bool = False
   preconfigure_deck: bool = False
   deck_param_name: str | None = None
-  deck_construction_function_fqn: str | None = None  # New field for deck construction callable
+  deck_construction_function_fqn: str | None = None  # FQN of deck construction callable
+  deck_layout_path: str | None = None  # Path to JSON deck layout configuration
   state_param_name: str | None = "state"
 
   category: str | None = None
@@ -247,11 +268,11 @@ class FunctionProtocolDefinitionBase(BaseModel):
 
   parameters: list[ParameterMetadataModel] = Field(default_factory=list)
   assets: list[AssetRequirementModel] = Field(default_factory=list)
+  data_views: list[DataViewMetadataModel] = Field(default_factory=list)
   hardware_requirements: dict[str, Any] | None = None  # Inferred hardware requirements
 
 
 class FunctionProtocolDefinitionCreate(FunctionProtocolDefinitionBase):
-
   """Represents a detailed definition of a function-based protocol.
 
   This model encapsulates core definition details, source information,
@@ -263,7 +284,6 @@ class FunctionProtocolDefinitionCreate(FunctionProtocolDefinitionBase):
 
 
 class FunctionProtocolDefinitionUpdate(BaseModel):
-
   """Model for updating a function protocol definition."""
 
   name: str | None = None
@@ -280,17 +300,18 @@ class FunctionProtocolDefinitionUpdate(BaseModel):
   preconfigure_deck: bool | None = None
   deck_param_name: str | None = None
   deck_construction_function_fqn: str | None = None
+  deck_layout_path: str | None = None
   state_param_name: str | None = None
   category: str | None = None
   tags: list[str] | None = None
   deprecated: bool | None = None
   parameters: list[ParameterMetadataModel] | None = None
   assets: list[AssetRequirementModel] | None = None
+  data_views: list[DataViewMetadataModel] | None = None
   hardware_requirements: dict[str, Any] | None = None
 
 
 class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionBase, PraxisBaseModel):
-
   """Model for API responses for a function protocol definition."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -303,7 +324,6 @@ class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionBase, PraxisB
 
 
 class ProtocolParameters(BaseModel):
-
   """Represents the parameters for a protocol run.
 
   This includes both user-defined parameters, derived from the protocol's
@@ -321,7 +341,6 @@ class ProtocolParameters(BaseModel):
 
 
 class ProtocolDefinitionFilters(BaseModel):
-
   """Model for filtering protocol definitions."""
 
   search_filters: SearchFilters
@@ -333,7 +352,6 @@ class ProtocolDefinitionFilters(BaseModel):
 
 
 class ProtocolRunBase(BaseModel):
-
   """Base model for a protocol run."""
 
   model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
@@ -353,7 +371,6 @@ class ProtocolRunBase(BaseModel):
 
 
 class ProtocolRunCreate(ProtocolRunBase):
-
   """Model for creating a new protocol run."""
 
   run_accession_id: UUID7
@@ -361,19 +378,16 @@ class ProtocolRunCreate(ProtocolRunBase):
 
 
 class ProtocolRunUpdate(ProtocolRunBase):
-
   """Model for updating a protocol run."""
 
 
 class ProtocolRunResponse(ProtocolRunBase, PraxisBaseModel):
-
   """Model for API responses for a protocol run."""
 
   model_config = PraxisBaseModel.model_config
 
 
 class FunctionCallLogBase(BaseModel):
-
   """Base model for a function call log."""
 
   model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
@@ -387,7 +401,6 @@ class FunctionCallLogBase(BaseModel):
 
 
 class FunctionCallLogCreate(FunctionCallLogBase, PraxisBaseModel):
-
   """Model for creating a new function call log."""
 
   parent_function_call_log_accession_id: UUID7 | None = None
@@ -398,12 +411,10 @@ class FunctionCallLogCreate(FunctionCallLogBase, PraxisBaseModel):
 
 
 class FunctionCallLogUpdate(FunctionCallLogBase):
-
   """Model for updating a function call log."""
 
 
 class FunctionCallLogResponse(FunctionCallLogCreate):
-
   """Model for API responses for a function call log."""
 
   model_config = PraxisBaseModel.model_config

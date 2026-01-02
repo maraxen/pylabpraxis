@@ -84,10 +84,12 @@ async def serial_dilution(
     """
     row = start_row.upper()
     if len(row) != 1 or row not in "ABCDEFGH":
-        raise ValueError(f"Invalid row: {row}. Must be A-H.")
+        msg = f"Invalid row: {row}. Must be A-H."
+        raise ValueError(msg)
 
     if num_dilutions < 1 or num_dilutions > 12:
-        raise ValueError(f"num_dilutions must be 1-12, got {num_dilutions}")
+        msg = f"num_dilutions must be 1-12, got {num_dilutions}"
+        raise ValueError(msg)
 
     # Generate well positions for this row
     well_positions = [f"{row}{i}" for i in range(1, num_dilutions + 2)]

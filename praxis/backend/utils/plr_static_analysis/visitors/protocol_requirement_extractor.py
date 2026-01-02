@@ -5,12 +5,12 @@ capabilities from method calls and type hints.
 """
 
 import libcst as cst
+from libcst.metadata import MetadataWrapper
 
 from praxis.backend.utils.plr_static_analysis.models import (
   CapabilityRequirement,
   ProtocolRequirements,
 )
-
 
 # =============================================================================
 # Method Call Patterns and Their Implied Requirements
@@ -104,7 +104,7 @@ class ProtocolRequirementExtractor(cst.CSTVisitor):
     self._machine_types: set[str] = set()
     self._method_calls: list[str] = []
 
-  def visit_Call(self, node: cst.Call) -> bool:
+  def visit_Call(self, node: cst.Call) -> bool:  # noqa: N802
     """Visit method calls to detect capability requirements.
 
     Args:
@@ -112,6 +112,7 @@ class ProtocolRequirementExtractor(cst.CSTVisitor):
 
     Returns:
       True to continue visiting child nodes.
+
     """
     # Handle method calls like `lh.pick_up_tips96()`
     if isinstance(node.func, cst.Attribute):
@@ -179,6 +180,7 @@ class ProtocolRequirementExtractor(cst.CSTVisitor):
 
     Returns:
       The name as a string, or None if not a simple name.
+
     """
     if isinstance(node, cst.Name):
       return node.value
@@ -201,6 +203,7 @@ class ProtocolRequirementExtractor(cst.CSTVisitor):
       expected_value: The expected value (e.g., True).
       inferred_from: Source code that triggered this inference.
       machine_type: Optional machine type this requirement applies to.
+
     """
     key = (capability_name, expected_value)
     if key not in self._seen_requirements:
@@ -219,6 +222,7 @@ class ProtocolRequirementExtractor(cst.CSTVisitor):
 
     Returns:
       ProtocolRequirements with all inferred requirements.
+
     """
     # Determine primary machine type (most common or first seen)
     primary_type = None
@@ -253,9 +257,8 @@ def extract_requirements_from_source(source: str) -> ProtocolRequirements:
 
   Returns:
     ProtocolRequirements inferred from the code.
-  """
-  from libcst.metadata import MetadataWrapper
 
+  """
   try:
     tree = cst.parse_module(source)
   except cst.ParserSyntaxError:
@@ -280,7 +283,9 @@ def _visit_tree_manually(tree: cst.Module, extractor: ProtocolRequirementExtract
   Args:
     tree: The parsed CST module.
     extractor: The extractor visitor to populate.
+
   """
+
   # Simple recursive traversal to find all Call nodes
   def visit_node(node: cst.CSTNode) -> None:
     if isinstance(node, cst.Call):

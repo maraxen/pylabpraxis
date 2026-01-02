@@ -82,7 +82,6 @@ def temporary_sys_path(path_to_add: str | None):
 
 
 class ProtocolCodeManager:
-
   """Manages protocol code preparation and loading for execution.
 
   This class handles all aspects of preparing protocol code for execution,
@@ -126,14 +125,18 @@ class ProtocolCodeManager:
         cwd,
         timeout,
       )
+      import functools
+
       process = await asyncio.to_thread(
-        subprocess.run,
-        command,
-        cwd=cwd,
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
+        functools.partial(
+          subprocess.run,
+          command,
+          cwd=cwd,
+          check=True,
+          capture_output=True,
+          text=True,
+          timeout=timeout,
+        )
       )
       if not suppress_output:
         stdout_stripped = process.stdout.strip()
@@ -177,7 +180,9 @@ class ProtocolCodeManager:
       raise RuntimeError(error_message) from e
     except FileNotFoundError:  # pragma: no cover
       cmd_str = " ".join(command)
-      error_message = f"CODE-GIT: Git command not found. Ensure git is installed. Command: {cmd_str}"
+      error_message = (
+        f"CODE-GIT: Git command not found. Ensure git is installed. Command: {cmd_str}"
+      )
       logger.exception(error_message)
       raise RuntimeError(error_message) from None
 

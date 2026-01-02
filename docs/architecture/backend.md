@@ -5,23 +5,25 @@ The Praxis backend is organized into distinct layers, each with clear responsibi
 ## Directory Structure
 
 ```
-praxis/backend/
-├── api/                    # FastAPI routes
-│   ├── routes/             # Endpoint definitions
-│   └── deps.py             # Dependency injection
-├── core/                   # Execution engine
-│   ├── orchestrator/       # Protocol execution control
-│   ├── workcell_runtime.py # Live hardware management
-│   ├── asset_manager.py    # Asset lifecycle
-│   └── asset_lock_manager.py # Distributed locking
-├── services/               # Business logic
-│   ├── protocol_service.py
-│   ├── machine_service.py
-│   └── ...
-├── models/                 # Data models
-│   ├── orm/                # SQLAlchemy models
-│   └── pydantic/           # API schemas
-└── utils/                  # Utilities
+
+## Service Interactions
+
+```mermaid
+graph TD
+    Client[Web Client] -- REST/WS --> API[FastAPI Layer]
+    API --> Service[Service Layer]
+    Service --> DB[(PostgreSQL)]
+    
+    API --> Orch[Orchestrator]
+    Orch --> AM[Asset Manager]
+    Orch --> Engine[Protocol Engine]
+    
+    AM --> WR[Workcell Runtime]
+    AM --> Lock[Lock Manager]
+    Lock --> Redis[(Redis)]
+    
+    WR --> PLR[PyLabRobot Instances]
+    PLR --> Hardware[Laboratory Machines]
 ```
 
 ## Core Components

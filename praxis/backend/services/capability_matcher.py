@@ -38,6 +38,7 @@ class CapabilityMatcherService:
 
     Returns:
       CapabilityMatchResult indicating compatibility.
+
     """
     # Extract protocol requirements
     requirements = self._parse_requirements(protocol.hardware_requirements_json)
@@ -85,6 +86,7 @@ class CapabilityMatcherService:
 
     Returns:
       List of (machine, match_result) tuples for all checked machines.
+
     """
     results: list[tuple[MachineOrm, CapabilityMatchResult]] = []
 
@@ -107,6 +109,7 @@ class CapabilityMatcherService:
 
     Returns:
       List of machines that satisfy all protocol requirements.
+
     """
     results = self.find_compatible_machines(protocol, machines)
     return [machine for machine, result in results if result.is_compatible]
@@ -119,6 +122,7 @@ class CapabilityMatcherService:
 
     Returns:
       ProtocolRequirements model instance.
+
     """
     if not requirements_json:
       return ProtocolRequirements()
@@ -143,6 +147,7 @@ class CapabilityMatcherService:
 
     Returns:
       Merged capabilities dictionary.
+
     """
     capabilities: dict[str, Any] = {}
 
@@ -169,6 +174,7 @@ class CapabilityMatcherService:
 
     Returns:
       True if requirement is satisfied, False otherwise.
+
     """
     cap_name = requirement.capability_name
     expected = requirement.expected_value

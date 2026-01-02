@@ -24,6 +24,12 @@ export interface SignatureInfo {
     docstring?: string;
 }
 
+export interface ReplacementVariable {
+    name: string;
+    type: string;
+    value: string;
+}
+
 export interface ReplRuntime {
     /**
      * Connect to the runtime environment (WebSocket or Web Worker).
@@ -34,6 +40,11 @@ export interface ReplRuntime {
      * Disconnect from the runtime.
      */
     disconnect(): void;
+
+    /**
+     * Restart the runtime (reload kernel/worker).
+     */
+    restart?(): Observable<void>;
 
     /**
      * Execute code in the REPL.
@@ -56,4 +67,9 @@ export interface ReplRuntime {
      * Get function signature help for the code at the cursor position.
      */
     getSignatures?(code: string, cursor: number): Promise<SignatureInfo[]>;
+
+    /**
+     * Observable of currently defined variables in the REPL session.
+     */
+    variables$?: Observable<ReplacementVariable[]>;
 }

@@ -80,8 +80,9 @@ async def plate_preparation(
     # Validate pattern
     valid_patterns = ["all", "columns", "rows", "checkerboard"]
     if fill_pattern not in valid_patterns:
+        msg = f"Invalid fill_pattern: {fill_pattern}. Must be one of {valid_patterns}"
         raise ValueError(
-            f"Invalid fill_pattern: {fill_pattern}. Must be one of {valid_patterns}"
+            msg
         )
 
     # Parse columns and rows
@@ -91,10 +92,12 @@ async def plate_preparation(
     # Validate ranges
     for c in cols:
         if c < 1 or c > 12:
-            raise ValueError(f"Invalid column: {c}. Must be 1-12.")
+            msg = f"Invalid column: {c}. Must be 1-12."
+            raise ValueError(msg)
     for r in rows:
         if r not in "ABCDEFGH":
-            raise ValueError(f"Invalid row: {r}. Must be A-H.")
+            msg = f"Invalid row: {r}. Must be A-H."
+            raise ValueError(msg)
 
     # Generate wells to fill based on pattern
     wells_to_fill = []

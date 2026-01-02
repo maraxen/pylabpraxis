@@ -5,11 +5,10 @@ from praxis.backend.models.pydantic_internals.deck import DeckUpdate
 
 def debug():
     u = DeckUpdate(asset_type=AssetType.DECK)
-    print(f"DeckUpdate name: {u.name!r}")
     if u.name is None:
-        print("Name is None.")
+        pass
     else:
-        print("Name is NOT None.")
+        pass
 
 if __name__ == "__main__":
     debug()

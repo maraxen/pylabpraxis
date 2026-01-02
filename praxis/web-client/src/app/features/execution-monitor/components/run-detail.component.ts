@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -7,6 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
+import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 
 import { RunHistoryService } from '../services/run-history.service';
 import { RunDetail } from '../models/monitor.models';
@@ -15,19 +16,20 @@ import { RunDetail } from '../models/monitor.models';
  * Displays detailed information about a single protocol run.
  */
 @Component({
-    selector: 'app-run-detail',
-    standalone: true,
-    imports: [
-        CommonModule,
-        RouterLink,
-        MatCardModule,
-        MatIconModule,
-        MatButtonModule,
-        MatProgressSpinnerModule,
-        MatChipsModule,
-        MatDividerModule,
-    ],
-    template: `
+  selector: 'app-run-detail',
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterLink,
+    MatCardModule,
+    MatIconModule,
+    MatButtonModule,
+    MatProgressSpinnerModule,
+    MatChipsModule,
+    MatDividerModule,
+    NgxSkeletonLoaderModule,
+  ],
+  template: `
     <div class="p-6 max-w-screen-xl mx-auto">
       <!-- Header -->
       <div class="flex items-center gap-4 mb-6">
@@ -48,7 +50,13 @@ import { RunDetail } from '../models/monitor.models';
 
       @if (isLoading()) {
         <div class="flex justify-center py-12">
-          <mat-spinner diameter="48"></mat-spinner>
+           <div class="w-full max-w-3xl space-y-4">
+              <ngx-skeleton-loader count="1" appearance="line" [theme]="{ height: '100px', 'border-radius': '12px' }"></ngx-skeleton-loader>
+              <div class="grid grid-cols-3 gap-4">
+                 <ngx-skeleton-loader count="1" appearance="line" [theme]="{ height: '300px', 'border-radius': '12px' }" class="col-span-2"></ngx-skeleton-loader>
+                 <ngx-skeleton-loader count="1" appearance="line" [theme]="{ height: '300px', 'border-radius': '12px' }" class="col-span-1"></ngx-skeleton-loader>
+              </div>
+           </div>
         </div>
       } @else if (!run()) {
         <div class="empty-state text-center py-12 text-sys-text-tertiary">
@@ -60,6 +68,29 @@ import { RunDetail } from '../models/monitor.models';
           </a>
         </div>
       } @else {
+        <!-- Timeline -->
+        <div class="timeline-container relative flex items-center justify-between mb-8 px-8 max-w-3xl mx-auto">
+          <!-- Progress Bar Background -->
+          <div class="absolute left-8 right-8 top-1/2 h-1 bg-[var(--mat-sys-surface-variant)] -z-10 translate-y-[-50%]"></div>
+          <!-- Steps -->
+          @for (step of timelineSteps(); track step.label) {
+             <div class="flex flex-col items-center gap-2 bg-surface px-4 z-10">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors duration-300"
+                     [class.border-primary]="step.state === 'completed' || step.state === 'active'"
+                     [class.bg-primary]="step.state === 'completed'"
+                     [class.text-on-primary]="step.state === 'completed'"
+                     [class.border-error]="step.state === 'error'"
+                     [class.text-error]="step.state === 'error'"
+                     [class.border-outline-variant]="step.state === 'pending'">
+                   @if (step.state === 'completed') { <mat-icon class="!w-5 !h-5 !text-[20px]">check</mat-icon> }
+                   @else if (step.state === 'error') { <mat-icon class="!w-5 !h-5 !text-[20px]">error</mat-icon> }
+                   @else { <span class="text-xs font-bold">{{ step.index }}</span> }
+                </div>
+                <span class="text-xs font-medium" [class.text-primary]="step.state === 'active'" [class.opacity-60]="step.state === 'pending'">{{ step.label }}</span>
+             </div>
+          }
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- Main Info Card -->
           <mat-card class="lg:col-span-2 detail-card">
@@ -165,7 +196,7 @@ import { RunDetail } from '../models/monitor.models';
       }
     </div>
   `,
-    styles: [`
+  styles: [`
     .detail-card {
       background: var(--mat-sys-surface-container-low);
       border: 1px solid var(--mat-sys-outline-variant);
@@ -191,56 +222,95 @@ import { RunDetail } from '../models/monitor.models';
   `],
 })
 export class RunDetailComponent implements OnInit {
-    private readonly route = inject(ActivatedRoute);
-    private readonly location = inject(Location);
-    readonly runHistoryService = inject(RunHistoryService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly location = inject(Location);
+  readonly runHistoryService = inject(RunHistoryService);
 
-    readonly run = signal<RunDetail | null>(null);
-    readonly isLoading = signal(true);
-    runId = '';
+  readonly run = signal<RunDetail | null>(null);
+  readonly isLoading = signal(true);
+  readonly timelineSteps = computed(() => {
+    const run = this.run();
+    if (!run) return [];
 
-    ngOnInit(): void {
-        this.runId = this.route.snapshot.paramMap.get('id') || '';
-        if (this.runId) {
-            this.loadRunDetail();
-        } else {
-            this.isLoading.set(false);
-        }
+    const status = run.status;
+
+    let setupState: 'pending' | 'active' | 'completed' | 'error' = 'pending';
+    let runningState: 'pending' | 'active' | 'completed' | 'error' = 'pending';
+    let completeState: 'pending' | 'active' | 'completed' | 'error' = 'pending';
+
+    // Setup Phase
+    if (['QUEUED', 'PREPARING', 'PENDING'].includes(status)) {
+      setupState = 'active';
+    } else {
+      // If we are past setup, it's completed.
+      setupState = 'completed';
     }
 
-    loadRunDetail(): void {
-        this.isLoading.set(true);
-        this.runHistoryService.getRunDetail(this.runId).subscribe({
-            next: (detail) => {
-                this.run.set(detail);
-                this.isLoading.set(false);
-            },
-            error: (err) => {
-                console.error('[RunDetail] Error loading run:', err);
-                this.isLoading.set(false);
-            },
-        });
+    // Running Phase
+    if (status === 'RUNNING' || status === 'PAUSED') {
+      runningState = 'active';
+    } else if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(status)) {
+      runningState = 'completed';
     }
 
-    goBack(): void {
-        this.location.back();
+    // Complete Phase
+    if (status === 'COMPLETED') {
+      completeState = 'completed';
+    } else if (status === 'FAILED' || status === 'CANCELLED') {
+      completeState = 'error';
     }
 
-    formatDateTime(isoDate?: string): string {
-        if (!isoDate) return '-';
-        try {
-            return new Date(isoDate).toLocaleString();
-        } catch {
-            return isoDate;
-        }
-    }
+    return [
+      { label: 'Setup', index: 1, state: setupState },
+      { label: 'Running', index: 2, state: runningState },
+      { label: 'Complete', index: 3, state: completeState }
+    ];
+  });
 
-    formatJson(obj?: Record<string, unknown>): string {
-        if (!obj) return '';
-        return JSON.stringify(obj, null, 2);
-    }
+  runId = '';
 
-    hasKeys(obj?: Record<string, unknown>): boolean {
-        return !!obj && Object.keys(obj).length > 0;
+  ngOnInit(): void {
+    this.runId = this.route.snapshot.paramMap.get('id') || '';
+    if (this.runId) {
+      this.loadRunDetail();
+    } else {
+      this.isLoading.set(false);
     }
+  }
+
+  loadRunDetail(): void {
+    this.isLoading.set(true);
+    this.runHistoryService.getRunDetail(this.runId).subscribe({
+      next: (detail) => {
+        this.run.set(detail);
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        console.error('[RunDetail] Error loading run:', err);
+        this.isLoading.set(false);
+      },
+    });
+  }
+
+  goBack(): void {
+    this.location.back();
+  }
+
+  formatDateTime(isoDate?: string): string {
+    if (!isoDate) return '-';
+    try {
+      return new Date(isoDate).toLocaleString();
+    } catch {
+      return isoDate;
+    }
+  }
+
+  formatJson(obj?: Record<string, unknown>): string {
+    if (!obj) return '';
+    return JSON.stringify(obj, null, 2);
+  }
+
+  hasKeys(obj?: Record<string, unknown>): boolean {
+    return !!obj && Object.keys(obj).length > 0;
+  }
 }

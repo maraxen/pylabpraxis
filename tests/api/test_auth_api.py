@@ -10,8 +10,6 @@ Following test pattern from test_workcells.py (Setup → Act → Assert).
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-
 
 # ==============================================================================
 # Sprint 1B: Login Endpoint Tests
@@ -228,6 +226,7 @@ async def test_me_with_deleted_user_returns_401(
     """GET /api/v1/auth/me with token for non-existent user fails."""
     # 1. SETUP: Create token for non-existent user_id
     import uuid
+
     from praxis.backend.utils.auth import create_access_token
 
     fake_user_id = uuid.uuid4()

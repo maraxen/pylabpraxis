@@ -27,7 +27,8 @@ import { AppStore } from '@core/store/app.store';
 import { ModeService } from '@core/services/mode.service';
 import { DeckGeneratorService } from './services/deck-generator.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component';
+// import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component';
+import { DeckSetupWizardComponent } from './components/deck-setup-wizard/deck-setup-wizard.component';
 import { MachineSelectionComponent, MachineCompatibility } from './components/machine-selection/machine-selection.component';
 
 const RECENTS_KEY = 'praxis_recent_protocols';
@@ -548,13 +549,20 @@ export class RunProtocolComponent implements OnInit {
     const protocol = this.selectedProtocol();
     if (!protocol) return;
 
-    const dialogRef = this.dialog.open(GuidedSetupComponent, {
-      data: { protocol },
-      width: '600px',
+    // Use DeckSetupWizardComponent
+    const dialogRef = this.dialog.open(DeckSetupWizardComponent, {
+      data: {
+        protocol,
+        deckResource: this.deckData()?.resource
+      },
+      width: '90vw',
+      height: '90vh',
+      maxWidth: '1200px',
       disableClose: true
     });
 
     dialogRef.afterClosed().subscribe(result => {
+      // Result from DeckSetupWizard is { assetMap: ... }
       if (result && result.assetMap) {
         this.configuredAssets.set(result.assetMap);
       }
@@ -788,11 +796,10 @@ export class RunProtocolComponent implements OnInit {
       ).pipe(
         finalize(() => this.isStartingRun.set(false))
       ).subscribe({
-        next: (res) => {
-          console.log('Run started', res);
+        next: () => {
           this.router.navigate(['live'], { relativeTo: this.route });
         },
-        error: (err) => console.error('Failed to start run', err)
+        error: (err) => console.error('[RunProtocol] Failed to start run:', err)
       });
     }
   }

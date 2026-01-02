@@ -26,6 +26,9 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",
     "python-keycloak>=5.8.1",
     "libcst>=1.1.0",
+    "aiosqlite>=0.20.0",       # SQLite async driver for lite mode KV store
+    "zeroconf>=0.131.0",       # mDNS device discovery
+    "pyserial>=3.5",           # Serial port device discovery
 ]
 
 [tool.uv.sources]
@@ -91,6 +94,8 @@ docs = [
     "mkdocs-material>=9.5.0",
     "mkdocs-autorefs",
     "pymdown-extensions>=10.0",
+    "mkdocstrings>=0.24.0",
+    "mkdocstrings-python>=1.8.0",
 ]
 dev = [
     "praxis[fw,http,plate_reading,websockets,opentrons,server,inheco,agrow,email,test,docs]",
@@ -162,6 +167,8 @@ markers = [
     "slow: Slow running tests (>1s) - skip with -m 'not slow'",
     "hardware: Tests requiring hardware",
     "network: Tests that require network access - use with pytest-socket",
+    "postgresql_only: Tests that only run on PostgreSQL (e.g., JSONB-specific features)",
+    "sqlite_only: Tests that only run on SQLite",
 ]
 
 # Coverage configuration
@@ -250,3 +257,20 @@ dev = [
     "pytest-xdist>=3.8.0",
     "redis>=6.4.0",
 ]
+
+[tool.ty.src]
+include = ["praxis/backend"]
+exclude = [
+    "praxis/backend/commons",
+    "tests",
+    "alembic",
+    "alembic_old",
+    "scripts",
+    "docs",
+    "htmlcov",
+    ".venv",
+]
+
+[tool.ty.environment]
+python-version = "3.12"
+extra-paths = ["lib/pylabrobot"]

@@ -52,7 +52,6 @@ from .asset import AssetOrm
 
 
 class MachineDefinitionOrm(PLRTypeDefinitionOrm):
-
   """SQLAlchemy ORM model for cataloging machine definitions.
 
   This model stores comprehensive metadata about various types of lab machines,
@@ -204,7 +203,6 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
 
 
 class MachineOrm(AssetOrm):
-
   """SQLAlchemy ORM model representing a physical machine or machine.
 
   This model tracks individual physical items of lab machines,
@@ -253,6 +251,30 @@ class MachineOrm(AssetOrm):
     nullable=True,
     unique=True,
     comment="Unique serial number of the machine, if applicable.",
+    default=None,
+  )
+  location_label: Mapped[str | None] = mapped_column(
+    String,
+    nullable=True,
+    comment="Physical location label (e.g., 'Room 101, Bench A').",
+    default=None,
+  )
+  maintenance_enabled: Mapped[bool] = mapped_column(
+    Boolean,
+    default=True,
+    nullable=False,
+    comment="Whether maintenance tracking is enabled for this asset.",
+  )
+  maintenance_schedule_json: Mapped[dict | None] = mapped_column(
+    JsonVariant,
+    nullable=True,
+    comment="Custom maintenance schedule overriding category defaults.",
+    default=None,
+  )
+  last_maintenance_json: Mapped[dict | None] = mapped_column(
+    JsonVariant,
+    nullable=True,
+    comment="Record of last maintenance by type.",
     default=None,
   )
   installation_date: Mapped[datetime | None] = mapped_column(
@@ -402,6 +424,22 @@ class MachineOrm(AssetOrm):
     cascade="all, delete-orphan",
     default_factory=list,
     foreign_keys="DeckOrm.parent_machine_accession_id",
+  )
+
+  machine_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("machine_definition_catalog.accession_id"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the machine definition catalog.",
+    default=None,
+  )
+  definition: Mapped["MachineDefinitionOrm | None"] = relationship(
+    "MachineDefinitionOrm",
+    uselist=False,
+    foreign_keys=[machine_definition_accession_id],
+    default=None,
+    init=False,
   )
 
   def __repr__(self) -> str:

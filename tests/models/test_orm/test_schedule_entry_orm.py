@@ -1,5 +1,4 @@
-"""Unit tests for ScheduleEntryOrm model.
-"""
+"""Unit tests for ScheduleEntryOrm model."""
 from collections.abc import Callable
 from datetime import datetime, timezone
 

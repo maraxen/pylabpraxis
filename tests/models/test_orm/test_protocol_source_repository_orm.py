@@ -12,7 +12,6 @@ async def test_protocol_source_repository_orm_creation_minimal(
     db_session: AsyncSession,
 ) -> None:
     """Test creating ProtocolSourceRepositoryOrm with minimal required fields."""
-
     repo = ProtocolSourceRepositoryOrm(
         name="test_repo",
     )
@@ -35,7 +34,6 @@ async def test_protocol_source_repository_orm_creation_with_all_fields(
     db_session: AsyncSession,
 ) -> None:
     """Test creating ProtocolSourceRepositoryOrm with all fields populated."""
-
     repo = ProtocolSourceRepositoryOrm(
         name="full_repo",
         git_url="https://github.com/example/protocols.git",
@@ -64,7 +62,6 @@ async def test_protocol_source_repository_orm_persist_to_database(
     db_session: AsyncSession,
 ) -> None:
     """Test full persistence cycle for ProtocolSourceRepositoryOrm."""
-
     repo = ProtocolSourceRepositoryOrm(
         name="persistence_test_repo",
         git_url="https://github.com/test/persistence.git",
@@ -123,7 +120,6 @@ async def test_protocol_source_repository_orm_status_transitions(
     db_session: AsyncSession,
 ) -> None:
     """Test different status values for protocol source repository."""
-
     statuses = [
         (ProtocolSourceStatusEnum.ACTIVE, "active_repo"),
         (ProtocolSourceStatusEnum.SYNCING, "syncing_repo"),
@@ -149,7 +145,6 @@ async def test_protocol_source_repository_orm_auto_sync_flag(
     db_session: AsyncSession,
 ) -> None:
     """Test auto_sync_enabled flag."""
-
     # Repository with auto-sync enabled (default)
     repo_enabled = ProtocolSourceRepositoryOrm(
         name="auto_sync_enabled_repo",
@@ -176,7 +171,6 @@ async def test_protocol_source_repository_orm_query_by_name(
     db_session: AsyncSession,
 ) -> None:
     """Test querying repositories by name."""
-
     repo = ProtocolSourceRepositoryOrm(
         name="queryable_repo",
         git_url="https://github.com/example/queryable.git",
@@ -202,7 +196,6 @@ async def test_protocol_source_repository_orm_update_commit_hash(
     db_session: AsyncSession,
 ) -> None:
     """Test updating last_synced_commit field."""
-
     repo = ProtocolSourceRepositoryOrm(
         name="sync_test_repo",
         git_url="https://github.com/example/sync.git",
@@ -231,7 +224,6 @@ async def test_protocol_source_repository_orm_update_commit_hash(
 @pytest.mark.asyncio
 async def test_protocol_source_repository_orm_repr(db_session: AsyncSession) -> None:
     """Test string representation of ProtocolSourceRepositoryOrm."""
-
     repo = ProtocolSourceRepositoryOrm(
         name="repr_repo",
         git_url="https://github.com/example/repr.git",

@@ -28,7 +28,6 @@ logger = get_logger(__name__)
 
 
 class ProtocolExecutionService(IProtocolExecutionService):
-
   """High-level service for protocol execution management."""
 
   def __init__(
@@ -74,6 +73,7 @@ class ProtocolExecutionService(IProtocolExecutionService):
 
     Returns:
         ProtocolRunOrm: The completed protocol run record.
+
     """
     logger.info(
       "Executing protocol '%s' immediately (simulation=%s)",
@@ -90,7 +90,7 @@ class ProtocolExecutionService(IProtocolExecutionService):
       source_name=source_name,
       is_simulation=is_simulation,
     )
-    
+
     return result
 
   async def schedule_protocol_execution(
@@ -116,6 +116,7 @@ class ProtocolExecutionService(IProtocolExecutionService):
 
     Returns:
         ProtocolRunOrm: The protocol run record with QUEUED status.
+
     """
     logger.info(
       "Scheduling protocol '%s' for execution (simulation=%s)",
@@ -247,7 +248,9 @@ class ProtocolExecutionService(IProtocolExecutionService):
     if redis_command_sent:
       logger.info("Sent CANCEL command to orchestrator for run %s", protocol_run_id)
     else:
-      logger.warning("Failed to send CANCEL command to orchestrator for run %s (Redis error?)", protocol_run_id)
+      logger.warning(
+        "Failed to send CANCEL command to orchestrator for run %s (Redis error?)", protocol_run_id
+      )
 
     # 2. Cancel in scheduler (releases resources and stops Celery task if possible)
     scheduler_cancelled = await self.scheduler.cancel_scheduled_run(protocol_run_id)
@@ -259,25 +262,34 @@ class ProtocolExecutionService(IProtocolExecutionService):
         # Check current status first
         current_run = await self.protocol_run_service.get(db_session, protocol_run_id)
         if current_run:
-            # If already completed or cancelled, don't overwrite status
-            if current_run.status in [ProtocolRunStatusEnum.COMPLETED, ProtocolRunStatusEnum.CANCELLED, ProtocolRunStatusEnum.FAILED]:
-                logger.info("Run %s is already in terminal state %s, not updating status", protocol_run_id, current_run.status)
-                database_cancelled = True # Consider it a success as it's already done
-            else:
-                from datetime import datetime, timezone
-                await self.protocol_run_service.update_run_status(
-                  db_session,
-                  protocol_run_id,
-                  ProtocolRunStatusEnum.CANCELLED,
-                  output_data_json=json.dumps(
-                    {
-                      "status": "Cancelled by user via ProtocolExecutionService",
-                      "cancelled_at": datetime.now(timezone.utc).isoformat(),
-                    },
-                  ),
-                )
-                await db_session.commit()
-                database_cancelled = True
+          # If already completed or cancelled, don't overwrite status
+          if current_run.status in [
+            ProtocolRunStatusEnum.COMPLETED,
+            ProtocolRunStatusEnum.CANCELLED,
+            ProtocolRunStatusEnum.FAILED,
+          ]:
+            logger.info(
+              "Run %s is already in terminal state %s, not updating status",
+              protocol_run_id,
+              current_run.status,
+            )
+            database_cancelled = True  # Consider it a success as it's already done
+          else:
+            from datetime import datetime, timezone
+
+            await self.protocol_run_service.update_run_status(
+              db_session,
+              protocol_run_id,
+              ProtocolRunStatusEnum.CANCELLED,
+              output_data_json=json.dumps(
+                {
+                  "status": "Cancelled by user via ProtocolExecutionService",
+                  "cancelled_at": datetime.now(timezone.utc).isoformat(),
+                },
+              ),
+            )
+            await db_session.commit()
+            database_cancelled = True
       except Exception:
         logger.exception(
           "Failed to update database status for cancelled run %s",

@@ -38,7 +38,6 @@ class AssetManager(
   DeckManagerMixin,
   LocationHandlerMixin,
 ):
-
   """Manages the lifecycle and allocation of assets."""
 
   def __init__(

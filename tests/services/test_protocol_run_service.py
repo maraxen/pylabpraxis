@@ -16,10 +16,10 @@ These tests serve as examples for testing complex services with:
 """
 import json
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock, patch
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -801,8 +801,8 @@ async def test_protocol_run_service_update_status_handles_core_exception(
     - Connecting Core exception handling to Service layer
     - Verifying run transitions to FAILED instead of crashing
     """
-    from praxis.backend.utils.uuid import uuid7
     from praxis.backend.utils.errors import AssetAcquisitionError
+    from praxis.backend.utils.uuid import uuid7
 
     # Create PENDING run
     run = await protocol_run_service.create(

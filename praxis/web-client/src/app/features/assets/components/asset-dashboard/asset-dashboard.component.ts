@@ -5,7 +5,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, forkJoin } from 'rxjs';
+import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 import { AssetService } from '../../services/asset.service';
 import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/asset.models';
 
@@ -20,7 +21,8 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
     MatCardModule,
     MatTooltipModule,
     RouterLink,
-    RouterLink
+    RouterLink,
+    NgxSkeletonLoaderModule
   ],
   template: `
     <div class="h-full flex flex-col gap-6 overflow-y-auto">
@@ -34,7 +36,11 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
           </div>
           <div class="flex flex-col">
             <span class="text-2xl font-bold text-sys-text-primary">
-              {{ onlineMachinesCount() }}<span class="text-lg font-normal text-sys-text-tertiary">/{{ totalMachinesCount() }}</span>
+              @if (isLoading()) {
+                 <ngx-skeleton-loader count="1" appearance="line" [theme]="{ width: '40px', height: '24px', 'margin-bottom': '0' }"></ngx-skeleton-loader>
+              } @else {
+                 {{ onlineMachinesCount() }}<span class="text-lg font-normal text-sys-text-tertiary">/{{ totalMachinesCount() }}</span>
+              }
             </span>
             <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Machines Online</span>
           </div>
@@ -53,7 +59,13 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
             <mat-icon class="text-orange-400">inventory_2</mat-icon>
           </div>
           <div class="flex flex-col">
-            <span class="text-2xl font-bold text-sys-text-primary">{{ totalResourcesCount() }}</span>
+            <span class="text-2xl font-bold text-sys-text-primary">
+               @if (isLoading()) {
+                 <ngx-skeleton-loader count="1" appearance="line" [theme]="{ width: '40px', height: '24px', 'margin-bottom': '0' }"></ngx-skeleton-loader>
+               } @else {
+                 {{ totalResourcesCount() }}
+               }
+            </span>
             <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Total Items</span>
           </div>
           @if (lowStockCount() > 0) {
@@ -71,7 +83,13 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
             <mat-icon class="text-purple-400">inventory_2</mat-icon>
           </div>
           <div class="flex flex-col">
-            <span class="text-2xl font-bold text-sys-text-primary">{{ totalDefinitionsCount() }}</span>
+            <span class="text-2xl font-bold text-sys-text-primary">
+               @if (isLoading()) {
+                 <ngx-skeleton-loader count="1" appearance="line" [theme]="{ width: '40px', height: '24px', 'margin-bottom': '0' }"></ngx-skeleton-loader>
+               } @else {
+                 {{ totalDefinitionsCount() }}
+               }
+            </span>
             <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Registry Types</span>
           </div>
           <div class="absolute top-4 right-4 text-[10px] font-medium text-sys-text-tertiary bg-[var(--mat-sys-surface-variant)] px-2 py-0.5 rounded border border-[var(--theme-border)]">
@@ -186,7 +204,8 @@ export class AssetDashboardComponent implements OnInit, OnDestroy {
   // Signals
   machines = signal<Machine[]>([]);
   resources = signal<Resource[]>([]);
-  totalDefinitionsCount = signal(0); // Placeholder count
+  totalDefinitionsCount = signal(0);
+  isLoading = signal(true);
 
   // Computed Stats
   totalMachinesCount = computed(() => this.machines().length);
@@ -264,17 +283,23 @@ export class AssetDashboardComponent implements OnInit, OnDestroy {
   }
 
   refreshData() {
+    this.isLoading.set(true);
     this.subscription.add(
-      this.assetService.getMachines().subscribe(data => this.machines.set(data))
-    );
-    this.subscription.add(
-      this.assetService.getResources().subscribe(data => this.resources.set(data))
-    );
-    // Fetch definition counts separately if needed, for now placeholders
-    this.subscription.add(
-      this.assetService.getResourceDefinitions().subscribe(data => {
-        // Just update a count for now
-        this.totalDefinitionsCount.set(data.length);
+      forkJoin({
+        machines: this.assetService.getMachines(),
+        resources: this.assetService.getResources(),
+        definitions: this.assetService.getResourceDefinitions()
+      }).subscribe({
+        next: (results) => {
+          this.machines.set(results.machines);
+          this.resources.set(results.resources);
+          this.totalDefinitionsCount.set(results.definitions.length);
+          this.isLoading.set(false);
+        },
+        error: (err) => {
+          console.error('Failed to load dashboard data', err);
+          this.isLoading.set(false);
+        }
       })
     );
   }

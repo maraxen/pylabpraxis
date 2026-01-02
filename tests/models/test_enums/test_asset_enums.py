@@ -133,10 +133,10 @@ class TestAssetEnumsIntegration:
     def test_asset_type_and_reservation_status_are_independent(self) -> None:
         """Test that AssetType and AssetReservationStatusEnum are independent."""
         # They should have different members
-        asset_types = set(member.name for member in AssetType)
-        reservation_statuses = set(
+        asset_types = {member.name for member in AssetType}
+        reservation_statuses = {
             member.name for member in AssetReservationStatusEnum
-        )
+        }
         assert len(asset_types.intersection(reservation_statuses)) == 0
 
     def test_enums_can_be_used_together(self) -> None:
