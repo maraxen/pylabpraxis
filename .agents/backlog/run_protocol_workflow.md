@@ -1,0 +1,133 @@
+# Run Protocol Workflow Enhancements
+
+**Priority**: P2 (High)
+**Owner**: Frontend
+**Created**: 2026-01-02
+**Status**: Active
+
+---
+
+## Overview
+
+Refinements to the Run Protocol workflow based on user feedback and usability testing. The main changes involve restructuring the asset configuration steps and ensuring deck display consistency.
+
+---
+
+## 1. Asset Configuration Step Restructure
+
+### Current Flow
+
+```
+1. Select Protocol
+2. Configure Parameters
+3. Asset Selection (Resource Selection Interface + Machine Selection)
+4. Deck Setup (Guided Setup Dialog)
+5. Review & Run
+```
+
+### Target Flow
+
+```
+1. Select Protocol
+2. Configure Parameters
+3. Machine Selection (NEW - uses Resource Selection Interface pattern)
+4. Asset Selection (Resources only)
+5. Deck Setup (move current dialog content here as main content, not dialog)
+6. Review & Run
+```
+
+### Tasks
+
+- [x] **Add Machine Selection Step** (before Deck Setup)
+  - [x] Create `MachineSelectionStepComponent`
+  - [x] Use same interface pattern as current Resource Selection
+  - [x] Show compatible machines based on protocol requirements
+  - [x] Allow single or multi-machine selection based on protocol needs
+
+- [x] **Refactor Deck Setup Step**
+  - [x] Move current dialog content to be the main step content
+  - [x] Current guided setup dialog becomes the inline experience
+  - [x] Remove dialog wrapper, use step container directly
+
+- [x] **Update Stepper Configuration**
+  - [x] Add machine selection step to stepper
+  - [x] Update step labels and icons
+  - [x] Ensure responsive label sizing
+
+- [ ] **Restore Asset Selection Step (REGRESSION)**
+  - [ ] Re-enable "Asset Selection" step after Machine Selection
+  - [ ] Implement resource autofill based on protocol requirements
+  - [ ] Allow user to select specific resource candidates from inventory
+  - [ ] Ensure selected resources are passed to Deck Setup phase
+
+---
+
+## 2. Deck Display Consistency
+
+### Issue
+
+The deck display in Run Protocol workflow does not match the standalone Deck View component. All decks appear to be the same hardcoded layout instead of dynamically rendering based on machine deck definition.
+
+### Tasks
+
+- [x] **Investigate Deck Display Sources**
+  - [x] Compare `DeckViewComponent` used in Run Protocol vs standalone
+  - [x] Identify why hardcoded layout is being used
+  - [x] Trace deck definition loading in both contexts
+
+- [x] **Dynamic Deck Rendering**
+  - [x] Ensure `DeckGeneratorService` uses machine's deck definition
+  - [x] Render slots vs rails based on deck type (OT2 slots, Hamilton rails)
+  - [x] Apply correct dimensions from deck type definition
+
+- [x] **Test Deck Types**
+  - [x] Hamilton STAR (rails)
+  - [x] Opentrons OT-2 (slots)
+  - [ ] Tecan EVO (rails)
+  - [x] Verify each renders correctly
+
+---
+
+## 3. Related Issues
+
+### Simulation/Physical Button Selector
+
+- [ ] Remove checkmark from button selector display
+- [ ] Audit all instances of this button pattern across app
+- [ ] Locations: Execution Monitor, Protocol Workflow
+
+### Start Execution Not Working
+
+- Tracked in: [browser_mode_issues.md](./browser_mode_issues.md)
+- Impacts: Cannot complete protocol workflow in browser mode
+
+---
+
+## Files to Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| `run-protocol.component.ts` | Modify | Add machine selection step, restructure |
+| `run-protocol.component.html` | Modify | Update stepper with new steps |
+| `machine-selection-step.component.ts` | Create | New component for machine selection |
+| `deck-setup-step.component.ts` | Modify | Move dialog content to main view |
+| `deck-generator.service.ts` | Modify | Use dynamic deck definitions |
+
+---
+
+## Success Criteria
+
+1. [x] Machine selection appears as separate step before deck setup
+2. [x] Machine selection uses familiar resource selection interface
+3. [x] Deck setup step shows guided setup inline (not in dialog)
+4. [ ] Deck display matches standalone Deck View component
+5. [ ] Different deck types (slots vs rails) render correctly
+6. [ ] Simulation/Physical selector no longer shows checkmark
+
+---
+
+## Related Documents
+
+- [guided_deck_setup.md](./guided_deck_setup.md) - Wizard implementation details
+- [deck_view.md](./deck_view.md) - Deck visualizer backlog
+- [browser_mode_issues.md](./browser_mode_issues.md) - Execution issues

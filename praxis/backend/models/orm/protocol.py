@@ -286,6 +286,24 @@ class FunctionProtocolDefinitionOrm(Base):
     comment="Data view definitions specifying input data requirements (PLR state, function outputs).",
     default=None,
   )
+  computation_graph_json: Mapped[dict | None] = mapped_column(
+    JsonVariant,
+    nullable=True,
+    comment="Computation graph extracted from protocol (ProtocolComputationGraph).",
+    default=None,
+  )
+  source_hash: Mapped[str | None] = mapped_column(
+    String,
+    nullable=True,
+    comment="Hash of the protocol source code for cache invalidation.",
+    default=None,
+  )
+  graph_cached_at: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True),
+    nullable=True,
+    comment="Timestamp when the computation graph was last cached.",
+    default=None,
+  )
 
   parameters: Mapped[list["ParameterDefinitionOrm"]] = relationship(
     "ParameterDefinitionOrm",

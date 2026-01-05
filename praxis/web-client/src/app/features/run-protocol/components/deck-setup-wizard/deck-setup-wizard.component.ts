@@ -1,4 +1,4 @@
-import { Component, inject, input, output, computed, OnInit, Inject, signal } from '@angular/core';
+import { Component, inject, input, output, computed, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -185,7 +185,10 @@ import { DeckViewComponent } from '@shared/components/deck-view/deck-view.compon
     `]
 })
 export class DeckSetupWizardComponent implements OnInit {
-    // Signals initialized from Dialog Data
+    // Input for inline usage (when not opened via dialog)
+    data = input<{ protocol: ProtocolDefinition, deckResource: PlrResource | null } | null>(null);
+
+    // Signals initialized from Dialog Data or Input
     protocol = signal<ProtocolDefinition | null>(null);
     deckResource = signal<PlrResource | null>(null);
 
@@ -197,10 +200,14 @@ export class DeckSetupWizardComponent implements OnInit {
     // Optional injection in case it's not opened via dialog
     private dialogRef = inject(MatDialogRef, { optional: true });
 
-    constructor(@Inject(MAT_DIALOG_DATA) public data: { protocol: ProtocolDefinition, deckResource: PlrResource }) {
-        if (data) {
-            this.protocol.set(data.protocol);
-            this.deckResource.set(data.deckResource);
+    // Optional dialog data injection
+    private dialogData = inject<{ protocol: ProtocolDefinition, deckResource: PlrResource } | null>(MAT_DIALOG_DATA, { optional: true });
+
+    constructor() {
+        // Initialize from dialog data if present
+        if (this.dialogData) {
+            this.protocol.set(this.dialogData.protocol);
+            this.deckResource.set(this.dialogData.deckResource);
         }
     }
 
@@ -216,11 +223,19 @@ export class DeckSetupWizardComponent implements OnInit {
     });
 
     ngOnInit(): void {
+        // Check input binding (for inline usage) if dialog data wasn't available
+        const inputData = this.data();
+        if (inputData && !this.protocol()) {
+            this.protocol.set(inputData.protocol);
+            this.deckResource.set(inputData.deckResource);
+        }
+
         const p = this.protocol();
         if (p) {
             this.wizardState.initialize(p);
         }
     }
+
 
     onCarrierPlaced(event: { carrierFqn: string; placed: boolean }): void {
         this.wizardState.markCarrierPlaced(event.carrierFqn, event.placed);

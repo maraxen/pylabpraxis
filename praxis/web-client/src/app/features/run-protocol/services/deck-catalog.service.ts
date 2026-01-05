@@ -5,6 +5,7 @@ import {
     DeckCarrier,
     CarrierSlot,
     DeckDefinitionSpec,
+    DeckSlotSpec,
     CarrierDefinition,
     CarrierType
 } from '../models/deck-layout.models';
@@ -38,12 +39,22 @@ export class DeckCatalogService {
     // ========================================================================
 
     /**
-     * Get deck definition specification by FQN.
+     * Get deck definition specification by FQN or type name.
      */
     getDeckDefinition(fqn: string): DeckDefinitionSpec | null {
+        // Hamilton STAR detection
         if (fqn === 'pylabrobot.resources.hamilton.HamiltonSTARDeck' ||
-            fqn === 'HamiltonSTARDeck') {
+            fqn === 'HamiltonSTARDeck' ||
+            fqn.includes('STAR')) {
             return this.getHamiltonSTARSpec();
+        }
+        // Opentrons OT-2 detection
+        if (fqn === 'pylabrobot.resources.opentrons.deck.OTDeck' ||
+            fqn === 'OTDeck' ||
+            fqn.includes('OT2') ||
+            fqn.includes('OT-2') ||
+            fqn.toLowerCase().includes('opentrons')) {
+            return this.getOTDeckSpec();
         }
         return null;
     }
@@ -74,6 +85,7 @@ export class DeckCatalogService {
             fqn: 'pylabrobot.resources.hamilton.HamiltonSTARDeck',
             name: 'Hamilton STAR Deck',
             manufacturer: 'Hamilton',
+            layoutType: 'rail-based',
             numRails: numRails,
             railSpacing: this.HAMILTON_STAR_RAIL_SPACING,
             railPositions: railPositions,
@@ -91,6 +103,50 @@ export class DeckCatalogService {
     }
 
     /**
+     * Get Opentrons OT-2 deck specification.
+     * Slot positions match PyLabRobot's OTDeck.slot_locations.
+     */
+    getOTDeckSpec(): DeckDefinitionSpec {
+        // OT-2 has 12 slots in a 4x3 grid pattern
+        // Positions from pylabrobot/resources/opentrons/deck.py
+        const slotWidth = 127.76;  // Standard SBS footprint
+        const slotHeight = 85.48;
+
+        const slots: DeckSlotSpec[] = [
+            // Row 1 (bottom, y=0)
+            { slotNumber: 1, label: '1', slotType: 'standard', position: { x: 0.0, y: 0.0, z: 0 }, dimensions: { width: slotWidth, height: slotHeight }, compatibleResourceTypes: ['Plate', 'TipRack', 'Trough', 'Reservoir', 'TubeRack'] },
+            { slotNumber: 2, label: '2', slotType: 'standard', position: { x: 132.5, y: 0.0, z: 0 }, dimensions: { width: slotWidth, height: slotHeight }, compatibleResourceTypes: ['Plate', 'TipRack', 'Trough', 'Reservoir', 'TubeRack'] },
+            { slotNumber: 3, label: '3', slotType: 'standard', position: { x: 265.0, y: 0.0, z: 0 }, dimensions: { width: slotWidth, height: slotHeight }, compatibleResourceTypes: ['Plate', 'TipRack', 'Trough', 'Reservoir', 'TubeRack'] },
+            // Row 2 (y=90.5)
+            { slotNumber: 4, label: '4', slotType: 'standard', position: { x: 0.0, y: 90.5, z: 0 }, dimensions: { width: slotWidth, height: slotHeight }, compatibleResourceTypes: ['Plate', 'TipRack', 'Trough', 'Reservoir', 'TubeRack'] },
+            { slotNumber: 5, label: '5', slotType: 'standard', position: { x: 132.5, y: 90.5, z: 0 }, dimensions: { width: slotWidth, height: slotHeight }, compatibleResourceTypes: ['Plate', 'TipRack', 'Trough', 'Reservoir', 'TubeRack'] },
+            { slotNumber: 6, label: '6', slotType: 'standard', position: { x: 265.0, y: 90.5, z: 0 }, dimensions: { width: slotWidth, height: slotHeight }, compatibleResourceTypes: ['Plate', 'TipRack', 'Trough', 'Reservoir', 'TubeRack'] },
+            // Row 3 (y=181.0)
+            { slotNumber: 7, label: '7', slotType: 'standard', position: { x: 0.0, y: 181.0, z: 0 }, dimensions: { width: slotWidth, height: slotHeight }, compatibleResourceTypes: ['Plate', 'TipRack', 'Trough', 'Reservoir', 'TubeRack'] },
+            { slotNumber: 8, label: '8', slotType: 'standard', position: { x: 132.5, y: 181.0, z: 0 }, dimensions: { width: slotWidth, height: slotHeight }, compatibleResourceTypes: ['Plate', 'TipRack', 'Trough', 'Reservoir', 'TubeRack'] },
+            { slotNumber: 9, label: '9', slotType: 'standard', position: { x: 265.0, y: 181.0, z: 0 }, dimensions: { width: slotWidth, height: slotHeight }, compatibleResourceTypes: ['Plate', 'TipRack', 'Trough', 'Reservoir', 'TubeRack'] },
+            // Row 4 (top, y=271.5)
+            { slotNumber: 10, label: '10', slotType: 'standard', position: { x: 0.0, y: 271.5, z: 0 }, dimensions: { width: slotWidth, height: slotHeight }, compatibleResourceTypes: ['Plate', 'TipRack', 'Trough', 'Reservoir', 'TubeRack'] },
+            { slotNumber: 11, label: '11', slotType: 'standard', position: { x: 132.5, y: 271.5, z: 0 }, dimensions: { width: slotWidth, height: slotHeight }, compatibleResourceTypes: ['Plate', 'TipRack', 'Trough', 'Reservoir', 'TubeRack'] },
+            { slotNumber: 12, label: 'Trash', slotType: 'trash', position: { x: 265.0, y: 271.5, z: 0 }, dimensions: { width: slotWidth, height: slotHeight }, compatibleResourceTypes: ['Trash'] },
+        ];
+
+        return {
+            fqn: 'pylabrobot.resources.opentrons.deck.OTDeck',
+            name: 'Opentrons OT-2 Deck',
+            manufacturer: 'Opentrons',
+            layoutType: 'slot-based',
+            numSlots: 12,
+            slots: slots,
+            dimensions: {
+                width: 624.3,
+                height: 565.2,
+                depth: 900
+            }
+        };
+    }
+
+    /**
      * Create a DeckConfiguration from a deck specification.
      */
     createDeckConfiguration(spec: DeckDefinitionSpec): DeckConfiguration {
@@ -102,7 +158,7 @@ export class DeckCatalogService {
             rails: rails,
             carriers: [], // Empty until carriers are placed
             dimensions: spec.dimensions,
-            numRails: spec.numRails
+            numRails: spec.numRails || 0
         };
     }
 
@@ -136,12 +192,12 @@ export class DeckCatalogService {
         const rails: DeckRail[] = [];
         const positions = spec.railPositions || this.calculateRailPositions(spec);
 
-        for (let i = 0; i < spec.numRails; i++) {
+        for (let i = 0; i < (spec.numRails || 0); i++) {
             rails.push({
                 index: i,
                 xPosition: positions[i],
-                width: spec.railSpacing,
-                compatibleCarrierTypes: spec.compatibleCarriers
+                width: spec.railSpacing || 0,
+                compatibleCarrierTypes: spec.compatibleCarriers || []
             });
         }
 
@@ -150,8 +206,10 @@ export class DeckCatalogService {
 
     private calculateRailPositions(spec: DeckDefinitionSpec): number[] {
         const positions: number[] = [];
-        for (let i = 0; i < spec.numRails; i++) {
-            positions.push(this.HAMILTON_STAR_RAIL_OFFSET + (i * spec.railSpacing));
+        const numRails = spec.numRails || 0;
+        const railSpacing = spec.railSpacing || 22.5;
+        for (let i = 0; i < numRails; i++) {
+            positions.push(this.HAMILTON_STAR_RAIL_OFFSET + (i * railSpacing));
         }
         return positions;
     }

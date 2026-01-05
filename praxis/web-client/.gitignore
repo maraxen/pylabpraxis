@@ -6,6 +6,9 @@
 /out-tsc
 /bazel-out
 
+# JupyterLite generated assets
+/src/assets/jupyterlite
+
 # Node
 /node_modules
 npm-debug.log

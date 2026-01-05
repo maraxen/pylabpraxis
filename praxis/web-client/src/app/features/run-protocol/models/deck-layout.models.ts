@@ -131,6 +131,32 @@ export interface DeckConfiguration {
 }
 
 /**
+ * Deck layout type discriminator.
+ * - 'rail-based': Uses rails and carriers (e.g., Hamilton STAR)
+ * - 'slot-based': Uses numbered slots in a grid (e.g., Opentrons OT-2)
+ */
+export type DeckLayoutType = 'rail-based' | 'slot-based';
+
+/**
+ * Slot specification for slot-based decks.
+ * Defines a discrete position where labware can be placed.
+ */
+export interface DeckSlotSpec {
+    /** Slot number (1-indexed, e.g., 1-12 for OT-2) */
+    slotNumber: number;
+    /** Display label (e.g., "1", "Trash") */
+    label: string;
+    /** Slot type for styling/compatibility */
+    slotType: 'standard' | 'trash' | 'module' | 'fixed';
+    /** Position in mm from deck origin (bottom-left) */
+    position: { x: number; y: number; z: number };
+    /** Slot dimensions in mm */
+    dimensions: { width: number; height: number };
+    /** Compatible resource types */
+    compatibleResourceTypes: string[];
+}
+
+/**
  * Deck definition specification from hardware catalog.
  * Used by DeckCatalogService.
  */
@@ -141,20 +167,28 @@ export interface DeckDefinitionSpec {
     name: string;
     /** Manufacturer name */
     manufacturer: string;
-    /** Number of rails on this deck */
-    numRails: number;
-    /** Distance between rail centers in mm */
-    railSpacing: number;
-    /** Exact X positions for each rail (if available) */
-    railPositions?: number[];
-    /** List of compatible carrier FQNs */
-    compatibleCarriers: string[];
+    /** Deck layout type */
+    layoutType: DeckLayoutType;
     /** Physical dimensions in mm */
     dimensions: {
         width: number;
         height: number;
         depth: number;
     };
+    // === Rail-based deck properties ===
+    /** Number of rails on this deck (rail-based only) */
+    numRails?: number;
+    /** Distance between rail centers in mm (rail-based only) */
+    railSpacing?: number;
+    /** Exact X positions for each rail (rail-based only) */
+    railPositions?: number[];
+    /** List of compatible carrier FQNs (rail-based only) */
+    compatibleCarriers?: string[];
+    // === Slot-based deck properties ===
+    /** Slot specifications (slot-based only) */
+    slots?: DeckSlotSpec[];
+    /** Number of slots (slot-based only) */
+    numSlots?: number;
 }
 
 /**

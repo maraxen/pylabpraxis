@@ -144,6 +144,7 @@ WebSocket /ws/execution/:runId  →  Real-time updates
 - [x] Create `RunFiltersComponent`
   - [x] Protocol dropdown (from available protocols) - **Multi-select added 2026-01-02**
   - [x] Status multi-select (COMPLETED, FAILED, CANCELLED, RUNNING, QUEUED)
+  - [x] Horizontal scroll container for filters (Single-line flex, no wrapping) - **Implemented 2026-01-02**
   - Date range picker
   - Search by run ID
 - [x] Implement query param synchronization (Handled by Filters Component)

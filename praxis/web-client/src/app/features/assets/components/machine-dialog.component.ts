@@ -87,10 +87,10 @@ const jsonValidator = (control: AbstractControl): ValidationErrors | null => {
             </div>
             
             <mat-chip-listbox>
-                <mat-chip-option *ngFor="let channel of selectedDefinition.capabilities?.channels" color="accent" selected>
+                <mat-chip-option *ngFor="let channel of selectedDefinition.capabilities?.['channels']" color="accent" selected>
                     {{ channel }}-channel
                 </mat-chip-option>
-                 <mat-chip-option *ngFor="let mod of selectedDefinition.capabilities?.modules" selected>
+                 <mat-chip-option *ngFor="let mod of selectedDefinition.capabilities?.['modules']" selected>
                     {{ mod }}
                 </mat-chip-option>
                 <mat-chip-option *ngIf="!selectedDefinition.capabilities" disabled>
@@ -130,11 +130,25 @@ const jsonValidator = (control: AbstractControl): ValidationErrors | null => {
           </mat-select>
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Connection Info (JSON) - Advanced</mat-label>
-          <textarea matInput formControlName="connection_info" placeholder='{"host": "127.0.0.1", "port": 3000}' rows="2"></textarea>
-           <mat-error *ngIf="form.get('connection_info')?.hasError('invalidJson')">Invalid JSON format</mat-error>
-        </mat-form-field>
+        <div *ngIf="selectedDefinition?.connection_config; else manualConnectionInput" class="border rounded-lg p-3 bg-white flex flex-col gap-2 mb-4">
+             <div class="text-sm font-medium text-gray-700">Connection Settings</div>
+             <app-dynamic-capability-form
+                [config]="selectedDefinition!.connection_config"
+                (valueChange)="updateConnectionInfo($event)">
+             </app-dynamic-capability-form>
+             <!-- 
+                Ideally we hide the underlying JSON control or keep it synced. 
+                The updateConnectionInfo method patches the form control, so validation works.
+             -->
+        </div>
+
+        <ng-template #manualConnectionInput>
+            <mat-form-field appearance="outline">
+              <mat-label>Connection Info (JSON) - Advanced</mat-label>
+              <textarea matInput formControlName="connection_info" placeholder='{"host": "127.0.0.1", "port": 3000}' rows="2"></textarea>
+               <mat-error *ngIf="form.get('connection_info')?.hasError('invalidJson')">Invalid JSON format</mat-error>
+            </mat-form-field>
+        </ng-template>
 
         <div *ngIf="selectedDefinition?.capabilities_config; else legacyInput" class="border rounded-lg p-3 bg-white flex flex-col gap-2">
             <div class="text-sm font-medium text-gray-700">Configuration</div>
@@ -208,7 +222,7 @@ export class MachineDialogComponent implements OnInit {
         (def.fqn && def.fqn.toLowerCase().includes(filterValue)) ||
         (def.manufacturer && def.manufacturer.toLowerCase().includes(filterValue)) ||
         // Search capability chips too
-        (def.capabilities?.modules && def.capabilities.modules.some((m: string) => m.toLowerCase().includes(filterValue)))
+        ((def.capabilities?.['modules'] as string[])?.some((m: string) => m.toLowerCase().includes(filterValue)))
       );
     });
 
@@ -269,31 +283,44 @@ export class MachineDialogComponent implements OnInit {
     });
   }
 
+  updateConnectionInfo(val: any) {
+    this.form.patchValue({
+      connection_info: JSON.stringify(val)
+    });
+  }
+
   save() {
     if (this.form.valid) {
       const value = this.form.value;
 
       let connectionInfo: any = {};
+
+      // If we have a dynamic form for connection info, use that.
+      // Otherwise fallback to the JSON text area.
+      // Note: we're patching the JSON string into the form control in updateConnectionInfo
+      // so we can just parse it here.
       if (value.connection_info) {
-        connectionInfo = JSON.parse(value.connection_info);
+        try {
+          connectionInfo = JSON.parse(value.connection_info);
+        } catch (e) {
+          // Should be caught by validator but just in case
+          console.error('Invalid connection info JSON', e);
+        }
       }
 
       // Inject backend driver selection into connection_info
-      // This is the contract we established: backend info goes here.
       if (value.backend_driver) {
         connectionInfo['backend_fqn'] = value.backend_driver;
-        if (value.backend_driver === 'sim') {
-          // Maybe explicit flag for simulation override?
-          // But 'sim' is just a backend choice here. 
-          // Ideally we shouldn't set is_simulation_override unless explicitly asked, 
-          // but selecting 'sim' driver implies it.
-          // Let's leave is_simulation_override to the separate flag if we add it, or infer it.
-        }
+        // ... (sim/override logic if needed)
       }
 
       let userConfiguredCapabilities: any = null;
       if (value.user_configured_capabilities) {
-        userConfiguredCapabilities = JSON.parse(value.user_configured_capabilities);
+        try {
+          userConfiguredCapabilities = JSON.parse(value.user_configured_capabilities);
+        } catch (e) {
+          console.error('Invalid capabilities JSON', e);
+        }
       }
 
       this.dialogRef.close({

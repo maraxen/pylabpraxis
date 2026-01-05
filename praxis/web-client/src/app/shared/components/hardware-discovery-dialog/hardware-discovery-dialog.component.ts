@@ -94,10 +94,10 @@ import {
             <div class="devices-section">
                 <h3>
                     Discovered Devices
-                    <span class="count">({{ hardwareService.discoveredDevices().length }})</span>
+                    <span class="count">({{ filteredDevices().length }})</span>
                 </h3>
 
-                @if (hardwareService.discoveredDevices().length === 0) {
+                @if (filteredDevices().length === 0) {
                     <div class="empty-state">
                         <mat-icon>devices</mat-icon>
                         <p>No devices discovered yet</p>
@@ -105,7 +105,7 @@ import {
                     </div>
                 } @else {
                     <div class="device-list">
-                        @for (device of hardwareService.discoveredDevices(); track device.id) {
+                        @for (device of filteredDevices(); track device.id) {
                             <mat-expansion-panel class="device-panel" [class.supported]="hardwareService.isPlrSupported(device)">
                                 <mat-expansion-panel-header>
                                     <mat-panel-title>
@@ -520,6 +520,13 @@ export class HardwareDiscoveryDialogComponent {
 
     /** Tracks devices currently being connected */
     readonly connectingDevices = signal<Set<string>>(new Set());
+
+    readonly filteredDevices = computed(() => {
+        return this.hardwareService.discoveredDevices().filter(d =>
+            d.connectionType !== 'simulator' &&
+            !(d.plrBackend && d.plrBackend.toLowerCase().includes('simulator'))
+        );
+    });
 
     async scanAll(): Promise<void> {
         await this.hardwareService.discoverAll();

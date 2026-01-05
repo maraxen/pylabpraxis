@@ -10,7 +10,8 @@ import { ResourceAccordionComponent } from './components/resource-accordion/reso
 import { DefinitionsListComponent } from './components/definitions-list/definitions-list.component';
 import { MachineDialogComponent } from './components/machine-dialog.component';
 import { ResourceDialogComponent } from './components/resource-dialog.component';
-import { HardwareDiscoveryDialogComponent } from './components/hardware-discovery-dialog/hardware-discovery-dialog.component';
+import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-discovery-dialog/hardware-discovery-dialog.component';
+import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 import { AssetDashboardComponent } from './components/asset-dashboard/asset-dashboard.component';
 import { AssetService } from './services/asset.service';
 import { switchMap, filter, finalize } from 'rxjs/operators';
@@ -34,7 +35,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
     MachineListComponent,
     ResourceAccordionComponent,
     DefinitionsListComponent,
-    AssetDashboardComponent
+    AssetDashboardComponent,
+    HardwareDiscoveryButtonComponent
   ],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col">
@@ -44,16 +46,11 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
           <p class="text-sys-text-secondary">Manage your laboratory hardware and inventory</p>
         </div>
         <div class="flex gap-3">
-          @if (selectedIndex === 0) {
-            <button mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-primary !rounded-xl !px-4 !py-5 flex items-center gap-2 hover:bg-[var(--mat-sys-surface-variant)] transition-all" (click)="openHardwareDiscovery()">
-              <mat-icon>usb</mat-icon>
-              Discover Hardware
-            </button>
-          }
+          <app-hardware-discovery-button class="mr-2"></app-hardware-discovery-button>
           <span [matTooltip]="selectedIndex === 3 ? (modeService.isBrowserMode() ? 'Definitions are pre-synced in Browser Mode.' : 'Sync all hardware and protocol definitions from the backend.') : ''">
             <button 
               mat-flat-button 
-              class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-5 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" 
+              class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-3 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" 
               (click)="openAddAsset()" 
               [disabled]="isLoading() || isSyncing()"
             >
@@ -126,7 +123,12 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
                 <span class="font-medium">Registry</span>
               </div>
             </ng-template>
-            <div class="h-full overflow-y-auto bg-[var(--mat-sys-surface-variant)]">
+            <div class="h-full overflow-y-auto bg-[var(--mat-sys-surface-variant)] relative">
+              @if (isSyncing()) {
+                <div class="absolute inset-0 bg-[var(--mat-sys-surface-variant)] backdrop-blur-sm z-10 flex items-center justify-center">
+                  <mat-spinner diameter="40"></mat-spinner>
+                </div>
+              }
               <app-definitions-list></app-definitions-list>
             </div>
           </mat-tab>

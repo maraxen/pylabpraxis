@@ -1,0 +1,72 @@
+.filters-container {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center;
+    gap: 1rem;
+    overflow-x: auto !important;
+    padding-bottom: 0.5rem; // Space for scrollbar
+    width: 100%;
+
+    // Hide scrollbar but keep functionality
+    scrollbar-width: thin;
+
+    &::-webkit-scrollbar {
+        height: 4px;
+    }
+}
+
+.filter-group {
+    flex-shrink: 0;
+}
+
+/* Dense form fields */
+:host ::ng-deep .dense-field {
+    .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+    }
+
+    .mat-mdc-text-field-wrapper {
+        height: 40px;
+    }
+
+    .mat-mdc-form-field-flex {
+        height: 40px;
+    }
+}
+
+/* Status chip colors */
+.status-running {
+    --mdc-chip-elevated-selected-container-color: rgba(34, 197, 94, 0.2);
+    --mdc-chip-selected-label-text-color: rgb(34, 197, 94);
+}
+
+.status-completed {
+    --mdc-chip-elevated-selected-container-color: rgba(107, 114, 128, 0.2);
+    --mdc-chip-selected-label-text-color: rgb(107, 114, 128);
+}
+
+.status-failed {
+    --mdc-chip-elevated-selected-container-color: rgba(239, 68, 68, 0.2);
+    --mdc-chip-selected-label-text-color: rgb(239, 68, 68);
+}
+
+.status-queued,
+.status-preparing {
+    --mdc-chip-elevated-selected-container-color: rgba(245, 158, 11, 0.2);
+    --mdc-chip-selected-label-text-color: rgb(245, 158, 11);
+}
+
+.status-pending {
+    --mdc-chip-elevated-selected-container-color: rgba(59, 130, 246, 0.2);
+    --mdc-chip-selected-label-text-color: rgb(59, 130, 246);
+}
+
+.status-cancelled {
+    --mdc-chip-elevated-selected-container-color: rgba(156, 163, 175, 0.2);
+    --mdc-chip-selected-label-text-color: rgb(156, 163, 175);
+}
+
+.status-paused {
+    --mdc-chip-elevated-selected-container-color: rgba(234, 179, 8, 0.2);
+    --mdc-chip-selected-label-text-color: rgb(234, 179, 8);
+}

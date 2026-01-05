@@ -59,7 +59,7 @@ class TestHandleDbTransaction:
             msg = "Original error"
             raise RuntimeError(msg)
 
-        with pytest.raises(RuntimeError, match="Original error"):
+        with pytest.raises(ValueError, match="An unexpected error occurred: Original error"):
             await test_func(mock_session)
 
     @pytest.mark.asyncio

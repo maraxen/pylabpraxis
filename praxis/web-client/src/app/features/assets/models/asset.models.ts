@@ -44,6 +44,7 @@ export interface AssetBase {
   fqn?: string;
   location?: string;
   location_label?: string; // e.g. "Room 101, Bench A"
+  asset_type?: string;
   plr_state?: any;
   plr_definition?: any;
   created_at?: string;
@@ -53,6 +54,8 @@ export interface AssetBase {
 export interface Machine extends AssetBase {
   status: MachineStatus;
   status_details?: string;
+  machine_category?: string;
+  machine_type?: string; // Legacy/UI alias
   description?: string;
   manufacturer?: string;
   model?: string;
@@ -70,6 +73,8 @@ export interface Machine extends AssetBase {
 export interface MachineCreate {
   name: string;
   status?: MachineStatus;
+  machine_category?: string;
+  machine_type?: string;
   description?: string;
   manufacturer?: string;
   model?: string;
@@ -107,13 +112,10 @@ export interface MachineDefinition {
   manufacturer?: string;
   model?: string;
   nominal_volume_ul?: number;
-  capabilities?: {
-    channels: number[];
-    modules: string[];
-    [key: string]: any;
-  };
+  capabilities?: Record<string, any> | null;
   compatible_backends?: string[];
-  capabilities_config?: MachineCapabilityConfigSchema;
+  capabilities_config?: any;
+  connection_config?: any;
 }
 
 export interface MachineCapabilityConfigSchema {

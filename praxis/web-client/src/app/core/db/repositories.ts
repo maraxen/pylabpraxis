@@ -4,7 +4,7 @@
  * Provides specialized repositories for key entities with custom query methods.
  */
 
-import type { Database } from 'sql.js';
+import type { Database, SqlValue } from 'sql.js';
 import { SqliteRepository, type BaseEntity } from './sqlite-repository';
 import type {
     Asset,
@@ -194,6 +194,62 @@ export class MachineRepository extends SqliteRepository<WithIndex<Machine>> {
     findByCategory(category: string): Machine[] {
         return this.findBy({ machine_category: category } as Partial<Machine>);
     }
+
+    /**
+     * Create a new machine (overrides generic create to handle Joined Table Inheritance)
+     * Inserts into 'assets' and 'machines' tables.
+     */
+    override create(entity: Omit<WithIndex<Machine>, 'created_at' | 'updated_at'>): WithIndex<Machine> {
+        // 1. Prepare Asset fields
+        const assetFields = [
+            'accession_id', 'asset_type', 'name', 'fqn', 'location',
+            'plr_state', 'plr_definition', 'created_at', 'updated_at', 'properties_json'
+        ];
+
+        const assetData: Record<string, any> = {};
+        assetFields.forEach(f => {
+            if (f in entity) assetData[f] = entity[f];
+        });
+
+        // 2. Prepare Machine fields
+        const machineFields = [
+            'accession_id', 'machine_category', 'description', 'manufacturer', 'model',
+            'serial_number', 'installation_date', 'status', 'status_details',
+            'connection_info', 'is_simulation_override', 'user_configured_capabilities',
+            'workcell_accession_id', 'resource_counterpart_accession_id',
+            'deck_child_accession_id', 'deck_child_definition_accession_id',
+            'last_seen_online', 'current_protocol_run_accession_id'
+        ];
+
+        const machineData: Record<string, any> = {};
+        machineFields.forEach(f => {
+            if (f in entity) machineData[f] = entity[f];
+        });
+
+        // 3. Insert into Assets
+        const assetCols = Object.keys(assetData);
+        if (assetCols.length > 0) {
+            const assetVals = Object.values(assetData).map(v => this.serializeValue(v)) as SqlValue[];
+            const assetPlaceholders = assetCols.map(() => '?').join(', ');
+            const assetSql = `INSERT INTO assets (${assetCols.join(', ')}) VALUES (${assetPlaceholders})`;
+            const stmt = this.db.prepare(assetSql);
+            stmt.run(assetVals);
+            stmt.free();
+        }
+
+        // 4. Insert into Machines
+        const machineCols = Object.keys(machineData);
+        if (machineCols.length > 0) {
+            const machineVals = Object.values(machineData).map(v => this.serializeValue(v)) as SqlValue[];
+            const machinePlaceholders = machineCols.map(() => '?').join(', ');
+            const machineSql = `INSERT INTO machines (${machineCols.join(', ')}) VALUES (${machinePlaceholders})`;
+            const stmt = this.db.prepare(machineSql);
+            stmt.run(machineVals);
+            stmt.free();
+        }
+
+        return this.findById(entity['accession_id'] as string) as WithIndex<Machine>;
+    }
 }
 
 /**
@@ -255,6 +311,60 @@ export class ResourceRepository extends SqliteRepository<WithIndex<Resource>> {
      */
     findChildren(parentId: string): Resource[] {
         return this.findBy({ parent_accession_id: parentId } as Partial<Resource>);
+    }
+
+    /**
+     * Create a new resource (overrides generic create to handle Joined Table Inheritance)
+     * Inserts into 'assets' and 'resources' tables.
+     */
+    override create(entity: Omit<WithIndex<Resource>, 'created_at' | 'updated_at'>): WithIndex<Resource> {
+        // 1. Prepare Asset fields
+        const assetFields = [
+            'accession_id', 'asset_type', 'name', 'fqn', 'location',
+            'plr_state', 'plr_definition', 'created_at', 'updated_at', 'properties_json'
+        ];
+
+        const assetData: Record<string, any> = {};
+        assetFields.forEach(f => {
+            if (f in entity) assetData[f] = entity[f];
+        });
+
+        // 2. Prepare Resource fields
+        const resourceFields = [
+            'accession_id', 'resource_definition_accession_id', 'parent_accession_id',
+            'status', 'status_details', 'current_protocol_run_accession_id',
+            'current_deck_position_name', 'machine_location_accession_id',
+            'deck_accession_id', 'workcell_accession_id'
+        ];
+
+        const resourceData: Record<string, any> = {};
+        resourceFields.forEach(f => {
+            if (f in entity) resourceData[f] = entity[f];
+        });
+
+        // 3. Insert into Assets
+        const assetCols = Object.keys(assetData);
+        if (assetCols.length > 0) {
+            const assetVals = Object.values(assetData).map(v => this.serializeValue(v)) as SqlValue[];
+            const assetPlaceholders = assetCols.map(() => '?').join(', ');
+            const assetSql = `INSERT INTO assets (${assetCols.join(', ')}) VALUES (${assetPlaceholders})`;
+            const stmt = this.db.prepare(assetSql);
+            stmt.run(assetVals);
+            stmt.free();
+        }
+
+        // 4. Insert into Resources
+        const resourceCols = Object.keys(resourceData);
+        if (resourceCols.length > 0) {
+            const resourceVals = Object.values(resourceData).map(v => this.serializeValue(v)) as SqlValue[];
+            const resourcePlaceholders = resourceCols.map(() => '?').join(', ');
+            const resourceSql = `INSERT INTO resources (${resourceCols.join(', ')}) VALUES (${resourcePlaceholders})`;
+            const stmt = this.db.prepare(resourceSql);
+            stmt.run(resourceVals);
+            stmt.free();
+        }
+
+        return this.findById(entity['accession_id'] as string) as WithIndex<Resource>;
     }
 }
 

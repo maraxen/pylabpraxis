@@ -1,12 +1,17 @@
 """Tests for type inspection utilities in utils/type_inspection.py."""
 
 import inspect
+from collections.abc import Sequence
 from typing import Any, Optional, Union
 
-from pylabrobot.resources import Carrier, Plate, Resource
+from pylabrobot.resources import Carrier, Plate, Resource, TipRack
 
 from praxis.backend.utils.type_inspection import (
+    PLR_RESOURCE_TYPES,
+    extract_resource_types,
     fqn_from_hint,
+    get_element_type,
+    is_container_type,
     is_pylabrobot_resource,
     serialize_type_hint,
 )
@@ -230,3 +235,220 @@ class TestTypeInspectionEdgeCases:
         result = serialize_type_hint(complex_type)
         assert isinstance(result, str)
         assert len(result) > 0
+
+
+# =============================================================================
+# Tests for extract_resource_types
+# =============================================================================
+
+
+class TestExtractResourceTypes:
+    """Tests for extract_resource_types function."""
+
+    # --- String Type Hints ---
+
+    def test_extract_list_well_string(self) -> None:
+        """Test extracting Well from list[Well] string."""
+        result = extract_resource_types("list[Well]")
+        assert result == ["Well"]
+
+    def test_extract_sequence_tipspot_string(self) -> None:
+        """Test extracting TipSpot from Sequence[TipSpot] string."""
+        result = extract_resource_types("Sequence[TipSpot]")
+        assert result == ["TipSpot"]
+
+    def test_extract_tuple_mixed_string(self) -> None:
+        """Test extracting multiple types from tuple[Plate, TipRack] string."""
+        result = extract_resource_types("tuple[Plate, TipRack]")
+        assert "Plate" in result
+        assert "TipRack" in result
+
+    def test_extract_optional_plate_string(self) -> None:
+        """Test extracting Plate from Union[Plate, None] string."""
+        result = extract_resource_types("Union[Plate, None]")
+        assert result == ["Plate"]
+
+    def test_extract_dict_values_string(self) -> None:
+        """Test extracting Well from dict[str, list[Well]] string."""
+        result = extract_resource_types("dict[str, list[Well]]")
+        assert "Well" in result
+
+    def test_extract_nested_list_string(self) -> None:
+        """Test extracting from nested containers."""
+        result = extract_resource_types("list[list[Well]]")
+        assert result == ["Well"]
+
+    def test_extract_simple_resource_string(self) -> None:
+        """Test extracting Plate from simple type hint."""
+        result = extract_resource_types("Plate")
+        assert result == ["Plate"]
+
+    def test_extract_no_resources_string(self) -> None:
+        """Test that non-resource types return empty list."""
+        result = extract_resource_types("list[int]")
+        assert result == []
+
+    def test_extract_carrier_types_string(self) -> None:
+        """Test extracting carrier types."""
+        result = extract_resource_types("PlateCarrier")
+        assert result == ["PlateCarrier"]
+
+        result = extract_resource_types("list[TipCarrier]")
+        assert result == ["TipCarrier"]
+
+    def test_extract_preserves_order_string(self) -> None:
+        """Test that extraction preserves order and removes duplicates."""
+        result = extract_resource_types("tuple[Plate, Well, Plate]")
+        # Should have Plate first (order preserved), but no duplicates
+        assert result == ["Plate", "Well"]
+
+    # --- Runtime Type Hints ---
+
+    def test_extract_list_runtime(self) -> None:
+        """Test extracting from runtime list type."""
+        result = extract_resource_types(list[Plate])
+        assert result == ["Plate"]
+
+    def test_extract_optional_runtime(self) -> None:
+        """Test extracting from Optional runtime type."""
+        result = extract_resource_types(Optional[Plate])
+        assert result == ["Plate"]
+
+    def test_extract_union_runtime(self) -> None:
+        """Test extracting from Union runtime type."""
+        result = extract_resource_types(Union[Plate, TipRack])
+        assert "Plate" in result
+        assert "TipRack" in result
+
+    def test_extract_sequence_runtime(self) -> None:
+        """Test extracting from Sequence runtime type."""
+        result = extract_resource_types(Sequence[Plate])
+        assert result == ["Plate"]
+
+    def test_extract_tuple_runtime(self) -> None:
+        """Test extracting from tuple runtime type."""
+        result = extract_resource_types(tuple[Plate, TipRack])
+        assert "Plate" in result
+        assert "TipRack" in result
+
+    def test_extract_plain_type_runtime(self) -> None:
+        """Test extracting from plain resource type."""
+        result = extract_resource_types(Plate)
+        assert result == ["Plate"]
+
+    def test_extract_non_resource_runtime(self) -> None:
+        """Test that non-resource types return empty list."""
+        result = extract_resource_types(list[int])
+        assert result == []
+
+
+class TestGetElementType:
+    """Tests for get_element_type function."""
+
+    # --- String Type Hints ---
+
+    def test_get_element_list_well_string(self) -> None:
+        """Test getting Well from list[Well] string."""
+        result = get_element_type("list[Well]")
+        assert result == "Well"
+
+    def test_get_element_sequence_tipspot_string(self) -> None:
+        """Test getting TipSpot from Sequence[TipSpot] string."""
+        result = get_element_type("Sequence[TipSpot]")
+        assert result == "TipSpot"
+
+    def test_get_element_non_container_string(self) -> None:
+        """Test that non-container returns None."""
+        result = get_element_type("Plate")
+        assert result is None
+
+    def test_get_element_non_resource_container_string(self) -> None:
+        """Test that container of non-resources returns None."""
+        result = get_element_type("list[int]")
+        assert result is None
+
+    # --- Runtime Type Hints ---
+
+    def test_get_element_list_runtime(self) -> None:
+        """Test getting element type from runtime list type."""
+        result = get_element_type(list[Plate])
+        assert result == "Plate"
+
+    def test_get_element_tuple_runtime(self) -> None:
+        """Test getting element type from runtime tuple type."""
+        result = get_element_type(tuple[Plate, TipRack])
+        # Should return first PLR type
+        assert result == "Plate"
+
+    def test_get_element_non_container_runtime(self) -> None:
+        """Test that non-container returns None."""
+        result = get_element_type(Plate)
+        assert result is None
+
+
+class TestIsContainerType:
+    """Tests for is_container_type function."""
+
+    # --- String Type Hints ---
+
+    def test_is_container_list_string(self) -> None:
+        """Test list[X] is recognized as container."""
+        assert is_container_type("list[Well]") is True
+
+    def test_is_container_sequence_string(self) -> None:
+        """Test Sequence[X] is recognized as container."""
+        assert is_container_type("Sequence[TipSpot]") is True
+
+    def test_is_container_tuple_string(self) -> None:
+        """Test tuple[X] is recognized as container."""
+        assert is_container_type("tuple[Plate, TipRack]") is True
+
+    def test_is_not_container_string(self) -> None:
+        """Test simple types are not containers."""
+        assert is_container_type("Plate") is False
+        assert is_container_type("int") is False
+
+    # --- Runtime Type Hints ---
+
+    def test_is_container_list_runtime(self) -> None:
+        """Test list[X] is recognized as container at runtime."""
+        assert is_container_type(list[Plate]) is True
+
+    def test_is_container_sequence_runtime(self) -> None:
+        """Test Sequence[X] is recognized as container at runtime."""
+        assert is_container_type(Sequence[Plate]) is True
+
+    def test_is_not_container_runtime(self) -> None:
+        """Test plain types are not containers."""
+        assert is_container_type(Plate) is False
+        assert is_container_type(int) is False
+
+
+class TestPLRResourceTypes:
+    """Tests for PLR_RESOURCE_TYPES constant."""
+
+    def test_contains_core_resources(self) -> None:
+        """Test that core resource types are included."""
+        assert "Plate" in PLR_RESOURCE_TYPES
+        assert "TipRack" in PLR_RESOURCE_TYPES
+        assert "Well" in PLR_RESOURCE_TYPES
+        assert "TipSpot" in PLR_RESOURCE_TYPES
+        assert "Carrier" in PLR_RESOURCE_TYPES
+        assert "Deck" in PLR_RESOURCE_TYPES
+
+    def test_contains_carrier_types(self) -> None:
+        """Test that carrier types are included."""
+        assert "PlateCarrier" in PLR_RESOURCE_TYPES
+        assert "TipCarrier" in PLR_RESOURCE_TYPES
+        assert "TroughCarrier" in PLR_RESOURCE_TYPES
+
+    def test_contains_container_elements(self) -> None:
+        """Test that container element types are included."""
+        assert "Well" in PLR_RESOURCE_TYPES
+        assert "TipSpot" in PLR_RESOURCE_TYPES
+        assert "Spot" in PLR_RESOURCE_TYPES
+        assert "Tube" in PLR_RESOURCE_TYPES
+
+    def test_is_frozenset(self) -> None:
+        """Test that PLR_RESOURCE_TYPES is immutable."""
+        assert isinstance(PLR_RESOURCE_TYPES, frozenset)

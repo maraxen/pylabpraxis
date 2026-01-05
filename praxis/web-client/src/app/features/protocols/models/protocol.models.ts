@@ -12,6 +12,16 @@ export interface UIHint {
   widget_type?: string;
 }
 
+/**
+ * Specification for itemized resources (plates, tip racks).
+ * Used by IndexSelectorComponent to render the correct grid.
+ */
+export interface ItemizedSpec {
+  items_x: number;
+  items_y: number;
+  parent_type?: string;
+}
+
 export interface ParameterMetadata {
   name: string;
   type_hint: string;
@@ -22,6 +32,14 @@ export interface ParameterMetadata {
   description?: string;
   constraints: ParameterConstraints;
   ui_hint?: UIHint;
+  /** UI field type for rendering (e.g., "text", "number", "index_selector") */
+  field_type?: string;
+  /** True if the type is an itemized resource (Well, TipSpot) or collection */
+  is_itemized?: boolean;
+  /** Specification for index selector grid dimensions */
+  itemized_spec?: ItemizedSpec;
+  /** Link ID for linked index selectors (e.g., source/dest wells) */
+  linked_to?: string;
 }
 
 export interface AssetConstraints {
@@ -52,6 +70,20 @@ export interface AssetRequirement {
   location_constraints: LocationConstraints;
 }
 
+/**
+ * Data view definition for protocol input data requirements.
+ * Allows protocols to declare what input data they need in a structured way.
+ */
+export interface DataViewMetadataModel {
+  name: string;
+  description?: string;
+  source_type: string;  // 'plr_state' | 'function_output' | 'external'
+  source_filter_json?: Record<string, unknown>;
+  data_schema_json?: Record<string, unknown>;
+  required: boolean;
+  default_value_json?: unknown;
+}
+
 export interface ProtocolDefinition {
   accession_id: string;
   name: string;
@@ -67,6 +99,7 @@ export interface ProtocolDefinition {
   deprecated?: boolean;
   parameters: ParameterMetadata[];
   assets: AssetRequirement[];
+  data_views?: DataViewMetadataModel[];
 }
 
 export interface ProtocolRun {

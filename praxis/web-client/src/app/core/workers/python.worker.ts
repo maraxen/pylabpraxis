@@ -239,8 +239,32 @@ async function executePush(id: string, code: string) {
 
     } catch (err: any) {
       console.error('Execution error:', err);
-      // Ensure error reaches frontend
-      postMessage({ type: 'STDERR', id, payload: String(err) + '\n' });
+      // Get full Python traceback using traceback.format_exc()
+      let errorMessage = '';
+      try {
+        const tracebackCode = `
+import sys
+import traceback
+_tb = traceback.format_exc()
+# If no exception is active, format_exc returns 'NoneType: None\\n'
+_tb if _tb and _tb.strip() != 'NoneType: None' else str(sys.exc_info()[1]) if sys.exc_info()[1] else ''
+`;
+        const tracebackProxy = pyodide.runPython(tracebackCode);
+        errorMessage = String(tracebackProxy);
+        if (typeof tracebackProxy?.destroy === 'function') {
+          tracebackProxy.destroy();
+        }
+      } catch {
+        // Fallback to basic error string
+        errorMessage = '';
+      }
+
+      // If we couldn't get a Python traceback, use the JS error
+      if (!errorMessage || errorMessage.trim() === '') {
+        errorMessage = String(err);
+      }
+
+      postMessage({ type: 'STDERR', id, payload: errorMessage + '\n' });
     }
   }
 

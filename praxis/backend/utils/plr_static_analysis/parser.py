@@ -11,6 +11,9 @@ from praxis.backend.utils.plr_static_analysis.manufacturer_inference import (
   infer_manufacturer,
   infer_vendor,
 )
+from praxis.backend.utils.plr_static_analysis.connection_config_templates import (
+  get_connection_config_template,
+)
 from praxis.backend.utils.plr_static_analysis.models import (
   MACHINE_BACKEND_TYPES,
   MACHINE_FRONTEND_TYPES,
@@ -303,6 +306,12 @@ class PLRSourceParser:
     # Build user-configurable capability schema (for dynamic forms)
     cls.capabilities_config = extractor.build_capabilities_config()
 
+    # Build connection configuration schema
+    # Detect manufacturer from class info or default to generic
+    cls.connection_config = get_connection_config_template(
+      cls.class_type, manufacturer=cls.manufacturer
+    )
+
     # Update abstract status if we found abstract methods
     if extractor.has_abstract_methods:
       cls.is_abstract = True
@@ -369,7 +378,7 @@ class PLRSourceParser:
     backends = [
       c
       for c in classes
-      if c.class_type in (PLRClassType.LH_BACKEND, PLRClassType.PR_BACKEND) and not c.is_abstract
+      if c.class_type in MACHINE_BACKEND_TYPES and not c.is_abstract
     ]
 
     for cls in classes:
@@ -381,7 +390,7 @@ class PLRSourceParser:
         cls.vendor = infer_vendor(cls.module_path)
 
       # Match frontends to compatible backends
-      if cls.class_type in (PLRClassType.LIQUID_HANDLER, PLRClassType.PLATE_READER):
+      if cls.class_type in MACHINE_FRONTEND_TYPES:
         cls.compatible_backends = self._find_compatible_backends(cls, backends)
 
     return classes
@@ -402,10 +411,24 @@ class PLRSourceParser:
 
     """
     compatible = []
+    
+    # Get expected backend type for this frontend
+    target_backend_type = frontend.class_type.get_compatible_backend_type()
+    if not target_backend_type:
+      return []
 
     for backend in backends:
+      # Filter by type match
+      if backend.class_type != target_backend_type:
+        continue
+
       # Always include ChatterBox/simulation backends
-      if "chatterbox" in backend.name.lower():
+      if "chatterbox" in backend.name.lower() or "simulation" in backend.name.lower():
+        compatible.append(backend.fqn)
+        continue
+        
+      # If frontend is generic (no manufacturer or 'pylabrobot'), allow all backends of correct type
+      if not frontend.manufacturer or frontend.manufacturer.lower() == "pylabrobot":
         compatible.append(backend.fqn)
         continue
 
@@ -415,20 +438,21 @@ class PLRSourceParser:
           compatible.append(backend.fqn)
           continue
 
-      # Match by class type (LH frontend → LH backend)
+      # Loose name matching as fallback
+      frontend_clean = frontend.name.lower()
+      backend_clean = backend.name.lower()
+      
+      # Remove common suffixes/prefixes
+      for term in ["liquidhandler", "platereader", "heatershaker", "backend", "_"]:
+          frontend_clean = frontend_clean.replace(term, "")
+          backend_clean = backend_clean.replace(term, "")
+          
       if (
-        frontend.class_type == PLRClassType.LIQUID_HANDLER
-        and backend.class_type == PLRClassType.LH_BACKEND
+        frontend_clean
+        and backend_clean
+        and (frontend_clean in backend_clean or backend_clean in frontend_clean)
       ):
-        # Loose name matching as fallback
-        frontend_lower = frontend.name.lower().replace("liquidhandler", "")
-        backend_lower = backend.name.lower().replace("backend", "")
-        if (
-          frontend_lower
-          and backend_lower
-          and (frontend_lower in backend_lower or backend_lower in frontend_lower)
-        ):
-          compatible.append(backend.fqn)
+        compatible.append(backend.fqn)
 
     return compatible
 

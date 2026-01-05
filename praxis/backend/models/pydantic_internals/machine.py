@@ -173,6 +173,10 @@ class MachineDefinitionBase(PLRTypeDefinitionBase):
     default=None,
     description="Schema for user-configurable capabilities.",
   )
+  connection_config: dict[str, Any] | None = Field(
+    default=None,
+    description="Schema for connection parameters (host, port, etc).",
+  )
 
 
 class MachineDefinitionCreate(MachineDefinitionBase, PLRTypeDefinitionCreate):
@@ -199,6 +203,7 @@ class MachineDefinitionUpdate(PLRTypeDefinitionUpdate):
   capabilities: dict[str, Any] | None = None
   compatible_backends: list[str] | None = None
   capabilities_config: dict[str, Any] | None = None
+  connection_config: dict[str, Any] | None = None
 
 
 class MachineDefinitionResponse(MachineDefinitionBase, PLRTypeDefinitionResponse):

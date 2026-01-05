@@ -1,5 +1,6 @@
 """LibCST visitor for discovering protocol functions."""
 
+import hashlib
 from typing import Any
 
 import libcst as cst
@@ -8,7 +9,13 @@ from praxis.backend.utils.plr_static_analysis.models import (
   ProtocolFunctionInfo,
   ProtocolParameterInfo,
 )
+from praxis.backend.utils.plr_static_analysis.type_annotation_analyzer import (
+  TypeAnnotationAnalyzer,
+)
 from praxis.backend.utils.plr_static_analysis.visitors.base import BasePLRVisitor
+from praxis.backend.utils.plr_static_analysis.visitors.computation_graph_extractor import (
+  extract_graph_from_function,
+)
 from praxis.backend.utils.plr_static_analysis.visitors.protocol_requirement_extractor import (
   ProtocolRequirementExtractor,
 )
@@ -53,7 +60,9 @@ class ProtocolFunctionVisitor(BasePLRVisitor):
       # Handle @protocol_function(...)
       elif isinstance(decorator.decorator, cst.Call):
         func = decorator.decorator.func
-        if (isinstance(func, cst.Name) and func.value in self.PROTOCOL_DECORATOR_NAMES) or (isinstance(func, cst.Attribute) and func.attr.value in self.PROTOCOL_DECORATOR_NAMES):
+        if (isinstance(func, cst.Name) and func.value in self.PROTOCOL_DECORATOR_NAMES) or (
+          isinstance(func, cst.Attribute) and func.attr.value in self.PROTOCOL_DECORATOR_NAMES
+        ):
           return True
       # Handle @module.protocol_function (attribute without call)
       elif (
@@ -94,6 +103,25 @@ class ProtocolFunctionVisitor(BasePLRVisitor):
 
       is_asset = is_pylabrobot_resource(type_hint)
 
+      # Type Inference for Index Selector using CST-based analysis
+      field_type = None
+      is_itemized = False
+      itemized_spec = None
+
+      # Use TypeAnnotationAnalyzer for comprehensive type detection
+      # Supports: Well, TipSpot, list[Well], Sequence[TipSpot],
+      #           tuple[Well, ...], Optional[Well], Well | None, etc.
+      if param.annotation:
+        analyzer = TypeAnnotationAnalyzer()
+        type_info = analyzer.analyze(param.annotation.annotation)
+        if type_info:
+          field_type = type_info.field_type
+          is_itemized = type_info.is_itemized
+          itemized_spec = {
+            "items_x": type_info.items_x,
+            "items_y": type_info.items_y,
+          }
+
       fqn = f"{self.module_path}.{function_name}.{param_name}"
 
       info = ProtocolParameterInfo(
@@ -103,6 +131,9 @@ class ProtocolFunctionVisitor(BasePLRVisitor):
         is_optional=is_optional,
         is_asset=is_asset,
         fqn=fqn,
+        field_type=field_type,
+        is_itemized=is_itemized,
+        itemized_spec=itemized_spec,
       )
 
       if is_asset:
@@ -141,6 +172,9 @@ class ProtocolFunctionVisitor(BasePLRVisitor):
           }
         )
 
+    # Extract computation graph
+    computation_graph, source_hash = self._extract_computation_graph(node, params_info)
+
     definition = ProtocolFunctionInfo(
       name=function_name,
       fqn=f"{self.module_path}.{function_name}",
@@ -151,6 +185,8 @@ class ProtocolFunctionVisitor(BasePLRVisitor):
       raw_assets=raw_assets,
       raw_parameters=raw_parameters,
       hardware_requirements=self._extract_requirements(node),
+      computation_graph=computation_graph,
+      source_hash=source_hash,
     )
 
     self.definitions.append(definition)
@@ -179,3 +215,41 @@ class ProtocolFunctionVisitor(BasePLRVisitor):
       # Log it? The visitor doesn't have a logger handy, passing one might be good.
       # For now, safe fail.
       return None
+
+  def _extract_computation_graph(
+    self,
+    node: cst.FunctionDef,
+    params_info: list[ProtocolParameterInfo],
+  ) -> tuple[dict[str, Any] | None, str | None]:
+    """Extract computation graph and source hash from the function.
+
+    Args:
+      node: The function definition CST node.
+      params_info: Pre-extracted parameter information.
+
+    Returns:
+      Tuple of (computation_graph_dict, source_hash).
+
+    """
+    try:
+      # Calculate source hash from the function source code
+      source_code = cst.Module([]).code_for_node(node)
+      source_hash = hashlib.sha256(source_code.encode()).hexdigest()[:16]
+
+      # Build parameter types dict from params_info
+      parameter_types = {p.name: p.type_hint for p in params_info}
+
+      # Extract the computation graph
+      graph = extract_graph_from_function(
+        function_node=node,
+        module_name=self.module_path,
+        parameter_types=parameter_types,
+      )
+
+      # Convert to dict for JSON serialization
+      return graph.model_dump(exclude_none=True), source_hash
+
+    except Exception:
+      # If extraction fails, we don't want to fail discovery
+      # Safe fail with no graph
+      return None, None

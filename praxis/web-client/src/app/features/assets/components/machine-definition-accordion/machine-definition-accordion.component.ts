@@ -88,13 +88,13 @@ export interface ManufacturerGroup {
                         <div class="machine-info">
                           <span class="machine-name">{{ machine.name }}</span>
                           <div class="machine-chips">
-                            @if (machine.capabilities?.channels?.length) {
-                              @for (ch of machine.capabilities!.channels; track ch) {
+                            @if (machine.capabilities?.['channels']?.length) {
+                              @for (ch of machine.capabilities!['channels']; track ch) {
                                 <mat-chip class="capability-chip" matTooltip="Number of channels">{{ ch }}-channel</mat-chip>
                               }
                             }
-                            @if (machine.capabilities?.modules?.length) {
-                              @for (mod of machine.capabilities!.modules; track mod) {
+                            @if (machine.capabilities?.['modules']?.length) {
+                              @for (mod of machine.capabilities!['modules']; track mod) {
                                 <mat-chip class="capability-chip module" [matTooltip]="'Module: ' + mod">{{ mod }}</mat-chip>
                               }
                             }

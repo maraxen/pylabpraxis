@@ -103,6 +103,20 @@ export class ParameterConfigComponent implements OnChanges {
       },
     };
 
+    // Check for explicit field_type from backend
+    if (param.field_type === 'index_selector' && param.itemized_spec) {
+      return {
+        ...baseConfig,
+        type: 'index-selector',
+        props: {
+          ...baseConfig.props,
+          itemsX: param.itemized_spec.items_x,
+          itemsY: param.itemized_spec.items_y,
+          linkedTo: param.linked_to,
+        },
+      };
+    }
+
     // Map type to input type
     const typeHint = param.type_hint.toLowerCase();
     if (typeHint.includes('float') || typeHint.includes('int')) {

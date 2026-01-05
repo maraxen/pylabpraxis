@@ -494,3 +494,199 @@ def my_protocol(plate: Plate, tips: TipRack):
     assert p2.name == "tips"
     assert p2.is_asset
     assert p2.asset_type == "TipRack"
+
+  def test_protocol_with_index_selector(self):
+    """Test detecting Well/TipSpot parameters for index selection."""
+    from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
+      ProtocolFunctionVisitor,
+    )
+
+    source = """
+@protocol_function
+def my_protocol(
+    start_well: Well, 
+    dest_wells: list[Well], 
+    tips: Sequence[TipSpot],
+    other: str
+):
+    pass
+"""
+    tree = cst.parse_module(source.strip())
+    visitor = ProtocolFunctionVisitor("test_module", "/path/to/file.py")
+    tree.visit(visitor)
+
+    assert len(visitor.definitions) == 1
+    info = visitor.definitions[0]
+    
+    # Check start_well (Single Well)
+    p1 = info.parameters[0]
+    assert p1.name == "start_well"
+    assert p1.field_type == "index_selector"
+    assert p1.is_itemized is True
+    assert p1.itemized_spec["items_x"] == 12
+
+    # Check dest_wells (list[Well])
+    p2 = info.parameters[1]
+    assert p2.name == "dest_wells"
+    assert p2.field_type == "index_selector"
+    assert p2.is_itemized is True
+    
+    # Check tips (Sequence[TipSpot])
+    p3 = info.parameters[2]
+    assert p3.name == "tips"
+    assert p3.field_type == "index_selector"
+    assert p3.is_itemized is True
+    
+    # Check other (str)
+    p4 = info.parameters[3]
+    assert p4.name == "other"
+    assert p4.field_type is None
+
+  def test_protocol_with_tuple_well(self):
+    """Test detecting tuple[Well, ...] types."""
+    from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
+      ProtocolFunctionVisitor,
+    )
+
+    source = """
+@protocol_function
+def my_protocol(wells: tuple[Well, ...]):
+    pass
+"""
+    tree = cst.parse_module(source.strip())
+    visitor = ProtocolFunctionVisitor("test_module", "/path/to/file.py")
+    tree.visit(visitor)
+
+    assert len(visitor.definitions) == 1
+    info = visitor.definitions[0]
+    
+    p1 = info.parameters[0]
+    assert p1.name == "wells"
+    assert p1.field_type == "index_selector"
+    assert p1.is_itemized is True
+
+  def test_protocol_with_optional_well(self):
+    """Test detecting Optional[Well] types."""
+    from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
+      ProtocolFunctionVisitor,
+    )
+
+    source = """
+@protocol_function
+def my_protocol(well: Optional[Well]):
+    pass
+"""
+    tree = cst.parse_module(source.strip())
+    visitor = ProtocolFunctionVisitor("test_module", "/path/to/file.py")
+    tree.visit(visitor)
+
+    assert len(visitor.definitions) == 1
+    info = visitor.definitions[0]
+    
+    p1 = info.parameters[0]
+    assert p1.name == "well"
+    assert p1.field_type == "index_selector"
+    assert p1.is_itemized is True
+
+  def test_protocol_with_union_syntax(self):
+    """Test detecting Well | None (Python 3.10+ union syntax)."""
+    from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
+      ProtocolFunctionVisitor,
+    )
+
+    source = """
+@protocol_function
+def my_protocol(well: Well | None):
+    pass
+"""
+    tree = cst.parse_module(source.strip())
+    visitor = ProtocolFunctionVisitor("test_module", "/path/to/file.py")
+    tree.visit(visitor)
+
+    assert len(visitor.definitions) == 1
+    info = visitor.definitions[0]
+    
+    p1 = info.parameters[0]
+    assert p1.name == "well"
+    assert p1.field_type == "index_selector"
+    assert p1.is_itemized is True
+
+
+class TestTypeAnnotationAnalyzer:
+  """Tests for the TypeAnnotationAnalyzer utility."""
+
+  def test_analyze_simple_well(self):
+    """Test detecting simple Well type."""
+    from praxis.backend.utils.plr_static_analysis.type_annotation_analyzer import (
+      analyze_type_hint_string,
+    )
+    
+    result = analyze_type_hint_string("Well")
+    assert result is not None
+    assert result.element_type == "Well"
+    assert result.is_container is False
+
+  def test_analyze_list_well(self):
+    """Test detecting list[Well] type."""
+    from praxis.backend.utils.plr_static_analysis.type_annotation_analyzer import (
+      analyze_type_hint_string,
+    )
+    
+    result = analyze_type_hint_string("list[Well]")
+    assert result is not None
+    assert result.element_type == "Well"
+    assert result.is_container is True
+
+  def test_analyze_sequence_tipspot(self):
+    """Test detecting Sequence[TipSpot] type."""
+    from praxis.backend.utils.plr_static_analysis.type_annotation_analyzer import (
+      analyze_type_hint_string,
+    )
+    
+    result = analyze_type_hint_string("Sequence[TipSpot]")
+    assert result is not None
+    assert result.element_type == "TipSpot"
+    assert result.is_container is True
+
+  def test_analyze_non_itemized_type(self):
+    """Test that non-itemized types return None."""
+    from praxis.backend.utils.plr_static_analysis.type_annotation_analyzer import (
+      analyze_type_hint_string,
+    )
+    
+    result = analyze_type_hint_string("str")
+    assert result is None
+    
+    result = analyze_type_hint_string("int")
+    assert result is None
+    
+    result = analyze_type_hint_string("Plate")
+    assert result is None
+
+  def test_ansi_sbs_dimensions(self):
+    """Test ANSI/SBS plate dimension constants."""
+    from praxis.backend.utils.plr_static_analysis.type_annotation_analyzer import (
+      get_standard_dimensions,
+      ANSI_SBS_PLATE_DIMENSIONS,
+    )
+    
+    # 96-well plate
+    x, y = get_standard_dimensions(96)
+    assert x == 12
+    assert y == 8
+    
+    # 384-well plate
+    x, y = get_standard_dimensions(384)
+    assert x == 24
+    assert y == 16
+    
+    # Default (None)
+    x, y = get_standard_dimensions()
+    assert x == 12
+    assert y == 8
+    
+    # Unknown returns default
+    x, y = get_standard_dimensions(999)
+    assert x == 12
+    assert y == 8
+

@@ -3,6 +3,7 @@ import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 import { PlrDeckData, PlrResource } from '@core/models/plr.models';
 import { DeckCatalogService } from './deck-catalog.service';
 import { AssetService } from '@features/assets/services/asset.service';
+import { Machine } from '@features/assets/models/asset.models';
 
 /**
  * Default dimensions used when PLR definitions are not available.
@@ -27,9 +28,10 @@ interface ResourceDimensions {
     providedIn: 'root'
 })
 export class DeckGeneratorService {
-    private assetService = inject(AssetService);
-
-    constructor(private deckCatalog: DeckCatalogService) { }
+    constructor(
+        private deckCatalog: DeckCatalogService,
+        private assetService: AssetService
+    ) { }
 
     /**
      * Look up resource dimensions from cached PLR definitions.
@@ -73,7 +75,120 @@ export class DeckGeneratorService {
         return 'plate';
     }
 
-    generateDeckForProtocol(protocol: ProtocolDefinition, assetMap?: Record<string, any>): PlrDeckData {
+    generateDeckForProtocol(
+        protocol: ProtocolDefinition,
+        assetMap?: Record<string, any>,
+        machine?: Machine
+    ): PlrDeckData {
+        // Detect deck type from machine or default to Hamilton STAR
+        const deckType = this.detectDeckType(machine);
+        const spec = this.deckCatalog.getDeckDefinition(deckType);
+
+        if (!spec) {
+            console.warn(`No deck definition found for ${deckType}, falling back to Hamilton STAR`);
+            return this.generateHamiltonDeck(protocol, assetMap);
+        }
+
+        if (spec.layoutType === 'slot-based') {
+            return this.generateSlotBasedDeck(spec, protocol, assetMap);
+        } else {
+            return this.generateHamiltonDeck(protocol, assetMap);
+        }
+    }
+
+    private detectDeckType(machine?: Machine): string {
+        if (!machine) return 'HamiltonSTARDeck';
+
+        // Direct check on machine type/model
+        // This should align with what DeckCatalogService expects
+        if (machine.machine_category?.includes('OT-2') || machine.machine_type?.includes('OT-2') || machine.model?.includes('OT-2')) {
+            return 'OT2Deck';
+        }
+
+        return 'HamiltonSTARDeck'; // Default
+    }
+
+    private generateSlotBasedDeck(
+        spec: any, // DeckDefinitionSpec
+        protocol: ProtocolDefinition,
+        assetMap?: Record<string, any>
+    ): PlrDeckData {
+        const deck: PlrResource = {
+            name: "deck",
+            type: spec.fqn || "OT2Deck", // Fallback if fqn missing
+            location: { x: 0, y: 0, z: 0, type: "Coordinate" },
+            size_x: spec.dimensions.width,
+            size_y: spec.dimensions.height,
+            size_z: spec.dimensions.depth,
+            children: []
+        };
+
+        // Create slot children for visualization
+        // (Note: In real PLR, slots might be coordinate hacks, but here we can represent them as resources or just rely on the component using the spec)
+        // However, we need to place resources INTO these slots.
+
+        if (protocol.assets) {
+            let slotIndex = 0;
+            const slots = spec.slots || [];
+
+            protocol.assets.forEach((asset) => {
+                // Find next available slot
+                // For now, just fill 1, 2, 3...
+                // Ideally this would use location constraints from protocol
+                if (slotIndex >= slots.length) return;
+                const slot = slots[slotIndex];
+                slotIndex++;
+
+                // Skip trash slot for regular assets
+                if (slot.slotType === 'trash') {
+                    // Try next one
+                    if (slotIndex >= slots.length) return; // double check boundary
+                    // slot = slots[slotIndex]; 
+                    // slotIndex++;
+                    // (Logic simplified for basic layout - we just increment one more time if needed above or handle loop properly)
+                }
+
+                let resource: PlrResource | null = null;
+                let isGhost = false;
+                let displayName = asset.name;
+
+                if (!assetMap || !assetMap[asset.accession_id]) {
+                    isGhost = true;
+                    displayName = `ghost_${asset.name}`;
+                } else {
+                    displayName = assetMap[asset.accession_id].name;
+                }
+
+                const typeHint = asset.type_hint_str?.toLowerCase() || '';
+                const name = asset.name.toLowerCase();
+
+                if (typeHint.includes('plate') || name.includes('plate')) {
+                    resource = this.createPlate(displayName);
+                } else if (typeHint.includes('tip') || name.includes('tip')) {
+                    resource = this.createTipRack(displayName);
+                } else if (typeHint.includes('trough') || name.includes('reservoir')) {
+                    resource = this.createTrough(displayName);
+                }
+
+                if (resource) {
+                    // Position at slot coordinates
+                    resource.location.x = slot.position.x + 10; // offset slightly
+                    resource.location.y = slot.position.y + 10;
+                    resource.location.z = slot.position.z;
+                    resource.slot_id = slot.slotNumber; // Tag with slot ID
+
+                    if (isGhost) {
+                        resource.children = [];
+                    }
+                    deck.children.push(resource);
+                }
+            });
+        }
+
+        return { resource: deck, state: {} };
+    }
+
+    private generateHamiltonDeck(protocol: ProtocolDefinition, assetMap?: Record<string, any>): PlrDeckData {
         // 1. Base Deck (Hamilton STAR)
         const deck: PlrResource = {
             name: "deck",

@@ -131,11 +131,13 @@ Praxis automatically discovers protocols from Python files.
 To sync new or updated protocols:
 
 **Via API:**
+
 ```bash
 curl -X POST http://localhost:8000/api/v1/discovery/sync-all
 ```
 
 **Via UI:**
+
 1. Navigate to **Protocols**
 2. Click the **Sync** button
 
@@ -336,3 +338,12 @@ async def my_protocol(ctx: PraxisRunContext):
         if lh.has_tips:
             await lh.discard_tips()
 ```
+
+---
+
+## See Also
+
+- [Protocol Inference Sharp Bits](./protocol-inference-sharp-bits.md) - Edge cases, gotchas, and limitations of the protocol inference system
+- [Data Visualization](./data-visualization.md) - Using `@data_view` decorators
+- [Hardware Discovery](./hardware-discovery.md) - Connecting machines
+- [Assets](./assets.md) - Managing resources and machines

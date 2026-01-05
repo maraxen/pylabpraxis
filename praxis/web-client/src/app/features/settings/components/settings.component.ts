@@ -42,7 +42,7 @@ type Theme = 'light' | 'dark' | 'system';
                  <p class="text-sm text-gray-500 dark:text-gray-400">Select your preferred color theme</p>
                </div>
 
-               <mat-button-toggle-group [value]="store.theme()" (change)="setTheme($event.value)" appearance="legacy">
+               <mat-button-toggle-group hideSingleSelectionIndicator [value]="store.theme()" (change)="setTheme($event.value)" appearance="legacy">
                  <mat-button-toggle value="light">
                     <mat-icon class="mr-1">light_mode</mat-icon> Light
                  </mat-button-toggle>

@@ -56,17 +56,17 @@ The core requirement is to inspect `pylabrobot` to dynamically generate machine 
 
 ---
 
-## 5. Maintenance & Alerts (Phase 3)
+## 5. Maintenance & Alerts (Completed 2026-01-03)
 
-- [ ] **Maintenance Schema**:
-  - [ ] Pydantic models: `MaintenanceInterval`, `MaintenanceSchedule`.
-  - [ ] `MAINTENANCE_DEFAULTS` by category (Liquid Handlers daily/weekly/etc).
-  - [ ] Backend fields: `maintenance_enabled`, `maintenance_schedule_json`.
-- [ ] **Frontend UI**:
-  - [ ] Global "Enable Maintenance" toggle in Settings.
-  - [ ] Per-asset toggle and schedule override in details dialog.
-  - [ ] Maintenance status badges (OK, Warning, Overdue).
-  - [ ] "Log Maintenance" action.
+- [x] **Maintenance Schema**:
+  - [x] Pydantic models: `MaintenanceInterval`, `MaintenanceSchedule` - `praxis/backend/models/pydantic_internals/maintenance.py`
+  - [x] `MAINTENANCE_DEFAULTS` by category (Liquid Handlers daily/weekly/etc).
+  - [x] Backend fields: `maintenance_enabled`, `maintenance_schedule_json` - Alembic migration `bb6b6f27cedb`
+- [x] **Frontend UI**:
+  - [x] Global "Enable Maintenance" toggle in Settings - `AppStore.maintenanceEnabled()`
+  - [x] Per-asset toggle and schedule override in details dialog - `machine-details-dialog.component.ts`
+  - [x] Maintenance status badges (OK, Warning, Overdue) - `MaintenanceBadgeComponent`
+  - [ ] "Log Maintenance" action - TODO: Add button to log maintenance event
 
 ---
 

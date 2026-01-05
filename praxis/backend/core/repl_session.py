@@ -3,6 +3,7 @@
 import code
 import io
 import sys
+import traceback
 from typing import Any
 
 from praxis.backend.utils.logging import get_logger
@@ -68,11 +69,10 @@ class ReplSession:
     try:
       # push return True if more input needed
       more = self.console.push(line)
-    except Exception as e:
-      error = str(e)
-      # traceback is already printed to stderr by InteractiveConsole usually,
-      # but usually push() catches exceptions and prints them.
-      # If we want to capture that print, we need the capture active.
+    except Exception:
+      # Get full traceback - this handles edge cases where push() throws
+      # (normally InteractiveConsole catches exceptions and prints to stderr)
+      error = traceback.format_exc()
     finally:
       sys.stdout = original_stdout
       sys.stderr = original_stderr

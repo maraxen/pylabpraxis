@@ -14,6 +14,8 @@ import { map, interval, Subscription } from 'rxjs';
 import { AssetService } from '../assets/services/asset.service';
 import { ProtocolService } from '../protocols/services/protocol.service';
 import { ExecutionService } from '../run-protocol/services/execution.service';
+import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
+import { SparklineComponent } from '@shared/components/sparkline/sparkline.component';
 import { ModeService } from '@core/services/mode.service';
 import { Machine, Resource } from '../assets/models/asset.models';
 import { ProtocolDefinition } from '../protocols/models/protocol.models';
@@ -41,7 +43,10 @@ interface RecentRun {
     MatProgressBarModule,
     MatChipsModule,
     MatTooltipModule,
-    MatBadgeModule
+    MatTooltipModule,
+    MatBadgeModule,
+    HardwareDiscoveryButtonComponent,
+    SparklineComponent
   ],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto">
@@ -56,6 +61,7 @@ interface RecentRun {
             <mat-icon>play_circle</mat-icon>
             Run Protocol
           </a>
+          <app-hardware-discovery-button></app-hardware-discovery-button>
           @if (!modeService.isBrowserMode()) {
             <a mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-primary !rounded-xl !px-6 !py-6 flex items-center gap-2 flex-1 md:flex-none justify-center hover:bg-[var(--mat-sys-surface-variant)] transition-all" routerLink="/app/protocols">
               <mat-icon>schedule</mat-icon>
@@ -74,9 +80,12 @@ interface RecentRun {
           <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-primary/20 to-secondary/20 relative z-10">
             <mat-icon class="text-primary">play_arrow</mat-icon>
           </div>
-          <div class="flex flex-col relative z-10">
+          <div class="flex flex-col relative z-10 flex-1">
             <span class="text-2xl font-bold text-sys-text-primary">{{ runningCount() }}</span>
             <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Running</span>
+          </div>
+          <div class="w-16 h-8 relative z-10">
+            <app-sparkline [data]="runTrend()" color="var(--mat-sys-primary)" />
           </div>
           <div class="absolute top-4 right-4 w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.6)]"></div>
         </div>
@@ -241,6 +250,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   activeMachines = signal(0);
   totalProtocols = signal(0);
   totalResources = signal(0);
+
+  // Trend data for sparkline (mock data representing run activity over last 7 days)
+  runTrend = signal([2, 1, 3, 2, 4, 3, 5]);
 
   // Runs signals
   currentRuns = signal<RecentRun[]>([]);

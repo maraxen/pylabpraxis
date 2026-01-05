@@ -6,31 +6,29 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCardModule } from '@angular/material/card';
 
+import { Machine } from '../../../assets/models/asset.models';
+
 export interface MachineCompatibility {
-    machine: {
-        accession_id: string;
-        name: string;
-        machine_type: string;
-    };
-    compatibility: {
-        is_compatible: boolean;
-        missing_capabilities: any[];
-        matched_capabilities: string[];
-        warnings: string[];
-    };
+  machine: Machine;
+  compatibility: {
+    is_compatible: boolean;
+    missing_capabilities: any[];
+    matched_capabilities: string[];
+    warnings: string[];
+  };
 }
 
 @Component({
-    selector: 'app-machine-selection',
-    standalone: true,
-    imports: [
-        CommonModule,
-        MatButtonModule,
-        MatIconModule,
-        MatTooltipModule,
-        MatCardModule
-    ],
-    template: `
+  selector: 'app-machine-selection',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatIconModule,
+    MatTooltipModule,
+    MatCardModule
+  ],
+  template: `
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       @for (item of machines(); track item.machine.accession_id) {
         <div
@@ -89,27 +87,27 @@ export interface MachineCompatibility {
       </div>
     }
   `,
-    styles: [`
+  styles: [`
     .border-white-10 { border-color: var(--theme-border); }
     .bg-primary-05 { background-color: rgba(var(--primary-color-rgb), 0.05); }
   `],
-    changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MachineSelectionComponent {
-    machines = input<MachineCompatibility[]>([]);
-    selected = input<MachineCompatibility | null>(null);
+  machines = input<MachineCompatibility[]>([]);
+  selected = input<MachineCompatibility | null>(null);
 
-    select = output<MachineCompatibility>();
+  select = output<MachineCompatibility>();
 
-    selectMachine(item: MachineCompatibility) {
-        if (item.compatibility.is_compatible) {
-            this.select.emit(item);
-        }
+  selectMachine(item: MachineCompatibility) {
+    if (item.compatibility.is_compatible) {
+      this.select.emit(item);
     }
+  }
 
-    getIncompatibleReason(item: MachineCompatibility): string {
-        return item.compatibility.missing_capabilities
-            .map(m => `Missing ${m.capability_name}`)
-            .join(', ');
-    }
+  getIncompatibleReason(item: MachineCompatibility): string {
+    return item.compatibility.missing_capabilities
+      .map(m => `Missing ${m.capability_name}`)
+      .join(', ');
+  }
 }

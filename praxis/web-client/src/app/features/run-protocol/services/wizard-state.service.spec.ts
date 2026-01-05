@@ -7,12 +7,16 @@ import { describe, it, expect, beforeEach } from 'vitest';
 describe('WizardStateService', () => {
     let service: WizardStateService;
     let carrierInference: CarrierInferenceService;
+    let consumableAssignment: any;
     let deckCatalog: DeckCatalogService;
 
     beforeEach(() => {
         deckCatalog = new DeckCatalogService();
         carrierInference = new CarrierInferenceService(deckCatalog);
-        service = new WizardStateService(carrierInference, deckCatalog);
+        consumableAssignment = {
+            findCompatibleConsumable: () => Promise.resolve(null)
+        };
+        service = new WizardStateService(carrierInference, deckCatalog, consumableAssignment as any);
     });
 
     it('should be created', () => {

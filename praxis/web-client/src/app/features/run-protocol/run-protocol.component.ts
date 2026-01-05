@@ -30,6 +30,8 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 // import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component';
 import { DeckSetupWizardComponent } from './components/deck-setup-wizard/deck-setup-wizard.component';
 import { MachineSelectionComponent, MachineCompatibility } from './components/machine-selection/machine-selection.component';
+import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
+import { WizardStateService } from './services/wizard-state.service';
 
 const RECENTS_KEY = 'praxis_recent_protocols';
 const MAX_RECENTS = 5;
@@ -73,6 +75,8 @@ interface FilterCategory {
     ProtocolCardSkeletonComponent,
     DeckVisualizerComponent,
     MachineSelectionComponent,
+    HardwareDiscoveryButtonComponent,
+    DeckSetupWizardComponent,
   ],
   template: `
     <div class="h-full flex flex-col p-6 max-w-screen-2xl mx-auto">
@@ -86,6 +90,7 @@ interface FilterCategory {
         <!-- Simulation Mode Toggle -->
         <div class="flex items-center gap-3">
            <mat-button-toggle-group
+             hideSingleSelectionIndicator
              [value]="store.simulationMode()"
              (change)="store.setSimulationMode($event.value)"
              class="!rounded-full !border-[var(--theme-border)] !bg-[var(--mat-sys-surface-variant)] !overflow-hidden">
@@ -234,39 +239,7 @@ interface FilterCategory {
             </form>
           </mat-step>
 
-          <!-- Step 2: Machine Selection -->
-          <mat-step [stepControl]="machineFormGroup" label="Select Machine">
-            <div class="h-full flex flex-col p-6">
-              <div class="flex-1 overflow-y-auto">
-                <h3 class="text-xl font-bold text-sys-text-primary mb-6 flex items-center gap-3">
-                   <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
-                     <mat-icon>precision_manufacturing</mat-icon>
-                   </div>
-                   Select Execution Machine
-                </h3>
-
-                @if (isLoadingCompatibility()) {
-                  <div class="flex flex-col items-center justify-center py-12">
-                    <mat-spinner diameter="40"></mat-spinner>
-                    <p class="mt-4 text-sys-text-tertiary">Checking compatibility...</p>
-                  </div>
-                } @else {
-                  <app-machine-selection
-                    [machines]="compatibilityData()"
-                    [selected]="selectedMachine()"
-                    (select)="onMachineSelect($event)"
-                  ></app-machine-selection>
-                }
-              </div>
-
-              <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
-                 <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
-                 <button mat-flat-button color="primary" matStepperNext [disabled]="!selectedMachine()" class="!rounded-xl !px-8 !py-6">Continue</button>
-              </div>
-            </div>
-          </mat-step>
-
-          <!-- Step 3: Configure Parameters -->
+          <!-- Step 2: Configure Parameters -->
           <mat-step [stepControl]="parametersFormGroup" label="Configure Parameters">
             <form [formGroup]="parametersFormGroup" class="h-full flex flex-col p-6">
               <div class="flex-1 overflow-y-auto max-w-3xl mx-auto w-full">
@@ -292,75 +265,55 @@ interface FilterCategory {
             </form>
           </mat-step>
 
-          <!-- Step 3: Deck Configuration -->
-          <mat-step label="Deck Setup">
+          <!-- Step 3: Machine Selection -->
+          <mat-step [stepControl]="machineFormGroup" label="Select Machine">
             <div class="h-full flex flex-col p-6">
-              <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0 overflow-y-auto">
-                <!-- Visualizer Column -->
-                <div class="lg:col-span-2 bg-[var(--mat-sys-surface-variant)] rounded-2xl border border-[var(--theme-border)] overflow-hidden relative group">
-                  <app-deck-visualizer [layoutData]="deckData()" class="w-full h-full block"></app-deck-visualizer>
-                  
-                  <!-- Legend overlay on hover or always -->
-                  <div class="absolute bottom-4 left-4 right-4 flex justify-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                     <div class="flex items-center gap-2 bg-surface-elevated/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-[var(--theme-border)]">
-                        <span class="w-3 h-3 rounded-full bg-primary"></span> <span class="text-xs text-sys-text-primary">Target</span>
-                    </div>
+              <div class="flex-1 overflow-y-auto">
+                <h3 class="text-xl font-bold text-sys-text-primary mb-6 flex items-center gap-3">
+                   <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+                     <mat-icon>precision_manufacturing</mat-icon>
+                   </div>
+                   Select Execution Machine
+                   <span class="flex-1"></span>
+                   <app-hardware-discovery-button></app-hardware-discovery-button>
+                </h3>
+
+                @if (isLoadingCompatibility()) {
+                  <div class="flex flex-col items-center justify-center py-12">
+                    <mat-spinner diameter="40"></mat-spinner>
+                    <p class="mt-4 text-sys-text-tertiary">Checking compatibility...</p>
                   </div>
-                </div>
-
-                <!-- Info Column -->
-                <div class="flex flex-col gap-6 overflow-y-auto">
-                   <!-- Status Card -->
-                   <div class="bg-surface-elevated border border-[var(--theme-border)] rounded-2xl p-6" 
-                        [class.border-green-500-30]="configuredAssets()"
-                        [class.bg-green-500-05]="configuredAssets()">
-                     <h3 class="text-lg font-bold text-sys-text-primary mb-4 flex items-center gap-2">
-                       <mat-icon [class.text-green-400]="configuredAssets()" [class.text-amber-400]="!configuredAssets()">
-                         {{ configuredAssets() ? 'check_circle' : 'warning' }}
-                       </mat-icon>
-                       Configuration Status
-                     </h3>
-                     
-                     <p class="text-sys-text-secondary mb-6 text-sm">
-                       {{ configuredAssets() ? 'All required assets are mapped and ready.' : 'Please configure the deck layout before proceeding.' }}
-                     </p>
-
-                     <button mat-stroked-button class="w-full !py-6 !rounded-xl !border-primary/50 !text-primary hover:!bg-primary/10 transition-colors" (click)="openGuidedSetup()" [disabled]="executionService.isRunning()">
-                        <mat-icon>settings_suggest</mat-icon> {{ configuredAssets() ? 'Reconfigure Deck' : 'Configure Deck' }}
-                     </button>
-                   </div>
-
-                   <!-- Requirements List -->
-                   <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-6 flex-1">
-                      <h4 class="text-sys-text-primary font-medium mb-4 text-sm uppercase tracking-wider opacity-70">Required Assets</h4>
-                      <div class="flex flex-col gap-3">
-                        @for (req of selectedProtocol()?.assets; track req.accession_id) {
-                          <div class="flex items-center justify-between p-3 rounded-xl bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)]">
-                             <div class="flex flex-col">
-                               <span class="text-sys-text-primary font-medium text-sm">{{ req.name }}</span>
-                               <span class="text-xs text-sys-text-tertiary">{{ req.type_hint_str || 'Unknown Type' }}</span>
-                             </div>
-                             
-                             @if (configuredAssets()?.[req.accession_id]) {
-                               <div class="w-8 h-8 rounded-full bg-green-400/20 flex items-center justify-center text-green-400">
-                                 <mat-icon class="!w-5 !h-5 !text-[20px]">check</mat-icon>
-                               </div>
-                             } @else {
-                               <div class="w-8 h-8 rounded-full bg-amber-400/20 flex items-center justify-center text-amber-400 animate-pulse">
-                                  <mat-icon class="!w-5 !h-5 !text-[20px]">question_mark</mat-icon>
-                               </div>
-                             }
-                          </div>
-                        }
-                      </div>
-                   </div>
-                </div>
+                } @else {
+                  <app-machine-selection
+                    [machines]="compatibilityData()"
+                    [selected]="selectedMachine()"
+                    (select)="onMachineSelect($event)"
+                  ></app-machine-selection>
+                }
               </div>
 
               <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
-                <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
-                <button mat-flat-button color="primary" matStepperNext [disabled]="!configuredAssets()" class="!rounded-xl !px-8 !py-6">Continue</button>
+                 <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
+                 <button mat-flat-button color="primary" matStepperNext [disabled]="!selectedMachine()" class="!rounded-xl !px-8 !py-6">Continue</button>
               </div>
+            </div>
+          </mat-step>
+
+          <!-- Step 4: Deck Setup (Inline Wizard) -->
+          <mat-step label="Deck Setup">
+            <div class="h-full flex flex-col">
+              @if (selectedProtocol()) {
+                <app-deck-setup-wizard
+                  [data]="{ protocol: selectedProtocol()!, deckResource: deckData()?.resource || null }"
+                  (setupComplete)="onDeckSetupComplete()"
+                  (setupSkipped)="onDeckSetupSkipped()">
+                </app-deck-setup-wizard>
+              } @else {
+                <div class="flex flex-col items-center justify-center h-full text-sys-text-tertiary">
+                  <mat-icon class="!w-16 !h-16 !text-[64px] opacity-20 mb-4">build</mat-icon>
+                  <p>Select a protocol first to configure the deck.</p>
+                </div>
+              }
             </div>
           </mat-step>
 
@@ -538,35 +491,32 @@ export class RunProtocolComponent implements OnInit {
   // Computed Deck Data
   deckData = computed(() => {
     const protocol = this.selectedProtocol();
+    const machineCompat = this.selectedMachine();
     if (!protocol) return null;
-    return this.deckGenerator.generateDeckForProtocol(protocol, this.configuredAssets() || undefined);
+    return this.deckGenerator.generateDeckForProtocol(
+      protocol,
+      this.configuredAssets() || undefined,
+      machineCompat?.machine
+    );
   });
 
   // Inject global store for simulation mode
   store = inject(AppStore);
 
-  openGuidedSetup() {
-    const protocol = this.selectedProtocol();
-    if (!protocol) return;
+  // WizardStateService for inline deck setup
+  wizardState = inject(WizardStateService);
 
-    // Use DeckSetupWizardComponent
-    const dialogRef = this.dialog.open(DeckSetupWizardComponent, {
-      data: {
-        protocol,
-        deckResource: this.deckData()?.resource
-      },
-      width: '90vw',
-      height: '90vh',
-      maxWidth: '1200px',
-      disableClose: true
-    });
+  /** Called when inline deck setup wizard completes */
+  onDeckSetupComplete() {
+    // Get asset map from wizard state
+    const assetMap = this.wizardState.getAssetMap();
+    this.configuredAssets.set(assetMap);
+  }
 
-    dialogRef.afterClosed().subscribe(result => {
-      // Result from DeckSetupWizard is { assetMap: ... }
-      if (result && result.assetMap) {
-        this.configuredAssets.set(result.assetMap);
-      }
-    });
+  /** Called when inline deck setup wizard is skipped */
+  onDeckSetupSkipped() {
+    // Allow proceeding even if skipped
+    this.configuredAssets.set({});
   }
 
   // Computed

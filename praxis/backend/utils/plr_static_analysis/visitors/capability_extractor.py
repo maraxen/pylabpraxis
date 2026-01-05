@@ -361,6 +361,12 @@ class CapabilityExtractorVisitor(cst.CSTVisitor):
     if attr_name == "temperature_controlled" and attr_value is True:
       self._signals["temperature_controlled"] = True
 
+    # === Itemized Resource dimensions (plates, tip racks, etc.) ===
+    if attr_name == "num_items_x" and attr_value is not None:
+      self.capabilities.num_items_x = int(attr_value)
+    if attr_name == "num_items_y" and attr_value is not None:
+      self.capabilities.num_items_y = int(attr_value)
+
   def finalize(self) -> DiscoveredCapabilities:
     """Finalize and return the discovered capabilities.
 

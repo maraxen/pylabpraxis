@@ -7,6 +7,7 @@ import { Machine, MachineCreate, Resource, ResourceCreate, MachineDefinition, Re
 import { ModeService } from '../../../core/services/mode.service';
 import { SqliteService } from '../../../core/services/sqlite.service';
 import { ResourceDefinitionCatalog } from '../../../core/db/schema';
+import { inferCategory } from '../utils/category-inference';
 
 // Facet item with value and count
 export interface FacetItem {
@@ -41,14 +42,50 @@ export class AssetService {
 
   // --- Machines ---
   getMachines(): Observable<Machine[]> {
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.machines.pipe(
+        map(repo => repo.findAll().map(m => ({
+          ...m,
+          status: m.status || 'OFFLINE',
+          machine_type: m.machine_category,
+          name: (m as any).name || 'Unknown',
+          fqn: (m as any).fqn || ''
+        }) as unknown as Machine))
+      );
+    }
     return this.http.get<Machine[]>(`${this.API_URL}/machines`);
   }
 
   createMachine(machine: MachineCreate): Observable<Machine> {
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.machines.pipe(
+        map(repo => {
+          const newMachine: Machine = {
+            ...machine,
+            accession_id: crypto.randomUUID(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            status: 'AVAILABLE' as any,
+            asset_type: 'MACHINE',
+            // Simple FQN generation
+            fqn: `machines.${machine.name.replace(/\s+/g, '_').toLowerCase()}`,
+          };
+          repo.create(newMachine as any);
+          return newMachine;
+        })
+      );
+    }
     return this.http.post<Machine>(`${this.API_URL}/machines`, machine);
   }
 
   deleteMachine(accessionId: string): Observable<void> {
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.machines.pipe(
+        map(repo => {
+          repo.delete(accessionId);
+        })
+      );
+    }
     return this.http.delete<void>(`${this.API_URL}/machines/${accessionId}`);
   }
 
@@ -58,23 +95,75 @@ export class AssetService {
 
   // --- Resources ---
   getResources(): Observable<Resource[]> {
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.resources.pipe(
+        map(repo => repo.findAll().map(r => ({
+          ...r,
+          status: r.status || 'available',
+          name: (r as any).name || 'Unknown',
+          fqn: (r as any).fqn || ''
+        }) as unknown as Resource))
+      );
+    }
     return this.http.get<Resource[]>(`${this.API_URL}/resources`);
   }
 
   createResource(resource: ResourceCreate): Observable<Resource> {
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.resources.pipe(
+        map(repo => {
+          const newResource: Resource = {
+            ...resource,
+            accession_id: crypto.randomUUID(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            status: 'available' as any,
+            asset_type: 'RESOURCE',
+            // Simple FQN generation
+            fqn: `resources.${resource.name.replace(/\s+/g, '_').toLowerCase()}`,
+          };
+          repo.create(newResource as any);
+          return newResource;
+        })
+      );
+    }
     return this.http.post<Resource>(`${this.API_URL}/resources`, resource);
   }
 
   deleteResource(accessionId: string): Observable<void> {
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.resources.pipe(
+        map(repo => {
+          repo.delete(accessionId);
+        })
+      );
+    }
     return this.http.delete<void>(`${this.API_URL}/resources/${accessionId}`);
   }
 
   // --- Definitions (Discovery) ---
   getMachineDefinitions(): Observable<MachineDefinition[]> {
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.machineDefinitions.pipe(
+        map(repo => repo.findAll().map(d => ({
+          ...d,
+          name: (d as any).name || 'Unknown Definition',
+          compatible_backends: Array.isArray(d.compatible_backends) ? d.compatible_backends : []
+        }) as unknown as MachineDefinition))
+      );
+    }
     return this.http.get<MachineDefinition[]>(`${this.API_URL}/machines/definitions?type=machine`);
   }
 
   getResourceDefinitions(): Observable<ResourceDefinition[]> {
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.resourceDefinitions.pipe(
+        map(repo => repo.findAll().map(d => ({
+          ...d,
+          name: (d as any).name || 'Unknown Definition'
+        }) as unknown as ResourceDefinition))
+      );
+    }
     return this.http.get<ResourceDefinition[]>(`${this.API_URL}/resources/definitions?type=resource`);
   }
 
@@ -148,6 +237,56 @@ export class AssetService {
 
   // --- Facets for dynamic filtering ---
   getFacets(filters: Partial<ActiveFilters> = {}): Observable<ResourceFacets> {
+    // Browser mode: compute facets from resource definitions client-side
+    if (this.modeService.isBrowserMode()) {
+      return this.getResourceDefinitions().pipe(
+        map(definitions => {
+          // Apply filters first
+          let filtered = definitions;
+          // Pre-calculate categories for filtering
+          const defsWithCat = filtered.map(d => ({ ...d, _inferredCategory: inferCategory(d) }));
+
+          if (filters.plr_category?.length) {
+            filtered = defsWithCat.filter(d => filters.plr_category!.includes(d._inferredCategory));
+          }
+          if (filters.vendor?.length) {
+            filtered = filtered.filter(d => filters.vendor!.includes(d.vendor || ''));
+          }
+          if (filters.num_items?.length) {
+            filtered = filtered.filter(d => filters.num_items!.includes(d.num_items as any));
+          }
+          if (filters.plate_type?.length) {
+            filtered = filtered.filter(d => filters.plate_type!.includes(d.plate_type || ''));
+          }
+
+          // Compute facets from filtered definitions
+          const countBy = <T extends string | number | undefined>(items: T[]): FacetItem[] => {
+            const counts = new Map<string | number, number>();
+            items.forEach(item => {
+              if (item !== undefined && item !== null && item !== '') {
+                const count = counts.get(item) || 0;
+                counts.set(item, count + 1);
+              }
+            });
+            return Array.from(counts.entries())
+              .map(([value, count]) => ({ value, count }))
+              .sort((a, b) => b.count - a.count);
+          };
+
+          // Use ALL definitions for plr_category (base facet), filtered for others
+          return {
+            plr_category: countBy(definitions.map(d => inferCategory(d))),
+            vendor: countBy(filtered.map(d => d.vendor)),
+            num_items: countBy(filtered.map(d => d.num_items)),
+            plate_type: countBy(filtered.map(d => d.plate_type)),
+            well_volume_ul: countBy(filtered.map(d => d.well_volume_ul)),
+            tip_volume_ul: countBy(filtered.map(d => d.tip_volume_ul)),
+          };
+        })
+      );
+    }
+
+    // Backend mode: use HTTP API
     let params = {};
     // Map active filters to query params
     // Only send the first value for now as backend query logic handles single values well for faceting

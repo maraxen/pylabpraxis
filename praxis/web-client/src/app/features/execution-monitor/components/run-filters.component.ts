@@ -36,96 +36,27 @@ export interface FilterState {
     MatButtonModule,
     MatButtonToggleModule,
   ],
-  template: `
-    <div class="filters-container flex flex-wrap items-center gap-4 p-4 rounded-xl border border-[var(--theme-border)] bg-surface-container mb-4">
-      <!-- Status Filter -->
-      <div class="filter-group">
-        <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-2 block">Status</label>
-        <mat-chip-listbox
-          [multiple]="true"
-          [(ngModel)]="selectedStatuses"
-          (change)="onFilterChange()"
-          aria-label="Filter by status">
-          @for (status of allStatuses; track status) {
-            <mat-chip-option [value]="status" [class]="getStatusChipClass(status)">
-              {{ status }}
-            </mat-chip-option>
-          }
-        </mat-chip-listbox>
-      </div>
-
-      <!-- Protocol Filter -->
-      <div class="filter-group min-w-[200px]">
-        <mat-form-field appearance="outline" class="w-full dense-field">
-          <mat-label>Protocol</mat-label>
-          <mat-select
-            [multiple]="true"
-            [(ngModel)]="selectedProtocolIds"
-            (selectionChange)="onFilterChange()"
-            placeholder="All protocols">
-            <!-- <mat-option [value]="null">All protocols</mat-option> -->
-            @for (protocol of protocols(); track protocol.accession_id) {
-              <mat-option [value]="protocol.accession_id">
-                {{ protocol.name }}
-              </mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-      </div>
-
-      <!-- Sort By -->
-      <div class="filter-group min-w-[160px]">
-        <mat-form-field appearance="outline" class="w-full dense-field">
-          <mat-label>Sort by</mat-label>
-          <mat-select
-            [(ngModel)]="sortBy"
-            (selectionChange)="onFilterChange()">
-            <mat-option value="created_at">Date Created</mat-option>
-            <mat-option value="start_time">Start Time</mat-option>
-            <mat-option value="status">Status</mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
-
-      <!-- Sort Order Toggle -->
-      <div class="filter-group">
-        <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-2 block">Order</label>
-        <mat-button-toggle-group
-          [(ngModel)]="sortOrder"
-          (change)="onFilterChange()"
-          aria-label="Sort order">
-          <mat-button-toggle value="desc" aria-label="Newest first">
-            <mat-icon>arrow_downward</mat-icon>
-          </mat-button-toggle>
-          <mat-button-toggle value="asc" aria-label="Oldest first">
-            <mat-icon>arrow_upward</mat-icon>
-          </mat-button-toggle>
-        </mat-button-toggle-group>
-      </div>
-
-      <!-- Clear Filters -->
-      @if (hasActiveFilters()) {
-        <button
-          mat-stroked-button
-          (click)="clearFilters()"
-          class="ml-auto"
-          aria-label="Clear all filters">
-          <mat-icon>filter_alt_off</mat-icon>
-          Clear
-        </button>
-      }
-    </div>
-  `,
+  templateUrl: './run-filters.component.html',
   styles: [`
     .filters-container {
-      container-type: inline-size;
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      align-items: center;
+      gap: 1rem;
+      overflow-x: auto !important;
+      padding-bottom: 0.5rem;
+      width: 100%;
+      
+      scrollbar-width: thin;
+      &::-webkit-scrollbar {
+        height: 4px;
+      }
     }
 
     .filter-group {
       flex-shrink: 0;
     }
 
-    /* Dense form fields */
     :host ::ng-deep .dense-field {
       .mat-mdc-form-field-subscript-wrapper {
         display: none;
@@ -138,7 +69,6 @@ export interface FilterState {
       }
     }
 
-    /* Status chip colors */
     .status-running {
       --mdc-chip-elevated-selected-container-color: rgba(34, 197, 94, 0.2);
       --mdc-chip-selected-label-text-color: rgb(34, 197, 94);
@@ -166,17 +96,6 @@ export interface FilterState {
     .status-paused {
       --mdc-chip-elevated-selected-container-color: rgba(234, 179, 8, 0.2);
       --mdc-chip-selected-label-text-color: rgb(234, 179, 8);
-    }
-
-    /* Responsive: stack on small containers */
-    @container (max-width: 600px) {
-      .filters-container {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .filter-group {
-        width: 100%;
-      }
     }
   `],
 })

@@ -11,39 +11,39 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { Machine } from '../../models/asset.models';
 
 export type AssetSortOption =
-    | 'name'
-    | 'category'
-    | 'created_at'
-    //   | 'last_used_at' 
-    | 'status'
-    | 'machine_location_accession_id'
-    | 'workcell_accession_id';
+  | 'name'
+  | 'category'
+  | 'created_at'
+  //   | 'last_used_at' 
+  | 'status'
+  | 'machine_location_accession_id'
+  | 'workcell_accession_id';
 
 export interface AssetFilterState {
-    status: string[];
-    category: string[];
-    machine_id: string | null;
-    workcell_id: string | null;
-    maintenance_due: boolean;
-    sort_by: AssetSortOption;
-    sort_order: 'asc' | 'desc';
+  status: string[];
+  category: string[];
+  machine_id: string | null;
+  workcell_id: string | null;
+  maintenance_due: boolean;
+  sort_by: AssetSortOption;
+  sort_order: 'asc' | 'desc';
 }
 
 @Component({
-    selector: 'app-asset-filters',
-    standalone: true,
-    imports: [
-        CommonModule,
-        FormsModule,
-        MatSelectModule,
-        MatFormFieldModule,
-        MatChipsModule,
-        MatIconModule,
-        MatButtonModule,
-        MatButtonToggleModule,
-        MatSlideToggleModule
-    ],
-    template: `
+  selector: 'app-asset-filters',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatSelectModule,
+    MatFormFieldModule,
+    MatChipsModule,
+    MatIconModule,
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatSlideToggleModule
+  ],
+  template: `
     <div class="filters-container flex flex-wrap items-center gap-4 p-4 rounded-xl border border-[var(--theme-border)] bg-surface-container mb-4">
       
       <!-- Status Filter -->
@@ -118,6 +118,7 @@ export interface AssetFilterState {
       <div class="filter-group">
         <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-2 block">Order</label>
         <mat-button-toggle-group
+          hideSingleSelectionIndicator
           [(ngModel)]="sortOrder"
           (change)="onFilterChange()"
           aria-label="Sort order">
@@ -153,7 +154,7 @@ export interface AssetFilterState {
       }
     </div>
   `,
-    styles: [`
+  styles: [`
     .filters-container { container-type: inline-size; }
     .filter-group { flex-shrink: 0; }
     
@@ -171,54 +172,54 @@ export interface AssetFilterState {
   `]
 })
 export class AssetFiltersComponent {
-    categories = input<string[]>([]);
-    machines = input<Machine[]>([]);
-    showMachineFilter = input<boolean>(false);
+  categories = input<string[]>([]);
+  machines = input<Machine[]>([]);
+  showMachineFilter = input<boolean>(false);
 
-    filtersChange = output<AssetFilterState>();
+  filtersChange = output<AssetFilterState>();
 
-    selectedStatuses: string[] = [];
-    selectedCategories: string[] = [];
-    selectedMachineId: string | null = null;
-    selectedWorkcellId: string | null = null;
-    maintenanceDue = false;
-    sortBy: AssetSortOption = 'created_at';
-    sortOrder: 'asc' | 'desc' = 'desc';
+  selectedStatuses: string[] = [];
+  selectedCategories: string[] = [];
+  selectedMachineId: string | null = null;
+  selectedWorkcellId: string | null = null;
+  maintenanceDue = false;
+  sortBy: AssetSortOption = 'created_at';
+  sortOrder: 'asc' | 'desc' = 'desc';
 
-    onFilterChange(): void {
-        this.filtersChange.emit(this.getCurrentFilters());
-    }
+  onFilterChange(): void {
+    this.filtersChange.emit(this.getCurrentFilters());
+  }
 
-    getCurrentFilters(): AssetFilterState {
-        return {
-            status: this.selectedStatuses,
-            category: this.selectedCategories,
-            machine_id: this.selectedMachineId,
-            workcell_id: this.selectedWorkcellId,
-            maintenance_due: this.maintenanceDue,
-            sort_by: this.sortBy,
-            sort_order: this.sortOrder
-        };
-    }
+  getCurrentFilters(): AssetFilterState {
+    return {
+      status: this.selectedStatuses,
+      category: this.selectedCategories,
+      machine_id: this.selectedMachineId,
+      workcell_id: this.selectedWorkcellId,
+      maintenance_due: this.maintenanceDue,
+      sort_by: this.sortBy,
+      sort_order: this.sortOrder
+    };
+  }
 
-    hasActiveFilters(): boolean {
-        return (
-            this.selectedStatuses.length > 0 ||
-            this.selectedCategories.length > 0 ||
-            this.selectedMachineId !== null ||
-            this.maintenanceDue ||
-            this.sortBy !== 'created_at' ||
-            this.sortOrder !== 'desc'
-        );
-    }
+  hasActiveFilters(): boolean {
+    return (
+      this.selectedStatuses.length > 0 ||
+      this.selectedCategories.length > 0 ||
+      this.selectedMachineId !== null ||
+      this.maintenanceDue ||
+      this.sortBy !== 'created_at' ||
+      this.sortOrder !== 'desc'
+    );
+  }
 
-    clearFilters(): void {
-        this.selectedStatuses = [];
-        this.selectedCategories = [];
-        this.selectedMachineId = null;
-        this.maintenanceDue = false;
-        this.sortBy = 'created_at';
-        this.sortOrder = 'desc';
-        this.onFilterChange();
-    }
+  clearFilters(): void {
+    this.selectedStatuses = [];
+    this.selectedCategories = [];
+    this.selectedMachineId = null;
+    this.maintenanceDue = false;
+    this.sortBy = 'created_at';
+    this.sortOrder = 'desc';
+    this.onFilterChange();
+  }
 }

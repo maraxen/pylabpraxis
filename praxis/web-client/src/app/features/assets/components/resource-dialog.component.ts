@@ -14,6 +14,7 @@ import { AssetService, ResourceFacets, FacetItem } from '../services/asset.servi
 import { ResourceStatus, ResourceDefinition, ActiveFilters } from '../models/asset.models';
 import { Observable, map, startWith, of, combineLatest, BehaviorSubject, forkJoin, switchMap, debounceTime, finalize, tap, catchError, shareReplay } from 'rxjs';
 import { FacetChipCarouselComponent, ChipOption } from '../../../shared/components/facet-chip-carousel.component';
+import { inferCategory } from '../utils/category-inference';
 
 @Component({
   selector: 'app-resource-dialog',
@@ -427,8 +428,12 @@ export class ResourceDialogComponent implements OnInit {
         return inverted ? !match : match;
       };
 
+
       if (filters.plr_category.length > 0) {
-        filtered = filtered.filter(d => d.plr_category && filters.plr_category.includes(d.plr_category));
+        filtered = filtered.filter(d => {
+          const category = inferCategory(d);
+          return category && filters.plr_category.includes(category);
+        });
       }
 
       filtered = filtered.filter(d => checkFilter(d.vendor, filters.vendor, this.invertedFilters['vendor']));

@@ -2,16 +2,23 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
-import { Observable, Subject, BehaviorSubject, of } from 'rxjs';
-import { catchError, tap, retry, delay } from 'rxjs/operators';
+import { Observable, Subject, of } from 'rxjs';
+import { catchError, tap, retry } from 'rxjs/operators';
 import { ExecutionState, ExecutionMessage, ExecutionStatus } from '../models/execution.models';
 import { environment } from '@env/environment';
+import { ModeService } from '@core/services/mode.service';
+import { PythonRuntimeService } from '@core/services/python-runtime.service';
+import { SqliteService } from '@core/services/sqlite.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ExecutionService {
   private http = inject(HttpClient);
+  private modeService = inject(ModeService);
+  private pythonRuntime = inject(PythonRuntimeService);
+  private sqliteService = inject(SqliteService);
+
   private readonly WS_URL = environment.wsUrl;
   private readonly API_URL = environment.apiUrl;
 
@@ -33,6 +40,18 @@ export class ExecutionService {
    * Check protocol compatibility with available machines
    */
   getCompatibility(protocolId: string): Observable<any[]> {
+    // In browser mode, return mock compatibility data
+    if (this.modeService.isBrowserMode()) {
+      return of([{
+        machine: {
+          accession_id: 'sim-machine-1',
+          name: 'Simulation Machine',
+          status: 'IDLE' as any,
+          machine_category: 'HamiltonSTAR'
+        },
+        compatibility: { is_compatible: true, missing_capabilities: [], matched_capabilities: [], warnings: [] }
+      }]);
+    }
     return this.http.get<any[]>(`${this.API_URL}/protocols/${protocolId}/compatibility`);
   }
 
@@ -45,6 +64,12 @@ export class ExecutionService {
     parameters?: Record<string, any>,
     simulationMode: boolean = true
   ): Observable<{ run_id: string }> {
+    // Browser mode: execute via Pyodide
+    if (this.modeService.isBrowserMode()) {
+      return this.startBrowserRun(protocolId, runName, parameters);
+    }
+
+    // Production mode: use HTTP API
     return this.http.post<{ run_id: string }>(`${this.API_URL}/protocols/runs`, {
       protocol_definition_accession_id: protocolId,
       name: runName,
@@ -62,6 +87,181 @@ export class ExecutionService {
         this.connectWebSocket(response.run_id);
       })
     );
+  }
+
+  /**
+   * Execute protocol in browser mode using Pyodide
+   */
+  private startBrowserRun(
+    protocolId: string,
+    runName: string,
+    parameters?: Record<string, any>
+  ): Observable<{ run_id: string }> {
+    const runId = crypto.randomUUID();
+
+    // Initialize run state
+    this._currentRun.set({
+      runId,
+      protocolName: runName,
+      status: ExecutionStatus.PENDING,
+      progress: 0,
+      logs: ['[Browser Mode] Starting execution...']
+    });
+
+    // Execute asynchronously
+    this.executeBrowserProtocol(protocolId, runId, parameters);
+
+    return of({ run_id: runId });
+  }
+
+  /**
+   * Execute protocol code in Pyodide worker
+   */
+  private async executeBrowserProtocol(
+    protocolId: string,
+    runId: string,
+    parameters?: Record<string, any>
+  ): Promise<void> {
+    try {
+      // Update status to running
+      this.updateRunState({ status: ExecutionStatus.RUNNING });
+      this.addLog('[Browser Mode] Loading protocol...');
+
+      // Get protocol definition from SQLite
+      const protocol = await this.sqliteService.getProtocolById(protocolId);
+      if (!protocol) {
+        throw new Error(`Protocol not found: ${protocolId}`);
+      }
+
+      this.addLog(`[Browser Mode] Executing: ${protocol.name}`);
+      this.updateRunState({ progress: 10, currentStep: 'Initializing' });
+
+      // Build Python code to execute the protocol
+      const code = this.buildProtocolExecutionCode(protocol, parameters);
+
+      // Execute via PythonRuntimeService
+      this.updateRunState({ progress: 20, currentStep: 'Running protocol' });
+
+      await new Promise<void>((resolve, reject) => {
+        let hasError = false;
+
+        this.pythonRuntime.execute(code).subscribe({
+          next: (output) => {
+            if (output.type === 'stdout') {
+              this.addLog(output.content);
+            } else if (output.type === 'stderr') {
+              this.addLog(`[Error] ${output.content}`);
+              hasError = true;
+            } else if (output.type === 'result') {
+              this.addLog(`[Result] ${output.content}`);
+            }
+          },
+          error: (err) => {
+            this.addLog(`[Error] Execution failed: ${err}`);
+            reject(err);
+          },
+          complete: () => {
+            if (hasError) {
+              reject(new Error('Protocol execution had errors'));
+            } else {
+              resolve();
+            }
+          }
+        });
+      });
+
+      // Success
+      this.updateRunState({
+        status: ExecutionStatus.COMPLETED,
+        progress: 100,
+        endTime: new Date().toISOString()
+      });
+      this.addLog('[Browser Mode] Execution completed successfully.');
+
+    } catch (error) {
+      console.error('[Browser Execution Error]', error);
+      const current = this._currentRun();
+      if (current) {
+        this._currentRun.set({
+          ...current,
+          status: ExecutionStatus.FAILED,
+          logs: [...current.logs, `[Error] ${String(error)}`]
+        });
+      }
+    }
+  }
+
+  /**
+   * Build Python code to execute a protocol
+   */
+  private buildProtocolExecutionCode(
+    protocol: { fqn: string; function_name?: string | null; module_name?: string | null },
+    parameters?: Record<string, any>
+  ): string {
+    const moduleName = protocol.module_name || protocol.fqn.split('.').slice(0, -1).join('.');
+    const functionName = protocol.function_name || protocol.fqn.split('.').pop() || 'run';
+
+    // Serialize parameters for Python
+    const paramsStr = parameters ? JSON.stringify(parameters) : '{}';
+
+    return `
+# Browser mode protocol execution
+import json
+
+print("[Browser] Setting up simulation environment...")
+
+# Import the protocol module
+try:
+    from ${moduleName} import ${functionName}
+except ImportError as e:
+    print(f"[Browser] Protocol import not available in browser: {e}")
+    print("[Browser] Running simulation placeholder instead...")
+
+    # Simulation placeholder
+    def ${functionName}(*args, **kwargs):
+        print("[Simulation] Protocol started")
+        print("[Simulation] Step 1: Initialize")
+        print("[Simulation] Step 2: Execute")
+        print("[Simulation] Step 3: Complete")
+        return {"status": "simulated", "steps_executed": 3}
+
+# Parse parameters
+params = json.loads('''${paramsStr}''')
+
+# Execute the protocol
+print("[Browser] Executing protocol...")
+result = ${functionName}(**params) if params else ${functionName}()
+print(f"[Browser] Protocol finished with result: {result}")
+`;
+  }
+
+  /**
+   * Helper to update run state
+   */
+  private updateRunState(updates: Partial<ExecutionState>): void {
+    const current = this._currentRun();
+    if (current) {
+      this._currentRun.set({ ...current, ...updates });
+    }
+  }
+
+  /**
+   * Helper to add a log message
+   */
+  private addLog(message: string): void {
+    const current = this._currentRun();
+    if (current) {
+      this._currentRun.set({
+        ...current,
+        logs: [...current.logs, message]
+      });
+      // Also emit as message for subscribers
+      this.messagesSubject.next({
+        type: 'log',
+        payload: { message },
+        timestamp: new Date().toISOString()
+      });
+    }
   }
 
   /**

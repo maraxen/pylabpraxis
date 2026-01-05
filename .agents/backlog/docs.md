@@ -46,6 +46,11 @@
 - [x] Protocol authoring guide - **✅ `docs/user-guide/protocols.md` (339 lines)**
 - [ ] Resource management guide
 - [ ] Deck configuration guide
+- [x] **Protocol Inference "Sharp Bits"** - ✅ Complete 2026-01-04 - `docs/user-guide/protocol-inference-sharp-bits.md`
+  - Type inference limitations (when explicit types are needed)
+  - Resource hierarchy assumptions
+  - Sequences and container type handling
+  - Known unsupported patterns
 
 ### Developer Guides
 

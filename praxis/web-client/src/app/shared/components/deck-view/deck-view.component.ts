@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { PlrResource, PlrState, PlrResourceDetails } from '@core/models/plr.models';
 import { DeckCatalogService } from '@features/run-protocol/services/deck-catalog.service';
-import { DeckRail } from '@features/run-protocol/models/deck-layout.models';
+import { DeckRail, DeckSlotSpec } from '@features/run-protocol/models/deck-layout.models';
 
 /** Tooltip position state */
 interface TooltipState {
@@ -20,13 +20,30 @@ interface TooltipState {
   imports: [CommonModule, DragDropModule],
   template: `
     <div class="deck-container" [style.width.px]="containerWidth()" [style.height.px]="containerHeight()">
-      <!-- Background Rails/Slots -->
+      <!-- Background Rails (rail-based decks like Hamilton) -->
       @if (resource()?.num_rails) {
          <div class="rails-container absolute inset-0 pointer-events-none">
            @for (rail of getRails(); track rail.index) {
              <div class="rail-line"
                   [style.left.px]="scaleLeft(rail.xPosition)"
                   [attr.data-rail-index]="rail.index"></div>
+           }
+         </div>
+      }
+      <!-- Slot boundaries (slot-based decks like OT-2) -->
+      @if (isSlotBasedDeck()) {
+         <div class="slots-container absolute inset-0 pointer-events-none">
+           @for (slot of getSlots(); track slot.slotNumber) {
+             <div class="slot-boundary"
+                  [style.left.px]="scaleLeft(slot.position.x)"
+                  [style.bottom.px]="scaleBottom(slot.position.y)"
+                  [style.width.px]="scaleDim(slot.dimensions.width)"
+                  [style.height.px]="scaleDim(slot.dimensions.height)"
+                  [class.slot-trash]="slot.slotType === 'trash'"
+                  [class.slot-module]="slot.slotType === 'module'"
+                  [attr.data-slot-number]="slot.slotNumber">
+               <span class="slot-label">{{ slot.label }}</span>
+             </div>
            }
          </div>
       }
@@ -54,6 +71,7 @@ interface TooltipState {
 
     <ng-template #resourceTpl let-res let-parent="parent">
       <div class="resource-node"
+           [title]="res.name"
            cdkDropList
            [cdkDropListDisabled]="!isGhost(res)"
            (cdkDropListDropped)="onDrop($event)"
@@ -244,8 +262,57 @@ interface TooltipState {
       top: 30px;
       bottom: 30px;
       width: 3px;
-      background: var(--plr-rail);
-      border-radius: 2px;
+    }
+
+    /* Slots - grid-style positioning for OT-2 style decks */
+    .slots-container {
+      z-index: 0;
+    }
+
+    .slot-boundary {
+      position: absolute;
+      border: 2px dashed var(--plr-slot-border, rgba(255, 255, 255, 0.25));
+      border-radius: 4px;
+      background: var(--plr-slot-bg, rgba(255, 255, 255, 0.03));
+      box-sizing: border-box;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 4px;
+    }
+
+    .slot-boundary.slot-trash {
+      border-color: var(--plr-slot-trash, rgba(239, 68, 68, 0.4));
+      background: var(--plr-slot-trash-bg, rgba(239, 68, 68, 0.08));
+    }
+
+    .slot-boundary.slot-module {
+      border-color: var(--plr-slot-module, rgba(147, 51, 234, 0.4));
+      background: var(--plr-slot-module-bg, rgba(147, 51, 234, 0.08));
+    }
+
+    .slot-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--plr-slot-label, rgba(255, 255, 255, 0.6));
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      letter-spacing: 0.5px;
+    }
+
+    /* Light theme slot overrides */
+    :host-context(.light-theme) .slot-boundary {
+      border-color: rgba(0, 0, 0, 0.15);
+      background: rgba(0, 0, 0, 0.02);
+    }
+
+    :host-context(.light-theme) .slot-boundary.slot-trash {
+      border-color: rgba(239, 68, 68, 0.5);
+      background: rgba(239, 68, 68, 0.05);
+    }
+
+    :host-context(.light-theme) .slot-label {
+      color: rgba(0, 0, 0, 0.5);
+      text-shadow: 0 1px 2px rgba(255, 255, 255, 0.4);
     }
 
     /* Ghost/placeholder styling */
@@ -680,7 +747,45 @@ export class DeckViewComponent {
       index: i,
       xPosition: xPos,
       width: spacing,
-      compatibleCarrierTypes: compatible
+      compatibleCarrierTypes: compatible as string[]
     }));
+  }
+
+  /**
+   * Check if the current deck is slot-based (like OT-2) vs rail-based (like Hamilton).
+   */
+  isSlotBasedDeck(): boolean {
+    const res = this.resource();
+    if (!res) return false;
+
+    // Check if deck spec defines it as slot-based
+    const spec = this.deckCatalog.getDeckDefinition(res.type);
+    if (spec?.layoutType === 'slot-based') return true;
+
+    // Fallback: Check for Opentrons-style type names
+    const type = res.type.toLowerCase();
+    return type.includes('otdeck') || type.includes('ot2') || type.includes('opentrons');
+  }
+
+  /**
+   * Get slot positions for slot-based decks.
+   * Returns slot specifications with positions and labels.
+   */
+  getSlots(): DeckSlotSpec[] {
+    const res = this.resource();
+    if (!res) return [];
+
+    const spec = this.deckCatalog.getDeckDefinition(res.type);
+    if (spec?.slots) {
+      return spec.slots;
+    }
+
+    // Fallback: try to get OT-2 spec directly if type detection didn't work
+    if (this.isSlotBasedDeck()) {
+      const otSpec = this.deckCatalog.getOTDeckSpec();
+      return otSpec?.slots || [];
+    }
+
+    return [];
   }
 }

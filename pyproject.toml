@@ -26,9 +26,11 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",
     "python-keycloak>=5.8.1",
     "libcst>=1.1.0",
-    "aiosqlite>=0.20.0",       # SQLite async driver for lite mode KV store
-    "zeroconf>=0.131.0",       # mDNS device discovery
-    "pyserial>=3.5",           # Serial port device discovery
+    "aiosqlite>=0.20.0", # SQLite async driver for lite mode KV store
+    "zeroconf>=0.131.0", # mDNS device discovery
+    "pyserial>=3.5", # Serial port device discovery
+    "jupyterlite-core>=0.7.1",
+    "jupyterlite-pyodide-kernel>=0.7.0",
 ]
 
 [tool.uv.sources]

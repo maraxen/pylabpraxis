@@ -4,6 +4,7 @@ import { Router, RouterOutlet, RouterLink, RouterLinkActive, NavigationEnd } fro
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { AppStore } from '@core/store/app.store';
 import { ModeService } from '@core/services/mode.service';
 import { BreadcrumbComponent } from '@core/components/breadcrumb/breadcrumb.component';
@@ -11,6 +12,9 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
 import { ExecutionStatus } from '@features/run-protocol/models/execution.models';
 import { filter } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { CommandRegistryService } from '@core/services/command-registry.service';
+import { HardwareDiscoveryService } from '@core/services/hardware-discovery.service';
+import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-discovery-dialog/hardware-discovery-dialog.component';
 
 @Component({
   selector: 'app-unified-shell',
@@ -360,6 +364,32 @@ export class UnifiedShellComponent {
   router = inject(Router);
   modeService = inject(ModeService);
   executionService = inject(ExecutionService);
+  private commandRegistry = inject(CommandRegistryService);
+  private hardwareDiscovery = inject(HardwareDiscoveryService);
+  private dialog = inject(MatDialog);
+
+  constructor() {
+    this.registerCommands();
+  }
+
+  private registerCommands() {
+    this.commandRegistry.registerCommand({
+      id: 'hardware.discover',
+      label: 'Discover Hardware',
+      description: 'Scan for connected devices (Serial/USB)',
+      icon: 'usb',
+      category: 'Hardware',
+      action: () => {
+        this.dialog.open(HardwareDiscoveryDialogComponent, {
+          width: '800px',
+          maxHeight: '90vh'
+        });
+        if (!this.hardwareDiscovery.isDiscovering()) {
+          this.hardwareDiscovery.discoverAll();
+        }
+      }
+    });
+  }
 
   readonly systemStatus = computed(() => {
     const isBrowser = this.modeService.isBrowserMode();

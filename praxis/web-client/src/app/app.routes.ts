@@ -86,7 +86,7 @@ export const routes: Routes = [
           },
           {
             path: 'repl',
-            loadComponent: () => import('./features/repl/repl.component').then(m => m.ReplComponent)
+            loadComponent: () => import('./features/repl/jupyterlite-repl.component').then(m => m.JupyterliteReplComponent)
           },
         ]
       },

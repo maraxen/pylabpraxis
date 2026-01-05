@@ -2,7 +2,10 @@
 
 **Priority**: Medium
 **Owner**: Full Stack
-**Last Updated**: 2025-12-30
+**Last Updated**: 2026-01-04
+
+> ⚠️ **MIGRATION PLANNED**: The xterm.js REPL will be replaced with JupyterLite.
+> See [repl_jupyterlite.md](./repl_jupyterlite.md) for the migration plan.
 
 ---
 
@@ -69,13 +72,18 @@ These items are needed to make the REPL feel production-ready:
 
 ### 4. Advanced REPL Features
 
-* [ ] **Save to Protocol / Export (P3)**:
-  * Export REPL session as protocol file.
-  * Generate `@protocol_function` decorated code from session.
+* [x] **Save to Protocol / Export (P3)**:
+  * [x] Export REPL session as protocol file.
+  * [x] Generate protocol code from session (via `/api/repl/save_session`).
 
-* [ ] **ARIA Toolbar/Menubar (P3)**:
-  * Implement Angular ARIA toolbar and menubar patterns.
-  * Ensure keyboard accessibility for all REPL actions.
+* [x] **Menu Bar (P3)**:
+  * [x] Implemented toolbar with Restart, Clear, Save Session, Toggle Variables.
+  * [x] Keyboard accessibility for all REPL actions.
+
+* [x] **Machine Availability Sidebar (P3)**:
+  * [x] Backend `get_variables()` method added.
+  * [x] WebSocket sends `VARS_UPDATE` on connect and after execution.
+  * [x] Frontend sidebar displays connected machines and variables.
 
 * [ ] **Protocol Decorator Specification (P4)**:
   * UI for specifying protocol decorator metadata from REPL.

@@ -12,12 +12,14 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { AssetService } from '../../services/asset.service';
-import { Resource, ResourceStatus, ResourceDefinition } from '../../models/asset.models';
+import { Resource, ResourceStatus, ResourceDefinition, Machine } from '../../models/asset.models';
 import { ResourceInstancesDialogComponent } from './resource-instances-dialog.component';
 import { AssetStatusChipComponent, AssetStatusType } from '../asset-status-chip/asset-status-chip.component';
 import { debounceTime, distinctUntilChanged, startWith } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { getCategoryTooltip, getPropertyTooltip } from '@shared/constants/resource-tooltips';
+import { inferCategory } from '../../utils/category-inference';
+import { ResourceFiltersComponent, ResourceFilterState } from '../resource-filters/resource-filters.component';
 
 export interface ResourceGroup {
   category: string;
@@ -55,23 +57,17 @@ export interface ResourceDefinitionGroup {
     MatInputModule,
     FormsModule,
     ReactiveFormsModule,
-    AssetStatusChipComponent
+    AssetStatusChipComponent,
+    ResourceFiltersComponent
   ],
   template: `
     <div class="resource-accordion-container">
-      <div class="accordion-header">
-        <h3>Resource Inventory</h3>
-        <mat-slide-toggle [(ngModel)]="showDiscarded" class="discard-toggle">
-          Show Discarded
-        </mat-slide-toggle>
-      </div>
-
-      <!-- Search Bar -->
-      <mat-form-field appearance="outline" class="filter-field">
-        <mat-label>Filter Resources</mat-label>
-        <input matInput [formControl]="filterControl">
-        <mat-icon matSuffix>search</mat-icon>
-      </mat-form-field>
+      <!-- Resource Filters -->
+      <app-resource-filters
+        [categories]="categories()"
+        [machines]="machines()"
+        (filtersChange)="onFiltersChange($event)">
+      </app-resource-filters>
 
       <mat-accordion multi="true">
         @for (group of filteredGroups(); track group.category) {
@@ -133,7 +129,7 @@ export interface ResourceDefinitionGroup {
                         {{ defGroup.isConsumable ? defGroup.activeCount : 1 }}
                       </span>
                     }
-                    @if (showDiscarded && defGroup.discardedCount > 0) {
+                    @if (activeFilters().show_discarded && defGroup.discardedCount > 0) {
                       <span class="count discarded" [matTooltip]="getPropertyTooltip('depleted')">
                         ({{ defGroup.discardedCount }} discarded)
                       </span>
@@ -153,7 +149,7 @@ export interface ResourceDefinitionGroup {
       @if (filteredGroups().length === 0) {
         <div class="empty-state">
           <mat-icon>inventory_2</mat-icon>
-          <p>No resources matching "{{ filterControl.value }}"</p>
+          <p>No resources matching current filters</p>
         </div>
       }
     </div>
@@ -338,20 +334,27 @@ export class ResourceAccordionComponent implements OnInit {
 
   resources = signal<Resource[]>([]);
   definitions = signal<ResourceDefinition[]>([]);
-  showDiscarded = false;
-  filterControl = new FormControl('', { nonNullable: true });
-  filterValue = signal('');
+  machines = signal<Machine[]>([]);
+
+  // Filter State
+  activeFilters = signal<ResourceFilterState>({
+    search: '',
+    status: [],
+    category: [],
+    machine_id: null,
+    show_discarded: false,
+    sort_by: 'name',
+    sort_order: 'asc'
+  });
 
   constructor() {
-    this.filterControl.valueChanges.pipe(
-      takeUntilDestroyed(),
-      debounceTime(200),
-      distinctUntilChanged(),
-      startWith('')
-    ).subscribe(value => {
-      this.filterValue.set(value);
-    });
+    // Removed old filterControl logic
   }
+
+  // Computed Categories for Filter
+  categories = computed(() => {
+    return this.resourceGroups().map(g => g.category).sort();
+  });
 
   resourceGroups = computed(() => {
     const defs = this.definitions();
@@ -361,7 +364,7 @@ export class ResourceAccordionComponent implements OnInit {
     const categoryMap = new Map<string, ResourceDefinitionGroup[]>();
 
     defs.forEach(def => {
-      const category = (def as any).plr_category || 'Other';
+      const category = inferCategory(def);
       const isConsumable = (def as any).is_consumable ?? false;
       const instances = res.filter(r => r.resource_definition_accession_id === def.accession_id);
       const activeInstances = instances.filter(r =>
@@ -433,26 +436,125 @@ export class ResourceAccordionComponent implements OnInit {
     return groups.sort((a, b) => a.category.localeCompare(b.category));
   });
 
-  // Filtered groups based on search
+  // Filtered groups based on all filters
   filteredGroups = computed(() => {
-    const filter = this.filterValue().toLowerCase();
-    if (!filter) {
-      return this.resourceGroups();
+    const filters = this.activeFilters();
+    let groups = this.resourceGroups();
+
+    // 1. Filter by Category
+    if (filters.category.length > 0) {
+      groups = groups.filter(g => filters.category.includes(g.category));
     }
 
-    return this.resourceGroups()
-      .map(group => ({
+    return groups.map(group => {
+      // Filter definitions within the group
+      const filteredDefs = group.definitions.filter(defGroup => {
+        // 2. Search (Name or Category)
+        if (filters.search) {
+          const searchLower = filters.search.toLowerCase();
+          const matchesName = defGroup.definition.name.toLowerCase().includes(searchLower);
+          const matchesCategory = group.category.toLowerCase().includes(searchLower);
+          if (!matchesName && !matchesCategory) return false;
+        }
+
+        // 3. Status Filter (check if any active instance matches the status)
+        if (filters.status.length > 0) {
+          // We check if the definition has ANY instances comprising the requested status(es)
+          // Or if the primary status matches? 
+          // Usually "Available" means "Has available stock". 
+          // But "Reserved" means "Has reserved stock"?
+          // Let's check status of instances.
+          const hasMatchingInstance = defGroup.instances.some(inst =>
+            filters.status.includes(inst.status) &&
+            // Also respect show_discarded regarding status checks if needed?
+            // Actually, if status 'depleted' is selected, we should match it even if show_discarded is false?
+            // But the filter component has show_discarded toggle.
+            // If show_discarded is FALSE, we shouldn't act on depleted/expired instances normally.
+            // But filters.status might include 'depleted' explicitly?
+            // Let's assume filter status matches strictly against instance status.
+            true
+          );
+
+          // If filtering by status, we only show definitions that HAVE instances in that status.
+          if (!hasMatchingInstance) return false;
+        }
+
+        // 4. Location (Machine) Filter
+        if (filters.machine_id) {
+          // Check if any instance is at this machine
+          const machineId = filters.machine_id;
+          // Location format: `{machineId}.xyz` or similar
+          // We need to check if instance.location starts with machineId
+          const hasMatchingLocation = defGroup.instances.some(inst =>
+            inst.location && inst.location.startsWith(machineId)
+          );
+          if (!hasMatchingLocation) return false;
+        }
+
+        // 5. Show Discarded Logic is handled in the count display/dialog mostly, 
+        // but if filtering, do we hide definitions that ONLY have discarded items if show_discarded is false?
+        // Inherently, `activeCount` excludes discarded.
+        // If a definition has 0 active count and show_discarded is false, maybe we still show it if it matches other filters?
+        // But usually "Inventory" hides empty/depleted items unless requested.
+        // Let's stick to showing definitions if they match search/status. 
+        // If no specific status filter, and activeCount is 0, do we hide?
+        // The original logic didn't hide 0-count items.
+
+        return true;
+      });
+
+      // 6. Sort Definitions
+      // Sort priority: 
+      //  - Sort groups by name/count? No, groups are by category. We act on the list inside the accordion.
+      //  - Wait, usually filters sort the flattened list or the list inside groups?
+      //  - The UI has groups. Sorting usually applies within groups OR reorders groups?
+      //  - Let's sort within groups.
+      filteredDefs.sort((a, b) => {
+        let valA: any = '';
+        let valB: any = '';
+
+        switch (filters.sort_by) {
+          case 'name':
+            valA = a.definition.name.toLowerCase();
+            valB = b.definition.name.toLowerCase();
+            break;
+          case 'count':
+            // Sort by active count
+            valA = a.activeCount;
+            valB = b.activeCount;
+            break;
+          case 'category':
+            // Sorting by category inside a category group is no-op. 
+            // Maybe we should assume this sorts the groups? 
+            // The computed `resourceGroups` sorts groups by category already.
+            // If sort_order is desc, we can reverse groups later.
+            break;
+        }
+
+        if (filters.sort_order === 'asc') {
+          return valA > valB ? 1 : -1;
+        } else {
+          return valA < valB ? 1 : -1;
+        }
+      });
+
+      return {
         ...group,
-        definitions: group.definitions.filter(def =>
-          def.definition.name.toLowerCase().includes(filter) ||
-          group.category.toLowerCase().includes(filter)
-        )
-      }))
-      .filter(group => group.definitions.length > 0)
-      .map(group => ({
-        ...group,
-        totalCount: group.definitions.length
-      }));
+        definitions: filteredDefs,
+        totalCount: filteredDefs.length
+      };
+
+    }).filter(group => group.definitions.length > 0).sort((a, b) => {
+      // Sort groups if 'category' sort is selected
+      if (filters.sort_by === 'category') {
+        if (filters.sort_order === 'asc') {
+          return a.category.localeCompare(b.category);
+        } else {
+          return b.category.localeCompare(a.category);
+        }
+      }
+      return a.category.localeCompare(b.category); // Default category sort
+    });
   });
 
   ngOnInit() {
@@ -467,6 +569,13 @@ export class ResourceAccordionComponent implements OnInit {
     this.assetService.getResourceDefinitions().subscribe(defs => {
       this.definitions.set(defs);
     });
+    this.assetService.getMachines().subscribe(machines => {
+      this.machines.set(machines);
+    });
+  }
+
+  onFiltersChange(filters: ResourceFilterState) {
+    this.activeFilters.set(filters);
   }
 
   getCategoryIcon(category: string): string {
@@ -495,7 +604,7 @@ export class ResourceAccordionComponent implements OnInit {
       data: {
         definition: defGroup.definition,
         instances: defGroup.instances,
-        showDiscarded: this.showDiscarded
+        showDiscarded: this.activeFilters().show_discarded
       }
     });
   }

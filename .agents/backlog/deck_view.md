@@ -43,9 +43,11 @@
 
 ### 3. Slot Inference for Deck Rendering
 
-- [ ] **Slot Type Inference**:
-  - Infer slot types for deck and protocol setup.
-  - Determine compatible carrier/labware combinations automatically.
+- [x] **Slot Type Inference** - ✅ COMPLETE (2026-01-03):
+  - Added `DeckLayoutType` and `DeckSlotSpec` interfaces to models
+  - Added OT-2 deck spec with 12 slot positions to `DeckCatalogService`
+  - `DeckViewComponent` renders slot boundaries with labels for slot-based decks
+  - Generic implementation works for any slot-based deck (not OT-2 specific)
 
 ### 4. Carrier Inference (Minimum Needed)
 

@@ -111,6 +111,7 @@ class MachineTypeDefinitionService(
         capabilities_config=cls.capabilities_config.model_dump()
         if cls.capabilities_config
         else None,
+        connection_config=cls.connection_config.model_dump() if cls.connection_config else None,
       )
       for key, value in update_data.model_dump(exclude_unset=True).items():
         setattr(existing_def, key, value)
@@ -126,6 +127,7 @@ class MachineTypeDefinitionService(
       capabilities=capabilities,
       compatible_backends=cls.compatible_backends,
       capabilities_config=cls.capabilities_config.model_dump() if cls.capabilities_config else None,
+      connection_config=cls.connection_config.model_dump() if cls.connection_config else None,
     )
     obj_in_data = create_data.model_dump()
     # Remove fields that are not accepted by ORM init

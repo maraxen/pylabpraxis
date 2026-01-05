@@ -113,7 +113,8 @@ import { MachineDefinitionAccordionComponent } from '../machine-definition-accor
   `,
   styles: [`
     .definitions-list-container {
-      padding: 16px;
+      /* Remove padding to allow tabs to be full width */
+      height: 100%;
     }
 
     .filter-field {
@@ -132,7 +133,12 @@ import { MachineDefinitionAccordionComponent } from '../machine-definition-accor
     }
 
     mat-tab-group {
-      margin-top: 16px;
+      /* Remove auto margin */
+      margin-top: 0;
+    }
+
+    .resource-tab-content {
+      padding: 16px;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,

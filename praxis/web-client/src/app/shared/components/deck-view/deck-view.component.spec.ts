@@ -59,7 +59,7 @@ describe('DeckViewComponent', () => {
     const childNode = Array.from(children).find(el => (el as HTMLElement).title.includes('child1')) as HTMLElement;
     expect(childNode).toBeTruthy();
     expect(childNode.style.left).toBe('5px');
-    expect(childNode.style.top).toBe('5px');
+    expect(childNode.style.bottom).toBe('5px');
     expect(childNode.style.width).toBe('10px'); // 20 * 0.5
   });
 });

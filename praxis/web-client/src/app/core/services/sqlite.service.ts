@@ -436,21 +436,18 @@ export class SqliteService {
                 assetStmt.free();
 
                 // Insert into machines table
+                // NOTE: 'machines' table does not have created_at, updated_at, properties_json, name, asset_type, fqn
+                // These are in 'assets' table.
                 const machineStmt = db.prepare(`
                     INSERT OR IGNORE INTO machines
-                    (accession_id, machine_category, status, created_at, updated_at, properties_json, name, asset_type, fqn)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (accession_id, machine_category, status, description)
+                    VALUES (?, ?, ?, ?)
                 `);
                 machineStmt.run([
                     assetId,
                     (m as any).type || 'Unknown',
                     (m as any).status || 'OFFLINE',
-                    now,
-                    now,
-                    JSON.stringify(m),
-                    m.name,
-                    'MACHINE',
-                    (m as any).fqn || `machines.${m.name.replace(/\s+/g, '_').toLowerCase()}`
+                    'Mock Machine'
                 ]);
                 machineStmt.free();
             });
@@ -477,20 +474,15 @@ export class SqliteService {
                 assetStmt.free();
 
                 // Insert into resources table
+                // NOTE: 'resources' table does not have created_at, updated_at, properties_json, name, asset_type, fqn
                 const resourceStmt = db.prepare(`
                     INSERT OR IGNORE INTO resources
-                    (accession_id, status, created_at, updated_at, properties_json, name, asset_type, fqn)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    (accession_id, status)
+                    VALUES (?, ?)
                 `);
                 resourceStmt.run([
                     assetId,
-                    (r as any).status || 'unknown',
-                    now,
-                    now,
-                    JSON.stringify(r),
-                    r.name,
-                    'RESOURCE',
-                    (r as any).fqn || `resources.${r.name.replace(/\s+/g, '_').toLowerCase()}`
+                    (r as any).status || 'unknown'
                 ]);
                 resourceStmt.free();
             });
@@ -631,6 +623,42 @@ export class SqliteService {
                 }));
             })
         );
+    }
+
+    /**
+     * Get a protocol definition by its accession ID
+     */
+    public async getProtocolById(accessionId: string): Promise<FunctionProtocolDefinition | null> {
+        return new Promise((resolve) => {
+            this.db$.pipe(take(1)).subscribe(db => {
+                try {
+                    // Try new schema first
+                    const res = db.exec(
+                        `SELECT * FROM function_protocol_definitions WHERE accession_id = '${accessionId}'`
+                    );
+                    if (res.length > 0 && res[0].values.length > 0) {
+                        const protocols = this.resultToObjects(res[0]);
+                        resolve(protocols[0] as FunctionProtocolDefinition);
+                        return;
+                    }
+
+                    // Fall back to legacy table
+                    const legacyRes = db.exec(
+                        `SELECT * FROM protocols WHERE accession_id = '${accessionId}'`
+                    );
+                    if (legacyRes.length > 0 && legacyRes[0].values.length > 0) {
+                        const protocols = this.resultToObjects(legacyRes[0]);
+                        resolve(protocols[0] as FunctionProtocolDefinition);
+                        return;
+                    }
+
+                    resolve(null);
+                } catch (error) {
+                    console.error('[SqliteService] Error fetching protocol by ID:', error);
+                    resolve(null);
+                }
+            });
+        });
     }
 
     public getProtocolRuns(): Observable<any[]> {

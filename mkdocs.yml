@@ -47,6 +47,7 @@ nav:
     - Execution Flow: architecture/execution-flow.md
   - User Guide:
     - Protocols: user-guide/protocols.md
+    - Protocol Inference Sharp Bits: user-guide/protocol-inference-sharp-bits.md
     - Assets: user-guide/assets.md
     - Hardware Discovery: user-guide/hardware-discovery.md
     - Data Visualization: user-guide/data-visualization.md
