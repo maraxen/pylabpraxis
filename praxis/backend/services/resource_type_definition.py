@@ -180,9 +180,11 @@ class ResourceTypeDefinitionService(
           return "tip_rack"
         if "carrier" in category and category != "carrier":
           # Keep specific carrier types if needed, but for now normalize if it's just vendor_carrier
-          if (
-            category.endswith("_carrier") and category not in {"plate_carrier", "tip_carrier", "tube_carrier"}
-          ):
+          if category.endswith("_carrier") and category not in {
+            "plate_carrier",
+            "tip_carrier",
+            "tube_carrier",
+          }:
             return "carrier"
       return category
     return None
@@ -241,33 +243,45 @@ class ResourceTypeDefinitionService(
       return False
 
     # Skip utility functions with common names
-    skip_patterns = (
-      "create_",
-      "calculate_",
-      "make_",
-      "get_",
-      "build_",
-      "parse_",
-      "load_",
-      "save_",
-    )
-    if any(name.lower().startswith(p) for p in skip_patterns):
-      return False
+    # Valid return types for resource factory functions
+    valid_return_types = {
+      "Plate",
+      "TipRack",
+      "Trough",
+      "Tube",
+      "TubeRack",
+      "Carrier",
+      "PlateCarrier",
+      "TipCarrier",
+      "TroughCarrier",
+      "TubeCarrier",
+      "Lid",
+      "PetriDish",
+      "Container",
+    }
 
     # Check return type annotation
     try:
       hints = inspect.signature(func).return_annotation
       if hints != inspect.Signature.empty:
-        # Check if return type is a Resource subclass
-        if inspect.isclass(hints) and issubclass(hints, Resource):
-          return True
+        if inspect.isclass(hints):
+          # Reject if return type is exactly Resource (base class)
+          if hints.__name__ == "Resource":
+            return False
+          # Accept if return type is in allowlist
+          if hints.__name__ in valid_return_types:
+            return True
+          # Also check if it's a subclass of an allowed type (optional, but robust)
+          # Only if the specific class is not exported but is a subclass
+          # For now, explicit name check is safer to avoid broad matches
     except (ValueError, TypeError):
       pass
 
-    # Check docstring for hints about return type
-    doc = inspect.getdoc(func) or ""
-    resource_indicators = ["Plate", "TipRack", "Trough", "Tube", "Lid", "Carrier", "Deck"]
-    return bool(any(ind in doc for ind in resource_indicators))
+    # Fallback to docstring check only if type hint was missing or inconclusive?
+    # No, let's rely primarily on type hints for accuracy.
+    # The docstring check below is too broad and catches utility functions.
+    # Removing fuzzy logic to prevent false positives.
+    return False
 
   def _extract_vendor_from_fqn(self, fqn: str) -> str | None:
     """Extract vendor name from FQN like 'pylabrobot.resources.corning.plates.Cor_96'."""

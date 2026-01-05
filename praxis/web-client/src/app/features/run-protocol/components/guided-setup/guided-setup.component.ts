@@ -1,4 +1,4 @@
-import { Component, Inject, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, Inject, inject, signal, computed, OnInit, Input, Output, EventEmitter, booleanAttribute, Optional } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -13,6 +13,8 @@ import { AssetService } from '@features/assets/services/asset.service';
 
 export interface GuidedSetupData {
   protocol: ProtocolDefinition;
+  deckResource?: any; // strict type would be better but avoiding import cycles
+  assetMap?: Record<string, Resource>;
 }
 
 export interface GuidedSetupResult {
@@ -33,12 +35,16 @@ export interface GuidedSetupResult {
     FormsModule
   ],
   template: `
-    <h2 mat-dialog-title>Deck Setup: {{ data.protocol.name }}</h2>
-    <mat-dialog-content>
-      <p class="description">
-        Please assign inventory items to the required assets for this protocol.
-        We've auto-selected matches where possible.
-      </p>
+    @if (!isInline) {
+      <h2 mat-dialog-title>Deck Setup: {{ data?.protocol?.name }}</h2>
+    }
+    <mat-dialog-content [class.inline-content]="isInline">
+      @if (!isInline) {
+        <p class="description">
+          Please assign inventory items to the required assets for this protocol.
+          We've auto-selected matches where possible.
+        </p>
+      }
 
       <!-- Loading state -->
       @if (isLoading()) {
@@ -149,16 +155,19 @@ export interface GuidedSetupResult {
         </div>
       }
     </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancel</button>
-      <button
-        mat-raised-button
-        color="primary"
-        [disabled]="!isValid()"
-        (click)="confirm()">
-        Confirm Setup
-      </button>
-    </mat-dialog-actions>
+
+    @if (!isInline) {
+      <mat-dialog-actions align="end">
+        <button mat-button mat-dialog-close>Cancel</button>
+        <button
+          mat-raised-button
+          color="primary"
+          [disabled]="!isValid()"
+          (click)="confirm()">
+          Confirm Setup
+        </button>
+      </mat-dialog-actions>
+    }
   `,
   styles: [`
     .description {
@@ -173,6 +182,11 @@ export interface GuidedSetupResult {
       padding: 48px 24px;
       gap: 16px;
       color: var(--sys-on-surface-variant);
+    }
+    .inline-content {
+      padding: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
     }
     .loading-state mat-icon, .empty-state mat-icon {
       font-size: 48px;
@@ -329,17 +343,22 @@ export interface GuidedSetupResult {
 })
 export class GuidedSetupComponent implements OnInit {
   private assetService = inject(AssetService);
-  private dialogRef = inject(MatDialogRef<GuidedSetupComponent>);
+  private dialogRef = inject(MatDialogRef<GuidedSetupComponent>, { optional: true });
+
+  // Inline Inputs
+  @Input() protocol: ProtocolDefinition | null = null;
+  @Input({ transform: booleanAttribute }) isInline = false;
+  @Output() selectionChange = new EventEmitter<Record<string, Resource>>();
 
   inventory = signal<Resource[]>([]);
   selectedAssets = signal<Record<string, Resource | null>>({});
   autofilledIds = signal<Set<string>>(new Set());
   isLoading = signal(true);
 
-  constructor(@Inject(MAT_DIALOG_DATA) public data: GuidedSetupData) { }
+  constructor(@Inject(MAT_DIALOG_DATA) @Optional() public data: GuidedSetupData) { }
 
   get requiredAssets(): AssetRequirement[] {
-    return this.data.protocol.assets || [];
+    return (this.protocol || this.data?.protocol)?.assets || [];
   }
 
   // Computed signals for summary
@@ -546,6 +565,16 @@ export class GuidedSetupComponent implements OnInit {
       ...current,
       [reqId]: resource
     }));
+
+    // Emit change if inline
+    if (this.isInline) {
+      if (this.isValid()) {
+        this.selectionChange.emit(this.selectedAssets() as Record<string, Resource>);
+      } else {
+        // Optionally emit partial or handle invalid state
+      }
+    }
+
     // If manually changed, remove from autofilled set
     if (this.autofilledIds().has(reqId)) {
       this.autofilledIds.update(set => {
@@ -568,7 +597,10 @@ export class GuidedSetupComponent implements OnInit {
     const result: GuidedSetupResult = {
       assetMap: this.selectedAssets() as Record<string, Resource>
     };
-    this.dialogRef.close(result);
+    this.selectionChange.emit(result.assetMap);
+    if (this.dialogRef) {
+      this.dialogRef.close(result);
+    }
   }
 
   compareResources(o1: Resource, o2: Resource): boolean {

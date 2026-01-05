@@ -10,35 +10,36 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatInputModule } from '@angular/material/input';
 import { Machine, ResourceStatus } from '../../models/asset.models';
+import { getResourceCategoryIcon } from '@shared/constants/asset-icons';
 
 export type ResourceSortOption = 'name' | 'category' | 'count';
 
 export interface ResourceFilterState {
-    search: string;
-    status: string[];
-    category: string[];
-    machine_id: string | null;
-    show_discarded: boolean;
-    sort_by: ResourceSortOption;
-    sort_order: 'asc' | 'desc';
+  search: string;
+  status: string[];
+  category: string[];
+  machine_id: string | null;
+  show_discarded: boolean;
+  sort_by: ResourceSortOption;
+  sort_order: 'asc' | 'desc';
 }
 
 @Component({
-    selector: 'app-resource-filters',
-    standalone: true,
-    imports: [
-        CommonModule,
-        FormsModule,
-        MatSelectModule,
-        MatFormFieldModule,
-        MatChipsModule,
-        MatIconModule,
-        MatButtonModule,
-        MatButtonToggleModule,
-        MatSlideToggleModule,
-        MatInputModule
-    ],
-    template: `
+  selector: 'app-resource-filters',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatSelectModule,
+    MatFormFieldModule,
+    MatChipsModule,
+    MatIconModule,
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatSlideToggleModule,
+    MatInputModule
+  ],
+  template: `
     <div class="filters-container flex flex-wrap items-center gap-4 p-4 rounded-xl border border-[var(--theme-border)] bg-surface-container mb-4">
       
       <!-- Search Input -->
@@ -67,7 +68,10 @@ export interface ResourceFilterState {
             (selectionChange)="onFilterChange()"
             placeholder="All types">
             @for (cat of categories(); track cat) {
-              <mat-option [value]="cat">{{ cat }}</mat-option>
+              <mat-option [value]="cat">
+                <mat-icon class="align-middle mr-2 text-sys-primary">{{ getCategoryIcon(cat) }}</mat-icon>
+                {{ cat }}
+              </mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -157,7 +161,7 @@ export interface ResourceFilterState {
       }
     </div>
   `,
-    styles: [`
+  styles: [`
     .filters-container { container-type: inline-size; }
     .filter-group { flex-shrink: 0; }
     
@@ -175,55 +179,59 @@ export interface ResourceFilterState {
   `]
 })
 export class ResourceFiltersComponent {
-    categories = input<string[]>([]);
-    machines = input<Machine[]>([]);
+  categories = input<string[]>([]);
+  machines = input<Machine[]>([]);
 
-    filtersChange = output<ResourceFilterState>();
+  filtersChange = output<ResourceFilterState>();
 
-    searchTerm = '';
-    selectedStatuses: string[] = [];
-    selectedCategories: string[] = [];
-    selectedMachineId: string | null = null;
-    showDiscarded = false;
-    sortBy: ResourceSortOption = 'name';
-    sortOrder: 'asc' | 'desc' = 'asc';
+  searchTerm = '';
+  selectedStatuses: string[] = [];
+  selectedCategories: string[] = [];
+  selectedMachineId: string | null = null;
+  showDiscarded = false;
+  sortBy: ResourceSortOption = 'name';
+  sortOrder: 'asc' | 'desc' = 'asc';
 
-    onFilterChange(): void {
-        this.filtersChange.emit(this.getCurrentFilters());
-    }
+  onFilterChange(): void {
+    this.filtersChange.emit(this.getCurrentFilters());
+  }
 
-    getCurrentFilters(): ResourceFilterState {
-        return {
-            search: this.searchTerm,
-            status: this.selectedStatuses,
-            category: this.selectedCategories,
-            machine_id: this.selectedMachineId,
-            show_discarded: this.showDiscarded,
-            sort_by: this.sortBy,
-            sort_order: this.sortOrder
-        };
-    }
+  getCurrentFilters(): ResourceFilterState {
+    return {
+      search: this.searchTerm,
+      status: this.selectedStatuses,
+      category: this.selectedCategories,
+      machine_id: this.selectedMachineId,
+      show_discarded: this.showDiscarded,
+      sort_by: this.sortBy,
+      sort_order: this.sortOrder
+    };
+  }
 
-    hasActiveFilters(): boolean {
-        return (
-            this.searchTerm !== '' ||
-            this.selectedStatuses.length > 0 ||
-            this.selectedCategories.length > 0 ||
-            this.selectedMachineId !== null ||
-            this.showDiscarded ||
-            this.sortBy !== 'name' || // Default sort might be name asc
-            this.sortOrder !== 'asc'
-        );
-    }
+  hasActiveFilters(): boolean {
+    return (
+      this.searchTerm !== '' ||
+      this.selectedStatuses.length > 0 ||
+      this.selectedCategories.length > 0 ||
+      this.selectedMachineId !== null ||
+      this.showDiscarded ||
+      this.sortBy !== 'name' || // Default sort might be name asc
+      this.sortOrder !== 'asc'
+    );
+  }
 
-    clearFilters(): void {
-        this.searchTerm = '';
-        this.selectedStatuses = [];
-        this.selectedCategories = [];
-        this.selectedMachineId = null;
-        this.showDiscarded = false;
-        this.sortBy = 'name';
-        this.sortOrder = 'asc';
-        this.onFilterChange();
-    }
+  clearFilters(): void {
+    this.searchTerm = '';
+    this.selectedStatuses = [];
+    this.selectedCategories = [];
+    this.selectedMachineId = null;
+    this.showDiscarded = false;
+    this.sortBy = 'name';
+    this.sortOrder = 'asc';
+    this.onFilterChange();
+  }
+
+  getCategoryIcon(cat: string): string {
+    return getResourceCategoryIcon(cat);
+  }
 }

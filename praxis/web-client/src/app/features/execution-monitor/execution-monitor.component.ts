@@ -47,7 +47,7 @@ import { RunStatsPanelComponent } from './components/run-stats-panel.component';
       <app-run-filters (filtersChange)="onFiltersChange($event)"></app-run-filters>
 
       <!-- Run History Table -->
-      <app-run-history-table [filters]="currentFilters()"></app-run-history-table>
+      <app-run-history-table [filters]="currentFilters()" data-tour-id="run-history-table"></app-run-history-table>
     </div>
   `,
 })

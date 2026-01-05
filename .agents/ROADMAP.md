@@ -103,7 +103,16 @@ Browser mode stabilization is largely complete. The focus now shifts to **new fe
 - StatefulTracedMachine extending existing tracer infrastructure
 - BoundsAnalyzer for loop iteration counts (items_x × items_y)
 - FailureModeDetector with early pruning
-- 49 comprehensive tests
+- 59 comprehensive tests
+
+### Simulation Integration & Caching (2026-01-05)
+
+- ProtocolSimulator facade class for unified access
+- SimulationService for running and caching simulations
+- Database schema: simulation_result_json, inferred_requirements_json, failure_modes_json
+- Alembic migration for simulation cache columns
+- Integration with DiscoveryService (auto-simulation on protocol discovery)
+- Pydantic models for API response (FunctionProtocolDefinitionResponse)
 
 ### Browser Mode Stabilization
 

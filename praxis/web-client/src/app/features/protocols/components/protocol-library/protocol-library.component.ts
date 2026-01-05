@@ -37,7 +37,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; /
           <h1 class="text-3xl font-bold text-sys-text-primary mb-1">Protocol Library</h1>
           <p class="text-sys-text-secondary">Manage and execute your experimental protocols</p>
         </div>
-        <button mat-flat-button class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-6 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5" (click)="uploadProtocol()" [disabled]="isLoading()">
+        <button mat-flat-button class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-6 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5" (click)="uploadProtocol()" [disabled]="isLoading()" data-tour-id="import-protocol-btn">
           <mat-icon>upload</mat-icon>
           Upload Protocol
         </button>
@@ -59,7 +59,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; /
         <div class="flex-1 overflow-auto bg-[var(--mat-sys-surface-variant)] relative">
            
           @if (filteredProtocols().length > 0) {
-            <table mat-table [dataSource]="filteredProtocols()" class="!bg-transparent w-full">
+            <table mat-table [dataSource]="filteredProtocols()" class="!bg-transparent w-full" data-tour-id="protocol-table">
               <!-- Name Column -->
               <ng-container matColumnDef="name">
                 <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Name </th>

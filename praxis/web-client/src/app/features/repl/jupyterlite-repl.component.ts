@@ -150,7 +150,7 @@ import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-di
             </div>
 
             <!-- JupyterLite iframe -->
-            <div class="repl-notebook-wrapper">
+            <div class="repl-notebook-wrapper" data-tour-id="repl-notebook">
               @if (isLoading) {
               <div class="loading-overlay">
                 <mat-spinner diameter="48"></mat-spinner>

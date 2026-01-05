@@ -33,7 +33,7 @@ interface DeckWindow {
       </aside>
 
       <!-- Main Canvas -->
-      <main class="canvas">
+      <main class="canvas" data-tour-id="visualizer-canvas">
         @if (openDecks().length === 0) {
           <div class="empty-state">
             <p>Select a deck to visualize</p>
@@ -206,10 +206,10 @@ export class VisualizerComponent {
   constructor() {
     // Load persisted state or default
     const saved = localStorage.getItem('praxis_workcell_layout');
-    
+
     // Demo data creation
     const demoDeck = this.createDemoDeck();
-    
+
     if (saved) {
       try {
         const savedState = JSON.parse(saved);
@@ -241,7 +241,7 @@ export class VisualizerComponent {
   }
 
   toggleDeck(id: string) {
-    this.decks.update(decks => 
+    this.decks.update(decks =>
       decks.map(d => d.id === id ? { ...d, visible: !d.visible } : d)
     );
   }
@@ -276,7 +276,7 @@ export class VisualizerComponent {
             children: [],
             color: 'rgba(255, 150, 100, 0.2)'
           },
-           {
+          {
             name: 'trash',
             type: 'Trash',
             location: { x: 500, y: 50, z: 0 },

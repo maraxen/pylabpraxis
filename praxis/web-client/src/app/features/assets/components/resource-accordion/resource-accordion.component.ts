@@ -18,8 +18,12 @@ import { AssetStatusChipComponent, AssetStatusType } from '../asset-status-chip/
 import { debounceTime, distinctUntilChanged, startWith } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { getCategoryTooltip, getPropertyTooltip } from '@shared/constants/resource-tooltips';
+import { getResourceCategoryIcon } from '@shared/constants/asset-icons';
 import { inferCategory } from '../../utils/category-inference';
 import { ResourceFiltersComponent, ResourceFilterState } from '../resource-filters/resource-filters.component';
+import { getUiGroup, UI_GROUP_ORDER, shouldHideCategory, ResourceUiGroup } from '../../utils/resource-category-groups';
+import { ResourceChipsComponent } from '../resource-chips/resource-chips.component';
+import { getDisplayLabel } from '../../utils/resource-name-parser';
 
 export interface ResourceGroup {
   category: string;
@@ -58,7 +62,8 @@ export interface ResourceDefinitionGroup {
     FormsModule,
     ReactiveFormsModule,
     AssetStatusChipComponent,
-    ResourceFiltersComponent
+    ResourceFiltersComponent,
+    ResourceChipsComponent
   ],
   template: `
     <div class="resource-accordion-container">
@@ -97,23 +102,21 @@ export interface ResourceDefinitionGroup {
               @for (defGroup of group.definitions; track defGroup.definition.accession_id) {
                 <div class="definition-item" (click)="openInstancesDialog(defGroup)">
                   <div class="def-info">
-                    <span class="def-name">{{ defGroup.definition.name }}</span>
+                    <span class="def-name">{{ getDisplayLabel(defGroup.definition) }}</span>
                     <!-- Prioritized chip ordering: Status (if itemized) → Count → Type flags → Vendor -->
                     <div class="def-chips">
                       @if (defGroup.isConsumable && defGroup.primaryStatus) {
                         <app-asset-status-chip [status]="defGroup.primaryStatus" [showLabel]="true" />
                       }
-                      @if (defGroup.definition.num_items) {
-                        <mat-chip class="info-chip" [matTooltip]="'Number of items/wells'">{{ defGroup.definition.num_items }} items</mat-chip>
-                      }
-                      @if (defGroup.definition.plate_type) {
-                        <mat-chip class="info-chip" [matTooltip]="'Plate type'">{{ defGroup.definition.plate_type }}</mat-chip>
-                      }
+                      
+                      <app-resource-chips 
+                        [definition]="defGroup.definition" 
+                        [showVendor]="true"
+                        [showDisplayName]="false">
+                      </app-resource-chips>
+
                       @if (defGroup.isConsumable) {
                         <mat-chip class="info-chip consumable" [matTooltip]="getPropertyTooltip('consumable')">Consumable</mat-chip>
-                      }
-                      @if (defGroup.definition.vendor) {
-                        <mat-chip class="info-chip vendor" [matTooltip]="'Vendor/Manufacturer'">{{ defGroup.definition.vendor }}</mat-chip>
                       }
                     </div>
                   </div>
@@ -361,10 +364,11 @@ export class ResourceAccordionComponent implements OnInit {
     const res = this.resources();
 
     // Group definitions by category
-    const categoryMap = new Map<string, ResourceDefinitionGroup[]>();
+    const categoryMap = new Map<ResourceUiGroup, ResourceDefinitionGroup[]>();
 
     defs.forEach(def => {
-      const category = inferCategory(def);
+      if (shouldHideCategory(def.plr_category)) return;
+      const category = getUiGroup(def.plr_category);
       const isConsumable = (def as any).is_consumable ?? false;
       const instances = res.filter(r => r.resource_definition_accession_id === def.accession_id);
       const activeInstances = instances.filter(r =>
@@ -432,8 +436,12 @@ export class ResourceAccordionComponent implements OnInit {
       });
     });
 
-    // Sort by category name
-    return groups.sort((a, b) => a.category.localeCompare(b.category));
+    // Sort by UI_GROUP_ORDER
+    return groups.sort((a, b) => {
+      const idxA = UI_GROUP_ORDER.indexOf(a.category as ResourceUiGroup);
+      const idxB = UI_GROUP_ORDER.indexOf(b.category as ResourceUiGroup);
+      return idxA - idxB;
+    });
   });
 
   // Filtered groups based on all filters
@@ -447,68 +455,82 @@ export class ResourceAccordionComponent implements OnInit {
     }
 
     return groups.map(group => {
-      // Filter definitions within the group
-      const filteredDefs = group.definitions.filter(defGroup => {
-        // 2. Search (Name or Category)
+      // Filter definitions within the group and update counts based on filters
+      const filteredDefs = group.definitions.map(defGroup => {
+        // Apply Filters to Instances first
+        let matchingInstances = defGroup.instances;
+
+        // Default: Hide discarded unless requested
+        // (Note: If specific status filter is applied, we might want to respect that, but typically discarded requires opt-in)
+        if (!filters.show_discarded) {
+          matchingInstances = matchingInstances.filter(inst =>
+            inst.status !== ResourceStatus.DEPLETED && inst.status !== ResourceStatus.EXPIRED
+          );
+        }
+
+        // Status Filter
+        if (filters.status.length > 0) {
+          matchingInstances = matchingInstances.filter(inst =>
+            filters.status.includes(inst.status)
+          );
+        }
+
+        // Location Filter (Machine)
+        if (filters.machine_id) {
+          const machineId = filters.machine_id;
+          matchingInstances = matchingInstances.filter(inst =>
+            inst.location && inst.location.startsWith(machineId)
+          );
+        }
+
+        // Search Filter (Name or Category) - Applies to Definition
         if (filters.search) {
           const searchLower = filters.search.toLowerCase();
           const matchesName = defGroup.definition.name.toLowerCase().includes(searchLower);
           const matchesCategory = group.category.toLowerCase().includes(searchLower);
-          if (!matchesName && !matchesCategory) return false;
+
+          if (!matchesName && !matchesCategory) {
+            // Check if any instance matches FQN/Asset ID? 
+            // For now, if name matches, we show ALL matching instances (filtered by status).
+            // If name doesn't match, we hide definition.
+            return null;
+          }
         }
 
-        // 3. Status Filter (check if any active instance matches the status)
-        if (filters.status.length > 0) {
-          // We check if the definition has ANY instances comprising the requested status(es)
-          // Or if the primary status matches? 
-          // Usually "Available" means "Has available stock". 
-          // But "Reserved" means "Has reserved stock"?
-          // Let's check status of instances.
-          const hasMatchingInstance = defGroup.instances.some(inst =>
-            filters.status.includes(inst.status) &&
-            // Also respect show_discarded regarding status checks if needed?
-            // Actually, if status 'depleted' is selected, we should match it even if show_discarded is false?
-            // But the filter component has show_discarded toggle.
-            // If show_discarded is FALSE, we shouldn't act on depleted/expired instances normally.
-            // But filters.status might include 'depleted' explicitly?
-            // Let's assume filter status matches strictly against instance status.
-            true
+        // If status/location filter is active, and no instances match, hide the definition
+        // EXCEPTION: If filter is only SEARCH, we usually show the definition (with 0 count if none).
+        // But if filtering by physical properties (Location/Status), 0 matches usually means hide.
+        const hasActiveFilters = filters.status.length > 0 || filters.machine_id;
+        if (hasActiveFilters && matchingInstances.length === 0) {
+          return null;
+        }
+
+        // Recalculate derived properties for the filtered view
+        const activeCount = matchingInstances.length;
+
+        // Compute primary Status for chip
+        const statusPriority: Record<string, number> = {
+          'reserved': 1, 'in_use': 2, 'depleted': 3, 'expired': 4, 'available': 5, 'unknown': 6
+        };
+
+        let primaryStatus: AssetStatusType | null = null;
+        if (defGroup.isConsumable && matchingInstances.length > 0) {
+          const sorted = [...matchingInstances].sort((a, b) =>
+            (statusPriority[a.status] || 99) - (statusPriority[b.status] || 99)
           );
-
-          // If filtering by status, we only show definitions that HAVE instances in that status.
-          if (!hasMatchingInstance) return false;
+          primaryStatus = sorted[0]?.status as AssetStatusType || null;
         }
 
-        // 4. Location (Machine) Filter
-        if (filters.machine_id) {
-          // Check if any instance is at this machine
-          const machineId = filters.machine_id;
-          // Location format: `{machineId}.xyz` or similar
-          // We need to check if instance.location starts with machineId
-          const hasMatchingLocation = defGroup.instances.some(inst =>
-            inst.location && inst.location.startsWith(machineId)
-          );
-          if (!hasMatchingLocation) return false;
-        }
+        return {
+          ...defGroup,
+          instances: matchingInstances, // instances passed to dialog will only be the matching ones
+          activeCount: activeCount,
+          primaryStatus: primaryStatus
+        } as ResourceDefinitionGroup;
 
-        // 5. Show Discarded Logic is handled in the count display/dialog mostly, 
-        // but if filtering, do we hide definitions that ONLY have discarded items if show_discarded is false?
-        // Inherently, `activeCount` excludes discarded.
-        // If a definition has 0 active count and show_discarded is false, maybe we still show it if it matches other filters?
-        // But usually "Inventory" hides empty/depleted items unless requested.
-        // Let's stick to showing definitions if they match search/status. 
-        // If no specific status filter, and activeCount is 0, do we hide?
-        // The original logic didn't hide 0-count items.
+      }).filter((d): d is ResourceDefinitionGroup => d !== null);
 
-        return true;
-      });
-
-      // 6. Sort Definitions
-      // Sort priority: 
-      //  - Sort groups by name/count? No, groups are by category. We act on the list inside the accordion.
-      //  - Wait, usually filters sort the flattened list or the list inside groups?
-      //  - The UI has groups. Sorting usually applies within groups OR reorders groups?
-      //  - Let's sort within groups.
+      // Sort Definitions
       filteredDefs.sort((a, b) => {
         let valA: any = '';
         let valB: any = '';
@@ -519,15 +541,10 @@ export class ResourceAccordionComponent implements OnInit {
             valB = b.definition.name.toLowerCase();
             break;
           case 'count':
-            // Sort by active count
             valA = a.activeCount;
             valB = b.activeCount;
             break;
           case 'category':
-            // Sorting by category inside a category group is no-op. 
-            // Maybe we should assume this sorts the groups? 
-            // The computed `resourceGroups` sorts groups by category already.
-            // If sort_order is desc, we can reverse groups later.
             break;
         }
 
@@ -579,15 +596,19 @@ export class ResourceAccordionComponent implements OnInit {
   }
 
   getCategoryIcon(category: string): string {
-    const icons: Record<string, string> = {
-      'Plate': 'grid_view',
-      'TipRack': 'view_comfy',
-      'Reservoir': 'water_drop',
-      'Trough': 'science',
-      'Carrier': 'view_module',
-      'Other': 'category'
-    };
-    return icons[category] || 'category';
+    switch (category) {
+      case 'Carriers': return 'grid_view';
+      case 'Holders': return 'biotech';
+      case 'Plates': return 'dataset';
+      case 'TipRacks': return 'apps';
+      case 'Containers': return 'science';
+      case 'Other': return 'category';
+      default: return getResourceCategoryIcon(category);
+    }
+  }
+
+  getDisplayLabel(def: ResourceDefinition): string {
+    return getDisplayLabel(def);
   }
 
   getCategoryTooltip(category: string): string {

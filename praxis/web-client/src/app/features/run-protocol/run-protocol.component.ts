@@ -27,8 +27,8 @@ import { AppStore } from '@core/store/app.store';
 import { ModeService } from '@core/services/mode.service';
 import { DeckGeneratorService } from './services/deck-generator.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-// import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component';
 import { DeckSetupWizardComponent } from './components/deck-setup-wizard/deck-setup-wizard.component';
+import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component'; // Import added
 import { MachineSelectionComponent, MachineCompatibility } from './components/machine-selection/machine-selection.component';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 import { WizardStateService } from './services/wizard-state.service';
@@ -76,7 +76,9 @@ interface FilterCategory {
     DeckVisualizerComponent,
     MachineSelectionComponent,
     HardwareDiscoveryButtonComponent,
+    HardwareDiscoveryButtonComponent,
     DeckSetupWizardComponent,
+    GuidedSetupComponent, // Added to imports
   ],
   template: `
     <div class="h-full flex flex-col p-6 max-w-screen-2xl mx-auto">
@@ -105,8 +107,9 @@ interface FilterCategory {
         <mat-stepper [linear]="true" #stepper class="!bg-transparent h-full flex flex-col">
           
           <!-- Step 1: Select Protocol -->
-          <mat-step [stepControl]="protocolFormGroup" label="Select Protocol">
-            <form [formGroup]="protocolFormGroup" class="h-full flex flex-col p-6">
+          <mat-step [stepControl]="protocolFormGroup">
+            <ng-template matStepLabel><span data-tour-id="run-step-label-protocol">Select Protocol</span></ng-template>
+            <form [formGroup]="protocolFormGroup" class="h-full flex flex-col p-6" data-tour-id="run-step-protocol">
               @if (selectedProtocol()) {
                 <div class="flex flex-col h-full items-center justify-center gap-8 overflow-y-auto">
                   <div class="max-w-2xl w-full bg-surface-elevated border border-primary/30 rounded-3xl p-8 relative overflow-hidden group shadow-2xl">
@@ -240,8 +243,9 @@ interface FilterCategory {
           </mat-step>
 
           <!-- Step 2: Configure Parameters -->
-          <mat-step [stepControl]="parametersFormGroup" label="Configure Parameters">
-            <form [formGroup]="parametersFormGroup" class="h-full flex flex-col p-6">
+          <mat-step [stepControl]="parametersFormGroup">
+            <ng-template matStepLabel><span data-tour-id="run-step-label-params">Configure Parameters</span></ng-template>
+            <form [formGroup]="parametersFormGroup" class="h-full flex flex-col p-6" data-tour-id="run-step-params">
               <div class="flex-1 overflow-y-auto max-w-3xl mx-auto w-full">
                 <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-8">
                   <h3 class="text-xl font-bold text-sys-text-primary mb-6 flex items-center gap-3">
@@ -266,8 +270,9 @@ interface FilterCategory {
           </mat-step>
 
           <!-- Step 3: Machine Selection -->
-          <mat-step [stepControl]="machineFormGroup" label="Select Machine">
-            <div class="h-full flex flex-col p-6">
+          <mat-step [stepControl]="machineFormGroup">
+            <ng-template matStepLabel><span data-tour-id="run-step-label-machine">Select Machine</span></ng-template>
+            <div class="h-full flex flex-col p-6" data-tour-id="run-step-machine">
               <div class="flex-1 overflow-y-auto">
                 <h3 class="text-xl font-bold text-sys-text-primary mb-6 flex items-center gap-3">
                    <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
@@ -299,12 +304,41 @@ interface FilterCategory {
             </div>
           </mat-step>
 
-          <!-- Step 4: Deck Setup (Inline Wizard) -->
-          <mat-step label="Deck Setup">
-            <div class="h-full flex flex-col">
+          <!-- Step 4: Asset Selection (Moved from Dialog) -->
+          <mat-step [optional]="false">
+             <ng-template matStepLabel><span data-tour-id="run-step-label-assets">Select Assets</span></ng-template>
+             <div class="h-full flex flex-col p-6" data-tour-id="run-step-assets">
+               <div class="flex-1 overflow-y-auto">
+                 <h3 class="text-xl font-bold text-sys-text-primary mb-6 flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+                      <mat-icon>inventory_2</mat-icon>
+                    </div>
+                    Asset Selection
+                 </h3>
+
+                 @if (selectedProtocol()) {
+                    <app-guided-setup 
+                      [protocol]="selectedProtocol()" 
+                      [isInline]="true"
+                      (selectionChange)="onAssetSelectionChange($event)">
+                    </app-guided-setup>
+                 }
+               </div>
+
+               <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
+                  <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
+                  <button mat-flat-button color="primary" matStepperNext [disabled]="!canProceedFromAssetSelection()" class="!rounded-xl !px-8 !py-6">Continue</button>
+               </div>
+             </div>
+          </mat-step>
+
+          <!-- Step 5: Deck Setup (Inline Wizard) -->
+          <mat-step>
+            <ng-template matStepLabel><span data-tour-id="run-step-label-deck">Deck Setup</span></ng-template>
+            <div class="h-full flex flex-col" data-tour-id="run-step-deck">
               @if (selectedProtocol()) {
                 <app-deck-setup-wizard
-                  [data]="{ protocol: selectedProtocol()!, deckResource: deckData()?.resource || null }"
+                  [data]="{ protocol: selectedProtocol()!, deckResource: deckData()?.resource || null, assetMap: configuredAssets() || {} }" 
                   (setupComplete)="onDeckSetupComplete()"
                   (setupSkipped)="onDeckSetupSkipped()">
                 </app-deck-setup-wizard>
@@ -317,7 +351,7 @@ interface FilterCategory {
             </div>
           </mat-step>
 
-          <!-- Step 4: Review & Run -->
+          <!-- Step 6: Review & Run -->
           <mat-step label="Review & Run">
              <div class="h-full flex flex-col items-center p-6 text-center max-w-2xl mx-auto overflow-y-auto">
                <div class="my-auto w-full">
@@ -487,6 +521,20 @@ export class RunProtocolComponent implements OnInit {
   searchQuery = signal('');
   activeFilters = signal<Record<string, Set<string>>>({});
   configuredAssets = signal<Record<string, any> | null>(null);
+
+  onAssetSelectionChange(assetMap: Record<string, any>) {
+    this.configuredAssets.set(assetMap);
+  }
+
+  canProceedFromAssetSelection(): boolean {
+    const protocol = this.selectedProtocol();
+    if (!protocol || !protocol.assets) return true;
+
+    // Check if configuredAssets contains all required assets
+    // This logic mimics GuidedSetupComponent's isValid but at container level
+    const currentAssets = this.configuredAssets() || {};
+    return protocol.assets.every(req => req.optional || !!currentAssets[req.accession_id]);
+  }
 
   // Computed Deck Data
   deckData = computed(() => {

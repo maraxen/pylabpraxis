@@ -1,7 +1,9 @@
 # State Snapshot Tracing
 
-**Status**: ✅ Core Implementation Complete (2026-01-05)
+**Status**: ✅ Backend Complete (2026-01-05)
 **Implementation**: `praxis/backend/core/simulation/`
+**Integration**: `praxis/backend/services/simulation_service.py`
+**Tests**: 59 tests passing
 
 ## Overview
 
@@ -70,12 +72,29 @@ graph TD
 - `praxis/backend/core/simulation/bounds_analyzer.py`
 - `tests/core/test_simulation.py`
 
-### Phase 5: Visualization & Reporting (Future)
+### Phase 5: Integration & Caching ✅
+
+- [x] Create `ProtocolSimulator` facade class
+- [x] Create `SimulationService` for running and caching results
+- [x] Integrate with `DiscoveryService` (auto-simulation on discovery)
+- [x] Database schema: simulation_result_json, inferred_requirements_json, failure_modes_json
+- [x] Alembic migration for cache columns
+- [x] Pydantic models for API responses
+- [x] Cache validation with version and source hash
+
+**Files**:
+- `praxis/backend/core/simulation/simulator.py`
+- `praxis/backend/services/simulation_service.py`
+- `praxis/backend/models/pydantic_internals/protocol.py`
+- `alembic/versions/f3a4b5c6d7e8_add_simulation_cache_to_protocol_defs.py`
+
+### Phase 6: Visualization & Reporting (Future)
 
 - [ ] Expose state history to frontend
 - [ ] Visual indication of state failures in `ExecutionMonitor`
 - [ ] "Time travel" debugging - inspect state at any operation step
-- [ ] Integration with protocol discovery for caching results
+- [ ] Surface requirements in deck setup wizard
+- [ ] Show failure mode warnings in UI
 
 ## Technical Details
 
@@ -145,13 +164,25 @@ else:
 ```
 praxis/backend/core/simulation/
 ├── __init__.py              # Module exports
-├── method_contracts.py      # PLR method contracts
+├── method_contracts.py      # PLR method contracts (40+ contracts)
 ├── state_models.py          # Boolean/Symbolic/Exact state
 ├── stateful_tracers.py      # State-aware tracers
 ├── pipeline.py              # HierarchicalSimulator
 ├── bounds_analyzer.py       # Loop iteration analysis
-└── failure_detector.py      # Failure mode enumeration
+├── failure_detector.py      # Failure mode enumeration
+└── simulator.py             # ProtocolSimulator facade
+
+praxis/backend/services/
+└── simulation_service.py    # Service for running/caching simulations
+
+praxis/backend/models/
+├── orm/protocol.py          # ORM cache columns
+└── pydantic_internals/
+    └── protocol.py          # API response models
+
+alembic/versions/
+└── f3a4b5c6d7e8_...py       # Migration for cache columns
 
 tests/core/
-└── test_simulation.py       # 49 comprehensive tests
+└── test_simulation.py       # 59 comprehensive tests
 ```

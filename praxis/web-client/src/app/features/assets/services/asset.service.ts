@@ -2,7 +2,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, from, of, firstValueFrom } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, switchMap } from 'rxjs/operators';
 import { Machine, MachineCreate, Resource, ResourceCreate, MachineDefinition, ResourceDefinition, ActiveFilters } from '../models/asset.models';
 import { ModeService } from '../../../core/services/mode.service';
 import { SqliteService } from '../../../core/services/sqlite.service';
@@ -43,23 +43,30 @@ export class AssetService {
   // --- Machines ---
   getMachines(): Observable<Machine[]> {
     if (this.modeService.isBrowserMode()) {
+      console.debug('[ASSET-DEBUG] getMachines: Browser mode, querying SqliteService.machines');
       return this.sqliteService.machines.pipe(
-        map(repo => repo.findAll().map(m => ({
-          ...m,
-          status: m.status || 'OFFLINE',
-          machine_type: m.machine_category,
-          name: (m as any).name || 'Unknown',
-          fqn: (m as any).fqn || ''
-        }) as unknown as Machine))
+        map(repo => {
+          const results = repo.findAll();
+          console.debug('[ASSET-DEBUG] getMachines: Found', results.length, 'machines in DB', results);
+          return results.map(m => ({
+            ...m,
+            status: m.status || 'OFFLINE',
+            machine_type: m.machine_category,
+            name: (m as any).name || 'Unknown',
+            fqn: (m as any).fqn || ''
+          }) as unknown as Machine);
+        })
       );
     }
     return this.http.get<Machine[]>(`${this.API_URL}/machines`);
   }
 
   createMachine(machine: MachineCreate): Observable<Machine> {
+    console.debug('[ASSET-DEBUG] createMachine called with:', machine);
     if (this.modeService.isBrowserMode()) {
+      console.debug('[ASSET-DEBUG] createMachine: Browser mode, creating via SqliteService');
       return this.sqliteService.machines.pipe(
-        map(repo => {
+        switchMap(async repo => {
           const newMachine: Machine = {
             ...machine,
             accession_id: crypto.randomUUID(),
@@ -70,7 +77,10 @@ export class AssetService {
             // Simple FQN generation
             fqn: `machines.${machine.name.replace(/\s+/g, '_').toLowerCase()}`,
           };
+          console.debug('[ASSET-DEBUG] createMachine: Calling repo.create with:', newMachine);
           repo.create(newMachine as any);
+          await this.sqliteService.save();
+          console.debug('[ASSET-DEBUG] createMachine: Machine created and saved to store');
           return newMachine;
         })
       );
@@ -96,22 +106,29 @@ export class AssetService {
   // --- Resources ---
   getResources(): Observable<Resource[]> {
     if (this.modeService.isBrowserMode()) {
+      console.debug('[ASSET-DEBUG] getResources: Browser mode, querying SqliteService.resources');
       return this.sqliteService.resources.pipe(
-        map(repo => repo.findAll().map(r => ({
-          ...r,
-          status: r.status || 'available',
-          name: (r as any).name || 'Unknown',
-          fqn: (r as any).fqn || ''
-        }) as unknown as Resource))
+        map(repo => {
+          const results = repo.findAll();
+          console.debug('[ASSET-DEBUG] getResources: Found', results.length, 'resources in DB', results);
+          return results.map(r => ({
+            ...r,
+            status: r.status || 'available',
+            name: (r as any).name || 'Unknown',
+            fqn: (r as any).fqn || ''
+          }) as unknown as Resource);
+        })
       );
     }
     return this.http.get<Resource[]>(`${this.API_URL}/resources`);
   }
 
   createResource(resource: ResourceCreate): Observable<Resource> {
+    console.debug('[ASSET-DEBUG] createResource called with:', resource);
     if (this.modeService.isBrowserMode()) {
+      console.debug('[ASSET-DEBUG] createResource: Browser mode, creating via SqliteService');
       return this.sqliteService.resources.pipe(
-        map(repo => {
+        switchMap(async repo => {
           const newResource: Resource = {
             ...resource,
             accession_id: crypto.randomUUID(),
@@ -122,7 +139,10 @@ export class AssetService {
             // Simple FQN generation
             fqn: `resources.${resource.name.replace(/\s+/g, '_').toLowerCase()}`,
           };
+          console.debug('[ASSET-DEBUG] createResource: Calling repo.create with:', newResource);
           repo.create(newResource as any);
+          await this.sqliteService.save();
+          console.debug('[ASSET-DEBUG] createResource: Resource created and saved to store');
           return newResource;
         })
       );

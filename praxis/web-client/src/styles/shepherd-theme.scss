@@ -1,0 +1,92 @@
+// Override Shepherd styles to match Angular Material theme
+.shepherd-element {
+    background: var(--mat-sys-surface-container-high) !important;
+    color: var(--mat-sys-on-surface) !important;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 16px !important;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1) !important; // shadow-lg
+    font-family: "Inter", sans-serif !important;
+    max-width: 400px !important;
+    z-index: 9999;
+
+    // Header
+    .shepherd-header {
+        background: transparent !important;
+        padding: 1.5rem 1.5rem 0.5rem !important;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+
+        .shepherd-title {
+            font-size: 1.125rem !important; // text-lg
+            font-weight: 600 !important;
+            color: var(--mat-sys-on-surface) !important;
+        }
+
+        .shepherd-cancel-icon {
+            color: var(--mat-sys-secondary) !important;
+            opacity: 0.7;
+
+            &:hover {
+                color: var(--mat-sys-on-surface) !important;
+                opacity: 1;
+            }
+        }
+    }
+
+    // Text
+    .shepherd-text {
+        padding: 0.5rem 1.5rem 1.5rem !important;
+        color: var(--mat-sys-on-surface-variant) !important;
+        font-size: 0.9375rem !important;
+        line-height: 1.6 !important;
+    }
+
+    // Footer / Buttons
+    .shepherd-footer {
+        padding: 0 1.5rem 1.5rem !important;
+        border-bottom-left-radius: 16px;
+        border-bottom-right-radius: 16px;
+        justify-content: flex-end !important;
+        gap: 0.5rem;
+
+        .shepherd-button {
+            border-radius: 8px !important;
+            padding: 0.5rem 1.25rem !important;
+            font-weight: 500 !important;
+            font-family: inherit !important;
+            transition: all 0.2s;
+            border: none !important;
+
+            // Primary Button (Next/Finish)
+            &.mat-primary {
+                background: var(--mat-sys-primary) !important;
+                color: var(--mat-sys-on-primary) !important;
+
+                &:hover {
+                    filter: brightness(1.1);
+                    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+                }
+            }
+
+            // Secondary Button (Back)
+            &:not(.mat-primary) {
+                background: transparent !important;
+                color: var(--mat-sys-primary) !important;
+
+                &:hover {
+                    background: var(--mat-sys-surface-variant) !important;
+                }
+            }
+        }
+    }
+
+    // Arrow overrides
+    &.shepherd-has-title .shepherd-content .shepherd-header {
+        background: transparent;
+    }
+}
+
+// Arrow color sync
+.shepherd-arrow:before {
+    background: var(--mat-sys-surface-container-high) !important;
+}

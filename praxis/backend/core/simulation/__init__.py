@@ -32,6 +32,14 @@ from praxis.backend.core.simulation.failure_detector import (
   detect_failure_modes,
   summarize_failure_modes,
 )
+from praxis.backend.core.simulation.simulator import (
+  SIMULATION_VERSION,
+  ProtocolSimulationResult,
+  ProtocolSimulator,
+  analyze_protocol,
+  analyze_protocol_sync,
+  is_cache_valid,
+)
 from praxis.backend.core.simulation.method_contracts import (
   METHOD_CONTRACTS,
   MethodContract,
@@ -63,6 +71,13 @@ from praxis.backend.core.simulation.stateful_tracers import (
   StatefulTracedResource,
   StatefulTracedWell,
   StatefulTracedWellCollection,
+)
+from praxis.backend.core.simulation.graph_replay import (
+  GraphReplayEngine,
+  GraphReplayResult,
+  ReplayState,
+  ReplayViolation,
+  replay_graph,
 )
 
 __all__ = [
@@ -105,4 +120,17 @@ __all__ = [
   "FailureModeDetector",
   "detect_failure_modes",
   "summarize_failure_modes",
+  # Simulator facade
+  "SIMULATION_VERSION",
+  "ProtocolSimulationResult",
+  "ProtocolSimulator",
+  "analyze_protocol",
+  "analyze_protocol_sync",
+  "is_cache_valid",
+  # Graph replay (browser-compatible)
+  "GraphReplayEngine",
+  "GraphReplayResult",
+  "ReplayState",
+  "ReplayViolation",
+  "replay_graph",
 ]

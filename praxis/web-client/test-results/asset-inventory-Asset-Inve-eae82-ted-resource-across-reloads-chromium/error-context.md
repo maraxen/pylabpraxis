@@ -1,0 +1,152 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - link [ref=e6] [cursor=pointer]:
+        - /url: /app/home
+        - img [ref=e8]
+      - link [ref=e11] [cursor=pointer]:
+        - /url: /app/run
+        - img [ref=e12]: play_circle
+        - generic [ref=e13]: Run
+      - link [ref=e14] [cursor=pointer]:
+        - /url: /app/monitor
+        - img [ref=e15]: monitor_heart
+        - generic [ref=e16]: Monitor
+      - link [ref=e18] [cursor=pointer]:
+        - /url: /app/assets
+        - img [ref=e19]: precision_manufacturing
+        - generic [ref=e20]: Assets
+      - link [ref=e21] [cursor=pointer]:
+        - /url: /app/protocols
+        - img [ref=e22]: science
+        - generic [ref=e23]: Protocols
+      - link [ref=e25] [cursor=pointer]:
+        - /url: /app/visualizer
+        - img [ref=e26]: view_in_ar
+        - generic [ref=e27]: Deck
+      - link [ref=e28] [cursor=pointer]:
+        - /url: /app/data
+        - img [ref=e29]: bar_chart
+        - generic [ref=e30]: Data
+      - link [ref=e32] [cursor=pointer]:
+        - /url: /docs
+        - img [ref=e33]: menu_book
+        - generic [ref=e34]: Docs
+      - link [ref=e35] [cursor=pointer]:
+        - /url: /app/repl
+        - img [ref=e36]: terminal
+        - generic [ref=e37]: REPL
+      - link [ref=e38] [cursor=pointer]:
+        - /url: /app/settings
+        - img [ref=e39]: settings
+        - generic [ref=e40]: Settings
+      - button [ref=e42] [cursor=pointer]:
+        - img [ref=e43]: brightness_auto
+        - generic [ref=e44]: system
+      - generic [ref=e45]:
+        - img [ref=e46]: cloud_done
+        - generic [ref=e47]: Browser
+      - button [ref=e48] [cursor=pointer]:
+        - img [ref=e49]: logout
+        - generic [ref=e50]: Logout
+    - generic [ref=e51]:
+      - banner [ref=e52]
+      - main [ref=e53]:
+        - generic [ref=e55]:
+          - generic [ref=e56]:
+            - generic [ref=e57]:
+              - heading [level=1] [ref=e58]: Welcome back
+              - paragraph [ref=e59]: Here's what's happening in your lab
+            - generic [ref=e60]:
+              - link [ref=e61] [cursor=pointer]:
+                - /url: /app/run
+                - img [ref=e62]: play_circle
+                - generic [ref=e63]: Run Protocol
+              - button [ref=e67] [cursor=pointer]:
+                - img [ref=e68]: usb
+          - generic [ref=e71]:
+            - generic [ref=e72] [cursor=pointer]:
+              - img [ref=e75]: play_arrow
+              - generic [ref=e76]:
+                - generic [ref=e77]: "0"
+                - generic [ref=e78]: Running
+              - img [ref=e81]
+            - generic [ref=e85] [cursor=pointer]:
+              - img [ref=e87]: precision_manufacturing
+              - generic [ref=e88]:
+                - generic [ref=e89]: 0/0
+                - generic [ref=e90]: Machines Online
+            - generic [ref=e91] [cursor=pointer]:
+              - img [ref=e93]: science
+              - generic [ref=e94]:
+                - generic [ref=e95]: "3"
+                - generic [ref=e96]: Protocols
+            - generic [ref=e97] [cursor=pointer]:
+              - img [ref=e99]: inventory_2
+              - generic [ref=e100]:
+                - generic [ref=e101]: "0"
+                - generic [ref=e102]: Resources
+          - generic [ref=e103]:
+            - generic [ref=e104]:
+              - heading [level=2] [ref=e106]:
+                - img [ref=e107]: monitor_heart
+                - text: Live Experiments
+              - generic [ref=e109]:
+                - img [ref=e111]: science
+                - paragraph [ref=e112]: No experiments running right now
+                - link [ref=e113] [cursor=pointer]:
+                  - /url: /app/run
+                  - generic [ref=e114]: Start a Protocol
+            - generic [ref=e118]:
+              - generic [ref=e119]:
+                - heading [level=2] [ref=e120]:
+                  - img [ref=e121]: history
+                  - text: Recent Activity
+                - link [ref=e122] [cursor=pointer]:
+                  - /url: /app/monitor
+                  - generic [ref=e123]: View All
+              - generic [ref=e126]:
+                - link [ref=e127] [cursor=pointer]:
+                  - /url: /app/monitor/1
+                  - img [ref=e129]: check_circle
+                  - generic [ref=e130]:
+                    - generic [ref=e131]: "Serial Dilution Run #42"
+                    - generic [ref=e132]: Serial Dilution • 45 min
+                  - img [ref=e133]: chevron_right
+                - link [ref=e134] [cursor=pointer]:
+                  - /url: /app/monitor/2
+                  - img [ref=e136]: check_circle
+                  - generic [ref=e137]:
+                    - generic [ref=e138]: PCR Setup Batch 7
+                    - generic [ref=e139]: PCR Setup • 32 min
+                  - img [ref=e140]: chevron_right
+                - link [ref=e141] [cursor=pointer]:
+                  - /url: /app/monitor/3
+                  - img [ref=e143]: error
+                  - generic [ref=e144]:
+                    - generic [ref=e145]: Cell Culture Transfer
+                    - generic [ref=e146]: Cell Transfer • 18 min
+                  - img [ref=e147]: chevron_right
+  - dialog "Welcome to Praxis" [active] [ref=e151]:
+    - generic [ref=e154]:
+      - heading "Welcome to Praxis" [level=2] [ref=e155]
+      - generic [ref=e156]:
+        - paragraph [ref=e157]: Praxis is your modern lab automation platform.
+        - paragraph [ref=e158]: Would you like a quick tour of the key features?
+        - generic [ref=e159]:
+          - generic [ref=e161]:
+            - switch "Enable Demo Mode (Recommended)" [ref=e162] [cursor=pointer]:
+              - generic [ref=e168]:
+                - img [ref=e169]
+                - img [ref=e171]
+            - generic [ref=e173] [cursor=pointer]: Enable Demo Mode (Recommended)
+          - paragraph [ref=e174]: Demo mode populates the app with sample data so you can explore safely without connecting hardware.
+      - generic [ref=e175]:
+        - button "Skip for Now" [ref=e176] [cursor=pointer]:
+          - generic [ref=e177]: Skip for Now
+        - button "Start Tutorial" [ref=e180] [cursor=pointer]:
+          - generic [ref=e181]: Start Tutorial
+```

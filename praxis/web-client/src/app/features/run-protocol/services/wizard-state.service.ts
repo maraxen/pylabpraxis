@@ -88,7 +88,7 @@ export class WizardStateService {
     /**
      * Initialize wizard with protocol.
      */
-    initialize(protocol: ProtocolDefinition, deckType: string = 'HamiltonSTARDeck'): void {
+    initialize(protocol: ProtocolDefinition, deckType: string = 'HamiltonSTARDeck', assetMap: Record<string, any> = {}): void {
         this._protocol.set(protocol);
         this._deckType.set(deckType);
         this._currentStep.set('carrier-placement');
@@ -98,8 +98,26 @@ export class WizardStateService {
 
         // Use CarrierInferenceService to calculate requirements
         const setup = this.carrierInference.createDeckSetup(protocol, deckType);
+
+        // Pre-fill assignments from assetMap
+        const assignments = setup.slotAssignments.map(assignment => {
+            // Find if this assignment corresponds to a protocol asset
+            // The assignment resource name usually matches the protocol asset name
+            const assetReq = protocol.assets?.find(a => a.name === assignment.resource.name);
+            if (assetReq && assetMap[assetReq.accession_id]) {
+                const selected = assetMap[assetReq.accession_id];
+                // selected is the Inventory Resource object
+                // We want its accession_id as the assignedAssetId
+                return {
+                    ...assignment,
+                    assignedAssetId: selected.accession_id
+                };
+            }
+            return assignment;
+        });
+
         this._carrierRequirements.set(setup.carrierRequirements);
-        this._slotAssignments.set(setup.slotAssignments);
+        this._slotAssignments.set(assignments);
     }
 
     /**

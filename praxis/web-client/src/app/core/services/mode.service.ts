@@ -1,4 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
+import { ONBOARDING_STORAGE_KEYS } from './onboarding.service';
 import { environment } from '../../../environments/environment';
 
 /**
@@ -81,6 +82,11 @@ export class ModeService {
             production?: boolean;
             lite?: boolean;
         };
+
+        // Check runtime toggle first
+        if (typeof localStorage !== 'undefined' && localStorage.getItem(ONBOARDING_STORAGE_KEYS.DEMO_MODE_ENABLED) === 'true') {
+            return 'demo';
+        }
 
         if (env.browserMode && !env.demo) {
             return 'browser';

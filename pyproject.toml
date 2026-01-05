@@ -31,6 +31,7 @@ dependencies = [
     "pyserial>=3.5", # Serial port device discovery
     "jupyterlite-core>=0.7.1",
     "jupyterlite-pyodide-kernel>=0.7.0",
+    "cloudpickle>=3.0.0", # Function serialization for caching/distributed execution
 ]
 
 [tool.uv.sources]

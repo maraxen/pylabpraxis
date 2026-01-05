@@ -29,6 +29,7 @@ from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDSe
 from praxis.backend.services.resource_type_definition import (
   ResourceTypeDefinitionService,
 )
+from praxis.backend.services.simulation_service import SimulationService
 from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
   ProtocolFunctionVisitor,
 )
@@ -45,12 +46,24 @@ class DiscoveryService:
     resource_type_definition_service: ResourceTypeDefinitionService | None = None,
     machine_type_definition_service: MachineTypeDefinitionService | None = None,
     protocol_definition_service: ProtocolDefinitionCRUDService | None = None,
+    enable_simulation: bool = True,
   ) -> None:
-    """Initialize the DiscoveryService."""
+    """Initialize the DiscoveryService.
+
+    Args:
+        db_session_factory: Factory for creating database sessions.
+        resource_type_definition_service: Service for resource types.
+        machine_type_definition_service: Service for machine types.
+        protocol_definition_service: Service for protocol definitions.
+        enable_simulation: Whether to run simulation on discovered protocols.
+
+    """
     self.db_session_factory = db_session_factory
     self.resource_type_definition_service = resource_type_definition_service
     self.machine_type_definition_service = machine_type_definition_service
     self.protocol_definition_service = protocol_definition_service
+    self.enable_simulation = enable_simulation
+    self._simulation_service = SimulationService() if enable_simulation else None
 
   async def discover_and_sync_all_definitions(
     self,
@@ -233,4 +246,28 @@ class DiscoveryService:
       "Successfully upserted %d protocol definition(s) to DB.",
       num_successful_upserts,
     )
+
+    # Run simulation on discovered protocols if enabled
+    if self._simulation_service and upserted_definitions_orm:
+      logger.info(
+        "Running simulation on %d discovered protocol(s)...",
+        len(upserted_definitions_orm),
+      )
+      async with self.db_session_factory() as sim_session:
+        try:
+          sim_results = await self._simulation_service.simulate_pending_protocols(
+            session=sim_session,
+            protocol_orms=upserted_definitions_orm,
+          )
+          simulated_count = sum(1 for r in sim_results.values() if r is not None)
+          logger.info(
+            "Simulation completed for %d protocol(s).",
+            simulated_count,
+          )
+        except Exception as e:
+          logger.warning(
+            "Simulation failed for some protocols: %s",
+            e,
+          )
+
     return upserted_definitions_orm

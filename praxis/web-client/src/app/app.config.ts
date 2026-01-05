@@ -18,6 +18,7 @@ import { IndexSelectorFieldComponent } from './shared/formly-types/index-selecto
 import { KeycloakService } from './core/auth/keycloak.service';
 import { KeyboardService } from './core/services/keyboard.service';
 import { ModeService } from './core/services/mode.service';
+import { CustomIconRegistryService } from './core/services/custom-icon-registry.service';
 import { from, switchMap } from 'rxjs';
 
 /**
@@ -38,6 +39,10 @@ function initializeKeycloak(keycloakService: KeycloakService) {
  */
 function initializeKeyboard(keyboardService: KeyboardService) {
   return () => Promise.resolve();
+}
+
+function initializeIcons(iconRegistryService: CustomIconRegistryService) {
+  return () => iconRegistryService.init();
 }
 
 /**
@@ -95,6 +100,12 @@ export const appConfig: ApplicationConfig = {
       provide: APP_INITIALIZER,
       useFactory: initializeKeyboard,
       deps: [KeyboardService],
+      multi: true
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeIcons,
+      deps: [CustomIconRegistryService],
       multi: true
     },
     importProvidersFrom(

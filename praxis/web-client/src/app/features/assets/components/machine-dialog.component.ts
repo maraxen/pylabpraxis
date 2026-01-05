@@ -197,7 +197,8 @@ export class MachineDialogComponent implements OnInit {
     backend_driver: ['sim'], // Default to simulated
     connection_info: ['', jsonValidator],
     user_configured_capabilities: ['', jsonValidator],
-    machine_definition_accession_id: [null as string | null]
+    machine_definition_accession_id: [null as string | null],
+    machine_category: [''] // Required for SQLite constraint
   });
 
   ngOnInit() {
@@ -273,6 +274,7 @@ export class MachineDialogComponent implements OnInit {
       manufacturer: def.manufacturer || '',
       description: def.description || '',
       machine_definition_accession_id: def.accession_id,
+      machine_category: def.machine_category || def.name || 'unknown', // For SQLite constraint
       backend_driver: 'sim', // Reset to sim on new selection
     });
   }

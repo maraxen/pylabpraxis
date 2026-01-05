@@ -18,6 +18,14 @@ npm run start:demo
 
 This starts the Angular dev server with the demo configuration.
 
+## Runtime Toggle
+
+You can also toggle Demo Mode on and off at runtime without rebuilding:
+
+1. Open **Settings** > **Onboarding & Demo**.
+2. Toggle "Demo Mode".
+3. The application will reload with the new mode active.
+
 ## How Demo Mode Works
 
 ### HTTP Interceptor

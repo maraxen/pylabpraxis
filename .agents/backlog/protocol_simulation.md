@@ -617,80 +617,68 @@ def _is_pruned(self, state: BooleanState, pruned: set) -> bool:
 
 ---
 
-## Phase 6: Integration & Caching
+## Phase 6: Integration & Caching ✅
 
 Hook into protocol discovery and cache results.
+
+### Implementation Status: Complete (2026-01-05)
+
+**Files Created/Modified:**
+- `praxis/backend/core/simulation/simulator.py` - ProtocolSimulator facade
+- `praxis/backend/services/simulation_service.py` - Service for running and caching simulations
+- `praxis/backend/services/discovery_service.py` - Integration with discovery pipeline
+- `praxis/backend/models/orm/protocol.py` - Cache columns added
+- `praxis/backend/models/pydantic_internals/protocol.py` - Pydantic models for API
+- `alembic/versions/f3a4b5c6d7e8_add_simulation_cache_to_protocol_defs.py` - Migration
 
 ### Discovery Integration
 
 ```python
-# In protocol_discovery.py
+# In discovery_service.py
+class DiscoveryService:
+    def __init__(self, ..., enable_simulation: bool = True):
+        self._simulation_service = SimulationService() if enable_simulation else None
 
-async def _discover_protocol(self, func_info: ProtocolFunctionInfo) -> ...:
-    # ... existing discovery logic ...
+    async def discover_and_upsert_protocols(self, ...):
+        # ... upsert protocols ...
 
-    # Extract computation graph (existing)
-    graph = self._extract_computation_graph(func_info)
-
-    # NEW: Run simulation to infer requirements
-    simulator = ProtocolSimulator()
-    simulation_result = simulator.analyze_protocol(graph)
-
-    # Cache with protocol
-    func_info.simulation_result = simulation_result.model_dump()
-    func_info.inferred_requirements = simulation_result.inferred_requirements
-    func_info.failure_modes = simulation_result.failure_modes
+        # Run simulation on discovered protocols
+        if self._simulation_service:
+            await self._simulation_service.simulate_pending_protocols(
+                session=session,
+                protocol_orms=upserted_definitions_orm,
+            )
 ```
 
-### Database Schema Extension
+### Database Schema (Implemented)
 
 ```python
 class FunctionProtocolDefinitionOrm(Base):
     # ... existing fields ...
 
     # Simulation results
-    simulation_result_json: Mapped[dict | None] = mapped_column(
-        JSON,
-        comment="Cached simulation result",
-    )
-    inferred_requirements_json: Mapped[dict | None] = mapped_column(
-        JSON,
-        comment="Inferred state requirements",
-    )
-    failure_modes_json: Mapped[list | None] = mapped_column(
-        JSON,
-        comment="Known failure modes",
-    )
-    simulation_version: Mapped[str | None] = mapped_column(
-        String(32),
-        comment="Simulator version for cache invalidation",
-    )
+    simulation_result_json: Mapped[dict | None]  # Full ProtocolSimulationResult
+    inferred_requirements_json: Mapped[list | None]  # Quick access to requirements
+    failure_modes_json: Mapped[list | None]  # Quick access to failure modes
+    simulation_version: Mapped[str | None]  # For cache invalidation
+    simulation_cached_at: Mapped[datetime | None]  # When simulation was run
 ```
 
-### UI Surfacing
+### Tasks Completed
 
-In the deck setup wizard:
-1. Load cached requirements
-2. Validate current deck state against requirements
-3. Show warnings for potential failure modes
-4. Suggest fixes (add tips, place resources, etc.)
+- [x] Create `ProtocolSimulator` facade class
+- [x] Create `SimulationService` for caching
+- [x] Integrate with `DiscoveryService`
+- [x] Add database columns for caching
+- [x] Create Alembic migration
+- [x] Add Pydantic models for API responses
+- [x] Unit and integration tests (59 tests passing)
 
-### Tasks
+### Future Work (UI Surfacing)
 
-- [ ] Create `ProtocolSimulator` facade class
-- [ ] Integrate with `ProtocolDiscoveryVisitor`
-- [ ] Add database columns for caching
-- [ ] Create Alembic migration
 - [ ] Surface requirements in deck setup wizard
 - [ ] Show failure mode warnings in UI
-- [ ] Unit and integration tests
-
-### Files to Create/Modify
-
-- `praxis/backend/core/simulation/simulator.py` (facade)
-- `praxis/backend/utils/plr_static_analysis/visitors/protocol_discovery.py` (modify)
-- `praxis/backend/models/orm/protocol.py` (modify)
-- `alembic/versions/xxx_add_simulation_cache.py`
+- [ ] "Time travel" debugging in Execution Monitor
 
 ---
 
@@ -712,8 +700,8 @@ In the deck setup wizard:
 2. [x] Loop iteration counts computed from `items_x * items_y`
 3. [x] Hierarchical simulation catches errors at appropriate level
 4. [x] Early pruning reduces state space exploration by 50%+
-5. [ ] Simulation results cached and loaded correctly (Phase 6 - future)
-6. [ ] UI shows meaningful requirements and failure modes (Phase 6 - future)
+5. [x] Simulation results cached and loaded correctly (Phase 6 complete)
+6. [ ] UI shows meaningful requirements and failure modes (Future - UI integration)
 7. [x] Performance targets met
 
 ---

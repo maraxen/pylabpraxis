@@ -13,6 +13,7 @@ import { MachineDefinition } from '../../models/asset.models';
 import { debounceTime, distinctUntilChanged, startWith } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { getMachineCategoryTooltip } from '@shared/constants/resource-tooltips';
+import { getMachineCategoryIcon } from '@shared/constants/asset-icons';
 
 export interface MachineCategory {
   category: string;
@@ -377,23 +378,7 @@ export class MachineDefinitionAccordionComponent implements OnInit {
   }
 
   getCategoryIcon(category: string): string {
-    const icons: Record<string, string> = {
-      'LiquidHandler': 'water_drop',
-      'PlateReader': 'visibility',
-      'HeaterShaker': 'thermostat',
-      'Shaker': 'vibration',
-      'Centrifuge': 'rotate_right',
-      'Thermocycler': 'device_thermostat',
-      'TemperatureController': 'thermostat_auto',
-      'Incubator': 'ac_unit',
-      'Pump': 'invert_colors',
-      'Fan': 'air',
-      'Sealer': 'view_compact',
-      'Peeler': 'flip',
-      'PowderDispenser': 'grain',
-      'Other': 'precision_manufacturing'
-    };
-    return icons[category] || 'precision_manufacturing';
+    return getMachineCategoryIcon(category);
   }
 
   getCategoryTooltip(category: string): string {

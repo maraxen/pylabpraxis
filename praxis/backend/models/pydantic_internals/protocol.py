@@ -311,6 +311,58 @@ class FunctionProtocolDefinitionUpdate(BaseModel):
   hardware_requirements: dict[str, Any] | None = None
 
 
+class InferredRequirementModel(BaseModel):
+  """A requirement inferred from protocol simulation."""
+
+  model_config = ConfigDict(from_attributes=True)
+
+  requirement_type: str = Field(description="Type: tips_required, resource_on_deck, liquid_present")
+  resource: str | None = Field(default=None, description="Resource involved")
+  details: dict[str, Any] = Field(default_factory=dict)
+  inferred_at_level: str = Field(default="", description="Level at which this was inferred")
+
+
+class FailureModeModel(BaseModel):
+  """A detected failure mode for a protocol."""
+
+  model_config = ConfigDict(from_attributes=True)
+
+  initial_state: dict[str, Any] = Field(
+    default_factory=dict, description="State configuration that causes failure"
+  )
+  failure_point: str = Field(default="", description="Operation ID where failure occurs")
+  failure_type: str = Field(default="", description="Type of failure")
+  message: str = Field(default="", description="Human-readable failure description")
+  suggested_fix: str | None = Field(default=None, description="How to prevent this failure")
+  severity: str = Field(default="error", description="Severity: error, warning, info")
+
+
+class SimulationResultModel(BaseModel):
+  """Cached simulation result for a protocol definition."""
+
+  model_config = ConfigDict(from_attributes=True)
+
+  passed: bool = Field(default=False, description="Whether protocol passed all validation")
+  level_completed: str = Field(default="none", description="Highest level completed")
+  level_failed: str | None = Field(default=None, description="Level where failure occurred")
+  structural_error: str | None = Field(default=None, description="Structural error if any")
+  violations: list[dict[str, Any]] = Field(
+    default_factory=list, description="All violations from simulation"
+  )
+  inferred_requirements: list[InferredRequirementModel] = Field(
+    default_factory=list, description="Requirements inferred from simulation"
+  )
+  failure_modes: list[FailureModeModel] = Field(
+    default_factory=list, description="Enumerated failure modes"
+  )
+  failure_mode_stats: dict[str, Any] = Field(
+    default_factory=dict, description="Failure detection statistics"
+  )
+  simulation_version: str = Field(default="", description="Simulator version")
+  simulated_at: datetime | None = Field(default=None, description="When simulation was run")
+  execution_time_ms: float = Field(default=0.0, description="Simulation execution time")
+
+
 class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionBase, PraxisBaseModel):
   """Model for API responses for a function protocol definition."""
 
@@ -320,6 +372,31 @@ class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionBase, PraxisB
   hardware_requirements: dict[str, Any] | None = Field(
     default=None,
     validation_alias="hardware_requirements_json",
+  )
+
+  # Simulation cache fields
+  simulation_result: SimulationResultModel | None = Field(
+    default=None,
+    validation_alias="simulation_result_json",
+    description="Cached simulation result",
+  )
+  inferred_requirements: list[InferredRequirementModel] = Field(
+    default_factory=list,
+    validation_alias="inferred_requirements_json",
+    description="Inferred state requirements",
+  )
+  failure_modes: list[FailureModeModel] = Field(
+    default_factory=list,
+    validation_alias="failure_modes_json",
+    description="Known failure modes",
+  )
+  simulation_version: str | None = Field(
+    default=None,
+    description="Simulator version for cache validation",
+  )
+  simulation_cached_at: datetime | None = Field(
+    default=None,
+    description="When simulation was last run",
   )
 
 

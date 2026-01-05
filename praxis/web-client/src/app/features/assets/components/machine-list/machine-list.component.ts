@@ -197,8 +197,10 @@ export class MachineListComponent {
   }
 
   loadMachines(): void {
+    console.debug('[ASSET-DEBUG] loadMachines: Calling assetService.getMachines()');
     this.assetService.getMachines().subscribe(
       (data) => {
+        console.debug('[ASSET-DEBUG] loadMachines: Received', data.length, 'machines:', data);
         this.machines.set(data);
         this.updateCategories(data);
         if (this.activeFilters()) {
@@ -208,7 +210,7 @@ export class MachineListComponent {
         }
       },
       (error) => {
-        console.error('Error fetching machines:', error);
+        console.error('[ASSET-DEBUG] loadMachines: Error fetching machines:', error);
       }
     );
   }

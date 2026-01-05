@@ -186,7 +186,7 @@ import { DeckViewComponent } from '@shared/components/deck-view/deck-view.compon
 })
 export class DeckSetupWizardComponent implements OnInit {
     // Input for inline usage (when not opened via dialog)
-    data = input<{ protocol: ProtocolDefinition, deckResource: PlrResource | null } | null>(null);
+    data = input<{ protocol: ProtocolDefinition, deckResource: PlrResource | null, assetMap?: Record<string, any> } | null>(null);
 
     // Signals initialized from Dialog Data or Input
     protocol = signal<ProtocolDefinition | null>(null);
@@ -232,7 +232,11 @@ export class DeckSetupWizardComponent implements OnInit {
 
         const p = this.protocol();
         if (p) {
-            this.wizardState.initialize(p);
+            // Extract assetMap from input data if available
+            // For dialog usage, we might need to update the dialog data interface too, 
+            // but currently the priority is inline usage.
+            const assetMap = (inputData as any)?.assetMap || {};
+            this.wizardState.initialize(p, 'HamiltonSTARDeck', assetMap);
         }
     }
 

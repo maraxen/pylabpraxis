@@ -33,6 +33,7 @@ from sqlalchemy import (
   DateTime,
   ForeignKey,
   Integer,
+  LargeBinary,
   String,
   Text,
   UniqueConstraint,
@@ -302,6 +303,64 @@ class FunctionProtocolDefinitionOrm(Base):
     DateTime(timezone=True),
     nullable=True,
     comment="Timestamp when the computation graph was last cached.",
+    default=None,
+  )
+
+  # === Simulation Cache Fields ===
+  simulation_result_json: Mapped[dict | None] = mapped_column(
+    JsonVariant,
+    nullable=True,
+    comment="Cached ProtocolSimulationResult from state simulation.",
+    default=None,
+  )
+  inferred_requirements_json: Mapped[list | None] = mapped_column(
+    JsonVariant,
+    nullable=True,
+    comment="Inferred state requirements (tips, liquid, deck placement).",
+    default=None,
+  )
+  failure_modes_json: Mapped[list | None] = mapped_column(
+    JsonVariant,
+    nullable=True,
+    comment="Known failure modes from simulation.",
+    default=None,
+  )
+  simulation_version: Mapped[str | None] = mapped_column(
+    String(32),
+    nullable=True,
+    comment="Simulator version for cache invalidation.",
+    default=None,
+  )
+  simulation_cached_at: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True),
+    nullable=True,
+    comment="Timestamp when simulation was last run.",
+    default=None,
+  )
+
+  # === Cloudpickle Bytecode Cache Fields ===
+  cached_bytecode: Mapped[bytes | None] = mapped_column(
+    LargeBinary,
+    nullable=True,
+    comment="Cloudpickle serialized protocol function for caching/distributed execution.",
+    default=None,
+  )
+  bytecode_python_version: Mapped[str | None] = mapped_column(
+    String(16),
+    nullable=True,
+    comment="Python version when bytecode was cached (e.g., '3.13.5').",
+    default=None,
+  )
+  bytecode_cache_version: Mapped[str | None] = mapped_column(
+    String(16),
+    nullable=True,
+    comment="Cache format version for invalidation.",
+    default=None,
+  )
+  bytecode_cached_at: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True),
+    nullable=True,
+    comment="Timestamp when bytecode was cached.",
     default=None,
   )
 

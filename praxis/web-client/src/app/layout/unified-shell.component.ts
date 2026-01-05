@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, effect } from '@angular/core';
+import { Component, inject, signal, computed, effect, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive, NavigationEnd } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,6 +15,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { CommandRegistryService } from '@core/services/command-registry.service';
 import { HardwareDiscoveryService } from '@core/services/hardware-discovery.service';
 import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-discovery-dialog/hardware-discovery-dialog.component';
+import { OnboardingService } from '@core/services/onboarding.service';
+import { TutorialService } from '@core/services/tutorial.service';
+import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcome-dialog.component';
 
 @Component({
   selector: 'app-unified-shell',
@@ -46,11 +49,11 @@ import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-di
         <div class="nav-divider"></div>
 
         <!-- Action -->
-        <a class="nav-item" routerLink="/app/run" routerLinkActive="active" matTooltip="Run Protocol" matTooltipPosition="right">
+        <a class="nav-item" data-tour-id="nav-run" routerLink="/app/run" routerLinkActive="active" matTooltip="Run Protocol" matTooltipPosition="right">
           <mat-icon>play_circle</mat-icon>
           <span class="nav-label">Run</span>
         </a>
-        <a class="nav-item" routerLink="/app/monitor" routerLinkActive="active" matTooltip="Execution Monitor" matTooltipPosition="right">
+        <a class="nav-item" data-tour-id="nav-monitor" routerLink="/app/monitor" routerLinkActive="active" matTooltip="Execution Monitor" matTooltipPosition="right">
           <mat-icon>monitor_heart</mat-icon>
           <span class="nav-label">Monitor</span>
         </a>
@@ -58,11 +61,11 @@ import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-di
         <div class="nav-divider"></div>
 
         <!-- Management -->
-        <a class="nav-item" routerLink="/app/assets" routerLinkActive="active" matTooltip="Assets" matTooltipPosition="right">
+        <a class="nav-item" data-tour-id="nav-assets" routerLink="/app/assets" routerLinkActive="active" matTooltip="Assets" matTooltipPosition="right">
           <mat-icon>precision_manufacturing</mat-icon>
           <span class="nav-label">Assets</span>
         </a>
-        <a class="nav-item" routerLink="/app/protocols" routerLinkActive="active" matTooltip="Protocols" matTooltipPosition="right">
+        <a class="nav-item" data-tour-id="nav-protocols" routerLink="/app/protocols" routerLinkActive="active" matTooltip="Protocols" matTooltipPosition="right">
           <mat-icon>science</mat-icon>
           <span class="nav-label">Protocols</span>
         </a>
@@ -70,11 +73,11 @@ import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-di
         <div class="nav-divider"></div>
 
         <!-- Views -->
-        <a class="nav-item" routerLink="/app/visualizer" routerLinkActive="active" matTooltip="Deck Visualizer" matTooltipPosition="right">
+        <a class="nav-item" data-tour-id="nav-visualizer" routerLink="/app/visualizer" routerLinkActive="active" matTooltip="Deck Visualizer" matTooltipPosition="right">
           <mat-icon>view_in_ar</mat-icon>
           <span class="nav-label">Deck</span>
         </a>
-        <a class="nav-item" routerLink="/app/data" routerLinkActive="active" matTooltip="Data Analysis" matTooltipPosition="right">
+        <a class="nav-item" data-tour-id="nav-data" routerLink="/app/data" routerLinkActive="active" matTooltip="Data Analysis" matTooltipPosition="right">
           <mat-icon>bar_chart</mat-icon>
           <span class="nav-label">Data</span>
         </a>
@@ -88,7 +91,7 @@ import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-di
         </a>
 
         <!-- Tools -->
-        <a class="nav-item" routerLink="/app/repl" routerLinkActive="active" matTooltip="REPL" matTooltipPosition="right">
+        <a class="nav-item" data-tour-id="nav-repl" routerLink="/app/repl" routerLinkActive="active" matTooltip="REPL" matTooltipPosition="right">
           <mat-icon>terminal</mat-icon>
           <span class="nav-label">REPL</span>
         </a>
@@ -96,7 +99,7 @@ import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-di
         <div class="spacer"></div>
 
         <!-- System -->
-        <a class="nav-item" routerLink="/app/settings" routerLinkActive="active" matTooltip="Settings" matTooltipPosition="right">
+        <a class="nav-item" data-tour-id="nav-settings" routerLink="/app/settings" routerLinkActive="active" matTooltip="Settings" matTooltipPosition="right">
           <mat-icon>settings</mat-icon>
           <span class="nav-label">Settings</span>
         </a>
@@ -106,6 +109,7 @@ import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-di
 
         <button
           class="nav-item control-btn theme-toggle"
+          data-tour-id="theme-toggle"
           (click)="cycleTheme()"
           [matTooltip]="'Theme: ' + (store.theme() | titlecase)"
           matTooltipPosition="right">
@@ -115,6 +119,7 @@ import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-di
 
         <div 
           class="mode-badge" 
+          data-tour-id="status-indicator"
           [class]="systemStatus().color"
           [matTooltip]="systemStatus().message" 
           matTooltipPosition="right">
@@ -359,7 +364,7 @@ import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-di
     }
   `]
 })
-export class UnifiedShellComponent {
+export class UnifiedShellComponent implements OnInit {
   store = inject(AppStore);
   router = inject(Router);
   modeService = inject(ModeService);
@@ -367,9 +372,27 @@ export class UnifiedShellComponent {
   private commandRegistry = inject(CommandRegistryService);
   private hardwareDiscovery = inject(HardwareDiscoveryService);
   private dialog = inject(MatDialog);
+  private onboarding = inject(OnboardingService);
+  private tutorial = inject(TutorialService);
 
   constructor() {
     this.registerCommands();
+  }
+
+  ngOnInit() {
+    // Check if we need to show welcome dialog
+    if (this.onboarding.shouldShowWelcome()) {
+      this.dialog.open(WelcomeDialogComponent, {
+        width: '600px',
+        disableClose: true,
+        autoFocus: false
+      });
+    } else if (localStorage.getItem('praxis_pending_tutorial') === 'true') {
+      // Pending tutorial start after reload
+      localStorage.removeItem('praxis_pending_tutorial');
+      // Small delay to ensure UI is largely rendered
+      setTimeout(() => this.tutorial.start(), 1000);
+    }
   }
 
   private registerCommands() {

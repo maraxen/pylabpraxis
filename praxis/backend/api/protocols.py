@@ -1,7 +1,7 @@
 """Protocol API endpoints.
 
 This file contains the FastAPI router for all protocol-related endpoints,
-including protocol definitions, protocol runs, and protocol execution.
+including protocol definitions, protocol runs, protocol execution, and simulation.
 """
 
 from typing import Annotated, Any
@@ -13,6 +13,11 @@ from pydantic import BaseModel, Field
 from praxis.backend.api.dependencies import get_db, get_protocol_execution_service
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
 from praxis.backend.core.protocol_execution_service import ProtocolExecutionService
+from praxis.backend.core.simulation import (
+  GraphReplayEngine,
+  GraphReplayResult,
+  ReplayViolation,
+)
 from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm, ProtocolRunOrm
 from praxis.backend.models.pydantic_internals.protocol import (
   FunctionProtocolDefinitionCreate,
@@ -24,6 +29,7 @@ from praxis.backend.models.pydantic_internals.protocol import (
 )
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
+from praxis.backend.services.simulation_service import SimulationService
 
 router = APIRouter()
 
@@ -256,3 +262,207 @@ async def get_protocol_compatibility(
     )
 
   return response
+
+
+# =============================================================================
+# Protocol Simulation (Backend Fallback for Browser Mode)
+# =============================================================================
+
+
+class SimulationRequest(BaseModel):
+  """Request body for protocol simulation.
+
+  This endpoint serves as a backend fallback for browser-mode simulation
+  when the browser can't execute the graph replay directly.
+  """
+
+  computation_graph: dict[str, Any] | None = Field(
+    None,
+    description="Pre-extracted computation graph. If not provided, "
+    "will use the graph from the protocol definition.",
+  )
+
+
+class SimulationViolationResponse(BaseModel):
+  """A violation detected during simulation."""
+
+  operation_id: str = Field(description="ID of the operation that caused violation")
+  operation_index: int = Field(description="Index in execution order")
+  method_name: str = Field(description="Method that failed")
+  receiver: str = Field(description="Variable receiving the call")
+  violation_type: str = Field(description="Type of violation")
+  message: str = Field(description="Human-readable error message")
+  suggested_fix: str | None = Field(default=None, description="How to fix this")
+  line_number: int | None = Field(default=None, description="Source line if available")
+
+
+class SimulationResponse(BaseModel):
+  """Response body for protocol simulation."""
+
+  passed: bool = Field(description="Whether simulation passed without violations")
+  violations: list[SimulationViolationResponse] = Field(
+    default_factory=list, description="All violations found during simulation"
+  )
+  operations_executed: int = Field(default=0, description="Number of operations replayed")
+  replay_mode: str = Field(default="graph", description="Replay mode used")
+  errors: list[str] = Field(
+    default_factory=list, description="Non-violation errors (parse errors, etc.)"
+  )
+  final_state_summary: dict[str, Any] = Field(
+    default_factory=dict, description="Summary of final state"
+  )
+
+
+@router.post(
+  "/definitions/{accession_id}/simulate",
+  response_model=SimulationResponse,
+  status_code=status.HTTP_200_OK,
+  tags=["Protocol Simulation"],
+)
+async def simulate_protocol(
+  accession_id: UUID,
+  request: SimulationRequest | None = None,
+  db: Annotated[Any, Depends(get_db)] = None,
+) -> SimulationResponse:
+  """Simulate a protocol using graph replay.
+
+  This endpoint provides backend simulation for browser-mode fallback.
+  It replays the computation graph with state tracking to detect violations
+  like missing tips, incorrect deck placement, or liquid handling errors.
+
+  The simulation uses boolean-level state tracking which catches:
+  - Tips not loaded before aspiration
+  - Resources not on deck
+  - Liquid operations on empty wells
+
+  This is useful when the browser can't run Pyodide-based simulation
+  directly, or when you want to use the backend's full simulation
+  capabilities.
+
+  Returns clear error messages to help fix protocol issues.
+  """
+  # Fetch protocol definition
+  protocol = await db.get(FunctionProtocolDefinitionOrm, accession_id)
+  if not protocol:
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail=f"Protocol definition {accession_id} not found",
+    )
+
+  # Get computation graph
+  graph_dict = None
+  if request and request.computation_graph:
+    graph_dict = request.computation_graph
+  elif protocol.computation_graph_json:
+    graph_dict = protocol.computation_graph_json
+  else:
+    return SimulationResponse(
+      passed=False,
+      errors=[
+        f"No computation graph available for protocol '{protocol.name}'. "
+        "The protocol may not have been analyzed yet. "
+        "Run protocol discovery to extract the computation graph."
+      ],
+      replay_mode="graph",
+    )
+
+  # Run graph replay
+  try:
+    engine = GraphReplayEngine()
+    result: GraphReplayResult = engine.replay(graph_dict)
+
+    # Convert violations to response format
+    violations = [
+      SimulationViolationResponse(
+        operation_id=v.operation_id,
+        operation_index=v.operation_index,
+        method_name=v.method_name,
+        receiver=v.receiver,
+        violation_type=v.violation_type,
+        message=v.message,
+        suggested_fix=v.suggested_fix,
+        line_number=v.line_number,
+      )
+      for v in result.violations
+    ]
+
+    return SimulationResponse(
+      passed=result.passed,
+      violations=violations,
+      operations_executed=result.operations_executed,
+      replay_mode=result.replay_mode,
+      errors=result.errors,
+      final_state_summary=result.final_state_summary,
+    )
+
+  except Exception as e:
+    # Return clear error for debugging
+    return SimulationResponse(
+      passed=False,
+      errors=[
+        f"Simulation failed with error: {type(e).__name__}: {e!s}. "
+        "This may indicate an invalid computation graph or internal error."
+      ],
+      replay_mode="graph",
+    )
+
+
+@router.get(
+  "/definitions/{accession_id}/simulation-status",
+  response_model=dict[str, Any],
+  status_code=status.HTTP_200_OK,
+  tags=["Protocol Simulation"],
+)
+async def get_simulation_status(
+  accession_id: UUID,
+  db: Annotated[Any, Depends(get_db)] = None,
+) -> dict[str, Any]:
+  """Get simulation status and cached results for a protocol.
+
+  Returns information about:
+  - Whether simulation results are cached
+  - Cache validity (version, timestamp)
+  - Summary of cached results if available
+  """
+  protocol = await db.get(FunctionProtocolDefinitionOrm, accession_id)
+  if not protocol:
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail=f"Protocol definition {accession_id} not found",
+    )
+
+  has_simulation = protocol.simulation_result_json is not None
+  has_graph = protocol.computation_graph_json is not None
+  has_bytecode = protocol.cached_bytecode is not None
+
+  result: dict[str, Any] = {
+    "protocol_name": protocol.name,
+    "protocol_fqn": protocol.fqn,
+    "has_simulation_cache": has_simulation,
+    "has_computation_graph": has_graph,
+    "has_bytecode_cache": has_bytecode,
+  }
+
+  if has_simulation:
+    result["simulation_version"] = protocol.simulation_version
+    result["simulation_cached_at"] = (
+      protocol.simulation_cached_at.isoformat() if protocol.simulation_cached_at else None
+    )
+    # Include summary from cached result
+    if protocol.simulation_result_json:
+      cached = protocol.simulation_result_json
+      result["cached_result_summary"] = {
+        "passed": cached.get("passed", False),
+        "violation_count": len(cached.get("violations", [])),
+        "failure_mode_count": len(cached.get("failure_modes", [])),
+        "level": cached.get("level", "unknown"),
+      }
+
+  if has_bytecode:
+    result["bytecode_python_version"] = protocol.bytecode_python_version
+    result["bytecode_cache_version"] = protocol.bytecode_cache_version
+    result["bytecode_cached_at"] = (
+      protocol.bytecode_cached_at.isoformat() if protocol.bytecode_cached_at else None
+    )
+
+  return result

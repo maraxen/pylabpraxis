@@ -5,7 +5,7 @@
  */
 
 import type { Database, SqlValue } from 'sql.js';
-import { SqliteRepository, type BaseEntity } from './sqlite-repository';
+import { SqliteRepository, type BaseEntity, type QueryOptions } from './sqlite-repository';
 import type {
     Asset,
     ProtocolRun,
@@ -168,9 +168,38 @@ export class MachineRepository extends SqliteRepository<WithIndex<Machine>> {
     /**
      * Find machines by status
      */
+    private get joinedSelect() {
+        return `SELECT m.*, a.asset_type, a.name, a.fqn, a.location, a.plr_state, a.plr_definition, a.properties_json
+                FROM ${this.tableName} m
+                LEFT JOIN assets a ON m.accession_id = a.accession_id`;
+    }
+
+    /**
+     * Find all machines with asset details
+     */
+    override findAll(options?: QueryOptions<WithIndex<Machine>>): WithIndex<Machine>[] {
+        let sql = this.joinedSelect;
+        if (options?.orderBy) sql += this.buildOrderByClause(options.orderBy);
+        if (options?.limit !== undefined) sql += ` LIMIT ${options.limit}`;
+        if (options?.offset !== undefined) sql += ` OFFSET ${options.offset}`;
+        return this.executeQuery(sql);
+    }
+
+    /**
+     * Find machine by ID with asset details
+     */
+    override findById(id: string): WithIndex<Machine> | null {
+        const sql = `${this.joinedSelect} WHERE m.accession_id = ?`;
+        const results = this.executeQuery(sql, [id]);
+        return results.length > 0 ? results[0] : null;
+    }
+
+    /**
+     * Find machines by status
+     */
     findByStatus(statuses: MachineStatus[]): Machine[] {
         const placeholders = statuses.map(() => '?').join(', ');
-        const sql = `SELECT * FROM ${this.tableName} WHERE status IN (${placeholders})`;
+        const sql = `${this.joinedSelect} WHERE m.status IN (${placeholders})`;
         return this.executeQuery(sql, statuses);
     }
 
@@ -293,9 +322,38 @@ export class ResourceRepository extends SqliteRepository<WithIndex<Resource>> {
     /**
      * Find resources by status
      */
+    private get joinedSelect() {
+        return `SELECT r.*, a.asset_type, a.name, a.fqn, a.location, a.plr_state, a.plr_definition, a.properties_json
+                FROM ${this.tableName} r
+                LEFT JOIN assets a ON r.accession_id = a.accession_id`;
+    }
+
+    /**
+     * Find all resources with asset details
+     */
+    override findAll(options?: QueryOptions<WithIndex<Resource>>): WithIndex<Resource>[] {
+        let sql = this.joinedSelect;
+        if (options?.orderBy) sql += this.buildOrderByClause(options.orderBy);
+        if (options?.limit !== undefined) sql += ` LIMIT ${options.limit}`;
+        if (options?.offset !== undefined) sql += ` OFFSET ${options.offset}`;
+        return this.executeQuery(sql);
+    }
+
+    /**
+     * Find resource by ID with asset details
+     */
+    override findById(id: string): WithIndex<Resource> | null {
+        const sql = `${this.joinedSelect} WHERE r.accession_id = ?`;
+        const results = this.executeQuery(sql, [id]);
+        return results.length > 0 ? results[0] : null;
+    }
+
+    /**
+     * Find resources by status
+     */
     findByStatus(statuses: ResourceStatus[]): Resource[] {
         const placeholders = statuses.map(() => '?').join(', ');
-        const sql = `SELECT * FROM ${this.tableName} WHERE status IN (${placeholders})`;
+        const sql = `${this.joinedSelect} WHERE r.status IN (${placeholders})`;
         return this.executeQuery(sql, statuses);
     }
 

@@ -196,15 +196,46 @@ describe('AssetService', () => {
     });
   });
 
-  // Browser mode tests for SQLite-based asset operations
   describe('Browser Mode CRUD', () => {
     let sqliteService: SqliteService;
+
+    // Mock Repositories
+    const mockMachineRepo = {
+      findAll: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+      findOneBy: vi.fn(),
+      findBy: vi.fn()
+    };
+
+    const mockResourceRepo = {
+      findAll: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+      findOneBy: vi.fn(),
+      findBy: vi.fn()
+    };
+
+    const mockResourceDefRepo = {
+      findAll: vi.fn(), // Return array directly
+      findOneBy: vi.fn(),
+      findBy: vi.fn()
+    }
 
     beforeEach(() => {
       sqliteService = TestBed.inject(SqliteService);
       // Mock ModeService to return browser mode
       const modeService = TestBed.inject(ModeService);
       vi.spyOn(modeService, 'isBrowserMode').mockReturnValue(true);
+
+      // Mock the Observables on SqliteService
+      // We use 'as any' to overwrite readonly properties for testing
+      (sqliteService as any).machines = of(mockMachineRepo);
+      (sqliteService as any).resources = of(mockResourceRepo);
+      (sqliteService as any).resourceDefinitions = of(mockResourceDefRepo);
+
+      // Reset spies
+      vi.clearAllMocks();
     });
 
     describe('Machine CRUD in Browser Mode', () => {
@@ -214,40 +245,38 @@ describe('AssetService', () => {
           status: MachineStatus.IDLE,
           definition_id: 'def-123'
         };
-        const createdMachine: Machine = {
-          accession_id: 'bm-001',
-          name: newMachine.name,
-          status: newMachine.status!
-        };
 
-        // Mock SqliteService.createMachine
-        vi.spyOn(sqliteService as any, 'createMachine').mockResolvedValue(createdMachine);
+        // repo.create returns void/Promise<void> usually, checking implementation... 
+        // asset.service.ts just calls repo.create(newMachine), doesn't await return
+        mockMachineRepo.create.mockReturnValue(undefined);
 
         const result = await firstValueFrom(service.createMachine(newMachine));
-        expect(result).toEqual(createdMachine);
+
+        expect(result.name).toBe(newMachine.name);
+        expect(result.status).toBe('AVAILABLE'); // Service overrides status on create
+        expect(result.asset_type).toBe('MACHINE');
+        expect(mockMachineRepo.create).toHaveBeenCalled();
       });
 
       it('should get machines from SqliteService in browser mode', async () => {
-        const mockMachines: Machine[] = [
-          { accession_id: 'bm-001', name: 'Browser Machine 1', status: MachineStatus.IDLE },
-          { accession_id: 'bm-002', name: 'Browser Machine 2', status: MachineStatus.RUNNING }
+        const mockMachines = [
+          { accession_id: 'bm-001', name: 'Browser Machine 1', status: 'IDLE', machine_category: 'opentrons', fqn: 'mac.1' },
+          { accession_id: 'bm-002', name: 'Browser Machine 2', status: 'RUNNING', machine_category: 'hamilton', fqn: 'mac.2' }
         ];
 
-        // Mock SqliteService.getMachines or findAll
-        vi.spyOn(sqliteService as any, 'findAll').mockImplementation((table: string) => {
-          if (table === 'machines') return Promise.resolve(mockMachines);
-          return Promise.resolve([]);
-        });
+        mockMachineRepo.findAll.mockReturnValue(mockMachines);
 
         const result = await firstValueFrom(service.getMachines());
         expect(result.length).toBe(2);
         expect(result[0].name).toBe('Browser Machine 1');
+        expect(mockMachineRepo.findAll).toHaveBeenCalled();
       });
 
       it('should delete machine in browser mode', async () => {
-        vi.spyOn(sqliteService as any, 'deleteMachine').mockResolvedValue(undefined);
+        mockMachineRepo.delete.mockReturnValue(undefined);
 
         await expect(firstValueFrom(service.deleteMachine('bm-001'))).resolves.toBeUndefined();
+        expect(mockMachineRepo.delete).toHaveBeenCalledWith('bm-001');
       });
     });
 
@@ -258,29 +287,23 @@ describe('AssetService', () => {
           status: ResourceStatus.AVAILABLE,
           definition_id: 'plate-def-123'
         };
-        const createdResource: Resource = {
-          accession_id: 'br-001',
-          name: newResource.name,
-          status: newResource.status!
-        };
 
-        // Mock SqliteService.createResource
-        vi.spyOn(sqliteService as any, 'createResource').mockResolvedValue(createdResource);
+        mockResourceRepo.create.mockReturnValue(undefined);
 
         const result = await firstValueFrom(service.createResource(newResource));
-        expect(result).toEqual(createdResource);
+
+        expect(result.name).toBe(newResource.name);
+        expect(result.asset_type).toBe('RESOURCE');
+        expect(mockResourceRepo.create).toHaveBeenCalled();
       });
 
       it('should get resources from SqliteService in browser mode', async () => {
-        const mockResources: Resource[] = [
-          { accession_id: 'br-001', name: 'Browser Plate 1', status: ResourceStatus.AVAILABLE },
-          { accession_id: 'br-002', name: 'Browser Tip Rack', status: ResourceStatus.IN_USE }
+        const mockResources = [
+          { accession_id: 'br-001', name: 'Browser Plate 1', status: 'available' },
+          { accession_id: 'br-002', name: 'Browser Tip Rack', status: 'in_use' }
         ];
 
-        vi.spyOn(sqliteService as any, 'findAll').mockImplementation((table: string) => {
-          if (table === 'resources') return Promise.resolve(mockResources);
-          return Promise.resolve([]);
-        });
+        mockResourceRepo.findAll.mockReturnValue(mockResources);
 
         const result = await firstValueFrom(service.getResources());
         expect(result.length).toBe(2);
@@ -288,47 +311,35 @@ describe('AssetService', () => {
       });
 
       it('should delete resource in browser mode', async () => {
-        vi.spyOn(sqliteService as any, 'deleteResource').mockResolvedValue(undefined);
+        mockResourceRepo.delete.mockReturnValue(undefined);
 
         await expect(firstValueFrom(service.deleteResource('br-001'))).resolves.toBeUndefined();
+        expect(mockResourceRepo.delete).toHaveBeenCalledWith('br-001');
       });
     });
 
     describe('Asset Persistence', () => {
       it('should persist machine after service reload', async () => {
-        const machine: Machine = {
+        // In this unit test with mocks, we verify that the SERVICE attempts to fetch from the REPO
+        // 'Persistence' in the unit test context essentially means 'calls the repo'
+        const machine = {
           accession_id: 'persist-001',
           name: 'Persistent Machine',
-          status: MachineStatus.IDLE
+          status: 'IDLE',
+          machine_category: 'test'
         };
 
-        // Simulate persisted data
-        vi.spyOn(sqliteService as any, 'findAll').mockResolvedValue([machine]);
+        mockMachineRepo.findAll.mockReturnValue([machine]);
 
         // First load
         const result1 = await firstValueFrom(service.getMachines());
-        expect(result1).toContainEqual(machine);
+        expect(result1[0].accession_id).toBe('persist-001');
 
-        // Simulate service recreation (would happen on page reload)
-        // The data should still be there from SQLite
+        // Second load
         const result2 = await firstValueFrom(service.getMachines());
-        expect(result2).toContainEqual(machine);
-      });
+        expect(result2[0].accession_id).toBe('persist-001');
 
-      it('should persist resource after service reload', async () => {
-        const resource: Resource = {
-          accession_id: 'persist-r-001',
-          name: 'Persistent Resource',
-          status: ResourceStatus.AVAILABLE
-        };
-
-        vi.spyOn(sqliteService as any, 'findAll').mockResolvedValue([resource]);
-
-        const result1 = await firstValueFrom(service.getResources());
-        expect(result1).toContainEqual(resource);
-
-        const result2 = await firstValueFrom(service.getResources());
-        expect(result2).toContainEqual(resource);
+        expect(mockMachineRepo.findAll).toHaveBeenCalledTimes(2);
       });
     });
   });

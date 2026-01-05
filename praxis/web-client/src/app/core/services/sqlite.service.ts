@@ -49,7 +49,7 @@ import { MOCK_MACHINES } from '../../../assets/demo-data/machines';
 
 export interface SqliteStatus {
     initialized: boolean;
-    source: 'prebuilt' | 'schema' | 'legacy' | 'none';
+    source: 'prebuilt' | 'schema' | 'legacy' | 'indexeddb' | 'none';
     tableCount: number;
     error?: string;
 }
@@ -155,7 +155,28 @@ export class SqliteService {
             });
 
             // Try loading prebuilt database first
-            let db = await this.tryLoadPrebuiltDb(SQL);
+            let db: Database | null = null;
+
+            // 1. Try loading from IndexedDB persistence (browser refresh survival)
+            const persistedData = await this.loadFromStore();
+            if (persistedData) {
+                try {
+                    db = new SQL.Database(persistedData);
+                    console.log('[SqliteService] Loaded database from IndexedDB persistence');
+                    this.statusSubject.next({
+                        initialized: true,
+                        source: 'indexeddb',
+                        tableCount: this.getTableCount(db)
+                    });
+                } catch (e) {
+                    console.warn('[SqliteService] Failed to load persisted DB, fallback to prebuilt/fresh', e);
+                }
+            }
+
+            // 2. Try loading prebuilt database if no persistence
+            if (!db) {
+                db = await this.tryLoadPrebuiltDb(SQL);
+            }
 
             if (!db) {
                 // Fall back to fresh database with generated schema
@@ -170,6 +191,9 @@ export class SqliteService {
             // --- MVP Schema Sync ---
             this.checkAndMigrate(db);
             // -----------------------
+
+            // Save immediately to ensure persistence initialized
+            this.saveToStore(db);
 
             const tableCount = this.getTableCount(db);
             console.log(`[SqliteService] Database initialized with ${tableCount} tables`);
@@ -773,6 +797,92 @@ export class SqliteService {
             initialized: true,
             source: 'prebuilt',
             tableCount
+        });
+    }
+
+    // ============================================
+    // Persistence (IndexedDB)
+    // ============================================
+
+    /**
+     * Public method to trigger a save of the current DB state to IndexedDB
+     */
+    public async save(): Promise<void> {
+        if (this.dbInstance) {
+            await this.saveToStore(this.dbInstance);
+            console.debug('[SqliteService] Database saved to IndexedDB');
+        }
+    }
+
+    private async saveToStore(db: Database): Promise<void> {
+        try {
+            const binary = db.export();
+            console.debug(`[SqliteService] Exporting database for persistence (${binary.length} bytes)`);
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('praxis_browser_db', 2);
+                request.onupgradeneeded = (event: any) => {
+                    console.debug('[SqliteService] IndexedDB upgrade needed');
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains('sqlite_store')) {
+                        db.createObjectStore('sqlite_store');
+                    }
+                };
+                request.onsuccess = (event: any) => {
+                    const idb = event.target.result;
+                    const tx = idb.transaction('sqlite_store', 'readwrite');
+                    const store = tx.objectStore('sqlite_store');
+                    const putReq = store.put(binary, 'db_snapshot');
+                    putReq.onsuccess = () => console.debug('[SqliteService] Database snapshot saved successfully');
+                    putReq.onerror = () => console.error('[SqliteService] Failed to save snapshot', putReq.error);
+
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => reject(tx.error);
+                };
+                request.onerror = () => reject(request.error);
+            });
+        } catch (e) {
+            console.error('[SqliteService] Error saving to IndexedDB', e);
+        }
+    }
+
+    private async loadFromStore(): Promise<Uint8Array | null> {
+        console.debug('[SqliteService] Attempting to load database from IndexedDB');
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open('praxis_browser_db', 2);
+            request.onupgradeneeded = (event: any) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('sqlite_store')) {
+                    db.createObjectStore('sqlite_store');
+                }
+            };
+            request.onsuccess = (event: any) => {
+                const idb = event.target.result;
+                if (!idb.objectStoreNames.contains('sqlite_store')) {
+                    console.debug('[SqliteService] Store not found, skipping load');
+                    resolve(null);
+                    return;
+                }
+                const tx = idb.transaction('sqlite_store', 'readonly');
+                const store = tx.objectStore('sqlite_store');
+                const getReq = store.get('db_snapshot');
+                getReq.onsuccess = () => {
+                    if (getReq.result) {
+                        console.debug(`[SqliteService] Database snapshot found (${getReq.result.length} bytes)`);
+                        resolve(getReq.result);
+                    } else {
+                        console.debug('[SqliteService] Database snapshot is empty');
+                        resolve(null);
+                    }
+                };
+                getReq.onerror = () => {
+                    console.error('[SqliteService] Error reading snapshot', getReq.error);
+                    resolve(null);
+                };
+            };
+            request.onerror = () => {
+                console.warn('[SqliteService] Error opening IndexedDB', request.error);
+                resolve(null);
+            };
         });
     }
 }

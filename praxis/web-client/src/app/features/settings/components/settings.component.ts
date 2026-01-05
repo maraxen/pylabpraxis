@@ -8,6 +8,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { AppStore } from '../../../core/store/app.store';
+import { OnboardingService } from '@core/services/onboarding.service';
+import { TutorialService } from '@core/services/tutorial.service';
+import { MatButtonModule } from '@angular/material/button';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -21,7 +24,9 @@ type Theme = 'light' | 'dark' | 'system';
     MatIconModule,
     MatListModule,
     MatSlideToggleModule,
-    MatExpansionModule
+    MatSlideToggleModule,
+    MatExpansionModule,
+    MatButtonModule
   ],
   template: `
     <div class="p-6">
@@ -76,6 +81,48 @@ type Theme = 'light' | 'dark' | 'system';
                 color="primary">
               </mat-slide-toggle>
             </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Onboarding & Demo -->
+        <mat-card class="glass-panel" data-tour-id="settings-onboarding">
+          <mat-card-header>
+            <mat-icon mat-card-avatar class="text-primary scale-125">school</mat-icon>
+            <mat-card-title>Onboarding & Demo</mat-card-title>
+            <mat-card-subtitle>Manage tutorial and demo mode settings</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content class="pt-4 space-y-4">
+             <div class="flex items-center justify-between">
+               <div>
+                 <h3 class="font-medium">Guided Tutorial</h3>
+                 <p class="text-sm text-gray-500 dark:text-gray-400">
+                   {{ hasTutorialProgress() ? 'Resume or restart the interactive tour' : 'Start the interactive tour of features' }}
+                 </p>
+               </div>
+               <div class="flex gap-2">
+                 @if (hasTutorialProgress()) {
+                   <button mat-stroked-button color="primary" (click)="resumeTutorial()">
+                     <mat-icon class="mr-1">play_arrow</mat-icon> Resume
+                   </button>
+                 }
+                 <button mat-stroked-button [color]="hasTutorialProgress() ? 'accent' : 'primary'" (click)="restartTutorial()">
+                   <mat-icon class="mr-1">{{ hasTutorialProgress() ? 'restart_alt' : 'play_arrow' }}</mat-icon> 
+                   {{ hasTutorialProgress() ? 'Restart' : 'Start Tutorial' }}
+                 </button>
+               </div>
+             </div>
+             
+             <div class="flex items-center justify-between border-t border-[var(--theme-border)] pt-4 mt-2">
+               <div>
+                 <h3 class="font-medium">Demo Mode</h3>
+                 <p class="text-sm text-gray-500 dark:text-gray-400">Enable sample data (requires reload)</p>
+               </div>
+                <mat-slide-toggle 
+                    [checked]="onboarding.isDemoModeEnabled()"
+                    (change)="toggleDemoMode($event)"
+                    color="warn">
+                </mat-slide-toggle>
+             </div>
           </mat-card-content>
         </mat-card>
 
@@ -160,8 +207,27 @@ type Theme = 'light' | 'dark' | 'system';
 })
 export class SettingsComponent {
   store = inject(AppStore);
+  onboarding = inject(OnboardingService);
+  tutorial = inject(TutorialService);
+
+  toggleDemoMode(event: any) {
+    this.onboarding.setDemoMode(event.checked, true);
+  }
 
   setTheme(theme: Theme) {
     this.store.setTheme(theme);
+  }
+
+  hasTutorialProgress(): boolean {
+    return this.onboarding.getTutorialState() !== null;
+  }
+
+  resumeTutorial() {
+    this.tutorial.start(true); // Resume from saved step
+  }
+
+  restartTutorial() {
+    this.onboarding.clearTutorialState();
+    this.tutorial.start(false); // Start fresh
   }
 }

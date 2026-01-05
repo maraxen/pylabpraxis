@@ -53,6 +53,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
               class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-3 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" 
               (click)="openAddAsset()" 
               [disabled]="isLoading() || isSyncing()"
+              data-tour-id="add-asset-btn"
             >
               <mat-icon>{{ selectedIndex === 3 ? 'sync' : 'add' }}</mat-icon>
               {{ selectedIndex === 3 ? 'Sync Definitions' : 'Add ' + assetTypeLabel() }}
@@ -95,7 +96,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
                   <mat-spinner diameter="40"></mat-spinner>
                 </div>
               }
-              <app-machine-list #machineList></app-machine-list>
+              <app-machine-list #machineList data-tour-id="machine-list"></app-machine-list>
             </div>
           </mat-tab>
 
@@ -112,7 +113,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
                   <mat-spinner diameter="40"></mat-spinner>
                 </div>
               }
-              <app-resource-accordion #resourceAccordion></app-resource-accordion>
+              <app-resource-accordion #resourceAccordion data-tour-id="resource-list"></app-resource-accordion>
             </div>
           </mat-tab>
 
@@ -314,44 +315,56 @@ export class AssetsComponent implements OnInit, OnDestroy {
   }
 
   private openAddMachine() {
+    console.debug('[ASSET-DEBUG] openAddMachine: Opening dialog');
     const dialogRef = this.dialog.open(MachineDialogComponent, {
       width: '700px'
     });
 
     dialogRef.afterClosed().pipe(
-      filter(result => !!result),
+      filter(result => {
+        console.debug('[ASSET-DEBUG] openAddMachine: Dialog closed with result:', result);
+        return !!result;
+      }),
       switchMap(result => {
+        console.debug('[ASSET-DEBUG] openAddMachine: Calling assetService.createMachine');
         this.isLoading.set(true); // Set loading true before API call
         return this.assetService.createMachine(result).pipe(
           finalize(() => this.isLoading.set(false)) // Set loading false after API call completes
         );
       })
     ).subscribe({
-      next: () => {
+      next: (createdMachine) => {
+        console.debug('[ASSET-DEBUG] openAddMachine: Machine created, reloading list', createdMachine);
         this.machineList.loadMachines();
       },
-      error: (err) => console.error('Error creating machine', err)
+      error: (err) => console.error('[ASSET-DEBUG] openAddMachine: Error', err)
     });
   }
 
   private openAddResource() {
+    console.debug('[ASSET-DEBUG] openAddResource: Opening dialog');
     const dialogRef = this.dialog.open(ResourceDialogComponent, {
       width: '700px'
     });
 
     dialogRef.afterClosed().pipe(
-      filter(result => !!result),
+      filter(result => {
+        console.debug('[ASSET-DEBUG] openAddResource: Dialog closed with result:', result);
+        return !!result;
+      }),
       switchMap(result => {
+        console.debug('[ASSET-DEBUG] openAddResource: Calling assetService.createResource');
         this.isLoading.set(true); // Set loading true before API call
         return this.assetService.createResource(result).pipe(
           finalize(() => this.isLoading.set(false)) // Set loading false after API call completes
         );
       })
     ).subscribe({
-      next: () => {
+      next: (createdResource) => {
+        console.debug('[ASSET-DEBUG] openAddResource: Resource created, reloading list', createdResource);
         this.resourceAccordion.loadData();
       },
-      error: (err) => console.error('Error creating resource', err)
+      error: (err) => console.error('[ASSET-DEBUG] openAddResource: Error', err)
     });
   }
 

@@ -1,0 +1,163 @@
+
+Running 6 tests using 4 workers
+
+  ✘  2 [chromium] › e2e/asset-inventory.spec.ts:89:9 › Asset Inventory Persistence › should persist created resource across reloads (30.4s)
+  ✘  1 [chromium] › e2e/asset-inventory.spec.ts:31:9 › Asset Inventory Persistence › should persist created machine across reloads (35.7s)
+  ✘  3 [firefox] › e2e/asset-inventory.spec.ts:31:9 › Asset Inventory Persistence › should persist created machine across reloads (30.8s)
+  ✘  4 [firefox] › e2e/asset-inventory.spec.ts:89:9 › Asset Inventory Persistence › should persist created resource across reloads (32.1s)
+BROWSER_LOG: [ASSET-DEBUG] getMachines: Found 0 machines in DB []
+BROWSER_LOG: [ASSET-DEBUG] getResources: Found 0 resources in DB []
+BROWSER_LOG: [ASSET-DEBUG] getMachines: Found 0 machines in DB []
+BROWSER_LOG: [ASSET-DEBUG] getResources: Found 0 resources in DB []
+  ✘  5 [webkit] › e2e/asset-inventory.spec.ts:31:9 › Asset Inventory Persistence › should persist created machine across reloads (30.1s)
+  ✘  6 [webkit] › e2e/asset-inventory.spec.ts:89:9 › Asset Inventory Persistence › should persist created resource across reloads (30.0s)
+
+
+  1) [chromium] › e2e/asset-inventory.spec.ts:31:9 › Asset Inventory Persistence › should persist created machine across reloads 
+
+    [31mTest timeout of 30000ms exceeded while running "beforeEach" hook.[39m
+
+       9 |  */
+      10 | test.describe('Asset Inventory Persistence', () => {
+    > 11 |     test.beforeEach(async ({ page }) => {
+         |          ^
+      12 |         await page.goto('/');
+      13 |
+      14 |         // In browser mode, we expect a redirect to /app/home
+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:11:10
+
+    Error: page.goto: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - navigating to "http://localhost:4200/", waiting until "load"[22m
+
+
+      10 | test.describe('Asset Inventory Persistence', () => {
+      11 |     test.beforeEach(async ({ page }) => {
+    > 12 |         await page.goto('/');
+         |                    ^
+      13 |
+      14 |         // In browser mode, we expect a redirect to /app/home
+      15 |         await page.waitForURL('**/app/home', { timeout: 15000 }).catch(() => {
+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:12:20
+
+  2) [chromium] › e2e/asset-inventory.spec.ts:89:9 › Asset Inventory Persistence › should persist created resource across reloads 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('.sidebar-rail').getByRole('link', { name: /Assets/i })[22m
+
+
+      91 |
+      92 |         // 1. Navigate to Assets via sidebar
+    > 93 |         await page.locator('.sidebar-rail').getByRole('link', { name: /Assets/i }).click();
+         |                                                                                    ^
+      94 |         await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10000 });
+      95 |
+      96 |         // 2. Click "Add Resource"
+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:93:84
+
+    Error Context: test-results/asset-inventory-Asset-Inve-eae82-ted-resource-across-reloads-chromium/error-context.md
+
+  3) [firefox] › e2e/asset-inventory.spec.ts:31:9 › Asset Inventory Persistence › should persist created machine across reloads 
+
+    [31mTest timeout of 30000ms exceeded while running "beforeEach" hook.[39m
+
+       9 |  */
+      10 | test.describe('Asset Inventory Persistence', () => {
+    > 11 |     test.beforeEach(async ({ page }) => {
+         |          ^
+      12 |         await page.goto('/');
+      13 |
+      14 |         // In browser mode, we expect a redirect to /app/home
+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:11:10
+
+    Error: page.goto: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - navigating to "http://localhost:4200/", waiting until "load"[22m
+
+
+      10 | test.describe('Asset Inventory Persistence', () => {
+      11 |     test.beforeEach(async ({ page }) => {
+    > 12 |         await page.goto('/');
+         |                    ^
+      13 |
+      14 |         // In browser mode, we expect a redirect to /app/home
+      15 |         await page.waitForURL('**/app/home', { timeout: 15000 }).catch(() => {
+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:12:20
+
+  4) [firefox] › e2e/asset-inventory.spec.ts:89:9 › Asset Inventory Persistence › should persist created resource across reloads 
+
+    [31mTest timeout of 30000ms exceeded while running "beforeEach" hook.[39m
+
+       9 |  */
+      10 | test.describe('Asset Inventory Persistence', () => {
+    > 11 |     test.beforeEach(async ({ page }) => {
+         |          ^
+      12 |         await page.goto('/');
+      13 |
+      14 |         // In browser mode, we expect a redirect to /app/home
+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:11:10
+
+    Error: page.goto: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - navigating to "http://localhost:4200/", waiting until "load"[22m
+
+
+      10 | test.describe('Asset Inventory Persistence', () => {
+      11 |     test.beforeEach(async ({ page }) => {
+    > 12 |         await page.goto('/');
+         |                    ^
+      13 |
+      14 |         // In browser mode, we expect a redirect to /app/home
+      15 |         await page.waitForURL('**/app/home', { timeout: 15000 }).catch(() => {
+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:12:20
+
+  5) [webkit] › e2e/asset-inventory.spec.ts:31:9 › Asset Inventory Persistence › should persist created machine across reloads 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('.sidebar-rail').getByRole('link', { name: /Assets/i })[22m
+
+
+      33 |
+      34 |         // 1. Navigate to Assets via sidebar
+    > 35 |         await page.locator('.sidebar-rail').getByRole('link', { name: /Assets/i }).click();
+         |                                                                                    ^
+      36 |
+      37 |         // Wait for Quick Actions to load
+      38 |         await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10000 });
+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:35:84
+
+    Error Context: test-results/asset-inventory-Asset-Inve-eb362-ated-machine-across-reloads-webkit/error-context.md
+
+  6) [webkit] › e2e/asset-inventory.spec.ts:89:9 › Asset Inventory Persistence › should persist created resource across reloads 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('.sidebar-rail').getByRole('link', { name: /Assets/i })[22m
+
+
+      91 |
+      92 |         // 1. Navigate to Assets via sidebar
+    > 93 |         await page.locator('.sidebar-rail').getByRole('link', { name: /Assets/i }).click();
+         |                                                                                    ^
+      94 |         await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10000 });
+      95 |
+      96 |         // 2. Click "Add Resource"
+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:93:84
+
+    Error Context: test-results/asset-inventory-Asset-Inve-eae82-ted-resource-across-reloads-webkit/error-context.md
+
+  6 failed
+    [chromium] › e2e/asset-inventory.spec.ts:31:9 › Asset Inventory Persistence › should persist created machine across reloads 
+    [chromium] › e2e/asset-inventory.spec.ts:89:9 › Asset Inventory Persistence › should persist created resource across reloads 
+    [firefox] › e2e/asset-inventory.spec.ts:31:9 › Asset Inventory Persistence › should persist created machine across reloads 
+    [firefox] › e2e/asset-inventory.spec.ts:89:9 › Asset Inventory Persistence › should persist created resource across reloads 
+    [webkit] › e2e/asset-inventory.spec.ts:31:9 › Asset Inventory Persistence › should persist created machine across reloads 
+    [webkit] › e2e/asset-inventory.spec.ts:89:9 › Asset Inventory Persistence › should persist created resource across reloads 

@@ -49,7 +49,7 @@ interface RecentRun {
     SparklineComponent
   ],
   template: `
-    <div class="p-6 max-w-screen-2xl mx-auto">
+    <div class="p-6 max-w-screen-2xl mx-auto" data-tour-id="dashboard-root">
       <!-- Header with Quick Actions -->
       <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div class="greeting">

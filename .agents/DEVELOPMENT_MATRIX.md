@@ -32,6 +32,7 @@
 | **Add Resource Not Working** | P1 | M | [browser_mode_issues::2](./backlog/browser_mode_issues.md) | Cannot add resources in browser mode - needs investigation |
 | **DB Sync Issue** | P1 | L | [browser_mode_issues::9](./backlog/browser_mode_issues.md) | Root cause for multiple issues |
 | **Restore Asset Selection Step** | P1 | M | [run_protocol_workflow](./backlog/run_protocol_workflow.md) | REGRESSION: Re-enable resource selection in run workflow |
+| **IndexedDB Persistence** | P1 | M | [browser_mode_issues::10](./backlog/browser_mode_issues.md) | Persist SQLite DB to IndexedDB for data survivability |
 
 ---
 
@@ -126,6 +127,13 @@
 - BoundsAnalyzer for loop iteration counts
 - FailureModeDetector with early pruning
 - 49 comprehensive tests
+
+### Tutorial & Demo Mode ✅ (2026-01-05)
+
+- Guided Tutorial (Shepherd.js) with 11 steps
+- Runtime Demo Mode toggle (Settings & Welcome Dialog)
+- Persistent Onboarding state
+- Welcome & Exit Dialogs for smooth UX
 
 ---
 
