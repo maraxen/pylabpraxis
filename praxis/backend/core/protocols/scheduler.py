@@ -3,8 +3,6 @@
 import uuid
 from typing import Any, Protocol, runtime_checkable
 
-from praxis.backend.models.orm.protocol import ProtocolRunOrm
-
 
 @runtime_checkable
 class IProtocolScheduler(Protocol):

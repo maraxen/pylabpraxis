@@ -259,3 +259,127 @@ async def release_reservation(
     message=f"Successfully released {released_count} reservation(s) for asset key: {asset_key}",
     released_count=released_count,
   )
+
+
+# =============================================================================
+# State Resolution Endpoints
+# =============================================================================
+
+
+@router.get(
+  "/{schedule_entry_accession_id}/uncertain-state",
+  response_model=list,
+  status_code=status.HTTP_200_OK,
+  tags=["Scheduler", "State Resolution"],
+)
+async def get_uncertain_states(
+  schedule_entry_accession_id: UUID,
+  db: Annotated[AsyncSession, Depends(get_db)],
+) -> list:
+  """Get uncertain states for a failed/paused run.
+
+  Returns the list of state changes that are uncertain due to a failed
+  operation. This is used to build a state resolution UI.
+  """
+  from praxis.backend.services.state_resolution_service import (
+    StateResolutionService,
+    UncertainStateChangeResponse,
+  )
+
+  service = StateResolutionService(db)
+  try:
+    uncertain = await service.get_uncertain_states(schedule_entry_accession_id)
+    return [UncertainStateChangeResponse.from_core(u).model_dump() for u in uncertain]
+  except ValueError as e:
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+
+@router.post(
+  "/{schedule_entry_accession_id}/resolve-state",
+  status_code=status.HTTP_200_OK,
+  tags=["Scheduler", "State Resolution"],
+)
+async def resolve_state(
+  schedule_entry_accession_id: UUID,
+  db: Annotated[AsyncSession, Depends(get_db)],
+  resolution_request: dict,
+) -> dict:
+  """Submit a state resolution for a failed operation.
+
+  The user provides their determination of what actually happened during the
+  failed operation. This is logged for audit purposes and the simulation
+  state is updated accordingly.
+  """
+  from praxis.backend.services.state_resolution_service import (
+    StateResolutionLogResponse,
+    StateResolutionRequest,
+    StateResolutionService,
+  )
+
+  service = StateResolutionService(db)
+  try:
+    # Parse request
+    request = StateResolutionRequest(**resolution_request)
+    resolution = request.to_core_resolution()
+    action = request.get_action()
+
+    # Apply resolution
+    log_entry = await service.resolve_states(
+      schedule_entry_accession_id,
+      resolution,
+      action,
+    )
+    await db.commit()
+
+    return StateResolutionLogResponse.from_orm_model(log_entry).model_dump()
+  except ValueError as e:
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+
+@router.post(
+  "/{schedule_entry_accession_id}/resume",
+  status_code=status.HTTP_200_OK,
+  tags=["Scheduler", "State Resolution"],
+)
+async def resume_run(
+  schedule_entry_accession_id: UUID,
+  db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+  """Resume a paused/failed run after state resolution.
+
+  This transitions the run back to EXECUTING status so that it can continue.
+  Must be called after resolve_state to ensure state is correct.
+  """
+  from praxis.backend.services.state_resolution_service import StateResolutionService
+
+  service = StateResolutionService(db)
+  try:
+    await service.resume_run(schedule_entry_accession_id)
+    return {"status": "resumed", "schedule_entry_id": str(schedule_entry_accession_id)}
+  except ValueError as e:
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+
+@router.post(
+  "/{schedule_entry_accession_id}/abort",
+  status_code=status.HTTP_200_OK,
+  tags=["Scheduler", "State Resolution"],
+)
+async def abort_run(
+  schedule_entry_accession_id: UUID,
+  db: Annotated[AsyncSession, Depends(get_db)],
+  reason: str | None = Query(default=None, description="Reason for aborting the run"),
+) -> dict:
+  """Abort a run after state resolution.
+
+  This cancels the run entirely. Use when the user determines the run
+  cannot be safely continued.
+  """
+  from praxis.backend.services.state_resolution_service import StateResolutionService
+
+  service = StateResolutionService(db)
+  try:
+    await service.abort_run(schedule_entry_accession_id, reason)
+    return {"status": "aborted", "schedule_entry_id": str(schedule_entry_accession_id)}
+  except ValueError as e:
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e

@@ -34,7 +34,6 @@ from praxis.backend.utils.plr_static_analysis.models import (
   GraphNodeType,
   OperationNode,
   ProtocolComputationGraph,
-  ResourceNode,
 )
 
 logger = logging.getLogger(__name__)
@@ -375,7 +374,7 @@ class GraphReplayEngine:
             method_name=operation.method_name,
             message=f"Method '{operation.method_name}' requires {contract.requires_tips_count} tips, "
             f"only {state.tip_state.tips_count} loaded",
-            suggested_fix=f"Use pick_up_tips96() or ensure enough tips are loaded",
+            suggested_fix="Use pick_up_tips96() or ensure enough tips are loaded",
             state_level=state.level,
           )
         )

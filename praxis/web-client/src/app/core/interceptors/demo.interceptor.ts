@@ -299,9 +299,9 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
 }
 
 /**
- * Demo HTTP Interceptor (functional style)
+ * Browser Mode HTTP Interceptor (functional style)
  *
- * In demo mode, intercepts API requests and returns mock data instead of
+ * In browser mode, intercepts API requests and returns mock data instead of
  * making actual network requests. This enables the application to run
  * entirely client-side without a backend.
  */

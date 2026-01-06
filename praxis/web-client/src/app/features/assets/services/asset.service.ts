@@ -168,7 +168,9 @@ export class AssetService {
         map(repo => repo.findAll().map(d => ({
           ...d,
           name: (d as any).name || 'Unknown Definition',
-          compatible_backends: Array.isArray(d.compatible_backends) ? d.compatible_backends : []
+          compatible_backends: (typeof d.compatible_backends === 'string'
+            ? (() => { try { return JSON.parse(d.compatible_backends); } catch { return []; } })()
+            : (Array.isArray(d.compatible_backends) ? d.compatible_backends : []))
         }) as unknown as MachineDefinition))
       );
     }

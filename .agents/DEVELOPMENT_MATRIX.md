@@ -1,6 +1,6 @@
 # Praxis Development Matrix
 
-**Last Updated**: 2026-01-05 (State Simulation Completed)
+**Last Updated**: 2026-01-05 (Roadmap Restructure)
 **Purpose**: Consolidated view of all remaining work items with priority and difficulty ratings.
 
 ---
@@ -29,20 +29,52 @@
 
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
-| **Add Resource Not Working** | P1 | M | [browser_mode_issues::2](./backlog/browser_mode_issues.md) | Cannot add resources in browser mode - needs investigation |
-| **DB Sync Issue** | P1 | L | [browser_mode_issues::9](./backlog/browser_mode_issues.md) | Root cause for multiple issues |
 | **Restore Asset Selection Step** | P1 | M | [run_protocol_workflow](./backlog/run_protocol_workflow.md) | REGRESSION: Re-enable resource selection in run workflow |
 | **IndexedDB Persistence** | P1 | M | [browser_mode_issues::10](./backlog/browser_mode_issues.md) | Persist SQLite DB to IndexedDB for data survivability |
+| **DB Sync Issue** | P1 | L | [browser_mode_issues::9](./backlog/browser_mode_issues.md) | Root cause for multiple issues |
 
 ---
 
 ## P2 - High Priority (New Feature Development)
 
+### Simulation UI Integration (Phase 8)
+
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
-| **REPL → JupyterLite Migration** | P2 | XL | [repl_jupyterlite](./backlog/repl_jupyterlite.md) | Replace xterm.js REPL with JupyterLite, preload assets |
-| **Hardware Discovery Menu Restoration** | P2 | M | [hardware_discovery_menu](./backlog/hardware_discovery_menu.md) | USB icon buttons, restore discovery menu, exclude simulator |
-| ~~**State Snapshot Tracing**~~ | ✅ | XL | [state_snapshot_tracing](./backlog/state_snapshot_tracing.md) | ✅ Completed 2026-01-05 |
+
+| **State Failure Visualization** | P2 | M | [simulation_ui_integration](./backlog/simulation_ui_integration.md) | Visual indication of state failures in ExecutionMonitor |
+
+### Browser Mode Defaults & Demo Elimination
+
+| Item | Priority | Difficulty | Backlog | Description |
+|------|----------|------------|---------|-------------|
+| **Default Asset Population** | P2 | M | [browser_mode_defaults](./backlog/browser_mode_defaults.md) | 1 of every resource, 1 of every machine (simulated) |
+| **Infinite Consumables** | P2 | M | [browser_mode_defaults](./backlog/browser_mode_defaults.md) | Tips/consumables auto-replenish in simulation |
+| **Remove Demo Mode Toggle** | P2 | S | [browser_mode_defaults](./backlog/browser_mode_defaults.md) | Eliminate separate demo mode - browser IS demo |
+
+### Chip-Based Filter Standardization
+
+| Item | Priority | Difficulty | Backlog | Description |
+|------|----------|------------|---------|-------------|
+| **Core Filter Chip Component** | P2 | M | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | Reusable chip component with states |
+| **Resource Filter Chips** | P2 | M | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | Status, Brand, Count, Type, Volume chips |
+
+| **Disabled Chip UX** | P2 | S | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | Shake animation + message on disabled click |
+| **Unique Name Parsing** | P2 | M | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | Extract distinguishing name parts |
+
+### JupyterLite REPL
+
+| Item | Priority | Difficulty | Backlog | Description |
+|------|----------|------------|---------|-------------|
+
+| **Asset Preloading** | P2 | L | [repl_jupyterlite](./backlog/repl_jupyterlite.md) | Auto-inject resources, deck states, machines |
+
+### Other P2 Items
+
+| Item | Priority | Difficulty | Backlog | Description |
+|------|----------|------------|---------|-------------|
+| **Machine Capabilities Verification** | P2 | M | [browser_mode_issues::14](./backlog/browser_mode_issues.md) | Hamilton Starlet 96-head/iSwap verification |
+| **Capability Dropdown Theme Sync** | P2 | S | [browser_mode_issues::14](./backlog/browser_mode_issues.md) | Fix light-theme-only capability menu |
 
 ---
 
@@ -62,7 +94,6 @@
 
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
-| **Resource Inventory Filters** | P3 | M | [ui_visual_tweaks](./backlog/ui_visual_tweaks.md) | Add filter chips to Resources tab (match Machines tab pattern) |
 | **UI Visual Tweaks** | P3 | S | [ui_visual_tweaks](./backlog/ui_visual_tweaks.md) | Spacing fixes in Registry/Machine tabs |
 | **Protocol Inference "Sharp Bits" Docs** | P3 | M | [docs](./backlog/docs.md) | Documentation for protocol inference edge cases |
 | **Spatial View Filters** | P3 | M | [asset_management::Spatial View](./backlog/asset_management.md) | Sort/Filter by location |
@@ -70,47 +101,62 @@
 
 ---
 
-## Completed (Archive: 2026-01-04)
+## Completed ✅ (Archive: 2026-01-05)
 
-### Browser Mode Stabilization ✅ (2026-01-02 - 2026-01-03)
+### Simulation UI Integration ✅ (2026-01-05)
 
-- Asset Manager rendering, Start Execution, Data Views, Hardware Discovery Button
-- OT2 Slot Type rendering, Execution Filters, API Docs (static generation)
-- Deck Display consistency, Machine Input forms, Machine Type config
-- Button Selector checkmarks, ty Error Deletions verification
+- **Deck Setup Requirements**: Requirement indicators, validation, integration with wizard
+- **Time Travel Debugging**: Timeline scrubber, inspector component, state display
+- **State History Timeline**: Sparkline visualizations of tips/liquids
+
+### State Simulation & Failure Detection ✅ (2026-01-05)
+
+- Hierarchical protocol simulation (Boolean → Symbolic → Exact)
+- 40+ PLR method contracts with preconditions/effects
+- StatefulTracedMachine extending existing tracer infrastructure
+- BoundsAnalyzer for loop iteration counts (items_x × items_y)
+- FailureModeDetector with early pruning
+- Cloudpickle + Graph Replay (Browser Mode)
+- 87 comprehensive tests
+
+### Browser Mode Stabilization ✅ (2026-01-02 - 2026-01-04)
+
+- Asset Manager rendering via SqliteService routing
+- Add Resource fixed (multi-table insertion)
+- Start Execution via Pyodide worker
+- Hardware Discovery Button component
+- OT2 slot-based deck rendering
+- Deck display consistency (dynamic generation)
+- Machine input forms (backend-driven dynamic forms)
+- Machine type config expansion
+- Button selector checkmark removal
+- Simulated Machine Indicators (Badge + Validation)
+
+| **Protocol Warnings in Selection** | [simulation_ui_integration](./backlog/simulation_ui_integration.md) | ✅ Complete (2026-01-05) |
+| **Machine Filter Chips** | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | ✅ Complete (2026-01-05) |
+| **Execution Monitor Filters** | [browser_mode_issues::7](./backlog/browser_mode_issues.md) | ✅ Complete (2026-01-05) |
 
 ### REPL Enhancements ✅
 
 - Variables Sidebar, Menu Bar, Save to Protocol, Completion Popup
 - Light/Dark Mode theming, Full Python tracebacks, Easy Add Assets
 - Protocol Editor disabled state with "Coming Soon" tooltip
+- JupyterLite basic integration
+- **Asset Menu Search & Filters** (✅ 2026-01-05)
+- **Empty State with Link** (✅ 2026-01-05)
 
-### UI/UX Polish ✅
+### Tutorial & Demo Mode ✅ (2026-01-05) [Superseded by Browser Mode Defaults]
 
-- Loading Skeletons, Navigation Breadcrumbs, Light Theme, Command Palette
-- Execution Filters horizontal flex container
+- Guided Tutorial (Shepherd.js) with 11 steps
+- Runtime Demo Mode toggle (to be removed)
+- Persistent Onboarding state
+- Welcome & Exit Dialogs
 
-### Core Backend ✅
+### Protocol Computation Graph ✅
 
-- Protocol Decorator Data Views, Deck Config, Cached PLR Definitions
-- Protocol Computation Graph, Parental Resource Inference, Container Type Extraction
-
-### Hardware Infrastructure ✅
-
-- mDNS Discovery, Connection Persistence, SqliteKeyValueStore, Production Tunneling
-
-### Guided Deck Setup ✅
-
-- Wizard components, Drag & Drop, Slot-based rendering
-- Machine Selection Step, Deck Setup inline (not dialog)
-
-### Maintenance System ✅
-
-- Schema (Alembic migration), Per-asset toggle, Maintenance Badges
-
-### Visualizations ✅
-
-- Summary Card Sparklines, Execution Monitor Timeline
+- CST → IR graph → preconditions
+- Parental resource inference (Well→Plate→Carrier→Deck)
+- Container type extraction (list[Well] → element types)
 
 ### Visual Index Selection ✅
 
@@ -119,21 +165,24 @@
 - Backend Type Inference for Well/TipSpot parameters
 - Formly Integration & Protocol Metadata Updates
 
-### State Simulation & Failure Detection ✅ (2026-01-05)
+### Maintenance System ✅
 
-- Hierarchical state simulation (Boolean → Symbolic → Exact)
-- 40+ PLR method contracts (LiquidHandler, PlateReader, HeaterShaker, etc.)
-- StatefulTracedMachine with precondition checking & effect application
-- BoundsAnalyzer for loop iteration counts
-- FailureModeDetector with early pruning
-- 49 comprehensive tests
+- Schema (Alembic migration + Pydantic models)
+- Per-asset toggle in details dialog
+- Maintenance badges component
 
-### Tutorial & Demo Mode ✅ (2026-01-05)
+### Visualizations ✅
 
-- Guided Tutorial (Shepherd.js) with 11 steps
-- Runtime Demo Mode toggle (Settings & Welcome Dialog)
-- Persistent Onboarding state
-- Welcome & Exit Dialogs for smooth UX
+- Summary card sparklines
+- Execution monitor timeline with phases
+
+### Error Handling & State Resolution ✅ (2026-01-05)
+
+- **State Uncertainty Detection**: Method contract analysis, Pydantic models (UncertainStateChange)
+- **State Resolution Dialog**: Angular dialog with quick actions (Success/Fail/Custom)
+- **Resolution Audit Logging**: SqliteService (Browser) + SQLAlchemy (Backend)
+- **API Integration**: 4 new endpoints in scheduler.py
+- **Full Test Coverage**: 30 backend tests + frontend component tests
 
 ---
 
@@ -141,8 +190,8 @@
 
 | Priority | Count | Description |
 |----------|-------|-------------|
-| **P1** | 3 | Remaining browser mode issues (Add Resource, DB Sync, Asset Selection) |
-| **P2** | 6 | New features + code quality + testing (State Simulation completed) |
-| **P3** | 5 | UI polish, filters, documentation, finalization |
+| **P1** | 3 | Critical browser mode issues (Asset Selection, IndexedDB, DB Sync) |
+| **P2** | 27 | New features: Simulation UI, Browser Defaults, Error Handling, Filters, Quality |
+| **P3** | 4 | UI polish, documentation, finalization |
 
-**Total Active Items**: 14
+**Total Active Items**: 34

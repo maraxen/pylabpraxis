@@ -1,7 +1,7 @@
 """Filesystem interface for Praxis."""
 
 from pathlib import Path
-from typing import IO, Any, overload
+from typing import IO, Any
 
 
 class FileSystem:

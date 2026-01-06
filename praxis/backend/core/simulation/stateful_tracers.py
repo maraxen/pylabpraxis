@@ -8,7 +8,7 @@ symbolic protocol execution.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable
+from typing import Any
 
 from praxis.backend.core.simulation.method_contracts import (
   MethodContract,
@@ -31,10 +31,6 @@ from praxis.backend.core.tracing.tracers import (
   TracedWell,
   TracedWellCollection,
 )
-
-if TYPE_CHECKING:
-  from praxis.backend.core.tracing.recorder import OperationRecorder
-
 
 # =============================================================================
 # Stateful Traced Machine

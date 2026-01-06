@@ -15,6 +15,8 @@ import { CarrierPlacementStepComponent } from './carrier-placement-step.componen
 import { ResourcePlacementStepComponent } from './resource-placement-step.component';
 import { VerificationStepComponent } from './verification-step.component';
 import { DeckViewComponent } from '@shared/components/deck-view/deck-view.component';
+import { SetupInstructionsComponent } from '../setup-instructions/setup-instructions.component';
+import { RequirementsPanelComponent, DeckValidationState } from '../requirement-indicator';
 
 /**
  * Main container for the 3-step Guided Deck Setup wizard.
@@ -34,7 +36,9 @@ import { DeckViewComponent } from '@shared/components/deck-view/deck-view.compon
         CarrierPlacementStepComponent,
         ResourcePlacementStepComponent,
         VerificationStepComponent,
-        DeckViewComponent
+        DeckViewComponent,
+        SetupInstructionsComponent,
+        RequirementsPanelComponent,
     ],
     template: `
         <div class="wizard-container" cdkDropListGroup>
@@ -49,8 +53,25 @@ import { DeckViewComponent } from '@shared/components/deck-view/deck-view.compon
                 </mat-progress-bar>
             </div>
             
+            <!-- Setup Instructions Panel (shown before main content) -->
+            @if (protocol()?.setup_instructions?.length) {
+                <app-setup-instructions
+                    [instructions]="protocol()?.setup_instructions ?? null"
+                    [showLegend]="true"
+                    (allRequiredChecked)="onAllRequiredInstructionsChecked($event)">
+                </app-setup-instructions>
+            }
+            
             <div class="wizard-content">
                 <div class="step-panel">
+                    <!-- Requirements Panel -->
+                    @if (protocol()?.accession_id) {
+                        <app-requirements-panel
+                            [protocolId]="protocol()!.accession_id"
+                            [deckState]="deckValidationState()">
+                        </app-requirements-panel>
+                    }
+                    
                     @switch (wizardState.currentStep()) {
                         @case ('carrier-placement') {
                             <app-carrier-placement-step
@@ -200,6 +221,35 @@ export class DeckSetupWizardComponent implements OnInit {
     // Optional injection in case it's not opened via dialog
     private dialogRef = inject(MatDialogRef, { optional: true });
 
+    /** Deck validation state for requirements panel */
+    deckValidationState = computed<DeckValidationState>(() => {
+        const placedResources = new Set<string>();
+        const liquidConfirmed = new Set<string>();
+        let hasTipRack = false;
+
+        // Collect placed resources from carrier requirements
+        const carriers = this.wizardState.carrierRequirements();
+        for (const carrier of carriers) {
+            if (carrier.placed) {
+                placedResources.add(carrier.carrierFqn);
+            }
+        }
+
+        // Collect placed resources from slot assignments
+        const assignments = this.wizardState.slotAssignments();
+        for (const assignment of assignments) {
+            if (assignment.placed && assignment.resource) {
+                placedResources.add(assignment.resource.name);
+                // Check if it's a tip rack
+                if (assignment.resource.name.toLowerCase().includes('tip')) {
+                    hasTipRack = true;
+                }
+            }
+        }
+
+        return { placedResources, liquidConfirmed, hasTipRack };
+    });
+
     // Optional dialog data injection
     private dialogData = inject<{ protocol: ProtocolDefinition, deckResource: PlrResource } | null>(MAT_DIALOG_DATA, { optional: true });
 
@@ -285,5 +335,18 @@ export class DeckSetupWizardComponent implements OnInit {
                 });
             }
         }
+    }
+
+    /**
+     * Signal tracking whether all required setup instructions are checked.
+     * Defaults to true if there are no instructions.
+     */
+    allRequiredInstructionsCompleted = signal<boolean>(true);
+
+    /**
+     * Handler for when setup instructions completion state changes.
+     */
+    onAllRequiredInstructionsChecked(allComplete: boolean): void {
+        this.allRequiredInstructionsCompleted.set(allComplete);
     }
 }

@@ -3,7 +3,6 @@ import { LocalStorageAdapter } from './local-storage.adapter';
 
 export const ONBOARDING_STORAGE_KEYS = {
     ONBOARDING_COMPLETED: 'praxis_onboarding_completed',
-    DEMO_MODE_ENABLED: 'praxis_demo_mode_enabled',
     TUTORIAL_COMPLETED: 'praxis_tutorial_completed',
     TUTORIAL_STATE: 'praxis_tutorial_state'
 } as const;
@@ -18,7 +17,6 @@ export class OnboardingService {
     private localStorageAdapter = inject(LocalStorageAdapter);
 
     readonly hasCompletedOnboarding = signal<boolean>(this.checkOnboardingStatus());
-    readonly isDemoModeEnabled = signal<boolean>(this.checkDemoModeStatus());
 
     // We treat "tutorial completed" separately in case they skip onboarding but want to do tutorial later
     readonly hasCompletedTutorial = signal<boolean>(this.checkTutorialStatus());
@@ -29,10 +27,6 @@ export class OnboardingService {
 
     private checkOnboardingStatus(): boolean {
         return !!localStorage.getItem(ONBOARDING_STORAGE_KEYS.ONBOARDING_COMPLETED);
-    }
-
-    private checkDemoModeStatus(): boolean {
-        return localStorage.getItem(ONBOARDING_STORAGE_KEYS.DEMO_MODE_ENABLED) === 'true';
     }
 
     private checkTutorialStatus(): boolean {
@@ -49,19 +43,6 @@ export class OnboardingService {
         this.hasCompletedTutorial.set(true);
     }
 
-    /**
-     * Sets the demo mode preference.
-     * @param enabled Whether demo mode should be enabled
-     * @param reload Whether to reload the page immediately (default: true)
-     */
-    setDemoMode(enabled: boolean, reload: boolean = true): void {
-        localStorage.setItem(ONBOARDING_STORAGE_KEYS.DEMO_MODE_ENABLED, String(enabled));
-        this.isDemoModeEnabled.set(enabled);
-
-        if (reload) {
-            window.location.reload();
-        }
-    }
 
     resetOnboarding(): void {
         localStorage.removeItem(ONBOARDING_STORAGE_KEYS.ONBOARDING_COMPLETED);

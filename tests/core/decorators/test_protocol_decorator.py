@@ -275,3 +275,148 @@ class TestDecoratorsPackageStructure:
         assert hasattr(decorators, "DEFAULT_STATE_PARAM_NAME")
         assert decorators.DEFAULT_STATE_PARAM_NAME == "state"
         assert hasattr(decorators, "TOP_LEVEL_NAME_REGEX")
+
+    def test_module_exports_setup_instruction(self) -> None:
+        """Test that module exports SetupInstruction."""
+        from praxis.backend.core import decorators
+
+        assert hasattr(decorators, "SetupInstruction")
+
+    def test_module_exports_data_view_definition(self) -> None:
+        """Test that module exports DataViewDefinition."""
+        from praxis.backend.core import decorators
+
+        assert hasattr(decorators, "DataViewDefinition")
+
+
+class TestSetupInstructions:
+
+    """Tests for setup_instructions parameter in protocol_function decorator."""
+
+    def test_protocol_function_with_string_setup_instructions(self) -> None:
+        """Test protocol function with string setup instructions."""
+
+        @protocol_function(
+            setup_instructions=[
+                "Ensure source plate is at room temperature",
+                "Verify tip rack is loaded in position 3",
+            ],
+        )
+        def my_protocol():
+            pass
+
+        instructions = my_protocol._protocol_definition.setup_instructions_json
+        assert instructions is not None
+        assert len(instructions) == 2
+        assert instructions[0]["message"] == "Ensure source plate is at room temperature"
+        assert instructions[0]["severity"] == "required"
+        assert instructions[0]["position"] is None
+        assert instructions[0]["resource_type"] is None
+        assert instructions[1]["message"] == "Verify tip rack is loaded in position 3"
+
+    def test_protocol_function_with_dict_setup_instructions(self) -> None:
+        """Test protocol function with dict setup instructions."""
+        from praxis.backend.core.decorators import SetupInstruction
+
+        @protocol_function(
+            setup_instructions=[
+                {
+                    "message": "Load 200µL tips",
+                    "severity": "required",
+                    "position": "3",
+                    "resource_type": "TipRack",
+                },
+                {
+                    "message": "Optional calibration",
+                    "severity": "recommended",
+                },
+            ],
+        )
+        def my_protocol():
+            pass
+
+        instructions = my_protocol._protocol_definition.setup_instructions_json
+        assert instructions is not None
+        assert len(instructions) == 2
+        assert instructions[0]["message"] == "Load 200µL tips"
+        assert instructions[0]["severity"] == "required"
+        assert instructions[0]["position"] == "3"
+        assert instructions[0]["resource_type"] == "TipRack"
+        assert instructions[1]["message"] == "Optional calibration"
+        assert instructions[1]["severity"] == "recommended"
+
+    def test_protocol_function_with_setup_instruction_dataclass(self) -> None:
+        """Test protocol function with SetupInstruction dataclass instances."""
+        from praxis.backend.core.decorators import SetupInstruction
+
+        @protocol_function(
+            setup_instructions=[
+                SetupInstruction(
+                    message="Critical step",
+                    severity="required",
+                    position="1",
+                    resource_type="Plate",
+                ),
+                SetupInstruction(
+                    message="Info only",
+                    severity="info",
+                ),
+            ],
+        )
+        def my_protocol():
+            pass
+
+        instructions = my_protocol._protocol_definition.setup_instructions_json
+        assert instructions is not None
+        assert len(instructions) == 2
+        assert instructions[0]["message"] == "Critical step"
+        assert instructions[0]["severity"] == "required"
+        assert instructions[0]["position"] == "1"
+        assert instructions[0]["resource_type"] == "Plate"
+        assert instructions[1]["message"] == "Info only"
+        assert instructions[1]["severity"] == "info"
+        assert instructions[1]["position"] is None
+
+    def test_protocol_function_with_mixed_setup_instructions(self) -> None:
+        """Test protocol function with mixed types of setup instructions."""
+        from praxis.backend.core.decorators import SetupInstruction
+
+        @protocol_function(
+            setup_instructions=[
+                "Simple string instruction",
+                {"message": "Dict instruction", "severity": "recommended"},
+                SetupInstruction(message="Dataclass instruction", severity="info"),
+            ],
+        )
+        def my_protocol():
+            pass
+
+        instructions = my_protocol._protocol_definition.setup_instructions_json
+        assert instructions is not None
+        assert len(instructions) == 3
+        assert instructions[0]["message"] == "Simple string instruction"
+        assert instructions[0]["severity"] == "required"  # Default for strings
+        assert instructions[1]["message"] == "Dict instruction"
+        assert instructions[1]["severity"] == "recommended"
+        assert instructions[2]["message"] == "Dataclass instruction"
+        assert instructions[2]["severity"] == "info"
+
+    def test_protocol_function_without_setup_instructions(self) -> None:
+        """Test protocol function without setup instructions returns None."""
+
+        @protocol_function()
+        def my_protocol():
+            pass
+
+        assert my_protocol._protocol_definition.setup_instructions_json is None
+
+    def test_protocol_function_with_empty_setup_instructions(self) -> None:
+        """Test protocol function with empty setup instructions list."""
+
+        @protocol_function(setup_instructions=[])
+        def my_protocol():
+            pass
+
+        # Empty list should be converted to None
+        assert my_protocol._protocol_definition.setup_instructions_json is None
+

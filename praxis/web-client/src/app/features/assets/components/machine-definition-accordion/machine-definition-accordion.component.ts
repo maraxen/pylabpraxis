@@ -65,7 +65,7 @@ export interface ManufacturerGroup {
                 <span [matTooltip]="getCategoryTooltip(category.category)">{{ category.category }}</span>
               </mat-panel-title>
               <mat-panel-description>
-                <span class="count-badge">{{ category.totalCount }} types</span>
+                <span class="count-badge ml-auto">{{ category.totalCount }} types</span>
               </mat-panel-description>
             </mat-expansion-panel-header>
 
@@ -128,7 +128,7 @@ export interface ManufacturerGroup {
   `,
   styles: [`
     .accordion-container {
-      padding: 16px;
+      padding: 0 16px 16px 16px;
     }
 
     .accordion-header {
@@ -196,7 +196,8 @@ export interface ManufacturerGroup {
 
     .manufacturer-panel {
       margin-bottom: 4px;
-      background: var(--sys-surface-container);
+      padding-top: 4px;
+      background: var(--mat-sys-surface-container);
     }
 
     .machine-list {

@@ -8,12 +8,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
 import { AssetService } from '../../services/asset.service';
-import { Machine, MachineStatus } from '../../models/asset.models';
+import { Machine, MachineStatus, MachineDefinition } from '../../models/asset.models';
 import { AssetStatusChipComponent, AssetStatusType } from '../asset-status-chip/asset-status-chip.component';
 import { LocationBreadcrumbComponent } from '../location-breadcrumb/location-breadcrumb.component';
-import { AssetFiltersComponent, AssetFilterState } from '../asset-filters/asset-filters.component';
+import { MachineFiltersComponent, MachineFilterState } from '../machine-filters/machine-filters.component';
 import { MaintenanceBadgeComponent } from '../maintenance-badge/maintenance-badge.component';
 import { calculateMaintenanceStatus } from '../../utils/maintenance.utils';
 import { MachineDetailsDialogComponent } from './machine-details-dialog.component';
@@ -35,25 +36,44 @@ import { AppStore } from '../../../../core/store/app.store';
     MatFormFieldModule,
     MatMenuModule,
     MatDividerModule,
+    MatChipsModule,
     ReactiveFormsModule,
     AssetStatusChipComponent,
     LocationBreadcrumbComponent,
-    AssetFiltersComponent,
+    MachineFiltersComponent,
     MaintenanceBadgeComponent
   ],
   template: `
     <div class="machine-list-container">
-      <app-asset-filters
-        [categories]="categories()"
-        [showMachineFilter]="false"
+      <app-machine-filters
+        [machines]="machines()"
+        [machineDefinitions]="machineDefinitions()"
         (filtersChange)="onFiltersChange($event)">
-      </app-asset-filters>
+      </app-machine-filters>
 
       <table mat-table [dataSource]="filteredMachines()" class="mat-elevation-z2">
         <!-- Name Column -->
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef> Name </th>
           <td mat-cell *matCellDef="let machine"> {{ machine.name }} </td>
+        </ng-container>
+
+        <!-- Simulated Indicator -->
+        <ng-container matColumnDef="simulated">
+          <th mat-header-cell *matHeaderCellDef> Mode </th>
+          <td mat-cell *matCellDef="let machine">
+            @if (machine.is_simulation_override) {
+              <mat-chip class="simulated-chip" [highlighted]="false">
+                <mat-icon class="chip-icon">computer</mat-icon>
+                Simulated
+              </mat-chip>
+            } @else {
+              <mat-chip class="physical-chip" [highlighted]="false">
+                <mat-icon class="chip-icon">precision_manufacturing</mat-icon>
+                Physical
+              </mat-chip>
+            }
+          </td>
         </ng-container>
 
         <!-- Status Column -->
@@ -64,16 +84,16 @@ import { AppStore } from '../../../../core/store/app.store';
           </td>
         </ng-container>
 
+        <!-- Category Column -->
+        <ng-container matColumnDef="category">
+          <th mat-header-cell *matHeaderCellDef> Category </th>
+          <td mat-cell *matCellDef="let machine"> {{ machine.machine_category || 'Unknown' }} </td>
+        </ng-container>
+
         <!-- Model Column -->
         <ng-container matColumnDef="model">
           <th mat-header-cell *matHeaderCellDef> Model </th>
           <td mat-cell *matCellDef="let machine"> {{ machine.model || 'N/A' }} </td>
-        </ng-container>
-
-        <!-- Manufacturer Column -->
-        <ng-container matColumnDef="manufacturer">
-          <th mat-header-cell *matHeaderCellDef> Manufacturer </th>
-          <td mat-cell *matCellDef="let machine"> {{ machine.manufacturer || 'N/A' }} </td>
         </ng-container>
 
         <!-- Location Column -->
@@ -115,7 +135,7 @@ import { AppStore } from '../../../../core/store/app.store';
 
         <!-- Row shown when there is no matching data. -->
         <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell" colspan="5">No machines matching the selected filters</td>
+          <td class="mat-cell" colspan="7">No machines matching the selected filters</td>
         </tr>
       </table>
 
@@ -146,11 +166,7 @@ import { AppStore } from '../../../../core/store/app.store';
   `,
   styles: [`
     .machine-list-container {
-      padding: 16px;
-    }
-
-    .machine-list-container {
-      padding: 16px;
+      padding: 0 16px 16px 16px;
     }
 
     .mat-elevation-z2 {
@@ -167,6 +183,27 @@ import { AppStore } from '../../../../core/store/app.store';
       font-style: italic;
       color: var(--mat-sys-color-on-surface-variant);
     }
+
+    .simulated-chip {
+      --mdc-chip-container-height: 24px;
+      font-size: 0.75rem;
+      background: rgba(59, 130, 246, 0.15);
+      color: rgb(59, 130, 246);
+    }
+
+    .physical-chip {
+      --mdc-chip-container-height: 24px;
+      font-size: 0.75rem;
+      background: rgba(34, 197, 94, 0.15);
+      color: rgb(34, 197, 94);
+    }
+
+    :host ::ng-deep .chip-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+      margin-right: 4px;
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -177,11 +214,11 @@ export class MachineListComponent {
 
   machines = signal<Machine[]>([]);
   filteredMachines = signal<Machine[]>([]);
-  categories = signal<string[]>([]);
-  activeFilters = signal<AssetFilterState | null>(null);
+  machineDefinitions = signal<MachineDefinition[]>([]);
+  activeFilters = signal<MachineFilterState | null>(null);
 
   displayedColumns = computed(() => {
-    const cols = ['name', 'status', 'model', 'manufacturer', 'location'];
+    const cols = ['name', 'simulated', 'status', 'category', 'model', 'location'];
     if (this.store.maintenanceEnabled()) {
       cols.push('maintenance');
     }
@@ -194,6 +231,7 @@ export class MachineListComponent {
 
   constructor() {
     this.loadMachines();
+    this.loadMachineDefinitions();
   }
 
   loadMachines(): void {
@@ -202,7 +240,6 @@ export class MachineListComponent {
       (data) => {
         console.debug('[ASSET-DEBUG] loadMachines: Received', data.length, 'machines:', data);
         this.machines.set(data);
-        this.updateCategories(data);
         if (this.activeFilters()) {
           this.applyFilters(this.activeFilters()!);
         } else {
@@ -215,45 +252,55 @@ export class MachineListComponent {
     );
   }
 
-  private updateCategories(machines: Machine[]): void {
-    const cats = new Set<string>();
-    machines.forEach(m => {
-      if (m.manufacturer) cats.add(m.manufacturer);
-      if (m.model) cats.add(m.model);
+  loadMachineDefinitions(): void {
+    this.assetService.getMachineDefinitions().subscribe({
+      next: (defs) => this.machineDefinitions.set(defs),
+      error: (err) => console.error('[ASSET-DEBUG] Error loading machine definitions:', err)
     });
-    this.categories.set(Array.from(cats).sort());
   }
 
-  onFiltersChange(filters: AssetFilterState) {
+  onFiltersChange(filters: MachineFilterState) {
     this.activeFilters.set(filters);
     this.applyFilters(filters);
   }
 
-  private applyFilters(filters: AssetFilterState): void {
+  private applyFilters(filters: MachineFilterState): void {
     let filtered = this.machines();
 
-    // 1. Status Filter
+    // 1. Search Filter
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      filtered = filtered.filter(m =>
+        m.name.toLowerCase().includes(search) ||
+        m.machine_category?.toLowerCase().includes(search) ||
+        m.model?.toLowerCase().includes(search) ||
+        m.manufacturer?.toLowerCase().includes(search)
+      );
+    }
+
+    // 2. Status Filter
     if (filters.status.length > 0) {
       filtered = filtered.filter(m => filters.status.includes(m.status));
     }
 
-    // 2. Category Filter (checking manufacturer/model as proxy for now)
-    if (filters.category.length > 0) {
+    // 3. Category Filter
+    if (filters.categories.length > 0) {
       filtered = filtered.filter(m =>
-        (m.manufacturer && filters.category.includes(m.manufacturer)) ||
-        (m.model && filters.category.includes(m.model))
+        m.machine_category && filters.categories.includes(m.machine_category)
       );
     }
 
-    // 3. Maintenance Due Filter
-    if (filters.maintenance_due && this.store.maintenanceEnabled()) {
-      filtered = filtered.filter(m => {
-        const status = calculateMaintenanceStatus(m);
-        return status === 'overdue' || status === 'warning';
-      });
+    // 4. Simulated Filter
+    if (filters.simulated !== null) {
+      filtered = filtered.filter(m =>
+        (m.is_simulation_override ?? false) === filters.simulated
+      );
     }
 
-    // 4. Sort
+    // 5. Backend Filter (requires machine definition lookup)
+    // For now, skip backend filtering as it requires joining with definitions
+
+    // 6. Sort
     filtered.sort((a, b) => {
       let valA: any = '';
       let valB: any = '';
@@ -264,8 +311,8 @@ export class MachineListComponent {
           valB = b.name.toLowerCase();
           break;
         case 'category':
-          valA = (a.manufacturer || '').toLowerCase();
-          valB = (b.manufacturer || '').toLowerCase();
+          valA = (a.machine_category || '').toLowerCase();
+          valB = (b.machine_category || '').toLowerCase();
           break;
         case 'created_at':
           valA = new Date(a.created_at || 0).getTime();

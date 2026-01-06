@@ -1,8 +1,8 @@
 import contextvars
+import types
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
-import types
 
 from praxis.backend.core.run_context import PraxisRunContext
 from praxis.backend.models.pydantic_internals.protocol import (
@@ -55,6 +55,30 @@ class DataViewDefinition:
   default_value: Any = None
 
 
+@dataclass
+class SetupInstruction:
+  """A setup instruction to display before protocol execution.
+
+  Setup instructions are user-facing messages that communicate required manual
+  preparation before execution. They are displayed in the Deck Setup wizard.
+
+  Attributes:
+    message: The instruction text to display to the user.
+    severity: Importance level - 'required', 'recommended', or 'info'.
+      - required: Must be acknowledged before proceeding (highlighted in accent color)
+      - recommended: Suggested but not blocking (highlighted in primary color)
+      - info: Informational only (muted color)
+    position: Optional deck position this instruction relates to (e.g., "3").
+    resource_type: Optional expected resource type (e.g., "TipRack").
+
+  """
+
+  message: str
+  severity: str = "required"  # "required", "recommended", "info"
+  position: str | None = None
+  resource_type: str | None = None
+
+
 @runtime_checkable
 class DecoratedProtocolFunc(Protocol):
   """A protocol for a function that has been decorated for use as a Praxis protocol."""
@@ -82,6 +106,7 @@ class CreateProtocolDefinitionData:
   deck_construction: Callable | None
   deck_layout_path: str | None  # Path to JSON deck layout configuration
   data_views: list[DataViewDefinition] | None  # Input data view definitions
+  setup_instructions: list[str | SetupInstruction] | None  # Pre-run setup messages
   state_param_name: str
   param_metadata: dict[str, Any]
   category: str | None

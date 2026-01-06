@@ -118,6 +118,22 @@ Despite many features being marked as complete in the development matrix, manual
 - **Fix**: Added `hideSingleSelectionIndicator` to all `mat-button-toggle-group` instances (Execution Monitor, Run Protocol, Assets, Settings) to remove redundant checkmarks and rely on background/border for selection state.
 - **Verified**: Visual verification and unit tests pass.
 
+### 14. Machine Capabilities Verification & Theme Sync
+
+- **Status**: Open
+- **Priority**: P2
+- **Description**: The "Add Machine" dialog's capabilities selection menu needs verification and fixes:
+  1. **Capability Selection**: Verify that machines with configurable capabilities (e.g., Hamilton Starlet with 96-head, iSwap) display and save correctly
+  2. **Theme Sync**: The capability dropdown menu always renders in light theme regardless of app theme setting
+- **Test Cases**:
+  - Add Hamilton Starlet → verify 96-head and iSwap options appear
+  - Toggle app to dark mode → verify capability dropdown respects theme
+  - Save machine with capabilities → verify capabilities persist on reload
+- **Files to Check**:
+  - `features/assets/dialogs/add-machine-dialog/`
+  - `features/assets/components/capability-selector/` (if exists)
+- **Related**: [dynamic_form_generation.md](./dynamic_form_generation.md)
+
 ---
 
 ## P2 - REPL Issues

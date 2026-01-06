@@ -7,10 +7,15 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatDividerModule } from '@angular/material/divider';
 import { AppStore } from '../../../core/store/app.store';
 import { OnboardingService } from '@core/services/onboarding.service';
 import { TutorialService } from '@core/services/tutorial.service';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { SqliteService } from '@core/services/sqlite.service';
+import { ConfirmationDialogComponent } from '@shared/components/confirmation-dialog';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -26,7 +31,8 @@ type Theme = 'light' | 'dark' | 'system';
     MatSlideToggleModule,
     MatSlideToggleModule,
     MatExpansionModule,
-    MatButtonModule
+    MatButtonModule,
+    MatDividerModule
   ],
   template: `
     <div class="p-6">
@@ -81,15 +87,29 @@ type Theme = 'light' | 'dark' | 'system';
                 color="primary">
               </mat-slide-toggle>
             </div>
+            
+            <mat-divider class="my-3"></mat-divider>
+
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-medium">Infinite Consumables</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Auto-replenish tips and plates during simulation</p>
+              </div>
+              <mat-slide-toggle 
+                [checked]="store.infiniteConsumables()" 
+                (change)="store.setInfiniteConsumables($event.checked)"
+                color="primary">
+              </mat-slide-toggle>
+            </div>
           </mat-card-content>
         </mat-card>
 
-        <!-- Onboarding & Demo -->
+        <!-- Onboarding -->
         <mat-card class="glass-panel" data-tour-id="settings-onboarding">
           <mat-card-header>
             <mat-icon mat-card-avatar class="text-primary scale-125">school</mat-icon>
-            <mat-card-title>Onboarding & Demo</mat-card-title>
-            <mat-card-subtitle>Manage tutorial and demo mode settings</mat-card-subtitle>
+            <mat-card-title>Onboarding</mat-card-title>
+            <mat-card-subtitle>Manage tutorial settings</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content class="pt-4 space-y-4">
              <div class="flex items-center justify-between">
@@ -110,18 +130,6 @@ type Theme = 'light' | 'dark' | 'system';
                    {{ hasTutorialProgress() ? 'Restart' : 'Start Tutorial' }}
                  </button>
                </div>
-             </div>
-             
-             <div class="flex items-center justify-between border-t border-[var(--theme-border)] pt-4 mt-2">
-               <div>
-                 <h3 class="font-medium">Demo Mode</h3>
-                 <p class="text-sm text-gray-500 dark:text-gray-400">Enable sample data (requires reload)</p>
-               </div>
-                <mat-slide-toggle 
-                    [checked]="onboarding.isDemoModeEnabled()"
-                    (change)="toggleDemoMode($event)"
-                    color="warn">
-                </mat-slide-toggle>
              </div>
           </mat-card-content>
         </mat-card>
@@ -196,6 +204,28 @@ type Theme = 'light' | 'dark' | 'system';
              </mat-list>
           </mat-card-content>
         </mat-card>
+         <!-- Data Management -->
+         <mat-card class="glass-panel">
+          <mat-card-header>
+            <mat-icon mat-card-avatar class="text-warn scale-125">storage</mat-icon>
+            <mat-card-title>Data Management</mat-card-title>
+             <mat-card-subtitle>Manage local database</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content class="pt-4">
+             <div class="flex items-center justify-between">
+               <div>
+                 <h3 class="font-medium">Reset Asset Inventory</h3>
+                 <p class="text-sm text-gray-500 dark:text-gray-400">
+                   Reset all resources and machines to default simulated state. <br>
+                   <span class="text-warn text-xs font-bold">WARNING: This will delete all user-created items.</span>
+                 </p>
+               </div>
+               <button mat-flat-button color="warn" (click)="resetToDefaults()">
+                 <mat-icon class="mr-1">restore</mat-icon> Reset to Defaults
+               </button>
+             </div>
+          </mat-card-content>
+        </mat-card>
       </div>
     </div>
   `,
@@ -209,10 +239,10 @@ export class SettingsComponent {
   store = inject(AppStore);
   onboarding = inject(OnboardingService);
   tutorial = inject(TutorialService);
+  sqlite = inject(SqliteService);
+  dialog = inject(MatDialog);
+  snackBar = inject(MatSnackBar);
 
-  toggleDemoMode(event: any) {
-    this.onboarding.setDemoMode(event.checked, true);
-  }
 
   setTheme(theme: Theme) {
     this.store.setTheme(theme);
@@ -229,5 +259,29 @@ export class SettingsComponent {
   restartTutorial() {
     this.onboarding.clearTutorialState();
     this.tutorial.start(false); // Start fresh
+  }
+
+  resetToDefaults() {
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: {
+        title: 'Reset Inventory?',
+        message: 'This will delete all your custom resources and machines and restore the default simulated assets. This action cannot be undone.',
+        confirmText: 'Reset Everything',
+        color: 'warn',
+        icon: 'delete_forever'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        try {
+          this.sqlite.resetToDefaults();
+          this.snackBar.open('Asset inventory reset to defaults', 'Close', { duration: 3000 });
+        } catch (e) {
+          console.error(e);
+          this.snackBar.open('Failed to reset inventory', 'Close', { duration: 3000, panelClass: 'error-snackbar' });
+        }
+      }
+    });
   }
 }

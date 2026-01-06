@@ -1,5 +1,4 @@
-"""
-Pyodide I/O Patching Module
+"""Pyodide I/O Patching Module
 
 This module patches pylabrobot.io at runtime to use browser-compatible
 WebSerial and WebUSB shims instead of pyserial and pyusb.
@@ -12,8 +11,8 @@ Usage in JupyterLite (auto-executed in bootstrap):
     from pylabrobot.io import Serial, USB
 """
 
-import sys
 import logging
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +23,7 @@ def is_pyodide() -> bool:
 
 
 def patch_pylabrobot_io():
-  """
-  Patch pylabrobot.io to use browser-compatible shims.
+  """Patch pylabrobot.io to use browser-compatible shims.
 
   This replaces:
   - pylabrobot.io.Serial -> WebSerial
@@ -37,13 +35,12 @@ def patch_pylabrobot_io():
 
   try:
     # Import shims (these should be in micropip's path or loaded as assets)
-    from web_serial_shim import WebSerial
-    from web_usb_shim import WebUSB
-
     # Import pylabrobot.io module
     import pylabrobot.io as plr_io
     import pylabrobot.io.serial as plr_serial
     import pylabrobot.io.usb as plr_usb
+    from web_serial_shim import WebSerial
+    from web_usb_shim import WebUSB
 
     # Patch the Serial class
     plr_io.Serial = WebSerial
@@ -71,7 +68,7 @@ def patch_pylabrobot_io():
 def get_io_status() -> dict:
   """Get status of I/O shim patches."""
   try:
-    from pylabrobot.io.serial import Serial, HAS_SERIAL
+    from pylabrobot.io.serial import HAS_SERIAL, Serial
     from pylabrobot.io.usb import USB, USE_USB
 
     return {

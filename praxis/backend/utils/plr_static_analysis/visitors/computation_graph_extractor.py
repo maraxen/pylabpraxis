@@ -11,7 +11,6 @@ The extractor tracks variable types and infers preconditions from known
 method patterns (e.g., `lh.transfer()` requires tips loaded).
 """
 
-import uuid
 from typing import Any
 
 import libcst as cst
@@ -29,7 +28,6 @@ from praxis.backend.utils.plr_static_analysis.resource_hierarchy import (
   get_parental_chain,
 )
 from praxis.common.type_inspection import (
-  PLR_RESOURCE_TYPES,
   extract_resource_types,
   get_element_type,
   is_container_type,

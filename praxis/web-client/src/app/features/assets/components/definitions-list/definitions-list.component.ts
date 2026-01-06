@@ -79,8 +79,8 @@ import { MachineDefinitionAccordionComponent } from '../machine-definition-accor
               </ng-container>
 
               <ng-container matColumnDef="consumable">
-                <th mat-header-cell *matHeaderCellDef> Consumable </th>
-                <td mat-cell *matCellDef="let def">
+                <th mat-header-cell *matHeaderCellDef class="!text-center"> Consumable </th>
+                <td mat-cell *matCellDef="let def" class="!text-center">
                   <mat-icon
                     [color]="def.is_consumable ? 'primary' : 'warn'"
                     [matTooltip]="def.is_consumable ? getPropertyTooltip('consumable') : 'Non-consumable: can be reused across protocols'"
@@ -91,8 +91,8 @@ import { MachineDefinitionAccordionComponent } from '../machine-definition-accor
               </ng-container>
 
               <ng-container matColumnDef="actions">
-                <th mat-header-cell *matHeaderCellDef> Actions </th>
-                <td mat-cell *matCellDef="let def">
+                <th mat-header-cell *matHeaderCellDef class="!text-center"> Actions </th>
+                <td mat-cell *matCellDef="let def" class="!text-center">
                   <button mat-icon-button color="primary" matTooltip="View Details">
                     <mat-icon>info</mat-icon>
                   </button>
@@ -103,7 +103,12 @@ import { MachineDefinitionAccordionComponent } from '../machine-definition-accor
               <tr mat-row *matRowDef="let row; columns: displayedResourceColumns;"></tr>
 
               <tr class="mat-row" *matNoDataRow>
-                <td class="mat-cell" colspan="6">No resource definitions matching the filter "{{ resourceFilterControl.value }}"</td>
+                <td class="mat-cell" colspan="6">
+                  <div class="empty-state">
+                    <mat-icon>search_off</mat-icon>
+                    <span>No resource definitions matching the filter "{{ resourceFilterControl.value }}"</span>
+                  </div>
+                </td>
               </tr>
             </table>
           </div>
@@ -126,10 +131,21 @@ import { MachineDefinitionAccordionComponent } from '../machine-definition-accor
       width: 100%;
     }
 
-    .mat-no-data-row {
-      text-align: center;
-      font-style: italic;
-      color: var(--mat-sys-color-on-surface-variant);
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 0;
+      color: var(--mat-sys-on-surface-variant);
+      gap: 12px;
+    }
+
+    .empty-state mat-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      opacity: 0.5;
     }
 
     mat-tab-group {

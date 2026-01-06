@@ -8,9 +8,13 @@ import {
   effect,
   ChangeDetectorRef,
   SecurityContext,
+  signal,
+  computed,
 } from '@angular/core';
 import { AppStore } from '../../core/store/app.store';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,12 +23,17 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatChipsModule } from '@angular/material/chips';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ModeService } from '../../core/services/mode.service';
 import { AssetService } from '../assets/services/asset.service';
 import { Machine, Resource } from '../assets/models/asset.models';
 import { Subscription } from 'rxjs';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
+import { getResourceCategoryIcon, getMachineCategoryIcon } from '@shared/constants/asset-icons';
 
 /**
  * JupyterLite REPL Component
@@ -37,6 +46,8 @@ import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-di
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
+    RouterLink,
     MatCardModule,
     MatIconModule,
     MatButtonModule,
@@ -45,6 +56,10 @@ import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-di
     MatListModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatChipsModule,
     HardwareDiscoveryButtonComponent,
   ],
   template: `
@@ -69,52 +84,126 @@ import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-di
             </button>
           </div>
 
+          <!-- Search and Filters -->
+          <div class="filter-section">
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-icon matPrefix>search</mat-icon>
+              <input
+                matInput
+                placeholder="Search inventory..."
+                [(ngModel)]="searchTerm"
+                (ngModelChange)="onSearchChange($event)"
+              />
+              @if (searchTerm()) {
+                <button
+                  matSuffix
+                  mat-icon-button
+                  aria-label="Clear"
+                  (click)="clearSearch()"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </mat-form-field>
+
+            <!-- Category Filter Chips -->
+            @if (allCategories().length > 0) {
+              <div class="category-chips">
+                <mat-chip-listbox
+                  [(ngModel)]="selectedCategory"
+                  (change)="onCategoryChange()"
+                  aria-label="Filter by category"
+                >
+                  <mat-chip-option [value]="null">All</mat-chip-option>
+                  @for (cat of allCategories(); track cat) {
+                    <mat-chip-option [value]="cat">
+                      <mat-icon class="chip-icon">{{ getCategoryIcon(cat) }}</mat-icon>
+                      {{ cat }}
+                    </mat-chip-option>
+                  }
+                </mat-chip-listbox>
+              </div>
+            }
+          </div>
+
+          <!-- Machines Section -->
           <div class="inventory-section">
-            <h4>Machines</h4>
+            <h4>
+              <mat-icon>precision_manufacturing</mat-icon>
+              Machines ({{ filteredMachines().length }})
+            </h4>
             <mat-list dense>
-              @for (m of inventoryMachines; track m.accession_id) {
-              <mat-list-item>
-                <div class="inventory-item">
-                  <span class="item-name">{{ m.name }}</span>
-                  <button
-                    mat-icon-button
-                    (click)="insertAsset('machine', m)"
-                    matTooltip="Insert variable name"
-                    class="insert-btn"
-                  >
-                    <mat-icon>add_circle</mat-icon>
-                  </button>
+              @for (m of filteredMachines(); track m.accession_id) {
+                <mat-list-item>
+                  <div class="inventory-item">
+                    <span class="item-name">{{ m.name }}</span>
+                    <button
+                      mat-icon-button
+                      (click)="insertAsset('machine', m)"
+                      matTooltip="Insert variable name"
+                      class="insert-btn"
+                    >
+                      <mat-icon>add_circle</mat-icon>
+                    </button>
+                  </div>
+                </mat-list-item>
+              }
+              @if (filteredMachines().length === 0) {
+                <div class="empty-state">
+                  @if (inventoryMachines().length === 0) {
+                    <p>No machines in inventory</p>
+                    <a routerLink="/app/assets" class="add-link">
+                      <mat-icon>add</mat-icon>
+                      Add from Assets
+                    </a>
+                  } @else {
+                    <p>No machines match your filters</p>
+                  }
                 </div>
-              </mat-list-item>
-              } @if (inventoryMachines.length === 0) {
-              <div class="empty-state">No machines</div>
               }
             </mat-list>
           </div>
 
+          <!-- Resources Section -->
           <div class="inventory-section">
-            <h4>Resources</h4>
+            <h4>
+              <mat-icon>category</mat-icon>
+              Resources ({{ filteredResources().length }})
+            </h4>
             <mat-list dense>
-              @for (r of inventoryResources.slice(0, 30); track r.accession_id) {
-              <mat-list-item>
-                <div class="inventory-item">
-                  <span class="item-name">{{ r.name }}</span>
-                  <button
-                    mat-icon-button
-                    (click)="insertAsset('resource', r)"
-                    matTooltip="Insert variable name"
-                    class="insert-btn"
-                  >
-                    <mat-icon>add_circle</mat-icon>
-                  </button>
+              @for (r of filteredResources().slice(0, 50); track r.accession_id) {
+                <mat-list-item>
+                  <div class="inventory-item">
+                    <mat-icon class="resource-icon">{{ getCategoryIcon(getResourceCategory(r)) }}</mat-icon>
+                    <span class="item-name">{{ r.name }}</span>
+                    <button
+                      mat-icon-button
+                      (click)="insertAsset('resource', r)"
+                      matTooltip="Insert variable name"
+                      class="insert-btn"
+                    >
+                      <mat-icon>add_circle</mat-icon>
+                    </button>
+                  </div>
+                </mat-list-item>
+              }
+              @if (filteredResources().length === 0) {
+                <div class="empty-state">
+                  @if (inventoryResources().length === 0) {
+                    <p>No resources in inventory</p>
+                    <a routerLink="/app/assets" class="add-link">
+                      <mat-icon>add</mat-icon>
+                      Add from Assets
+                    </a>
+                  } @else {
+                    <p>No resources match your filters</p>
+                  }
                 </div>
-              </mat-list-item>
-              } @if (inventoryResources.length === 0) {
-              <div class="empty-state">No resources</div>
-              } @if (inventoryResources.length > 30) {
-              <div class="empty-state">
-                Showing first 30 of {{ inventoryResources.length }}
-              </div>
+              }
+              @if (filteredResources().length > 50) {
+                <div class="truncation-notice">
+                  Showing first 50 of {{ filteredResources().length }}
+                </div>
               }
             </mat-list>
           </div>
@@ -195,7 +284,7 @@ import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-di
       }
 
       .inventory-drawer {
-        width: 280px;
+        width: 300px;
         padding: 0;
         background: var(--mat-sys-surface-container);
         border-left: 1px solid var(--mat-sys-outline-variant);
@@ -215,11 +304,56 @@ import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-di
         font-weight: 500;
       }
 
+      /* Filter Section */
+      .filter-section {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--mat-sys-outline-variant);
+      }
+
+      .search-field {
+        width: 100%;
+      }
+
+      :host ::ng-deep .search-field {
+        .mat-mdc-form-field-subscript-wrapper { display: none; }
+        .mat-mdc-text-field-wrapper { height: 40px; }
+        .mat-mdc-form-field-flex { height: 40px; }
+        .mat-mdc-form-field-icon-prefix { padding: 8px 0 0 8px; }
+      }
+
+      .category-chips {
+        margin-top: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      :host ::ng-deep .category-chips {
+        mat-chip-listbox {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+        }
+        .mat-mdc-chip {
+          --mdc-chip-container-height: 28px;
+          font-size: 0.75rem;
+        }
+        .chip-icon {
+          font-size: 14px;
+          width: 14px;
+          height: 14px;
+          margin-right: 4px;
+        }
+      }
+
       .inventory-section {
         padding: 8px 16px;
       }
 
       .inventory-section h4 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         margin: 8px 0 4px 0;
         font-size: 0.8rem;
         font-weight: 600;
@@ -227,11 +361,26 @@ import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-di
         text-transform: uppercase;
       }
 
+      .inventory-section h4 mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+
       .inventory-item {
         display: flex;
         justify-content: space-between;
         align-items: center;
         width: 100%;
+        gap: 8px;
+      }
+
+      .resource-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        color: var(--mat-sys-primary);
+        flex-shrink: 0;
       }
 
       .item-name {
@@ -245,12 +394,45 @@ import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-di
 
       .insert-btn {
         color: var(--mat-sys-primary);
+        flex-shrink: 0;
       }
 
       .empty-state {
         padding: 16px;
         color: var(--mat-sys-on-surface-variant);
         text-align: center;
+      }
+
+      .empty-state p {
+        margin: 0 0 8px 0;
+        font-style: italic;
+      }
+
+      .add-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--mat-sys-primary);
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+
+      .add-link:hover {
+        text-decoration: underline;
+      }
+
+      .add-link mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+
+      .truncation-notice {
+        padding: 8px 16px;
+        color: var(--mat-sys-on-surface-variant);
+        text-align: center;
+        font-size: 0.75rem;
         font-style: italic;
       }
 
@@ -349,10 +531,67 @@ export class JupyterliteReplComponent implements OnInit, OnDestroy {
 
   private subscription = new Subscription();
 
-  // Inventory
-  inventoryMachines: Machine[] = [];
-  inventoryResources: Resource[] = [];
+  // Inventory - using signals for reactivity
+  inventoryMachines = signal<Machine[]>([]);
+  inventoryResources = signal<Resource[]>([]);
   isSidebarOpen = true;
+
+  // Filter state
+  searchTerm = signal<string>('');
+  selectedCategory = signal<string | null>(null);
+
+  // Computed filtered lists
+  filteredMachines = computed(() => {
+    const search = this.searchTerm().toLowerCase();
+    const category = this.selectedCategory();
+    let machines = this.inventoryMachines();
+
+    if (search) {
+      machines = machines.filter(m =>
+        m.name.toLowerCase().includes(search) ||
+        m.machine_category?.toLowerCase().includes(search)
+      );
+    }
+
+    if (category) {
+      machines = machines.filter(m => m.machine_category === category);
+    }
+
+    return machines;
+  });
+
+  filteredResources = computed(() => {
+    const search = this.searchTerm().toLowerCase();
+    const category = this.selectedCategory();
+    let resources = this.inventoryResources();
+
+    if (search) {
+      resources = resources.filter(r =>
+        r.name.toLowerCase().includes(search) ||
+        this.getResourceCategory(r)?.toLowerCase().includes(search) ||
+        r.fqn?.toLowerCase().includes(search)
+      );
+    }
+
+    if (category) {
+      resources = resources.filter(r => this.getResourceCategory(r) === category);
+    }
+
+    return resources;
+  });
+
+  // All unique categories for filter chips
+  allCategories = computed(() => {
+    const resourceCats = this.inventoryResources()
+      .map(r => this.getResourceCategory(r))
+      .filter((c): c is string => !!c);
+    const machineCats = this.inventoryMachines()
+      .map(m => m.machine_category)
+      .filter((c): c is string => !!c);
+
+    const uniqueCats = [...new Set([...resourceCats, ...machineCats])];
+    return uniqueCats.sort();
+  });
 
   // Loading state
   isLoading = true;
@@ -378,6 +617,46 @@ export class JupyterliteReplComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscription.unsubscribe();
+  }
+
+  /**
+   * Handle search input change
+   */
+  onSearchChange(value: string): void {
+    this.searchTerm.set(value);
+  }
+
+  /**
+   * Clear search input
+   */
+  clearSearch(): void {
+    this.searchTerm.set('');
+  }
+
+  /**
+   * Handle category filter change
+   */
+  onCategoryChange(): void {
+    // The signal is already updated via ngModel binding
+    // This method exists for any additional side effects if needed
+  }
+
+  /**
+   * Get category from a resource (via plr_definition or asset_type)
+   */
+  getResourceCategory(resource: Resource): string {
+    // Try to extract from plr_definition.plr_category or fall back to asset_type
+    return resource.plr_definition?.plr_category || resource.asset_type || '';
+  }
+
+  /**
+   * Get icon for a category
+   */
+  getCategoryIcon(category: string): string {
+    // Try resource icon first, then machine icon
+    const icon = getResourceCategoryIcon(category);
+    if (icon !== 'inventory_2') return icon;
+    return getMachineCategoryIcon(category);
   }
 
   /**
@@ -504,12 +783,12 @@ export class JupyterliteReplComponent implements OnInit, OnDestroy {
   loadInventory() {
     this.subscription.add(
       this.assetService.getMachines().subscribe((machines) => {
-        this.inventoryMachines = machines;
+        this.inventoryMachines.set(machines);
       })
     );
     this.subscription.add(
       this.assetService.getResources().subscribe((resources) => {
-        this.inventoryResources = resources;
+        this.inventoryResources.set(resources);
       })
     );
   }
@@ -551,3 +830,4 @@ export class JupyterliteReplComponent implements OnInit, OnDestroy {
     }
   }
 }
+

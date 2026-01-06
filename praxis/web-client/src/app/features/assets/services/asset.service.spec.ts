@@ -243,7 +243,7 @@ describe('AssetService', () => {
         const newMachine: MachineCreate = {
           name: 'Browser Machine',
           status: MachineStatus.IDLE,
-          definition_id: 'def-123'
+          machine_definition_accession_id: 'def-123'
         };
 
         // repo.create returns void/Promise<void> usually, checking implementation... 
@@ -285,7 +285,7 @@ describe('AssetService', () => {
         const newResource: ResourceCreate = {
           name: 'Browser Plate',
           status: ResourceStatus.AVAILABLE,
-          definition_id: 'plate-def-123'
+          resource_definition_accession_id: 'plate-def-123'
         };
 
         mockResourceRepo.create.mockReturnValue(undefined);

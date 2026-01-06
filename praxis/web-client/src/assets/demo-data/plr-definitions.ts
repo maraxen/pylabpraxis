@@ -27,7 +27,32 @@ export interface PlrMachineDefinition {
     has_deck: boolean;
     machine_type: 'LiquidHandler' | 'PlateReader' | 'Shaker' | 'Centrifuge' | 'Incubator' | 'Other';
     properties_json: Record<string, unknown>;
+    capabilities_config?: any;
 }
+
+// Fallback/Override capabilities for machines that don't expose them statically (e.g. auto-detected hardware)
+// Used to allow configuration in offline/virtual modes.
+export const OFFLINE_CAPABILITY_OVERRIDES: Record<string, any> = {
+    'pylabrobot.liquid_handling.backends.hamilton.Starlet': {
+        machine_type: 'Starlet',
+        config_fields: [
+            {
+                field_name: 'has_core96',
+                display_name: '96-Channel Head (CoRe 96)',
+                field_type: 'boolean',
+                default_value: false,
+                help_text: 'Includes the CoRe 96-channel head for high-throughput pipetting.'
+            },
+            {
+                field_name: 'has_iswap',
+                display_name: 'iSWAP Gripper',
+                field_type: 'boolean',
+                default_value: false,
+                help_text: 'Includes the iSWAP gripper for plate transport.'
+            }
+        ]
+    }
+};
 
 // ============================================================================
 // PLATES

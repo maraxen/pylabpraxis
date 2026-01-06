@@ -11,7 +11,6 @@ from typing import Any
 
 import libcst as cst
 
-
 # =============================================================================
 # ANSI/SBS Standard Plate Dimensions
 # =============================================================================
@@ -41,6 +40,7 @@ def get_standard_dimensions(num_wells: int | None = None) -> tuple[int, int]:
 
   Returns:
       Tuple of (items_x, items_y).
+
   """
   if num_wells is None:
     return (DEFAULT_ITEMS_X, DEFAULT_ITEMS_Y)
@@ -145,6 +145,7 @@ class TypeAnnotationAnalyzer:
 
     Returns:
         ItemizedTypeInfo if itemized type detected, None otherwise.
+
     """
     return self._analyze_node(node, is_inside_container=False)
 
@@ -159,6 +160,7 @@ class TypeAnnotationAnalyzer:
 
     Returns:
         ItemizedTypeInfo if itemized type found, None otherwise.
+
     """
     # Handle Name nodes: Well, TipSpot
     if isinstance(node, cst.Name):
@@ -250,10 +252,10 @@ class TypeAnnotationAnalyzer:
 
     if isinstance(slice_val, cst.Index):
       return slice_val.value
-    elif isinstance(slice_val, cst.Slice):
+    if isinstance(slice_val, cst.Slice):
       # tuple[Well, ...] - the element type is before the comma
       return None  # Handled by iterating elements
-    elif isinstance(slice_val, cst.BaseExpression):
+    if isinstance(slice_val, cst.BaseExpression):
       return slice_val
 
     return None
@@ -276,6 +278,7 @@ def analyze_type_hint_string(type_hint: str) -> ItemizedTypeInfo | None:
 
   Returns:
       ItemizedTypeInfo if itemized type detected, None otherwise.
+
   """
   try:
     # Parse as an expression

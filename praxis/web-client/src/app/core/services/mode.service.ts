@@ -9,7 +9,7 @@ import { environment } from '../../../environments/environment';
  * - lite: Local Python server with SQLite
  * - production: Full Postgres/Redis/FastAPI/Keycloak stack
  */
-export type AppMode = 'browser' | 'demo' | 'lite' | 'production';
+export type AppMode = 'browser' | 'lite' | 'production';
 
 /**
  * Helper function to check if running in browser mode.
@@ -34,11 +34,11 @@ export class ModeService {
     readonly mode = signal<AppMode>(this.detectMode());
 
     /**
-     * True if running in browser-only modes (browser or demo).
+     * True if running in browser-only mode.
      * These modes bypass authentication and use client-side storage.
      */
     readonly isBrowserMode = computed(() =>
-        this.mode() === 'browser' || this.mode() === 'demo'
+        this.mode() === 'browser'
     );
 
     /**
@@ -47,11 +47,6 @@ export class ModeService {
     readonly requiresAuth = computed(() =>
         this.mode() === 'production' || this.mode() === 'lite'
     );
-
-    /**
-     * True if demo mode (browser mode with pre-loaded content).
-     */
-    readonly isDemoMode = computed(() => this.mode() === 'demo');
 
     /**
      * True if a backend server is available.
@@ -66,7 +61,6 @@ export class ModeService {
     readonly modeLabel = computed(() => {
         switch (this.mode()) {
             case 'browser': return 'Browser';
-            case 'demo': return 'Demo';
             case 'lite': return 'Lite';
             case 'production': return 'Production';
         }
@@ -83,16 +77,8 @@ export class ModeService {
             lite?: boolean;
         };
 
-        // Check runtime toggle first
-        if (typeof localStorage !== 'undefined' && localStorage.getItem(ONBOARDING_STORAGE_KEYS.DEMO_MODE_ENABLED) === 'true') {
-            return 'demo';
-        }
-
-        if (env.browserMode && !env.demo) {
+        if (env.browserMode || env.demo) {
             return 'browser';
-        }
-        if (env.demo) {
-            return 'demo';
         }
         if (env.lite) {
             return 'lite';

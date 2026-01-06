@@ -4,12 +4,19 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
+import { ProtocolWarningBadgeComponent } from '@shared/components/protocol-warning-badge/protocol-warning-badge.component';
 
 @Component({
-    selector: 'app-protocol-card',
-    standalone: true,
-    imports: [CommonModule, MatCardModule, MatIconModule, MatChipsModule],
-    template: `
+  selector: 'app-protocol-card',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatIconModule,
+    MatChipsModule,
+    ProtocolWarningBadgeComponent,
+  ],
+  template: `
     <mat-card class="protocol-card" [class.compact]="compact" (click)="select.emit(protocol)">
       <mat-card-header>
         <mat-icon mat-card-avatar class="card-icon">science</mat-icon>
@@ -23,17 +30,25 @@ import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
           <p class="description">{{ protocol.description || 'No description available.' }}</p>
         </mat-card-content>
         <mat-card-actions>
-          <mat-chip-set aria-label="Protocol tags">
-            <mat-chip [highlighted]="true">v{{ protocol.version }}</mat-chip>
-            @if (protocol.is_top_level) {
-              <mat-chip>Top Level</mat-chip>
-            }
-          </mat-chip-set>
+          <div class="actions-row">
+            <mat-chip-set aria-label="Protocol tags">
+              <mat-chip [highlighted]="true">v{{ protocol.version }}</mat-chip>
+              @if (protocol.is_top_level) {
+                <mat-chip>Top Level</mat-chip>
+              }
+            </mat-chip-set>
+            <app-protocol-warning-badge [protocol]="protocol"></app-protocol-warning-badge>
+          </div>
         </mat-card-actions>
+      } @else {
+        <!-- Compact mode: show badge inline -->
+        <div class="compact-badge">
+          <app-protocol-warning-badge [protocol]="protocol"></app-protocol-warning-badge>
+        </div>
       }
     </mat-card>
   `,
-    styles: [`
+  styles: [`
     .protocol-card {
       cursor: pointer;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -69,11 +84,20 @@ import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
     mat-card-actions {
       padding: 0 16px 16px;
     }
+    .actions-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+    .compact-badge {
+      padding: 8px 16px;
+    }
   `],
-    changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProtocolCardComponent {
-    @Input({ required: true }) protocol!: ProtocolDefinition;
-    @Input() compact = false;
-    @Output() select = new EventEmitter<ProtocolDefinition>();
+  @Input({ required: true }) protocol!: ProtocolDefinition;
+  @Input() compact = false;
+  @Output() select = new EventEmitter<ProtocolDefinition>();
 }

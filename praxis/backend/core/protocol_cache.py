@@ -16,9 +16,10 @@ from __future__ import annotations
 import hashlib
 import logging
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Any
 
 import cloudpickle
 
@@ -37,7 +38,6 @@ CACHE_VERSION = "1.0.0"
 class ProtocolCacheError(Exception):
   """Base exception for protocol caching errors."""
 
-  pass
 
 
 class SerializationError(ProtocolCacheError):

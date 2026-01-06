@@ -63,6 +63,11 @@ from praxis.backend.models.orm.protocol import (
   ProtocolRunOrm,
   ProtocolSourceRepositoryOrm,
 )
+from praxis.backend.models.orm.resolution import (
+  ResolutionActionEnum,
+  ResolutionTypeEnum,
+  StateResolutionLogOrm,
+)
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
 from praxis.backend.models.orm.schedule import (
   AssetReservationOrm,
@@ -89,11 +94,14 @@ __all__ = [
   "ParameterDefinitionOrm",
   "ProtocolRunOrm",
   "ProtocolSourceRepositoryOrm",
+  "ResolutionActionEnum",
+  "ResolutionTypeEnum",
   "ResourceDefinitionOrm",
   "ResourceOrm",
   "ScheduleEntryOrm",
   "ScheduleHistoryOrm",
   "SchedulerMetricsView",
+  "StateResolutionLogOrm",
   "UserOrm",
   "WellDataOutputOrm",
   "WorkcellOrm",

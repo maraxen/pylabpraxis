@@ -6,11 +6,10 @@ import traceback
 import uuid
 from typing import Any, cast
 
-from praxis.backend.core.protocols.scheduler import IProtocolScheduler
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.core.asset_manager import AssetManager
+from praxis.backend.core.protocols.scheduler import IProtocolScheduler
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models import (
   MachineStatusEnum,

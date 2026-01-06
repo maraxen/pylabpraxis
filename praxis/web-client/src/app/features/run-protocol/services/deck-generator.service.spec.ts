@@ -2,7 +2,7 @@ import { DeckGeneratorService } from './deck-generator.service';
 import { DeckCatalogService } from './deck-catalog.service';
 import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Machine } from '@features/assets/models/asset.models';
+import { Machine, MachineStatus } from '@features/assets/models/asset.models';
 
 describe('DeckGeneratorService', () => {
     let service: DeckGeneratorService;
@@ -53,12 +53,12 @@ describe('DeckGeneratorService', () => {
         const ot2Machine: Machine = {
             accession_id: 'mach_1',
             name: 'My OT-2',
-            type: 'Opentrons OT-2',
+            machine_type: 'Opentrons OT-2',
             model: 'OT-2', // Triggers detection
-            status: 'active',
-            capabilities: {},
-            created_at: new Date(),
-            updated_at: new Date()
+            status: MachineStatus.IDLE,
+            user_configured_capabilities: {},
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         };
 
         const data = service.generateDeckForProtocol(protocol, undefined, ot2Machine);
@@ -103,12 +103,12 @@ describe('DeckGeneratorService', () => {
         const ot2Machine: Machine = {
             accession_id: 'mach_1',
             name: 'My OT-2',
-            type: 'Opentrons OT-2',
+            machine_type: 'Opentrons OT-2',
             model: 'OT-2',
-            status: 'active',
-            capabilities: {},
-            created_at: new Date(),
-            updated_at: new Date()
+            status: MachineStatus.IDLE,
+            user_configured_capabilities: {},
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         };
 
         const data = service.generateDeckForProtocol(protocol, undefined, ot2Machine);

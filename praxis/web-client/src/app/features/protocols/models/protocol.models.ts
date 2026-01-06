@@ -84,6 +84,56 @@ export interface DataViewMetadataModel {
   default_value_json?: unknown;
 }
 
+/**
+ * Setup instruction to display before protocol execution.
+ * These are user-facing messages that communicate required manual preparation.
+ */
+export interface SetupInstruction {
+  message: string;
+  severity: 'required' | 'recommended' | 'info';
+  position?: string;
+  resource_type?: string;
+}
+
+/**
+ * Requirement inferred from protocol simulation.
+ */
+export interface InferredRequirement {
+  requirement_type: string;  // 'tips_required' | 'resource_on_deck' | 'liquid_present'
+  resource?: string;
+  details: Record<string, unknown>;
+  inferred_at_level: string;
+}
+
+/**
+ * Detected failure mode for a protocol.
+ */
+export interface FailureMode {
+  initial_state: Record<string, unknown>;
+  failure_point: string;
+  failure_type: string;
+  message: string;
+  suggested_fix?: string;
+  severity: 'error' | 'warning' | 'info';
+}
+
+/**
+ * Cached simulation result for a protocol definition.
+ */
+export interface SimulationResult {
+  passed: boolean;
+  level_completed: string;
+  level_failed?: string;
+  structural_error?: string;
+  violations: Record<string, unknown>[];
+  inferred_requirements: InferredRequirement[];
+  failure_modes: FailureMode[];
+  failure_mode_stats: Record<string, unknown>;
+  simulation_version: string;
+  simulated_at?: string;
+  execution_time_ms: number;
+}
+
 export interface ProtocolDefinition {
   accession_id: string;
   name: string;
@@ -100,6 +150,18 @@ export interface ProtocolDefinition {
   parameters: ParameterMetadata[];
   assets: AssetRequirement[];
   data_views?: DataViewMetadataModel[];
+  /** Pre-run setup instructions to display in Deck Setup wizard */
+  setup_instructions?: SetupInstruction[];
+  /** Cached simulation result */
+  simulation_result?: SimulationResult;
+  /** Inferred state requirements from simulation */
+  inferred_requirements?: InferredRequirement[];
+  /** Known failure modes from simulation */
+  failure_modes?: FailureMode[];
+  /** Simulator version for cache validation */
+  simulation_version?: string;
+  /** When simulation was last run */
+  simulation_cached_at?: string;
 }
 
 export interface ProtocolRun {

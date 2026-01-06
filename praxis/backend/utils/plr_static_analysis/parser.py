@@ -7,12 +7,12 @@ import libcst as cst
 from libcst.metadata import MetadataWrapper
 
 from praxis.backend.utils.plr_static_analysis.cache import ParseCache
+from praxis.backend.utils.plr_static_analysis.connection_config_templates import (
+  get_connection_config_template,
+)
 from praxis.backend.utils.plr_static_analysis.manufacturer_inference import (
   infer_manufacturer,
   infer_vendor,
-)
-from praxis.backend.utils.plr_static_analysis.connection_config_templates import (
-  get_connection_config_template,
 )
 from praxis.backend.utils.plr_static_analysis.models import (
   MACHINE_BACKEND_TYPES,
@@ -411,7 +411,7 @@ class PLRSourceParser:
 
     """
     compatible = []
-    
+
     # Get expected backend type for this frontend
     target_backend_type = frontend.class_type.get_compatible_backend_type()
     if not target_backend_type:
@@ -426,7 +426,7 @@ class PLRSourceParser:
       if "chatterbox" in backend.name.lower() or "simulation" in backend.name.lower():
         compatible.append(backend.fqn)
         continue
-        
+
       # If frontend is generic (no manufacturer or 'pylabrobot'), allow all backends of correct type
       if not frontend.manufacturer or frontend.manufacturer.lower() == "pylabrobot":
         compatible.append(backend.fqn)
@@ -441,12 +441,12 @@ class PLRSourceParser:
       # Loose name matching as fallback
       frontend_clean = frontend.name.lower()
       backend_clean = backend.name.lower()
-      
+
       # Remove common suffixes/prefixes
       for term in ["liquidhandler", "platereader", "heatershaker", "backend", "_"]:
           frontend_clean = frontend_clean.replace(term, "")
           backend_clean = backend_clean.replace(term, "")
-          
+
       if (
         frontend_clean
         and backend_clean

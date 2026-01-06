@@ -283,6 +283,16 @@ interface FilterCategory {
                    <app-hardware-discovery-button></app-hardware-discovery-button>
                 </h3>
 
+                @if (showMachineError()) {
+                  <div class="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <mat-icon class="text-red-400 mt-0.5">error_outline</mat-icon>
+                    <div>
+                      <p class="text-red-400 font-bold">Physical execution requires a real machine.</p>
+                      <p class="text-red-400/80 text-sm">The selected machine is simulated. Switch to Simulation mode or select a physical machine.</p>
+                    </div>
+                  </div>
+                }
+
                 @if (isLoadingCompatibility()) {
                   <div class="flex flex-col items-center justify-center py-12">
                     <mat-spinner diameter="40"></mat-spinner>
@@ -292,6 +302,7 @@ interface FilterCategory {
                   <app-machine-selection
                     [machines]="compatibilityData()"
                     [selected]="selectedMachine()"
+                    [isPhysicalMode]="!store.simulationMode()"
                     (select)="onMachineSelect($event)"
                   ></app-machine-selection>
                 }
@@ -299,7 +310,7 @@ interface FilterCategory {
 
               <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
                  <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
-                 <button mat-flat-button color="primary" matStepperNext [disabled]="!selectedMachine()" class="!rounded-xl !px-8 !py-6">Continue</button>
+                 <button mat-flat-button color="primary" matStepperNext [disabled]="!selectedMachine() || showMachineError()" class="!rounded-xl !px-8 !py-6">Continue</button>
               </div>
             </div>
           </mat-step>
@@ -521,6 +532,25 @@ export class RunProtocolComponent implements OnInit {
   searchQuery = signal('');
   activeFilters = signal<Record<string, Set<string>>>({});
   configuredAssets = signal<Record<string, any> | null>(null);
+
+  /** Helper to check if a machine is simulated */
+  isMachineSimulated = computed(() => {
+    const selection = this.selectedMachine();
+    if (!selection) return false;
+
+    const machine = selection.machine;
+    const connectionInfo = machine.connection_info || {};
+    const backend = (connectionInfo['backend'] || '').toString();
+
+    return machine.is_simulation_override === true ||
+      (machine as any).is_simulated === true ||
+      backend.includes('Simulator');
+  });
+
+  /** Whether to show the machine validation error */
+  showMachineError = computed(() => {
+    return !this.store.simulationMode() && this.isMachineSimulated();
+  });
 
   onAssetSelectionChange(assetMap: Record<string, any>) {
     this.configuredAssets.set(assetMap);

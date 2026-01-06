@@ -170,7 +170,7 @@ def _extract_from_runtime_type(type_hint: Any) -> list[str]:
 
     # Handle typing.Sequence (not from collections.abc)
     try:
-      from typing import Sequence as TypingSequence
+      from collections.abc import Sequence as TypingSequence
 
       if origin is TypingSequence:
         for arg in args:

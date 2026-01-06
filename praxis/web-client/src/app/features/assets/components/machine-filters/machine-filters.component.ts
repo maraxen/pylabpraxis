@@ -1,0 +1,369 @@
+import { Component, input, output, signal, computed, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSelectModule } from '@angular/material/select';
+import { MatInputModule } from '@angular/material/input';
+import { Machine, MachineStatus, MachineDefinition } from '../../models/asset.models';
+import { getMachineCategoryIcon } from '@shared/constants/asset-icons';
+
+export type MachineSortOption = 'name' | 'category' | 'created_at' | 'status';
+
+export interface MachineFilterState {
+    search: string;
+    status: MachineStatus[];
+    categories: string[];
+    simulated: boolean | null;  // null = all, true = simulated only, false = physical only
+    backends: string[];
+    sort_by: MachineSortOption;
+    sort_order: 'asc' | 'desc';
+}
+
+/**
+ * Chip-based filter controls for the Machine Registry.
+ * 
+ * Provides filtering by:
+ * - Search (text)
+ * - Category (LiquidHandler, PlateReader, HeaterShaker, etc.)
+ * - Simulated (filter by is_simulated flag)
+ * - Status (idle, running, error, offline)
+ * - Backend (STAR, OT2, Chatterbox, Simulator)
+ */
+@Component({
+    selector: 'app-machine-filters',
+    standalone: true,
+    imports: [
+        CommonModule,
+        FormsModule,
+        MatFormFieldModule,
+        MatChipsModule,
+        MatIconModule,
+        MatButtonModule,
+        MatButtonToggleModule,
+        MatSlideToggleModule,
+        MatSelectModule,
+        MatInputModule,
+    ],
+    template: `
+    <div class="filters-container">
+      <!-- Search Input -->
+      <div class="filter-group search-group">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-icon matPrefix>search</mat-icon>
+          <input
+            matInput
+            placeholder="Search machines..."
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="onFilterChange()"
+          />
+          @if (searchTerm) {
+            <button
+              matSuffix
+              mat-icon-button
+              aria-label="Clear search"
+              (click)="searchTerm = ''; onFilterChange()"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+      </div>
+
+      <!-- Category Filter Chips -->
+      <div class="filter-group">
+        <label class="filter-label">Category</label>
+        <mat-chip-listbox
+          [multiple]="true"
+          [(ngModel)]="selectedCategories"
+          (change)="onFilterChange()"
+          aria-label="Filter by category"
+        >
+          @for (cat of availableCategories(); track cat) {
+            <mat-chip-option [value]="cat">
+              <mat-icon class="chip-icon">{{ getCategoryIcon(cat) }}</mat-icon>
+              {{ cat }}
+            </mat-chip-option>
+          }
+        </mat-chip-listbox>
+      </div>
+
+      <!-- Status Filter Chips -->
+      <div class="filter-group">
+        <label class="filter-label">Status</label>
+        <mat-chip-listbox
+          [multiple]="true"
+          [(ngModel)]="selectedStatuses"
+          (change)="onFilterChange()"
+          aria-label="Filter by status"
+        >
+          <mat-chip-option value="idle" class="status-idle">Idle</mat-chip-option>
+          <mat-chip-option value="running" class="status-running">Running</mat-chip-option>
+          <mat-chip-option value="error" class="status-error">Error</mat-chip-option>
+          <mat-chip-option value="offline" class="status-offline">Offline</mat-chip-option>
+          <mat-chip-option value="maintenance" class="status-maintenance">Maintenance</mat-chip-option>
+        </mat-chip-listbox>
+      </div>
+
+      <!-- Simulated Filter Toggle -->
+      <div class="filter-group">
+        <label class="filter-label">Mode</label>
+        <mat-button-toggle-group
+          hideSingleSelectionIndicator
+          [(ngModel)]="simulatedFilter"
+          (change)="onFilterChange()"
+          aria-label="Filter by simulation mode"
+        >
+          <mat-button-toggle [value]="null" matTooltip="Show all machines">
+            All
+          </mat-button-toggle>
+          <mat-button-toggle [value]="false" matTooltip="Physical hardware only">
+            <mat-icon>precision_manufacturing</mat-icon>
+            Physical
+          </mat-button-toggle>
+          <mat-button-toggle [value]="true" matTooltip="Simulated only">
+            <mat-icon>computer</mat-icon>
+            Simulated
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+
+      <!-- Backend Filter (if backends available) -->
+      @if (availableBackends().length > 0) {
+        <div class="filter-group">
+          <label class="filter-label">Backend</label>
+          <mat-chip-listbox
+            [multiple]="true"
+            [(ngModel)]="selectedBackends"
+            (change)="onFilterChange()"
+            aria-label="Filter by backend"
+          >
+            @for (backend of availableBackends(); track backend) {
+              <mat-chip-option [value]="backend">{{ backend }}</mat-chip-option>
+            }
+          </mat-chip-listbox>
+        </div>
+      }
+
+      <!-- Sort Controls -->
+      <div class="filter-group">
+        <label class="filter-label">Sort</label>
+        <div class="sort-controls">
+          <mat-form-field appearance="outline" class="sort-field">
+            <mat-select [(ngModel)]="sortBy" (selectionChange)="onFilterChange()">
+              <mat-option value="name">Name</mat-option>
+              <mat-option value="category">Category</mat-option>
+              <mat-option value="status">Status</mat-option>
+              <mat-option value="created_at">Date Added</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-button-toggle-group
+            hideSingleSelectionIndicator
+            [(ngModel)]="sortOrder"
+            (change)="onFilterChange()"
+            aria-label="Sort order"
+          >
+            <mat-button-toggle value="asc" aria-label="Ascending">
+              <mat-icon>arrow_upward</mat-icon>
+            </mat-button-toggle>
+            <mat-button-toggle value="desc" aria-label="Descending">
+              <mat-icon>arrow_downward</mat-icon>
+            </mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+      </div>
+
+      <!-- Clear Filters -->
+      @if (hasActiveFilters()) {
+        <button
+          mat-stroked-button
+          (click)="clearFilters()"
+          class="clear-btn"
+          aria-label="Clear all filters"
+        >
+          <mat-icon>filter_alt_off</mat-icon>
+          Clear
+        </button>
+      }
+    </div>
+  `,
+    styles: [`
+    .filters-container {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--mat-sys-outline-variant);
+      background: var(--mat-sys-surface-container);
+      margin-bottom: 16px;
+    }
+
+    .filter-group {
+      flex-shrink: 0;
+    }
+
+    .search-group {
+      flex: 1;
+      min-width: 200px;
+      max-width: 300px;
+    }
+
+    .filter-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--mat-sys-on-surface-variant);
+      margin-bottom: 8px;
+    }
+
+    .search-field {
+      width: 100%;
+    }
+
+    :host ::ng-deep .search-field,
+    :host ::ng-deep .sort-field {
+      .mat-mdc-form-field-subscript-wrapper { display: none; }
+      .mat-mdc-text-field-wrapper { height: 40px; }
+      .mat-mdc-form-field-flex { height: 40px; }
+      .mat-mdc-form-field-icon-prefix { padding: 8px 0 0 8px; }
+    }
+
+    :host ::ng-deep .sort-field {
+      width: 130px;
+    }
+
+    .sort-controls {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    :host ::ng-deep .chip-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      margin-right: 4px;
+    }
+
+    .clear-btn {
+      margin-left: auto;
+      align-self: center;
+    }
+
+    /* Status chip colors */
+    .status-idle {
+      --mdc-chip-elevated-selected-container-color: rgba(34, 197, 94, 0.2);
+      --mdc-chip-selected-label-text-color: rgb(34, 197, 94);
+    }
+    .status-running {
+      --mdc-chip-elevated-selected-container-color: rgba(59, 130, 246, 0.2);
+      --mdc-chip-selected-label-text-color: rgb(59, 130, 246);
+    }
+    .status-error {
+      --mdc-chip-elevated-selected-container-color: rgba(239, 68, 68, 0.2);
+      --mdc-chip-selected-label-text-color: rgb(239, 68, 68);
+    }
+    .status-offline {
+      --mdc-chip-elevated-selected-container-color: rgba(107, 114, 128, 0.2);
+      --mdc-chip-selected-label-text-color: rgb(107, 114, 128);
+    }
+    .status-maintenance {
+      --mdc-chip-elevated-selected-container-color: rgba(245, 158, 11, 0.2);
+      --mdc-chip-selected-label-text-color: rgb(245, 158, 11);
+    }
+  `],
+})
+export class MachineFiltersComponent implements OnInit {
+    /** List of machines to derive available filters from */
+    machines = input<Machine[]>([]);
+
+    /** List of machine definitions for backend information */
+    machineDefinitions = input<MachineDefinition[]>([]);
+
+    /** Emits when filters change */
+    filtersChange = output<MachineFilterState>();
+
+    // Filter state
+    searchTerm = '';
+    selectedStatuses: MachineStatus[] = [];
+    selectedCategories: string[] = [];
+    simulatedFilter: boolean | null = null;
+    selectedBackends: string[] = [];
+    sortBy: MachineSortOption = 'name';
+    sortOrder: 'asc' | 'desc' = 'asc';
+
+    // Computed available options based on input machines
+    availableCategories = computed(() => {
+        const cats = new Set<string>();
+        this.machines().forEach(m => {
+            if (m.machine_category) cats.add(m.machine_category);
+        });
+        return Array.from(cats).sort();
+    });
+
+    availableBackends = computed(() => {
+        const backends = new Set<string>();
+        this.machineDefinitions().forEach(def => {
+            if (def.compatible_backends) {
+                def.compatible_backends.forEach(b => backends.add(b));
+            }
+        });
+        return Array.from(backends).sort();
+    });
+
+    ngOnInit(): void {
+        // Emit initial filter state
+        this.onFilterChange();
+    }
+
+    onFilterChange(): void {
+        this.filtersChange.emit(this.getCurrentFilters());
+    }
+
+    getCurrentFilters(): MachineFilterState {
+        return {
+            search: this.searchTerm,
+            status: this.selectedStatuses,
+            categories: this.selectedCategories,
+            simulated: this.simulatedFilter,
+            backends: this.selectedBackends,
+            sort_by: this.sortBy,
+            sort_order: this.sortOrder,
+        };
+    }
+
+    hasActiveFilters(): boolean {
+        return (
+            this.searchTerm !== '' ||
+            this.selectedStatuses.length > 0 ||
+            this.selectedCategories.length > 0 ||
+            this.simulatedFilter !== null ||
+            this.selectedBackends.length > 0 ||
+            this.sortBy !== 'name' ||
+            this.sortOrder !== 'asc'
+        );
+    }
+
+    clearFilters(): void {
+        this.searchTerm = '';
+        this.selectedStatuses = [];
+        this.selectedCategories = [];
+        this.simulatedFilter = null;
+        this.selectedBackends = [];
+        this.sortBy = 'name';
+        this.sortOrder = 'asc';
+        this.onFilterChange();
+    }
+
+    getCategoryIcon(category: string): string {
+        return getMachineCategoryIcon(category);
+    }
+}

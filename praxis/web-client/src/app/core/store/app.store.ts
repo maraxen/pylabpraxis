@@ -11,6 +11,7 @@ type AppState = {
   isLoading: boolean;
   simulationMode: boolean;  // Global simulation mode for protocol execution
   maintenanceEnabled: boolean; // Global maintenance feature toggle
+  infiniteConsumables: boolean; // Auto-replenish consumables in simulation
 };
 
 const getSavedTheme = (): Theme => {
@@ -39,12 +40,22 @@ const getSavedMaintenanceEnabled = (): boolean => {
   }
 };
 
+const getSavedInfiniteConsumables = (): boolean => {
+  try {
+    const saved = localStorage.getItem('infiniteConsumables');
+    return saved === null ? true : saved === 'true'; // Default ON (especially for browser mode)
+  } catch {
+    return true;
+  }
+};
+
 const initialState: AppState = {
   theme: getSavedTheme(),
   sidebarOpen: true,
   isLoading: false,
   simulationMode: getSavedSimulationMode(),
   maintenanceEnabled: getSavedMaintenanceEnabled(),
+  infiniteConsumables: getSavedInfiniteConsumables(),
 };
 
 export const AppStore = signalStore(
@@ -128,6 +139,14 @@ export const AppStore = signalStore(
           localStorage.setItem('maintenanceEnabled', String(enabled));
         } catch (e) {
           console.error('Failed to save maintenance enabled preference', e);
+        }
+      },
+      setInfiniteConsumables(enabled: boolean) {
+        patchState(store, { infiniteConsumables: enabled });
+        try {
+          localStorage.setItem('infiniteConsumables', String(enabled));
+        } catch (e) {
+          console.error('Failed to save infinite consumables preference', e);
         }
       },
       // Login now delegates to Keycloak

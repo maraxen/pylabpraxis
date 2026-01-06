@@ -40,17 +40,17 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
   ],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col">
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-        <div>
-          <h1 class="text-3xl font-bold text-sys-text-primary mb-1">Asset Management</h1>
-          <p class="text-sys-text-secondary">Manage your laboratory hardware and inventory</p>
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+        <div class="min-w-0 flex-1">
+          <h1 class="text-3xl font-bold text-sys-text-primary mb-1 truncate">Asset Management</h1>
+          <p class="text-sys-text-secondary truncate">Manage your laboratory hardware and inventory</p>
         </div>
-        <div class="flex gap-3">
-          <app-hardware-discovery-button class="mr-2"></app-hardware-discovery-button>
-          <span [matTooltip]="selectedIndex === 3 ? (modeService.isBrowserMode() ? 'Definitions are pre-synced in Browser Mode.' : 'Sync all hardware and protocol definitions from the backend.') : ''">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <app-hardware-discovery-button class="sm:mr-2"></app-hardware-discovery-button>
+          <span class="flex-1 sm:flex-initial" [matTooltip]="selectedIndex === 3 ? (modeService.isBrowserMode() ? 'Definitions are pre-synced in Browser Mode.' : 'Sync all hardware and protocol definitions from the backend.') : ''">
             <button 
               mat-flat-button 
-              class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-3 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" 
+              class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-3 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto" 
               (click)="openAddAsset()" 
               [disabled]="isLoading() || isSyncing()"
               data-tour-id="add-asset-btn"

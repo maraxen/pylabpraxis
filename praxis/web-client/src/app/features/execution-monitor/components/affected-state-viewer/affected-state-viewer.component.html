@@ -1,0 +1,57 @@
+<div class="affected-state-viewer">
+    <table class="state-table" *ngIf="states.length > 0">
+        <thead>
+            <tr>
+                <th class="col-resource">Resource</th>
+                <th class="col-property">Property</th>
+                <th class="col-before">Before</th>
+                <th class="col-expected">Expected</th>
+                <th class="col-change">Change</th>
+                <th class="col-resolved" *ngIf="editable">Actual Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let state of states" class="state-row">
+                <td class="col-resource">
+                    <div class="resource-cell">
+                        <mat-icon class="resource-icon">science</mat-icon>
+                        <span class="resource-name">{{ state.resource_name || 'Unknown' }}</span>
+                    </div>
+                </td>
+                <td class="col-property">
+                    <div class="property-cell">
+                        <mat-icon class="property-icon">{{ getPropertyIcon(state.property_type) }}</mat-icon>
+                        <span class="property-name">{{ getPropertyTypeLabel(state.property_type) }}</span>
+                    </div>
+                </td>
+                <td class="col-before">
+                    <span class="value-cell value-before">{{ formatValue(state.current_value) }}</span>
+                </td>
+                <td class="col-expected">
+                    <span class="value-cell value-expected">
+                        {{ state.expected_value !== undefined ? formatValue(state.expected_value) : '—' }}
+                    </span>
+                </td>
+                <td class="col-change">
+                    <div class="change-indicator" [class]="getChangeClass(state)"
+                        [matTooltip]="getChangeTooltip(state)">
+                        <mat-icon *ngIf="getChangeClass(state) === 'change-increase'">arrow_upward</mat-icon>
+                        <mat-icon *ngIf="getChangeClass(state) === 'change-decrease'">arrow_downward</mat-icon>
+                        <mat-icon *ngIf="getChangeClass(state) === 'change-modified'">swap_horiz</mat-icon>
+                        <mat-icon *ngIf="getChangeClass(state) === 'change-none'">remove</mat-icon>
+                        <mat-icon *ngIf="getChangeClass(state) === 'change-unknown'">help</mat-icon>
+                    </div>
+                </td>
+                <td class="col-resolved" *ngIf="editable">
+                    <input type="text" class="value-input" [value]="formatValue(getResolvedValue(state.state_key))"
+                        (input)="onValueChange(state.state_key, $event)" placeholder="Enter value" />
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="empty-state" *ngIf="states.length === 0">
+        <mat-icon>check_circle</mat-icon>
+        <p>No uncertain state changes detected.</p>
+    </div>
+</div>

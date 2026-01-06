@@ -14,13 +14,13 @@ from __future__ import annotations
 import importlib
 import inspect
 import logging
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.core.protocol_cache import (
-  CACHE_VERSION,
   CacheValidationError,
   DeserializationError,
   ProtocolCache,

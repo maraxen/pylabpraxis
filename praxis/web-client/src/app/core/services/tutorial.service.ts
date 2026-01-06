@@ -2,7 +2,6 @@ import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import Shepherd from 'shepherd.js';
 import { OnboardingService } from './onboarding.service';
-import { ExitDemoDialogComponent } from '../../shared/components/exit-demo-dialog/exit-demo-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
 
 @Injectable({ providedIn: 'root' })
@@ -244,7 +243,7 @@ export class TutorialService {
         this.addStep({
             id: 'settings-finish',
             title: 'You\'re All Set!',
-            text: 'You can toggle themes, enable Demo Mode, or restart this tutorial anytime from here.',
+            text: 'You can toggle themes, enable "Infinite Consumables" for easier simulation, or manage your preferences anytime from here.',
             attachTo: { element: '[data-tour-id="settings-onboarding"]', on: 'top' },
             route: '/app/settings',
             buttons: [{ text: 'Finish', action: this.onComplete.bind(this), classes: 'mat-mdc-raised-button mat-primary' }]
@@ -301,13 +300,5 @@ export class TutorialService {
         this.onboarding.markTutorialComplete();
         this.onboarding.clearTutorialState();
         this.tour.complete();
-
-        // Open Exit Demo Dialog if in demo mode
-        // Small delay to ensure tour closes first
-        setTimeout(() => {
-            if (this.onboarding.isDemoModeEnabled()) {
-                this.dialog.open(ExitDemoDialogComponent, { width: '450px' });
-            }
-        }, 300);
     }
 }

@@ -112,7 +112,7 @@ Variables should be named descriptively with a UUID component to ensure uniquene
 
 ---
 
-## Phase 4: Quick Add Support
+## Phase 4: Quick Add Support with Search & Filters
 
 ### Current Functionality
 
@@ -120,9 +120,16 @@ The current REPL has an Inventory tab with "Inject Code" buttons that insert mac
 
 ### Tasks
 
-- [ ] **Inventory Panel Integration**
+- [x] **Inventory Panel Integration**
   - Keep sidebar panel with inventory listing
   - "Insert" button adds code to current cell
+
+- [x] **Search & Filter Integration** (NEW)
+  - Add search bar at top of asset sidebar
+  - Reuse `FilterChipComponent` from Asset Management
+  - Filter chips: Status, Type, Category
+  - Filters should use same logic as Asset Management page
+  - See: [chip_filter_standardization.md](./chip_filter_standardization.md)
 
 - [ ] **Code Insertion API**
   - JupyterLite API for inserting text at cursor
@@ -131,6 +138,10 @@ The current REPL has an Inventory tab with "Inject Code" buttons that insert mac
 - [ ] **Smart Insertion**
   - Insert just the variable name if already preloaded
   - Insert full instantiation code if not preloaded
+
+- [x] **Empty State with Link**
+  - If no resources in inventory, show: "No resources in inventory. [Add resources from the Assets page](/app/assets)"
+  - Link should navigate to Assets page
 
 ---
 

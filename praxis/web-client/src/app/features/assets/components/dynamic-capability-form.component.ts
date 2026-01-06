@@ -137,20 +137,11 @@ import { MachineCapabilityConfigSchema, CapabilityConfigField } from '../models/
     
     /* Theme-aware styling using CSS variables */
     .sys-text-secondary {
-      color: var(--sys-on-surface-variant, rgba(0, 0, 0, 0.6));
+      color: var(--mat-sys-on-surface-variant);
     }
     
     .sys-surface {
-      background-color: var(--sys-surface-variant, #f5f5f5);
-    }
-    
-    /* Dark mode adjustments */
-    :host-context(.dark) .sys-text-secondary {
-      color: var(--sys-on-surface-variant, rgba(255, 255, 255, 0.7));
-    }
-    
-    :host-context(.dark) .sys-surface {
-      background-color: var(--sys-surface-variant, #2a2a2a);
+      background-color: var(--mat-sys-surface-variant);
     }
   `]
 })

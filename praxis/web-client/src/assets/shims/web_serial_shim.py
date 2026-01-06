@@ -1,5 +1,4 @@
-"""
-WebSerial Shim for Pyodide/Browser Environment
+"""WebSerial Shim for Pyodide/Browser Environment
 
 This module provides a WebSerial-based implementation of pylabrobot's Serial interface,
 enabling hardware communication from the browser using the WebSerial API.
@@ -18,11 +17,11 @@ Usage in JupyterLite:
 
 import asyncio
 import logging
-from typing import Optional, Any
+from typing import Any
 
 # Import Pyodide's JavaScript bridge
 try:
-  from js import navigator, Object, Uint8Array
+  from js import Object, Uint8Array, navigator
   from pyodide.ffi import create_proxy, to_js
 
   IN_PYODIDE = True
@@ -34,8 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 class WebSerial:
-  """
-  WebSerial-based Serial implementation for browser environments.
+  """WebSerial-based Serial implementation for browser environments.
 
   Implements the same interface as pylabrobot.io.Serial but uses
   the browser's WebSerial API via Pyodide's JS bridge.
@@ -43,9 +41,9 @@ class WebSerial:
 
   def __init__(
     self,
-    port: Optional[Any] = None,  # SerialPort object from requestPort
-    vid: Optional[int] = None,
-    pid: Optional[int] = None,
+    port: Any | None = None,  # SerialPort object from requestPort
+    vid: int | None = None,
+    pid: int | None = None,
     baudrate: int = 9600,
     bytesize: int = 8,
     parity: str = "N",
@@ -69,6 +67,7 @@ class WebSerial:
         timeout: Read timeout in seconds
         rtscts: Enable RTS/CTS flow control
         dsrdtr: Enable DSR/DTR flow control
+
     """
     if not IN_PYODIDE:
       raise RuntimeError("WebSerial is only available in Pyodide/browser environment")
@@ -85,8 +84,8 @@ class WebSerial:
     self.rtscts = rtscts
     self.dsrdtr = dsrdtr
 
-    self._reader: Optional[Any] = None
-    self._writer: Optional[Any] = None
+    self._reader: Any | None = None
+    self._writer: Any | None = None
     self._port_name: str = "WebSerial"
 
   @property
@@ -95,15 +94,14 @@ class WebSerial:
     return self._port_name
 
   async def setup(self):
-    """
-    Initialize the WebSerial connection.
+    """Initialize the WebSerial connection.
 
     This will trigger a browser dialog for the user to select a serial port
     if no port was provided in the constructor.
     """
     if not hasattr(navigator, "serial"):
       raise RuntimeError(
-        "WebSerial is not supported in this browser. " "Please use Chrome, Edge, or Opera."
+        "WebSerial is not supported in this browser. Please use Chrome, Edge, or Opera."
       )
 
     # Request port if not provided

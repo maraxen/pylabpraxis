@@ -249,13 +249,13 @@ class PreconditionResolver:
         precond, graph, deck_state, available_assets, status
       )
 
-    elif precond.precondition_type == PreconditionType.TIPS_LOADED:
+    if precond.precondition_type == PreconditionType.TIPS_LOADED:
       return self._resolve_tips_loaded(precond, graph, deck_state, status)
 
-    elif precond.precondition_type == PreconditionType.PLATE_ACCESSIBLE:
+    if precond.precondition_type == PreconditionType.PLATE_ACCESSIBLE:
       return self._resolve_plate_accessible(precond, graph, deck_state, status)
 
-    elif precond.precondition_type == PreconditionType.MACHINE_READY:
+    if precond.precondition_type == PreconditionType.MACHINE_READY:
       # Machine readiness is typically auto-satisfied by the system
       status.status = "auto_satisfiable"
       status.suggested_action = f"Initialize {precond.resource_variable}"

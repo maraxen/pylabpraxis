@@ -1,13 +1,20 @@
 # Praxis Development Roadmap
 
-**Last Updated**: 2026-01-05 (State Simulation Completed)
+**Last Updated**: 2026-01-05 (Roadmap Restructure)
 **Current Phase**: Feature Development & Quality Assurance
 
 ---
 
 ## Executive Summary
 
-Browser mode stabilization is largely complete. The focus now shifts to **new feature development** (interactive well selection, JupyterLite REPL, hardware discovery UX) and **quality assurance** (comprehensive test suite, visual QA review).
+The backend simulation infrastructure is **complete** (87 tests passing). Focus now shifts to:
+
+1. **Simulation UI Integration** - Surface cached simulation results in the UI
+2. **Browser Mode Defaults** - Eliminate demo mode, make browser mode the default experience
+3. **Error Handling & State Resolution** - ✅ Complete (Backend + Frontend)
+4. **Browser Mode Defaults** - Eliminate demo mode, make browser mode the default experience
+5. **Chip-Based Filter Standardization** - Unified filter UX across all surfaces
+6. **Quality Assurance** - Comprehensive test suite and visual QA
 
 ---
 
@@ -17,57 +24,69 @@ Browser mode stabilization is largely complete. The focus now shifts to **new fe
 
 | Item | Status | Description | Backlog |
 |------|--------|-------------|---------|
-| **Add Resource Not Working** | 🔴 Broken | Cannot add resources in browser mode - needs investigation | [browser_mode_issues.md](./backlog/browser_mode_issues.md) |
-| **DB Sync Issue** | 🔴 Root Cause | Browser praxis.db out of sync with features | [browser_mode_issues.md](./backlog/browser_mode_issues.md) |
 | **Restore Asset Selection Step** | 🔴 Regression | Asset selection step missing from workflow | [run_protocol_workflow.md](./backlog/run_protocol_workflow.md) |
+| **IndexedDB Persistence** | 🔴 Missing | SQLite DB must persist across page reloads | [browser_mode_issues.md](./backlog/browser_mode_issues.md) |
+| **DB Sync Issue** | 🔴 Root Cause | Browser praxis.db out of sync with features | [browser_mode_issues.md](./backlog/browser_mode_issues.md) |
 
 ---
 
-## Priority 2: High - New Feature Development
+## Priority 2: High - Simulation UI Integration (Phase 8)
 
-### State Snapshot Tracing
+**Goal**: Surface simulation results to users in the UI
 
-**Goal**: Generic state tracking system to predict protocol failures (volume, tips, etc.) via simulation
+**Backend Status**: ✅ Complete (Phases 0-7)
 
-| Item | Status | Description | Backlog |
-|------|--------|-------------|---------|
-| **Traced Workcell** | ⏳ Todo | Serializable state snapshot wrapper | [state_snapshot_tracing.md](./backlog/state_snapshot_tracing.md) |
-| **State Validator** | ⏳ Todo | Generic predicate system for preconditions | [state_snapshot_tracing.md](./backlog/state_snapshot_tracing.md) |
-| **State Recorder** | ⏳ Todo | Record state deltas for every operation | [state_snapshot_tracing.md](./backlog/state_snapshot_tracing.md) |
-| **Visualization** | ⏳ Todo | Show state failures in Execution Monitor | [state_snapshot_tracing.md](./backlog/state_snapshot_tracing.md) |
-
-### Visual Index Selection for Itemized Resources
-
-**Goal**: Interactive UI for selecting indices in itemized resources (wells, tips, tubes, etc.) using `items_x` × `items_y` grid
+- Tracer Execution, PLR Method Contracts (40+), State-Aware Tracers
+- Hierarchical Simulation Pipeline, Bounds Analyzer, Failure Mode Detector
+- Integration & Caching, Cloudpickle + Graph Replay
+- **87 tests passing**
 
 | Item | Status | Description | Backlog |
 |------|--------|-------------|---------|
-| **IndexSelectorComponent** | ⏳ Todo | Grid-based click/drag selection using `items_x` × `items_y` | [visual_well_selection.md](./backlog/visual_well_selection.md) |
-| **Linked Arguments** | ⏳ Todo | Shared indices for tips ↔ wells, source ↔ dest | [visual_well_selection.md](./backlog/visual_well_selection.md) |
-| **Type Inference Integration** | ⏳ Todo | Auto-detect Well, TipSpot, Sequence[Well], etc. | [visual_well_selection.md](./backlog/visual_well_selection.md) |
-| **Backend Formly Integration** | ⏳ Todo | Protocol decorator → index_selector field type | [visual_well_selection.md](./backlog/visual_well_selection.md) |
+| **Protocol Warnings** | ⏳ Todo | Show failure mode warnings in protocol selection | [simulation_ui_integration.md](./backlog/simulation_ui_integration.md) |
+| **Deck Setup Requirements** | ✅ Done | Surface requirements in deck setup wizard | [simulation_ui_integration.md](./backlog/simulation_ui_integration.md) |
+| **State Failure Visualization** | ⏳ Todo | Show state at each operation in Execution Monitor | [simulation_ui_integration.md](./backlog/simulation_ui_integration.md) |
+| **Time Travel Debugging** | ✅ Done | Inspect state at any operation step | [simulation_ui_integration.md](./backlog/simulation_ui_integration.md) |
+| **State History Timeline** | ✅ Done | Visual timeline of state changes | [simulation_ui_integration.md](./backlog/simulation_ui_integration.md) |
 
-### REPL → JupyterLite Migration
+---
 
-**Goal**: Replace xterm.js REPL with full JupyterLite notebook environment
+## Priority 2: High - Browser Mode Defaults & Demo Elimination
 
-| Item | Status | Description | Backlog |
-|------|--------|-------------|---------|
-| **JupyterLite Integration** | ⏳ Todo | Embed JupyterLite in REPL panel | [repl_jupyterlite.md](./backlog/repl_jupyterlite.md) |
-| **Shared Pyodide Kernel** | ⏳ Todo | Use same kernel as rest of app (browser mode) | [repl_jupyterlite.md](./backlog/repl_jupyterlite.md) |
-| **Preload Assets** | ⏳ Todo | Auto-inject resources, deck states, machines | [repl_jupyterlite.md](./backlog/repl_jupyterlite.md) |
-| **Quick Add Support** | ⏳ Todo | Insert variable names from inventory panel | [repl_jupyterlite.md](./backlog/repl_jupyterlite.md) |
-| **Remove xterm.js REPL** | ⏳ Todo | Full replacement, not addition | [repl_jupyterlite.md](./backlog/repl_jupyterlite.md) |
-
-### Hardware Discovery Menu Restoration
-
-**Goal**: Unified hardware discovery UX across the application
+**Goal**: Make browser mode the primary experience with sensible defaults
 
 | Item | Status | Description | Backlog |
 |------|--------|-------------|---------|
-| **USB Icon Buttons** | ⏳ Todo | Replace magnifying glass with USB symbol on all discovery triggers | [hardware_discovery_menu.md](./backlog/hardware_discovery_menu.md) |
-| **Restore Discovery Menu** | ⏳ Todo | Quick-link in Asset Management + Command Palette | [hardware_discovery_menu.md](./backlog/hardware_discovery_menu.md) |
-| **Exclude Simulator Backend** | ⏳ Todo | Simulator should be always-available, not in discovery list | [hardware_discovery_menu.md](./backlog/hardware_discovery_menu.md) |
+| **Default Asset Population** | ⏳ Todo | 1 of every resource, 1 of every machine (simulated) | [browser_mode_defaults.md](./backlog/browser_mode_defaults.md) |
+| **Simulated Machine Indicator** | ⏳ Todo | Show "Simulated" chip on all sim-backend machines | [browser_mode_defaults.md](./backlog/browser_mode_defaults.md) |
+| **Infinite Consumables** | ⏳ Todo | Tips/consumables auto-replenish in simulation | [browser_mode_defaults.md](./backlog/browser_mode_defaults.md) |
+| **Remove Demo Mode Toggle** | ⏳ Todo | Eliminate separate demo mode - browser IS demo | [browser_mode_defaults.md](./backlog/browser_mode_defaults.md) |
+
+---
+
+## Priority 2: High - Chip-Based Filter Standardization
+
+**Goal**: Unified chip-based filter UX across all surfaces
+
+| Item | Status | Description | Backlog |
+|------|--------|-------------|---------|
+| **Core Filter Chip Component** | ⏳ Todo | Reusable chip with active/inactive/disabled states | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+| **Resource Filter Chips** | ⏳ Todo | Status, Brand, Count, Type, Volume | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+| **Machine Filter Chips** | ⏳ Todo | Category, Simulated, Status, Backend | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+| **Disabled Chip UX** | ⏳ Todo | Shake animation + message on disabled click | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+| **Unique Name Parsing** | ⏳ Todo | Extract distinguishing name parts | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+
+---
+
+## Priority 2: High - JupyterLite REPL Enhancements
+
+**Goal**: Complete JupyterLite migration with search and filters
+
+| Item | Status | Description | Backlog |
+|------|--------|-------------|---------|
+| **Asset Menu Search & Filters** | ⏳ Todo | Search bar and filter chips in asset sidebar | [repl_jupyterlite.md](./backlog/repl_jupyterlite.md) |
+| **Empty State with Link** | ⏳ Todo | Link to Assets page when inventory empty | [repl_jupyterlite.md](./backlog/repl_jupyterlite.md) |
+| **Asset Preloading** | ⏳ Todo | Auto-inject resources, deck states, machines | [repl_jupyterlite.md](./backlog/repl_jupyterlite.md) |
 
 ---
 
@@ -82,11 +101,20 @@ Browser mode stabilization is largely complete. The focus now shifts to **new fe
 
 ---
 
+## Priority 2: Other Items
+
+| Item | Status | Description | Backlog |
+|------|--------|-------------|---------|
+| **Machine Capabilities Verification** | ⏳ Todo | Hamilton Starlet 96-head/iSwap verification | [browser_mode_issues.md](./backlog/browser_mode_issues.md) |
+| **Capability Dropdown Theme Sync** | ⏳ Todo | Fix light-theme-only capability menu | [browser_mode_issues.md](./backlog/browser_mode_issues.md) |
+| **Execution Monitor Filters** | ⏳ Todo | Make filters actually filter run list | [browser_mode_issues.md](./backlog/browser_mode_issues.md) |
+
+---
+
 ## Priority 3: UI/UX Polish & Documentation
 
 | Item | Status | Description | Backlog |
 |------|--------|-------------|---------|
-| **Resource Inventory Filters** | ⏳ Todo | Add filter chips to Resources tab (match Machines tab) | [ui_visual_tweaks.md](./backlog/ui_visual_tweaks.md) |
 | **UI Visual Tweaks** | ⏳ Todo | Spacing on registry/machine tabs | [ui_visual_tweaks.md](./backlog/ui_visual_tweaks.md) |
 | **Protocol Inference "Sharp Bits"** | ⏳ Todo | Documentation for edge cases/gotchas | [docs.md](./backlog/docs.md) |
 | **Spatial View Filters** | ⏳ Todo | Asset location sorting/filtering | [asset_management.md](./backlog/asset_management.md) |
@@ -96,6 +124,13 @@ Browser mode stabilization is largely complete. The focus now shifts to **new fe
 
 ## Recently Completed ✅ (2026-01-02 - 2026-01-05)
 
+### Simulation UI Integration (2026-01-05)
+
+- **Deck Requirements Surface**: RequirementIndicator/Panel in Wizard
+- **Time Travel Debugging**: StateInspector, StateDisplay, Timeline Scrubbing
+- **State Visualizations**: History Timeline Component, Sparklines
+- **Browser Mode**: Full integration with SqliteService
+
 ### State Simulation & Failure Detection (2026-01-05)
 
 - Hierarchical protocol simulation (Boolean → Symbolic → Exact)
@@ -103,37 +138,25 @@ Browser mode stabilization is largely complete. The focus now shifts to **new fe
 - StatefulTracedMachine extending existing tracer infrastructure
 - BoundsAnalyzer for loop iteration counts (items_x × items_y)
 - FailureModeDetector with early pruning
-- 59 comprehensive tests
-
-### Simulation Integration & Caching (2026-01-05)
-
-- ProtocolSimulator facade class for unified access
-- SimulationService for running and caching simulations
-- Database schema: simulation_result_json, inferred_requirements_json, failure_modes_json
-- Alembic migration for simulation cache columns
-- Integration with DiscoveryService (auto-simulation on protocol discovery)
-- Pydantic models for API response (FunctionProtocolDefinitionResponse)
+- Cloudpickle + Graph Replay (Browser Mode)
+- 87 comprehensive tests
 
 ### Browser Mode Stabilization
 
 - Asset Manager rendering via SqliteService routing
+- Add Resource fixed (multi-table insertion)
 - Start Execution via Pyodide worker
-- Data Views field in frontend ProtocolDefinition
 - Hardware Discovery Button component
 - OT2 slot-based deck rendering
-- Execution Monitor filters (browser mode)
-- API Docs static generation
 - Deck display consistency (dynamic generation)
 - Machine input forms (backend-driven dynamic forms)
-- Machine type config expansion
-- Button selector checkmark removal
 
 ### REPL Enhancements
 
 - Light/Dark mode CSS variable theming
 - Full Python tracebacks (browser + backend)
 - Easy Add Assets (inventory tab with inject code)
-- Protocol Editor disabled state
+- JupyterLite basic integration
 
 ### Protocol Computation Graph
 
@@ -141,16 +164,35 @@ Browser mode stabilization is largely complete. The focus now shifts to **new fe
 - Parental resource inference (Well→Plate→Carrier→Deck)
 - Container type extraction (list[Well] → element types)
 
+### Visual Index Selection
+
+- Interactive Grid Selection Component (Wells, Tips)
+- Linked Argument Synchronization
+- Backend Type Inference for Well/TipSpot parameters
+
+### Error Handling & State Resolution ✅ (2026-01-05)
+
+- **State Uncertainty Detection**: Method contract analysis
+- **State Resolution Dialog**: UI for resolving failed operations
+- **Resolution Audit Logging**: Full audit trail (Browser + Backend)
+- **API Integration**: Resume/Abort run flows implemented
+- **Full Test Coverage**: 30 backend tests + frontend component tests
+
 ### Maintenance System
 
 - Schema (Alembic migration + Pydantic models)
-- Per-asset toggle in details dialog
-- Maintenance badges component
+- Per-asset toggle, Maintenance badges
 
 ### Visualizations
 
 - Summary card sparklines
 - Execution monitor timeline with phases
+
+### Tutorial (Superseded by Browser Mode Defaults)
+
+- Shepherd.js guided tutorial (11 steps)
+- Welcome & Exit dialogs
+- Note: Demo mode toggle will be removed per new architecture
 
 ---
 

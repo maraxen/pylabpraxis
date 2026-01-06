@@ -7,10 +7,15 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTabsModule } from '@angular/material/tabs';
 import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 
 import { RunHistoryService } from '../services/run-history.service';
 import { RunDetail } from '../models/monitor.models';
+import { SimulationResultsService } from '@core/services/simulation-results.service';
+import { StateHistory } from '@core/models/simulation.models';
+import { StateInspectorComponent, StateDisplayComponent } from './state-inspector';
+import { StateHistoryTimelineComponent } from './state-history-timeline';
 
 /**
  * Displays detailed information about a single protocol run.
@@ -27,7 +32,11 @@ import { RunDetail } from '../models/monitor.models';
     MatProgressSpinnerModule,
     MatChipsModule,
     MatDividerModule,
+    MatTabsModule,
     NgxSkeletonLoaderModule,
+    StateInspectorComponent,
+    StateDisplayComponent,
+    StateHistoryTimelineComponent,
   ],
   template: `
     <div class="p-6 max-w-screen-xl mx-auto">
@@ -90,6 +99,10 @@ import { RunDetail } from '../models/monitor.models';
              </div>
           }
         </div>
+
+        <!-- Tabs for Overview and State Inspector -->
+        <mat-tab-group class="run-tabs" animationDuration="200ms">
+          <mat-tab label="Overview">
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- Main Info Card -->
@@ -193,6 +206,42 @@ import { RunDetail } from '../models/monitor.models';
             </mat-card-content>
           </mat-card>
         }
+          </mat-tab>
+          
+          <!-- State Inspector Tab -->
+          <mat-tab label="State Inspector">
+            <div class="tab-content p-4">
+              @if (isLoadingStateHistory()) {
+                <div class="flex justify-center py-12">
+                  <mat-spinner diameter="32"></mat-spinner>
+                </div>
+              } @else if (!stateHistory()) {
+                <div class="empty-state text-center py-12 text-sys-text-tertiary">
+                  <mat-icon class="!w-12 !h-12 !text-[48px] opacity-30 mb-4">hourglass_empty</mat-icon>
+                  <p>No state history available for this run.</p>
+                  <p class="text-sm">State history is recorded during protocol execution.</p>
+                </div>
+              } @else {
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div class="lg:col-span-2">
+                    <app-state-inspector 
+                      [stateHistory]="stateHistory()"
+                      [initialOperationIndex]="currentOperationIndex()"
+                      (operationSelected)="onOperationSelected($event)">
+                    </app-state-inspector>
+                  </div>
+                  <div>
+                    <app-state-history-timeline
+                      [stateHistory]="stateHistory()"
+                      [currentIndex]="currentOperationIndex()"
+                      (operationSelected)="onOperationSelected($event)">
+                    </app-state-history-timeline>
+                  </div>
+                </div>
+              }
+            </div>
+          </mat-tab>
+        </mat-tab-group>
       }
     </div>
   `,
@@ -219,15 +268,25 @@ import { RunDetail } from '../models/monitor.models';
       margin: 0;
       font-family: 'Fira Code', 'Monaco', monospace;
     }
+    .run-tabs {
+      margin-top: 24px;
+    }
+    .tab-content {
+      min-height: 400px;
+    }
   `],
 })
 export class RunDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly location = inject(Location);
+  private readonly simulationService = inject(SimulationResultsService);
   readonly runHistoryService = inject(RunHistoryService);
 
   readonly run = signal<RunDetail | null>(null);
   readonly isLoading = signal(true);
+  readonly stateHistory = signal<StateHistory | null>(null);
+  readonly isLoadingStateHistory = signal(false);
+  readonly currentOperationIndex = signal(0);
   readonly timelineSteps = computed(() => {
     const run = this.run();
     if (!run) return [];
@@ -273,6 +332,7 @@ export class RunDetailComponent implements OnInit {
     this.runId = this.route.snapshot.paramMap.get('id') || '';
     if (this.runId) {
       this.loadRunDetail();
+      this.loadStateHistory();
     } else {
       this.isLoading.set(false);
     }
@@ -312,5 +372,23 @@ export class RunDetailComponent implements OnInit {
 
   hasKeys(obj?: Record<string, unknown>): boolean {
     return !!obj && Object.keys(obj).length > 0;
+  }
+
+  loadStateHistory(): void {
+    this.isLoadingStateHistory.set(true);
+    this.simulationService.getStateHistory(this.runId).subscribe({
+      next: (history) => {
+        this.stateHistory.set(history);
+        this.isLoadingStateHistory.set(false);
+      },
+      error: (err) => {
+        console.error('[RunDetail] Error loading state history:', err);
+        this.isLoadingStateHistory.set(false);
+      },
+    });
+  }
+
+  onOperationSelected(index: number): void {
+    this.currentOperationIndex.set(index);
   }
 }

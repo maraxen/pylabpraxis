@@ -10,9 +10,8 @@ without executing actual hardware operations.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Literal
 
 
 class EffectType(str, Enum):
@@ -41,6 +40,7 @@ class MethodContract:
       The `aspirate` method requires tips to be loaded and the source
       resource to have liquid. After execution, liquid is removed from
       the source.
+
   """
 
   method_name: str

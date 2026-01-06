@@ -11,8 +11,9 @@ the protocol and record operations to an `OperationRecorder`.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
   from praxis.backend.core.tracing.recorder import OperationRecorder
@@ -152,7 +153,7 @@ class TracedContainerElementCollection(TracedValue):
 
   def __getitem__(
     self, index: int | slice
-  ) -> TracedContainerElement | "TracedContainerElementCollection":
+  ) -> TracedContainerElement | TracedContainerElementCollection:
     """Get an element or slice of the collection."""
     if isinstance(index, slice):
       # Return a sub-collection
@@ -236,6 +237,7 @@ class TracedResource(TracedValue):
         plate["A1"] -> TracedContainerElement
         plate["A1:A8"] -> TracedContainerElementCollection
         tips[0] -> TracedContainerElement
+
     """
     elem_type = self._infer_element_type()
 

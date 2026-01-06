@@ -8,8 +8,9 @@ This is the main entry point for protocol discovery integration.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -19,13 +20,11 @@ from praxis.backend.core.simulation.failure_detector import (
   FailureModeDetector,
 )
 from praxis.backend.core.simulation.pipeline import (
-  HierarchicalSimulationResult,
   HierarchicalSimulator,
   InferredRequirement,
 )
 from praxis.backend.utils.plr_static_analysis.models import ProtocolComputationGraph
 from praxis.backend.utils.plr_static_analysis.resource_hierarchy import DeckLayoutType
-
 
 # Version string for cache invalidation
 # Bump this when simulation logic changes

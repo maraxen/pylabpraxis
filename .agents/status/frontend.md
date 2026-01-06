@@ -34,6 +34,7 @@
 * **Protocol Library**: Wizard, List, Parameter Config.
 * **Documentation**: Markdown viewer.
 * **Data Viz**: Plotly integration.
+* **Execution Monitor**: State Resolution Dialog & Visualizer.
 
 ---
 

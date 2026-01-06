@@ -270,6 +270,10 @@ class FunctionProtocolDefinitionBase(BaseModel):
   assets: list[AssetRequirementModel] = Field(default_factory=list)
   data_views: list[DataViewMetadataModel] = Field(default_factory=list)
   hardware_requirements: dict[str, Any] | None = None  # Inferred hardware requirements
+  setup_instructions_json: list[dict[str, Any]] | None = Field(
+    default=None,
+    description="Pre-run setup instructions to display in Deck Setup wizard",
+  )
 
 
 class FunctionProtocolDefinitionCreate(FunctionProtocolDefinitionBase):
@@ -309,6 +313,7 @@ class FunctionProtocolDefinitionUpdate(BaseModel):
   assets: list[AssetRequirementModel] | None = None
   data_views: list[DataViewMetadataModel] | None = None
   hardware_requirements: dict[str, Any] | None = None
+  setup_instructions_json: list[dict[str, Any]] | None = None
 
 
 class InferredRequirementModel(BaseModel):

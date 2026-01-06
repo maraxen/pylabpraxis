@@ -7,25 +7,21 @@ to efficiently detect all ways a protocol can fail.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from itertools import product
-from typing import Any, Callable, Iterator
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 from praxis.backend.core.simulation.pipeline import (
   HierarchicalSimulator,
-  HierarchicalSimulationResult,
 )
 from praxis.backend.core.simulation.state_models import (
   BooleanLiquidState,
-  DeckState,
   SimulationState,
-  StateLevel,
-  TipState,
 )
 from praxis.backend.utils.plr_static_analysis.models import ProtocolComputationGraph
-
 
 # =============================================================================
 # Failure Mode Models
@@ -122,7 +118,7 @@ def generate_boolean_states(
 
       # Set liquid state for each resource
       liquid_state = BooleanLiquidState()
-      for resource, has_liquid in zip(config.resources, liquid_combo):
+      for resource, has_liquid in zip(config.resources, liquid_combo, strict=False):
         liquid_state.set_has_liquid(resource, has_liquid)
         liquid_state.set_has_capacity(resource, True)  # Always have some capacity
         state.deck_state.place_on_deck(resource)

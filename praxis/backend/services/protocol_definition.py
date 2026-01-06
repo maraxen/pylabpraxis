@@ -1,12 +1,10 @@
 """Service layer for Protocol Definition management."""
 
-import uuid
 from typing import Any
 
 from pydantic import BaseModel
-from sqlalchemy import inspect, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from praxis.backend.models.orm.protocol import (
   AssetRequirementOrm,
@@ -15,7 +13,6 @@ from praxis.backend.models.orm.protocol import (
   ParameterDefinitionOrm,
   ProtocolSourceRepositoryOrm,
 )
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.pydantic_internals.protocol import (
   AssetRequirementModel,
   FunctionProtocolDefinitionCreate,

@@ -9,82 +9,49 @@ import { ModeService } from '@core/services/mode.service';
 import { TutorialService } from '@core/services/tutorial.service';
 
 @Component({
-    selector: 'app-welcome-dialog',
-    standalone: true,
-    imports: [CommonModule, MatDialogModule, MatButtonModule, MatSlideToggleModule, FormsModule],
-    template: `
+  selector: 'app-welcome-dialog',
+  standalone: true,
+  imports: [CommonModule, MatDialogModule, MatButtonModule, MatSlideToggleModule, FormsModule],
+  template: `
     <h2 mat-dialog-title>Welcome to Praxis</h2>
     <mat-dialog-content class="prose max-w-none">
       <p class="mb-4">Praxis is your modern lab automation platform.</p>
       <p class="mb-6">Would you like a quick tour of the key features?</p>
       
-      <div class="demo-toggle-container p-4 bg-gray-50 rounded-lg border border-gray-200 mb-2">
-        <mat-slide-toggle
-            color="primary"
-            [(ngModel)]="isDemoMode"
-            (change)="toggleDemoMode()">
-            Enable Demo Mode (Recommended)
-        </mat-slide-toggle>
-        <p class="text-xs text-gray-500 mt-2 ml-2 leading-relaxed">
-            Demo mode populates the app with sample data so you can explore safely without connecting hardware.
-        </p>
-      </div>
-      
-      @if (needsReload) {
-        <p class="text-xs text-amber-600 font-medium mt-2 flex items-center gap-1">
-          <span class="material-icons text-[16px]">info</span> App will reload to apply mode change.
-        </p>
-      }
+      <p class="text-sm text-gray-600 mb-4 px-4 py-3 bg-blue-50 rounded-lg border border-blue-100 flex items-start gap-2">
+        <span class="material-icons text-blue-500 mt-0.5">info</span>
+        <span>
+          <strong>Note:</strong> You are currently in <strong>Browser Mode</strong>. 
+          The app is populated with sample data so you can explore safely without connecting hardware.
+        </span>
+      </p>
     </mat-dialog-content>
     <mat-dialog-actions align="end" class="gap-2">
       <button mat-button (click)="skip()">Skip for Now</button>
       <button mat-raised-button color="primary" (click)="startTutorial()">Start Tutorial</button>
     </mat-dialog-actions>
   `,
-    styles: [`
-    .demo-toggle-container {
-        display: flex;
-        flex-direction: column;
+  styles: [`
+    :host {
+        display: block;
+        max-width: 500px;
     }
   `]
 })
 export class WelcomeDialogComponent {
-    private dialogRef = inject(MatDialogRef<WelcomeDialogComponent>);
-    private onboarding = inject(OnboardingService);
-    private modeService = inject(ModeService);
-    private tutorial = inject(TutorialService);
+  private dialogRef = inject(MatDialogRef<WelcomeDialogComponent>);
+  private onboarding = inject(OnboardingService);
+  private modeService = inject(ModeService);
+  private tutorial = inject(TutorialService);
 
-    // Initialize with current preference
-    isDemoMode = this.onboarding.isDemoModeEnabled();
+  startTutorial() {
+    this.onboarding.markOnboardingComplete();
+    this.dialogRef.close();
+    this.tutorial.start();
+  }
 
-    // Track if current active mode differs from preference
-    get needsReload(): boolean {
-        return this.isDemoMode !== this.modeService.isDemoMode();
-    }
-
-    toggleDemoMode() {
-        // Set preference but don't reload yet
-        this.onboarding.setDemoMode(this.isDemoMode, false);
-    }
-
-    startTutorial() {
-        this.onboarding.markOnboardingComplete();
-
-        if (this.needsReload) {
-            // If we need to reload to apply demo mode, persist "pending intent"
-            localStorage.setItem('praxis_pending_tutorial', 'true');
-            window.location.reload();
-        } else {
-            this.dialogRef.close();
-            this.tutorial.start();
-        }
-    }
-
-    skip() {
-        this.onboarding.markOnboardingComplete();
-        this.onboarding.setDemoMode(this.isDemoMode, this.needsReload); // Reload if needed
-        if (!this.needsReload) {
-            this.dialogRef.close();
-        }
-    }
+  skip() {
+    this.onboarding.markOnboardingComplete();
+    this.dialogRef.close();
+  }
 }

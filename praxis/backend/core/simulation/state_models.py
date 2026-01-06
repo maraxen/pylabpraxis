@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Literal
+from typing import Any
 
 
 class StateLevel(str, Enum):
@@ -252,6 +252,7 @@ class SymbolicLiquidState:
 
     Note: This is a simplified check. A full implementation would use
     an SMT solver like Z3.
+
     """
     # Simplified: just return True for now
     # Real implementation would use constraint solving
@@ -476,7 +477,7 @@ class SimulationState:
     """
     if self.level == StateLevel.BOOLEAN:
       return self._promote_to_symbolic()
-    elif self.level == StateLevel.SYMBOLIC:
+    if self.level == StateLevel.SYMBOLIC:
       return self._promote_to_exact()
     return self  # Already at highest level
 
@@ -545,9 +546,7 @@ class SimulationState:
   def copy(self) -> SimulationState:
     """Create a copy of this state."""
     liquid_copy: LiquidStateType
-    if isinstance(self.liquid_state, BooleanLiquidState):
-      liquid_copy = self.liquid_state.copy()
-    elif isinstance(self.liquid_state, SymbolicLiquidState):
+    if isinstance(self.liquid_state, BooleanLiquidState) or isinstance(self.liquid_state, SymbolicLiquidState):
       liquid_copy = self.liquid_state.copy()
     else:
       liquid_copy = self.liquid_state.copy()

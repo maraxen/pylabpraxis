@@ -1,5 +1,4 @@
-"""
-WebUSB Shim for Pyodide/Browser Environment
+"""WebUSB Shim for Pyodide/Browser Environment
 
 This module provides a WebUSB-based implementation of pylabrobot's USB interface,
 enabling USB device communication from the browser using the WebUSB API.
@@ -18,11 +17,11 @@ Usage in JupyterLite:
 
 import asyncio
 import logging
-from typing import Optional, Any, List
+from typing import Any
 
 # Import Pyodide's JavaScript bridge
 try:
-  from js import navigator, Object, Uint8Array
+  from js import Object, Uint8Array, navigator
   from pyodide.ffi import create_proxy, to_js
 
   IN_PYODIDE = True
@@ -34,8 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 class WebUSB:
-  """
-  WebUSB-based USB implementation for browser environments.
+  """WebUSB-based USB implementation for browser environments.
 
   Implements the same interface as pylabrobot.io.USB but uses
   the browser's WebUSB API via Pyodide's JS bridge.
@@ -45,8 +43,8 @@ class WebUSB:
     self,
     id_vendor: int,
     id_product: int,
-    device_address: Optional[int] = None,
-    serial_number: Optional[str] = None,
+    device_address: int | None = None,
+    serial_number: str | None = None,
     packet_read_timeout: int = 3,
     read_timeout: int = 30,
     write_timeout: int = 30,
@@ -61,6 +59,7 @@ class WebUSB:
         packet_read_timeout: Packet read timeout in seconds
         read_timeout: Overall read timeout in seconds
         write_timeout: Write timeout in seconds
+
     """
     if not IN_PYODIDE:
       raise RuntimeError("WebUSB is only available in Pyodide/browser environment")
@@ -74,7 +73,7 @@ class WebUSB:
     self.read_timeout = read_timeout
     self.write_timeout = write_timeout
 
-    self.dev: Optional[Any] = None
+    self.dev: Any | None = None
     self._interface_number: int = 0
     self._endpoint_in: int = 1  # Default IN endpoint
     self._endpoint_out: int = 1  # Default OUT endpoint
@@ -82,14 +81,13 @@ class WebUSB:
     self._unique_id = f"[{hex(id_vendor)}:{hex(id_product)}]"
 
   async def setup(self):
-    """
-    Initialize the WebUSB connection.
+    """Initialize the WebUSB connection.
 
     This will trigger a browser dialog for the user to select a USB device.
     """
     if not hasattr(navigator, "usb"):
       raise RuntimeError(
-        "WebUSB is not supported in this browser. " "Please use Chrome, Edge, or Opera."
+        "WebUSB is not supported in this browser. Please use Chrome, Edge, or Opera."
       )
 
     # Request device
@@ -160,7 +158,7 @@ class WebUSB:
     except Exception as e:
       logger.warning(f"Error closing WebUSB device: {e}")
 
-  async def write(self, data: bytes, timeout: Optional[float] = None):
+  async def write(self, data: bytes, timeout: float | None = None):
     """Write data to the USB device."""
     if self.dev is None:
       raise RuntimeError("Device not connected. Call setup() first.")
@@ -179,7 +177,7 @@ class WebUSB:
     except Exception as e:
       raise RuntimeError(f"Write failed: {e}")
 
-  async def read(self, timeout: Optional[int] = None) -> bytes:
+  async def read(self, timeout: int | None = None) -> bytes:
     """Read data from the USB device."""
     if self.dev is None:
       raise RuntimeError("Device not connected. Call setup() first.")
@@ -221,7 +219,7 @@ class WebUSB:
     except Exception:
       return b""
 
-  def get_available_devices(self) -> List[Any]:
+  def get_available_devices(self) -> list[Any]:
     """Get list of available devices (requires prior requestDevice)."""
     # In WebUSB, we can only access devices that were previously authorized
     logger.warning("get_available_devices not fully supported in WebUSB")
@@ -239,11 +237,11 @@ class WebUSB:
     wValue: int,
     wIndex: int,
     data_or_wLength: int,
-    timeout: Optional[int] = None,
+    timeout: int | None = None,
   ) -> bytearray:
     """Perform a control transfer (synchronous API not supported)."""
     raise NotImplementedError(
-      "Synchronous ctrl_transfer not supported in WebUSB. " "Use async version instead."
+      "Synchronous ctrl_transfer not supported in WebUSB. Use async version instead."
     )
 
   async def ctrl_transfer_async(
@@ -253,7 +251,7 @@ class WebUSB:
     wValue: int,
     wIndex: int,
     data_or_wLength: int,
-    timeout: Optional[int] = None,
+    timeout: int | None = None,
   ) -> bytearray:
     """Perform an async control transfer."""
     if self.dev is None:
@@ -277,10 +275,9 @@ class WebUSB:
           data_view = result.data
           return bytearray([data_view.getUint8(i) for i in range(data_view.byteLength)])
         return bytearray()
-      else:
-        data = Uint8Array.new([0] * data_or_wLength)
-        result = await self.dev.controlTransferOut(to_js(setup), data)
-        return bytearray()
+      data = Uint8Array.new([0] * data_or_wLength)
+      result = await self.dev.controlTransferOut(to_js(setup), data)
+      return bytearray()
     except Exception as e:
       raise RuntimeError(f"Control transfer failed: {e}")
 

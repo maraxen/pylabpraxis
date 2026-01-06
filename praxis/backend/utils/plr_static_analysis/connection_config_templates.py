@@ -17,13 +17,13 @@ OT2_CONNECTION_CONFIG = MachineCapabilityConfigSchema(
         CapabilityConfigField(
             field_name="host",
             display_name="IP Address",
-            # Wait, field_type 'select' in `models` is strict. 
-            # I should check if 'text' is an allowed type in CapabilityConfigField. 
+            # Wait, field_type 'select' in `models` is strict.
+            # I should check if 'text' is an allowed type in CapabilityConfigField.
             # The model says: Literal["boolean", "number", "select", "multiselect"]
             # It seems 'string' or 'text' is missing! I need to update the model first or use 'select' with custom input?
             # implementing this as 'select' for now would be wrong.
             # I will use "text" string here and update model next.
-            field_type="text", 
+            field_type="text",
             default_value="169.254.122.1",
             help_text="IP address or hostname of the OT-2 robot",
             required=True
@@ -127,8 +127,8 @@ def get_connection_config_template(class_type: PLRClassType, manufacturer: str |
         
     Returns:
         The config schema template.
+
     """
-    
     # Specific Manufacturer Matching
     if manufacturer:
         m_lower = manufacturer.lower()
@@ -140,7 +140,7 @@ def get_connection_config_template(class_type: PLRClassType, manufacturer: str |
     # Type-based Fallbacks
     if class_type == PLRClassType.SEALER:
          return SEALER_CONNECTION_CONFIG.model_copy(deep=True)
-         
+
     # Default for generic backends if nothing else matches
     if class_type in (PLRClassType.LIQUID_HANDLER, PLRClassType.PLATE_READER):
         return GENERIC_CONNECTION_CONFIG.model_copy(deep=True)

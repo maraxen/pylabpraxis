@@ -32,13 +32,12 @@ from praxis.backend.core.simulation.failure_detector import (
   detect_failure_modes,
   summarize_failure_modes,
 )
-from praxis.backend.core.simulation.simulator import (
-  SIMULATION_VERSION,
-  ProtocolSimulationResult,
-  ProtocolSimulator,
-  analyze_protocol,
-  analyze_protocol_sync,
-  is_cache_valid,
+from praxis.backend.core.simulation.graph_replay import (
+  GraphReplayEngine,
+  GraphReplayResult,
+  ReplayState,
+  ReplayViolation,
+  replay_graph,
 )
 from praxis.backend.core.simulation.method_contracts import (
   METHOD_CONTRACTS,
@@ -53,6 +52,14 @@ from praxis.backend.core.simulation.pipeline import (
   simulate_protocol,
   simulate_protocol_sync,
 )
+from praxis.backend.core.simulation.simulator import (
+  SIMULATION_VERSION,
+  ProtocolSimulationResult,
+  ProtocolSimulator,
+  analyze_protocol,
+  analyze_protocol_sync,
+  is_cache_valid,
+)
 from praxis.backend.core.simulation.state_models import (
   BooleanLiquidState,
   DeckState,
@@ -66,18 +73,20 @@ from praxis.backend.core.simulation.state_models import (
   TipState,
   ViolationType,
 )
+from praxis.backend.core.simulation.state_resolution import (
+  OperationRecord,
+  ResolutionType,
+  StatePropertyType,
+  StateResolution,
+  UncertainStateChange,
+  apply_resolution,
+  identify_uncertain_states,
+)
 from praxis.backend.core.simulation.stateful_tracers import (
   StatefulTracedMachine,
   StatefulTracedResource,
   StatefulTracedWell,
   StatefulTracedWellCollection,
-)
-from praxis.backend.core.simulation.graph_replay import (
-  GraphReplayEngine,
-  GraphReplayResult,
-  ReplayState,
-  ReplayViolation,
-  replay_graph,
 )
 
 __all__ = [
@@ -133,4 +142,12 @@ __all__ = [
   "ReplayState",
   "ReplayViolation",
   "replay_graph",
+  # State resolution
+  "OperationRecord",
+  "ResolutionType",
+  "StatePropertyType",
+  "StateResolution",
+  "UncertainStateChange",
+  "apply_resolution",
+  "identify_uncertain_states",
 ]

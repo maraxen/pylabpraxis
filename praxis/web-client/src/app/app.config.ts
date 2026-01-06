@@ -26,10 +26,6 @@ import { from, switchMap } from 'rxjs';
  */
 function initializeKeycloak(keycloakService: KeycloakService) {
   return () => {
-    // if (isDemoMode) {
-    //   console.log('[Demo Mode] Skipping Keycloak initialization (handled by KeycloakService)');
-    //   // return Promise.resolve();
-    // }
     return keycloakService.init({ onLoad: 'check-sso' });
   };
 }

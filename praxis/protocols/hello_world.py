@@ -1,6 +1,7 @@
-from praxis.backend.core.protocol_engine import protocol
 from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.resources import Plate, TipRack
+
+from praxis.backend.core.protocol_engine import protocol
 
 # --- Pixel Art Definitions (8 rows x 5 columns) ---
 # 1 = Fill, 0 = Empty
@@ -76,10 +77,8 @@ async def hello_world(
   l3_plate: Plate,
   d_plate: Plate,
 ):
+  """Spells HELLO WORLD by transferring liquid from a trough to 10 plates.
   """
-  Spells HELLO WORLD by transferring liquid from a trough to 10 plates.
-  """
-
   TEXT = "HELLOWORLD"
 
   # Collect plates for iteration
@@ -102,7 +101,7 @@ async def hello_world(
 
   try:
     # Loop through each character to print
-    for letter_char, plate in zip(TEXT, plates):
+    for letter_char, plate in zip(TEXT, plates, strict=False):
       print(f"Printing '{letter_char}' on {plate.name}...")
 
       pattern = LETTERS[letter_char]

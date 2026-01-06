@@ -7,7 +7,6 @@ recorded during protocol tracing and builds them into a ProtocolComputationGraph
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from praxis.backend.utils.plr_static_analysis.models import (
   GraphNodeType,
@@ -17,7 +16,6 @@ from praxis.backend.utils.plr_static_analysis.models import (
   ResourceNode,
   StatePrecondition,
 )
-
 
 # =============================================================================
 # Loop/Conditional Context

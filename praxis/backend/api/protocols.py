@@ -16,7 +16,6 @@ from praxis.backend.core.protocol_execution_service import ProtocolExecutionServ
 from praxis.backend.core.simulation import (
   GraphReplayEngine,
   GraphReplayResult,
-  ReplayViolation,
 )
 from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm, ProtocolRunOrm
 from praxis.backend.models.pydantic_internals.protocol import (
@@ -29,7 +28,6 @@ from praxis.backend.models.pydantic_internals.protocol import (
 )
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
-from praxis.backend.services.simulation_service import SimulationService
 
 router = APIRouter()
 

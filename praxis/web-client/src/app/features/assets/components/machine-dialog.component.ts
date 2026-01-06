@@ -11,9 +11,12 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatStepperModule } from '@angular/material/stepper';
+import { MatCardModule } from '@angular/material/card';
 import { MachineStatus, MachineDefinition } from '../models/asset.models';
 import { AssetService } from '../services/asset.service';
 import { Observable, map, startWith, of } from 'rxjs';
+import { ModeService } from '../../../core/services/mode.service';
 
 // Custom validator for JSON string
 const jsonValidator = (control: AbstractControl): ValidationErrors | null => {
@@ -27,6 +30,11 @@ const jsonValidator = (control: AbstractControl): ValidationErrors | null => {
   }
   return null;
 };
+
+interface Step {
+  label: string;
+  completed: boolean;
+}
 
 @Component({
   selector: 'app-machine-dialog',
@@ -43,150 +51,311 @@ const jsonValidator = (control: AbstractControl): ValidationErrors | null => {
     MatChipsModule,
     MatIconModule,
     MatDividerModule,
+    MatStepperModule,
+    MatCardModule,
     DynamicCapabilityFormComponent
   ],
   template: `
-    <h2 mat-dialog-title>Add New Machine</h2>
-    <mat-dialog-content>
-      <form [formGroup]="form" class="flex flex-col gap-4 py-4">
-        
-        <!-- Step 1: Type & Manufacturer Selection (Collapsible Logic) -->
-        <mat-form-field appearance="outline">
-          <mat-label>Search Machine Type</mat-label>
-          <input
-            matInput
-            [formControl]="definitionSearchControl"
-            [matAutocomplete]="defAuto"
-            placeholder="Search by name, manufacturer or capability...">
-          <mat-autocomplete
-            #defAuto="matAutocomplete"
-            [displayWith]="displayDefinition.bind(this)"
-            (optionSelected)="onDefinitionSelected($event.option.value)">
-            
-            <mat-optgroup *ngFor="let group of groupedDefinitions$ | async" [label]="group.type">
-              <mat-option *ngFor="let def of group.definitions" [value]="def">
-                <div class="flex flex-col">
-                  <span>{{ def.name }}</span>
-                  <span class="text-xs opacity-60">{{ def.manufacturer }} - {{ def.model || getShortFqn(def.fqn || '') }}</span>
-                </div>
-              </mat-option>
-            </mat-optgroup>
+    <div class="h-full flex flex-col max-h-[85vh]">
+      <h2 mat-dialog-title class="flex-shrink-0">Add New Machine</h2>
+      
+      <mat-dialog-content class="flex-grow overflow-auto">
+        <!-- Progress Steps -->
+        <div class="mb-6 flex items-center justify-between px-2">
+           <div *ngFor="let step of steps; let i = index" 
+                class="flex items-center gap-2 text-sm"
+                [class.step-text-active]="currentStep === i"
+                [class.step-text-inactive]="currentStep !== i && !step.completed"
+                [class.step-text-completed]="step.completed"
+                [class.font-bold]="currentStep === i">
+              <div class="w-6 h-6 rounded-full flex items-center justify-center border transition-all"
+                   [class.step-circle-active]="currentStep === i"
+                   [class.step-circle-inactive]="currentStep !== i && !step.completed"
+                   [class.step-circle-completed]="step.completed">
+                 <mat-icon *ngIf="step.completed" class="text-xs !w-4 !h-4 flex items-center justify-center">check</mat-icon>
+                 <span *ngIf="!step.completed">{{ i + 1 }}</span>
+              </div>
+              <span class="hidden sm:inline">{{ step.label }}</span>
+              <div *ngIf="i < steps.length - 1" class="h-[1px] w-4 ml-2 sys-divider"></div>
+           </div>
+        </div>
 
-            <mat-option *ngIf="(groupedDefinitions$ | async)?.length === 0" disabled>
-              No matching machines found
-            </mat-option>
-          </mat-autocomplete>
-          <mat-hint>Search specifically (e.g. "96-channel", "Hamilton")</mat-hint>
-        </mat-form-field>
-
-        <!-- Selected Machine Details Card -->
-        <div *ngIf="selectedDefinition" class="bg-gray-50 border rounded-lg p-3 flex flex-col gap-2">
-            <div class="flex justify-between items-start">
-                <div class="font-medium text-sm text-gray-700">Capabilities</div>
-                 <div class="text-xs text-gray-500 font-mono">{{ getShortFqn(selectedDefinition.fqn || '') }}</div>
+        <form [formGroup]="form" class="flex flex-col gap-4 py-2">
+          
+          <!-- STEP 1: Category Selection -->
+          <div *ngIf="currentStep === 0" class="fade-in">
+            <h3 class="text-lg font-medium mb-4">Select Machine Category</h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div *ngFor="let cat of machineCategories" 
+                   class="category-card sys-border border rounded-xl p-4 cursor-pointer transition-all text-center flex flex-col items-center gap-2"
+                   (click)="selectCategory(cat)">
+                 <mat-icon class="scale-125 sys-text-secondary">{{ getCategoryIcon(cat) }}</mat-icon>
+                 <span class="font-medium">{{ cat }}</span>
+              </div>
             </div>
-            
-            <mat-chip-listbox>
-                <mat-chip-option *ngFor="let channel of selectedDefinition.capabilities?.['channels']" color="accent" selected>
-                    {{ channel }}-channel
-                </mat-chip-option>
-                 <mat-chip-option *ngFor="let mod of selectedDefinition.capabilities?.['modules']" selected>
-                    {{ mod }}
-                </mat-chip-option>
-                <mat-chip-option *ngIf="!selectedDefinition.capabilities" disabled>
-                    Standard Config
-                </mat-chip-option>
-            </mat-chip-listbox>
-        </div>
+          </div>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Name</mat-label>
-          <input matInput formControlName="name" placeholder="e.g. Robot 1">
-          <mat-error *ngIf="form.get('name')?.hasError('required')">Name is required</mat-error>
-        </mat-form-field>
+          <!-- STEP 2: Definition Selection -->
+          <div *ngIf="currentStep === 1" class="fade-in">
+             <div class="flex items-center gap-2 mb-4">
+               <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
+               <h3 class="text-lg font-medium">Select {{ selectedCategory }} Model</h3>
+             </div>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Driver / Backend</mat-label>
-           <mat-select formControlName="backend_driver">
-              <mat-option [value]="'sim'" class="font-mono text-sm">
-                <span class="font-semibold text-blue-600">Simulated</span> (ChatterBoxBackend)
-              </mat-option>
-              <ng-container *ngIf="selectedDefinition?.compatible_backends?.length">
-                  <mat-divider></mat-divider>
-                  <mat-option *ngFor="let backend of selectedDefinition?.compatible_backends" [value]="backend" class="font-mono text-xs">
-                     {{ getShortBackendName(backend) }}
+             <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Search Model</mat-label>
+                <mat-icon matPrefix>search</mat-icon>
+                <input matInput [formControl]="definitionSearchControl" placeholder="Filter by name...">
+             </mat-form-field>
+
+             <div class="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto">
+                <div *ngFor="let def of filteredDefinitions$ | async" 
+                     class="definition-item sys-border border rounded-lg p-3 cursor-pointer flex justify-between items-center transition-colors"
+                     (click)="selectDefinition(def)">
+                   <div class="flex flex-col">
+                      <span class="font-medium">{{ def.name }}</span>
+                      <span class="text-xs sys-text-secondary">{{ def.manufacturer }} - {{ def.model || getShortFqn(def.fqn || '') }}</span>
+                   </div>
+                   <mat-icon>chevron_right</mat-icon>
+                </div>
+                
+                <div *ngIf="(filteredDefinitions$ | async)?.length === 0" class="text-center p-8 sys-text-secondary">
+                   No matching models found.
+                </div>
+             </div>
+          </div>
+
+          <!-- STEP 3: Backend Selection -->
+          <div *ngIf="currentStep === 2" class="fade-in">
+             <div class="flex items-center gap-2 mb-4">
+               <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
+               <h3 class="text-lg font-medium">Configure Driver</h3>
+             </div>
+
+            <div class="sys-surface-container border sys-border rounded-lg p-4 mb-4 flex items-center gap-3">
+               <mat-icon class="sys-text-secondary">precision_manufacturing</mat-icon>
+               <div>
+                 <div class="font-medium">{{ selectedDefinition?.name }}</div>
+                 <div class="text-xs sys-text-secondary">{{ selectedDefinition?.manufacturer }}</div>
+               </div>
+            </div>
+
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>Backend / Driver</mat-label>
+               <mat-select formControlName="backend_driver">
+                  <mat-option [value]="'sim'" class="font-mono text-sm">
+                    <span class="font-semibold text-primary">Simulated</span> (ChatterBoxBackend)
                   </mat-option>
-              </ng-container>
-           </mat-select>
-           <mat-hint>Select 'Simulated' for offline/testing mode.</mat-hint>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Status</mat-label>
-          <mat-select formControlName="status">
-              <mat-option [value]="MachineStatus.OFFLINE">Offline</mat-option>
-              <mat-option [value]="MachineStatus.IDLE">Idle</mat-option>
-              <mat-option [value]="MachineStatus.RUNNING">Running</mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <div *ngIf="selectedDefinition?.connection_config; else manualConnectionInput" class="border rounded-lg p-3 bg-white flex flex-col gap-2 mb-4">
-             <div class="text-sm font-medium text-gray-700">Connection Settings</div>
-             <app-dynamic-capability-form
-                [config]="selectedDefinition!.connection_config"
-                (valueChange)="updateConnectionInfo($event)">
-             </app-dynamic-capability-form>
-             <!-- 
-                Ideally we hide the underlying JSON control or keep it synced. 
-                The updateConnectionInfo method patches the form control, so validation works.
-             -->
-        </div>
-
-        <ng-template #manualConnectionInput>
-            <mat-form-field appearance="outline">
-              <mat-label>Connection Info (JSON) - Advanced</mat-label>
-              <textarea matInput formControlName="connection_info" placeholder='{"host": "127.0.0.1", "port": 3000}' rows="2"></textarea>
-               <mat-error *ngIf="form.get('connection_info')?.hasError('invalidJson')">Invalid JSON format</mat-error>
+                  <ng-container *ngIf="selectedDefinition?.compatible_backends?.length">
+                      <mat-divider></mat-divider>
+                      <mat-option *ngFor="let backend of selectedDefinition?.compatible_backends" [value]="backend" class="font-mono text-xs">
+                         {{ getShortBackendName(backend) }}
+                      </mat-option>
+                  </ng-container>
+               </mat-select>
+               <mat-hint *ngIf="isBrowserMode">Browser mode defaults to 'Simulated'</mat-hint>
             </mat-form-field>
-        </ng-template>
 
-        <div *ngIf="selectedDefinition?.capabilities_config; else legacyInput" class="border rounded-lg p-3 bg-white flex flex-col gap-2">
-            <div class="text-sm font-medium text-gray-700">Configuration</div>
-            <app-dynamic-capability-form
-                [config]="selectedDefinition!.capabilities_config"
-                (valueChange)="updateCapabilities($event)">
-            </app-dynamic-capability-form>
-        </div>
+             <mat-form-field appearance="outline" class="w-full">
+               <mat-label>Name</mat-label>
+               <input matInput formControlName="name" placeholder="e.g. Robot 1">
+               <mat-error *ngIf="form.get('name')?.hasError('required')">Name is required</mat-error>
+             </mat-form-field>
+             
+             <div class="info-box flex flex-col gap-2 p-3 rounded-lg text-sm" *ngIf="form.get('backend_driver')?.value === 'sim'">
+               <div class="flex items-center gap-2 font-medium">
+                  <mat-icon class="!w-5 !h-5 text-sm">info</mat-icon> Simulation Mode
+               </div>
+               <p>This machine will be created in simulation mode. No physical hardware connection is required.</p>
+             </div>
 
-        <ng-template #legacyInput>
-            <mat-form-field appearance="outline" *ngIf="selectedDefinition">
-              <mat-label>User Configured Capabilities (JSON)</mat-label>
-              <textarea matInput formControlName="user_configured_capabilities" placeholder='{"has_iswap": true, "has_core96": true}' rows="2"></textarea>
-               <mat-error *ngIf="form.get('user_configured_capabilities')?.hasError('invalidJson')">Invalid JSON format</mat-error>
-               <mat-hint>Configure optional modules (e.g. iSWAP, CoRe96) for this specific machine unit.</mat-hint>
-            </mat-form-field>
-        </ng-template>
-      </form>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancel</button>
-      <button mat-flat-button color="primary" [disabled]="form.invalid" (click)="save()">Save</button>
-    </mat-dialog-actions>
-  `
+          </div>
+
+          <!-- STEP 4: Capabilities & Connection -->
+          <div *ngIf="currentStep === 3" class="fade-in">
+             <div class="flex items-center gap-2 mb-4">
+               <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
+               <h3 class="text-lg font-medium">Additional Configuration</h3>
+             </div>
+             
+             <!-- Connection Settings (Only if not sim, usually) -->
+             <div *ngIf="selectedDefinition?.connection_config && form.get('backend_driver')?.value !== 'sim'; else manualConnectionInput" class="border sys-border rounded-lg p-3 sys-surface flex flex-col gap-2 mb-4">
+                  <div class="text-sm font-medium sys-text-secondary">Connection Settings</div>
+                  <app-dynamic-capability-form
+                     [config]="selectedDefinition!.connection_config"
+                     (valueChange)="updateConnectionInfo($event)">
+                  </app-dynamic-capability-form>
+             </div>
+     
+             <ng-template #manualConnectionInput>
+                <!-- Only show manual JSON if strictly needed or if connection_config missing but manual allowed -->
+                 <div *ngIf="form.get('backend_driver')?.value !== 'sim'" class="mb-4">
+                    <mat-form-field appearance="outline" class="w-full">
+                      <mat-label>Connection Info (JSON)</mat-label>
+                      <textarea matInput formControlName="connection_info" placeholder='{"host": "127.0.0.1", "port": 3000}' rows="2"></textarea>
+                       <mat-error *ngIf="form.get('connection_info')?.hasError('invalidJson')">Invalid JSON format</mat-error>
+                    </mat-form-field>
+                 </div>
+             </ng-template>
+     
+             <!-- Capabilities -->
+             <div *ngIf="selectedDefinition?.capabilities_config; else legacyInput" class="border sys-border rounded-lg p-3 sys-surface flex flex-col gap-2">
+                 <div class="text-sm font-medium sys-text-secondary">Configuration</div>
+                 <app-dynamic-capability-form
+                     [config]="selectedDefinition!.capabilities_config"
+                     (valueChange)="updateCapabilities($event)">
+                  </app-dynamic-capability-form>
+             </div>
+     
+             <ng-template #legacyInput>
+                 <mat-form-field appearance="outline" class="w-full" *ngIf="selectedDefinition">
+                   <mat-label>User Configured Capabilities (JSON)</mat-label>
+                   <textarea matInput formControlName="user_configured_capabilities" placeholder='{"has_iswap": true, "has_core96": true}' rows="2"></textarea>
+                    <mat-error *ngIf="form.get('user_configured_capabilities')?.hasError('invalidJson')">Invalid JSON format</mat-error>
+                    <mat-hint>Configure optional modules (e.g. iSWAP, CoRe96).</mat-hint>
+                 </mat-form-field>
+             </ng-template>
+
+             <div class="mt-4">
+                <mat-form-field appearance="outline" class="w-full">
+                  <mat-label>Initial Status</mat-label>
+                  <mat-select formControlName="status">
+                      <mat-option [value]="MachineStatus.OFFLINE">Offline</mat-option>
+                      <mat-option [value]="MachineStatus.IDLE">Idle</mat-option>
+                  </mat-select>
+                </mat-form-field>
+             </div>
+          </div>
+
+        </form>
+      </mat-dialog-content>
+      
+      <mat-dialog-actions align="end" class="flex-shrink-0 border-t sys-border p-4 z-10">
+        <button mat-button mat-dialog-close>Cancel</button>
+        
+        <button mat-flat-button color="primary" 
+                *ngIf="currentStep < 3" 
+                [disabled]="!canProceed()"
+                (click)="nextStep()">
+           Next
+        </button>
+        
+        <button mat-flat-button color="primary" 
+                *ngIf="currentStep === 3" 
+                [disabled]="form.invalid" 
+                (click)="save()">
+           Finish
+        </button>
+      </mat-dialog-actions>
+    </div>
+  `,
+  styles: [`
+    .fade-in {
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Theme helpers - Variables should be provided by Material theme, but we add fallbacks */
+    .sys-surface-container {
+      background-color: var(--mat-sys-surface-container, #f0f4f8);
+      color: var(--mat-sys-on-surface, #1f1f1f);
+    }
+    .sys-surface {
+      background-color: var(--mat-sys-surface, #ffffff);
+      color: var(--mat-sys-on-surface, #1f1f1f);
+    }
+    .sys-text-secondary {
+      color: var(--mat-sys-on-surface-variant, #444746);
+    }
+    .sys-border {
+      border-color: var(--mat-sys-outline-variant, #c4c7c5);
+    }
+    .sys-divider {
+      background-color: var(--mat-sys-outline-variant, #e0e0e0);
+    }
+    .text-primary {
+      color: var(--mat-sys-primary, #3f51b5);
+    }
+
+    /* Stepper Styling */
+    .step-text-active { color: var(--mat-sys-primary, #3f51b5); }
+    .step-text-completed { color: var(--mat-sys-primary, #2e7d32); }
+    .step-text-inactive { color: var(--mat-sys-on-surface-variant, #9aa0a6); }
+
+    .step-circle-active {
+      border-color: var(--mat-sys-primary, #3f51b5);
+      background-color: var(--mat-sys-primary-container, #e8eaf6);
+      color: var(--mat-sys-on-primary-container, #3f51b5);
+    }
+    .step-circle-completed {
+      border-color: var(--mat-sys-primary, #2e7d32); /* Use primary or specific success color */
+      background-color: var(--mat-sys-primary-container, #e8f5e9);
+      color: var(--mat-sys-on-primary-container, #2e7d32);
+    }
+    .step-circle-inactive {
+      border-color: var(--mat-sys-outline, #e0e0e0);
+      color: var(--mat-sys-on-surface-variant, #9aa0a6);
+    }
+
+    /* Cards */
+    .category-card:hover, .definition-item:hover {
+      border-color: var(--mat-sys-primary, #3f51b5);
+      background-color: var(--mat-sys-primary-container, #e8eaf6); /* Subtle tint on hover */
+    }
+
+    /* Info Box */
+    .info-box {
+      background-color: var(--mat-sys-secondary-container, #e3f2fd);
+      color: var(--mat-sys-on-secondary-container, #0d47a1);
+    }
+
+    /* Dark Mode Pattern */
+    :host-context(.dark) {
+       --mat-sys-surface: #121212;
+       --mat-sys-surface-container: #1e1e1e;
+       --mat-sys-on-surface: #e3e3e3;
+       --mat-sys-on-surface-variant: #c4c7c5;
+       --mat-sys-outline: #444746;
+       --mat-sys-outline-variant: #444746;
+       --mat-sys-primary: #a8c7fa; /* Lighter primary for dark mode */
+       --mat-sys-primary-container: #0842a0;
+       --mat-sys-on-primary-container: #d3e3fd;
+       --mat-sys-secondary-container: #004b73;
+       --mat-sys-on-secondary-container: #cce5ff;
+    }
+  `]
 })
 export class MachineDialogComponent implements OnInit {
   private fb = inject(FormBuilder);
   private dialogRef = inject(MatDialogRef<MachineDialogComponent>);
   private assetService = inject(AssetService);
+  private modeService = inject(ModeService);
 
-  MachineStatus = MachineStatus; // Expose enum to template
+  MachineStatus = MachineStatus;
+  isBrowserMode = this.modeService.isBrowserMode();
 
   definitions: MachineDefinition[] = [];
   selectedDefinition: MachineDefinition | null = null;
-  definitionSearchControl = new FormControl<string | MachineDefinition>('');
 
-  // Grouped definitions for UI
-  groupedDefinitions$: Observable<{ type: string, definitions: MachineDefinition[] }[]> = of([]);
+  // Step State
+  currentStep = 0;
+  steps: Step[] = [
+    { label: 'Category', completed: false },
+    { label: 'Model', completed: false },
+    { label: 'Backend', completed: false },
+    { label: 'Config', completed: false }
+  ];
+
+  // Category Selection
+  machineCategories: string[] = [];
+  selectedCategory: string | null = null;
+
+  // Definition Selection
+  definitionSearchControl = new FormControl<string>('');
+  filteredDefinitions$: Observable<MachineDefinition[]> = of([]);
 
   form = this.fb.group({
     name: ['', Validators.required],
@@ -194,89 +363,103 @@ export class MachineDialogComponent implements OnInit {
     manufacturer: [''],
     description: [''],
     status: [MachineStatus.OFFLINE],
-    backend_driver: ['sim'], // Default to simulated
+    backend_driver: ['sim'],
     connection_info: ['', jsonValidator],
     user_configured_capabilities: ['', jsonValidator],
     machine_definition_accession_id: [null as string | null],
-    machine_category: [''] // Required for SQLite constraint
+    machine_category: ['']
   });
 
   ngOnInit() {
-    // Load machine definitions
     this.assetService.getMachineDefinitions().subscribe(defs => {
       this.definitions = defs;
-      // Setup filtering
-      this.groupedDefinitions$ = this.definitionSearchControl.valueChanges.pipe(
+      // Extract categories
+      this.machineCategories = [...new Set(defs.map(d => d.machine_category || 'Other'))].sort();
+
+      this.filteredDefinitions$ = this.definitionSearchControl.valueChanges.pipe(
         startWith(''),
-        map(value => this.filterAndGroupDefinitions(value))
+        map(val => this.filterDefinitions(val))
       );
     });
   }
 
-  private filterAndGroupDefinitions(value: string | MachineDefinition | null): { type: string, definitions: MachineDefinition[] }[] {
-    const filterValue = (!value || typeof value !== 'string') ? '' : value.toLowerCase();
-
-    const filtered = this.definitions.filter(def => {
-      if (!filterValue) return true;
-      return (
-        def.name.toLowerCase().includes(filterValue) ||
-        (def.fqn && def.fqn.toLowerCase().includes(filterValue)) ||
-        (def.manufacturer && def.manufacturer.toLowerCase().includes(filterValue)) ||
-        // Search capability chips too
-        ((def.capabilities?.['modules'] as string[])?.some((m: string) => m.toLowerCase().includes(filterValue)))
-      );
-    });
-
-    // Group by Manufacturer for now, or Category if available?
-    // User requested: Type -> Manufacturer -> Model.
-    // Assuming 'machine_category' exists, if not use a conceptual grouping.
-    // Since we don't have a strong 'Type' field on all definitions yet, let's group by Manufacturer.
-    // Or if manufacturer is missing, 'Other'.
-
-    const groups: { [key: string]: MachineDefinition[] } = {};
-
-    filtered.forEach(def => {
-      const key = def.manufacturer || 'General';
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(def);
-    });
-
-    return Object.keys(groups).sort().map(key => ({
-      type: key,
-      definitions: groups[key]
-    }));
+  getCategoryIcon(cat: string): string {
+    const lower = cat.toLowerCase();
+    if (lower.includes('liquid')) return 'water_drop';
+    if (lower.includes('plate') && lower.includes('reader')) return 'visibility';
+    if (lower.includes('shaker') || lower.includes('heat')) return 'vibration';
+    if (lower.includes('robot')) return 'smart_toy';
+    return 'science';
   }
 
-  displayDefinition(def: MachineDefinition | null): string {
-    if (!def) return '';
-    return def.name;
+  selectCategory(cat: string) {
+    this.selectedCategory = cat;
+    this.definitionSearchControl.setValue(''); // Reset search
+    this.nextStep();
   }
 
-  getShortFqn(fqn: string): string {
-    // Show module path without the function name
-    const parts = fqn.split('.');
-    if (parts.length > 2) {
-      return parts.slice(-2).join('.');
-    }
-    return fqn;
-  }
-
-  getShortBackendName(fqn: string): string {
-    const parts = fqn.split('.');
-    return parts[parts.length - 1];
+  selectDefinition(def: MachineDefinition) {
+    this.selectedDefinition = def;
+    this.onDefinitionSelected(def);
+    this.nextStep();
   }
 
   onDefinitionSelected(def: MachineDefinition) {
-    this.selectedDefinition = def;
-    // Auto-populate form fields from the selected definition
+    // Auto-populate form
     this.form.patchValue({
       model: def.model || def.name,
       manufacturer: def.manufacturer || '',
       description: def.description || '',
       machine_definition_accession_id: def.accession_id,
-      machine_category: def.machine_category || def.name || 'unknown', // For SQLite constraint
-      backend_driver: 'sim', // Reset to sim on new selection
+      machine_category: def.machine_category || def.name || 'unknown',
+      backend_driver: this.isBrowserMode ? 'sim' : (def.compatible_backends?.[0] || 'sim'),
+      // Set reasonable name default
+      name: `${def.name} ${Math.floor(Math.random() * 100) + 1}`
     });
+  }
+
+  filterDefinitions(search: string | null): MachineDefinition[] {
+    const query = (search || '').toLowerCase();
+    return this.definitions.filter(d => {
+      const matchesCategory = (d.machine_category || 'Other') === this.selectedCategory;
+      const matchesSearch = !query ||
+        d.name.toLowerCase().includes(query) ||
+        (d.manufacturer || '').toLowerCase().includes(query);
+
+      return matchesCategory && matchesSearch;
+    });
+  }
+
+  nextStep() {
+    this.steps[this.currentStep].completed = true;
+    if (this.currentStep < this.steps.length - 1) {
+      this.currentStep++;
+    }
+  }
+
+  goBack() {
+    if (this.currentStep > 0) {
+      this.steps[this.currentStep].completed = false; // Mark current as incomplete
+      this.currentStep--;
+      this.steps[this.currentStep].completed = false; // Mark prev as incomplete since we are revisiting
+    }
+  }
+
+  canProceed(): boolean {
+    if (this.currentStep === 0) return !!this.selectedCategory;
+    if (this.currentStep === 1) return !!this.selectedDefinition;
+    if (this.currentStep === 2) return this.form.get('backend_driver')?.valid && this.form.get('name')?.valid ? true : false;
+    return false;
+  }
+
+  getShortFqn(fqn: string): string {
+    const parts = fqn.split('.');
+    return parts.length > 2 ? parts.slice(-2).join('.') : fqn;
+  }
+
+  getShortBackendName(fqn: string): string {
+    const parts = fqn.split('.');
+    return parts[parts.length - 1];
   }
 
   updateCapabilities(val: any) {
@@ -294,41 +477,33 @@ export class MachineDialogComponent implements OnInit {
   save() {
     if (this.form.valid) {
       const value = this.form.value;
-
       let connectionInfo: any = {};
 
-      // If we have a dynamic form for connection info, use that.
-      // Otherwise fallback to the JSON text area.
-      // Note: we're patching the JSON string into the form control in updateConnectionInfo
-      // so we can just parse it here.
       if (value.connection_info) {
         try {
           connectionInfo = JSON.parse(value.connection_info);
-        } catch (e) {
-          // Should be caught by validator but just in case
-          console.error('Invalid connection info JSON', e);
-        }
+        } catch (e) { console.error(e); }
       }
 
-      // Inject backend driver selection into connection_info
+      // Logic for "simulated" flag
+      const isSimulated = value.backend_driver === 'sim' || (value.backend_driver || '').toLowerCase().includes('sim');
+
       if (value.backend_driver) {
         connectionInfo['backend_fqn'] = value.backend_driver;
-        // ... (sim/override logic if needed)
       }
 
       let userConfiguredCapabilities: any = null;
       if (value.user_configured_capabilities) {
         try {
           userConfiguredCapabilities = JSON.parse(value.user_configured_capabilities);
-        } catch (e) {
-          console.error('Invalid capabilities JSON', e);
-        }
+        } catch { }
       }
 
       this.dialogRef.close({
         ...value,
         connection_info: connectionInfo,
-        user_configured_capabilities: userConfiguredCapabilities
+        user_configured_capabilities: userConfiguredCapabilities,
+        is_simulated: isSimulated // Pass this back to creator
       });
     }
   }

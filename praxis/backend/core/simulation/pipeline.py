@@ -13,16 +13,15 @@ issues at the cheapest level that can catch them.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import BaseModel, Field
 
-from praxis.backend.core.simulation.method_contracts import METHOD_CONTRACTS
 from praxis.backend.core.simulation.state_models import (
   BooleanLiquidState,
   SimulationState,
-  StateLevel,
   StateViolation,
 )
 from praxis.backend.core.simulation.stateful_tracers import (
@@ -35,13 +34,11 @@ from praxis.backend.core.tracing.executor import (
   infer_machine_type,
 )
 from praxis.backend.core.tracing.recorder import OperationRecorder
-from praxis.backend.utils.plr_static_analysis.models import ProtocolComputationGraph
 from praxis.backend.utils.plr_static_analysis.resource_hierarchy import (
   DeckLayoutType,
   get_parental_chain,
 )
 from praxis.common.type_inspection import extract_resource_types
-
 
 # =============================================================================
 # Result Models
@@ -301,7 +298,7 @@ class HierarchicalSimulator:
       result = protocol_func(**tracers)
       if asyncio.iscoroutine(result):
         await result
-    except Exception as e:
+    except Exception:
       # Collect violations even on exception
       pass
 
@@ -423,7 +420,7 @@ class HierarchicalSimulator:
       "str": "simulated_value",
       "bool": True,
     }
-    return defaults.get(type_hint, None)
+    return defaults.get(type_hint)
 
   def _violation_to_dict(self, violation: StateViolation) -> dict[str, Any]:
     """Convert a StateViolation to a dictionary."""

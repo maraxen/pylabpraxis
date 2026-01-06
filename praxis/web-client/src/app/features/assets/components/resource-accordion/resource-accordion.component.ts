@@ -24,6 +24,7 @@ import { ResourceFiltersComponent, ResourceFilterState } from '../resource-filte
 import { getUiGroup, UI_GROUP_ORDER, shouldHideCategory, ResourceUiGroup } from '../../utils/resource-category-groups';
 import { ResourceChipsComponent } from '../resource-chips/resource-chips.component';
 import { getDisplayLabel } from '../../utils/resource-name-parser';
+import { AppStore } from '../../../../core/store/app.store';
 
 export interface ResourceGroup {
   category: string;
@@ -159,7 +160,7 @@ export interface ResourceDefinitionGroup {
   `,
   styles: [`
     .resource-accordion-container {
-      padding: 16px;
+      padding: 0 16px 16px 16px;
     }
 
     .accordion-header {
@@ -334,6 +335,7 @@ export interface ResourceDefinitionGroup {
 export class ResourceAccordionComponent implements OnInit {
   private assetService = inject(AssetService);
   private dialog = inject(MatDialog);
+  private store = inject(AppStore);
 
   resources = signal<Resource[]>([]);
   definitions = signal<ResourceDefinition[]>([]);
@@ -401,7 +403,8 @@ export class ResourceAccordionComponent implements OnInit {
         instances: instances,
         count: (def as any).default_count ?? null,
         // Only consumables can be infinite; non-consumables always show "1"
-        isInfinite: isConsumable && ((def as any).default_count === null || (def as any).default_count === undefined),
+        // Infinite if enabled in settings AND item is consumable
+        isInfinite: isConsumable && this.store.infiniteConsumables(),
         isConsumable: isConsumable,
         isReusable: (def as any).is_reusable ?? false,
         activeCount: activeInstances.length,

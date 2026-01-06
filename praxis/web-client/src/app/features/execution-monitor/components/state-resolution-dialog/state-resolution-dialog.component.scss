@@ -1,0 +1,198 @@
+/**
+ * Styles for State Resolution Dialog Component
+ */
+
+:host {
+    --dialog-width: 700px;
+}
+
+.dialog-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--mat-warn-color, #f44336);
+
+    .title-icon {
+        color: inherit;
+    }
+}
+
+.dialog-content {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+section {
+    margin-bottom: 24px;
+
+    h3 {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--mat-on-surface-variant, rgba(0, 0, 0, 0.6));
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+}
+
+// Operation Section
+.operation-section {
+    .operation-details {
+        background: var(--mat-surface-container, #f5f5f5);
+        border-radius: 8px;
+        padding: 16px;
+    }
+
+    .operation-name {
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+
+    .operation-description {
+        color: var(--mat-on-surface-variant, rgba(0, 0, 0, 0.6));
+        margin-bottom: 12px;
+    }
+
+    .error-message {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--mat-error-color, #f44336);
+        background: rgba(244, 67, 54, 0.1);
+        padding: 8px 12px;
+        border-radius: 4px;
+
+        .error-icon {
+            font-size: 18px;
+            height: 18px;
+            width: 18px;
+        }
+    }
+}
+
+// States Table Section
+.states-section {
+    .states-description {
+        font-size: 14px;
+        color: var(--mat-on-surface-variant, rgba(0, 0, 0, 0.6));
+        margin-bottom: 16px;
+    }
+}
+
+.states-table {
+    background: var(--mat-surface-container, #f5f5f5);
+    border-radius: 8px;
+    overflow: hidden;
+
+    .state-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--mat-outline-variant, rgba(0, 0, 0, 0.12));
+        align-items: center;
+
+        &:last-child {
+            border-bottom: none;
+        }
+
+        &.header {
+            font-weight: 500;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--mat-on-surface-variant, rgba(0, 0, 0, 0.6));
+            background: var(--mat-surface-container-high, #eee);
+        }
+    }
+
+    .state-resource {
+        font-weight: 500;
+    }
+
+    .state-current,
+    .state-expected {
+        font-family: monospace;
+        font-size: 13px;
+    }
+
+    .value-input {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid var(--mat-outline, rgba(0, 0, 0, 0.38));
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 13px;
+
+        &:focus {
+            outline: none;
+            border-color: var(--mat-primary-color, #3f51b5);
+        }
+    }
+}
+
+// Quick Actions
+.quick-actions {
+    display: flex;
+    gap: 12px;
+    margin: 20px 0;
+
+    button {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+}
+
+// Resolution Form Section
+.resolution-section {
+    .resolution-options {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .resolution-option {
+        padding: 12px;
+        border: 1px solid var(--mat-outline-variant, rgba(0, 0, 0, 0.12));
+        border-radius: 8px;
+        transition: all 0.2s ease;
+
+        &:hover {
+            background: var(--mat-surface-container, #f5f5f5);
+        }
+
+        ::ng-deep .mat-radio-label {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .option-label {
+            font-weight: 500;
+        }
+
+        .option-description {
+            font-size: 12px;
+            color: var(--mat-on-surface-variant, rgba(0, 0, 0, 0.6));
+        }
+    }
+
+    .notes-field {
+        width: 100%;
+    }
+}
+
+// Dialog Actions
+.dialog-actions {
+    padding: 16px 24px;
+    gap: 12px;
+    justify-content: flex-end;
+
+    button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+}

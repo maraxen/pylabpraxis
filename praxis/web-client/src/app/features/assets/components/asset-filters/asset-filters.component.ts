@@ -44,7 +44,7 @@ export interface AssetFilterState {
     MatSlideToggleModule
   ],
   template: `
-    <div class="filters-container flex flex-wrap items-center gap-4 p-4 rounded-xl border border-[var(--theme-border)] bg-surface-container mb-4">
+    <div class="filters-container flex flex-wrap items-center gap-4 p-4 rounded-xl border border-[var(--theme-border)] bg-surface-container mb-2">
       
       <!-- Status Filter -->
       <div class="filter-group">

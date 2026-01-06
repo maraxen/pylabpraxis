@@ -7,7 +7,7 @@ vi.mock('../../../environments/environment', () => ({
     environment: {
         production: false,
         browserMode: false,
-        demo: false
+        browserMode: false,
     }
 }));
 
@@ -34,7 +34,6 @@ describe('ModeService', () => {
         it('should have computed signals for mode checks', () => {
             expect(service.isBrowserMode).toBeDefined();
             expect(service.requiresAuth).toBeDefined();
-            expect(service.isDemoMode).toBeDefined();
             expect(service.hasBackend).toBeDefined();
             expect(service.modeLabel).toBeDefined();
         });
@@ -45,7 +44,7 @@ describe('ModeService', () => {
             // Since we can't easily change the mode signal in tests,
             // we test the computed logic indirectly
             expect(typeof service.modeLabel()).toBe('string');
-            expect(['Browser', 'Demo', 'Lite', 'Production']).toContain(service.modeLabel());
+            expect(['Browser', 'Lite', 'Production']).toContain(service.modeLabel());
         });
     });
 
@@ -58,9 +57,6 @@ describe('ModeService', () => {
             expect(typeof service.requiresAuth()).toBe('boolean');
         });
 
-        it('isDemoMode should return boolean', () => {
-            expect(typeof service.isDemoMode()).toBe('boolean');
-        });
 
         it('hasBackend should return boolean', () => {
             expect(typeof service.hasBackend()).toBe('boolean');

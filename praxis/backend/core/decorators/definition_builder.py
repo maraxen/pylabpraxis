@@ -14,6 +14,7 @@ from .models import (
   CreateProtocolDefinitionData,
   DataViewDefinition,
   DecoratedProtocolFunc,
+  SetupInstruction,
   get_callable_fqn,
 )
 from .parameter_processor import _process_parameter
@@ -38,6 +39,50 @@ def _convert_data_views(
     )
     for dv in data_views
   ]
+
+
+def _convert_setup_instructions(
+  setup_instructions: list[str | SetupInstruction] | None,
+) -> list[dict[str, Any]] | None:
+  """Convert setup instructions to JSON-serializable dicts.
+
+  Args:
+    setup_instructions: List of setup instructions, either as strings or
+      SetupInstruction dataclass instances.
+
+  Returns:
+    List of dicts ready for JSON serialization, or None if no instructions.
+
+  """
+  if not setup_instructions:
+    return None
+
+  result: list[dict[str, Any]] = []
+  for instruction in setup_instructions:
+    if isinstance(instruction, str):
+      # String instructions are treated as required severity
+      result.append(
+        {
+          "message": instruction,
+          "severity": "required",
+          "position": None,
+          "resource_type": None,
+        }
+      )
+    elif isinstance(instruction, SetupInstruction):
+      result.append(
+        {
+          "message": instruction.message,
+          "severity": instruction.severity,
+          "position": instruction.position,
+          "resource_type": instruction.resource_type,
+        }
+      )
+    else:
+      # Already a dict (shouldn't happen after decorator processing)
+      result.append(instruction)  # type: ignore[arg-type]
+
+  return result
 
 
 def _create_protocol_definition(
@@ -99,6 +144,9 @@ def _create_protocol_definition(
   # Convert data views from dataclass to Pydantic model
   data_views_models = _convert_data_views(data.data_views)
 
+  # Convert setup instructions to JSON-serializable format
+  setup_instructions_json = _convert_setup_instructions(data.setup_instructions)
+
   protocol_definition = FunctionProtocolDefinitionCreate(
     accession_id=uuid7(),
     name=resolved_name,
@@ -117,6 +165,7 @@ def _create_protocol_definition(
     ),
     deck_layout_path=data.deck_layout_path,
     data_views=data_views_models,
+    setup_instructions_json=setup_instructions_json,
     state_param_name=data.state_param_name,
     category=data.category,
     tags=data.tags,

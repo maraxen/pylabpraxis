@@ -1,0 +1,97 @@
+<h2 mat-dialog-title class="dialog-title">
+    <mat-icon class="title-icon">warning</mat-icon>
+    State Resolution Required
+</h2>
+
+<mat-dialog-content class="dialog-content">
+    <!-- Failed Operation Info -->
+    <section class="operation-section">
+        <h3>Failed Operation</h3>
+        <div class="operation-details">
+            <div class="operation-name">
+                <strong>{{ data.operation.method_name }}</strong>
+            </div>
+            <div class="operation-description">{{ data.operation.description }}</div>
+            <div class="error-message">
+                <mat-icon class="error-icon">error</mat-icon>
+                <span>{{ data.operation.error_message }}</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Uncertain States -->
+    <section class="states-section">
+        <h3>Affected State</h3>
+        <p class="states-description">
+            The following state may have been affected by the failed operation.
+            Please indicate what actually happened.
+        </p>
+
+        <div class="states-table">
+            <div class="state-row header">
+                <div class="state-resource">Resource</div>
+                <div class="state-property">Property</div>
+                <div class="state-current">Before</div>
+                <div class="state-expected">Expected</div>
+                <div class="state-resolved" *ngIf="canEditValues()">Actual</div>
+            </div>
+
+            <div class="state-row" *ngFor="let state of data.uncertainStates">
+                <div class="state-resource">{{ state.resource_name || 'Unknown' }}</div>
+                <div class="state-property">{{ getPropertyTypeLabel(state.property_type) }}</div>
+                <div class="state-current">{{ formatValue(state.current_value) }}</div>
+                <div class="state-expected">
+                    {{ state.expected_value !== undefined ? formatValue(state.expected_value) : '-' }}
+                </div>
+                <div class="state-resolved" *ngIf="canEditValues()">
+                    <input type="text" class="value-input" [value]="formatValue(resolvedValues[state.state_key])"
+                        (input)="updateResolvedValue(state.state_key, $event)" [placeholder]="'Enter value'" />
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Actions -->
+    <section class="quick-actions">
+        <button mat-stroked-button color="primary" (click)="confirmAsSuccess()">
+            <mat-icon>check_circle</mat-icon>
+            It Worked
+        </button>
+        <button mat-stroked-button color="warn" (click)="confirmAsFailure()">
+            <mat-icon>cancel</mat-icon>
+            It Failed
+        </button>
+    </section>
+
+    <!-- Resolution Form -->
+    <section class="resolution-section">
+        <h3>Resolution Type</h3>
+        <form [formGroup]="form">
+            <mat-radio-group formControlName="resolutionType" class="resolution-options">
+                <mat-radio-button *ngFor="let option of resolutionTypeOptions" [value]="option.value"
+                    class="resolution-option">
+                    <span class="option-label">{{ option.label }}</span>
+                    <span class="option-description">{{ option.description }}</span>
+                </mat-radio-button>
+            </mat-radio-group>
+
+            <mat-form-field class="notes-field" appearance="outline">
+                <mat-label>Notes (optional)</mat-label>
+                <textarea matInput formControlName="notes" placeholder="Add notes about what you observed..."
+                    rows="2"></textarea>
+            </mat-form-field>
+        </form>
+    </section>
+</mat-dialog-content>
+
+<mat-dialog-actions class="dialog-actions">
+    <button mat-button (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="warn" (click)="submitAndAbort()">
+        <mat-icon>stop</mat-icon>
+        Abort Run
+    </button>
+    <button mat-flat-button color="primary" (click)="submitAndResume()" [disabled]="!form.valid">
+        <mat-icon>play_arrow</mat-icon>
+        Resume Run
+    </button>
+</mat-dialog-actions>

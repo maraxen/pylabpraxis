@@ -8,7 +8,8 @@ that cannot be fully analyzed statically.
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from praxis.backend.core.tracing.recorder import OperationRecorder
 from praxis.backend.core.tracing.tracers import (
@@ -20,8 +21,7 @@ from praxis.backend.utils.plr_static_analysis.resource_hierarchy import (
   DeckLayoutType,
   get_parental_chain,
 )
-from praxis.common.type_inspection import PLR_RESOURCE_TYPES, extract_resource_types
-
+from praxis.common.type_inspection import extract_resource_types
 
 # =============================================================================
 # Exceptions
@@ -266,7 +266,7 @@ class ProtocolTracingExecutor:
       "str": "traced_value",
       "bool": True,
     }
-    return defaults.get(type_hint, None)
+    return defaults.get(type_hint)
 
 
 # =============================================================================

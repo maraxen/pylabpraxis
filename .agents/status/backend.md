@@ -32,6 +32,7 @@
 * **Orchestrator**: Execution engine (100% coverage).
 * **WebSockets**: Log streaming & status.
 * **Auth**: Keycloak integration (Production).
+* **Error Handling**: State Resolution & Audit Logging.
 
 ---
 

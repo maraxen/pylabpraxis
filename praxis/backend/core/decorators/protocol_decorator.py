@@ -43,6 +43,7 @@ from .models import (
   DataViewDefinition,
   DecoratedProtocolFunc,
   ProtocolRuntimeInfo,
+  SetupInstruction,
   praxis_run_context_cv,
 )
 
@@ -164,6 +165,7 @@ def protocol_function(
   deck_construction: Callable | None = None,
   deck_layout_path: str | None = None,
   data_views: list[dict[str, Any]] | None = None,
+  setup_instructions: list[str | dict[str, Any] | SetupInstruction] | None = None,
   state_param_name: str = DEFAULT_STATE_PARAM_NAME,
   param_metadata: dict[str, Any] | None = None,
   category: str | None = None,
@@ -194,6 +196,11 @@ def protocol_function(
       what input data this protocol needs. Each view can reference PLR state
       (liquid volumes, positions) or function data outputs (plate reader reads).
       Schema validation errors warn but do not block execution.
+    setup_instructions (Optional[list]): List of setup instructions to display
+      in the Deck Setup wizard before protocol execution. Each item can be:
+      - A string (treated as a required instruction)
+      - A dict with keys: message, severity, position, resource_type
+      - A SetupInstruction dataclass instance
     state_param_name (str): Name of the state parameter for top-level protocols.
     param_metadata (Optional[dict[str, dict[str, Any]]]): Metadata for parameters.
     category (Optional[str]): Category for organizing protocols.
@@ -211,6 +218,18 @@ def protocol_function(
       DataViewDefinition(**view) if isinstance(view, dict) else view for view in data_views
     ]
 
+  # Convert setup_instructions to SetupInstruction objects
+  actual_setup_instructions: list[str | SetupInstruction] | None = None
+  if setup_instructions:
+    actual_setup_instructions = []
+    for instruction in setup_instructions:
+      if isinstance(instruction, str):
+        actual_setup_instructions.append(instruction)
+      elif isinstance(instruction, dict):
+        actual_setup_instructions.append(SetupInstruction(**instruction))
+      else:
+        actual_setup_instructions.append(instruction)
+
   def decorator(func: Callable) -> Callable:
     protocol_definition, found_state_param_details = _create_protocol_definition(
       CreateProtocolDefinitionData(
@@ -225,6 +244,7 @@ def protocol_function(
         deck_construction=deck_construction,
         deck_layout_path=deck_layout_path,
         data_views=actual_data_views,
+        setup_instructions=actual_setup_instructions,
         state_param_name=state_param_name,
         param_metadata=actual_param_metadata,
         category=category,

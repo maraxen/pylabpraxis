@@ -226,4 +226,127 @@ export class RunHistoryService {
             return `${seconds}s`;
         }
     }
+
+    // =========================================================================
+    // State Resolution Methods
+    // =========================================================================
+
+    /**
+     * Get uncertain states for a failed/paused run.
+     */
+    getUncertainStates(runId: string): Observable<import('../models/state-resolution.models').UncertainStateChange[]> {
+        // Browser mode: return empty (no uncertain states tracked locally yet)
+        if (this.modeService.isBrowserMode()) {
+            console.warn('[RunHistoryService] State resolution not yet implemented in browser mode');
+            return of([]);
+        }
+
+        return this.http
+            .get<import('../models/state-resolution.models').UncertainStateChange[]>(
+                `${this.API_URL}/scheduler/${runId}/uncertain-state`
+            )
+            .pipe(
+                catchError((err) => {
+                    console.error('[RunHistoryService] Failed to fetch uncertain states:', err);
+                    return of([]);
+                })
+            );
+    }
+
+    /**
+     * Submit a state resolution for a failed operation.
+     */
+    resolveStates(
+        runId: string,
+        request: import('../models/state-resolution.models').StateResolutionRequest
+    ): Observable<import('../models/state-resolution.models').StateResolutionLogResponse | null> {
+        // Browser mode: store resolution locally
+        if (this.modeService.isBrowserMode()) {
+            return this.sqliteService.saveStateResolution(runId, request).pipe(
+                map(() => ({
+                    id: crypto.randomUUID(),
+                    run_id: runId,
+                    operation_id: request.operation_id,
+                    operation_description: 'Browser mode resolution',
+                    resolution_type: request.resolution_type,
+                    action_taken: request.action,
+                    resolved_at: new Date().toISOString(),
+                    resolved_by: 'user',
+                })),
+                catchError((err) => {
+                    console.error('[RunHistoryService] Failed to save resolution:', err);
+                    return of(null);
+                })
+            );
+        }
+
+        return this.http
+            .post<import('../models/state-resolution.models').StateResolutionLogResponse>(
+                `${this.API_URL}/scheduler/${runId}/resolve-state`,
+                request
+            )
+            .pipe(
+                catchError((err) => {
+                    console.error('[RunHistoryService] Failed to submit resolution:', err);
+                    return of(null);
+                })
+            );
+    }
+
+    /**
+     * Resume a run after state resolution.
+     */
+    resumeRun(runId: string): Observable<boolean> {
+        // Browser mode: update run status locally
+        if (this.modeService.isBrowserMode()) {
+            return this.sqliteService.updateProtocolRunStatus(runId, 'RUNNING').pipe(
+                map(() => true),
+                catchError((err) => {
+                    console.error('[RunHistoryService] Failed to resume run:', err);
+                    return of(false);
+                })
+            );
+        }
+
+        return this.http
+            .post<{ status: string }>(`${this.API_URL}/scheduler/${runId}/resume`, {})
+            .pipe(
+                map(() => true),
+                catchError((err) => {
+                    console.error('[RunHistoryService] Failed to resume run:', err);
+                    return of(false);
+                })
+            );
+    }
+
+    /**
+     * Abort a run after state resolution.
+     */
+    abortRun(runId: string, reason?: string): Observable<boolean> {
+        // Browser mode: update run status locally
+        if (this.modeService.isBrowserMode()) {
+            return this.sqliteService.updateProtocolRunStatus(runId, 'CANCELLED').pipe(
+                map(() => true),
+                catchError((err) => {
+                    console.error('[RunHistoryService] Failed to abort run:', err);
+                    return of(false);
+                })
+            );
+        }
+
+        let params = new HttpParams();
+        if (reason) {
+            params = params.set('reason', reason);
+        }
+
+        return this.http
+            .post<{ status: string }>(`${this.API_URL}/scheduler/${runId}/abort`, {}, { params })
+            .pipe(
+                map(() => true),
+                catchError((err) => {
+                    console.error('[RunHistoryService] Failed to abort run:', err);
+                    return of(false);
+                })
+            );
+    }
 }

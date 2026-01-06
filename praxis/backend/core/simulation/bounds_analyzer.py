@@ -6,13 +6,12 @@ This module analyzes loop iteration counts using resource dimensions
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from praxis.backend.utils.plr_static_analysis.models import (
   OperationNode,
   ProtocolComputationGraph,
-  ResourceNode,
 )
 
 
