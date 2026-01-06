@@ -181,6 +181,7 @@ class ProtocolRunFactory(SQLAlchemyModelFactory):
         top_level_def = factory.SubFactory(FunctionProtocolDefinitionFactory)
 
     name = factory.Faker("word")
+    accession_id = factory.LazyFunction(uuid7)
     top_level_protocol_definition_accession_id = factory.LazyAttribute(
         lambda o: o.top_level_def.accession_id
     )
@@ -199,6 +200,7 @@ class FunctionCallLogFactory(SQLAlchemyModelFactory):
         executed_function_def = factory.SubFactory(FunctionProtocolDefinitionFactory)
 
     name = factory.Faker("word")
+    accession_id = factory.LazyFunction(uuid7)
     protocol_run_accession_id = factory.LazyAttribute(
         lambda o: o.protocol_run_obj.accession_id
     )
@@ -206,6 +208,27 @@ class FunctionCallLogFactory(SQLAlchemyModelFactory):
     function_protocol_definition_accession_id = factory.LazyAttribute(
         lambda o: o.executed_function_def.accession_id
     )
+
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        """Create a FunctionCallLogOrm, ensuring dependencies are flushed."""
+        session = cls._meta.sqlalchemy_session
+        
+        def ensure_flushed(obj):
+            if obj and session:
+                if obj not in session:
+                    session.add(obj)
+                session.flush()
+
+        pr = kwargs.get("protocol_run_obj")
+        if pr:
+            ensure_flushed(pr)
+            if not kwargs.get("protocol_run_accession_id"):
+                 kwargs["protocol_run_accession_id"] = pr.accession_id
+
+        obj = super()._create(model_class, *args, **kwargs)
+        ensure_flushed(obj)
+        return obj
 
 
 class FunctionDataOutputFactory(SQLAlchemyModelFactory):
@@ -215,33 +238,48 @@ class FunctionDataOutputFactory(SQLAlchemyModelFactory):
         """Meta class for FunctionDataOutputFactory."""
 
         model = FunctionDataOutputOrm
+        exclude = ("_function_call_log",)
 
     class Params:
-        # Create a transient protocol_run that can be shared.
-        pr = factory.SubFactory(ProtocolRunFactory)
+        pass
 
     name = factory.Faker("word")
-    # Create the function_call_log using the transient protocol_run.
-    function_call_log = factory.SubFactory(
-        FunctionCallLogFactory, protocol_run_obj=factory.SelfAttribute("..pr")
-    )
+    accession_id = factory.LazyFunction(uuid7)
+    
+    _function_call_log = factory.SubFactory(FunctionCallLogFactory)
+    
     function_call_log_accession_id = factory.LazyAttribute(
-        lambda o: o.function_call_log.accession_id
+        lambda o: o._function_call_log.accession_id
     )
-    protocol_run_accession_id = factory.LazyAttribute(lambda o: o.pr.accession_id)
+    protocol_run_accession_id = factory.LazyAttribute(
+        lambda o: o._function_call_log.protocol_run_accession_id
+    )
 
 
 class WellDataOutputFactory(SQLAlchemyModelFactory):
     """Factory for WellDataOutputOrm."""
 
     class Meta:
-        """Meta class for WellDataOutputFactory."""
+        """Meta class for WellDataOutputOrm."""
 
         model = WellDataOutputOrm
+        exclude = ("_function_data_output", "_plate_resource")
+
+    class Params:
+        pass
 
     name = factory.Faker("word")
-    function_data_output = factory.SubFactory(FunctionDataOutputFactory)
-    plate_resource = factory.SubFactory(ResourceFactory)
+    
+    _function_data_output = factory.SubFactory(FunctionDataOutputFactory)
+    _plate_resource = factory.SubFactory(ResourceFactory)
+    
+    function_data_output_accession_id = factory.LazyAttribute(
+        lambda o: o._function_data_output.accession_id
+    )
+    plate_resource_accession_id = factory.LazyAttribute(
+        lambda o: o._plate_resource.accession_id
+    )
+    
     well_name = "A1"
     well_row = 0
     well_column = 0

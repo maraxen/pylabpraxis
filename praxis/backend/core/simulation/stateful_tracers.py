@@ -435,7 +435,7 @@ class StatefulTracedMachine(TracedMachine):
     """Extract numeric value from an argument."""
     if value is None:
       return default
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
       return float(value)
     if isinstance(value, str):
       try:

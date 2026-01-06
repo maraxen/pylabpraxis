@@ -1,5 +1,5 @@
 import { Component, OnInit, AfterViewInit, inject, signal, computed, ViewChild, ElementRef, PLATFORM_ID, ViewEncapsulation, effect } from '@angular/core';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatInputModule } from '@angular/material/input';
@@ -17,14 +17,13 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
   standalone: true,
   encapsulation: ViewEncapsulation.None,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatDialogModule,
     MatInputModule,
     MatListModule,
     MatIconModule,
-    MatDividerModule,
-  ],
+    MatDividerModule
+],
   template: `
     <div class="command-palette-container">
       <div class="search-header">
@@ -35,12 +34,12 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
           placeholder="Type a command or search..."
           autoFocus
           (keydown)="handleKeyDown($event)"
-        />
+          />
         <span class="esc-hint">ESC to close</span>
       </div>
-
+    
       <mat-divider></mat-divider>
-
+    
       <mat-action-list class="command-list" #commandList>
         @for (command of filteredCommands(); track command.id; let i = $index) {
           <button
@@ -49,23 +48,27 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
             [class.selected-item]="i === selectedIndex()"
             (mouseenter)="selectedIndex.set(i)"
             tabindex="-1"
-          >
+            >
             <mat-icon matListItemIcon>{{ command.icon || 'terminal' }}</mat-icon>
             <div matListItemTitle>{{ command.label }}</div>
             <div matListItemLine class="description">{{ command.description }}</div>
-            
+    
             <div matListItemMeta class="meta-container">
-              <span class="shortcut-badge" *ngIf="command.shortcut">{{ formatShortcut(command.shortcut) }}</span>
-              <div class="category-chip" *ngIf="command.category">
-                {{ command.category }}
-              </div>
+              @if (command.shortcut) {
+                <span class="shortcut-badge">{{ formatShortcut(command.shortcut) }}</span>
+              }
+              @if (command.category) {
+                <div class="category-chip">
+                  {{ command.category }}
+                </div>
+              }
             </div>
           </button>
-        } @empty {
+          } @empty {
           <div class="no-results">No commands found matching your search.</div>
         }
       </mat-action-list>
-
+    
       <div class="palette-footer">
         <div class="shortcuts">
           <span><kbd>↑↓</kbd> to navigate</span>
@@ -73,7 +76,7 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
         </div>
       </div>
     </div>
-  `,
+    `,
   styles: [`
     .command-palette-panel .mat-mdc-dialog-container .mat-mdc-dialog-surface {
       background: transparent !important;

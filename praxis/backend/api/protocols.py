@@ -236,9 +236,7 @@ async def get_protocol_compatibility(
   machines = result.scalars().all()
 
   # 3. Match
-  machine_tuples = []
-  for m in machines:
-    machine_tuples.append((m, m.definition))
+  machine_tuples = [(m, m.definition) for m in machines]
 
   results = capability_matcher.find_compatible_machines(protocol, machine_tuples)
 

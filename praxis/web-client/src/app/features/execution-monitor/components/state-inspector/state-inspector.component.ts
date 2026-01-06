@@ -6,7 +6,7 @@
  */
 
 import { Component, input, output, computed, signal, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSliderModule } from '@angular/material/slider';
@@ -21,7 +21,6 @@ import { StateDisplayComponent } from './state-display.component';
   selector: 'app-state-inspector',
   standalone: true,
   imports: [
-    CommonModule,
     MatIconModule,
     MatButtonModule,
     MatSliderModule,
@@ -29,7 +28,7 @@ import { StateDisplayComponent } from './state-display.component';
     MatTooltipModule,
     MatDividerModule,
     StateDisplayComponent
-  ],
+],
   template: `
     <div class="state-inspector">
       <!-- Header -->

@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, input, output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -11,12 +11,11 @@ import { SimulatedChipComponent } from '../simulated-chip/simulated-chip.compone
     selector: 'app-machine-card',
     standalone: true,
     imports: [
-        CommonModule,
-        MatIconModule,
-        MatButtonModule,
-        MatTooltipModule,
-        SimulatedChipComponent
-    ],
+    MatIconModule,
+    MatButtonModule,
+    MatTooltipModule,
+    SimulatedChipComponent
+],
     template: `
     <div
       class="relative bg-surface-elevated border rounded-2xl p-6 cursor-pointer transition-all duration-200 group hover:-translate-y-1 hover:shadow-lg h-full"

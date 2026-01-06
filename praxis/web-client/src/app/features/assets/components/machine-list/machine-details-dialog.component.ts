@@ -50,7 +50,7 @@ import { AssetService } from '../../services/asset.service';
         <app-asset-status-chip [status]="data.machine.status" [showLabel]="true" />
       </div>
     </h2>
-
+    
     <mat-dialog-content class="details-content">
       <mat-tab-group animationDuration="0ms">
         <mat-tab label="Overview">
@@ -74,14 +74,14 @@ import { AssetService } from '../../services/asset.service';
                 <span class="trend-label">Avg: {{ averageUtilization }}%</span>
               </div>
             </div>
-
+    
             <div class="detail-item full-width">
               <span class="label">Description</span>
               <span>{{ data.machine.description || 'No description provided.' }}</span>
             </div>
           </div>
         </mat-tab>
-
+    
         <mat-tab label="Deck Layout">
           <div class="deck-view-container">
             @if (data.machine.plr_state) {
@@ -94,7 +94,7 @@ import { AssetService } from '../../services/asset.service';
             }
           </div>
         </mat-tab>
-
+    
         <mat-tab label="Technical">
           <div class="tech-details">
             <div class="detail-item">
@@ -103,8 +103,12 @@ import { AssetService } from '../../services/asset.service';
             </div>
             <div class="detail-item">
               <span class="label">Connection Info</span>
-              <pre *ngIf="data.machine.connection_info">{{ data.machine.connection_info | json }}</pre>
-              <span *ngIf="!data.machine.connection_info">N/A</span>
+              @if (data.machine.connection_info) {
+                <pre>{{ data.machine.connection_info | json }}</pre>
+              }
+              @if (!data.machine.connection_info) {
+                <span>N/A</span>
+              }
             </div>
             <div class="detail-item">
               <span class="label">Simulation Override</span>
@@ -114,74 +118,81 @@ import { AssetService } from '../../services/asset.service';
             </div>
           </div>
         </mat-tab>
-
+    
         <mat-tab label="Maintenance">
-           <div class="maintenance-container" *ngIf="store.maintenanceEnabled(); else maintenanceDisabled">
+          @if (store.maintenanceEnabled()) {
+            <div class="maintenance-container">
               <div class="maintenance-header">
                 <app-maintenance-badge [machine]="data.machine" [showLabel]="true" />
                 <span class="spacer"></span>
-                <mat-slide-toggle 
+                <mat-slide-toggle
                   [(ngModel)]="maintenanceEnabled"
                   color="primary">
                   Enable Maintenance Tracking
                 </mat-slide-toggle>
               </div>
-
-              <div class="config-section" *ngIf="maintenanceEnabled">
-                <h3>Schedule</h3>
-                <p class="hint">Edit the maintenance schedule JSON configuration.</p>
-                <textarea 
-                  class="json-editor" 
-                  [(ngModel)]="scheduleJsonString" 
-                  spellcheck="false">
-                </textarea>
-                
-                <div class="actions">
-                  <button mat-stroked-button (click)="resetSchedule()">Reset to Default</button>
-                  <button mat-flat-button color="primary" (click)="saveMaintenanceSettings()" [disabled]="isSaving">
-                    {{ isSaving ? 'Saving...' : 'Save Changes' }}
-                  </button>
+              @if (maintenanceEnabled) {
+                <div class="config-section">
+                  <h3>Schedule</h3>
+                  <p class="hint">Edit the maintenance schedule JSON configuration.</p>
+                  <textarea
+                    class="json-editor"
+                    [(ngModel)]="scheduleJsonString"
+                    spellcheck="false">
+                  </textarea>
+                  <div class="actions">
+                    <button mat-stroked-button (click)="resetSchedule()">Reset to Default</button>
+                    <button mat-flat-button color="primary" (click)="saveMaintenanceSettings()" [disabled]="isSaving">
+                      {{ isSaving ? 'Saving...' : 'Save Changes' }}
+                    </button>
+                  </div>
                 </div>
-              </div>
-              
-              <div class="history-section" *ngIf="maintenanceEnabled">
-                 <h3>Recent History</h3>
-                 <div class="history-list">
-                    <div *ngFor="let entry of historyEntries" class="history-item">
+              }
+              @if (maintenanceEnabled) {
+                <div class="history-section">
+                  <h3>Recent History</h3>
+                  <div class="history-list">
+                    @for (entry of historyEntries; track entry) {
+                      <div class="history-item">
                         <mat-icon class="text-green-500">check_circle</mat-icon>
                         <div class="history-details">
-                            <span class="type">{{ entry.type | titlecase }}</span>
-                            <span class="date">{{ entry.completed_at | date:'medium' }}</span>
+                          <span class="type">{{ entry.type | titlecase }}</span>
+                          <span class="date">{{ entry.completed_at | date:'medium' }}</span>
                         </div>
-                    </div>
-                    <p *ngIf="historyEntries.length === 0" class="no-history">No maintenance history recorded.</p>
-                 </div>
-              </div>
-
-              <div class="disabled-msg" *ngIf="!maintenanceEnabled">
-                 <mat-icon>off</mat-icon>
-                 <p>Maintenance tracking is disabled for this machine.</p>
-              </div>
-           </div>
-
-           <ng-template #maintenanceDisabled>
-              <div class="global-disabled-msg">
-                 <mat-icon>settings_off</mat-icon>
-                 <h3>Maintenance Tracking Globally Disabled</h3>
-                 <p>Enable maintenance tracking in <span class="link" (click)="dialogRef.close()">Settings</span> to manage schedules.</p>
-              </div>
-           </ng-template>
+                      </div>
+                    }
+                    @if (historyEntries.length === 0) {
+                      <p class="no-history">No maintenance history recorded.</p>
+                    }
+                  </div>
+                </div>
+              }
+              @if (!maintenanceEnabled) {
+                <div class="disabled-msg">
+                  <mat-icon>off</mat-icon>
+                  <p>Maintenance tracking is disabled for this machine.</p>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="global-disabled-msg">
+              <mat-icon>settings_off</mat-icon>
+              <h3>Maintenance Tracking Globally Disabled</h3>
+              <p>Enable maintenance tracking in <span class="link" (click)="dialogRef.close()">Settings</span> to manage schedules.</p>
+            </div>
+          }
+    
         </mat-tab>
       </mat-tab-group>
     </mat-dialog-content>
-
+    
     <mat-dialog-actions align="end">
       <button mat-button (click)="dialogRef.close()">Close</button>
       <button mat-button color="primary" [mat-dialog-close]="'edit'">
         <mat-icon>edit</mat-icon> Edit
       </button>
     </mat-dialog-actions>
-  `,
+    `,
   styles: [`
     .title-container {
       display: flex;

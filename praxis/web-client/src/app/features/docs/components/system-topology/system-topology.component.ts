@@ -1,5 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatTabsModule } from '@angular/material/tabs';
 import { MarkdownModule } from 'ngx-markdown';
 import { AppStore } from '../../../../core/store/app.store';
@@ -7,7 +7,7 @@ import { AppStore } from '../../../../core/store/app.store';
 @Component({
   selector: 'app-system-topology',
   standalone: true,
-  imports: [CommonModule, MatTabsModule, MarkdownModule],
+  imports: [MatTabsModule, MarkdownModule],
   template: `
     <div class="system-topology surface-elevated">
       <div class="header">

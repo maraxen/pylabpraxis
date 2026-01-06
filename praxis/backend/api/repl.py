@@ -1,9 +1,10 @@
 import builtins
 import contextlib
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import aiofiles
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
@@ -102,7 +103,7 @@ class SaveSessionRequest(BaseModel):
 async def save_session(request: SaveSessionRequest):
   """Save the current session history as a protocol."""
   try:
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"repl_session_{timestamp}.py"
     file_path = Path("praxis/protocols") / filename
 
@@ -110,7 +111,7 @@ async def save_session(request: SaveSessionRequest):
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
     content = [
-      f"# REPL Session saved at {datetime.now().isoformat()}",
+      f"# REPL Session saved at {datetime.now(timezone.utc).isoformat()}",
       "# strict: true",  # default to strict for safety
       "",
       "from pylabrobot.liquid_handling import LiquidHandler",
@@ -119,29 +120,15 @@ async def save_session(request: SaveSessionRequest):
       "async def protocol(lh: LiquidHandler):",
     ]
 
-    # Add indented history
-    for line in reversed(request.history):  # History is usually stored newest-first in frontend
-      # Frontend sends it ordered? Let's assume standard ordering from frontend request.
-      # Wait, ReplComponent.history is unshift'ed (newest first).
-      # We should document expectation or reverse it here if needed.
-      # Actually, let's checking Frontend imp: `this.history.unshift(code)`.
-      # So index 0 is newest. We need to reverse it to get chronological order.
-      pass
-
-    # Direct list reverse is better done in python logic than comment
+    # Add indented history (reversed since frontend stores newest-first)
     chronological_history = request.history[::-1]
+    content.extend(f"  {line}" for line in chronological_history)
 
-    for line in chronological_history:
-      # Simple indentation
-      # TODO: Handle multi-line strings properly if they are passed as single items?
-      # Usually REPL history items are single commands.
-      content.append(f"  {line}")
-
-    with open(file_path, "w") as f:
-      f.write("\n".join(content))
+    async with aiofiles.open(file_path, "w") as f:
+      await f.write("\n".join(content))
 
     return {"filename": filename, "path": str(file_path)}
 
   except Exception as e:
     logger.error(f"Error saving session: {e}")
-    raise HTTPException(status_code=500, detail=str(e))
+    raise HTTPException(status_code=500, detail=str(e)) from e

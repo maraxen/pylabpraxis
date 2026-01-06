@@ -11,11 +11,12 @@ the protocol and record operations to an `OperationRecorder`.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+  from collections.abc import Iterator
+
   from praxis.backend.core.tracing.recorder import OperationRecorder
 
 

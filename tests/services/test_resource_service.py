@@ -70,7 +70,7 @@ async def test_resource_service_create_duplicate_name(db_session: AsyncSession) 
         asset_type=AssetType.RESOURCE,
     )
 
-    with pytest.raises((IntegrityError, UniqueViolationError)):
+    with pytest.raises(ValueError, match="Database integrity error"):
         await resource_service.create(db_session, obj_in=resource_data2)
 
 

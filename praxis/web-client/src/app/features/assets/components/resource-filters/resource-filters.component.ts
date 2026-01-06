@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -28,7 +28,6 @@ export interface ResourceFilterState {
   selector: 'app-resource-filters',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     MatSelectModule,
     MatFormFieldModule,
@@ -38,7 +37,7 @@ export interface ResourceFilterState {
     MatButtonToggleModule,
     MatSlideToggleModule,
     MatInputModule
-  ],
+],
   template: `
     <div class="filters-container flex flex-wrap items-center gap-4 p-4 rounded-xl border border-[var(--theme-border)] bg-surface-container mb-4">
       

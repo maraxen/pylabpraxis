@@ -1,11 +1,11 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { PlotlyModule } from 'angular-plotly.js';
 
 @Component({
     selector: 'app-telemetry-chart',
     standalone: true,
-    imports: [CommonModule, PlotlyModule],
+    imports: [PlotlyModule],
     template: `
     <div class="chart-container">
       <plotly-plot

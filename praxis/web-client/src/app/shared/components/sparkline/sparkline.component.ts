@@ -1,16 +1,18 @@
 import { Component, Input, computed, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 @Component({
     selector: 'app-sparkline',
     standalone: true,
-    imports: [CommonModule],
+    imports: [],
     template: `
     <svg [attr.viewBox]="viewBox()" class="sparkline-svg" preserveAspectRatio="none">
       <path [attr.d]="pathCheck()" [attr.stroke]="color" fill="none" class="sparkline-path" />
-      <circle *ngIf="lastPoint()" [attr.cx]="lastPoint()?.x" [attr.cy]="lastPoint()?.y" r="3" [attr.fill]="color" />
+      @if (lastPoint()) {
+        <circle [attr.cx]="lastPoint()?.x" [attr.cy]="lastPoint()?.y" r="3" [attr.fill]="color" />
+      }
     </svg>
-  `,
+    `,
     styles: [`
     :host {
       display: block;

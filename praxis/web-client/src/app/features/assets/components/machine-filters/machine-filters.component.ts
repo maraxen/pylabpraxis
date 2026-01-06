@@ -1,5 +1,5 @@
 import { Component, input, output, signal, computed, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatChipsModule } from '@angular/material/chips';
@@ -38,17 +38,16 @@ export interface MachineFilterState {
     selector: 'app-machine-filters',
     standalone: true,
     imports: [
-        CommonModule,
-        FormsModule,
-        MatFormFieldModule,
-        MatChipsModule,
-        MatIconModule,
-        MatButtonModule,
-        MatButtonToggleModule,
-        MatSlideToggleModule,
-        MatSelectModule,
-        MatInputModule,
-    ],
+    FormsModule,
+    MatFormFieldModule,
+    MatChipsModule,
+    MatIconModule,
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatSlideToggleModule,
+    MatSelectModule,
+    MatInputModule
+],
     template: `
     <div class="filters-container">
       <!-- Search Input -->

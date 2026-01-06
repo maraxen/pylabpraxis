@@ -1,6 +1,6 @@
 
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -23,7 +23,6 @@ type Theme = 'light' | 'dark' | 'system';
   selector: 'app-settings',
   standalone: true,
   imports: [
-    CommonModule,
     MatCardModule,
     MatButtonToggleModule,
     MatIconModule,
@@ -33,7 +32,7 @@ type Theme = 'light' | 'dark' | 'system';
     MatExpansionModule,
     MatButtonModule,
     MatDividerModule
-  ],
+],
   template: `
     <div class="p-6">
       <h1 class="text-3xl font-bold mb-6">Settings</h1>

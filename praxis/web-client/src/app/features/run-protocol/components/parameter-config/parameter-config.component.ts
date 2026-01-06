@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, Input, OnChanges, SimpleChanges, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ReactiveFormsModule, FormGroup } from '@angular/forms';
 import { FormlyModule, FormlyFieldConfig } from '@ngx-formly/core';
 import { MatDividerModule } from '@angular/material/divider';
@@ -9,11 +9,10 @@ import { ProtocolDefinition, ParameterMetadata } from '../../../protocols/models
   selector: 'app-parameter-config',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     FormlyModule,
     MatDividerModule
-  ],
+],
   template: `
     <div class="parameter-config-container">
       @if (hasParameters()) {

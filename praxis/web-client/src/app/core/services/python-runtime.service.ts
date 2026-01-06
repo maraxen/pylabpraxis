@@ -105,26 +105,25 @@ export class PythonRuntimeService implements ReplRuntime {
     const id = crypto.randomUUID();
     const worker = this.worker; // Capture for closure
     return new Promise((resolve) => {
-      let timeoutId: ReturnType<typeof setTimeout>;
-
-      const handler = ({ data }: MessageEvent) => {
-        if (data.id === id && data.type === 'COMPLETE_RESULT') {
+      return new Promise((resolve) => {
+        const timeoutId = setTimeout(() => {
           worker?.removeEventListener('message', handler);
-          clearTimeout(timeoutId);
-          // Matches are now CompletionItem[] from the updated worker
-          const matches = data.payload.matches || [];
-          resolve(matches);
-        }
-      };
+          resolve([]);
+        }, 5000);
 
-      worker!.addEventListener('message', handler);
-      worker!.postMessage({ type: 'COMPLETE', id, payload: { code } });
+        const handler = ({ data }: MessageEvent) => {
+          if (data.id === id && data.type === 'COMPLETE_RESULT') {
+            worker?.removeEventListener('message', handler);
+            clearTimeout(timeoutId);
+            // Matches are now CompletionItem[] from the updated worker
+            const matches = data.payload.matches || [];
+            resolve(matches);
+          }
+        };
 
-      // Timeout
-      timeoutId = setTimeout(() => {
-        worker?.removeEventListener('message', handler);
-        resolve([]);
-      }, 5000);
+        worker!.addEventListener('message', handler);
+        worker!.postMessage({ type: 'COMPLETE', id, payload: { code } });
+      });
     });
   }
 
@@ -134,23 +133,23 @@ export class PythonRuntimeService implements ReplRuntime {
     const id = crypto.randomUUID();
     const worker = this.worker;
     return new Promise((resolve) => {
-      let timeoutId: ReturnType<typeof setTimeout>;
-
-      const handler = ({ data }: MessageEvent) => {
-        if (data.id === id && data.type === 'SIGNATURE_RESULT') {
+      return new Promise((resolve) => {
+        const timeoutId = setTimeout(() => {
           worker?.removeEventListener('message', handler);
-          clearTimeout(timeoutId);
-          resolve(data.payload.signatures || []);
-        }
-      };
+          resolve([]);
+        }, 5000);
 
-      worker!.addEventListener('message', handler);
-      worker!.postMessage({ type: 'SIGNATURES', id, payload: { code } });
+        const handler = ({ data }: MessageEvent) => {
+          if (data.id === id && data.type === 'SIGNATURE_RESULT') {
+            worker?.removeEventListener('message', handler);
+            clearTimeout(timeoutId);
+            resolve(data.payload.signatures || []);
+          }
+        };
 
-      timeoutId = setTimeout(() => {
-        worker?.removeEventListener('message', handler);
-        resolve([]);
-      }, 5000);
+        worker!.addEventListener('message', handler);
+        worker!.postMessage({ type: 'SIGNATURES', id, payload: { code } });
+      });
     });
   }
 

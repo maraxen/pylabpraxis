@@ -4,6 +4,29 @@ This document tracks known technical debt items that need future attention.
 
 ---
 
+## Test Factory ORM Integration Issues
+
+**Added:** 2026-01-06
+**Priority:** High
+**Area:** Testing - Factory Boy / SQLAlchemy Integration
+
+**Issue:**
+`FunctionDataOutputFactory` and related factories in `tests/factories.py` fail to correctly populate foreign key fields when creating ORM instances. This causes `NOT NULL constraint failed` errors for `function_data_outputs.function_call_log_accession_id` across the `tests/services/test_well_outputs.py` test suite.
+
+**Root Cause:**
+SQLAlchemy's dataclass-style ORM mapping requires `kw_only=True` for non-default fields that appear after default fields. The factories use `factory.SubFactory` and `factory.LazyAttribute` to create dependencies, but these don't properly flush to the database before the dependent ORM is created.
+
+**Handoff Prompt:**
+See `.agents/prompts/backend_test_debug_well_outputs.md` for detailed debugging notes and next steps.
+
+**Files Affected:**
+
+- `tests/services/test_well_outputs.py`
+- `tests/factories.py` (FunctionDataOutputFactory, FunctionCallLogFactory, WellDataOutputFactory)
+- `praxis/backend/models/orm/outputs.py` (FunctionDataOutputOrm, WellDataOutputOrm)
+
+---
+
 ## Asset API Restructuring (Registry vs Inventory)
 
 **Added:** 2026-01-02

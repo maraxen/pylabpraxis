@@ -212,19 +212,21 @@ exclude = ["praxis/backend/commons", "tests", "alembic", "alembic_old", "scripts
 select = ["ALL"]
 ignore = [
     "D211", "D213",
-    "D100", "D101", "D102", "D103", "D104", "D107", # Missing docstrings
+    "D100", "D101", "D102", "D103", "D104", "D105", "D107", # Missing docstrings
+    "D401", # First line of docstring should be in imperative mood
     "ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "ANN204", "ANN401", # Type annotations
     "FBT001", "FBT002", "FBT003", # Boolean trap
     "PLR0913", "PLR0915", "PLR0912", "PLR0911", "C901", # Complexity
+    "PLR2004", # Magic value used in comparison
     "PTH123", "PTH118", "PTH120", "PTH103", "PTH100", "PTH110", "PTH112", # Pathlib usage
     "TD002", "TD003", "FIX002", # TODOs
-    "S110", # Try-Except-Pass
+    "S106", "S110", # Password/token false positives, Try-Except-Pass
     "E501", # Line too long
     "COM812", "D203", # Format conflicts
     "PGH003", # Blanket type ignore
     "BLE001", # Blind exception catch
     "FAST001", "FAST002", "B008", # FastAPI rules
-    "ARG002", # Unused arguments
+    "ARG001", "ARG002", # Unused arguments
     "SLF001", # Private member access
     "TRY300", "TRY301", "TRY400", "TRY401", "TID252", # Relative imports
     "ERA001", # Commented out code
@@ -232,11 +234,21 @@ ignore = [
     "PYI063", # PEP 570 positional-only parameters
     "RUF012", # ClassVar annotation
     "RUF022", # __all__ sort
+    "RUF001", "RUF002", # Ambiguous unicode characters
     "PERF203", "PERF403", # Perf
+    "SIM102", "SIM115", # Nested if statements, context manager for file
+    "N818", # Exception naming convention
+    "TRY004", # Prefer TypeError
+    "ARG005", # Unused lambda argument
+    "PLW0603", # Using global statement
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+"praxis/backend/services/mock_data_generator.py" = ["S311"]  # Pseudo-random OK for mock data
+"praxis/backend/utils/plr_static_analysis/cache.py" = ["S324"]  # MD5 OK for cache keys
+"praxis/backend/services/state_resolution_service.py" = ["E402"]  # Late imports for Pydantic models
+"praxis/backend/main.py" = ["E402"]  # Late imports for FastAPI app setup
 
 [tool.ruff.format]
 indent-style = "space"

@@ -485,7 +485,8 @@ class SimulationState:
     """Promote from boolean to symbolic state."""
     bool_state = self.liquid_state
     if not isinstance(bool_state, BooleanLiquidState):
-      raise ValueError("Expected BooleanLiquidState for promotion")
+      msg = "Expected BooleanLiquidState for promotion"
+      raise ValueError(msg)
 
     sym_state = SymbolicLiquidState()
 
@@ -546,7 +547,7 @@ class SimulationState:
   def copy(self) -> SimulationState:
     """Create a copy of this state."""
     liquid_copy: LiquidStateType
-    if isinstance(self.liquid_state, BooleanLiquidState) or isinstance(self.liquid_state, SymbolicLiquidState):
+    if isinstance(self.liquid_state, BooleanLiquidState | SymbolicLiquidState):
       liquid_copy = self.liquid_state.copy()
     else:
       liquid_copy = self.liquid_state.copy()

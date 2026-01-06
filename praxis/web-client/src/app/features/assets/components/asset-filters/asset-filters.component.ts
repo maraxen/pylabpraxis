@@ -1,5 +1,5 @@
 import { Component, inject, signal, output, OnInit, input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -33,7 +33,6 @@ export interface AssetFilterState {
   selector: 'app-asset-filters',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     MatSelectModule,
     MatFormFieldModule,
@@ -42,7 +41,7 @@ export interface AssetFilterState {
     MatButtonModule,
     MatButtonToggleModule,
     MatSlideToggleModule
-  ],
+],
   template: `
     <div class="filters-container flex flex-wrap items-center gap-4 p-4 rounded-xl border border-[var(--theme-border)] bg-surface-container mb-2">
       

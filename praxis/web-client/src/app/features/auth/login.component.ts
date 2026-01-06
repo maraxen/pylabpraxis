@@ -1,5 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -10,11 +10,10 @@ import { isBrowserModeEnv } from '../../core/services/mode.service';
   selector: 'app-login',
   standalone: true,
   imports: [
-    CommonModule,
     RouterLink,
     MatCardModule,
     MatProgressSpinnerModule
-  ],
+],
   template: `
     <div class="login-container">
       <div class="login-card">
@@ -27,25 +26,29 @@ import { isBrowserModeEnv } from '../../core/services/mode.service';
           <h1 class="app-title">Praxis</h1>
           <p class="app-subtitle">Laboratory Automation Platform</p>
         </div>
-
+    
         <mat-card class="glass-card">
           <mat-card-content>
-            <div class="loading-content" *ngIf="loading && !error">
-              <mat-spinner diameter="40"></mat-spinner>
-              <p class="loading-text">Redirecting to login...</p>
-            </div>
-
-            <div class="error-content" *ngIf="error" style="text-align: center; color: #ff6b6b;">
-              <p>{{ error }}</p>
-              <button mat-button (click)="retryLogin()" style="color: white; border: 1px solid white; padding: 0.5rem 1rem; margin-top: 1rem; cursor: pointer; background: transparent; border-radius: 4px;">
-                Retry Login
-              </button>
-            </div>
+            @if (loading && !error) {
+              <div class="loading-content">
+                <mat-spinner diameter="40"></mat-spinner>
+                <p class="loading-text">Redirecting to login...</p>
+              </div>
+            }
+    
+            @if (error) {
+              <div class="error-content" style="text-align: center; color: #ff6b6b;">
+                <p>{{ error }}</p>
+                <button mat-button (click)="retryLogin()" style="color: white; border: 1px solid white; padding: 0.5rem 1rem; margin-top: 1rem; cursor: pointer; background: transparent; border-radius: 4px;">
+                  Retry Login
+                </button>
+              </div>
+            }
           </mat-card-content>
         </mat-card>
       </div>
     </div>
-  `,
+    `,
   styles: [`
     :host {
       display: block;

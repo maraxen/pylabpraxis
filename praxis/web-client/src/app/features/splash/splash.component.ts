@@ -1,5 +1,5 @@
 import { Component, signal, effect, inject, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,12 +11,11 @@ import { AppStore } from '../../core/store/app.store';
   selector: 'app-splash',
   standalone: true,
   imports: [
-    CommonModule,
     RouterLink,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule
-  ],
+],
   template: `
     <div class="splash-container" [class.light-mode]="isLightTheme()">
       <!-- Theme toggle button -->

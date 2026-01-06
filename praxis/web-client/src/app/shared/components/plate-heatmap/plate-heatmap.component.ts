@@ -1,5 +1,5 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
-import { NgFor, NgStyle } from '@angular/common';
+import { NgStyle } from '@angular/common';
 
 // Define the type for the input data for better type safety.
 export type PlateData = { [well: string]: number };
@@ -7,7 +7,7 @@ export type PlateData = { [well: string]: number };
 @Component({
   selector: 'app-plate-heatmap',
   standalone: true,
-  imports: [NgFor, NgStyle],
+  imports: [NgStyle],
   templateUrl: './plate-heatmap.component.html',
   styleUrls: ['./plate-heatmap.component.scss'],
 })

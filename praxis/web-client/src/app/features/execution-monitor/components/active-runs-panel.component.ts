@@ -1,5 +1,5 @@
 import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,13 +19,12 @@ import { RunSummary } from '../models/monitor.models';
     selector: 'app-active-runs-panel',
     standalone: true,
     imports: [
-        CommonModule,
-        RouterLink,
-        MatCardModule,
-        MatIconModule,
-        MatButtonModule,
-        MatProgressSpinnerModule,
-    ],
+    RouterLink,
+    MatCardModule,
+    MatIconModule,
+    MatButtonModule,
+    MatProgressSpinnerModule
+],
     template: `
     <mat-card class="active-runs-card">
       <mat-card-header>

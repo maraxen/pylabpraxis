@@ -8,20 +8,23 @@ that cannot be fully analyzed statically.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from praxis.backend.core.tracing.recorder import OperationRecorder
 from praxis.backend.core.tracing.tracers import (
   TracedMachine,
   TracedResource,
 )
-from praxis.backend.utils.plr_static_analysis.models import ProtocolComputationGraph
 from praxis.backend.utils.plr_static_analysis.resource_hierarchy import (
   DeckLayoutType,
   get_parental_chain,
 )
 from praxis.common.type_inspection import extract_resource_types
+
+if TYPE_CHECKING:
+  from collections.abc import Callable
+
+  from praxis.backend.utils.plr_static_analysis.models import ProtocolComputationGraph
 
 # =============================================================================
 # Exceptions

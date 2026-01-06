@@ -1,5 +1,5 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
-import { CommonModule, Location } from '@angular/common';
+import { Location } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -24,7 +24,6 @@ import { StateHistoryTimelineComponent } from './state-history-timeline';
   selector: 'app-run-detail',
   standalone: true,
   imports: [
-    CommonModule,
     RouterLink,
     MatCardModule,
     MatIconModule,
@@ -36,8 +35,8 @@ import { StateHistoryTimelineComponent } from './state-history-timeline';
     NgxSkeletonLoaderModule,
     StateInspectorComponent,
     StateDisplayComponent,
-    StateHistoryTimelineComponent,
-  ],
+    StateHistoryTimelineComponent
+],
   template: `
     <div class="p-6 max-w-screen-xl mx-auto">
       <!-- Header -->

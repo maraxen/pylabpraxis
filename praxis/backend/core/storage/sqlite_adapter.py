@@ -17,6 +17,7 @@ Usage:
 """
 
 import asyncio
+import contextlib
 import fnmatch
 import json
 import logging
@@ -268,10 +269,8 @@ class SqliteKeyValueStore:
 
     if self._cleanup_task is not None:
       self._cleanup_task.cancel()
-      try:
+      with contextlib.suppress(asyncio.CancelledError):
         await self._cleanup_task
-      except asyncio.CancelledError:
-        pass
 
     if self._conn is not None:
       await self._conn.close()

@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatChipsModule } from '@angular/material/chips';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,21 +14,23 @@ export interface ChipOption {
 @Component({
   selector: 'app-facet-chip-carousel',
   standalone: true,
-  imports: [CommonModule, MatChipsModule, MatButtonModule, MatIconModule, MatTooltipModule],
+  imports: [MatChipsModule, MatButtonModule, MatIconModule, MatTooltipModule],
   template: `
     <div class="facet-carousel">
       <div class="label-group">
         <span class="facet-label">{{ label }}:</span>
-        <button *ngIf="allowInvert" 
-                mat-icon-button 
-                class="invert-btn"
-                [class.active]="inverted"
-                (click)="toggleInvert()"
-                [matTooltip]="inverted ? 'Switch to Include' : 'Switch to Exclude'">
-          <mat-icon>{{ inverted ? 'filter_alt_off' : 'filter_alt' }}</mat-icon>
-        </button>
+        @if (allowInvert) {
+          <button
+            mat-icon-button
+            class="invert-btn"
+            [class.active]="inverted"
+            (click)="toggleInvert()"
+            [matTooltip]="inverted ? 'Switch to Include' : 'Switch to Exclude'">
+            <mat-icon>{{ inverted ? 'filter_alt_off' : 'filter_alt' }}</mat-icon>
+          </button>
+        }
       </div>
-
+    
       <div class="chip-scroll-container" (mousedown)="startDrag($event)" (mouseleave)="stopDrag()" (mousemove)="onMouseMove($event)" (mouseup)="stopDrag()">
         <mat-chip-listbox [multiple]="multiple" (change)="onSelectionChange($event)">
           @for (option of options; track option.value) {
@@ -44,7 +46,7 @@ export interface ChipOption {
         </mat-chip-listbox>
       </div>
     </div>
-  `,
+    `,
   styles: [`
     :host { display: block; }
     

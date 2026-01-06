@@ -67,7 +67,7 @@ describe('LinkedSelectorService', () => {
 
         service.registerSelector(linkId, sourceId);
 
-        let receivedValues: number[][] = [];
+        const receivedValues: number[][] = [];
         service.getSelection$(linkId, sourceId).subscribe(val => {
             receivedValues.push(val);
         });

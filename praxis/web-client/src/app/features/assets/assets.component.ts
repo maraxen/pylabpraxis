@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, inject, ViewChild, signal, OnInit, OnDestroy, NgZone } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -24,7 +24,6 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
   selector: 'app-assets',
   standalone: true,
   imports: [
-    CommonModule,
     MatTabsModule,
     MatIconModule,
     MatButtonModule,
@@ -37,7 +36,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
     DefinitionsListComponent,
     AssetDashboardComponent,
     HardwareDiscoveryButtonComponent
-  ],
+],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col">
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">

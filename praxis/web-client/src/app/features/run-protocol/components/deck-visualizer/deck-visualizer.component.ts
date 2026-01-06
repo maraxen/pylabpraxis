@@ -17,28 +17,31 @@ import { DeckViewComponent } from '@shared/components/deck-view/deck-view.compon
           </button>
         }
       </div>
-
+    
       <div class="content-area">
         <div class="view-container" [class.has-inspector]="inspectedResource()">
-          <app-deck-view
-            *ngIf="data()"
-            [resource]="data()!.resource"
-            [state]="data()!.state"
-            (resourceSelected)="onResourceSelected($event)">
-          </app-deck-view>
-          
-          <div *ngIf="!data()" class="empty-state">
-            No deck data available
-          </div>
+          @if (data()) {
+            <app-deck-view
+              [resource]="data()!.resource"
+              [state]="data()!.state"
+              (resourceSelected)="onResourceSelected($event)">
+            </app-deck-view>
+          }
+    
+          @if (!data()) {
+            <div class="empty-state">
+              No deck data available
+            </div>
+          }
         </div>
-
+    
         <!-- Inspector Panel -->
         @if (inspectedResource(); as res) {
           <div class="inspector-panel">
             <div class="inspector-header">
               <h5>Resource Inspector</h5>
             </div>
-            
+    
             <div class="inspector-content">
               <div class="inspector-section">
                 <div class="section-title">Identity</div>
@@ -63,7 +66,7 @@ import { DeckViewComponent } from '@shared/components/deck-view/deck-view.compon
                   </div>
                 }
               </div>
-
+    
               <div class="inspector-section">
                 <div class="section-title">Location</div>
                 <div class="property-row">
@@ -79,7 +82,7 @@ import { DeckViewComponent } from '@shared/components/deck-view/deck-view.compon
                   <span class="property-value">{{ res.location.z | number:'1.2-2' }} mm</span>
                 </div>
               </div>
-
+    
               <div class="inspector-section">
                 <div class="section-title">Dimensions</div>
                 <div class="property-row">
@@ -95,7 +98,7 @@ import { DeckViewComponent } from '@shared/components/deck-view/deck-view.compon
                   <span class="property-value">{{ res.dimensions.z | number:'1.1-1' }} mm</span>
                 </div>
               </div>
-
+    
               @if (res.volume !== undefined || res.maxVolume !== undefined || res.hasTip !== undefined) {
                 <div class="inspector-section">
                   <div class="section-title">State</div>
@@ -132,7 +135,7 @@ import { DeckViewComponent } from '@shared/components/deck-view/deck-view.compon
         }
       </div>
     </div>
-  `,
+    `,
   styles: [`
     :host {
       display: block;

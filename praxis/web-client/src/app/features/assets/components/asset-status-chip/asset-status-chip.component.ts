@@ -1,5 +1,5 @@
 import { Component, Input, ChangeDetectionStrategy, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
@@ -31,7 +31,7 @@ interface StatusConfig {
 @Component({
     selector: 'app-asset-status-chip',
     standalone: true,
-    imports: [CommonModule, MatChipsModule, MatTooltipModule, MatIconModule],
+    imports: [MatChipsModule, MatTooltipModule, MatIconModule],
     template: `
     <mat-chip
       [class]="config().cssClass"

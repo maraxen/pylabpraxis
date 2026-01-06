@@ -1,5 +1,5 @@
 import { Component, Input, Output, EventEmitter, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,13 +21,12 @@ import { SetupInstruction } from '../../../protocols/models/protocol.models';
     selector: 'app-setup-instructions',
     standalone: true,
     imports: [
-        CommonModule,
-        FormsModule,
-        MatCheckboxModule,
-        MatIconModule,
-        MatTooltipModule,
-        MatChipsModule,
-    ],
+    FormsModule,
+    MatCheckboxModule,
+    MatIconModule,
+    MatTooltipModule,
+    MatChipsModule
+],
     template: `
     @if (instructions && instructions.length > 0) {
       <div class="setup-instructions-panel">

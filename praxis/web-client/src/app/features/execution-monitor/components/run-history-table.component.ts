@@ -1,5 +1,5 @@
 import { Component, inject, signal, input, effect, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -20,7 +20,6 @@ import { FilterState } from './run-filters.component';
   selector: 'app-run-history-table',
   standalone: true,
   imports: [
-    CommonModule,
     RouterLink,
     MatTableModule,
     MatPaginatorModule,
@@ -28,8 +27,8 @@ import { FilterState } from './run-filters.component';
     MatButtonModule,
     MatProgressSpinnerModule,
     MatChipsModule,
-    NgxSkeletonLoaderModule,
-  ],
+    NgxSkeletonLoaderModule
+],
   template: `
     <div class="history-container">
       <div class="flex items-center justify-between mb-4">

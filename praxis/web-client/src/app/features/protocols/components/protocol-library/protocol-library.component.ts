@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,7 +19,6 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; /
   selector: 'app-protocol-library',
   standalone: true,
   imports: [
-    CommonModule,
     MatTableModule,
     MatIconModule,
     MatButtonModule,
@@ -28,8 +27,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; /
     MatFormFieldModule,
     MatDialogModule,
     ReactiveFormsModule,
-    MatProgressSpinnerModule // Add MatProgressSpinnerModule
-  ],
+    MatProgressSpinnerModule
+],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col">
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">

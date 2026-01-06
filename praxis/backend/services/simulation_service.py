@@ -14,11 +14,8 @@ from __future__ import annotations
 import importlib
 import inspect
 import logging
-from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any
-
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import TYPE_CHECKING, Any
 
 from praxis.backend.core.protocol_cache import (
   CacheValidationError,
@@ -32,7 +29,13 @@ from praxis.backend.core.simulation import (
   ProtocolSimulator,
   is_cache_valid,
 )
-from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm
+
+if TYPE_CHECKING:
+  from collections.abc import Callable
+
+  from sqlalchemy.ext.asyncio import AsyncSession
+
+  from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm
 
 logger = logging.getLogger(__name__)
 

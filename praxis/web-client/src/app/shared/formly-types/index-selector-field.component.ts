@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, OnInit, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ReactiveFormsModule } from '@angular/forms';
 import { FieldType, FieldTypeConfig, FormlyModule } from '@ngx-formly/core';
 import {
@@ -29,18 +29,21 @@ import {
     selector: 'app-index-selector-field',
     standalone: true,
     imports: [
-        CommonModule,
-        ReactiveFormsModule,
-        FormlyModule,
-        IndexSelectorComponent,
-    ],
+    ReactiveFormsModule,
+    FormlyModule,
+    IndexSelectorComponent
+],
     template: `
     <div class="index-selector-field-wrapper">
-      <label class="field-label" *ngIf="props.label">
-        {{ props.label }}
-        <span class="required-indicator" *ngIf="props.required">*</span>
-      </label>
-
+      @if (props.label) {
+        <label class="field-label">
+          {{ props.label }}
+          @if (props.required) {
+            <span class="required-indicator">*</span>
+          }
+        </label>
+      }
+    
       <app-index-selector
         [spec]="resourceSpec()"
         [selectedIndices]="selectedIndices()"
@@ -49,16 +52,20 @@ import {
         (selectionChange)="onSelectionChange($event)"
         (wellIdsChange)="onWellIdsChange($event)"
       ></app-index-selector>
-
-      <div class="field-description" *ngIf="props.description">
-        {{ props.description }}
-      </div>
-
-      <div class="field-error" *ngIf="showError">
-        <formly-validation-message [field]="field"></formly-validation-message>
-      </div>
+    
+      @if (props.description) {
+        <div class="field-description">
+          {{ props.description }}
+        </div>
+      }
+    
+      @if (showError) {
+        <div class="field-error">
+          <formly-validation-message [field]="field"></formly-validation-message>
+        </div>
+      }
     </div>
-  `,
+    `,
     styles: [`
     .index-selector-field-wrapper {
       margin-bottom: 16px;

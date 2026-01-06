@@ -27,6 +27,9 @@ CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
 
+from sqlalchemy import Enum as SAEnumType
+
+
 class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
   """Generic CRUD base class for SQLAlchemy models."""
 
@@ -84,7 +87,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
   async def create(self, db: AsyncSession, *, obj_in: CreateSchemaType) -> ModelType:
     """Create a new object."""
-    obj_in_data = jsonable_encoder(obj_in)
+    obj_in_data = obj_in.model_dump()
 
     # Get the valid constructor parameters for the ORM model
     init_signature = py_inspect.signature(self.model.__init__)
@@ -93,19 +96,31 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     # Filter the input data to include only keys that are valid constructor parameters
     filtered_data = {key: value for key, value in obj_in_data.items() if key in valid_params}
 
-    # Convert enum string values back to enum members for SQLAlchemy
-    # This is necessary because jsonable_encoder converts enums to strings
-    for attr_name, column in inspect(self.model).columns.items():
-      if attr_name in filtered_data and hasattr(column.type, "enum_class"):
-        enum_class = getattr(column.type, "enum_class", None)
-        if enum_class and issubclass(enum_class, enum.Enum):
-          value = filtered_data[attr_name]
-          if isinstance(value, str):
-            # Find the enum member with this value
-            for member in enum_class:
-              if member.value == value:
-                filtered_data[attr_name] = member
-                break
+    # Smart Enum conversion:
+    # 1. If value is Enum but column is NOT SAEnum (e.g. String), convert to value.
+    # 2. If value is NOT Enum (e.g. String) but column IS SAEnum, convert back to Enum object.
+    mapper = inspect(self.model)
+    for key, value in filtered_data.items():
+      col = mapper.columns.get(key)
+      if col is None:
+        continue
+
+      is_enum_col = isinstance(col.type, SAEnumType)
+      is_enum_val = isinstance(value, enum.Enum)
+
+      if is_enum_val and not is_enum_col:
+        # Convert Enum object to value (for String columns)
+        filtered_data[key] = value.value
+      elif not is_enum_val and is_enum_col:
+        # Convert value to Enum object (for SAEnum columns)
+        # Pydantic may have converted it to a string/int due to use_enum_values=True
+        enum_class = getattr(col.type, "enum_class", None)
+        if enum_class:
+          try:
+            filtered_data[key] = enum_class(value)
+          except (ValueError, TypeError):
+            # If value is invalid for the Enum, leave it as is; SQLAlchemy or DB will raise.
+            pass
 
     db_obj = self.model(**filtered_data)
     db.add(db_obj)
@@ -123,18 +138,25 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     """Update an existing object."""
     update_data = obj_in.model_dump(exclude_unset=True)
 
-    # Convert enum string values back to enum members for SQLAlchemy
-    for attr_name, column in inspect(self.model).columns.items():
-      if attr_name in update_data and hasattr(column.type, "enum_class"):
-        enum_class = getattr(column.type, "enum_class", None)
-        if enum_class and issubclass(enum_class, enum.Enum):
-          value = update_data[attr_name]
-          if isinstance(value, str):
-            # Find the enum member with this value
-            for member in enum_class:
-              if member.value == value:
-                update_data[attr_name] = member
-                break
+    # Smart Enum conversion for updates
+    mapper = inspect(self.model)
+    for key, value in update_data.items():
+      col = mapper.columns.get(key)
+      if col is None:
+        continue
+
+      is_enum_col = isinstance(col.type, SAEnumType)
+      is_enum_val = isinstance(value, enum.Enum)
+
+      if is_enum_val and not is_enum_col:
+        update_data[key] = value.value
+      elif not is_enum_val and is_enum_col:
+        enum_class = getattr(col.type, "enum_class", None)
+        if enum_class:
+          try:
+            update_data[key] = enum_class(value)
+          except (ValueError, TypeError):
+            pass
 
     for field, value in update_data.items():
       setattr(db_obj, field, value)

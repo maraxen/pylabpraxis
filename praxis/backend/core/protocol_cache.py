@@ -16,12 +16,14 @@ from __future__ import annotations
 import hashlib
 import logging
 import sys
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import cloudpickle
+
+if TYPE_CHECKING:
+  from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -278,12 +280,11 @@ class ProtocolCache:
         )
 
     # Check source hash for staleness
-    if source_hash and current_source_hash:
-      if source_hash != current_source_hash:
-        return CacheValidationResult(
-          is_valid=False,
-          reason="Source code has changed since cache was created",
-        )
+    if source_hash and current_source_hash and source_hash != current_source_hash:
+      return CacheValidationResult(
+        is_valid=False,
+        reason="Source code has changed since cache was created",
+      )
 
     return CacheValidationResult(
       is_valid=True,
@@ -330,20 +331,25 @@ class ProtocolCache:
     try:
       func = cloudpickle.loads(bytecode)
     except ModuleNotFoundError as e:
-      raise DeserializationError(
+      msg = (
         f"Missing module: {e.name}. The cached function depends on a module "
-        f"that is not available in this environment.",
+        f"that is not available in this environment."
+      )
+      raise DeserializationError(
+        msg,
         e,
       ) from e
     except Exception as e:
+      msg = f"Cloudpickle deserialization failed: {type(e).__name__}"
       raise DeserializationError(
-        f"Cloudpickle deserialization failed: {type(e).__name__}",
+        msg,
         e,
       ) from e
 
     if not callable(func):
+      msg = f"Deserialized object is not callable: {type(func).__name__}"
       raise DeserializationError(
-        f"Deserialized object is not callable: {type(func).__name__}"
+        msg
       )
 
     return func
@@ -401,7 +407,8 @@ class TracerCache:
     try:
       return cloudpickle.dumps(state)
     except Exception as e:
-      raise SerializationError("tracer_state", e) from e
+      msg = "tracer_state"
+      raise SerializationError(msg, e) from e
 
   def deserialize_tracer_state(
     self,
@@ -422,8 +429,9 @@ class TracerCache:
     try:
       return cloudpickle.loads(bytecode)
     except Exception as e:
+      msg = "Failed to deserialize tracer state"
       raise DeserializationError(
-        "Failed to deserialize tracer state",
+        msg,
         e,
       ) from e
 

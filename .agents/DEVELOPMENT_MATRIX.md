@@ -1,6 +1,6 @@
 # Praxis Development Matrix
 
-**Last Updated**: 2026-01-05 (Roadmap Restructure)
+**Last Updated**: 2026-01-06 (Added Linting Work Item)
 **Purpose**: Consolidated view of all remaining work items with priority and difficulty ratings.
 
 ---
@@ -82,6 +82,7 @@
 
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
+| **Systematic Linting Fixes** | P2 | L | [linting_and_type_checking](./backlog/linting_and_type_checking.md) | 138 ruff errors, 10+ ty errors, ESLint setup |
 | **Code Quality Plan Execution** | P2 | XL | [code_quality_plan](./backlog/code_quality_plan.md) | Comprehensive quality strategy |
 | **E2E Tests - Execution** | P2 | M | [code_quality_plan](./backlog/code_quality_plan.md) | Browser mode execution tests |
 | **E2E Tests - Asset Management** | P2 | M | [code_quality_plan](./backlog/code_quality_plan.md) | CRUD operation tests |

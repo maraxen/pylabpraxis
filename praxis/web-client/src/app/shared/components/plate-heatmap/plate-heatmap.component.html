@@ -1,23 +1,29 @@
 <div class="plate-heatmap-container">
   <!-- Column Headers -->
-  <div class="column-header" *ngFor="let col of columns; let i = index" [ngStyle]="{ 'grid-column': i + 2 }">{{ col }}</div>
+  @for (col of columns; track col; let i = $index) {
+    <div class="column-header" [ngStyle]="{ 'grid-column': i + 2 }">{{ col }}</div>
+  }
 
   <!-- Row Headers -->
-  <div class="row-header" *ngFor="let row of rows; let i = index" [ngStyle]="{ 'grid-row': i + 2 }">{{ row }}</div>
+  @for (row of rows; track row; let i = $index) {
+    <div class="row-header" [ngStyle]="{ 'grid-row': i + 2 }">{{ row }}</div>
+  }
 
   <!-- Plate Grid -->
   <div class="plate-grid">
-    <div
-      *ngFor="let row of rows; let i = index"
-      class="plate-row"
-    >
+    @for (row of rows; track row; let i = $index) {
       <div
-        *ngFor="let col of columns; let j = index"
-        class="well"
-        [ngStyle]="{ 'background-color': getWellColor(plateGrid[i][j]) }"
-        [title]="getTooltip(row, col)"
-      >
+        class="plate-row"
+        >
+        @for (col of columns; track col; let j = $index) {
+          <div
+            class="well"
+            [ngStyle]="{ 'background-color': getWellColor(plateGrid[i][j]) }"
+            [title]="getTooltip(row, col)"
+            >
+          </div>
+        }
       </div>
-    </div>
+    }
   </div>
 </div>

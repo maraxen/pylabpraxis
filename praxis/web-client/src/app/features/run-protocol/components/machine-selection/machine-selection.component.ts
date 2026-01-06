@@ -1,7 +1,7 @@
 
 import { Component, ChangeDetectionStrategy, input, output, computed } from '@angular/core';
 import { MachineCardComponent } from '@shared/components/machine-card/machine-card.component';
-import { CommonModule } from '@angular/common';
+
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -23,13 +23,12 @@ export interface MachineCompatibility {
   selector: 'app-machine-selection',
   standalone: true,
   imports: [
-    CommonModule,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
     MatCardModule,
     MachineCardComponent
-  ],
+],
   template: `
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       @for (item of machines(); track item.machine.accession_id) {

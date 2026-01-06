@@ -1,22 +1,27 @@
 import { Component, Input, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
     selector: 'app-location-breadcrumb',
     standalone: true,
-    imports: [CommonModule, MatIconModule],
+    imports: [MatIconModule],
     template: `
-    <div class="breadcrumb-container" *ngIf="parts().length > 0; else noLocation">
-      <div *ngFor="let part of parts(); let last = last" class="breadcrumb-item">
-        <span class="part-text" [class.last]="last" [title]="part">{{ part }}</span>
-        <mat-icon *ngIf="!last" class="separator">chevron_right</mat-icon>
+    @if (parts().length > 0) {
+      <div class="breadcrumb-container">
+        @for (part of parts(); track part; let last = $last) {
+          <div class="breadcrumb-item">
+            <span class="part-text" [class.last]="last" [title]="part">{{ part }}</span>
+            @if (!last) {
+              <mat-icon class="separator">chevron_right</mat-icon>
+            }
+          </div>
+        }
       </div>
-    </div>
-    <ng-template #noLocation>
+    } @else {
       <span class="no-location">Unassigned</span>
-    </ng-template>
-  `,
+    }
+    `,
     styles: [`
     .breadcrumb-container {
       display: flex;

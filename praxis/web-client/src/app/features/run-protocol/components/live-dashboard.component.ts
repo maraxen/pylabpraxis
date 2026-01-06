@@ -37,7 +37,7 @@ import { Subscription } from 'rxjs';
           </span>
         </div>
       </div>
-
+    
       @if (executionService.currentRun(); as run) {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- Status Card -->
@@ -50,30 +50,32 @@ import { Subscription } from 'rxjs';
               <div class="flex items-center gap-2 mb-4">
                 <mat-chip-set>
                   <mat-chip [highlighted]="run.status === ExecutionStatus.RUNNING"
-                            [class.bg-green-100]="run.status === ExecutionStatus.COMPLETED"
-                            [class.bg-red-100]="run.status === ExecutionStatus.FAILED">
+                    [class.bg-green-100]="run.status === ExecutionStatus.COMPLETED"
+                    [class.bg-red-100]="run.status === ExecutionStatus.FAILED">
                     {{ run.status | uppercase }}
                   </mat-chip>
                 </mat-chip-set>
               </div>
-
+    
               <div class="mb-4">
                 <p class="text-sm text-gray-600 mb-1">Progress: {{ run.progress }}%</p>
                 <mat-progress-bar mode="determinate" [value]="run.progress"></mat-progress-bar>
               </div>
-
-              <p *ngIf="run.currentStep" class="text-sm">
-                <span class="text-gray-500">Current Step:</span> {{ run.currentStep }}
-              </p>
+    
+              @if (run.currentStep) {
+                <p class="text-sm">
+                  <span class="text-gray-500">Current Step:</span> {{ run.currentStep }}
+                </p>
+              }
             </mat-card-content>
             <mat-card-actions>
               <button mat-button color="warn" (click)="stopRun()"
-                      [disabled]="run.status !== ExecutionStatus.RUNNING">
+                [disabled]="run.status !== ExecutionStatus.RUNNING">
                 <mat-icon>stop</mat-icon> Stop
               </button>
             </mat-card-actions>
           </mat-card>
-
+    
           <!-- Log Output -->
           <mat-card class="glass-panel lg:col-span-2">
             <mat-card-header>
@@ -85,31 +87,32 @@ import { Subscription } from 'rxjs';
                   <div class="mb-1">{{ log }}</div>
                 }
                 @empty {
-                  <div class="text-gray-500">Waiting for log output...</div>
-                }
-              </div>
-            </mat-card-content>
-          </mat-card>
-        </div>
-  
-        <div class="mt-6">
-          <mat-card class="glass-panel">
-            <mat-card-header>
-              <mat-card-title>Live Telemetry</mat-card-title>
-            </mat-card-header>
-            <mat-card-content class="pt-4">
-              <app-telemetry-chart
-                [xData]="telemetryX"
-                [yData]="telemetryY"
-                title="Temperature Over Time"
-                yAxisTitle="Temperature (°C)">
-              </app-telemetry-chart>
-            </mat-card-content>
-          </mat-card>
-        </div>
-
-        <!-- Actions -->
-        <div class="mt-6 flex gap-2" *ngIf="run.status === ExecutionStatus.COMPLETED || run.status === ExecutionStatus.FAILED">
+                <div class="text-gray-500">Waiting for log output...</div>
+              }
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    
+      <div class="mt-6">
+        <mat-card class="glass-panel">
+          <mat-card-header>
+            <mat-card-title>Live Telemetry</mat-card-title>
+          </mat-card-header>
+          <mat-card-content class="pt-4">
+            <app-telemetry-chart
+              [xData]="telemetryX"
+              [yData]="telemetryY"
+              title="Temperature Over Time"
+              yAxisTitle="Temperature (°C)">
+            </app-telemetry-chart>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    
+      <!-- Actions -->
+      @if (run.status === ExecutionStatus.COMPLETED || run.status === ExecutionStatus.FAILED) {
+        <div class="mt-6 flex gap-2">
           <button mat-flat-button color="primary" routerLink="/run">
             <mat-icon>replay</mat-icon> Run Another
           </button>
@@ -117,17 +120,18 @@ import { Subscription } from 'rxjs';
             <mat-icon>home</mat-icon> Dashboard
           </button>
         </div>
-      } @else {
-        <mat-card class="glass-panel text-center py-12">
-          <mat-icon class="text-6xl text-gray-300 mb-4">play_disabled</mat-icon>
-          <p class="text-gray-500">No active execution</p>
-          <button mat-flat-button color="primary" routerLink="/run" class="mt-4">
-            Start New Run
-          </button>
-        </mat-card>
       }
+    } @else {
+      <mat-card class="glass-panel text-center py-12">
+        <mat-icon class="text-6xl text-gray-300 mb-4">play_disabled</mat-icon>
+        <p class="text-gray-500">No active execution</p>
+        <button mat-flat-button color="primary" routerLink="/run" class="mt-4">
+          Start New Run
+        </button>
+      </mat-card>
+    }
     </div>
-  `
+    `
 })
 export class LiveDashboardComponent implements OnDestroy {
   executionService = inject(ExecutionService);

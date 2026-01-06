@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, inject, signal, ViewChild, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -27,7 +27,6 @@ import { AppStore } from '../../../../core/store/app.store';
   selector: 'app-machine-list',
   standalone: true,
   imports: [
-    CommonModule,
     MatTableModule,
     MatIconModule,
     MatButtonModule,
@@ -42,7 +41,7 @@ import { AppStore } from '../../../../core/store/app.store';
     LocationBreadcrumbComponent,
     MachineFiltersComponent,
     MaintenanceBadgeComponent
-  ],
+],
   template: `
     <div class="machine-list-container">
       <app-machine-filters

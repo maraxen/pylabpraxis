@@ -4,7 +4,7 @@
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 import type {
   AssetType,

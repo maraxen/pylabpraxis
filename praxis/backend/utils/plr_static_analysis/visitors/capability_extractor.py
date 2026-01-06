@@ -148,10 +148,12 @@ class CapabilityExtractorVisitor(cst.CSTVisitor):
       return int(node.value, 0)
     if isinstance(node, cst.Float):
       return float(node.value)
-    if isinstance(node, (cst.SimpleString, cst.FormattedString, cst.ConcatenatedString)):
-      # Extract string value (simplified)
+    if isinstance(node, cst.SimpleString | cst.FormattedString | cst.ConcatenatedString):
+      # Extract string value using ast.literal_eval for safety
+      import ast
+
       try:
-        return eval(node.evaluated_value) if hasattr(node, "evaluated_value") else None
+        return ast.literal_eval(node.evaluated_value) if hasattr(node, "evaluated_value") else None
       except Exception:
         return None
     if isinstance(node, cst.Name):

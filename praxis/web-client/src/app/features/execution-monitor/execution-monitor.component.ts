@@ -1,5 +1,5 @@
 import { Component, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -16,14 +16,13 @@ import { RunStatsPanelComponent } from './components/run-stats-panel.component';
   selector: 'app-execution-monitor',
   standalone: true,
   imports: [
-    CommonModule,
     MatCardModule,
     MatIconModule,
     ActiveRunsPanelComponent,
     RunHistoryTableComponent,
     RunFiltersComponent,
-    RunStatsPanelComponent,
-  ],
+    RunStatsPanelComponent
+],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto">
       <!-- Header -->

@@ -1,45 +1,39 @@
 # Backlog: Linting and Type Checking
 
-Generated on: Fri Jan  2 10:38:44 EST 2026
+**Last Updated**: 2026-01-06
 
 ## Executive Summary
 
-We have successfully configured the `ty` type checker to resolve imports from `pylabrobot` (via `extra-paths`).
-A comprehensive audit has been performed on the backend submodules.
+Fresh audit completed with the following results:
 
-### Key Findings & Action Plan
+| Tool | Scope | Errors |
+|------|-------|--------|
+| **Ruff** | `praxis/backend` | 138 |
+| **ty** | `praxis/backend/api` | 0 ✅ |
+| **ty** | `praxis/backend/services` | 3 |
+| **ty** | `praxis/backend/core` | 7+ |
+| **ESLint** | `praxis/web-client` | Not configured |
 
-#### 1. 🔴 Core Type Errors (27 diagnostics)
+### Priority Action Plan
 
-The `praxis/backend/core` submodule has significant type safety issues:
+#### Phase 1: Ruff Fixes (138 errors)
 
-* **`invalid-argument-type` (16 errors):** Mismatches in function calls, particularly `schedule_protocol_execution` and dependency injection.
-* **`unresolved-attribute` (6 errors):** Missing attributes on objects, likely due to dynamic typing or missing type hints on ORM models/decorators.
-* **Action:** Prioritize fixing these to ensure core stability.
+- **P1 (Critical)**: B007, B904, S106, S307, ASYNC230 (~10 errors)
+- **P2 (Performance)**: PERF401, PERF102 (~5 errors)
+- **P3 (Style)**: W293, SIM102, D401, PLR2004, UP038 (~123 errors)
 
-#### 2. 🟠 API & Services Issues
+#### Phase 2: ty Fixes (10+ errors)
 
-* **`praxis/backend/api`:** 5 diagnostics (`MachineOrm` missing definitions, invalid type forms).
-* **`praxis/backend/services`:** 3 diagnostics (Unresolved `serial.tools`, `call-non-callable`).
-* **Submodule Audit Status:**
-  * `api`: 11 diagnostics (unresolved-attribute, S105, S106)
-  * `core`: 0 diagnostics (Resolved ✅)
-  * `models`: 0 diagnostics (Clean ✅)
-  * `services`: 3 diagnostics (call-non-callable, unresolved-import)
-  * `utils`: 32 diagnostics (multiple issues)
-    Fix `MachineOrm` relationships and resolve `serial` import stubs.
+- `services/resource_type_definition.py`: Missing `import math`
+- `services/discovery_service.py`: Type narrowing
+- `core/*`: Celery import stubs (environment issue)
 
-#### 3. 🟡 Linting (Ruff)
+#### Phase 3: Frontend ESLint
 
-* Top-level import violations (`PLC0415`) and minor security warnings (`S105`, `S307`, `S324`) were detected in previous runs but need explicit configuration to separate from noise.
+- Install: `cd praxis/web-client && ng add angular-eslint`
+- Run: `ng lint`
 
 ---
-
-## Status Summary
-
-* **Environment**: ✅ Configured (`pyproject.toml` set up for `ty`)
-
-* **Audit Status**: Fresh run completed (except `utils` interrupted).
 
 ## Submodule: `praxis/backend/api`
 
@@ -134,9 +128,10 @@ Found 5 diagnostics
 ### Summary of Fixes
 
 - **Dependency Injection**: Fixed `ProtocolScheduler` provider in `container.py`.
+
 * **Decorator System**: Introduced `DecoratedProtocolFunc` protocol to type-safe attribute access on protocol functions.
-* **Orchestrator**: Fixed `IProtocolScheduler` protocol, attribute casting, and synchronous state calls.
-* **Infrastructure**: Refined `filesystem.py` overloads and solved `asyncio.to_thread` typing in `protocol_code_manager.py`.
+- **Orchestrator**: Fixed `IProtocolScheduler` protocol, attribute casting, and synchronous state calls.
+- **Infrastructure**: Refined `filesystem.py` overloads and solved `asyncio.to_thread` typing in `protocol_code_manager.py`.
 
 ### Ruff Audit
 

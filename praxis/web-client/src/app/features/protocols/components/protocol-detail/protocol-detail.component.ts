@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, inject, signal, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,73 +14,74 @@ import { finalize } from 'rxjs/operators'; // Import finalize
   selector: 'app-protocol-detail',
   standalone: true,
   imports: [
-    CommonModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
     MatChipsModule,
     MatProgressSpinnerModule
-  ],
+],
   template: `
-    <div class="protocol-detail-container" *ngIf="!isLoading(); else loading">
-      <div class="header">
-        <button mat-icon-button (click)="goBack()">
-          <mat-icon>arrow_back</mat-icon>
-        </button>
-        <h1>{{ protocol()?.name || 'Loading...' }}</h1>
-        <span class="spacer"></span>
-        <button mat-flat-button color="primary" (click)="runProtocol()" [disabled]="!protocol()">
-          <mat-icon>play_arrow</mat-icon>
-          Run Protocol
-        </button>
+    @if (!isLoading()) {
+      <div class="protocol-detail-container">
+        <div class="header">
+          <button mat-icon-button (click)="goBack()">
+            <mat-icon>arrow_back</mat-icon>
+          </button>
+          <h1>{{ protocol()?.name || 'Loading...' }}</h1>
+          <span class="spacer"></span>
+          <button mat-flat-button color="primary" (click)="runProtocol()" [disabled]="!protocol()">
+            <mat-icon>play_arrow</mat-icon>
+            Run Protocol
+          </button>
+        </div>
+        @if (protocol()) {
+          <div class="content">
+            <mat-card class="info-card">
+              <mat-card-header>
+                <mat-card-title>Information</mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <div class="info-grid">
+                  <div class="info-item">
+                    <span class="label">Accession ID:</span>
+                    <span class="value">{{ protocol()?.accession_id }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">Version:</span>
+                    <span class="value">{{ protocol()?.version }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">Category:</span>
+                    <span class="value">{{ protocol()?.category || 'N/A' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">Type:</span>
+                    <span class="value">{{ protocol()?.is_top_level ? 'Top Level' : 'Sub-Protocol' }}</span>
+                  </div>
+                </div>
+                <div class="description-section">
+                  <h3>Description</h3>
+                  <p>{{ protocol()?.description || 'No description provided.' }}</p>
+                </div>
+              </mat-card-content>
+            </mat-card>
+            <!-- Placeholder for future sections like Parameters Preview or Source Code -->
+          </div>
+        }
+        @if (!protocol() && !isLoading()) {
+          <div class="no-protocol-found">
+            <p>Protocol not found.</p>
+            <button mat-flat-button color="primary" (click)="goBack()">Back to Library</button>
+          </div>
+        }
       </div>
-
-      <div class="content" *ngIf="protocol()">
-        <mat-card class="info-card">
-          <mat-card-header>
-            <mat-card-title>Information</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="info-grid">
-              <div class="info-item">
-                <span class="label">Accession ID:</span>
-                <span class="value">{{ protocol()?.accession_id }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Version:</span>
-                <span class="value">{{ protocol()?.version }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Category:</span>
-                <span class="value">{{ protocol()?.category || 'N/A' }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Type:</span>
-                <span class="value">{{ protocol()?.is_top_level ? 'Top Level' : 'Sub-Protocol' }}</span>
-              </div>
-            </div>
-
-            <div class="description-section">
-              <h3>Description</h3>
-              <p>{{ protocol()?.description || 'No description provided.' }}</p>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Placeholder for future sections like Parameters Preview or Source Code -->
-      </div>
-      <div *ngIf="!protocol() && !isLoading()" class="no-protocol-found">
-        <p>Protocol not found.</p>
-        <button mat-flat-button color="primary" (click)="goBack()">Back to Library</button>
-      </div>
-    </div>
-
-    <ng-template #loading>
+    } @else {
       <div class="loading-container">
         <mat-spinner diameter="40"></mat-spinner>
       </div>
-    </ng-template>
-  `,
+    }
+    
+    `,
   styles: [`
     .protocol-detail-container {
       padding: 16px;

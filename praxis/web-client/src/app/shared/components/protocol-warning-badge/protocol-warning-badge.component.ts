@@ -1,5 +1,5 @@
 import { Component, Input, ChangeDetectionStrategy, computed, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -22,14 +22,13 @@ export type SimulationStatus = 'ready' | 'warnings' | 'errors' | 'not_analyzed';
     selector: 'app-protocol-warning-badge',
     standalone: true,
     imports: [
-        CommonModule,
-        MatIconModule,
-        MatBadgeModule,
-        MatTooltipModule,
-        MatMenuModule,
-        MatListModule,
-        MatChipsModule,
-    ],
+    MatIconModule,
+    MatBadgeModule,
+    MatTooltipModule,
+    MatMenuModule,
+    MatListModule,
+    MatChipsModule
+],
     template: `
     @switch (status()) {
       @case ('ready') {

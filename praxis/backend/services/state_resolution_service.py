@@ -16,12 +16,10 @@ Usage:
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.core.simulation.state_resolution import (
   OperationRecord,
@@ -41,6 +39,10 @@ from praxis.backend.models.orm.schedule import ScheduleEntryOrm
 from praxis.backend.utils.db_decorator import handle_db_transaction
 
 if TYPE_CHECKING:
+  from uuid import UUID
+
+  from sqlalchemy.ext.asyncio import AsyncSession
+
   from praxis.backend.core.simulation.state_models import SimulationState
 
 logger = logging.getLogger(__name__)
@@ -90,7 +92,8 @@ class StateResolutionService:
     # Get the schedule entry
     schedule_entry = await self._get_schedule_entry(run_id)
     if not schedule_entry:
-      raise ValueError(f"Run {run_id} not found")
+      msg = f"Run {run_id} not found"
+      raise ValueError(msg)
 
     # Check if run is in a state that allows resolution
     # Use FAILED status since there's no explicit PAUSED status
@@ -98,10 +101,11 @@ class StateResolutionService:
       ScheduleStatusEnum.FAILED,
       ScheduleStatusEnum.CONFLICT,
     ):
-      raise ValueError(
+      msg = (
         f"Run {run_id} is in {schedule_entry.status.value} state, "
         "not eligible for state resolution"
       )
+      raise ValueError(msg)
 
     # Check if we have cached uncertain states
     if run_id in self._pending_resolutions:
@@ -156,7 +160,8 @@ class StateResolutionService:
     """
     schedule_entry = await self._get_schedule_entry(run_id)
     if not schedule_entry:
-      raise ValueError(f"Run {run_id} not found")
+      msg = f"Run {run_id} not found"
+      raise ValueError(msg)
 
     # Get the uncertain states that were pending
     uncertain = self._pending_resolutions.get(run_id, [])
@@ -224,13 +229,15 @@ class StateResolutionService:
     """
     schedule_entry = await self._get_schedule_entry(run_id)
     if not schedule_entry:
-      raise ValueError(f"Run {run_id} not found")
+      msg = f"Run {run_id} not found"
+      raise ValueError(msg)
 
     if schedule_entry.status not in (
       ScheduleStatusEnum.FAILED,
       ScheduleStatusEnum.CONFLICT,
     ):
-      raise ValueError(f"Run {run_id} is in {schedule_entry.status.value} state, " "cannot resume")
+      msg = f"Run {run_id} is in {schedule_entry.status.value} state, cannot resume"
+      raise ValueError(msg)
 
     # Update status to EXECUTING (resume execution)
     schedule_entry.status = ScheduleStatusEnum.EXECUTING
@@ -258,7 +265,8 @@ class StateResolutionService:
     """
     schedule_entry = await self._get_schedule_entry(run_id)
     if not schedule_entry:
-      raise ValueError(f"Run {run_id} not found")
+      msg = f"Run {run_id} not found"
+      raise ValueError(msg)
 
     # Update status to CANCELLED
     schedule_entry.status = ScheduleStatusEnum.CANCELLED
@@ -448,7 +456,7 @@ class StateResolutionRequest(BaseModel):
       resolution_type=ResolutionType(self.resolution_type),
       resolved_values=self.resolved_values,
       resolved_by=resolved_by,
-      resolved_at=datetime.now(),
+      resolved_at=datetime.now(timezone.utc),
       notes=self.notes,
     )
 

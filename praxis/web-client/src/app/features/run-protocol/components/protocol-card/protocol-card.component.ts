@@ -1,5 +1,5 @@
 import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
@@ -10,12 +10,11 @@ import { ProtocolWarningBadgeComponent } from '@shared/components/protocol-warni
   selector: 'app-protocol-card',
   standalone: true,
   imports: [
-    CommonModule,
     MatCardModule,
     MatIconModule,
     MatChipsModule,
-    ProtocolWarningBadgeComponent,
-  ],
+    ProtocolWarningBadgeComponent
+],
   template: `
     <mat-card class="protocol-card" [class.compact]="compact" (click)="select.emit(protocol)">
       <mat-card-header>

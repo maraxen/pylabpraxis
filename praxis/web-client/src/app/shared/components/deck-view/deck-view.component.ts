@@ -22,40 +22,40 @@ interface TooltipState {
     <div class="deck-container" [style.width.px]="containerWidth()" [style.height.px]="containerHeight()">
       <!-- Background Rails (rail-based decks like Hamilton) -->
       @if (resource()?.num_rails) {
-         <div class="rails-container absolute inset-0 pointer-events-none">
-           @for (rail of getRails(); track rail.index) {
-             <div class="rail-line"
-                  [style.left.px]="scaleLeft(rail.xPosition)"
-                  [attr.data-rail-index]="rail.index"></div>
-           }
-         </div>
+        <div class="rails-container absolute inset-0 pointer-events-none">
+          @for (rail of getRails(); track rail.index) {
+            <div class="rail-line"
+              [style.left.px]="scaleLeft(rail.xPosition)"
+            [attr.data-rail-index]="rail.index"></div>
+          }
+        </div>
       }
       <!-- Slot boundaries (slot-based decks like OT-2) -->
       @if (isSlotBasedDeck()) {
-         <div class="slots-container absolute inset-0 pointer-events-none">
-           @for (slot of getSlots(); track slot.slotNumber) {
-             <div class="slot-boundary"
-                  [style.left.px]="scaleLeft(slot.position.x)"
-                  [style.bottom.px]="scaleBottom(slot.position.y)"
-                  [style.width.px]="scaleDim(slot.dimensions.width)"
-                  [style.height.px]="scaleDim(slot.dimensions.height)"
-                  [class.slot-trash]="slot.slotType === 'trash'"
-                  [class.slot-module]="slot.slotType === 'module'"
-                  [attr.data-slot-number]="slot.slotNumber">
-               <span class="slot-label">{{ slot.label }}</span>
-             </div>
-           }
-         </div>
+        <div class="slots-container absolute inset-0 pointer-events-none">
+          @for (slot of getSlots(); track slot.slotNumber) {
+            <div class="slot-boundary"
+              [style.left.px]="scaleLeft(slot.position.x)"
+              [style.bottom.px]="scaleBottom(slot.position.y)"
+              [style.width.px]="scaleDim(slot.dimensions.width)"
+              [style.height.px]="scaleDim(slot.dimensions.height)"
+              [class.slot-trash]="slot.slotType === 'trash'"
+              [class.slot-module]="slot.slotType === 'module'"
+              [attr.data-slot-number]="slot.slotNumber">
+              <span class="slot-label">{{ slot.label }}</span>
+            </div>
+          }
+        </div>
       }
-
+    
       <!-- Render the root resource and its children recursively -->
       <ng-container *ngTemplateOutlet="resourceTpl; context: { $implicit: resource(), parent: null }"></ng-container>
-
+    
       <!-- Hover Tooltip -->
       @if (tooltip().visible && tooltip().resource) {
         <div class="resource-tooltip"
-             [style.left.px]="tooltip().x + 12"
-             [style.top.px]="tooltip().y + 12">
+          [style.left.px]="tooltip().x + 12"
+          [style.top.px]="tooltip().y + 12">
           <div class="tooltip-header">{{ tooltip().resource!.name }}</div>
           <div class="tooltip-type">{{ tooltip().resource!.type }}</div>
           <div class="tooltip-dims">{{ tooltip().resource!.size_x | number:'1.1-1' }} × {{ tooltip().resource!.size_y | number:'1.1-1' }} mm</div>
@@ -68,52 +68,54 @@ interface TooltipState {
         </div>
       }
     </div>
-
+    
     <ng-template #resourceTpl let-res let-parent="parent">
       <div class="resource-node"
-           [title]="res.name"
-           cdkDropList
-           [cdkDropListDisabled]="!isGhost(res)"
-           (cdkDropListDropped)="onDrop($event)"
-           (mouseenter)="onResourceHover($event, res, parent)"
-           (mouseleave)="onResourceLeave()"
-           (click)="onResourceClick($event, res, parent)"
-           [attr.data-type]="res.type"
-           [style.left.px]="scaleLeft(res.location.x)"
-           [style.bottom.px]="scaleBottom(res.location.y)"
-           [style.width.px]="scaleDim(res.size_x)"
-           [style.height.px]="scaleDim(res.size_y)"
-           [class.is-root]="res === resource()"
-           [class.is-ghost]="isGhost(res)"
-           [class.is-well]="isWellOrSpot(res.type)"
-           [class.type-plate]="isPlateType(res.type)"
-           [class.type-tiprack]="isTipRackType(res.type)"
-           [class.type-trough]="isTroughType(res.type)"
-           [class.type-carrier]="isCarrierType(res.type)"
-           [class.type-trash]="res.type === 'Trash'"
-           [class.type-lid]="isLidType(res.type)"
-           [class.type-petridish]="isPetriDishType(res.type)"
-           [class.type-tube]="isTubeType(res.type)"
-           [class.type-adapter]="isPlateAdapterType(res.type)"
-           [class.has-liquid]="hasLiquid(res)"
-           [class.has-tip]="isWellOrSpot(res.type) && hasTip(res, parent)"
-           [class.empty]="isWellOrSpot(res.type) && isEmpty(res, parent)"
-           [class.is-selected]="selectedResource() === res"
-           [style.background]="hasLiquid(res) ? getLiquidStyle(res) : getCustomColor(res)"
-           [style.background-color]="!hasLiquid(res) ? getCustomColor(res) : null">
-
+        [title]="res.name"
+        cdkDropList
+        [cdkDropListDisabled]="!isGhost(res)"
+        (cdkDropListDropped)="onDrop($event)"
+        (mouseenter)="onResourceHover($event, res, parent)"
+        (mouseleave)="onResourceLeave()"
+        (click)="onResourceClick($event, res, parent)"
+        [attr.data-type]="res.type"
+        [style.left.px]="scaleLeft(res.location.x)"
+        [style.bottom.px]="scaleBottom(res.location.y)"
+        [style.width.px]="scaleDim(res.size_x)"
+        [style.height.px]="scaleDim(res.size_y)"
+        [class.is-root]="res === resource()"
+        [class.is-ghost]="isGhost(res)"
+        [class.is-well]="isWellOrSpot(res.type)"
+        [class.type-plate]="isPlateType(res.type)"
+        [class.type-tiprack]="isTipRackType(res.type)"
+        [class.type-trough]="isTroughType(res.type)"
+        [class.type-carrier]="isCarrierType(res.type)"
+        [class.type-trash]="res.type === 'Trash'"
+        [class.type-lid]="isLidType(res.type)"
+        [class.type-petridish]="isPetriDishType(res.type)"
+        [class.type-tube]="isTubeType(res.type)"
+        [class.type-adapter]="isPlateAdapterType(res.type)"
+        [class.has-liquid]="hasLiquid(res)"
+        [class.has-tip]="isWellOrSpot(res.type) && hasTip(res, parent)"
+        [class.empty]="isWellOrSpot(res.type) && isEmpty(res, parent)"
+        [class.is-selected]="selectedResource() === res"
+        [style.background]="hasLiquid(res) ? getLiquidStyle(res) : getCustomColor(res)"
+        [style.background-color]="!hasLiquid(res) ? getCustomColor(res) : null">
+    
         <!-- Label for significant resources -->
-        <div class="resource-label" *ngIf="shouldShowLabel(res)">
-          {{ res.name }}
-        </div>
-
+        @if (shouldShowLabel(res)) {
+          <div class="resource-label">
+            {{ res.name }}
+          </div>
+        }
+    
         <!-- Recursively render children -->
         @for (child of res.children; track child.name) {
           <ng-container *ngTemplateOutlet="resourceTpl; context: { $implicit: child, parent: res }"></ng-container>
         }
       </div>
     </ng-template>
-  `,
+    `,
   styles: [`
     /* =========================================
        PLR-Style Deck Visualizer Theme

@@ -107,6 +107,10 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
       "Successfully created protocol run (ID: %s).",
       db_protocol_run.accession_id,
     )
+    # Ensure start_time is aware (SQLite fix)
+    if db_protocol_run.start_time and db_protocol_run.start_time.tzinfo is None:
+      db_protocol_run.start_time = db_protocol_run.start_time.replace(tzinfo=datetime.timezone.utc)
+
     return db_protocol_run
 
   async def get_multi(
@@ -221,6 +225,12 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
     db_protocol_run = result.scalar_one_or_none()
 
     if db_protocol_run:
+      # Ensure start_time is aware (SQLite fix)
+      if db_protocol_run.start_time and db_protocol_run.start_time.tzinfo is None:
+        db_protocol_run.start_time = db_protocol_run.start_time.replace(
+          tzinfo=datetime.timezone.utc
+        )
+
       db_protocol_run.status = new_status
       utc_now = datetime.datetime.now(datetime.timezone.utc)
 
@@ -327,6 +337,14 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
         protocol_run_accession_id,
         new_status.name,
       )
+      # Ensure start_time/end_time are aware (SQLite fix)
+      if db_protocol_run.start_time and db_protocol_run.start_time.tzinfo is None:
+        db_protocol_run.start_time = db_protocol_run.start_time.replace(
+          tzinfo=datetime.timezone.utc
+        )
+      if db_protocol_run.end_time and db_protocol_run.end_time.tzinfo is None:
+        db_protocol_run.end_time = db_protocol_run.end_time.replace(tzinfo=datetime.timezone.utc)
+
       return db_protocol_run
     logger.warning(
       "Protocol run ID %s not found for status update.",

@@ -406,7 +406,7 @@ class ComputationGraphExtractor(cst.CSTVisitor):
         # Get the subscript key
         if value.slice and isinstance(value.slice[0].slice, cst.Index):
           key_node = value.slice[0].slice.value
-          if isinstance(key_node, (cst.SimpleString, cst.ConcatenatedString)):
+          if isinstance(key_node, cst.SimpleString | cst.ConcatenatedString):
             key = self._get_expr_source(key_node).strip("\"'")
             return self._type_tracker.infer_subscript_type(base_type, key)
         # Default to list of element type
@@ -469,7 +469,7 @@ class ComputationGraphExtractor(cst.CSTVisitor):
       # Determine node type
       node_type = GraphNodeType.STATIC
       depends_on = []
-      for arg_name, arg_expr in args.items():
+      for arg_expr in args.values():
         if arg_expr in self._parameter_names:
           depends_on.append(arg_expr)
           node_type = GraphNodeType.DYNAMIC
@@ -520,14 +520,13 @@ class ComputationGraphExtractor(cst.CSTVisitor):
     precondition_ids: list[str] = []
 
     # Tips required?
-    if method_name in TIPS_REQUIRED_METHODS:
-      if "tips_loaded" not in self._active_states:
-        precond_id = self._create_precondition(
-          PreconditionType.TIPS_LOADED,
-          receiver_name,
-          resource_type="TipRack",
-        )
-        precondition_ids.append(precond_id)
+    if method_name in TIPS_REQUIRED_METHODS and "tips_loaded" not in self._active_states:
+      precond_id = self._create_precondition(
+        PreconditionType.TIPS_LOADED,
+        receiver_name,
+        resource_type="TipRack",
+      )
+      precondition_ids.append(precond_id)
 
     # Plate access required?
     if method_name in PLATE_ACCESS_METHODS:

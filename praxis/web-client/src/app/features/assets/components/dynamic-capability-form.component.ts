@@ -1,5 +1,5 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, inject, signal, computed, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -13,7 +13,6 @@ import { MachineCapabilityConfigSchema, CapabilityConfigField } from '../models/
   selector: 'app-dynamic-capability-form',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
@@ -206,7 +205,7 @@ export class DynamicCapabilityFormComponent implements OnInit, OnChanges {
     this.config.config_fields.forEach(field => {
       // Determine initial value: explicit initial value > field default > null
       let value = field.default_value;
-      if (this.initialValue && this.initialValue.hasOwnProperty(field.field_name)) {
+      if (this.initialValue && Object.prototype.hasOwnProperty.call(this.initialValue, field.field_name)) {
         value = this.initialValue[field.field_name];
       }
 

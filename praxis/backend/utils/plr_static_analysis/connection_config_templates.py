@@ -120,11 +120,11 @@ GENERIC_CONNECTION_CONFIG = MachineCapabilityConfigSchema(
 
 def get_connection_config_template(class_type: PLRClassType, manufacturer: str | None = None) -> MachineCapabilityConfigSchema | None:
     """Get the connection config template for a given class type and manufacturer.
-    
+
     Args:
         class_type: The PLR class type.
         manufacturer: The manufacturer name (optional, for specific matching).
-        
+
     Returns:
         The config schema template.
 

@@ -198,13 +198,10 @@ class GraphReplayEngine:
     initial_state: SimulationState | None,
   ) -> ReplayState:
     """Initialize replay state from graph resources."""
-    if initial_state:
-      sim_state = initial_state.copy()
-    else:
-      sim_state = SimulationState.default_boolean()
+    sim_state = initial_state.copy() if initial_state else SimulationState.default_boolean()
 
     # Register all resources as on deck with liquid
-    for var_name, resource in graph.resources.items():
+    for var_name in graph.resources:
       sim_state.deck_state.place_on_deck(var_name)
 
       # Assume source resources have liquid
@@ -282,7 +279,7 @@ class GraphReplayEngine:
     executes body operations once (representing one iteration).
     """
     # Get iteration count estimate
-    iteration_count = self._estimate_loop_iterations(operation, graph)
+    self._estimate_loop_iterations(operation, graph)
 
     # Execute body operations (representing loop body)
     for body_op_id in operation.foreach_body:

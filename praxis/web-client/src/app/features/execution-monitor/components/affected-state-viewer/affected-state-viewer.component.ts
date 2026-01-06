@@ -14,7 +14,7 @@ import { UncertainStateChange } from '../../models/state-resolution.models';
 @Component({
     selector: 'app-affected-state-viewer',
     standalone: true,
-    imports: [CommonModule, MatIconModule, MatTooltipModule],
+    imports: [MatIconModule, MatTooltipModule],
     templateUrl: './affected-state-viewer.component.html',
     styleUrl: './affected-state-viewer.component.scss',
 })

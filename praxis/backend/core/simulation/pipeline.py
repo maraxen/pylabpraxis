@@ -13,9 +13,8 @@ issues at the cheapest level that can catch them.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
@@ -39,6 +38,9 @@ from praxis.backend.utils.plr_static_analysis.resource_hierarchy import (
   get_parental_chain,
 )
 from praxis.common.type_inspection import extract_resource_types
+
+if TYPE_CHECKING:
+  from collections.abc import Callable
 
 # =============================================================================
 # Result Models

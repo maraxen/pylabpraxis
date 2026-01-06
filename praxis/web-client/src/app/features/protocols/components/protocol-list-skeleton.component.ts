@@ -1,19 +1,23 @@
 import { Component, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 @Component({
     selector: 'app-protocol-list-skeleton',
     standalone: true,
-    imports: [CommonModule],
+    imports: [],
     template: `
     <div class="skeleton-table w-full">
-      <div class="skeleton-row" *ngFor="let i of [].constructor(rows)">
-        <div class="skeleton-cell" *ngFor="let j of [].constructor(cols)">
-          <div class="skeleton-bar"></div>
+      @for (i of [].constructor(rows); track i) {
+        <div class="skeleton-row">
+          @for (j of [].constructor(cols); track j) {
+            <div class="skeleton-cell">
+              <div class="skeleton-bar"></div>
+            </div>
+          }
         </div>
-      </div>
+      }
     </div>
-  `,
+    `,
     styles: [`
     @keyframes shimmer {
       0% { background-position: -200px 0; }

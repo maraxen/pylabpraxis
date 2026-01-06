@@ -84,7 +84,7 @@ export class StressTestComponent {
 
     const startTime = Date.now();
     let errors = 0;
-    let latencies: number[] = [];
+    const latencies: number[] = [];
 
     const batchSize = this.concurrency;
     const batches = Math.ceil(this.totalRequests / batchSize);

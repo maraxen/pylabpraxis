@@ -20,7 +20,7 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -149,7 +149,7 @@ class StateResolution:
   resolution_type: ResolutionType
   resolved_values: dict[str, Any] = field(default_factory=dict)
   resolved_by: str = "user"
-  resolved_at: datetime = field(default_factory=datetime.now)
+  resolved_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
   notes: str | None = None
 
   def to_dict(self) -> dict[str, Any]:
@@ -170,7 +170,7 @@ class StateResolution:
     if isinstance(resolved_at, str):
       resolved_at = datetime.fromisoformat(resolved_at)
     elif resolved_at is None:
-      resolved_at = datetime.now()
+      resolved_at = datetime.now(timezone.utc)
 
     return cls(
       operation_id=data["operation_id"],
@@ -529,7 +529,7 @@ def _get_volume_from_args(
 
 def _parse_volume(value: Any) -> float | None:
   """Parse a volume value to float."""
-  if isinstance(value, (int, float)):
+  if isinstance(value, int | float):
     return float(value)
   if isinstance(value, str):
     try:
@@ -594,7 +594,7 @@ def _apply_single_resolution(
 
   # Apply based on property type
   if property_name == "volume" and isinstance(state.liquid_state, ExactLiquidState):
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
       state.liquid_state.set_volume(resource_name, float(value))
 
   elif property_name in ("has_liquid", "liquid"):

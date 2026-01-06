@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -49,7 +49,6 @@ export interface ResourceDefinitionGroup {
   selector: 'app-resource-accordion',
   standalone: true,
   imports: [
-    CommonModule,
     MatExpansionModule,
     MatIconModule,
     MatButtonModule,
@@ -65,7 +64,7 @@ export interface ResourceDefinitionGroup {
     AssetStatusChipComponent,
     ResourceFiltersComponent,
     ResourceChipsComponent
-  ],
+],
   template: `
     <div class="resource-accordion-container">
       <!-- Resource Filters -->

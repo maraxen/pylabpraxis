@@ -229,35 +229,35 @@ class FunctionDataOutputOrm(Base):
     "FunctionCallLogOrm",
     foreign_keys=[function_call_log_accession_id],
     back_populates="data_outputs",
-    default=None,
+    init=False,
   )
 
   protocol_run: Mapped["ProtocolRunOrm"] = relationship(
     "ProtocolRunOrm",
     foreign_keys=[protocol_run_accession_id],
     back_populates="data_outputs",
-    default=None,
+    init=False,
   )
 
   resource: Mapped["ResourceOrm"] = relationship(
     "ResourceOrm",
     foreign_keys=[resource_accession_id],
     back_populates="data_outputs",
-    default=None,
+    init=False,
   )
 
   machine: Mapped["MachineOrm"] = relationship(
     "MachineOrm",
     foreign_keys=[machine_accession_id],
     back_populates="data_outputs",
-    default=None,
+    init=False,
   )
 
   deck: Mapped["DeckOrm"] = relationship(
     "DeckOrm",
     foreign_keys=[deck_accession_id],
     back_populates="data_outputs",
-    default=None,
+    init=False,
   )
 
   derived_from: Mapped["FunctionDataOutputOrm | None"] = relationship(
@@ -265,7 +265,7 @@ class FunctionDataOutputOrm(Base):
     back_populates="derived_data_outputs",
     foreign_keys=[derived_from_data_output_accession_id],
     remote_side="FunctionDataOutputOrm.accession_id",
-    default=None,
+    init=False,
   )
 
   derived_data_outputs: Mapped[list["FunctionDataOutputOrm"]] = relationship(
@@ -358,14 +358,14 @@ class WellDataOutputOrm(Base):
     "FunctionDataOutputOrm",
     foreign_keys=[function_data_output_accession_id],
     back_populates="well_data_outputs",
-    default=None,
+    init=False,
   )
 
   plate_resource: Mapped["ResourceOrm"] = relationship(
     "ResourceOrm",
     foreign_keys=[plate_resource_accession_id],
     back_populates="well_data_outputs",
-    default=None,
+    init=False,
   )
 
   def __repr__(self) -> str:

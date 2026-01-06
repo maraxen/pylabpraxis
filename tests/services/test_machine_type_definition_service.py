@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -23,12 +24,27 @@ async def test_discover_and_synchronize_machine_types(
     machine_type_definition_service: MachineTypeDefinitionService,
 ) -> None:
     """Test synchronization of machine types."""
-    # Setup mock
-    mock_classes = {
-        "test.machine.MockMachine": MockMachineClass,
-    }
+    from praxis.backend.utils.plr_static_analysis import DiscoveredClass, PLRClassType
 
-    with patch("praxis.backend.services.machine_type_definition.get_machine_classes", return_value=mock_classes):
+    # Setup mock return values
+    mock_discovered = [
+        DiscoveredClass(
+            name="MockMachineClass",
+            fqn="test.machine.MockMachine",
+            class_type=PLRClassType.LIQUID_HANDLER,
+            docstring="Mock Machine",
+            manufacturer="TestMfg",
+            compatible_backends=["backend"],
+            capabilities={"shaking": True},
+            file_path="/tmp/mock.py",
+            module_path="test.machine",
+        )
+    ]
+
+    with patch(
+        "praxis.backend.services.machine_type_definition.PLRSourceParser.discover_machine_classes",
+        return_value=mock_discovered
+    ) as mock_discover:
         # Run sync
         synced = await machine_type_definition_service.discover_and_synchronize_type_definitions()
 
@@ -42,7 +58,9 @@ async def test_discover_and_synchronize_machine_types(
         assert db_obj is not None
 
         # Run sync again (update)
-        MockMachineClass.__doc__ = "Updated doc"
+        mock_discovered[0].docstring = "Updated doc"
+        mock_discover.return_value = mock_discovered
+        
         synced_update = await machine_type_definition_service.discover_and_synchronize_type_definitions()
         assert len(synced_update) == 1
         assert synced_update[0].description == "Updated doc"

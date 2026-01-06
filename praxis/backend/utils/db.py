@@ -260,7 +260,7 @@ class DropMaterializedView(DDLElement):
 def compile_create_materialized_view(
   element: CreateMaterializedView,
   compiler: SQLCompiler,
-  **kw: Any,  # noqa: ARG001
+  **kw: Any,
 ) -> str:
   """Compiler for the CreateMaterializedView DDL element.
 
@@ -280,8 +280,8 @@ def compile_create_materialized_view(
 @compiles(DropMaterializedView)
 def compile_drop_materialized_view(
   element: DropMaterializedView,
-  compiler: SQLCompiler,  # noqa: ARG001
-  **kw: Any,  # noqa: ARG001
+  compiler: SQLCompiler,
+  **kw: Any,
 ) -> str:
   """Compiler for the DropMaterializedView DDL element.
 

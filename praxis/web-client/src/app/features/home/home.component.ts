@@ -1,6 +1,6 @@
 
 import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -35,7 +35,6 @@ interface RecentRun {
   selector: 'app-home',
   standalone: true,
   imports: [
-    CommonModule,
     RouterLink,
     MatCardModule,
     MatIconModule,
@@ -47,7 +46,7 @@ interface RecentRun {
     MatBadgeModule,
     HardwareDiscoveryButtonComponent,
     SparklineComponent
-  ],
+],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto" data-tour-id="dashboard-root">
       <!-- Header with Quick Actions -->

@@ -226,7 +226,7 @@ export class AssetService {
     } else {
       // Production Mode: Use API
       try {
-        let params: any = { type: 'resource' };
+        const params: any = { type: 'resource' };
         if (fqn) params.fqn = fqn;
 
         // Optimize: If FQN is known, we might be able to filter by it via API if supported

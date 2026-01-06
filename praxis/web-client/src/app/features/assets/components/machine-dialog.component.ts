@@ -58,197 +58,226 @@ interface Step {
   template: `
     <div class="h-full flex flex-col max-h-[85vh]">
       <h2 mat-dialog-title class="flex-shrink-0">Add New Machine</h2>
-      
+    
       <mat-dialog-content class="flex-grow overflow-auto">
         <!-- Progress Steps -->
         <div class="mb-6 flex items-center justify-between px-2">
-           <div *ngFor="let step of steps; let i = index" 
-                class="flex items-center gap-2 text-sm"
-                [class.step-text-active]="currentStep === i"
-                [class.step-text-inactive]="currentStep !== i && !step.completed"
-                [class.step-text-completed]="step.completed"
-                [class.font-bold]="currentStep === i">
+          @for (step of steps; track step; let i = $index) {
+            <div
+              class="flex items-center gap-2 text-sm"
+              [class.step-text-active]="currentStep === i"
+              [class.step-text-inactive]="currentStep !== i && !step.completed"
+              [class.step-text-completed]="step.completed"
+              [class.font-bold]="currentStep === i">
               <div class="w-6 h-6 rounded-full flex items-center justify-center border transition-all"
-                   [class.step-circle-active]="currentStep === i"
-                   [class.step-circle-inactive]="currentStep !== i && !step.completed"
-                   [class.step-circle-completed]="step.completed">
-                 <mat-icon *ngIf="step.completed" class="text-xs !w-4 !h-4 flex items-center justify-center">check</mat-icon>
-                 <span *ngIf="!step.completed">{{ i + 1 }}</span>
+                [class.step-circle-active]="currentStep === i"
+                [class.step-circle-inactive]="currentStep !== i && !step.completed"
+                [class.step-circle-completed]="step.completed">
+                @if (step.completed) {
+                  <mat-icon class="text-xs !w-4 !h-4 flex items-center justify-center">check</mat-icon>
+                }
+                @if (!step.completed) {
+                  <span>{{ i + 1 }}</span>
+                }
               </div>
               <span class="hidden sm:inline">{{ step.label }}</span>
-              <div *ngIf="i < steps.length - 1" class="h-[1px] w-4 ml-2 sys-divider"></div>
-           </div>
+              @if (i < steps.length - 1) {
+                <div class="h-[1px] w-4 ml-2 sys-divider"></div>
+              }
+            </div>
+          }
         </div>
-
+    
         <form [formGroup]="form" class="flex flex-col gap-4 py-2">
-          
+    
           <!-- STEP 1: Category Selection -->
-          <div *ngIf="currentStep === 0" class="fade-in">
-            <h3 class="text-lg font-medium mb-4">Select Machine Category</h3>
-            <div class="grid grid-cols-2 gap-4">
-              <div *ngFor="let cat of machineCategories" 
-                   class="category-card sys-border border rounded-xl p-4 cursor-pointer transition-all text-center flex flex-col items-center gap-2"
-                   (click)="selectCategory(cat)">
-                 <mat-icon class="scale-125 sys-text-secondary">{{ getCategoryIcon(cat) }}</mat-icon>
-                 <span class="font-medium">{{ cat }}</span>
+          @if (currentStep === 0) {
+            <div class="fade-in">
+              <h3 class="text-lg font-medium mb-4">Select Machine Category</h3>
+              <div class="grid grid-cols-2 gap-4">
+                @for (cat of machineCategories; track cat) {
+                  <div
+                    class="category-card sys-border border rounded-xl p-4 cursor-pointer transition-all text-center flex flex-col items-center gap-2"
+                    (click)="selectCategory(cat)">
+                    <mat-icon class="scale-125 sys-text-secondary">{{ getCategoryIcon(cat) }}</mat-icon>
+                    <span class="font-medium">{{ cat }}</span>
+                  </div>
+                }
               </div>
             </div>
-          </div>
-
+          }
+    
           <!-- STEP 2: Definition Selection -->
-          <div *ngIf="currentStep === 1" class="fade-in">
-             <div class="flex items-center gap-2 mb-4">
-               <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
-               <h3 class="text-lg font-medium">Select {{ selectedCategory }} Model</h3>
-             </div>
-
-             <mat-form-field appearance="outline" class="w-full">
+          @if (currentStep === 1) {
+            <div class="fade-in">
+              <div class="flex items-center gap-2 mb-4">
+                <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
+                <h3 class="text-lg font-medium">Select {{ selectedCategory }} Model</h3>
+              </div>
+              <mat-form-field appearance="outline" class="w-full">
                 <mat-label>Search Model</mat-label>
                 <mat-icon matPrefix>search</mat-icon>
                 <input matInput [formControl]="definitionSearchControl" placeholder="Filter by name...">
-             </mat-form-field>
-
-             <div class="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto">
-                <div *ngFor="let def of filteredDefinitions$ | async" 
-                     class="definition-item sys-border border rounded-lg p-3 cursor-pointer flex justify-between items-center transition-colors"
-                     (click)="selectDefinition(def)">
-                   <div class="flex flex-col">
+              </mat-form-field>
+              <div class="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto">
+                @for (def of filteredDefinitions$ | async; track def) {
+                  <div
+                    class="definition-item sys-border border rounded-lg p-3 cursor-pointer flex justify-between items-center transition-colors"
+                    (click)="selectDefinition(def)">
+                    <div class="flex flex-col">
                       <span class="font-medium">{{ def.name }}</span>
                       <span class="text-xs sys-text-secondary">{{ def.manufacturer }} - {{ def.model || getShortFqn(def.fqn || '') }}</span>
-                   </div>
-                   <mat-icon>chevron_right</mat-icon>
-                </div>
-                
-                <div *ngIf="(filteredDefinitions$ | async)?.length === 0" class="text-center p-8 sys-text-secondary">
-                   No matching models found.
-                </div>
-             </div>
-          </div>
-
-          <!-- STEP 3: Backend Selection -->
-          <div *ngIf="currentStep === 2" class="fade-in">
-             <div class="flex items-center gap-2 mb-4">
-               <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
-               <h3 class="text-lg font-medium">Configure Driver</h3>
-             </div>
-
-            <div class="sys-surface-container border sys-border rounded-lg p-4 mb-4 flex items-center gap-3">
-               <mat-icon class="sys-text-secondary">precision_manufacturing</mat-icon>
-               <div>
-                 <div class="font-medium">{{ selectedDefinition?.name }}</div>
-                 <div class="text-xs sys-text-secondary">{{ selectedDefinition?.manufacturer }}</div>
-               </div>
+                    </div>
+                    <mat-icon>chevron_right</mat-icon>
+                  </div>
+                }
+                @if ((filteredDefinitions$ | async)?.length === 0) {
+                  <div class="text-center p-8 sys-text-secondary">
+                    No matching models found.
+                  </div>
+                }
+              </div>
             </div>
-
-            <mat-form-field appearance="outline" class="w-full">
-              <mat-label>Backend / Driver</mat-label>
-               <mat-select formControlName="backend_driver">
+          }
+    
+          <!-- STEP 3: Backend Selection -->
+          @if (currentStep === 2) {
+            <div class="fade-in">
+              <div class="flex items-center gap-2 mb-4">
+                <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
+                <h3 class="text-lg font-medium">Configure Driver</h3>
+              </div>
+              <div class="sys-surface-container border sys-border rounded-lg p-4 mb-4 flex items-center gap-3">
+                <mat-icon class="sys-text-secondary">precision_manufacturing</mat-icon>
+                <div>
+                  <div class="font-medium">{{ selectedDefinition?.name }}</div>
+                  <div class="text-xs sys-text-secondary">{{ selectedDefinition?.manufacturer }}</div>
+                </div>
+              </div>
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Backend / Driver</mat-label>
+                <mat-select formControlName="backend_driver">
                   <mat-option [value]="'sim'" class="font-mono text-sm">
                     <span class="font-semibold text-primary">Simulated</span> (ChatterBoxBackend)
                   </mat-option>
-                  <ng-container *ngIf="selectedDefinition?.compatible_backends?.length">
-                      <mat-divider></mat-divider>
-                      <mat-option *ngFor="let backend of selectedDefinition?.compatible_backends" [value]="backend" class="font-mono text-xs">
-                         {{ getShortBackendName(backend) }}
+                  @if (selectedDefinition?.compatible_backends?.length) {
+                    <mat-divider></mat-divider>
+                    @for (backend of selectedDefinition?.compatible_backends; track backend) {
+                      <mat-option [value]="backend" class="font-mono text-xs">
+                        {{ getShortBackendName(backend) }}
                       </mat-option>
-                  </ng-container>
-               </mat-select>
-               <mat-hint *ngIf="isBrowserMode">Browser mode defaults to 'Simulated'</mat-hint>
-            </mat-form-field>
-
-             <mat-form-field appearance="outline" class="w-full">
-               <mat-label>Name</mat-label>
-               <input matInput formControlName="name" placeholder="e.g. Robot 1">
-               <mat-error *ngIf="form.get('name')?.hasError('required')">Name is required</mat-error>
-             </mat-form-field>
-             
-             <div class="info-box flex flex-col gap-2 p-3 rounded-lg text-sm" *ngIf="form.get('backend_driver')?.value === 'sim'">
-               <div class="flex items-center gap-2 font-medium">
-                  <mat-icon class="!w-5 !h-5 text-sm">info</mat-icon> Simulation Mode
-               </div>
-               <p>This machine will be created in simulation mode. No physical hardware connection is required.</p>
-             </div>
-
-          </div>
-
+                    }
+                  }
+                </mat-select>
+                @if (isBrowserMode) {
+                  <mat-hint>Browser mode defaults to 'Simulated'</mat-hint>
+                }
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Name</mat-label>
+                <input matInput formControlName="name" placeholder="e.g. Robot 1">
+                @if (form.get('name')?.hasError('required')) {
+                  <mat-error>Name is required</mat-error>
+                }
+              </mat-form-field>
+              @if (form.get('backend_driver')?.value === 'sim') {
+                <div class="info-box flex flex-col gap-2 p-3 rounded-lg text-sm">
+                  <div class="flex items-center gap-2 font-medium">
+                    <mat-icon class="!w-5 !h-5 text-sm">info</mat-icon> Simulation Mode
+                  </div>
+                  <p>This machine will be created in simulation mode. No physical hardware connection is required.</p>
+                </div>
+              }
+            </div>
+          }
+    
           <!-- STEP 4: Capabilities & Connection -->
-          <div *ngIf="currentStep === 3" class="fade-in">
-             <div class="flex items-center gap-2 mb-4">
-               <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
-               <h3 class="text-lg font-medium">Additional Configuration</h3>
-             </div>
-             
-             <!-- Connection Settings (Only if not sim, usually) -->
-             <div *ngIf="selectedDefinition?.connection_config && form.get('backend_driver')?.value !== 'sim'; else manualConnectionInput" class="border sys-border rounded-lg p-3 sys-surface flex flex-col gap-2 mb-4">
+          @if (currentStep === 3) {
+            <div class="fade-in">
+              <div class="flex items-center gap-2 mb-4">
+                <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
+                <h3 class="text-lg font-medium">Additional Configuration</h3>
+              </div>
+              <!-- Connection Settings (Only if not sim, usually) -->
+              @if (selectedDefinition?.connection_config && form.get('backend_driver')?.value !== 'sim') {
+                <div class="border sys-border rounded-lg p-3 sys-surface flex flex-col gap-2 mb-4">
                   <div class="text-sm font-medium sys-text-secondary">Connection Settings</div>
                   <app-dynamic-capability-form
-                     [config]="selectedDefinition!.connection_config"
-                     (valueChange)="updateConnectionInfo($event)">
+                    [config]="selectedDefinition!.connection_config"
+                    (valueChange)="updateConnectionInfo($event)">
                   </app-dynamic-capability-form>
-             </div>
-     
-             <ng-template #manualConnectionInput>
+                </div>
+              } @else {
                 <!-- Only show manual JSON if strictly needed or if connection_config missing but manual allowed -->
-                 <div *ngIf="form.get('backend_driver')?.value !== 'sim'" class="mb-4">
+                @if (form.get('backend_driver')?.value !== 'sim') {
+                  <div class="mb-4">
                     <mat-form-field appearance="outline" class="w-full">
                       <mat-label>Connection Info (JSON)</mat-label>
                       <textarea matInput formControlName="connection_info" placeholder='{"host": "127.0.0.1", "port": 3000}' rows="2"></textarea>
-                       <mat-error *ngIf="form.get('connection_info')?.hasError('invalidJson')">Invalid JSON format</mat-error>
+                      @if (form.get('connection_info')?.hasError('invalidJson')) {
+                        <mat-error>Invalid JSON format</mat-error>
+                      }
                     </mat-form-field>
-                 </div>
-             </ng-template>
-     
-             <!-- Capabilities -->
-             <div *ngIf="selectedDefinition?.capabilities_config; else legacyInput" class="border sys-border rounded-lg p-3 sys-surface flex flex-col gap-2">
-                 <div class="text-sm font-medium sys-text-secondary">Configuration</div>
-                 <app-dynamic-capability-form
-                     [config]="selectedDefinition!.capabilities_config"
-                     (valueChange)="updateCapabilities($event)">
+                  </div>
+                }
+              }
+              <!-- Capabilities -->
+              @if (selectedDefinition?.capabilities_config) {
+                <div class="border sys-border rounded-lg p-3 sys-surface flex flex-col gap-2">
+                  <div class="text-sm font-medium sys-text-secondary">Configuration</div>
+                  <app-dynamic-capability-form
+                    [config]="selectedDefinition!.capabilities_config"
+                    (valueChange)="updateCapabilities($event)">
                   </app-dynamic-capability-form>
-             </div>
-     
-             <ng-template #legacyInput>
-                 <mat-form-field appearance="outline" class="w-full" *ngIf="selectedDefinition">
-                   <mat-label>User Configured Capabilities (JSON)</mat-label>
-                   <textarea matInput formControlName="user_configured_capabilities" placeholder='{"has_iswap": true, "has_core96": true}' rows="2"></textarea>
-                    <mat-error *ngIf="form.get('user_configured_capabilities')?.hasError('invalidJson')">Invalid JSON format</mat-error>
+                </div>
+              } @else {
+                @if (selectedDefinition) {
+                  <mat-form-field appearance="outline" class="w-full">
+                    <mat-label>User Configured Capabilities (JSON)</mat-label>
+                    <textarea matInput formControlName="user_configured_capabilities" placeholder='{"has_iswap": true, "has_core96": true}' rows="2"></textarea>
+                    @if (form.get('user_configured_capabilities')?.hasError('invalidJson')) {
+                      <mat-error>Invalid JSON format</mat-error>
+                    }
                     <mat-hint>Configure optional modules (e.g. iSWAP, CoRe96).</mat-hint>
-                 </mat-form-field>
-             </ng-template>
-
-             <div class="mt-4">
+                  </mat-form-field>
+                }
+              }
+              <div class="mt-4">
                 <mat-form-field appearance="outline" class="w-full">
                   <mat-label>Initial Status</mat-label>
                   <mat-select formControlName="status">
-                      <mat-option [value]="MachineStatus.OFFLINE">Offline</mat-option>
-                      <mat-option [value]="MachineStatus.IDLE">Idle</mat-option>
+                    <mat-option [value]="MachineStatus.OFFLINE">Offline</mat-option>
+                    <mat-option [value]="MachineStatus.IDLE">Idle</mat-option>
                   </mat-select>
                 </mat-form-field>
-             </div>
-          </div>
-
+              </div>
+            </div>
+          }
+    
         </form>
       </mat-dialog-content>
-      
+    
       <mat-dialog-actions align="end" class="flex-shrink-0 border-t sys-border p-4 z-10">
         <button mat-button mat-dialog-close>Cancel</button>
-        
-        <button mat-flat-button color="primary" 
-                *ngIf="currentStep < 3" 
-                [disabled]="!canProceed()"
-                (click)="nextStep()">
-           Next
-        </button>
-        
-        <button mat-flat-button color="primary" 
-                *ngIf="currentStep === 3" 
-                [disabled]="form.invalid" 
-                (click)="save()">
-           Finish
-        </button>
+    
+        @if (currentStep < 3) {
+          <button mat-flat-button color="primary"
+            [disabled]="!canProceed()"
+            (click)="nextStep()">
+            Next
+          </button>
+        }
+    
+        @if (currentStep === 3) {
+          <button mat-flat-button color="primary"
+            [disabled]="form.invalid"
+            (click)="save()">
+            Finish
+          </button>
+        }
       </mat-dialog-actions>
     </div>
-  `,
+    `,
   styles: [`
     .fade-in {
       animation: fadeIn 0.3s ease-in-out;
@@ -496,7 +525,7 @@ export class MachineDialogComponent implements OnInit {
       if (value.user_configured_capabilities) {
         try {
           userConfiguredCapabilities = JSON.parse(value.user_configured_capabilities);
-        } catch { }
+        } catch { /* Invalid JSON */ }
       }
 
       this.dialogRef.close({

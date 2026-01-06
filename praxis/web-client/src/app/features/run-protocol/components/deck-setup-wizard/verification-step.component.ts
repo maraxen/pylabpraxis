@@ -1,5 +1,5 @@
 import { Component, input, output, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { CarrierRequirement, SlotAssignment } from '../../models/carrier-inference.models';
@@ -10,7 +10,7 @@ import { CarrierRequirement, SlotAssignment } from '../../models/carrier-inferen
 @Component({
     selector: 'app-verification-step',
     standalone: true,
-    imports: [CommonModule, MatIconModule, MatButtonModule],
+    imports: [MatIconModule, MatButtonModule],
     template: `
         <div class="step-content">
             <h3 class="step-title">

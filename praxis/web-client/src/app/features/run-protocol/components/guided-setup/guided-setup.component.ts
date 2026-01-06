@@ -1,5 +1,5 @@
 import { Component, Inject, inject, signal, computed, OnInit, Input, Output, EventEmitter, booleanAttribute, Optional } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
@@ -25,7 +25,6 @@ export interface GuidedSetupResult {
   selector: 'app-guided-setup',
   standalone: true,
   imports: [
-    CommonModule,
     MatDialogModule,
     MatButtonModule,
     MatSelectModule,
@@ -33,7 +32,7 @@ export interface GuidedSetupResult {
     MatTooltipModule,
     MatChipsModule,
     FormsModule
-  ],
+],
   template: `
     @if (!isInline) {
       <h2 mat-dialog-title>Deck Setup: {{ data?.protocol?.name }}</h2>

@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -31,7 +31,6 @@ export interface ManufacturerGroup {
   selector: 'app-machine-definition-accordion',
   standalone: true,
   imports: [
-    CommonModule,
     MatExpansionModule,
     MatIconModule,
     MatButtonModule,
@@ -40,8 +39,8 @@ export interface ManufacturerGroup {
     MatFormFieldModule,
     MatInputModule,
     FormsModule,
-    ReactiveFormsModule,
-  ],
+    ReactiveFormsModule
+],
   template: `
     <div class="accordion-container">
       <div class="accordion-header">

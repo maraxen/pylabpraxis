@@ -51,150 +51,154 @@ interface GroupedDefinitions {
     <h2 mat-dialog-title>
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <button mat-icon-button *ngIf="selectedDefinition" (click)="clearSelection()">
-            <mat-icon>arrow_back</mat-icon>
-          </button>
+          @if (selectedDefinition) {
+            <button mat-icon-button (click)="clearSelection()">
+              <mat-icon>arrow_back</mat-icon>
+            </button>
+          }
           {{ selectedDefinition ? 'Configure Resource' : 'Add Resource' }}
         </div>
-        
+    
         <!-- Controls (only visible in browsing mode) -->
-        <div class="flex items-center gap-4" *ngIf="!selectedDefinition">
-          <mat-slide-toggle 
-            [checked]="showPlrName()" 
-            (change)="showPlrName.set($event.checked)"
-            color="primary">
-            <span class="text-xs">Show PLR Name</span>
-          </mat-slide-toggle>
-          
-          <button mat-icon-button mat-dialog-close>
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
+        @if (!selectedDefinition) {
+          <div class="flex items-center gap-4">
+            <mat-slide-toggle
+              [checked]="showPlrName()"
+              (change)="showPlrName.set($event.checked)"
+              color="primary">
+              <span class="text-xs">Show PLR Name</span>
+            </mat-slide-toggle>
+            <button mat-icon-button mat-dialog-close>
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        }
       </div>
     </h2>
-
+    
     <mat-dialog-content>
       <!-- STEP 1: BROWSE (Accordion) -->
-      <div *ngIf="!selectedDefinition; else configForm" class="browse-container">
-        
-        <!-- Search Bar -->
-        <mat-form-field appearance="outline" class="w-full search-field">
-          <mat-icon matPrefix>search</mat-icon>
-          <input matInput [formControl]="searchControl" placeholder="Search resources...">
-          <button *ngIf="searchControl.value" matSuffix mat-icon-button (click)="searchControl.setValue('')">
-            <mat-icon>close</mat-icon>
-          </button>
-        </mat-form-field>
-
-        <!-- Loading State -->
-        <div *ngIf="isLoading()" class="loading-state">
-          <div *ngFor="let i of [1,2,3,4]" class="skeleton-row"></div>
-        </div>
-
-        <!-- Accordion List -->
-        <mat-accordion displayMode="flat" multi="false" class="resource-accordion">
-          
-          <ng-container *ngFor="let group of groupedDefinitions()">
-            <mat-expansion-panel *ngIf="group.totalCount > 0">
-              <mat-expansion-panel-header>
-                <mat-panel-title class="flex items-center gap-3">
-                  <mat-icon [color]="'primary'">{{ group.icon }}</mat-icon>
-                  <span class="font-medium text-lg">{{ group.group }}</span>
-                </mat-panel-title>
-                <mat-panel-description>
-                  {{ group.totalCount }} items
-                </mat-panel-description>
-              </mat-expansion-panel-header>
-
-              <!-- Group Content -->
-              <div class="group-content">
-                
-                <!-- If Carriers, show sub-accordions or headers -->
-                <ng-container *ngIf="group.group === 'Carriers'; else flatList">
-                  <ng-container *ngFor="let subEntry of group.subGroups | keyvalue">
-                    <div class="sub-category-section">
-                      <h4 class="sub-cat-header">{{ formatSubCategory(subEntry.key) }}</h4>
-                      <div class="resource-list">
-                        <button *ngFor="let def of subEntry.value" 
+      @if (!selectedDefinition) {
+        <div class="browse-container">
+          <!-- Search Bar -->
+          <mat-form-field appearance="outline" class="w-full search-field">
+            <mat-icon matPrefix>search</mat-icon>
+            <input matInput [formControl]="searchControl" placeholder="Search resources...">
+            @if (searchControl.value) {
+              <button matSuffix mat-icon-button (click)="searchControl.setValue('')">
+                <mat-icon>close</mat-icon>
+              </button>
+            }
+          </mat-form-field>
+          <!-- Loading State -->
+          @if (isLoading()) {
+            <div class="loading-state">
+              @for (i of [1,2,3,4]; track i) {
+                <div class="skeleton-row"></div>
+              }
+            </div>
+          }
+          <!-- Accordion List -->
+          <mat-accordion displayMode="flat" multi="false" class="resource-accordion">
+            @for (group of groupedDefinitions(); track group) {
+              @if (group.totalCount > 0) {
+                <mat-expansion-panel>
+                  <mat-expansion-panel-header>
+                    <mat-panel-title class="flex items-center gap-3">
+                      <mat-icon [color]="'primary'">{{ group.icon }}</mat-icon>
+                      <span class="font-medium text-lg">{{ group.group }}</span>
+                    </mat-panel-title>
+                    <mat-panel-description>
+                      {{ group.totalCount }} items
+                    </mat-panel-description>
+                  </mat-expansion-panel-header>
+                  <!-- Group Content -->
+                  <div class="group-content">
+                    <!-- If Carriers, show sub-accordions or headers -->
+                    @if (group.group === 'Carriers') {
+                      @for (subEntry of group.subGroups | keyvalue; track subEntry) {
+                        <div class="sub-category-section">
+                          <h4 class="sub-cat-header">{{ formatSubCategory(subEntry.key) }}</h4>
+                          <div class="resource-list">
+                            @for (def of subEntry.value; track def) {
+                              <button
                                 class="resource-item"
                                 (click)="selectDefinition(def)">
-                           <app-resource-chips 
-                             [definition]="def" 
-                             [showPlrName]="showPlrName()"
-                             [showVendor]="true"
-                             [showDisplayName]="true">
-                           </app-resource-chips>
-                        </button>
-                      </div>
-                    </div>
-                  </ng-container>
-                </ng-container>
-
-                <!-- Flat list for others (Plates, etc) -->
-                <ng-template #flatList>
-                  <div class="resource-list">
-                    <!-- Flatten all subgroups for non-carrier categories -->
-                    <ng-container *ngFor="let subEntry of group.subGroups | keyvalue">
-                      <button *ngFor="let def of subEntry.value" 
+                                <app-resource-chips
+                                  [definition]="def"
+                                  [showPlrName]="showPlrName()"
+                                  [showVendor]="true"
+                                  [showDisplayName]="true">
+                                </app-resource-chips>
+                              </button>
+                            }
+                          </div>
+                        </div>
+                      }
+                    } @else {
+                      <div class="resource-list">
+                        <!-- Flatten all subgroups for non-carrier categories -->
+                        @for (subEntry of group.subGroups | keyvalue; track subEntry) {
+                          @for (def of subEntry.value; track def) {
+                            <button
                               class="resource-item"
                               (click)="selectDefinition(def)">
-                         <app-resource-chips 
-                           [definition]="def" 
-                           [showPlrName]="showPlrName()"
-                           [showVendor]="true"
-                           [showDisplayName]="true">
-                         </app-resource-chips>
-                      </button>
-                    </ng-container>
+                              <app-resource-chips
+                                [definition]="def"
+                                [showPlrName]="showPlrName()"
+                                [showVendor]="true"
+                                [showDisplayName]="true">
+                              </app-resource-chips>
+                            </button>
+                          }
+                        }
+                      </div>
+                    }
+                    <!-- Flat list for others (Plates, etc) -->
                   </div>
-                </ng-template>
-
+                </mat-expansion-panel>
+              }
+            }
+            @if (groupedDefinitions().length === 0 && !isLoading()) {
+              <div class="no-results">
+                No matching resources found.
               </div>
-            </mat-expansion-panel>
-          </ng-container>
-
-          <div *ngIf="groupedDefinitions().length === 0 && !isLoading()" class="no-results">
-            No matching resources found.
-          </div>
-
-        </mat-accordion>
-      </div>
-
-      <!-- STEP 2: CONFIGURE (Form) -->
-      <ng-template #configForm>
+            }
+          </mat-accordion>
+        </div>
+      } @else {
         <div class="config-container">
           <!-- Selected Resource Summary -->
           <div class="selected-summary">
-             <div class="summary-icon">
-               <mat-icon>{{ getCategoryIcon(selectedUiGroup!) }}</mat-icon>
-             </div>
-             <div class="summary-details">
-               <app-resource-chips 
-                 [definition]="selectedDefinition!" 
-                 [showPlrName]="true"
-                 [showDisplayName]="true">
-               </app-resource-chips>
-               <div class="text-sm text-gray-500 mt-1">{{ selectedDefinition!.fqn }}</div>
-             </div>
+            <div class="summary-icon">
+              <mat-icon>{{ getCategoryIcon(selectedUiGroup!) }}</mat-icon>
+            </div>
+            <div class="summary-details">
+              <app-resource-chips
+                [definition]="selectedDefinition!"
+                [showPlrName]="true"
+                [showDisplayName]="true">
+              </app-resource-chips>
+              <div class="text-sm text-gray-500 mt-1">{{ selectedDefinition!.fqn }}</div>
+            </div>
           </div>
-
           <form [formGroup]="form" class="flex flex-col gap-4 py-4">
             <mat-form-field appearance="outline">
               <mat-label>Name</mat-label>
               <input matInput formControlName="name" placeholder="e.g. My Plate 1">
-              <mat-error *ngIf="form.get('name')?.hasError('required')">Name is required</mat-error>
+              @if (form.get('name')?.hasError('required')) {
+                <mat-error>Name is required</mat-error>
+              }
             </mat-form-field>
-
             <div class="form-row">
               <mat-form-field appearance="outline" class="half-width">
-                  <mat-label>Status</mat-label>
-                  <mat-select formControlName="status">
-                      <mat-option [value]="ResourceStatus.AVAILABLE">Available</mat-option>
-                      <mat-option [value]="ResourceStatus.IN_USE">In Use</mat-option>
-                      <mat-option [value]="ResourceStatus.DEPLETED">Depleted</mat-option>
-                  </mat-select>
+                <mat-label>Status</mat-label>
+                <mat-select formControlName="status">
+                  <mat-option [value]="ResourceStatus.AVAILABLE">Available</mat-option>
+                  <mat-option [value]="ResourceStatus.IN_USE">In Use</mat-option>
+                  <mat-option [value]="ResourceStatus.DEPLETED">Depleted</mat-option>
+                </mat-select>
               </mat-form-field>
-
               <mat-form-field appearance="outline" class="half-width">
                 <mat-label>Parent ID (Optional)</mat-label>
                 <input matInput formControlName="parent_accession_id" placeholder="UUID of parent">
@@ -202,15 +206,19 @@ interface GroupedDefinitions {
             </div>
           </form>
         </div>
-      </ng-template>
-
+      }
+    
+      <!-- STEP 2: CONFIGURE (Form) -->
+    
     </mat-dialog-content>
-
-    <mat-dialog-actions align="end" *ngIf="selectedDefinition">
-      <button mat-button (click)="clearSelection()">Back</button>
-      <button mat-flat-button color="primary" [disabled]="form.invalid" (click)="save()">Save Resource</button>
-    </mat-dialog-actions>
-  `,
+    
+    @if (selectedDefinition) {
+      <mat-dialog-actions align="end">
+        <button mat-button (click)="clearSelection()">Back</button>
+        <button mat-flat-button color="primary" [disabled]="form.invalid" (click)="save()">Save Resource</button>
+      </mat-dialog-actions>
+    }
+    `,
   styles: [`
     :host { display: block; height: 100%; max-height: 80vh; }
     mat-dialog-content { height: calc(80vh - 120px); min-width: 600px; }

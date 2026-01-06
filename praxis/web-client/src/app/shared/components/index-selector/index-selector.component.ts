@@ -11,7 +11,7 @@ import {
   ChangeDetectionStrategy,
   inject,
 } from '@angular/core';
-import { NgFor, NgIf, NgStyle } from '@angular/common';
+import { NgStyle } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -53,16 +53,18 @@ export type SelectionMode = 'single' | 'multiple' | 'range';
 @Component({
   selector: 'app-index-selector',
   standalone: true,
-  imports: [NgFor, NgIf, NgStyle, FormsModule, MatButtonModule, MatIconModule, MatTooltipModule],
+  imports: [NgStyle, FormsModule, MatButtonModule, MatIconModule, MatTooltipModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="index-selector-container" [class.disabled]="disabled">
       <!-- Label if provided -->
-      <div class="selector-header" *ngIf="spec.label">
-        <span class="selector-label">{{ spec.label }}</span>
-        <span class="selection-summary">{{ getSelectionSummary() }}</span>
-      </div>
-
+      @if (spec.label) {
+        <div class="selector-header">
+          <span class="selector-label">{{ spec.label }}</span>
+          <span class="selection-summary">{{ getSelectionSummary() }}</span>
+        </div>
+      }
+    
       <!-- Toolbar -->
       <div class="selector-toolbar">
         <button
@@ -70,7 +72,7 @@ export type SelectionMode = 'single' | 'multiple' | 'range';
           (click)="selectAll()"
           [disabled]="disabled"
           matTooltip="Select All"
-        >
+          >
           <mat-icon>select_all</mat-icon>
         </button>
         <button
@@ -78,61 +80,68 @@ export type SelectionMode = 'single' | 'multiple' | 'range';
           (click)="clearSelection(); emitSelection()"
           [disabled]="disabled"
           matTooltip="Clear Selection"
-        >
+          >
           <mat-icon>deselect</mat-icon>
         </button>
       </div>
-
+    
       <!-- Grid container with headers -->
       <div class="grid-container" [ngStyle]="getGridStyle()">
         <!-- Column Headers -->
-        <ng-container *ngIf="showColumnLabels">
-          <div
-            *ngFor="let col of columns; let i = index"
-            class="column-header"
-            [style.grid-column]="i + 2"
-            (click)="selectColumn(i)"
-          >
-            {{ col }}
-          </div>
-        </ng-container>
-
+        @if (showColumnLabels) {
+          @for (col of columns; track col; let i = $index) {
+            <div
+              class="column-header"
+              [style.grid-column]="i + 2"
+              (click)="selectColumn(i)"
+              >
+              {{ col }}
+            </div>
+          }
+        }
+    
         <!-- Row Headers -->
-        <ng-container *ngIf="showRowLabels">
-          <div
-            *ngFor="let row of rows; let i = index"
-            class="row-header"
-            [style.grid-row]="i + 2"
-            (click)="selectRow(i)"
-          >
-            {{ row }}
-          </div>
-        </ng-container>
-
+        @if (showRowLabels) {
+          @for (row of rows; track row; let i = $index) {
+            <div
+              class="row-header"
+              [style.grid-row]="i + 2"
+              (click)="selectRow(i)"
+              >
+              {{ row }}
+            </div>
+          }
+        }
+    
         <!-- Main Grid -->
         <div class="main-grid" [ngStyle]="getInnerGridStyle()">
-          <div *ngFor="let row of rows; let rowIdx = index" class="grid-row">
-            <div
-              *ngFor="let col of columns; let colIdx = index"
-              class="cell"
-              [class.selected]="selectionGrid[rowIdx]?.[colIdx]"
-              [class.in-drag]="isInDragRect(rowIdx, colIdx)"
-              [class.disabled]="disabled"
-              [title]="getWellId(rowIdx, colIdx)"
-              (click)="onCellClick(rowIdx, colIdx, $event)"
-              (mousedown)="onCellMouseDown(rowIdx, colIdx, $event)"
-              (mouseenter)="onCellMouseEnter(rowIdx, colIdx)"
-            ></div>
-          </div>
+          @for (row of rows; track row; let rowIdx = $index) {
+            <div class="grid-row">
+              @for (col of columns; track col; let colIdx = $index) {
+                <div
+                  class="cell"
+                  [class.selected]="selectionGrid[rowIdx]?.[colIdx]"
+                  [class.in-drag]="isInDragRect(rowIdx, colIdx)"
+                  [class.disabled]="disabled"
+                  [title]="getWellId(rowIdx, colIdx)"
+                  (click)="onCellClick(rowIdx, colIdx, $event)"
+                  (mousedown)="onCellMouseDown(rowIdx, colIdx, $event)"
+                  (mouseenter)="onCellMouseEnter(rowIdx, colIdx)"
+                ></div>
+              }
+            </div>
+          }
         </div>
       </div>
-
+    
       <!-- Selection info footer -->
-      <div class="selector-footer" *ngIf="!spec.label">
-        <span class="selection-summary">{{ getSelectionSummary() }}</span>
-      </div>
+      @if (!spec.label) {
+        <div class="selector-footer">
+          <span class="selection-summary">{{ getSelectionSummary() }}</span>
+        </div>
+      }
     </div>
-  `,
+    `,
   styles: [`
     :host {
       display: block;

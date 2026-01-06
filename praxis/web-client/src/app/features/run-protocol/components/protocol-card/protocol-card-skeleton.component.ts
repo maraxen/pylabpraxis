@@ -1,10 +1,10 @@
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 @Component({
     selector: 'app-protocol-card-skeleton',
     standalone: true,
-    imports: [CommonModule],
+    imports: [],
     template: `
     <div class="skeleton-card" [class.compact]="compact">
       <div class="skeleton-header">

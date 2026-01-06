@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,19 +22,18 @@ import {
     selector: 'app-hardware-discovery-dialog',
     standalone: true,
     imports: [
-        CommonModule,
-        FormsModule,
-        MatDialogModule,
-        MatButtonModule,
-        MatIconModule,
-        MatProgressSpinnerModule,
-        MatTooltipModule,
-        MatChipsModule,
-        MatExpansionModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatSnackBarModule,
-    ],
+    FormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatTooltipModule,
+    MatChipsModule,
+    MatExpansionModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSnackBarModule
+],
     template: `
         <h2 mat-dialog-title>
             <mat-icon>usb</mat-icon>

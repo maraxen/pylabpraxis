@@ -16,7 +16,7 @@ async def test_deck_service_direct(db_session: AsyncSession):
 
     # Check if deck exists in database using raw query
     result = await db_session.execute(
-        text("SELECT accession_id, name FROM decks WHERE accession_id = :id"),
+        text("SELECT accession_id FROM decks WHERE accession_id = :id"),
         {"id": str(deck.accession_id)},
     )
     result.first()

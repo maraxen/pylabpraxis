@@ -7,10 +7,9 @@ to efficiently detect all ways a protocol can fail.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from itertools import product
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
@@ -21,7 +20,11 @@ from praxis.backend.core.simulation.state_models import (
   BooleanLiquidState,
   SimulationState,
 )
-from praxis.backend.utils.plr_static_analysis.models import ProtocolComputationGraph
+
+if TYPE_CHECKING:
+  from collections.abc import Callable, Iterator
+
+  from praxis.backend.utils.plr_static_analysis.models import ProtocolComputationGraph
 
 # =============================================================================
 # Failure Mode Models

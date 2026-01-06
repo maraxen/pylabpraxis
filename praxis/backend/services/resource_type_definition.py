@@ -3,6 +3,7 @@
 import contextlib
 import importlib
 import inspect
+import math
 import pkgutil
 import re
 import types
@@ -263,14 +264,13 @@ class ResourceTypeDefinitionService(
     # Check return type annotation
     try:
       hints = inspect.signature(func).return_annotation
-      if hints != inspect.Signature.empty:
-        if inspect.isclass(hints):
-          # Reject if return type is exactly Resource (base class)
-          if hints.__name__ == "Resource":
-            return False
-          # Accept if return type is in allowlist
-          if hints.__name__ in valid_return_types:
-            return True
+      if hints != inspect.Signature.empty and inspect.isclass(hints):
+        # Reject if return type is exactly Resource (base class)
+        if hints.__name__ == "Resource":
+          return False
+        # Accept if return type is in allowlist
+        if hints.__name__ in valid_return_types:
+          return True
           # Also check if it's a subclass of an allowed type (optional, but robust)
           # Only if the specific class is not exported but is a subclass
           # For now, explicit name check is safer to avoid broad matches

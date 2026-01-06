@@ -6,7 +6,7 @@
  */
 
 import { Component, input, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { InferredRequirement, RequirementStatus } from '@core/models/simulation.models';
@@ -14,7 +14,7 @@ import { InferredRequirement, RequirementStatus } from '@core/models/simulation.
 @Component({
     selector: 'app-requirement-indicator',
     standalone: true,
-    imports: [CommonModule, MatIconModule, MatTooltipModule],
+    imports: [MatIconModule, MatTooltipModule],
     template: `
     <div class="requirement-item" 
          [class.met]="isMet()"

@@ -1,5 +1,5 @@
 import { Component, inject, input, output, computed, OnInit, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatStepperModule } from '@angular/material/stepper';
@@ -25,21 +25,20 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
     selector: 'app-deck-setup-wizard',
     standalone: true,
     imports: [
-        CommonModule,
-        MatStepperModule,
-        MatButtonModule,
-        MatIconModule,
-        MatProgressBarModule,
-        MatProgressBarModule,
-        MatDialogModule,
-        DragDropModule,
-        CarrierPlacementStepComponent,
-        ResourcePlacementStepComponent,
-        VerificationStepComponent,
-        DeckViewComponent,
-        SetupInstructionsComponent,
-        RequirementsPanelComponent,
-    ],
+    MatStepperModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressBarModule,
+    MatProgressBarModule,
+    MatDialogModule,
+    DragDropModule,
+    CarrierPlacementStepComponent,
+    ResourcePlacementStepComponent,
+    VerificationStepComponent,
+    DeckViewComponent,
+    SetupInstructionsComponent,
+    RequirementsPanelComponent
+],
     template: `
         <div class="wizard-container" cdkDropListGroup>
             <div class="wizard-header">

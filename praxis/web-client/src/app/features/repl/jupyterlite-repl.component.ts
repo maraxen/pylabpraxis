@@ -12,7 +12,7 @@ import {
   computed,
 } from '@angular/core';
 import { AppStore } from '../../core/store/app.store';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -45,7 +45,6 @@ import { getResourceCategoryIcon, getMachineCategoryIcon } from '@shared/constan
   selector: 'app-jupyterlite-repl',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     RouterLink,
     MatCardModule,
@@ -60,8 +59,8 @@ import { getResourceCategoryIcon, getMachineCategoryIcon } from '@shared/constan
     MatInputModule,
     MatSelectModule,
     MatChipsModule,
-    HardwareDiscoveryButtonComponent,
-  ],
+    HardwareDiscoveryButtonComponent
+],
   template: `
     <div class="repl-container">
       <mat-drawer-container class="repl-drawer-container">

@@ -131,26 +131,31 @@ async def test_resource_definition_orm_unique_fqn_constraint(db_session: AsyncSe
 
 
 @pytest.mark.asyncio
-async def test_resource_definition_orm_unique_name_constraint(db_session: AsyncSession) -> None:
-    """Test that name must be unique."""
+async def test_resource_definition_orm_non_unique_name(db_session: AsyncSession) -> None:
+    """Test that name does NOT have to be unique."""
     # Create first resource definition
     resource_def1 = ResourceDefinitionOrm(
-        name="unique_plate",
+        name="duplicate_plate",
         fqn="test.unique.Plate1",
     )
     db_session.add(resource_def1)
     await db_session.flush()
 
-    # Try to create another with same name
+    # Create another with same name but different FQN
     resource_def2 = ResourceDefinitionOrm(
-        name="unique_plate",  # Duplicate name
+        name="duplicate_plate",  # Duplicate name
         fqn="test.unique.Plate2",
     )
     db_session.add(resource_def2)
-
-    # Should raise IntegrityError
-    with pytest.raises(IntegrityError):
-        await db_session.flush()
+    
+    # Should NOT raise IntegrityError
+    await db_session.flush()
+    
+    # Verify both exist
+    result = await db_session.execute(
+        select(ResourceDefinitionOrm).where(ResourceDefinitionOrm.name == "duplicate_plate")
+    )
+    assert len(result.scalars().all()) == 2
 
 
 @pytest.mark.asyncio

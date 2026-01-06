@@ -1,5 +1,5 @@
 import { Component, computed, input, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Machine } from '../../models/asset.models';
@@ -11,7 +11,7 @@ export type MaintenanceStatus = 'ok' | 'warning' | 'overdue' | 'disabled';
 @Component({
   selector: 'app-maintenance-badge',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatTooltipModule],
+  imports: [MatIconModule, MatTooltipModule],
   template: `
     @if (status() !== 'disabled') {
       <div 

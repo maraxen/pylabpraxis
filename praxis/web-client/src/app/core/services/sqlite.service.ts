@@ -575,7 +575,7 @@ export class SqliteService {
                     const assetId = generateUuid();
 
                     // Logic to check simulation
-                    let isSimulated = true; // Default to true as per requirements
+                    const isSimulated = true; // Default to true as per requirements
                     // "If definition has 'Simulator' or 'Chatterbox' in compatible_backends, use it"
                     // compatible_backends is JSON string
                     let backends: string[] = [];
@@ -584,7 +584,7 @@ export class SqliteService {
                             const parsed = JSON.parse(compatibleBackendsStr as string);
                             if (Array.isArray(parsed)) backends = parsed;
                         }
-                    } catch { }
+                    } catch { /* Ignore JSON parse error */ }
 
                     const isNativeSim = backends.some(b => b.includes('Simulator') || b.includes('Chatterbox'));
                     // "Otherwise, patch out the IO layer" -> effectively just setting is_simulation_override=true covers our logic helper?

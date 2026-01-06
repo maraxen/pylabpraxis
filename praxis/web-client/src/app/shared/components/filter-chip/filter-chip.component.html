@@ -1,24 +1,30 @@
 <div class="filter-chip" [class.active]="isActive" [class.disabled]="disabled" [class.shake]="isShaking"
-    [matTooltip]="disabled ? 'No results match this filter combination' : ''"
-    [matMenuTriggerFor]="disabled ? null : menu" (click)="onChipClick($event)" tabindex="0" role="button"
-    [attr.aria-disabled]="disabled" [attr.aria-label]="label">
+  [matTooltip]="disabled ? 'No results match this filter combination' : ''"
+  [matMenuTriggerFor]="disabled ? null : menu" (click)="onChipClick($event)" tabindex="0" role="button"
+  [attr.aria-disabled]="disabled" [attr.aria-label]="label">
 
-    <span class="chip-text">{{ displayLabel }}</span>
-    <mat-icon class="chip-chevron">expand_more</mat-icon>
+  <span class="chip-text">{{ displayLabel }}</span>
+  <mat-icon class="chip-chevron">expand_more</mat-icon>
 </div>
 
 <mat-menu #menu="matMenu" class="filter-chip-menu">
-    <button mat-menu-item (click)="selectOption(null)" class="filter-option">
-        <span [class.font-bold]="!isActive">All</span>
-    </button>
+  <button mat-menu-item (click)="selectOption(null)" class="filter-option">
+    <span [class.font-bold]="!isActive">All</span>
+  </button>
 
-    <button mat-menu-item *ngFor="let option of options" [disabled]="option.disabled"
-        (click)="!option.disabled && selectOption(option.value)" class="filter-option">
-        <div class="option-content">
-            <span [class.font-bold]="selectedValue === option.value">{{ option.label }}</span>
-            <span *ngIf="option.disabled" class="option-count">(0 results)</span>
-            <span *ngIf="!option.disabled && option.count !== undefined" class="option-count">({{ option.count
-                }})</span>
-        </div>
+  @for (option of options; track option) {
+    <button mat-menu-item [disabled]="option.disabled"
+      (click)="!option.disabled && selectOption(option.value)" class="filter-option">
+      <div class="option-content">
+        <span [class.font-bold]="selectedValue === option.value">{{ option.label }}</span>
+        @if (option.disabled) {
+          <span class="option-count">(0 results)</span>
+        }
+        @if (!option.disabled && option.count !== undefined) {
+          <span class="option-count">({{ option.count
+          }})</span>
+        }
+      </div>
     </button>
+  }
 </mat-menu>

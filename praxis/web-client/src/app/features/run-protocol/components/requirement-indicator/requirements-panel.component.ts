@@ -6,7 +6,7 @@
  */
 
 import { Component, input, computed, inject, OnInit, signal, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -28,12 +28,11 @@ export interface DeckValidationState {
     selector: 'app-requirements-panel',
     standalone: true,
     imports: [
-        CommonModule,
-        MatIconModule,
-        MatProgressSpinnerModule,
-        MatExpansionModule,
-        RequirementIndicatorComponent
-    ],
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatExpansionModule,
+    RequirementIndicatorComponent
+],
     template: `
     <div class="requirements-panel">
       <div class="panel-header">

@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -11,7 +11,7 @@ import { TutorialService } from '@core/services/tutorial.service';
 @Component({
   selector: 'app-welcome-dialog',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, MatButtonModule, MatSlideToggleModule, FormsModule],
+  imports: [MatDialogModule, MatButtonModule, MatSlideToggleModule, FormsModule],
   template: `
     <h2 mat-dialog-title>Welcome to Praxis</h2>
     <mat-dialog-content class="prose max-w-none">

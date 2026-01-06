@@ -1,5 +1,5 @@
 import { Component, input, output, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,7 +11,7 @@ import { CarrierRequirement } from '../../models/carrier-inference.models';
 @Component({
     selector: 'app-carrier-placement-step',
     standalone: true,
-    imports: [CommonModule, FormsModule, MatCheckboxModule, MatIconModule],
+    imports: [FormsModule, MatCheckboxModule, MatIconModule],
     template: `
         <div class="step-content">
             <h3 class="step-title">

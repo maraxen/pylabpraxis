@@ -6,7 +6,7 @@
  */
 
 import { Component, input, output, computed, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
@@ -15,7 +15,7 @@ import { StateHistory, OperationStateSnapshot, TimelineMetric } from '@core/mode
 @Component({
     selector: 'app-state-history-timeline',
     standalone: true,
-    imports: [CommonModule, MatIconModule, MatTooltipModule],
+    imports: [MatIconModule, MatTooltipModule],
     template: `
     <div class="timeline-container">
       <div class="timeline-header">

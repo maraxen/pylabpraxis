@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, OnDestroy, signal, computed, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -15,7 +15,6 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
   selector: 'app-asset-dashboard',
   standalone: true,
   imports: [
-    CommonModule,
     MatIconModule,
     MatButtonModule,
     MatCardModule,
@@ -23,7 +22,7 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
     RouterLink,
     RouterLink,
     NgxSkeletonLoaderModule
-  ],
+],
   template: `
     <div class="h-full flex flex-col gap-6 overflow-y-auto">
       <!-- Stats Cards -->

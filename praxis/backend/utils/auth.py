@@ -59,7 +59,7 @@ def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = 
 
 def _get_keycloak_public_key() -> str:
   """Get or fetch Keycloak public key."""
-  global _KEYCLOAK_PUBLIC_KEY  # noqa: PLW0603
+  global _KEYCLOAK_PUBLIC_KEY
   if _KEYCLOAK_PUBLIC_KEY:
     return _KEYCLOAK_PUBLIC_KEY
 

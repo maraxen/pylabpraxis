@@ -1,5 +1,5 @@
 import { Component, input, output, computed, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,78 +11,80 @@ import { SlotAssignment } from '../../models/carrier-inference.models';
 @Component({
     selector: 'app-resource-placement-step',
     standalone: true,
-    imports: [CommonModule, MatIconModule, MatButtonModule, DragDropModule],
+    imports: [MatIconModule, MatButtonModule, DragDropModule],
     template: `
         <div class="step-content">
-            <h3 class="step-title">
-                <mat-icon>science</mat-icon>
-                Step 2: Place Resources in Slots
-            </h3>
-            <p class="instruction">
-                Place each resource in its designated slot. Follow the order below for optimal access.
-            </p>
-            
-            <div class="resource-list" cdkDropList>
-                @for (assignment of assignments(); track assignment.resource.name; let i = $index) {
-                    <div class="resource-item" 
-                         [class.current]="i === currentIndex()"
-                         [class.completed]="assignment.placed"
-                         [class.pending]="!assignment.placed && i > currentIndex()"
-                         cdkDrag
-                         [cdkDragData]="assignment"
-                         [cdkDragDisabled]="assignment.placed">
-                        
-                        <div class="drag-placeholder" *cdkDragPlaceholder></div>
-                        <div class="drag-preview" *cdkDragPreview>
-                            {{ assignment.resource.name }}
-                        </div>
-                        
-                        <div class="order-badge" [class.active]="i === currentIndex()">
-                            @if (assignment.placed) {
-                                <mat-icon>check</mat-icon>
-                            } @else {
-                                {{ i + 1 }}
-                            }
-                        </div>
-                        
-                        <div class="resource-info">
-                            <span class="resource-name">{{ assignment.resource.name }}</span>
-                            <mat-icon class="arrow">arrow_forward</mat-icon>
-                            <span class="slot-location">
-                                {{ assignment.carrier.name }}, {{ assignment.slot.name }}
-                            </span>
-                        </div>
-                        
-                        @if (i === currentIndex() && !assignment.placed) {
-                            <button mat-flat-button color="primary" 
-                                    (click)="onMarkPlaced(assignment)">
-                                Done
-                            </button>
-                        }
-                    </div>
+          <h3 class="step-title">
+            <mat-icon>science</mat-icon>
+            Step 2: Place Resources in Slots
+          </h3>
+          <p class="instruction">
+            Place each resource in its designated slot. Follow the order below for optimal access.
+          </p>
+        
+          <div class="resource-list" cdkDropList>
+            @for (assignment of assignments(); track assignment.resource.name; let i = $index) {
+              <div class="resource-item"
+                [class.current]="i === currentIndex()"
+                [class.completed]="assignment.placed"
+                [class.pending]="!assignment.placed && i > currentIndex()"
+                cdkDrag
+                [cdkDragData]="assignment"
+                [cdkDragDisabled]="assignment.placed">
+        
+                <div class="drag-placeholder" *cdkDragPlaceholder></div>
+                <div class="drag-preview" *cdkDragPreview>
+                  {{ assignment.resource.name }}
+                </div>
+        
+                <div class="order-badge" [class.active]="i === currentIndex()">
+                  @if (assignment.placed) {
+                    <mat-icon>check</mat-icon>
+                  } @else {
+                    {{ i + 1 }}
+                  }
+                </div>
+        
+                <div class="resource-info">
+                  <span class="resource-name">{{ assignment.resource.name }}</span>
+                  <mat-icon class="arrow">arrow_forward</mat-icon>
+                  <span class="slot-location">
+                    {{ assignment.carrier.name }}, {{ assignment.slot.name }}
+                  </span>
+                </div>
+        
+                @if (i === currentIndex() && !assignment.placed) {
+                  <button mat-flat-button color="primary"
+                    (click)="onMarkPlaced(assignment)">
+                    Done
+                  </button>
                 }
-                
-                @if (assignments().length === 0) {
-                    <div class="no-resources">
-                        <mat-icon>check_circle</mat-icon>
-                        <span>No resources to place</span>
-                    </div>
-                }
+              </div>
+            }
+        
+            @if (assignments().length === 0) {
+              <div class="no-resources">
+                <mat-icon>check_circle</mat-icon>
+                <span>No resources to place</span>
+              </div>
+            }
+          </div>
+        
+          @if (showZAxisHint()) {
+            <div class="z-axis-hint">
+              <mat-icon>info</mat-icon>
+              <span>Resources are ordered by Z-axis for optimal placement (lowest first)</span>
             </div>
-            
-            <div class="z-axis-hint" *ngIf="showZAxisHint()">
-                <mat-icon>info</mat-icon>
-                <span>Resources are ordered by Z-axis for optimal placement (lowest first)</span>
-            </div>
-            
-            <div class="progress-summary">
-                <mat-icon [class.complete]="allPlaced()">
-                    {{ allPlaced() ? 'check_circle' : 'pending' }}
-                </mat-icon>
-                <span>{{ placedCount() }}/{{ assignments().length }} resources placed</span>
-            </div>
+          }
+        
+          <div class="progress-summary">
+            <mat-icon [class.complete]="allPlaced()">
+              {{ allPlaced() ? 'check_circle' : 'pending' }}
+            </mat-icon>
+            <span>{{ placedCount() }}/{{ assignments().length }} resources placed</span>
+          </div>
         </div>
-    `,
+        `,
     styles: [`
         .step-content {
             padding: 16px;

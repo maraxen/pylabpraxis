@@ -140,9 +140,9 @@ export class ConsumableAssignmentService {
         let candidateVol = 0;
         if (def.nominal_volume_ul) candidateVol = def.nominal_volume_ul;
         // Or specific property bag
-        // @ts-ignore
+        // @ts-expect-error properties_json typing is loose
         if (resource.properties_json && resource.properties_json['volume_ul']) {
-            // @ts-ignore
+            // @ts-expect-error properties_json typing is loose
             candidateVol = resource.properties_json['volume_ul'];
         }
 

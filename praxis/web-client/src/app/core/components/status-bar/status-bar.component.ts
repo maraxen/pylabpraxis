@@ -14,39 +14,59 @@ import { ExecutionStatus } from '../../../features/run-protocol/models/execution
     <div class="status-bar" [ngClass]="{'connected': isConnected(), 'disconnected': !isConnected()}">
       <div class="status-left">
         <mat-icon [fontIcon]="isConnected() ? 'cloud_done' : 'cloud_off'"></mat-icon>
-        <span *ngIf="isConnected()">Connected</span>
-        <span *ngIf="!isConnected()">Disconnected</span>
+        @if (isConnected()) {
+          <span>Connected</span>
+        }
+        @if (!isConnected()) {
+          <span>Disconnected</span>
+        }
       </div>
-
-      <div class="status-center" *ngIf="currentRun()">
-        <ng-container [ngSwitch]="currentRun()?.status">
-          <span *ngSwitchCase="'RUNNING'">
-            <mat-icon fontIcon="play_arrow"></mat-icon> Protocol Running: {{ currentRun()?.protocolName }}
-          </span>
-          <span *ngSwitchCase="'PENDING'">
-            <mat-icon fontIcon="hourglass_empty"></mat-icon> Protocol Pending: {{ currentRun()?.protocolName }}
-          </span>
-          <span *ngSwitchCase="'COMPLETED'">
-            <mat-icon fontIcon="check_circle_outline"></mat-icon> Protocol Completed: {{ currentRun()?.protocolName }}
-          </span>
-          <span *ngSwitchCase="'FAILED'">
-            <mat-icon fontIcon="error_outline"></mat-icon> Protocol Failed: {{ currentRun()?.protocolName }}
-          </span>
-          <span *ngSwitchCase="'CANCELLED'">
-            <mat-icon fontIcon="cancel"></mat-icon> Protocol Cancelled: {{ currentRun()?.protocolName }}
-          </span>
-          <span *ngSwitchDefault>
-            <mat-icon fontIcon="info_outline"></mat-icon> Status: {{ currentRun()?.status }}
-          </span>
-        </ng-container>
-        <mat-progress-bar *ngIf="isRunning()" mode="determinate" [value]="currentRun()?.progress"></mat-progress-bar>
-      </div>
-
+    
+      @if (currentRun()) {
+        <div class="status-center">
+          @switch (currentRun()?.status) {
+            @case ('RUNNING') {
+              <span>
+                <mat-icon fontIcon="play_arrow"></mat-icon> Protocol Running: {{ currentRun()?.protocolName }}
+              </span>
+            }
+            @case ('PENDING') {
+              <span>
+                <mat-icon fontIcon="hourglass_empty"></mat-icon> Protocol Pending: {{ currentRun()?.protocolName }}
+              </span>
+            }
+            @case ('COMPLETED') {
+              <span>
+                <mat-icon fontIcon="check_circle_outline"></mat-icon> Protocol Completed: {{ currentRun()?.protocolName }}
+              </span>
+            }
+            @case ('FAILED') {
+              <span>
+                <mat-icon fontIcon="error_outline"></mat-icon> Protocol Failed: {{ currentRun()?.protocolName }}
+              </span>
+            }
+            @case ('CANCELLED') {
+              <span>
+                <mat-icon fontIcon="cancel"></mat-icon> Protocol Cancelled: {{ currentRun()?.protocolName }}
+              </span>
+            }
+            @default {
+              <span>
+                <mat-icon fontIcon="info_outline"></mat-icon> Status: {{ currentRun()?.status }}
+              </span>
+            }
+          }
+          @if (isRunning()) {
+            <mat-progress-bar mode="determinate" [value]="currentRun()?.progress"></mat-progress-bar>
+          }
+        </div>
+      }
+    
       <div class="status-right">
         <!-- Add other global status indicators here -->
       </div>
     </div>
-  `,
+    `,
   styles: [`
     .status-bar {
       display: flex;

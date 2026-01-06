@@ -15,7 +15,9 @@ from praxis.backend.services.well_outputs import (
     create_well_data_outputs_from_flat_array,
 )
 from tests.factories import (
+    FunctionCallLogFactory,
     FunctionDataOutputFactory,
+    ProtocolRunFactory,
     ResourceFactory,
     WellDataOutputFactory,
 )
@@ -33,12 +35,35 @@ async def test_create_well_data_output(
     well_data_output_service: WellDataOutputCRUDService,
 ):
     """Test creating a well data output."""
-    function_data_output = FunctionDataOutputFactory.create()
+    # Explicitly build hierarchy to ensure async flushing
+    protocol_run = ProtocolRunFactory()
+    assert protocol_run.accession_id is not None, "ProtocolRun accession_id is None!"
+    await db_session.flush()
+    
+    function_call_log = FunctionCallLogFactory(protocol_run_obj=protocol_run)
+    await db_session.flush()
+    
+    from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
+    from praxis.backend.models.enums import DataOutputTypeEnum, SpatialContextEnum
+
+    function_data_output = FunctionDataOutputFactory(
+        _function_call_log=function_call_log,
+        data_type=DataOutputTypeEnum.GENERIC_MEASUREMENT,
+        spatial_context=SpatialContextEnum.WELL_SPECIFIC,
+        data_key="test_key"
+    )
+    db_session.add(function_data_output)
+    await db_session.flush()
+
     plate_resource = ResourceFactory.create()
+    await db_session.flush()
+
     well_data_output_in = WellDataOutputCreate(
         function_data_output_accession_id=function_data_output.accession_id,
         plate_resource_accession_id=plate_resource.accession_id,
         well_name="A1",
+        well_row=0,
+        well_column=0,
         data_value=1.23,
     )
     created_well_data_output = await well_data_output_service.create(
@@ -154,6 +179,7 @@ async def test_create_well_data_outputs_from_flat_array(db_session: AsyncSession
     """Test creating multiple well data outputs from a flat array."""
     function_data_output = FunctionDataOutputFactory.create()
     plate_resource = ResourceFactory.create()
+    await db_session.flush()
     data_array = [1.1, 2.2, 3.3]
 
     well_outputs = await create_well_data_outputs_from_flat_array(

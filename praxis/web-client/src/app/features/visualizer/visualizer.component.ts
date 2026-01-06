@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, signal, computed, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { DeckViewComponent } from '@shared/components/deck-view/deck-view.component';
 import { PlrResource, PlrDeckData } from '@core/models/plr.models';
 
@@ -13,7 +13,7 @@ interface DeckWindow {
 @Component({
   selector: 'app-visualizer',
   standalone: true,
-  imports: [CommonModule, DeckViewComponent],
+  imports: [DeckViewComponent],
   template: `
     <div class="workcell-container">
       <!-- Sidebar -->

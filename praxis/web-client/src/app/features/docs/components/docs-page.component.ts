@@ -1,6 +1,6 @@
 import { Component, inject, signal, effect, computed } from '@angular/core';
 import { AppStore } from '../../../core/store/app.store';
-import { CommonModule } from '@angular/common';
+
 import { ActivatedRoute } from '@angular/router';
 import { MarkdownModule } from 'ngx-markdown';
 import { HttpClient } from '@angular/common/http';
@@ -10,7 +10,7 @@ import { catchError, of } from 'rxjs';
 @Component({
   selector: 'app-docs-page',
   standalone: true,
-  imports: [CommonModule, MarkdownModule, SystemTopologyComponent],
+  imports: [MarkdownModule, SystemTopologyComponent],
   template: `
     <div class="docs-page">
       @if (loading()) {

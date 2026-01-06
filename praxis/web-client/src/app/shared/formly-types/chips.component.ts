@@ -18,14 +18,18 @@ import { Observable, of, isObservable } from 'rxjs';
   ],
   template: `
     <div class="chips-container">
-      <label *ngIf="to.label">{{ to.label }}</label>
+      @if (to.label) {
+        <label>{{ to.label }}</label>
+      }
       <mat-chip-listbox [multiple]="to['multiple']" [formControl]="formControl" [selectable]="true">
-        <mat-chip-option *ngFor="let option of options$ | async" [value]="option.value">
-          {{ option.label }}
-        </mat-chip-option>
+        @for (option of options$ | async; track option) {
+          <mat-chip-option [value]="option.value">
+            {{ option.label }}
+          </mat-chip-option>
+        }
       </mat-chip-listbox>
     </div>
-  `,
+    `,
   styles: [`
     .chips-container {
       margin-bottom: 16px;

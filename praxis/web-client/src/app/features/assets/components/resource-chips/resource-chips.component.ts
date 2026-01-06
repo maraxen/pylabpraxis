@@ -1,5 +1,5 @@
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ResourceDefinition } from '../../models/asset.models';
@@ -13,7 +13,7 @@ import { getSubCategory } from '../../utils/resource-category-groups';
 @Component({
     selector: 'app-resource-chips',
     standalone: true,
-    imports: [CommonModule, MatChipsModule, MatTooltipModule],
+    imports: [MatChipsModule, MatTooltipModule],
     template: `
     @if (parsed) {
       <div class="chip-row">

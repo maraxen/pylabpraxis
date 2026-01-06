@@ -1,5 +1,5 @@
 import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -9,11 +9,10 @@ import { FilterOption } from '../../services/filter-result.service';
     selector: 'app-filter-chip',
     standalone: true,
     imports: [
-        CommonModule,
-        MatMenuModule,
-        MatIconModule,
-        MatTooltipModule
-    ],
+    MatMenuModule,
+    MatIconModule,
+    MatTooltipModule
+],
     templateUrl: './filter-chip.component.html',
     styleUrls: ['./filter-chip.component.scss'],
     changeDetection: ChangeDetectionStrategy.OnPush
