@@ -7,6 +7,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { AriaSelectComponent, SelectOption } from '@shared/components/aria-select/aria-select.component';
+import { AriaMultiselectComponent } from '@shared/components/aria-multiselect/aria-multiselect.component';
 import { MachineCapabilityConfigSchema, CapabilityConfigField } from '../models/asset.models';
 
 @Component({
@@ -16,10 +18,9 @@ import { MachineCapabilityConfigSchema, CapabilityConfigField } from '../models/
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule,
-    MatCheckboxModule,
-    MatSlideToggleModule,
-    MatTooltipModule
+    MatTooltipModule,
+    AriaSelectComponent,
+    AriaMultiselectComponent
   ],
   template: `
     <form [formGroup]="form" class="flex flex-col gap-3">
@@ -79,42 +80,38 @@ import { MachineCapabilityConfigSchema, CapabilityConfigField } from '../models/
 
           <!-- Select -->
           @if (field.field_type === 'select') {
-            <mat-form-field appearance="outline" class="w-full">
-              <mat-label>{{ field.display_name }}</mat-label>
-              <mat-select [formControlName]="field.field_name"
-                          panelClass="theme-aware-panel"
-                          [id]="'cap-' + field.field_name"
-                          [attr.aria-describedby]="field.help_text ? 'help-' + field.field_name : null">
-                @for (option of field.options; track option) {
-                  <mat-option [value]="option">{{ option }}</mat-option>
-                }
-              </mat-select>
+            <div class="mb-4">
+              <label class="text-xs font-medium text-gray-500 mb-1 block">{{ field.display_name }}</label>
+              <app-aria-select
+                [label]="field.display_name"
+                [formControlName]="field.field_name"
+                [options]="mapToSelectOptions(field.options || [])"
+              ></app-aria-select>
               @if (field.help_text) {
-                <mat-hint [id]="'help-' + field.field_name">{{ field.help_text }}</mat-hint>
+                <div class="text-xs text-gray-400 mt-1">{{ field.help_text }}</div>
               }
               @if (form.get(field.field_name)?.hasError('required')) {
-                <mat-error>{{ field.display_name }} is required</mat-error>
+                <div class="text-xs text-red-500 mt-1">{{ field.display_name }} is required</div>
               }
-            </mat-form-field>
+            </div>
           }
 
           <!-- Multiselect -->
           @if (field.field_type === 'multiselect') {
-            <mat-form-field appearance="outline" class="w-full">
-              <mat-label>{{ field.display_name }}</mat-label>
-              <mat-select [formControlName]="field.field_name" 
-                          multiple
-                          panelClass="theme-aware-panel"
-                          [id]="'cap-' + field.field_name"
-                          [attr.aria-describedby]="field.help_text ? 'help-' + field.field_name : null">
-                @for (option of field.options; track option) {
-                  <mat-option [value]="option">{{ option }}</mat-option>
-                }
-              </mat-select>
+            <div class="mb-4">
+              <label class="text-xs font-medium text-gray-500 mb-1 block">{{ field.display_name }}</label>
+              <app-aria-multiselect
+                [label]="field.display_name"
+                [formControlName]="field.field_name"
+                [multiple]="true"
+                [options]="mapToFilterOptions(field.options || [])"
+                [selectedValue]="form.get(field.field_name)?.value"
+                (selectionChange)="form.get(field.field_name)?.setValue($event)"
+              ></app-aria-multiselect>
               @if (field.help_text) {
-                <mat-hint [id]="'help-' + field.field_name">{{ field.help_text }}</mat-hint>
+                <div class="text-xs text-gray-400 mt-1">{{ field.help_text }}</div>
               }
-            </mat-form-field>
+            </div>
           }
 
         </div>
@@ -178,6 +175,14 @@ export class DynamicCapabilityFormComponent implements OnInit, OnChanges {
       return !!currentValue;
     });
   });
+
+  mapToSelectOptions(options: string[]): SelectOption[] {
+    return options.map(opt => ({ label: opt, value: opt }));
+  }
+
+  mapToFilterOptions(options: string[]) {
+    return options.map(opt => ({ label: opt, value: opt }));
+  }
 
   ngOnInit() {
     this.buildForm();

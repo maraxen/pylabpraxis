@@ -201,21 +201,39 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
             
             # Seed a sample instance for this definition to demo maintenance
             instance_id = generate_uuid_from_fqn(f"instance:{machine.fqn}")
+            instance_name = f"Demo {machine.name}"
+            
+            # First insert into assets table (parent)
             conn.execute(
                 """
-                INSERT OR REPLACE INTO machines (
-                    accession_id, name, status, machine_definition_accession_id, 
-                    created_at, updated_at, maintenance_enabled, maintenance_schedule_json, 
-                    location_label
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO assets (
+                    accession_id, asset_type, name, fqn, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (
                     instance_id,
-                    f"Demo {machine.name}",
+                    "machine",
+                    instance_name,
+                    machine.fqn,
+                    now,
+                    now,
+                )
+            )
+            
+            # Then insert into machines table (child)
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO machines (
+                    accession_id, machine_category, status, machine_definition_accession_id, 
+                    maintenance_enabled, maintenance_schedule_json, 
+                    location_label
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    instance_id,
+                    category,
                     "available",
                     accession_id,
-                    now,
-                    now,
                     1,
                     safe_json_dumps(maintenance_schedule),
                     "Main Lab, Bench 1"
@@ -314,10 +332,30 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
         PLRClassType.SCARA_BACKEND: "ScaraBackend",
     }
 
+    # Map backend types to frontend FQNs
+    backend_frontend_fqn_map = {
+        PLRClassType.LH_BACKEND: "pylabrobot.liquid_handling.LiquidHandler",
+        PLRClassType.PR_BACKEND: "pylabrobot.plate_reading.PlateReader",
+        PLRClassType.HS_BACKEND: "pylabrobot.heating_shaking.HeaterShaker",
+        PLRClassType.SHAKER_BACKEND: "pylabrobot.shaking.Shaker",
+        PLRClassType.TEMP_BACKEND: "pylabrobot.temperature_controlling.TemperatureController",
+        PLRClassType.CENTRIFUGE_BACKEND: "pylabrobot.centrifuging.Centrifuge",
+        PLRClassType.THERMOCYCLER_BACKEND: "pylabrobot.thermocycling.Thermocycler",
+        PLRClassType.PUMP_BACKEND: "pylabrobot.pumping.Pump",
+        PLRClassType.PUMP_ARRAY_BACKEND: "pylabrobot.pumping.PumpArray",
+        PLRClassType.FAN_BACKEND: "pylabrobot.fans.Fan",
+        PLRClassType.SEALER_BACKEND: "pylabrobot.plate_sealing.Sealer",
+        PLRClassType.PEELER_BACKEND: "pylabrobot.plate_peeling.Peeler",
+        PLRClassType.POWDER_DISPENSER_BACKEND: "pylabrobot.powder_dispensing.PowderDispenser",
+        PLRClassType.INCUBATOR_BACKEND: "pylabrobot.incubating.Incubator",
+        PLRClassType.SCARA_BACKEND: "pylabrobot.scara.SCARA",
+    }
+
     for backend in backends:
         try:
             accession_id = generate_uuid_from_fqn(f"backend:{backend.fqn}")
             category = backend_category_map.get(backend.class_type, "UnknownBackend")
+            frontend_fqn = backend_frontend_fqn_map.get(backend.class_type)
 
             # Get capabilities dict
             caps_dict = backend.to_capabilities_dict() if hasattr(backend, "to_capabilities_dict") else {}
@@ -327,8 +365,9 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
                 INSERT OR REPLACE INTO machine_definition_catalog (
                     accession_id, fqn, name, description, plr_category,
                     machine_category, has_deck, manufacturer,
-                    capabilities, compatible_backends, properties_json, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    capabilities, compatible_backends, properties_json, created_at, updated_at,
+                    frontend_fqn
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     accession_id,
@@ -344,14 +383,169 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
                     safe_json_dumps({}),
                     now,
                     now,
+                    frontend_fqn,
                 ),
             )
+
+            # Seed a simulated instance for this backend
+            from praxis.backend.models.pydantic_internals.maintenance import MAINTENANCE_DEFAULTS
+            
+            # Use 'category' for maintenance (mapped from class_type)
+            maintenance_schedule = MAINTENANCE_DEFAULTS.get(category, MAINTENANCE_DEFAULTS["DEFAULT"]).model_dump()
+            
+            instance_id = generate_uuid_from_fqn(f"instance:{backend.fqn}")
+            instance_name = f"{backend.name} (Simulated)"
+            
+            # First insert into assets table (parent)
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO assets (
+                    accession_id, asset_type, name, fqn, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    instance_id,
+                    "machine",
+                    instance_name,
+                    backend.fqn,
+                    now,
+                    now,
+                )
+            )
+            
+            # Then insert into machines table (child)
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO machines (
+                    accession_id, machine_category, status, machine_definition_accession_id, 
+                    maintenance_enabled, maintenance_schedule_json, 
+                    location_label, connection_info
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    instance_id,
+                    category,
+                    "available",
+                    accession_id,
+                    1,
+                    safe_json_dumps(maintenance_schedule),
+                    "Virtual Lab",
+                    safe_json_dumps({"backend": "simulated"})
+                )
+            )
+
             count += 1
         except Exception:
             pass
 
     conn.commit()
     return count
+
+
+def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
+    """Ensure every frontend type has at least one backend definition (Simulated)."""
+    now = datetime.now().isoformat()
+    
+    # All known frontend types
+    frontend_types = [
+        ("LiquidHandler", "pylabrobot.liquid_handling.LiquidHandler"),
+        ("PlateReader", "pylabrobot.plate_reading.PlateReader"),
+        ("HeaterShaker", "pylabrobot.heating_shaking.HeaterShaker"),
+        ("Shaker", "pylabrobot.shaking.Shaker"),
+        ("TemperatureController", "pylabrobot.temperature_controlling.TemperatureController"),
+        ("Centrifuge", "pylabrobot.centrifuging.Centrifuge"),
+        ("Thermocycler", "pylabrobot.thermocycling.Thermocycler"),
+        ("Pump", "pylabrobot.pumping.Pump"),
+        ("PumpArray", "pylabrobot.pumping.PumpArray"),
+        ("Fan", "pylabrobot.fans.Fan"),
+        ("Sealer", "pylabrobot.plate_sealing.Sealer"),
+        ("Peeler", "pylabrobot.plate_peeling.Peeler"),
+        ("PowderDispenser", "pylabrobot.powder_dispensing.PowderDispenser"),
+        ("Incubator", "pylabrobot.incubating.Incubator"),
+        ("Arm", "pylabrobot.scara.SCARA"),
+    ]
+
+    for short_name, frontend_fqn in frontend_types:
+        # Check if any backend exists for this frontend
+        cursor = conn.execute(
+            "SELECT count(*) FROM machine_definition_catalog WHERE frontend_fqn = ?", 
+            (frontend_fqn,)
+        )
+        count = cursor.fetchone()[0]
+        
+        if count == 0:
+            # Create a synthetic "Simulated" backend
+            fqn = f"pylabrobot.backends.simulated.{short_name}Backend"
+            accession_id = generate_uuid_from_fqn(f"backend:{fqn}")
+            
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO machine_definition_catalog (
+                    accession_id, fqn, name, description, plr_category,
+                    machine_category, has_deck, manufacturer,
+                    capabilities, compatible_backends, properties_json, created_at, updated_at,
+                    frontend_fqn
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    accession_id,
+                    fqn,
+                    f"Simulated {short_name}",
+                    f"Generic simulated backend for {short_name}",
+                    "Backend",
+                    short_name,
+                    0,
+                    "PyLabRobot",
+                    "{}",
+                    "[]",
+                    "{}",
+                    now,
+                    now,
+                    frontend_fqn,
+                ),
+            )
+            
+            # Seed an instance for it too
+            instance_id = generate_uuid_from_fqn(f"instance:{fqn}")
+            instance_name = f"Simulated {short_name}"
+            
+            # First insert into assets table (parent)
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO assets (
+                    accession_id, asset_type, name, fqn, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    instance_id,
+                    "machine",
+                    instance_name,
+                    fqn,
+                    now,
+                    now,
+                )
+            )
+            
+            # Then insert into machines table (child)
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO machines (
+                    accession_id, machine_category, status, machine_definition_accession_id, 
+                    maintenance_enabled, maintenance_schedule_json, 
+                    location_label, connection_info
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    instance_id,
+                    short_name,
+                    "available",
+                    accession_id,
+                    1,
+                    "{}",
+                    "Virtual Lab",
+                    safe_json_dumps({"backend": "simulated"})
+                )
+            )
 
 
 def insert_metadata(conn: sqlite3.Connection) -> None:
@@ -428,6 +622,9 @@ def main() -> None:
         discover_decks_static(conn)
 
         discover_backends_static(conn)
+
+        # Ensure simulated definitions for all types (fixes SCARA etc)
+        ensure_minimal_backends(conn)
 
         # Add sample workcell
         add_sample_workcell(conn)

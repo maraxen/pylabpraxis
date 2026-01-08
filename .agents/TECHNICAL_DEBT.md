@@ -19,7 +19,43 @@
 
 ## Active Items
 
+### High Priority
+
 - **High** — Playwright: Firefox unsupported for Browser Mode E2E. Document limitation and align CI matrices to run Chromium/WebKit only until Firefox flakiness (overlays, intercepted clicks, stepper gating) is resolved. Add note to QA docs and Playwright config guidance.
+
+- **High** — Add Machine Dialog Regressions (2026-01-08 verification):
+  - Backends still listed in machine categories on add menu
+  - Cannot deselect categories (clicking toggles incorrectly)
+  - Stepper number circles not theme-synced (hardcoded white, same in light/dark)
+  - Category/Model selection redundant with Backend selection in Step 2
+  - No capability config form triggered for liquid handlers with Hamilton backend
+  - Advanced JSON shows uneditable blob after selection
+  - **Target**: [asset_management_ux.md](./backlog/asset_management_ux.md)
+
+- **High** — Guided Deck Setup UI:
+  - Continue/Next button not visible after adding carriers
+  - Container scrolling unclear
+  - **Target**: [run_protocol_workflow.md](./backlog/run_protocol_workflow.md)
+
+### Medium Priority
+
+- **Medium** — Resource dialog "More filters" facets are hardcoded. Dynamically derive facet definitions/options from resource definitions so the filter chip dropdown stays in sync with available metadata.
+
+- **Medium** — Angular ARIA Migration:
+  - Replace custom chip/dropdown components with `@angular/aria` primitives
+  - Use `@angular/aria/combobox` + `@angular/aria/listbox` for multiselect filters
+  - Use `@angular/aria/grid` for well selector component
+  - Targets: Machine filters, Backend filters, Spatial view categories, Well selector
+  - **Target**: NEW backlog `angular_aria_migration.md`
+
+- **Medium** — Settings Cards Visual Polish:
+  - Rounded corners cut off icons
+  - Visual inconsistency in layout
+  - **Target**: [ui_consistency.md](./backlog/ui_consistency.md)
+
+### Low Priority
+
+- **Low** — Rename "REPL" to "Playground" throughout codebase. The JupyterLite-based notebook is not technically a REPL. Update component names, routes, nav labels, and documentation.
 
 ---
 

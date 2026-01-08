@@ -39,10 +39,8 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
       <nav class="sidebar-rail">
         <!-- Logo / Home -->
         <a class="nav-item logo-item" [routerLink]="modeService.isBrowserMode() ? '/app/home' : (store.auth().isAuthenticated ? '/app/home' : '/')" matTooltip="Home" matTooltipPosition="right">
-          <div class="logo-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
-            </svg>
+          <div class="logo-container">
+            <div class="logo-image"></div>
           </div>
         </a>
 
@@ -236,22 +234,30 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
       height: 48px; /* Restore simpler height for logo */
     }
 
-    .logo-icon {
-      width: 40px;
+    .logo-container {
+      width: 56px;
       height: 40px;
-      padding: 6px;
-      background: linear-gradient(135deg, var(--primary-color) 0%, #d85a7f 100%);
-      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 12px rgba(237, 122, 155, 0.3);
+      background: var(--mat-sys-surface-container-high);
+      border-radius: 10px;
+      border: 1px solid var(--mat-sys-outline-variant);
+      transition: all 0.3s ease;
     }
 
-    .logo-icon svg {
-      width: 100%;
-      height: 100%;
-      color: white;
+    .logo-item:hover .logo-container {
+      background: var(--mat-sys-surface-variant);
+      transform: scale(1.05);
+    }
+
+    .logo-image {
+      width: 44px;
+      height: 24px;
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--tertiary-color) 100%);
+      -webkit-mask: url('/assets/logo/praxis_logo.svg') no-repeat center;
+      mask: url('/assets/logo/praxis_logo.svg') no-repeat center;
+      mask-size: contain;
     }
 
     /* Divider */

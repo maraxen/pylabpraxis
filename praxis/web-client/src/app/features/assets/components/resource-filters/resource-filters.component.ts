@@ -6,7 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Resource, ResourceStatus, Machine } from '../../models/asset.models';
-import { FilterChipComponent } from '../../../../shared/components/filter-chip/filter-chip.component';
+import { AriaMultiselectComponent } from '../../../../shared/components/aria-multiselect/aria-multiselect.component';
 import { FilterOption, FilterResultService } from '../../../../shared/services/filter-result.service';
 import { extractUniqueNameParts } from '../../../../shared/utils/name-parser';
 
@@ -31,7 +31,7 @@ export interface ResourceFilterState {
     MatButtonModule,
     MatInputModule,
     MatSelectModule,
-    FilterChipComponent,
+    AriaMultiselectComponent,
   ],
   template: `
     <div class="filters-container">
@@ -53,34 +53,34 @@ export interface ResourceFilterState {
       <!-- Category Chip Dropdown -->
       <div class="filter-group">
         <label class="filter-label">Category</label>
-        <app-filter-chip 
+        <app-aria-multiselect 
           label="Category" 
           [options]="categoryOptions()" 
           [selectedValue]="selectedCategories()"
           [multiple]="true"
-          (selectionChange)="selectedCategories.set($event); onFilterChange()"></app-filter-chip>
+          (selectionChange)="selectedCategories.set($event); onFilterChange()"></app-aria-multiselect>
       </div>
 
       <!-- Status Chip Dropdown -->
       <div class="filter-group">
         <label class="filter-label">Status</label>
-        <app-filter-chip 
+        <app-aria-multiselect 
           label="Status" 
           [options]="statusOptions()" 
           [selectedValue]="selectedStatuses()"
           [multiple]="true"
-          (selectionChange)="selectedStatuses.set($event); onFilterChange()"></app-filter-chip>
+          (selectionChange)="selectedStatuses.set($event); onFilterChange()"></app-aria-multiselect>
       </div>
 
       <!-- Brand Chip Dropdown -->
       <div class="filter-group">
         <label class="filter-label">Brand</label>
-        <app-filter-chip 
+        <app-aria-multiselect 
           label="Brand" 
           [options]="brandOptions()" 
           [selectedValue]="selectedBrands()"
           [multiple]="true"
-          (selectionChange)="selectedBrands.set($event); onFilterChange()"></app-filter-chip>
+          (selectionChange)="selectedBrands.set($event); onFilterChange()"></app-aria-multiselect>
       </div>
 
       <!-- Clear -->

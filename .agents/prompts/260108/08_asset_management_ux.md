@@ -2,7 +2,7 @@
 
 Examine `.agents/README.md` for development context.
 
-**Status:** 🟢 Not Started  
+**Status:** ✅ Complete  
 **Batch:** [260108](./README.md)  
 **Backlog:** [asset_management_ux.md](../../backlog/asset_management_ux.md)  
 **Priority:** P2
@@ -19,18 +19,18 @@ Refactor the "Add Machine" and "Add Resource" flows with improved UX patterns. F
 
 ### Phase 1: Add Machine Flow Refactor
 
-1. **Theme Sync**: Ensure stepper component uses application theme variables
+1. **Theme Sync**: Ensure stepper component uses application theme variables ✅
 2. **Simplify Flow**:
-   - Step 1: Frontend Category selection (hide backend details)
-   - Step 2: Backend Selection (after category is chosen)
-   - Remove redundant steps
-3. **Capabilities Interface**: Replace hardcoded JSON with proper UI for capability configuration
+   - Step 1: Frontend Category selection (hide backend details) ✅
+   - Step 2: Backend Selection (after category is chosen) ✅
+   - Remove redundant steps ✅
+3. **Capabilities Interface**: Replace hardcoded JSON with proper UI for capability configuration ✅
 
 ### Phase 2: Add Resource Flow Refactor
 
-1. **Flow**: Category → Model selection
-2. **Cards for Selection**: Use distinct card components (not background chips)
-3. **Include Filters**: Add filter chips in selection view
+1. **Flow**: Category → Model selection ✅
+2. **Cards for Selection**: Use distinct card components (not background chips) ✅
+3. **Include Filters**: Add filter chips in selection view ✅
 
 ### Visual Requirements
 
@@ -60,7 +60,7 @@ See [codestyles/typescript.md](../../codestyles/typescript.md) and [html-css.md]
 ## On Completion
 
 - [ ] Commit changes with message: `feat(assets): refactor add machine/resource dialog flow`
-- [ ] Update [asset_management_ux.md](../../backlog/asset_management_ux.md) - mark completed phase
+- [x] Update [asset_management_ux.md](../../backlog/asset_management_ux.md) - mark completed phase
 - [ ] Update [DEVELOPMENT_MATRIX.md](../../DEVELOPMENT_MATRIX.md)
 - [ ] Mark this prompt complete in batch README
 

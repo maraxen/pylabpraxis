@@ -1,0 +1,161 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - navigation [ref=e5]:
+    - link [ref=e6] [cursor=pointer]:
+      - /url: /app/home
+      - img [ref=e8]
+    - link "Run" [ref=e11] [cursor=pointer]:
+      - /url: /app/run
+      - img [ref=e12]: play_circle
+      - generic [ref=e13]: Run
+    - link "Monitor" [ref=e14] [cursor=pointer]:
+      - /url: /app/monitor
+      - img [ref=e15]: monitor_heart
+      - generic [ref=e16]: Monitor
+    - link "Assets" [ref=e18] [cursor=pointer]:
+      - /url: /app/assets
+      - img [ref=e19]: precision_manufacturing
+      - generic [ref=e20]: Assets
+    - link "Protocols" [ref=e21] [cursor=pointer]:
+      - /url: /app/protocols
+      - img [ref=e22]: science
+      - generic [ref=e23]: Protocols
+    - link "Workcell" [ref=e25] [cursor=pointer]:
+      - /url: /app/visualizer
+      - img [ref=e26]: view_in_ar
+      - generic [ref=e27]: Workcell
+    - link "Data" [ref=e28] [cursor=pointer]:
+      - /url: /app/data
+      - img [ref=e29]: bar_chart
+      - generic [ref=e30]: Data
+    - link "Docs" [ref=e32] [cursor=pointer]:
+      - /url: /docs
+      - img [ref=e33]: menu_book
+      - generic [ref=e34]: Docs
+    - link "REPL" [ref=e35] [cursor=pointer]:
+      - /url: /app/repl
+      - img [ref=e36]: terminal
+      - generic [ref=e37]: REPL
+    - link "Settings" [ref=e38] [cursor=pointer]:
+      - /url: /app/settings
+      - img [ref=e39]: settings
+      - generic [ref=e40]: Settings
+    - button "system" [ref=e42] [cursor=pointer]:
+      - img [ref=e43]: brightness_auto
+      - generic [ref=e44]: system
+    - generic [ref=e45]:
+      - img [ref=e46]: cloud_done
+      - generic [ref=e47]: Browser
+    - button "Logout" [ref=e48] [cursor=pointer]:
+      - img [ref=e49]: logout
+      - generic [ref=e50]: Logout
+  - generic [ref=e51]:
+    - banner [ref=e52]:
+      - generic:
+        - navigation "Breadcrumb"
+    - main [ref=e53]:
+      - generic [ref=e55]:
+        - generic [ref=e56]:
+          - generic [ref=e57]:
+            - heading "Asset Management" [level=1] [ref=e58]
+            - paragraph [ref=e59]: Manage your laboratory hardware and inventory
+          - generic [ref=e60]:
+            - button [ref=e62] [cursor=pointer]:
+              - img [ref=e63]: usb
+            - button "Sync Definitions" [ref=e67] [cursor=pointer]:
+              - img [ref=e68]: sync
+              - generic [ref=e69]: Sync Definitions
+        - generic [ref=e73]:
+          - tablist [ref=e76]:
+            - generic [ref=e77]:
+              - tab "Overview" [ref=e78] [cursor=pointer]:
+                - generic [ref=e81]:
+                  - img [ref=e82]: dashboard
+                  - generic [ref=e83]: Overview
+              - tab "Spatial View" [ref=e84] [cursor=pointer]:
+                - generic [ref=e87]:
+                  - img [ref=e88]: map
+                  - generic [ref=e89]: Spatial View
+              - tab "Machines" [ref=e90] [cursor=pointer]:
+                - generic [ref=e93]:
+                  - img [ref=e94]: precision_manufacturing
+                  - generic [ref=e95]: Machines
+              - tab "Resources" [active] [selected] [ref=e96] [cursor=pointer]:
+                - generic [ref=e99]:
+                  - img [ref=e100]: science
+                  - generic [ref=e101]: Resources
+              - tab "Registry" [ref=e102] [cursor=pointer]:
+                - generic [ref=e105]:
+                  - img [ref=e106]: inventory_2
+                  - generic [ref=e107]: Registry
+          - generic [ref=e108]:
+            - tabpanel [ref=e109]
+            - tabpanel [ref=e110]
+            - tabpanel [ref=e111]
+            - tabpanel "Resources" [ref=e112]:
+              - generic [ref=e116]:
+                - generic [ref=e118]:
+                  - generic [ref=e122]:
+                    - img [ref=e124]: search
+                    - textbox "Search resources..." [ref=e126]
+                  - generic [ref=e128]:
+                    - generic [ref=e129]: Category
+                    - button "Category" [ref=e131] [cursor=pointer]:
+                      - generic [ref=e132]: Category
+                      - img [ref=e133]: expand_more
+                  - generic [ref=e134]:
+                    - generic [ref=e135]: Status
+                    - button "Status" [ref=e137] [cursor=pointer]:
+                      - generic [ref=e138]: Status
+                      - img [ref=e139]: expand_more
+                  - generic [ref=e140]:
+                    - generic [ref=e141]: Brand
+                    - button "Brand" [ref=e143] [cursor=pointer]:
+                      - generic [ref=e144]: Brand
+                      - img [ref=e145]: expand_more
+                - generic [ref=e146]:
+                  - button "Carriers 49 types" [ref=e148] [cursor=pointer]:
+                    - generic [ref=e149]:
+                      - generic [ref=e150]:
+                        - img [ref=e151]: grid_view
+                        - generic [ref=e152]: Carriers
+                      - generic [ref=e154]: 49 types
+                    - img [ref=e156]
+                  - button "Containers 20 types Consumable" [ref=e159] [cursor=pointer]:
+                    - generic [ref=e160]:
+                      - generic [ref=e161]:
+                        - img [ref=e162]: science
+                        - generic [ref=e163]: Containers
+                      - generic [ref=e164]:
+                        - generic [ref=e165]: 20 types
+                        - generic [ref=e169]: Consumable
+                    - img [ref=e171]
+                  - button "Holders 25 types" [ref=e174] [cursor=pointer]:
+                    - generic [ref=e175]:
+                      - generic [ref=e176]:
+                        - img [ref=e177]: biotech
+                        - generic [ref=e178]: Holders
+                      - generic [ref=e180]: 25 types
+                    - img [ref=e182]
+                  - button "Plates 44 types Consumable" [ref=e185] [cursor=pointer]:
+                    - generic [ref=e186]:
+                      - generic [ref=e187]:
+                        - img [ref=e188]: dataset
+                        - generic [ref=e189]: Plates
+                      - generic [ref=e190]:
+                        - generic [ref=e191]: 44 types
+                        - generic [ref=e195]: Consumable
+                    - img [ref=e197]
+                  - button "TipRacks 28 types Consumable" [ref=e200] [cursor=pointer]:
+                    - generic [ref=e201]:
+                      - generic [ref=e202]:
+                        - img [ref=e203]: apps
+                        - generic [ref=e204]: TipRacks
+                      - generic [ref=e205]:
+                        - generic [ref=e206]: 28 types
+                        - generic [ref=e210]: Consumable
+                    - img [ref=e212]
+            - tabpanel [ref=e214]
+```

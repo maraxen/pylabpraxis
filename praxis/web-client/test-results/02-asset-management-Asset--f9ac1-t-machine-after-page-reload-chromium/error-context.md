@@ -1,0 +1,232 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - link [ref=e6] [cursor=pointer]:
+        - /url: /app/home
+        - img [ref=e8]
+      - link [ref=e11] [cursor=pointer]:
+        - /url: /app/run
+        - img [ref=e12]: play_circle
+        - generic [ref=e13]: Run
+      - link [ref=e14] [cursor=pointer]:
+        - /url: /app/monitor
+        - img [ref=e15]: monitor_heart
+        - generic [ref=e16]: Monitor
+      - link [ref=e18] [cursor=pointer]:
+        - /url: /app/assets
+        - img [ref=e19]: precision_manufacturing
+        - generic [ref=e20]: Assets
+      - link [ref=e21] [cursor=pointer]:
+        - /url: /app/protocols
+        - img [ref=e22]: science
+        - generic [ref=e23]: Protocols
+      - link [ref=e25] [cursor=pointer]:
+        - /url: /app/visualizer
+        - img [ref=e26]: view_in_ar
+        - generic [ref=e27]: Workcell
+      - link [ref=e28] [cursor=pointer]:
+        - /url: /app/data
+        - img [ref=e29]: bar_chart
+        - generic [ref=e30]: Data
+      - link [ref=e32] [cursor=pointer]:
+        - /url: /docs
+        - img [ref=e33]: menu_book
+        - generic [ref=e34]: Docs
+      - link [ref=e35] [cursor=pointer]:
+        - /url: /app/repl
+        - img [ref=e36]: terminal
+        - generic [ref=e37]: REPL
+      - link [ref=e38] [cursor=pointer]:
+        - /url: /app/settings
+        - img [ref=e39]: settings
+        - generic [ref=e40]: Settings
+      - button [ref=e42] [cursor=pointer]:
+        - img [ref=e43]: brightness_auto
+        - generic [ref=e44]: system
+      - generic [ref=e45]:
+        - img [ref=e46]: cloud_done
+        - generic [ref=e47]: Browser
+      - button [ref=e48] [cursor=pointer]:
+        - img [ref=e49]: logout
+        - generic [ref=e50]: Logout
+    - generic [ref=e51]:
+      - banner [ref=e52]
+      - main [ref=e53]:
+        - generic [ref=e55]:
+          - generic [ref=e56]:
+            - generic [ref=e57]:
+              - heading [level=1] [ref=e58]: Asset Management
+              - paragraph [ref=e59]: Manage your laboratory hardware and inventory
+            - generic [ref=e60]:
+              - button [ref=e62] [cursor=pointer]:
+                - img [ref=e63]: usb
+              - button [ref=e67] [cursor=pointer]:
+                - img [ref=e68]: add
+                - generic [ref=e69]: Add Machine
+          - generic [ref=e73]:
+            - tablist [ref=e76]:
+              - generic [ref=e77]:
+                - tab [ref=e78] [cursor=pointer]:
+                  - generic [ref=e81]:
+                    - img [ref=e82]: dashboard
+                    - generic [ref=e83]: Overview
+                - tab [ref=e84] [cursor=pointer]:
+                  - generic [ref=e87]:
+                    - img [ref=e88]: map
+                    - generic [ref=e89]: Spatial View
+                - tab [selected] [ref=e90] [cursor=pointer]:
+                  - generic [ref=e93]:
+                    - img [ref=e94]: precision_manufacturing
+                    - generic [ref=e95]: Machines
+                - tab [ref=e96] [cursor=pointer]:
+                  - generic [ref=e99]:
+                    - img [ref=e100]: science
+                    - generic [ref=e101]: Resources
+                - tab [ref=e102] [cursor=pointer]:
+                  - generic [ref=e105]:
+                    - img [ref=e106]: inventory_2
+                    - generic [ref=e107]: Registry
+            - generic [ref=e108]:
+              - tabpanel [ref=e109]
+              - tabpanel [ref=e110]
+              - tabpanel [ref=e111]:
+                - generic [ref=e115]:
+                  - generic [ref=e117]:
+                    - generic [ref=e121]:
+                      - img [ref=e123]: search
+                      - textbox [ref=e125]:
+                        - /placeholder: Search machines...
+                    - generic [ref=e127]: Category
+                    - generic [ref=e128]:
+                      - generic [ref=e129]: Status
+                      - listbox [ref=e130]:
+                        - option [ref=e132] [cursor=pointer]:
+                          - generic:
+                            - generic:
+                              - img
+                          - generic [ref=e133]: Idle
+                        - option [ref=e135] [cursor=pointer]:
+                          - generic:
+                            - generic:
+                              - img
+                          - generic [ref=e136]: Running
+                        - option [ref=e138] [cursor=pointer]:
+                          - generic:
+                            - generic:
+                              - img
+                          - generic [ref=e139]: Error
+                        - option [ref=e141] [cursor=pointer]:
+                          - generic:
+                            - generic:
+                              - img
+                          - generic [ref=e142]: Offline
+                        - option [ref=e144] [cursor=pointer]:
+                          - generic:
+                            - generic:
+                              - img
+                          - generic [ref=e145]: Maintenance
+                    - generic [ref=e146]:
+                      - generic [ref=e147]: Mode
+                      - radiogroup [ref=e148]:
+                        - radio [checked] [ref=e150] [cursor=pointer]:
+                          - generic [ref=e151]: All
+                        - radio [ref=e153] [cursor=pointer]:
+                          - generic [ref=e154]:
+                            - img [ref=e155]: precision_manufacturing
+                            - text: Physical
+                        - radio [ref=e157] [cursor=pointer]:
+                          - generic [ref=e158]:
+                            - img [ref=e159]: computer
+                            - text: Simulated
+                    - generic [ref=e160]:
+                      - generic [ref=e161]: Backend
+                      - combobox [ref=e166] [cursor=pointer]:
+                        - generic [ref=e167]:
+                          - generic [ref=e168]: Select backends
+                          - img [ref=e171]
+                    - generic [ref=e174]:
+                      - generic [ref=e175]: Sort
+                      - generic [ref=e176]:
+                        - combobox [ref=e181] [cursor=pointer]:
+                          - generic [ref=e182]:
+                            - generic [ref=e184]: Name
+                            - img [ref=e187]
+                        - radiogroup [ref=e189]:
+                          - radio [checked] [ref=e190] [cursor=pointer]:
+                            - img [ref=e192]: arrow_upward
+                          - radio [ref=e193] [cursor=pointer]:
+                            - img [ref=e195]: arrow_downward
+                  - table [ref=e196]:
+                    - rowgroup [ref=e197]:
+                      - row [ref=e198]:
+                        - columnheader [ref=e199]: Name
+                        - columnheader [ref=e200]: Mode
+                        - columnheader [ref=e201]: Status
+                        - columnheader [ref=e202]: Category
+                        - columnheader [ref=e203]: Model
+                        - columnheader [ref=e204]: Location
+                        - columnheader [ref=e205]: Maintenance
+                        - columnheader [ref=e206]: Actions
+                    - rowgroup [ref=e207]:
+                      - row [ref=e208]:
+                        - cell [ref=e209]: No machines matching the selected filters
+              - tabpanel [ref=e210]
+              - tabpanel [ref=e211]
+  - dialog "Add Resource Show PLR Name" [ref=e216]:
+    - generic [ref=e219]:
+      - heading "Add Resource Show PLR Name" [level=2] [ref=e220]:
+        - generic [ref=e221]:
+          - generic [ref=e222]: Add Resource
+          - generic [ref=e223]:
+            - generic [ref=e225]:
+              - switch "Show PLR Name" [active] [ref=e226] [cursor=pointer]:
+                - generic [ref=e232]:
+                  - img [ref=e233]
+                  - img [ref=e235]
+              - generic [ref=e237] [cursor=pointer]: Show PLR Name
+            - button [ref=e238] [cursor=pointer]:
+              - img [ref=e239]: close
+      - generic [ref=e243]:
+        - generic [ref=e246]:
+          - img [ref=e248]: search
+          - textbox "Search resources..." [ref=e250]
+        - generic [ref=e252]:
+          - button "Carriers 49 items" [ref=e254] [cursor=pointer]:
+            - generic [ref=e255]:
+              - generic [ref=e256]:
+                - img [ref=e257]: grid_view
+                - generic [ref=e258]: Carriers
+              - generic [ref=e259]: 49 items
+            - img [ref=e261]
+          - button "Holders 25 items" [ref=e264] [cursor=pointer]:
+            - generic [ref=e265]:
+              - generic [ref=e266]:
+                - img [ref=e267]: biotech
+                - generic [ref=e268]: Holders
+              - generic [ref=e269]: 25 items
+            - img [ref=e271]
+          - button "Plates 44 items" [ref=e274] [cursor=pointer]:
+            - generic [ref=e275]:
+              - generic [ref=e276]:
+                - img [ref=e277]: dataset
+                - generic [ref=e278]: Plates
+              - generic [ref=e279]: 44 items
+            - img [ref=e281]
+          - button "TipRacks 28 items" [ref=e284] [cursor=pointer]:
+            - generic [ref=e285]:
+              - generic [ref=e286]:
+                - img [ref=e287]: apps
+                - generic [ref=e288]: TipRacks
+              - generic [ref=e289]: 28 items
+            - img [ref=e291]
+          - button "Containers 20 items" [ref=e294] [cursor=pointer]:
+            - generic [ref=e295]:
+              - generic [ref=e296]:
+                - img [ref=e297]: science
+                - generic [ref=e298]: Containers
+              - generic [ref=e299]: 20 items
+            - img [ref=e301]
+```

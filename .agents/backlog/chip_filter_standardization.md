@@ -7,12 +7,6 @@
 
 ## Active Tasks
 
-### 1. Unique Name Parsing
-
-**Priority**: P2
-**Status**: ✅ Complete
-**Action**: Implemented word-based logic in `name-parser.ts` to extract distinguishing name parts. Integrated with `FilterChipComponent` for full-name tooltips.
-
 ### 2. UI Visual Tweaks (from ui_polish.md)
 
 **Priority**: P3
@@ -37,3 +31,4 @@
 - [x] **Capability Dropdown Theme**: Fixed light-theme-only select panels in dark mode (from `ui_polish.md`).
 - [x] **Filter Result Counts**: Integrated dynamic counts and delta counting into filter chips.
 - [x] **Merge UI Polish**: Consolidated `ui_polish.md` into this backlog (2026-01-07).
+- [x] **Unique Name Parsing**: Implemented word-based logic in `name-parser.ts` to extract distinguishing name parts. Integrated with `FilterChipComponent` for full-name tooltips.

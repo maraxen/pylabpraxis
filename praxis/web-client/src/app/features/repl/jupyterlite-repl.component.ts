@@ -102,6 +102,10 @@ import { SerialManagerService } from '../../core/services/serial-manager.service
                 <mat-spinner diameter="48"></mat-spinner>
                 <p>Loading JupyterLite...</p>
                 <p class="loading-hint">This may take a moment on first load</p>
+                <p class="loading-hint">If the notebook doesn't appear, try clicking "Restart Kernel" (↻)</p>
+                <button mat-stroked-button color="warn" class="dismiss-btn" (click)="dismissLoading()">
+                  Dismiss Loading
+                </button>
               </div>
             }
             @if (jupyterliteUrl) {
@@ -533,6 +537,7 @@ import { SerialManagerService } from '../../core/services/serial-manager.service
         justify-content: center;
         background: var(--mat-sys-surface-container);
         z-index: 10;
+        pointer-events: auto; /* Ensure buttons are clickable */
       }
 
       .loading-overlay p {
@@ -544,6 +549,11 @@ import { SerialManagerService } from '../../core/services/serial-manager.service
       .loading-hint {
         font-size: 0.85rem !important;
         color: var(--mat-sys-on-surface-variant) !important;
+      }
+
+      .dismiss-btn {
+        margin-top: 16px;
+        transform: scale(0.9);
       }
 
       .truncation-notice {
@@ -592,6 +602,11 @@ export class JupyterliteReplComponent implements OnInit, OnDestroy {
   inventoryWidth = signal(300);
   isResizing = signal(false);
 
+  // Ready signal handshake
+  private replChannel: BroadcastChannel | null = null;
+  private readyReceived = signal(false);
+  private readyTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
   constructor() {
     effect(() => {
       const theme = this.store.theme();
@@ -618,6 +633,14 @@ export class JupyterliteReplComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscription.unsubscribe();
+    // Clean up ready signal channel
+    if (this.replChannel) {
+      this.replChannel.close();
+      this.replChannel = null;
+    }
+    if (this.readyTimeoutId) {
+      clearTimeout(this.readyTimeoutId);
+    }
   }
 
   // Computed grid columns
@@ -891,11 +914,18 @@ export class JupyterliteReplComponent implements OnInit, OnDestroy {
       '        print(traceback.format_exc())',
       '',
       '# Setup BroadcastChannel',
+      '# Setup BroadcastChannel',
       'try:',
       '    if hasattr(js, "BroadcastChannel"):',
-      '        _praxis_channel = js.BroadcastChannel.new("praxis_repl")',
+      '        # Try .new() first (Pyodide convention)',
+      '        if hasattr(js.BroadcastChannel, "new"):',
+      '            _praxis_channel = js.BroadcastChannel.new("praxis_repl")',
+      '        else:',
+      '            # Fallback to direct constructor',
+      '            _praxis_channel = js.BroadcastChannel("praxis_repl")',
+      '        ',
       '        _praxis_channel.onmessage = _praxis_message_handler',
-      '        print("✓ Asset injection ready")',
+      '        print("✓ Asset injection ready (channel created)")',
       '    else:',
       '        print("! BroadcastChannel not available")',
       'except Exception as e:',
@@ -904,6 +934,13 @@ export class JupyterliteReplComponent implements OnInit, OnDestroy {
       'print("✓ pylabrobot loaded with browser I/O shims!")',
       'print(f"  Version: {pylabrobot.__version__}")',
       'print("Use the Inventory sidebar to insert asset variables.")',
+      '',
+      '# Send ready signal to Angular host',
+      'try:',
+      '    _praxis_channel.postMessage({"type": "praxis:ready"})',
+      '    print("✓ Ready signal sent")',
+      'except Exception as e:',
+      '    print(f"! Ready signal failed: {e}")',
     ];
 
     return lines.join('\n');
@@ -923,21 +960,51 @@ export class JupyterliteReplComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Handle iframe load event
-   */
-  /**
-   * Handle iframe load event
+   * Handle iframe load event - waits for kernel ready signal
    */
   onIframeLoad() {
+    console.log('[REPL] Iframe loaded event fired');
     // Check if iframe has actual content
     const iframe = this.notebookFrame?.nativeElement;
     if (iframe && (iframe.contentDocument?.body?.childNodes?.length ?? 0) > 0) {
-      // Wait a bit for JupyterLite to fully initialize
-      setTimeout(() => {
-        this.isLoading = false;
-        this.cdr.detectChanges();
-      }, 3000); // Increased timeout to be safe
+      console.log('[REPL] Iframe content detected, setting up listener');
+      // Set up BroadcastChannel listener for ready signal from Pyodide kernel
+      this.replChannel = new BroadcastChannel('praxis_repl');
+      this.replChannel.onmessage = (event) => {
+        console.log('[REPL] Received message:', event.data);
+        if (event.data?.type === 'praxis:ready') {
+          console.log('[REPL] Received kernel ready signal');
+          this.isLoading = false;
+          this.readyReceived.set(true);
+          this.cdr.detectChanges();
+          // Clean up timeout since we got the signal
+          if (this.readyTimeoutId) {
+            clearTimeout(this.readyTimeoutId);
+            this.readyTimeoutId = null;
+          }
+        }
+      };
+
+      // Fallback timeout (30s) in case ready signal never arrives
+      this.readyTimeoutId = setTimeout(() => {
+        if (!this.readyReceived()) {
+          console.warn('[REPL] Kernel ready signal not received after 30s, proceeding anyway');
+          this.isLoading = false;
+          this.cdr.detectChanges();
+        }
+      }, 30000);
+    } else {
+      console.warn('[REPL] Iframe load event fired but no content detected');
     }
+  }
+
+  /**
+   * Manually dismiss loading state
+   */
+  dismissLoading() {
+    console.log('[REPL] Loading manually dismissed');
+    this.isLoading = false;
+    this.cdr.detectChanges();
   }
 
   /**

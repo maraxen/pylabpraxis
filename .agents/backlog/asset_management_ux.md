@@ -3,7 +3,8 @@
 **Priority**: P2 (High)
 **Owner**: Full Stack
 **Created**: 2026-01-07 (migrated from TECHNICAL_DEBT.md)
-**Status**: 🟢 Planned
+**Updated**: 2026-01-08 (verified regressions)
+**Status**: 🟡 In Progress (Regressions identified)
 
 ---
 
@@ -13,18 +14,22 @@ Improve the "Add Machine" and "Add Resource" flows with better UX patterns, and 
 
 ---
 
-## Phase 1: Add Machine Flow Refactor
+## Phase 1: Add Machine Flow Refactor — ⚠️ REGRESSIONS
 
-- [ ] Sync stepper theme with application theme
-- [ ] Flow: Frontend Category → Backend Selection (hide backends in category view)
-- [ ] Remove redundant Step 2
-- [ ] Create proper interface for user-configured capabilities (replace hardcoded JSON)
+> [!CAUTION]
+> Items marked complete were verified broken on 2026-01-08.
+
+- [ ] ~~Sync stepper theme with application theme~~ → **BROKEN**: Number circles hardcoded white (same in light/dark)
+- [ ] ~~Flow: Frontend Category → Backend Selection (hide backends in category view)~~ → **BROKEN**: Backends still listed in categories
+- [ ] Fix category toggle (cannot deselect currently selected category)
+- [ ] ~~Create proper interface for user-configured capabilities (replace hardcoded JSON)~~ → **BROKEN**: No capability config for liquid handlers; Advanced JSON shows uneditable blob
+- [ ] Remove redundant Step 2 backend selection (duplicates Category/Model choice)
 
 ## Phase 2: Add Resource Flow Refactor
 
-- [ ] Flow: Category → Model selection
-- [ ] Use cards for selection (distinct from background chips)
-- [ ] Include filters in selection view
+- [x] Flow: Category → Model selection
+- [x] Use cards for selection (distinct from background chips)
+- [x] Include filters in selection view
 
 ## Phase 3: Dashboard Metrics Enhancement
 
@@ -37,6 +42,13 @@ Improve the "Add Machine" and "Add Resource" flows with better UX patterns, and 
 ## Notes
 
 Migrated from TECHNICAL_DEBT.md items #8 (Enhanced Asset Management & Metrics) and #9 ("Add Machine" & "Add Resource" Flow Refactor).
+
+**2026-01-08**: User verification revealed Phase 1 items are NOT complete. Issues:
+
+- Stepper theme sync is broken (hardcoded colors)
+- Backends appear in category view
+- Capability config forms never trigger
+- JSON blob display is uneditable
 
 ---
 

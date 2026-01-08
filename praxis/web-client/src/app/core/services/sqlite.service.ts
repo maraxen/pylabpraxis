@@ -470,8 +470,8 @@ export class SqliteService {
             // Seed Machines
             const insertMachDef = db.prepare(`
                 INSERT OR IGNORE INTO machine_definition_catalog 
-                (accession_id, name, fqn, machine_category, manufacturer, description, has_deck, properties_json, capabilities_config)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (accession_id, name, fqn, machine_category, manufacturer, description, has_deck, properties_json, capabilities_config, frontend_fqn)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             for (const def of PLR_MACHINE_DEFINITIONS) {
@@ -490,7 +490,8 @@ export class SqliteService {
                     def.description || null,
                     def.has_deck ? 1 : 0,
                     JSON.stringify(def.properties_json),
-                    capConfig ? JSON.stringify(capConfig) : null
+                    capConfig ? JSON.stringify(capConfig) : null,
+                    def.frontend_fqn || null
                 ]);
             }
             insertMachDef.free();
@@ -708,8 +709,9 @@ export class SqliteService {
 
                     // 3. Insert Machine
                     const insertMachine = db.prepare(`
-                        INSERT INTO machines (accession_id, machine_category, status, connection_info, description, manufacturer, model)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO machines (accession_id, machine_category, status, connection_info, description, manufacturer, model,
+                        maintenance_enabled, maintenance_schedule_json, last_maintenance_json, location_label)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     `);
 
                     insertMachine.run([
@@ -723,7 +725,11 @@ export class SqliteService {
                         }),
                         description,
                         defRow ? defRow[3] : 'Unknown', // manufacturer
-                        machine.name // model
+                        machine.name, // model
+                        1, // maintenance_enabled (default true)
+                        JSON.stringify({ frequency: 'monthly', last_maintenance: null }), // maintenance_schedule_json default
+                        JSON.stringify({}), // last_maintenance_json default
+                        'Main Lab' // location_label default
                     ]);
                     insertMachine.free();
 

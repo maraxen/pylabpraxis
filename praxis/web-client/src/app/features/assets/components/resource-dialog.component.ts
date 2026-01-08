@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, ChangeDetectorRef, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators, FormControl } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormBuilder, Validators, FormControl } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -16,6 +16,9 @@ import { AssetService, ResourceFacets, FacetItem } from '../services/asset.servi
 import { ResourceStatus, ResourceDefinition, ActiveFilters } from '../models/asset.models';
 import { Observable, map, startWith, of, combineLatest, BehaviorSubject, forkJoin, switchMap, debounceTime, finalize, tap, catchError, shareReplay } from 'rxjs';
 import { getResourceCategoryIcon } from '@shared/constants/asset-icons';
+import { AriaSelectComponent, SelectOption } from '@shared/components/aria-select/aria-select.component';
+import { AriaMultiselectComponent } from '@shared/components/aria-multiselect/aria-multiselect.component';
+import { FilterOption } from '@shared/services/filter-result.service';
 import { getUiGroup, UI_GROUP_ORDER, shouldHideCategory, ResourceUiGroup, CATEGORY_TO_UI_GROUP, getSubCategory } from '../utils/resource-category-groups';
 import { ResourceChipsComponent } from './resource-chips/resource-chips.component';
 
@@ -34,18 +37,17 @@ interface GroupedDefinitions {
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    FormsModule,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
-    MatButtonModule,
-    MatSelectModule,
-    MatAutocompleteModule,
-    MatChipsModule,
     MatIconModule,
     MatTooltipModule,
     MatExpansionModule,
     MatSlideToggleModule,
-    ResourceChipsComponent
+    ResourceChipsComponent,
+    AriaSelectComponent,
+    AriaMultiselectComponent
   ],
   template: `
     <h2 mat-dialog-title>
@@ -77,10 +79,8 @@ interface GroupedDefinitions {
     </h2>
     
     <mat-dialog-content>
-      <!-- STEP 1: BROWSE (Accordion) -->
       @if (!selectedDefinition) {
-        <div class="browse-container">
-          <!-- Search Bar -->
+        <div class="selection-shell">
           <mat-form-field appearance="outline" class="w-full search-field praxis-search-field">
             <mat-icon matPrefix>search</mat-icon>
             <input matInput [formControl]="searchControl" placeholder="Search resources...">
@@ -90,7 +90,66 @@ interface GroupedDefinitions {
               </button>
             }
           </mat-form-field>
-          <!-- Loading State -->
+
+          <div class="filters-row">
+            <div class="chip-row" aria-label="Category filters">
+              @for (group of groupedDefinitions(); track group) {
+                <button type="button"
+                        class="filter-chip"
+                        [class.active-chip]="categoryFilters().includes(group.group)"
+                        (click)="toggleCategoryFilter(group.group)">
+                  <mat-icon class="!text-[16px]">{{ group.icon }}</mat-icon>
+                  <span>{{ group.group }}</span>
+                  <span class="count">{{ group.totalCount }}</span>
+                </button>
+              }
+            </div>
+
+            <div class="vendor-field">
+              <label class="text-[11px] uppercase font-bold text-gray-400 mb-1 block">Vendor</label>
+              <app-aria-multiselect
+                label="Vendor"
+                [options]="mappedVendorOptions()"
+                [selectedValue]="vendorFilters()"
+                [multiple]="true"
+                (selectionChange)="updateVendorFilters($event)"
+              ></app-aria-multiselect>
+            </div>
+
+            <div class="facet-field">
+              <label class="text-[11px] uppercase font-bold text-gray-400 mb-1 block">More filters</label>
+              <app-aria-select
+                label="Add Filter"
+                [options]="mappedAvailableFacetOptions()"
+                [placeholder]="'Select filter'"
+                (ngModelChange)="addFacet($event)"
+                [ngModel]="''"
+              ></app-aria-select>
+            </div>
+          </div>
+
+          @if (activeFacetList().length > 0) {
+            <div class="active-facets">
+              @for (facet of activeFacetList(); track facet) {
+                <div class="facet-chip">
+                  <div class="facet-title">{{ facetLabel(facet) }}</div>
+                  <div class="w-full">
+                    <app-aria-multiselect
+                      [label]="facetLabel(facet)"
+                      [options]="mappedFacetOptions(facet)"
+                      [selectedValue]="activeFacetFilters()[facet] || []"
+                      [multiple]="true"
+                      (selectionChange)="updateFacetValues(facet, $event)"
+                    ></app-aria-multiselect>
+                  </div>
+                  <button mat-icon-button (click)="removeFacet(facet)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+
           @if (isLoading()) {
             <div class="loading-state">
               @for (i of [1,2,3,4]; track i) {
@@ -98,73 +157,45 @@ interface GroupedDefinitions {
               }
             </div>
           }
-          <!-- Accordion List -->
-          <mat-accordion displayMode="flat" multi="false" class="resource-accordion">
+
+          <div class="category-grid">
             @for (group of groupedDefinitions(); track group) {
-              @if (group.totalCount > 0) {
-                <mat-expansion-panel>
-                  <mat-expansion-panel-header>
-                    <mat-panel-title class="flex items-center gap-3">
-                      <mat-icon [color]="'primary'">{{ group.icon }}</mat-icon>
-                      <span class="font-medium text-lg">{{ group.group }}</span>
-                    </mat-panel-title>
-                    <mat-panel-description>
-                      {{ group.totalCount }} items
-                    </mat-panel-description>
-                  </mat-expansion-panel-header>
-                  <!-- Group Content -->
-                  <div class="group-content">
-                    <!-- If Carriers, show sub-accordions or headers -->
-                    @if (group.group === 'Carriers') {
-                      @for (subEntry of group.subGroups | keyvalue; track subEntry) {
-                        <div class="sub-category-section">
-                          <h4 class="sub-cat-header">{{ formatSubCategory(subEntry.key) }}</h4>
-                          <div class="resource-list">
-                            @for (def of subEntry.value; track def) {
-                              <button
-                                class="resource-item"
-                                (click)="selectDefinition(def)">
-                                <app-resource-chips
-                                  [definition]="def"
-                                  [showPlrName]="showPlrName()"
-                                  [showVendor]="true"
-                                  [showDisplayName]="true">
-                                </app-resource-chips>
-                              </button>
-                            }
-                          </div>
-                        </div>
-                      }
-                    } @else {
-                      <div class="resource-list">
-                        <!-- Flatten all subgroups for non-carrier categories -->
-                        @for (subEntry of group.subGroups | keyvalue; track subEntry) {
-                          @for (def of subEntry.value; track def) {
-                            <button
-                              class="resource-item"
-                              (click)="selectDefinition(def)">
-                              <app-resource-chips
-                                [definition]="def"
-                                [showPlrName]="showPlrName()"
-                                [showVendor]="true"
-                                [showDisplayName]="true">
-                              </app-resource-chips>
-                            </button>
-                          }
-                        }
-                      </div>
-                    }
-                    <!-- Flat list for others (Plates, etc) -->
+              <div class="category-card" [class.card-active]="categoryFilters().includes(group.group)" (click)="toggleCategoryFilter(group.group)">
+                <div class="flex items-center gap-3">
+                  <div class="cat-icon"><mat-icon>{{ group.icon }}</mat-icon></div>
+                  <div class="flex flex-col">
+                    <span class="font-medium">{{ group.group }}</span>
+                    <span class="text-xs text-gray-500">{{ group.totalCount }} models</span>
                   </div>
-                </mat-expansion-panel>
-              }
-            }
-            @if (groupedDefinitions().length === 0 && !isLoading()) {
-              <div class="no-results">
-                No matching resources found.
+                </div>
               </div>
             }
-          </mat-accordion>
+          </div>
+
+          <div class="models-grid">
+            @for (def of filteredDefinitions(); track def) {
+              <button type="button" class="model-card" (click)="selectDefinition(def)">
+                <div class="flex items-start gap-3 w-full">
+                  <div class="model-icon"><mat-icon>{{ getCategoryIcon(getUiGroup(def.plr_category || '')) }}</mat-icon></div>
+                  <div class="flex flex-col items-start min-w-0">
+                    <div class="flex items-center gap-2 w-full">
+                      <span class="font-medium truncate">{{ def.name }}</span>
+                      <span class="pill">{{ def.plr_category }}</span>
+                    </div>
+                    <span class="text-xs text-gray-500 truncate">{{ def.vendor || 'Unknown vendor' }} • {{ def.model || def.resource_type || 'Model N/A' }}</span>
+                    <span class="text-[11px] text-gray-400 truncate">{{ def.fqn }}</span>
+                  </div>
+                </div>
+              </button>
+            }
+
+            @if (!isLoading() && filteredDefinitions().length === 0) {
+              <div class="empty-state">
+                <mat-icon>filter_list_off</mat-icon>
+                <div>No resources match these filters.</div>
+              </div>
+            }
+          </div>
         </div>
       } @else {
         <div class="config-container">
@@ -202,14 +233,14 @@ interface GroupedDefinitions {
               <mat-hint>Optional label for physical location</mat-hint>
             </mat-form-field>
             <div class="form-row">
-              <mat-form-field appearance="outline" class="half-width">
-                <mat-label>Status</mat-label>
-                <mat-select formControlName="status">
-                  <mat-option [value]="ResourceStatus.AVAILABLE">Available</mat-option>
-                  <mat-option [value]="ResourceStatus.IN_USE">In Use</mat-option>
-                  <mat-option [value]="ResourceStatus.DEPLETED">Depleted</mat-option>
-                </mat-select>
-              </mat-form-field>
+              <div class="half-width">
+                <label class="text-xs font-medium text-gray-500 mb-1 block">Status</label>
+                <app-aria-select
+                  label="Status"
+                  formControlName="status"
+                  [options]="statusOptions"
+                ></app-aria-select>
+              </div>
               <mat-form-field appearance="outline" class="half-width">
                 <mat-label>Parent ID (Optional)</mat-label>
                 <input matInput formControlName="parent_accession_id" placeholder="UUID of parent">
@@ -233,99 +264,41 @@ interface GroupedDefinitions {
   styles: [`
     :host { display: block; height: 100%; max-height: 80vh; }
     mat-dialog-content { height: calc(80vh - 120px); min-width: 600px; }
-    
-    .browse-container { height: 100%; display: flex; flex-direction: column; }
+    .selection-shell { display: flex; flex-direction: column; gap: 16px; }
     .search-field { flex: 0 0 auto; }
-    
-    .resource-accordion {
-      flex: 1;
-      overflow-y: auto;
-      
-      mat-expansion-panel {
-        margin-bottom: 8px;
-        border: 1px solid var(--mat-sys-outline-variant);
-        border-radius: 8px !important;
-        
-        &.mat-expanded {
-          border-color: var(--mat-sys-primary);
-        }
-      }
-    }
-    
-    .group-content { padding: 16px 0; }
-    
-    .sub-category-section {
-      margin-bottom: 16px;
-      &:last-child { margin-bottom: 0; }
-    }
-    
-    .sub-cat-header {
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: var(--mat-sys-on-surface-variant);
-      margin: 0 0 8px 0;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      padding-left: 8px;
-      border-left: 3px solid var(--mat-sys-secondary);
-    }
-    
-    .resource-list {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    
-    .resource-item {
-      display: flex;
-      align-items: center;
-      width: 100%;
-      padding: 8px 12px;
-      text-align: left;
-      background: transparent;
-      border: 1px solid transparent;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.2s;
-      
-      &:hover {
-        background: var(--mat-sys-surface-container-high);
-      }
-    }
-    
-    .selected-summary {
-      display: flex;
-      gap: 16px;
-      align-items: center;
-      padding: 16px;
-      background: var(--mat-sys-surface-container);
-      border-radius: 8px;
-      margin-bottom: 24px;
-      border: 1px solid var(--mat-sys-outline-variant);
-    }
-    
-    .summary-icon mat-icon { font-size: 32px; width: 32px; height: 32px; }
-    
-    .form-row { display: flex; gap: 12px; .half-width { flex: 1; } }
-    
-    .loading-state { padding: 20px; }
-    .skeleton-row { 
-      height: 48px; 
-      background: var(--mat-sys-surface-container-highest); 
-      margin-bottom: 8px; 
-      border-radius: 8px; 
-      animation: pulse 1.5s infinite;
-      opacity: 0.5;
-    }
-    
+
+    .filters-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .filter-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--mat-sys-outline-variant); padding: 8px 10px; border-radius: 999px; background: var(--mat-sys-surface); cursor: pointer; transition: all 0.2s ease; }
+    .filter-chip .count { font-size: 11px; color: var(--mat-sys-on-surface-variant); }
+    .filter-chip:hover { border-color: var(--mat-sys-primary); box-shadow: 0 6px 12px -10px var(--mat-sys-primary); }
+    .active-chip { border-color: var(--mat-sys-primary); background: var(--mat-sys-primary-container); color: var(--mat-sys-on-primary-container); }
+    .vendor-field, .facet-field { min-width: 180px; }
+
+    .active-facets { display: flex; flex-direction: column; gap: 10px; }
+    .facet-chip { display: grid; grid-template-columns: 1fr 3fr auto; align-items: center; gap: 8px; padding: 10px; border: 1px solid var(--mat-sys-outline-variant); border-radius: 12px; background: var(--mat-sys-surface-container); }
+    .facet-title { font-size: 0.85rem; font-weight: 600; color: var(--mat-sys-on-surface-variant); }
+
+    .category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+    .category-card { padding: 12px; border-radius: 14px; border: 1px solid var(--mat-sys-outline-variant); background: linear-gradient(135deg, var(--mat-sys-surface) 0%, var(--mat-sys-surface-container-low, #f6f8fb) 100%); cursor: pointer; transition: all 0.2s ease; }
+    .category-card:hover { border-color: var(--mat-sys-primary); box-shadow: 0 8px 18px -14px var(--mat-sys-primary); transform: translateY(-1px); }
+    .category-card.card-active { border-color: var(--mat-sys-primary); background: var(--mat-sys-primary-container); color: var(--mat-sys-on-primary-container); }
+    .cat-icon { width: 38px; height: 38px; border-radius: 10px; background: var(--mat-sys-surface-container-high, #e8edf5); display: grid; place-items: center; }
+
+    .models-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .model-card { border: 1px solid var(--theme-border, var(--mat-sys-outline-variant)); border-radius: 16px; padding: 14px; background: linear-gradient(135deg, var(--mat-sys-surface) 0%, var(--mat-sys-surface-container-low, #f6f8fb) 100%); width: 100%; text-align: left; transition: all 0.18s ease; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    .model-card:hover { border-color: var(--mat-sys-primary); box-shadow: 0 10px 22px -14px var(--mat-sys-primary); transform: translateY(-1px); }
+    .model-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--mat-sys-surface-container-high, #e8edf5); display: grid; place-items: center; }
+    .pill { background: var(--mat-sys-surface-container-high); color: var(--mat-sys-on-surface-variant); padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+
+    .loading-state { padding: 12px; }
+    .skeleton-row { height: 48px; background: var(--mat-sys-surface-container-highest); margin-bottom: 8px; border-radius: 8px; animation: pulse 1.5s infinite; opacity: 0.5; }
     @keyframes pulse { 0% { opacity: 0.3; } 50% { opacity: 0.6; } 100% { opacity: 0.3; } }
-    
-    .no-results {
-      text-align: center;
-      padding: 32px;
-      color: var(--mat-sys-on-surface-variant);
-      font-style: italic;
-    }
+    .empty-state { grid-column: 1 / -1; text-align: center; padding: 32px; color: var(--mat-sys-on-surface-variant); display: flex; flex-direction: column; gap: 8px; align-items: center; }
+
+    .selected-summary { display: flex; gap: 16px; align-items: center; padding: 16px; background: var(--mat-sys-surface-container); border-radius: 8px; margin-bottom: 24px; border: 1px solid var(--mat-sys-outline-variant); }
+    .summary-icon mat-icon { font-size: 32px; width: 32px; height: 32px; }
+    .form-row { display: flex; gap: 12px; .half-width { flex: 1; } }
   `]
 })
 export class ResourceDialogComponent implements OnInit {
@@ -341,10 +314,45 @@ export class ResourceDialogComponent implements OnInit {
   selectedDefinition: ResourceDefinition | null = null;
   selectedUiGroup: ResourceUiGroup | null = null;
   isLoading = signal(true);
+  categoryFilters = signal<ResourceUiGroup[]>([]);
+  vendorFilters = signal<string[]>([]);
+  activeFacetFilters = signal<Record<string, string[]>>({});
+  facetOptions = signal<Record<string, string[]>>({});
+  filteredDefinitions = signal<ResourceDefinition[]>([]);
+  vendors = signal<string[]>([]);
 
   // Data
   // Loaded once, then filtered locally
   private allDefinitions: ResourceDefinition[] = [];
+
+  readonly statusOptions: SelectOption[] = [
+    { label: 'Available', value: ResourceStatus.AVAILABLE },
+    { label: 'In Use', value: ResourceStatus.IN_USE },
+    { label: 'Depleted', value: ResourceStatus.DEPLETED },
+  ];
+
+  mappedVendorOptions = computed(() =>
+    this.vendors().map(v => ({ label: v || 'Unknown', value: v }))
+  );
+
+  mappedAvailableFacetOptions = computed(() =>
+    this.availableFacetKeys().map(k => ({ label: this.facetLabel(k), value: k }))
+  );
+
+  mappedFacetOptions(facetKey: string): FilterOption[] {
+    return (this.facetOptions()[facetKey] || []).map(opt => ({
+      label: opt || 'Unknown',
+      value: opt
+    }));
+  }
+
+  private facetCatalog: Record<string, string> = {
+    num_items: 'Item Count',
+    plate_type: 'Plate Type',
+    tip_volume_ul: 'Tip Volume (uL)',
+    well_volume_ul: 'Well Volume (uL)',
+    resource_type: 'Resource Type'
+  };
 
   // Filtered definitions grouped for display
   groupedDefinitions = signal<GroupedDefinitions[]>([]);
@@ -366,7 +374,7 @@ export class ResourceDialogComponent implements OnInit {
       debounceTime(200),
       startWith('')
     ).subscribe(term => {
-      this.filterDefinitions(term || '');
+      this.applyFilters(term || '');
     });
   }
 
@@ -375,8 +383,11 @@ export class ResourceDialogComponent implements OnInit {
       next: (defs) => {
         // Initial filter of hidden items
         this.allDefinitions = defs.filter(d => !shouldHideCategory(d.plr_category));
+        this.vendors.set(this.computeVendors(this.allDefinitions));
+        this.facetOptions.set(this.computeFacetOptions(this.allDefinitions));
+        this.groupedDefinitions.set(this.buildGroups(this.allDefinitions));
         this.isLoading.set(false);
-        this.filterDefinitions('');
+        this.applyFilters('');
       },
       error: (err) => {
         console.error('Error loading resources', err);
@@ -386,19 +397,47 @@ export class ResourceDialogComponent implements OnInit {
   }
 
   private filterDefinitions(searchTerm: string) {
-    const term = searchTerm.toLowerCase();
+    this.applyFilters(searchTerm);
+  }
 
-    // Filter
-    const filtered = this.allDefinitions.filter(d => {
-      if (!term) return true;
-      const text = [d.name, d.fqn, d.vendor, d.plr_category].join(' ').toLowerCase();
-      return text.includes(term);
+  private applyFilters(searchTerm: string) {
+    const term = (searchTerm || '').toLowerCase();
+    const categorySet = new Set(this.categoryFilters());
+    const vendorSet = new Set(this.vendorFilters());
+    const facetFilters = this.activeFacetFilters();
+
+    const filtered = this.allDefinitions.filter(def => {
+      const text = [def.name, def.fqn, def.vendor, def.plr_category].join(' ').toLowerCase();
+      if (term && !text.includes(term)) return false;
+
+      const group = getUiGroup(def.plr_category);
+      if (categorySet.size && !categorySet.has(group)) return false;
+
+      if (vendorSet.size) {
+        const vendorVal = def.vendor || 'Unknown';
+        if (!vendorSet.has(vendorVal)) return false;
+      }
+
+      // Facet filters
+      for (const key of Object.keys(facetFilters)) {
+        const values = facetFilters[key];
+        if (!values || values.length === 0) continue;
+        const defVal: any = (def as any)[key];
+        const normalized = defVal === undefined || defVal === null ? '' : defVal.toString();
+        if (!values.map(v => v.toString()).includes(normalized)) {
+          return false;
+        }
+      }
+
+      return true;
     });
 
-    // Group
+    this.filteredDefinitions.set(filtered);
+  }
+
+  private buildGroups(defs: ResourceDefinition[]): GroupedDefinitions[] {
     const groups = new Map<ResourceUiGroup, GroupedDefinitions>();
 
-    // Initialize all groups to ensure ordering
     UI_GROUP_ORDER.forEach(g => {
       groups.set(g, {
         group: g,
@@ -408,14 +447,11 @@ export class ResourceDialogComponent implements OnInit {
       });
     });
 
-    filtered.forEach(def => {
+    defs.forEach(def => {
       const groupName = getUiGroup(def.plr_category);
       const groupData = groups.get(groupName)!;
-
-      // Determine sub-category (mostly for Carriers)
       const subCat = getSubCategory(def.plr_category);
 
-      // Update data
       groupData.totalCount++;
       if (!groupData.subGroups.has(subCat)) {
         groupData.subGroups.set(subCat, []);
@@ -423,11 +459,79 @@ export class ResourceDialogComponent implements OnInit {
       groupData.subGroups.get(subCat)!.push(def);
     });
 
-    // Convert to array and filter empty groups
-    const result = Array.from(groups.values())
-      .filter(g => g.totalCount > 0);
+    return Array.from(groups.values()).filter(g => g.totalCount > 0);
+  }
 
-    this.groupedDefinitions.set(result);
+  private computeVendors(defs: ResourceDefinition[]): string[] {
+    const set = new Set<string>();
+    defs.forEach(d => set.add(d.vendor || 'Unknown'));
+    return Array.from(set).sort();
+  }
+
+  private computeFacetOptions(defs: ResourceDefinition[]): Record<string, string[]> {
+    const opts: Record<string, Set<string>> = {};
+    Object.keys(this.facetCatalog).forEach(k => opts[k] = new Set<string>());
+
+    defs.forEach(def => {
+      Object.keys(opts).forEach(key => {
+        const val = (def as any)[key];
+        if (val !== undefined && val !== null && val !== '') {
+          opts[key].add(val.toString());
+        }
+      });
+    });
+
+    return Object.fromEntries(Object.entries(opts).map(([k, v]) => [k, Array.from(v).sort()]));
+  }
+
+  toggleCategoryFilter(group: ResourceUiGroup) {
+    const next = new Set(this.categoryFilters());
+    if (next.has(group)) {
+      next.delete(group);
+    } else {
+      next.add(group);
+    }
+    this.categoryFilters.set(Array.from(next));
+    this.applyFilters(this.searchControl.value || '');
+  }
+
+  updateVendorFilters(values: string[]) {
+    this.vendorFilters.set(values || []);
+    this.applyFilters(this.searchControl.value || '');
+  }
+
+  addFacet(key: string) {
+    if (!key) return;
+    if (this.activeFacetFilters()[key]) return;
+    const next = { ...this.activeFacetFilters(), [key]: [] };
+    this.activeFacetFilters.set(next);
+    this.applyFilters(this.searchControl.value || '');
+  }
+
+  updateFacetValues(key: string, values: string[]) {
+    const next = { ...this.activeFacetFilters(), [key]: values || [] };
+    this.activeFacetFilters.set(next);
+    this.applyFilters(this.searchControl.value || '');
+  }
+
+  removeFacet(key: string) {
+    const next = { ...this.activeFacetFilters() };
+    delete next[key];
+    this.activeFacetFilters.set(next);
+    this.applyFilters(this.searchControl.value || '');
+  }
+
+  activeFacetList() {
+    return Object.keys(this.activeFacetFilters());
+  }
+
+  availableFacetKeys() {
+    const active = new Set(Object.keys(this.activeFacetFilters()));
+    return Object.keys(this.facetCatalog).filter(k => !active.has(k) && (this.facetOptions()[k]?.length || 0) > 0);
+  }
+
+  facetLabel(key: string): string {
+    return this.facetCatalog[key] || key;
   }
 
   selectDefinition(def: ResourceDefinition) {
@@ -467,5 +571,9 @@ export class ResourceDialogComponent implements OnInit {
 
   formatSubCategory(key: string): string {
     return key.replace(/_/g, ' ');
+  }
+
+  getUiGroup(category: string): ResourceUiGroup {
+    return getUiGroup(category);
   }
 }

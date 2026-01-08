@@ -105,9 +105,9 @@ See [codestyles/typescript.md](../../codestyles/typescript.md) for conventions.
 
 ## On Completion
 
-- [ ] Update [chip_filter_standardization.md](../../backlog/chip_filter_standardization.md) - mark Unique Name Parsing complete
-- [ ] Update [DEVELOPMENT_MATRIX.md](../../DEVELOPMENT_MATRIX.md)
-- [ ] Mark this prompt complete in batch README
+- [x] Update [chip_filter_standardization.md](../../backlog/chip_filter_standardization.md) - mark Unique Name Parsing complete
+- [x] Update [DEVELOPMENT_MATRIX.md](../../DEVELOPMENT_MATRIX.md)
+- [x] Mark this prompt complete in batch README
 
 ---
 

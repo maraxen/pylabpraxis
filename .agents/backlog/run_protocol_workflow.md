@@ -113,6 +113,7 @@ The deck display in Run Protocol workflow does not match the standalone Deck Vie
 > User verification confirmed these issues on 2026-01-08.
 
 - [x] **Continue/Next Button Not Visible**: After adding carriers, the Continue button is not visible
+- [ ] **Confirm & Continue Broken**: Clicking the button triggers no action (investigate event handler/validation)
 - [x] **Container Scrolling**: Scrolling behavior unclear; content may overflow without proper scroll indicators
 - [x] **Flex Container Fix**: Ensure deck setup wizard uses proper flex container with exposed navigation
 

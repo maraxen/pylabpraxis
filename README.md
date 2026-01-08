@@ -1,4 +1,4 @@
-# Praxis
+# <img src="assets/praxis_logo.svg" height="120" alt="Praxis Logo">
 
 [**Docs**](https://maraxen.github.io/pylabpraxis/) | [**Forum**](https://forums.pylabrobot.org) | [**Installation**](https://maraxen.github.io/pylabpraxis/getting-started/installation/) | [**Getting started**](https://maraxen.github.io/pylabpraxis/getting-started/quickstart/)
 

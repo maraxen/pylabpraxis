@@ -1,7 +1,7 @@
 @use '@angular/material' as mat;
 @import 'shepherd.js/dist/css/shepherd.css';
 @import 'styles/shepherd-theme.scss';
-
+@import 'styles/aria-select.scss';
 
 @tailwind base;
 @tailwind components;

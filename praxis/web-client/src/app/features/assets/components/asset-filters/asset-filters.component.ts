@@ -1,7 +1,6 @@
 import { Component, inject, signal, output, OnInit, input, effect, computed } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
-import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatChipsModule } from '@angular/material/chips';
@@ -10,6 +9,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { AriaSelectComponent, SelectOption } from '../../../../shared/components/aria-select/aria-select.component';
+import { AriaMultiselectComponent } from '../../../../shared/components/aria-multiselect/aria-multiselect.component';
 import { Machine, Workcell } from '../../models/asset.models';
 import { extractUniqueNameParts } from '../../../../shared/utils/name-parser';
 
@@ -38,7 +39,6 @@ export interface AssetFilterState {
   standalone: true,
   imports: [
     FormsModule,
-    MatSelectModule,
     MatFormFieldModule,
     MatChipsModule,
     MatIconModule,
@@ -46,7 +46,9 @@ export interface AssetFilterState {
     MatButtonToggleModule,
     MatSlideToggleModule,
     MatTooltipModule,
-    MatInputModule
+    MatInputModule,
+    AriaSelectComponent,
+    AriaMultiselectComponent
   ],
   template: `
     <div class="filters-container flex flex-wrap items-center gap-4 p-4 rounded-xl border border-[var(--theme-border)] bg-surface-container mb-2">
@@ -80,75 +82,54 @@ export interface AssetFilterState {
       </div>
 
       <!-- Category Filter -->
-      <div class="filter-group min-w-[160px]">
-        <mat-form-field appearance="outline" class="w-full dense-field">
-          <mat-label>Category</mat-label>
-          <mat-select
-            [multiple]="true"
-            [(ngModel)]="selectedCategories"
-            (selectionChange)="onFilterChange()"
-            placeholder="All categories">
-            @for (cat of categories(); track cat) {
-              <mat-option [value]="cat" [matTooltip]="cat">{{ categoryMappings().get(cat) || cat }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+      <div class="filter-group min-w-[200px]">
+        <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-1 block">Category</label>
+        <app-aria-multiselect
+          label="Category"
+          [options]="mappedCategoryOptions()"
+          [(ngModel)]="selectedCategories"
+          [multiple]="true"
+          (selectionChange)="onFilterChange()"
+        ></app-aria-multiselect>
       </div>
 
       <!-- Machine Location Filter (for Resources) -->
       @if (showMachineFilter()) {
-        <div class="filter-group min-w-[160px]">
-        <mat-form-field appearance="outline" class="w-full dense-field">
-            <mat-label>Location (Machine)</mat-label>
-            <mat-select
+        <div class="filter-group min-w-[200px]">
+          <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-1 block">Location</label>
+          <app-aria-select
+            label="Location"
+            [options]="mappedMachineOptions()"
             [(ngModel)]="selectedMachineId"
-            (selectionChange)="onFilterChange()"
-            placeholder="Any location">
-            <mat-option [value]="null">Any location</mat-option>
-            @for (machine of machines(); track machine.accession_id) {
-                <mat-option [value]="machine.accession_id">{{ machine.name }}</mat-option>
-            }
-            </mat-select>
-        </mat-form-field>
+            (ngModelChange)="onFilterChange()"
+            [placeholder]="'Any location'"
+          ></app-aria-select>
         </div>
       }
 
       <!-- Workcell Filter -->
       @if (showWorkcellFilter()) {
-        <div class="filter-group min-w-[160px]">
-        <mat-form-field appearance="outline" class="w-full dense-field">
-            <mat-label>Workcell</mat-label>
-            <mat-select
+        <div class="filter-group min-w-[200px]">
+          <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-1 block">Workcell</label>
+          <app-aria-select
+            label="Workcell"
+            [options]="mappedWorkcellOptions()"
             [(ngModel)]="selectedWorkcellId"
-            (selectionChange)="onFilterChange()"
-            placeholder="Any workcell">
-            <mat-option [value]="null">Any workcell</mat-option>
-            <!-- Assuming workcells are passed in or fetched. For now relying on input -->
-            @for (wc of workcells(); track wc.accession_id) {
-                <mat-option [value]="wc.accession_id">{{ wc.name }}</mat-option>
-            }
-            </mat-select>
-        </mat-form-field>
+            (ngModelChange)="onFilterChange()"
+            [placeholder]="'Any workcell'"
+          ></app-aria-select>
         </div>
       }
 
       <!-- Sort By -->
-      <div class="filter-group min-w-[160px]">
-        <mat-form-field appearance="outline" class="w-full dense-field">
-          <mat-label>Sort by</mat-label>
-          <mat-select
-            [(ngModel)]="sortBy"
-            (selectionChange)="onFilterChange()">
-            <mat-option value="name">Name</mat-option>
-            <mat-option value="category">Category</mat-option>
-            <mat-option value="created_at">Date Added</mat-option>
-            <mat-option value="status">Status</mat-option>
-            @if (showMachineFilter()) {
-                <mat-option value="machine_location_accession_id">Location</mat-option>
-            }
-            <!-- <mat-option value="last_used_at">Last Used</mat-option> -->
-          </mat-select>
-        </mat-form-field>
+      <div class="filter-group min-w-[200px]">
+        <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-1 block">Sort by</label>
+        <app-aria-select
+          label="Sort by"
+          [options]="mappedSortOptions()"
+          [(ngModel)]="sortBy"
+          (ngModelChange)="onFilterChange()"
+        ></app-aria-select>
       </div>
 
       <!-- Sort Order -->
@@ -219,6 +200,42 @@ export class AssetFiltersComponent {
 
   categoryMappings = computed(() => {
     return extractUniqueNameParts(this.categories());
+  });
+
+  mappedCategoryOptions = computed(() => {
+    return this.categories().map(cat => ({
+      label: this.categoryMappings().get(cat) || cat,
+      value: cat
+    }));
+  });
+
+  mappedMachineOptions = computed(() => {
+    return [
+      { label: 'Any location', value: null },
+      ...this.machines().map(m => ({ label: m.name, value: m.accession_id }))
+    ];
+  });
+
+  mappedWorkcellOptions = computed(() => {
+    return [
+      { label: 'Any workcell', value: null },
+      ...this.workcells().map(w => ({ label: w.name, value: w.accession_id }))
+    ];
+  });
+
+  private sortOptions: SelectOption[] = [
+    { label: 'Name', value: 'name' },
+    { label: 'Category', value: 'category' },
+    { label: 'Date Added', value: 'created_at' },
+    { label: 'Status', value: 'status' }
+  ];
+
+  mappedSortOptions = computed(() => {
+    const options = [...this.sortOptions];
+    if (this.showMachineFilter()) {
+      options.push({ label: 'Location', value: 'machine_location_accession_id' });
+    }
+    return options;
   });
 
   selectedStatuses: string[] = [];

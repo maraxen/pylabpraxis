@@ -3,14 +3,15 @@ import { Component, inject, signal, output, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 
 import { ProtocolService } from '../../protocols/services/protocol.service';
 import { ProtocolDefinition } from '../../protocols/models/protocol.models';
-import { RunStatus, RunHistoryParams } from '../models/monitor.models';
+import { RunStatus } from '../models/monitor.models';
+import { AriaMultiselectComponent } from '@shared/components/aria-multiselect/aria-multiselect.component';
+import { FilterOption } from '@shared/services/filter-result.service';
 
 export interface FilterState {
   status: RunStatus[];
@@ -30,26 +31,20 @@ export interface FilterState {
     FormsModule,
     MatSelectModule,
     MatFormFieldModule,
-    MatChipsModule,
     MatIconModule,
     MatButtonModule,
-    MatButtonToggleModule
-],
+    MatButtonToggleModule,
+    AriaMultiselectComponent
+  ],
   templateUrl: './run-filters.component.html',
   styles: [`
     .filters-container {
       display: flex !important;
-      flex-wrap: nowrap !important;
+      flex-wrap: wrap !important;
       align-items: center;
-      gap: 1rem;
-      overflow-x: auto !important;
+      gap: 0.5rem;
       padding-bottom: 0.5rem;
       width: 100%;
-      
-      scrollbar-width: thin;
-      &::-webkit-scrollbar {
-        height: 4px;
-      }
     }
 
     .filter-group {
@@ -65,36 +60,8 @@ export interface FilterState {
       }
       .mat-mdc-form-field-flex {
         height: 40px;
+        padding-top: 0;
       }
-    }
-
-    .status-running {
-      --mdc-chip-elevated-selected-container-color: rgba(34, 197, 94, 0.2);
-      --mdc-chip-selected-label-text-color: rgb(34, 197, 94);
-    }
-    .status-completed {
-      --mdc-chip-elevated-selected-container-color: rgba(107, 114, 128, 0.2);
-      --mdc-chip-selected-label-text-color: rgb(107, 114, 128);
-    }
-    .status-failed {
-      --mdc-chip-elevated-selected-container-color: rgba(239, 68, 68, 0.2);
-      --mdc-chip-selected-label-text-color: rgb(239, 68, 68);
-    }
-    .status-queued, .status-preparing {
-      --mdc-chip-elevated-selected-container-color: rgba(245, 158, 11, 0.2);
-      --mdc-chip-selected-label-text-color: rgb(245, 158, 11);
-    }
-    .status-pending {
-      --mdc-chip-elevated-selected-container-color: rgba(59, 130, 246, 0.2);
-      --mdc-chip-selected-label-text-color: rgb(59, 130, 246);
-    }
-    .status-cancelled {
-      --mdc-chip-elevated-selected-container-color: rgba(156, 163, 175, 0.2);
-      --mdc-chip-selected-label-text-color: rgb(156, 163, 175);
-    }
-    .status-paused {
-      --mdc-chip-elevated-selected-container-color: rgba(234, 179, 8, 0.2);
-      --mdc-chip-selected-label-text-color: rgb(234, 179, 8);
     }
   `],
 })
@@ -167,7 +134,20 @@ export class RunFiltersComponent implements OnInit {
     this.onFilterChange();
   }
 
-  getStatusChipClass(status: RunStatus): string {
-    return `status-${status.toLowerCase()}`;
+  // Helper to convert RunStatus strings to FilterOptions
+  get statusOptions(): FilterOption[] {
+    return this.allStatuses.map(status => ({
+      label: this.formatStatus(status),
+      value: status
+    }));
+  }
+
+  private formatStatus(status: string): string {
+    return status.charAt(0) + status.slice(1).toLowerCase();
+  }
+
+  onStatusChange(selected: RunStatus[]) {
+    this.selectedStatuses = selected;
+    this.onFilterChange();
   }
 }

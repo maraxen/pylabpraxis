@@ -1,17 +1,10 @@
 <div id="praxis-run-filters-container"
     class="filters-container p-4 rounded-xl border border-[var(--theme-border)] bg-surface-container mb-4">
-    <!-- Status Filter -->
-    <div class="filter-group">
-        <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-2 block">Status</label>
-        <mat-chip-listbox [multiple]="true" [(ngModel)]="selectedStatuses" (change)="onFilterChange()"
-            aria-label="Filter by status">
-            @for (status of allStatuses; track status) {
-            <mat-chip-option [value]="status" [class]="getStatusChipClass(status)">
-                {{ status }}
-            </mat-chip-option>
-            }
-        </mat-chip-listbox>
-    </div>
+
+    <!-- Status Filter (Dropdown Chip) -->
+    <app-aria-multiselect label="Status" [options]="statusOptions" [multiple]="true" [selectedValue]="selectedStatuses"
+        (selectionChange)="onStatusChange($event)">
+    </app-aria-multiselect>
 
     <!-- Protocol Filter -->
     <div class="filter-group min-w-[200px]">

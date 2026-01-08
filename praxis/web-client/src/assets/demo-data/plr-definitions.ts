@@ -138,29 +138,28 @@ const TUBES: PlrResourceDefinition[] = [
 // ============================================================================
 export const PLR_MACHINE_DEFINITIONS: PlrMachineDefinition[] = [
     // Hamilton
-    { accession_id: 'plr-mach-001', name: 'STAR', fqn: 'pylabrobot.liquid_handling.backends.hamilton.STAR', vendor: 'Hamilton', description: 'Hamilton STAR liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { channels: 8, volume_range: '0.5-1000µL' } },
-    { accession_id: 'plr-mach-002', name: 'Starlet', fqn: 'pylabrobot.liquid_handling.backends.hamilton.Starlet', vendor: 'Hamilton', description: 'Hamilton Starlet liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { channels: 8, volume_range: '0.5-1000µL' } },
-    { accession_id: 'plr-mach-003', name: 'Vantage', fqn: 'pylabrobot.liquid_handling.backends.hamilton.Vantage', vendor: 'Hamilton', description: 'Hamilton Vantage liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { channels: 8, volume_range: '0.5-1000µL' } },
+    { accession_id: 'plr-mach-001', name: 'STAR', fqn: 'pylabrobot.liquid_handling.backends.hamilton.STAR', vendor: 'Hamilton', description: 'Hamilton STAR liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { channels: 8, volume_range: '0.5-1000µL' }, frontend_fqn: 'pylabrobot.liquid_handling.LiquidHandler' },
+    { accession_id: 'plr-mach-002', name: 'Starlet', fqn: 'pylabrobot.liquid_handling.backends.hamilton.Starlet', vendor: 'Hamilton', description: 'Hamilton Starlet liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { channels: 8, volume_range: '0.5-1000µL' }, frontend_fqn: 'pylabrobot.liquid_handling.LiquidHandler' },
+    { accession_id: 'plr-mach-003', name: 'Vantage', fqn: 'pylabrobot.liquid_handling.backends.hamilton.Vantage', vendor: 'Hamilton', description: 'Hamilton Vantage liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { channels: 8, volume_range: '0.5-1000µL' }, frontend_fqn: 'pylabrobot.liquid_handling.LiquidHandler' },
 
     // Opentrons
-    { accession_id: 'plr-mach-010', name: 'OT2', fqn: 'pylabrobot.liquid_handling.backends.opentrons.OT2', vendor: 'Opentrons', description: 'Opentrons OT-2 liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { pipettes: 2, deck_slots: 11 } },
-    { accession_id: 'plr-mach-011', name: 'Flex', fqn: 'pylabrobot.liquid_handling.backends.opentrons.Flex', vendor: 'Opentrons', description: 'Opentrons Flex liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { pipettes: 2, deck_slots: 12 } },
+    { accession_id: 'plr-mach-010', name: 'OT2', fqn: 'pylabrobot.liquid_handling.backends.opentrons.OT2', vendor: 'Opentrons', description: 'Opentrons OT-2 liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { pipettes: 2, deck_slots: 11 }, frontend_fqn: 'pylabrobot.liquid_handling.LiquidHandler' },
+    { accession_id: 'plr-mach-011', name: 'Flex', fqn: 'pylabrobot.liquid_handling.backends.opentrons.Flex', vendor: 'Opentrons', description: 'Opentrons Flex liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { pipettes: 2, deck_slots: 12 }, frontend_fqn: 'pylabrobot.liquid_handling.LiquidHandler' },
 
     // Tecan
-    { accession_id: 'plr-mach-020', name: 'EVO', fqn: 'pylabrobot.liquid_handling.backends.tecan.EVO', vendor: 'Tecan', description: 'Tecan Freedom EVO liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { channels: 8 } },
-    { accession_id: 'plr-mach-021', name: 'Fluent', fqn: 'pylabrobot.liquid_handling.backends.tecan.Fluent', vendor: 'Tecan', description: 'Tecan Fluent liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { channels: 8 } },
+    { accession_id: 'plr-mach-020', name: 'EVO', fqn: 'pylabrobot.liquid_handling.backends.tecan.EVO', vendor: 'Tecan', description: 'Tecan Freedom EVO liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { channels: 8 }, frontend_fqn: 'pylabrobot.liquid_handling.LiquidHandler' },
+    { accession_id: 'plr-mach-021', name: 'Fluent', fqn: 'pylabrobot.liquid_handling.backends.tecan.Fluent', vendor: 'Tecan', description: 'Tecan Fluent liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { channels: 8 }, frontend_fqn: 'pylabrobot.liquid_handling.LiquidHandler' },
 
     // Plate readers
-    // Note: CLARIOstar backend FQN follows PLR's actual module structure
-    { accession_id: 'plr-mach-030', name: 'CLARIOstarBackend', fqn: 'pylabrobot.plate_reading.clario_star_backend.CLARIOstarBackend', vendor: 'BMG Labtech', description: 'BMG CLARIOstar plate reader backend', has_deck: false, machine_type: 'PlateReader', properties_json: { detection_modes: ['absorbance', 'fluorescence', 'luminescence'] } },
-    { accession_id: 'plr-mach-031', name: 'SPECTROstar', fqn: 'pylabrobot.plate_reading.backends.bmg.SPECTROstar', vendor: 'BMG Labtech', description: 'BMG SPECTROstar plate reader', has_deck: false, machine_type: 'PlateReader', properties_json: { detection_modes: ['absorbance'] } },
+    { accession_id: 'plr-mach-030', name: 'CLARIOstarBackend', fqn: 'pylabrobot.plate_reading.clario_star_backend.CLARIOstarBackend', vendor: 'BMG Labtech', description: 'BMG CLARIOstar plate reader backend', has_deck: false, machine_type: 'PlateReader', properties_json: { detection_modes: ['absorbance', 'fluorescence', 'luminescence'] }, frontend_fqn: 'pylabrobot.plate_reading.PlateReader' },
+    { accession_id: 'plr-mach-031', name: 'SPECTROstar', fqn: 'pylabrobot.plate_reading.backends.bmg.SPECTROstar', vendor: 'BMG Labtech', description: 'BMG SPECTROstar plate reader', has_deck: false, machine_type: 'PlateReader', properties_json: { detection_modes: ['absorbance'] }, frontend_fqn: 'pylabrobot.plate_reading.PlateReader' },
 
     // Shakers
-    { accession_id: 'plr-mach-040', name: 'HamiltonHeaterShaker', fqn: 'pylabrobot.heating_shaking.backends.hamilton.HamiltonHeaterShaker', vendor: 'Hamilton', description: 'Hamilton heater shaker', has_deck: false, machine_type: 'Shaker', properties_json: { temp_range: '4-105°C', rpm_range: '100-2000' } },
-    { accession_id: 'plr-mach-041', name: 'InhecoTEC', fqn: 'pylabrobot.heating_shaking.backends.inheco.InhecoTEC', vendor: 'Inheco', description: 'Inheco TEC controller', has_deck: false, machine_type: 'Shaker', properties_json: { temp_range: '4-110°C' } },
+    { accession_id: 'plr-mach-040', name: 'HamiltonHeaterShaker', fqn: 'pylabrobot.heating_shaking.backends.hamilton.HamiltonHeaterShaker', vendor: 'Hamilton', description: 'Hamilton heater shaker', has_deck: false, machine_type: 'Shaker', properties_json: { temp_range: '4-105°C', rpm_range: '100-2000' }, frontend_fqn: 'pylabrobot.heating_shaking.HeaterShaker' },
+    { accession_id: 'plr-mach-041', name: 'InhecoTEC', fqn: 'pylabrobot.heating_shaking.backends.inheco.InhecoTEC', vendor: 'Inheco', description: 'Inheco TEC controller', has_deck: false, machine_type: 'Shaker', properties_json: { temp_range: '4-110°C' }, frontend_fqn: 'pylabrobot.heating_shaking.HeaterShaker' },
 
     // Simulators
-    { accession_id: 'plr-mach-090', name: 'SimulatorBackend', fqn: 'pylabrobot.liquid_handling.backends.simulation.SimulatorBackend', vendor: 'PyLabRobot', description: 'Simulation backend for testing', has_deck: true, machine_type: 'LiquidHandler', properties_json: { simulated: true } },
+    { accession_id: 'plr-mach-090', name: 'SimulatorBackend', fqn: 'pylabrobot.liquid_handling.backends.simulation.SimulatorBackend', vendor: 'PyLabRobot', description: 'Simulation backend for testing', has_deck: true, machine_type: 'LiquidHandler', properties_json: { simulated: true }, frontend_fqn: 'pylabrobot.liquid_handling.LiquidHandler' },
 ];
 
 // ============================================================================

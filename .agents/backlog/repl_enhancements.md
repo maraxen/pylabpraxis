@@ -15,9 +15,11 @@ Improve JupyterLite REPL stability, theme synchronization, and hardware discover
 
 ## Phase 1: Rendering Stability
 
-- [ ] Fix REPL not rendering until "Refresh Kernel" button is pressed
-- [ ] Investigate race condition in iframe loading vs kernel initialization
-- [ ] Ensure `praxis_repl` BroadcastChannel communication is robust at startup
+## Phase 1: Rendering Stability
+
+- [x] Fix REPL not rendering until "Refresh Kernel" button is pressed
+- [x] Investigate race condition in iframe loading vs kernel initialization
+- [x] Ensure `praxis_repl` BroadcastChannel communication is robust at startup
 
 ## Phase 2: Theme Synchronization
 

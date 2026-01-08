@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 import { FormsModule } from '@angular/forms';
+import { AriaSelectComponent, SelectOption } from '@shared/components/aria-select/aria-select.component';
 import { ProtocolDefinition, AssetRequirement } from '@features/protocols/models/protocol.models';
 import { Resource } from '@features/assets/models/asset.models';
 import { AssetService } from '@features/assets/services/asset.service';
@@ -31,7 +32,8 @@ export interface GuidedSetupResult {
     MatIconModule,
     MatTooltipModule,
     MatChipsModule,
-    FormsModule
+    FormsModule,
+    AriaSelectComponent
   ],
   template: `
     @if (!isInline) {
@@ -79,62 +81,19 @@ export interface GuidedSetupResult {
                 }
               </div>
 
-              <mat-form-field appearance="outline" class="resource-select">
-                <mat-label>Select Inventory Item</mat-label>
-                <mat-select
-                  [value]="selectedAssets()[req.accession_id]"
-                  (selectionChange)="updateSelection(req.accession_id, $event.value)"
-                  [compareWith]="compareResources"
-                >
-                   <mat-option [value]="null">-- Select --</mat-option>
-                   
-                   <!-- Suggested (Exact Matches) -->
-                   @if (getExactMatches(req).length > 0) {
-                     <mat-optgroup label="Suggested" class="suggested-group">
-                       @for (res of getExactMatches(req); track res.accession_id) {
-                         <mat-option [value]="res" class="suggested-option">
-                           <div class="option-content">
-                             <mat-icon class="suggested-icon">recommend</mat-icon>
-                             <span class="option-name">{{ res.name }}</span>
-                             <span class="option-id">({{ res.accession_id.substring(0,6) }})</span>
-                             <mat-icon class="match-icon" matTooltip="Exact type match">check_circle</mat-icon>
-                           </div>
-                         </mat-option>
-                       }
-                     </mat-optgroup>
-                   }
-                   
-                   <!-- Other Compatible -->
-                   @if (getOtherCompatible(req).length > 0) {
-                     <mat-optgroup label="Other Compatible">
-                       @for (res of getOtherCompatible(req); track res.accession_id) {
-                         <mat-option [value]="res">
-                           <div class="option-content">
-                             <span class="option-name">{{ res.name }}</span>
-                             <span class="option-id">({{ res.accession_id.substring(0,6) }})</span>
-                           </div>
-                         </mat-option>
-                       }
-                     </mat-optgroup>
-                   }
-                   
-                   @if (getCompatibleResources(req).length === 0) {
-                     <mat-option disabled>
-                       <em>No compatible resources found</em>
-                     </mat-option>
-                   }
-                </mat-select>
+              <div class="resource-select">
+                <label class="text-xs font-medium text-gray-500 mb-1 block">Select Inventory Item</label>
+                <app-aria-select
+                  label="Select Inventory Item"
+                  [options]="getMappedOptions(req)"
+                  [ngModel]="selectedAssets()[req.accession_id]"
+                  (ngModelChange)="updateSelection(req.accession_id, $event)"
+                  [placeholder]="'-- Select --'"
+                ></app-aria-select>
                 @if (!req.optional && !selectedAssets()[req.accession_id]) {
-                  <mat-error>Required</mat-error>
+                  <div class="text-xs text-red-500 mt-1">Required</div>
                 }
-                <mat-hint>
-                  @if (getExactMatches(req).length > 0) {
-                    {{ getExactMatches(req).length }} suggested, {{ getOtherCompatible(req).length }} others
-                  } @else {
-                    {{ getCompatibleResources(req).length }} compatible
-                  }
-                </mat-hint>
-              </mat-form-field>
+              </div>
             </div>
           }
         </div>
@@ -562,6 +521,25 @@ export class GuidedSetupComponent implements OnInit {
     if (!fqn) return '';
     const parts = fqn.split('.');
     return parts.slice(-2).join('.');
+  }
+
+  getMappedOptions(req: AssetRequirement): SelectOption[] {
+    const exact = this.getExactMatches(req);
+    const other = this.getOtherCompatible(req);
+    const options: SelectOption[] = [];
+
+    exact.forEach(res => options.push({
+      label: `${res.name} (${res.accession_id.substring(0, 6)})`,
+      value: res,
+      icon: 'recommend'
+    }));
+
+    other.forEach(res => options.push({
+      label: `${res.name} (${res.accession_id.substring(0, 6)})`,
+      value: res
+    }));
+
+    return options;
   }
 
   updateSelection(reqId: string, resource: Resource | null) {

@@ -2,7 +2,7 @@
 
 Examine `.agents/README.md` for development context.
 
-**Status:** 🟢 Not Started  
+**Status:** ✅ Completed  
 **Batch:** [260108](./README.md)  
 **Backlog:** [chip_filter_standardization.md](../../backlog/chip_filter_standardization.md)  
 **Priority:** P3
@@ -140,10 +140,10 @@ See [codestyles/html-css.md](../../codestyles/html-css.md) for conventions.
 
 ## On Completion
 
-- [ ] Capture before/after screenshots
-- [ ] Update [chip_filter_standardization.md](../../backlog/chip_filter_standardization.md) - mark UI Visual Tweaks complete
-- [ ] Update [DEVELOPMENT_MATRIX.md](../../DEVELOPMENT_MATRIX.md)
-- [ ] Mark this prompt complete in batch README
+- [x] Capture before/after screenshots
+- [x] Update [chip_filter_standardization.md](../../backlog/chip_filter_standardization.md) - mark UI Visual Tweaks complete
+- [x] Update [DEVELOPMENT_MATRIX.md](../../DEVELOPMENT_MATRIX.md)
+- [x] Mark this prompt complete in batch README
 
 ---
 
