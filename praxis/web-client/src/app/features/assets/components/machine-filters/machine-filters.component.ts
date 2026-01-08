@@ -7,10 +7,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { Machine, MachineStatus, MachineDefinition } from '../../models/asset.models';
 import { getMachineCategoryIcon } from '@shared/constants/asset-icons';
+import { extractUniqueNameParts } from '../../../../shared/utils/name-parser';
 
 export type MachineSortOption = 'name' | 'category' | 'created_at' | 'status';
 
@@ -45,6 +47,7 @@ export interface MachineFilterState {
     MatButtonModule,
     MatButtonToggleModule,
     MatSlideToggleModule,
+    MatTooltipModule,
     MatSelectModule,
     MatInputModule
   ],
@@ -83,9 +86,9 @@ export interface MachineFilterState {
           aria-label="Filter by category"
         >
           @for (cat of availableCategories(); track cat) {
-            <mat-chip-option [value]="cat">
+            <mat-chip-option [value]="cat" [matTooltip]="cat">
               <mat-icon class="chip-icon">{{ getCategoryIcon(cat) }}</mat-icon>
-              {{ cat }}
+              {{ categoryMappings().get(cat) || cat }}
             </mat-chip-option>
           }
         </mat-chip-listbox>
@@ -156,8 +159,8 @@ export interface MachineFilterState {
                 panelClass="theme-aware-panel"
               >
                 @for (backend of availableBackends(); track backend) {
-                  <mat-option [value]="backend">
-                    {{ backend }}
+                  <mat-option [value]="backend" [matTooltip]="backend">
+                    {{ backendMappings().get(backend) || backend }}
                   </mat-option>
                 }
               </mat-select>
@@ -349,6 +352,14 @@ export class MachineFiltersComponent implements OnInit {
       }
     });
     return Array.from(backends).sort();
+  });
+
+  categoryMappings = computed(() => {
+    return extractUniqueNameParts(this.availableCategories());
+  });
+
+  backendMappings = computed(() => {
+    return extractUniqueNameParts(this.availableBackends());
   });
 
   readonly CHIP_COLLAPSE_THRESHOLD = 5;

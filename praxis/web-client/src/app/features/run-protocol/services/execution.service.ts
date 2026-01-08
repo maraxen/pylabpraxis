@@ -9,6 +9,7 @@ import { environment } from '@env/environment';
 import { ModeService } from '@core/services/mode.service';
 import { PythonRuntimeService } from '@core/services/python-runtime.service';
 import { SqliteService } from '@core/services/sqlite.service';
+import { MOCK_PROTOCOLS } from '@assets/demo-data/protocols';
 
 @Injectable({
   providedIn: 'root'
@@ -128,7 +129,9 @@ export class ExecutionService {
       this.addLog('[Browser Mode] Loading protocol...');
 
       // Get protocol definition from SQLite
-      const protocol = await this.sqliteService.getProtocolById(protocolId);
+      const protocol = await this.sqliteService.getProtocolById(protocolId) ||
+        MOCK_PROTOCOLS.find(p => p.accession_id === protocolId) || null;
+
       if (!protocol) {
         throw new Error(`Protocol not found: ${protocolId}`);
       }

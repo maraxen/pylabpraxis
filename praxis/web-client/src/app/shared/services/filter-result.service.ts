@@ -6,6 +6,7 @@ export interface FilterOption {
     value: any;
     count?: number;
     disabled?: boolean;
+    fullName?: string;
 }
 
 @Injectable({

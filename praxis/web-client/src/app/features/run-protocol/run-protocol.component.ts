@@ -32,6 +32,7 @@ import { GuidedSetupComponent } from './components/guided-setup/guided-setup.com
 import { MachineSelectionComponent, MachineCompatibility } from './components/machine-selection/machine-selection.component';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 import { WizardStateService } from './services/wizard-state.service';
+import { MachineStatus } from '../assets/models/asset.models';
 
 const RECENTS_KEY = 'praxis_recent_protocols';
 const MAX_RECENTS = 5;
@@ -390,7 +391,7 @@ interface FilterCategory {
                <div class="grid grid-cols-2 gap-4 w-full mb-12">
                   <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-6 flex flex-col items-center">
                      <span class="text-sys-text-tertiary text-sm uppercase tracking-wider font-bold mb-2">Protocol</span>
-                     <span class="text-sys-text-primary text-lg font-medium">{{ selectedProtocol()?.name }}</span>
+                     <span class="text-sys-text-primary text-lg font-medium" data-testid="review-protocol-name">{{ selectedProtocol()?.name }}</span>
                   </div>
                                   <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-6 flex flex-col items-center">
                      <span class="text-sys-text-tertiary text-sm uppercase tracking-wider font-bold mb-2">Mode</span>
@@ -550,6 +551,25 @@ export class RunProtocolComponent implements OnInit {
   deckFormGroup = this._formBuilder.group({ valid: [false, { validators: (c: any) => c.value || this.selectedProtocol()?.requires_deck === false ? null : { required: true } }] });
   readyFormGroup = this._formBuilder.group({ ready: [true] });
 
+  private readonly browserModeMachine: MachineCompatibility = {
+    machine: {
+      accession_id: 'sim-machine-1',
+      name: 'Simulation Machine',
+      status: MachineStatus.IDLE,
+      machine_category: 'HamiltonSTAR',
+      connection_info: { backend: 'Simulator' },
+      is_simulation_override: true
+    },
+    compatibility: { is_compatible: true, missing_capabilities: [], matched_capabilities: [], warnings: [] }
+  };
+
+  constructor() {
+    // In browser mode we allow skipping asset/deck steps by default
+    if (this.isBrowserModeActive()) {
+      this.applyBrowserModeDefaults();
+    }
+  }
+
   /** Helper to check if a machine is simulated */
   isMachineSimulated = computed(() => {
     const selection = this.selectedMachine();
@@ -596,6 +616,34 @@ export class RunProtocolComponent implements OnInit {
       machineCompat?.machine
     );
   });
+
+  private isBrowserModeActive(): boolean {
+    if (this.modeService.isBrowserMode()) return true;
+
+    if (typeof window !== 'undefined') {
+      const modeParam = new URLSearchParams(window.location.search).get('mode');
+      if (modeParam === 'browser') return true;
+    }
+
+    try {
+      const stored = localStorage.getItem('praxis_mode_override');
+      if (stored === 'browser') return true;
+    } catch {
+      // Ignore storage failures in restricted environments
+    }
+
+    return false;
+  }
+
+  private applyBrowserModeDefaults() {
+    this.configuredAssets.set({});
+    this.assetsFormGroup.patchValue({ valid: true });
+    this.deckFormGroup.patchValue({ valid: true });
+    this.selectedMachine.set(this.browserModeMachine);
+    this.compatibilityData.set([this.browserModeMachine]);
+    this.machineFormGroup.patchValue({ machineId: this.browserModeMachine.machine.accession_id });
+    this.machineFormGroup.get('machineId')?.updateValueAndValidity();
+  }
 
   // Inject global store for simulation mode
   store = inject(AppStore);
@@ -728,7 +776,8 @@ export class RunProtocolComponent implements OnInit {
 
   selectProtocol(protocol: ProtocolDefinition) {
     this.selectedProtocol.set(protocol);
-    this.configuredAssets.set(null); // Reset deck config
+    const browserMode = this.isBrowserModeActive();
+    this.configuredAssets.set(browserMode ? {} : null); // Reset deck config
     this.parametersFormGroup = this._formBuilder.group({});
 
     // Create form controls for parameters
@@ -737,9 +786,22 @@ export class RunProtocolComponent implements OnInit {
       // so it remains empty as per the instruction's snippet.
     }
     this.protocolFormGroup.patchValue({ protocolId: protocol.accession_id });
-    this.assetsFormGroup.patchValue({ valid: false });
-    this.deckFormGroup.patchValue({ valid: protocol.requires_deck === false });
+    if (browserMode) {
+      this.assetsFormGroup.patchValue({ valid: true });
+      this.deckFormGroup.patchValue({ valid: true });
+      this.applyBrowserModeDefaults();
+    } else {
+      this.assetsFormGroup.patchValue({ valid: false });
+      this.deckFormGroup.patchValue({ valid: protocol.requires_deck === false });
+    }
     this.addToRecents(protocol.accession_id);
+
+    if (browserMode) {
+      this.compatibilityData.set([this.browserModeMachine]);
+      this.onMachineSelect(this.browserModeMachine);
+      return;
+    }
+
     this.loadCompatibility(protocol.accession_id);
   }
 

@@ -32,14 +32,24 @@ Central coordination hub for AI agents working on Praxis development.
 │   └── general.md
 ├── prompts/                   # Agent prompts
 │   ├── reuse/                 # Reusable prompt templates
+│   │   └── maintenance/       # Health audit prompts (linting, type checking, etc.)
 │   └── YYMMDD/                # Dated prompt batches
 ├── templates/                 # Document templates
 │   ├── agent_prompt.md        # Detailed agent dispatch
 │   ├── backlog_item.md        # Work item tracking
 │   ├── prompt_batch.md        # Dated batch README
-│   └── reusable_prompt.md     # Parameterized prompts
-├── reference/                 # Product specs and guides
-│   └── hardware_matrix.md     # PLR hardware communication protocols (VID/PID)
+│   ├── reusable_prompt.md     # Parameterized prompts
+│   ├── health_audit_backend.md   # Backend health audit template
+│   ├── health_audit_frontend.md  # Frontend health audit template
+│   └── reference_document.md  # External reference template
+├── references/                # External references and best practices
+│   ├── README.md              # References guide
+│   ├── testing/               # Testing strategies
+│   ├── backend/               # FastAPI, SQLAlchemy, PyLabRobot patterns
+│   ├── frontend/              # Angular, RxJS patterns
+│   └── architecture/          # System design decisions
+├── reference/                 # Product specs (legacy)
+│   └── hardware_matrix.md     # PLR hardware communication protocols
 ├── skills/                    # Agent skill definitions
 └── archive/                   # Completed work
 ```
@@ -114,6 +124,29 @@ Staged execution of prompt sets in `prompts/YYMMDD/`:
 - Mark prompts complete as they're executed
 - When all complete, mark README status as "✅ All Complete"
 - Archive-ready folders can be moved to `archive/`
+
+### Maintenance Prompts
+
+For regular health audits, use the prompts in `prompts/reuse/maintenance/`:
+
+- **Per-audit**: linting, type_checking, test_coverage, docstring_audit, todo_audit
+- **Quarterly**: ci_review, docs_audit, dependency_audit, security_audit, dead_code_cleanup, dry_audit
+- **As needed**: performance_audit
+
+See [prompts/reuse/maintenance/README.md](prompts/reuse/maintenance/README.md) for usage.
+
+---
+
+## 📚 References System
+
+The `references/` directory maintains external documentation and best practices:
+
+- `testing/` - Testing strategies, pytest/Vitest patterns
+- `backend/` - FastAPI, SQLAlchemy, PyLabRobot patterns
+- `frontend/` - Angular, RxJS, browser mode patterns
+- `architecture/` - System design decisions
+
+Use [templates/reference_document.md](templates/reference_document.md) to add new references.
 
 ---
 

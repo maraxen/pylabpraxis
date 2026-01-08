@@ -646,7 +646,6 @@ class TestGetProtocolDefinitionOrmFromDb:
 
     """Tests for _get_protocol_definition_orm_from_db method."""
 
-    @pytest.mark.skip(reason="Complex service integration - svc.read_protocol_definition_by_name not directly patchable")
     @pytest.mark.asyncio
     async def test_get_protocol_definition_orm_from_db(self) -> None:
         """Test fetching protocol definition from database."""
@@ -655,20 +654,23 @@ class TestGetProtocolDefinitionOrmFromDb:
             asset_manager=Mock(),
             workcell_runtime=Mock(),
         )
+        orchestrator.protocol_definition_service = Mock()
+        orchestrator.protocol_definition_service.get_by_name = AsyncMock()
 
         mock_protocol_def = Mock()
+        orchestrator.protocol_definition_service.get_by_name.return_value = (
+            mock_protocol_def
+        )
+
         mock_db_session = AsyncMock()
 
-        with patch(
-            "praxis.backend.core.orchestrator.protocol_preparation.svc.read_protocol_definition_by_name",
-            AsyncMock(return_value=mock_protocol_def),
-        ):
-            result = await orchestrator._get_protocol_definition_orm_from_db(
-                mock_db_session,
-                "test_protocol",
-            )
+        result = await orchestrator._get_protocol_definition_orm_from_db(
+            mock_db_session,
+            "test_protocol",
+        )
 
         assert result == mock_protocol_def
+        orchestrator.protocol_definition_service.get_by_name.assert_called_once()
 
 
 class TestPrepareProtocolCode:
@@ -692,7 +694,9 @@ class TestPrepareProtocolCode:
 
         mock_protocol_def_orm = Mock()
 
-        func, pydantic_def = await orchestrator._prepare_protocol_code(mock_protocol_def_orm)
+        func, pydantic_def = await orchestrator._prepare_protocol_code(
+            mock_protocol_def_orm
+        )
 
         assert func is not None
         assert pydantic_def is not None
@@ -705,7 +709,6 @@ class TestHandleProtocolExecutionError:
 
     """Tests for _handle_protocol_execution_error method."""
 
-    @pytest.mark.skip(reason="Complex service integration - svc.update_protocol_run_status not directly patchable")
     @pytest.mark.asyncio
     async def test_handle_protocol_execution_error(self) -> None:
         """Test error handling during protocol execution."""
@@ -714,30 +717,33 @@ class TestHandleProtocolExecutionError:
             asset_manager=Mock(),
             workcell_runtime=Mock(),
         )
+        orchestrator.protocol_run_service = Mock()
+        orchestrator.protocol_run_service.update_run_status = AsyncMock()
 
-        run_id = uuid7()
+        run_accession_id = uuid7()
 
-        # Mock PraxisState to avoid Redis
-        praxis_state = Mock(spec=PraxisState)
+        # Mock PraxisState
+        praxis_state = Mock()
         praxis_state.get.return_value = {"snapshot": "data"}
 
         mock_db_session = AsyncMock()
 
-        orchestrator.workcell_runtime.apply_state_snapshot = Mock()
         orchestrator._validate_praxis_state = Mock()
 
         test_error = ValueError("Test error")
 
         await orchestrator._handle_protocol_execution_error(
-            run_id,
+            run_accession_id,
             "test_protocol",
             test_error,
             praxis_state,
             mock_db_session,
         )
 
-        # Should have attempted rollback
+        # Verify calls
+        praxis_state.get.assert_called_with("workcell_last_successful_snapshot")
         orchestrator.workcell_runtime.apply_state_snapshot.assert_called_once()
+        orchestrator.protocol_run_service.update_run_status.assert_called_once()
 
 
 class TestModuleStructure:

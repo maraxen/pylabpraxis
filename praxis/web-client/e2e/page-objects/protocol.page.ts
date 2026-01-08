@@ -2,55 +2,71 @@ import { Page, Locator, expect } from '@playwright/test';
 import { BasePage } from './base.page';
 
 export class ProtocolPage extends BasePage {
-    readonly runProtocolLink: Locator;
-    readonly protocolList: Locator;
-    readonly startExecutionButton: Locator;
+    readonly protocolStep: Locator;
+    readonly protocolCards: Locator;
+    readonly summaryTitle: Locator;
 
     constructor(page: Page) {
-        super(page, '/protocols');
-        this.runProtocolLink = page.getByRole('link', { name: /Run Protocol/i }); // Adjust based on actual nav, maybe '/app/run' direct?
-        // Actually, user might click "Run" from list or go to "Run Protocol" wizard page.
-        // Let's assume navigating to /app/protocols then clicking Run on a row, OR /app/run
+        super(page, '/app/run');
+        this.protocolStep = page.locator('[data-tour-id="run-step-protocol"]');
+        this.protocolCards = page.locator('app-protocol-card');
+        this.summaryTitle = this.protocolStep.locator('h2');
     }
 
-    async selectProtocol(name: string) {
-        // Option 1: Click "Run" on a protocol in the library list
-        await this.goto();
-        // Assuming table structure
-        const row = this.page.locator('tr', { hasText: name });
-        await row.locator('button').filter({ hasText: 'play_arrow' }).click(); // Use icon name or similar
+    private async dismissOverlays() {
+        const dismissButtons = this.page
+            .locator('.cdk-overlay-container button')
+            .filter({ hasText: /Close|Dismiss|Got it|OK|Continue/i });
+        if (await dismissButtons.count()) {
+            await dismissButtons.first().click({ timeout: 2000 }).catch(() => undefined);
+        }
+        await this.page.keyboard.press('Escape').catch(() => undefined);
     }
 
-    async navigateThroughWizard() {
-        // Wizard steps: Protocol -> Parameters -> Deck -> Review
-        // We just click "Continue" or "Next" until we see "Start Execution"
+    async goto() {
+        await super.goto();
+        await this.protocolStep.waitFor({ state: 'visible' });
+        await this.protocolCards.first().waitFor({ state: 'visible', timeout: 30000 });
+    }
 
-        // Wait for wizard to load
-        await expect(this.page.locator('app-run-protocol')).toBeVisible();
-
-        // Loop to click "Next" / "Continue"
-        // Heuristic: Click visible "Next" or "Continue" buttons
-        for (let i = 0; i < 5; i++) {
-            // Check if "Start Execution" is visible, if so, break
-            // Using catch to handle non-existence without erroring
-            if (await this.page.locator('button:has-text("Start Execution")').isVisible()) {
-                break;
-            }
-
-            const nextBtn = this.page.locator('button').filter({ hasText: /Next|Continue/i }).first();
-            if (await nextBtn.isVisible()) {
-                await nextBtn.click();
-                await this.page.waitForTimeout(500); // Animations
-            } else {
-                break; // No more next buttons
+    async ensureSimulationMode() {
+        const simulationToggle = this.page.getByRole('button', { name: /^Simulation$/i }).first();
+        if (await simulationToggle.count()) {
+            const pressed = await simulationToggle.getAttribute('aria-pressed');
+            if (pressed !== 'true') {
+                await simulationToggle.click();
             }
         }
     }
 
-    async startExecution() {
-        const startBtn = this.page.locator('button:has-text("Start Execution")');
-        await expect(startBtn).toBeVisible();
-        await expect(startBtn).toBeEnabled();
-        await startBtn.click();
+    async selectProtocolByName(name: string): Promise<string> {
+        const card = this.protocolCards.filter({ hasText: name }).first();
+        await expect(card, `Protocol card for ${name} should be visible`).toBeVisible({ timeout: 15000 });
+        await card.click();
+        await this.assertProtocolSelected(name);
+        return name;
+    }
+
+    async selectFirstProtocol(): Promise<string> {
+        const firstCard = this.protocolCards.first();
+        await firstCard.waitFor({ state: 'visible' });
+        const name = (await firstCard.locator('mat-card-title').textContent())?.trim() || 'Protocol';
+        await this.dismissOverlays();
+        await firstCard.click({ trial: true }).catch(() => undefined);
+        await firstCard.click({ force: true });
+        await this.assertProtocolSelected(name);
+        return name;
+    }
+
+    async assertProtocolSelected(expectedName: string) {
+        await expect(this.summaryTitle, 'Selected protocol summary should appear').toContainText(expectedName, {
+            timeout: 15000
+        });
+    }
+
+    async continueFromSelection() {
+        const continueButton = this.protocolStep.getByRole('button', { name: /Continue/i }).last();
+        await expect(continueButton).toBeEnabled({ timeout: 15000 });
+        await continueButton.click();
     }
 }

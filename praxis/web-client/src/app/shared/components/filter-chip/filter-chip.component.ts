@@ -15,7 +15,7 @@ import { FilterOption } from '../../services/filter-result.service';
     ],
     template: `
 <div class="filter-chip" [class.active]="isActive" [class.disabled]="disabled" [class.shake]="isShaking"
-  [matTooltip]="disabled ? 'No results match this filter combination' : ''" [matMenuTriggerFor]="disabled ? null : menu"
+  [matTooltip]="disabled ? 'No results match this filter combination' : activeSelectionTooltip" [matMenuTriggerFor]="disabled ? null : menu"
   (click)="onChipClick($event)" tabindex="0" role="button" [attr.aria-disabled]="disabled" [attr.aria-label]="label">
 
   <span class="chip-text">{{ displayLabel }}</span>
@@ -37,7 +37,8 @@ import { FilterOption } from '../../services/filter-result.service';
 
     @for (option of options; track option.value) {
     <button mat-menu-item [disabled]="option.disabled" (click)="!option.disabled && selectOption(option.value)"
-      class="filter-option" [class.selected]="isSelected(option.value)">
+      class="filter-option" [class.selected]="isSelected(option.value)"
+      [matTooltip]="option.fullName || ''" [matTooltipShowDelay]="500">
       <div class="option-content">
         <div class="option-label-wrapper">
           @if (multiple) {
@@ -236,6 +237,22 @@ export class FilterChipComponent {
         // PER USER FEEDBACK: Keep base label, but the presence of .active class 
         // (handled in template) will show it is filtered.
         return this.label;
+    }
+
+    get activeSelectionTooltip(): string {
+        if (!this.isActive) return '';
+
+        if (this.multiple) {
+            const selected = (this.selectedValue as any[])
+                .map(val => {
+                    const opt = this.options.find(o => o.value === val);
+                    return opt ? (opt.fullName || opt.label) : val;
+                });
+            return `Selected: ${selected.join(', ')}`;
+        } else {
+            const opt = this.options.find(o => o.value === this.selectedValue);
+            return opt ? `Selected: ${opt.fullName || opt.label}` : `Selected: ${this.selectedValue}`;
+        }
     }
 
     onChipClick(event: MouseEvent) {

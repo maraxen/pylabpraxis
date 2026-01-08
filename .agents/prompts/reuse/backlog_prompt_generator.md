@@ -36,6 +36,7 @@ Review the development tracking documents and generate targeted agent prompts to
      - Use `uv run` for Python commands
      - Use `praxis/backend` for backend code paths
      - Use `praxis/web-client` for frontend code paths
+   - Include on-completion step to commit changes with descriptive message
 
 4. **Create Batch README**: Create `.agents/prompts/{BATCH_DATE}/README.md` listing all generated prompts with status tracking (use `agent_tasks.jsonl` format if applicable or standard markdown table from templates).
 
@@ -90,6 +91,7 @@ Review the development tracking documents and generate targeted agent prompts to
    - Save to `.agents/prompts/260108/NN_item_name.md`
    - Include specific context files and implementation details from the backlog item
    - Reference relevant codestyles and project conventions
+   - Include on-completion step to commit changes with descriptive message
 
 4. **Create Batch README**: Create `.agents/prompts/260108/README.md` listing all generated prompts with status tracking.
 

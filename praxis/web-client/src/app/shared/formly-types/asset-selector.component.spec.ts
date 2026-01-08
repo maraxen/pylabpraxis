@@ -87,30 +87,7 @@ describe('AssetSelectorComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  // TODO: These tests reference methods that no longer exist on the component
-  // Commenting out entirely to allow test suite to compile
-  /*
-  it.skip('should filter resources by name', () => {
-    if (component.field.templateOptions) {
-      component.field.templateOptions['assetType'] = 'resource';
-    }
-    fixture.detectChanges();
-    let result: any[] = [];
-    // component.filteredAssets$.subscribe(assets => result = assets);
-    vi.advanceTimersByTime(350);
-    component.formControl.setValue('Plate');
-    vi.advanceTimersByTime(350);
-    expect(result.length).toBe(2);
-  });
 
-  it.skip('should filter resources by plrTypeFilter', () => {
-    // Test body removed - API changed
-  });
-
-  it.skip('should provide definition details for hover tags', () => {
-    // Test body removed - API changed
-  });
-  */
 
   it('should open dialog and create resource on save', () => {
     if (component.field.templateOptions) {

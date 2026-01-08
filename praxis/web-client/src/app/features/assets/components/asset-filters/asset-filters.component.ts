@@ -1,4 +1,4 @@
-import { Component, inject, signal, output, OnInit, input, effect } from '@angular/core';
+import { Component, inject, signal, output, OnInit, input, effect, computed } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
@@ -9,7 +9,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Machine, Workcell } from '../../models/asset.models';
+import { extractUniqueNameParts } from '../../../../shared/utils/name-parser';
 
 export type AssetSortOption =
   | 'name'
@@ -43,6 +45,7 @@ export interface AssetFilterState {
     MatButtonModule,
     MatButtonToggleModule,
     MatSlideToggleModule,
+    MatTooltipModule,
     MatInputModule
   ],
   template: `
@@ -86,7 +89,7 @@ export interface AssetFilterState {
             (selectionChange)="onFilterChange()"
             placeholder="All categories">
             @for (cat of categories(); track cat) {
-              <mat-option [value]="cat">{{ cat }}</mat-option>
+              <mat-option [value]="cat" [matTooltip]="cat">{{ categoryMappings().get(cat) || cat }}</mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -213,6 +216,10 @@ export class AssetFiltersComponent {
   showWorkcellFilter = input<boolean>(false);
 
   filtersChange = output<AssetFilterState>();
+
+  categoryMappings = computed(() => {
+    return extractUniqueNameParts(this.categories());
+  });
 
   selectedStatuses: string[] = [];
   selectedCategories: string[] = [];

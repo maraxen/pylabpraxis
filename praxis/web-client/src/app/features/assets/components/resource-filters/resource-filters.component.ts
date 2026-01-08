@@ -8,6 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { Resource, ResourceStatus, Machine } from '../../models/asset.models';
 import { FilterChipComponent } from '../../../../shared/components/filter-chip/filter-chip.component';
 import { FilterOption, FilterResultService } from '../../../../shared/services/filter-result.service';
+import { extractUniqueNameParts } from '../../../../shared/utils/name-parser';
 
 export interface ResourceFilterState {
   search: string;
@@ -218,7 +219,14 @@ export class ResourceFiltersComponent implements OnInit {
 
   // Final options with counts
   categoryOptions = computed(() => {
-    const options: FilterOption[] = this.baseCategories().map(c => ({ label: c, value: c }));
+    const rawCategories = this.baseCategories();
+    const uniqueParts = extractUniqueNameParts(rawCategories);
+    const options: FilterOption[] = rawCategories.map(c => ({
+      label: uniqueParts.get(c) || c,
+      value: c,
+      fullName: c
+    }));
+
     return this.filterResultService.computeOptionMetrics(
       this.dataForCategory(),
       (item, value) => (item as any).plr_category === value,
@@ -250,7 +258,14 @@ export class ResourceFiltersComponent implements OnInit {
   });
 
   brandOptions = computed(() => {
-    const options: FilterOption[] = this.baseBrands().map(b => ({ label: b, value: b }));
+    const rawBrands = this.baseBrands();
+    const uniqueParts = extractUniqueNameParts(rawBrands);
+    const options: FilterOption[] = rawBrands.map(b => ({
+      label: uniqueParts.get(b) || b,
+      value: b,
+      fullName: b
+    }));
+
     return this.filterResultService.computeOptionMetrics(
       this.dataForBrand(),
       (item, value) => (item as any).definition?.vendor === value,

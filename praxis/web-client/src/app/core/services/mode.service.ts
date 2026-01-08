@@ -11,6 +11,8 @@ import { environment } from '../../../environments/environment';
  */
 export type AppMode = 'browser' | 'lite' | 'production';
 
+const MODE_OVERRIDE_KEY = 'praxis_mode_override';
+
 /**
  * Helper function to check if running in browser mode.
  * Can be called before Angular DI is available (e.g., in service constructors).
@@ -70,6 +72,17 @@ export class ModeService {
      * Detect application mode from environment configuration.
      */
     private detectMode(): AppMode {
+        const urlMode = this.getUrlModeOverride();
+        if (urlMode) {
+            this.persistOverride(urlMode);
+            return urlMode;
+        }
+
+        const storedMode = this.getStoredModeOverride();
+        if (storedMode) {
+            return storedMode;
+        }
+
         const env = environment as {
             browserMode?: boolean;
             demo?: boolean;
@@ -88,5 +101,40 @@ export class ModeService {
         }
         // Default to production for safety
         return 'production';
+    }
+
+    /**
+     * Read mode override from URL query string (?mode=browser|lite|production)
+     */
+    private getUrlModeOverride(): AppMode | null {
+        if (typeof window === 'undefined') return null;
+        const modeParam = new URLSearchParams(window.location.search).get('mode');
+        if (modeParam === 'browser' || modeParam === 'lite' || modeParam === 'production') {
+            return modeParam;
+        }
+        return null;
+    }
+
+    /**
+     * Read persisted override so refreshes keep the same mode.
+     */
+    private getStoredModeOverride(): AppMode | null {
+        try {
+            const stored = localStorage.getItem(MODE_OVERRIDE_KEY);
+            if (stored === 'browser' || stored === 'lite' || stored === 'production') {
+                return stored;
+            }
+        } catch {
+            // Ignore storage failures in restricted environments
+        }
+        return null;
+    }
+
+    private persistOverride(mode: AppMode) {
+        try {
+            localStorage.setItem(MODE_OVERRIDE_KEY, mode);
+        } catch {
+            // Ignore storage failures in restricted environments
+        }
     }
 }

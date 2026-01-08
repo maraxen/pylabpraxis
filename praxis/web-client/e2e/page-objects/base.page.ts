@@ -10,7 +10,13 @@ export abstract class BasePage {
     }
 
     async goto() {
-        await this.page.goto(this.url, { waitUntil: 'domcontentloaded' });
+        const hasQuery = this.url.includes('?');
+        const hasModeParam = this.url.includes('mode=');
+        const targetUrl = hasModeParam
+            ? this.url
+            : `${this.url}${hasQuery ? '&' : '?'}mode=browser`;
+
+        await this.page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
     }
 
     async getTitle(): Promise<string> {

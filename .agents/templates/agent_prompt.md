@@ -37,6 +37,7 @@ See [codestyles/](../../codestyles/) for language-specific guidelines.
 
 ## On Completion
 
+- [ ] Commit changes with descriptive message referencing the backlog item
 - [ ] Update backlog item status
 - [ ] Update [DEVELOPMENT_MATRIX.md](../../DEVELOPMENT_MATRIX.md) if applicable
 - [ ] Release browser_subagent in [status.json](../../status.json) if used
