@@ -8,6 +8,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 import { FormsModule } from '@angular/forms';
 import { AriaSelectComponent, SelectOption } from '@shared/components/aria-select/aria-select.component';
+import { AriaAutocompleteComponent } from '@shared/components/aria-autocomplete/aria-autocomplete.component';
 import { ProtocolDefinition, AssetRequirement } from '@features/protocols/models/protocol.models';
 import { Resource } from '@features/assets/models/asset.models';
 import { AssetService } from '@features/assets/services/asset.service';
@@ -33,7 +34,8 @@ export interface GuidedSetupResult {
     MatTooltipModule,
     MatChipsModule,
     FormsModule,
-    AriaSelectComponent
+    AriaSelectComponent,
+    AriaAutocompleteComponent
   ],
   template: `
     @if (!isInline) {
@@ -83,13 +85,13 @@ export interface GuidedSetupResult {
 
               <div class="resource-select">
                 <label class="text-xs font-medium text-gray-500 mb-1 block">Select Inventory Item</label>
-                <app-aria-select
+                <app-aria-autocomplete
                   label="Select Inventory Item"
-                  [options]="getMappedOptions(req)"
+                  [options]="requirementsOptions()[req.accession_id] || []"
                   [ngModel]="selectedAssets()[req.accession_id]"
                   (ngModelChange)="updateSelection(req.accession_id, $event)"
-                  [placeholder]="'-- Select --'"
-                ></app-aria-select>
+                  [placeholder]="'Search inventory...'"
+                ></app-aria-autocomplete>
                 @if (!req.optional && !selectedAssets()[req.accession_id]) {
                   <div class="text-xs text-red-500 mt-1">Required</div>
                 }
@@ -319,6 +321,17 @@ export class GuidedSetupComponent implements OnInit {
     return (this.protocol || this.data?.protocol)?.assets || [];
   }
 
+  // Pre-compute options to ensure stable references
+  requirementsOptions = computed(() => {
+    const map: Record<string, SelectOption[]> = {};
+    const inventory = this.inventory();
+
+    this.requiredAssets.forEach(req => {
+      map[req.accession_id] = this.generateOptionsForReq(req, inventory);
+    });
+    return map;
+  });
+
   // Computed signals for summary
   autofilledCount = computed(() => {
     let count = 0;
@@ -523,14 +536,28 @@ export class GuidedSetupComponent implements OnInit {
     return parts.slice(-2).join('.');
   }
 
-  getMappedOptions(req: AssetRequirement): SelectOption[] {
-    const exact = this.getExactMatches(req);
-    const other = this.getOtherCompatible(req);
+
+
+  private generateOptionsForReq(req: AssetRequirement, inventory: Resource[]): SelectOption[] {
+    // Helper to get compatible resources since we can't call methods easily inside computed
+    const compatible = this.getCompatibleResourcesForInventory(req, inventory);
+
+    const exact: Resource[] = [];
+    const other: Resource[] = [];
+
+    compatible.forEach(res => {
+      if (this.isExactMatch(req, res)) {
+        exact.push(res);
+      } else {
+        other.push(res);
+      }
+    });
+
     const options: SelectOption[] = [];
 
     exact.forEach(res => options.push({
       label: `${res.name} (${res.accession_id.substring(0, 6)})`,
-      value: res,
+      value: res, // Resource object reference is stable
       icon: 'recommend'
     }));
 
@@ -540,6 +567,26 @@ export class GuidedSetupComponent implements OnInit {
     }));
 
     return options;
+  }
+
+  // Refactored to take inventory as arg for computed purity
+  private getCompatibleResourcesForInventory(req: AssetRequirement, inventory: Resource[]): Resource[] {
+    const reqFqn = (req.fqn || '').toLowerCase();
+    const reqType = (req.type_hint_str || '').toLowerCase();
+    const reqClassName = this.getClassName(reqFqn);
+
+    return inventory.filter(res => {
+      const resFqn = (res.fqn || '').toLowerCase();
+      const resName = res.name.toLowerCase();
+      const resClassName = this.getClassName(resFqn);
+
+      if (resFqn && reqFqn && resFqn === reqFqn) return true;
+      if (resClassName && reqClassName && resClassName === reqClassName) return true;
+      if (reqType && resClassName && resClassName.includes(reqType)) return true;
+      if (this.matchesByCategory(reqType, reqClassName, resName, resFqn)) return true;
+
+      return false;
+    });
   }
 
   updateSelection(reqId: string, resource: Resource | null) {
@@ -561,8 +608,7 @@ export class GuidedSetupComponent implements OnInit {
     if (this.autofilledIds().has(reqId)) {
       this.autofilledIds.update(set => {
         const newSet = new Set(set);
-        // Keep it in autofilled if user selected the same as auto-selected
-        // Otherwise mark as manually changed
+        newSet.delete(reqId);
         return newSet;
       });
     }
