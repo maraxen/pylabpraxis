@@ -126,6 +126,12 @@ detectMode(): DeploymentMode {
 **Issue**: `machines` table lacks `machine_definition_accession_id` column.
 **Fix**: Update backend ORM, generate schema, add migration.
 
+### Schema Generation Scripts Broken (P2)
+
+**Status**: Pending
+**Issue**: `generate_browser_schema.py` and `generate_browser_db.py` are failing due to SQLAlchemy metadata initialization issues.
+**Fix**: Debug and fix scripts to ensure reliable schema generation.
+
 ---
 
 ## Related Documents

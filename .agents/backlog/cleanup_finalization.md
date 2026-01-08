@@ -9,6 +9,7 @@
 
 - [ ] **Archive Snapshot**: Rotate older backlogs and completed prompts to `archive/`.
 - [ ] **Workspace Audit**: Ensure no temporary or debug files are in the repository root.
+- [ ] **Repo Cleanup**: Remove `.pymon`, organize `debug_*.py`, `verify_queue.py`, `locustfile.py`, `agents_backup.tar.gz`.
 - [ ] **Success Metrics Verification**: Final review of completed phases across all major features.
 
 ## Documentation & Planning

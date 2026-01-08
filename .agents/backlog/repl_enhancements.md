@@ -35,6 +35,11 @@ Improve JupyterLite REPL stability, theme synchronization, and hardware discover
 - [ ] Consider dedicated PLR browser adapter package
 - [ ] Replace raw string templating with cleaner initialization
 
+## Phase 5: Known Issues & Future Improvements
+
+- [ ] **404 Errors for PyLabRobot Paths**: Suppress harmless 404s for virtual filesystem imports (configure `jupyter-lite.json`).
+- [ ] **Slow Initial Load**: Explore pre-bundling or eager loading to reduce startup time/race conditions.
+
 ---
 
 ## Notes

@@ -20,60 +20,114 @@ import { CommonModule } from '@angular/common';
   ],
   template: `
     <div
-      class="relative bg-surface/20 border rounded-2xl p-6 cursor-pointer transition-all duration-300 group hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 h-full backdrop-blur-xl flex flex-col"
-      [class.border-white-10]="!selected()"
+      class="machine-card relative border-[1.5px] rounded-2xl p-6 cursor-pointer transition-all duration-300 group hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 h-full backdrop-blur-xl flex flex-col"
+      [class.border-outline]="!selected()"
       [class.border-primary]="selected()"
-      [class.bg-primary/20]="selected()"
+      [class.selected-bg]="selected()"
       [class.opacity-60]="machineCompatibility() && !machineCompatibility()?.compatibility?.is_compatible"
       [class.opacity-40]="isPhysicalMode() && isSimulated()"
       [class.grayscale]="isPhysicalMode() && isSimulated()"
       (click)="onClick()"
     >
-      <!-- Hardware Badge -->
-      <div class="mb-3">
-        <app-hardware-badge [isSimulated]="isSimulated()" />
+      <!-- Machine Card Header -->
+      <div class="machine-card-header mb-3">
+        <!-- Hardware Badge acting as status indicator -->
+        <div class="status-indicator">
+          <app-hardware-badge [isSimulated]="isSimulated()" />
+        </div>
       </div>
 
-      <div class="flex-grow">
+      <div class="card-content flex-grow">
         <h3 class="text-lg font-bold text-sys-text-primary group-hover:text-primary transition-colors">{{ getMachine().name }}</h3>
         <span class="text-[10px] font-bold uppercase tracking-widest text-sys-text-tertiary block mt-1">{{ getMachine().machine_category || 'Laboratory Machine' }}</span>
         <span class="text-xs text-sys-text-secondary block mt-0.5 opacity-60">{{ getMachine().manufacturer }} {{ getMachine().model }}</span>
       </div>
 
       <!-- Compatibility Info -->
-      @if (machineCompatibility()) {
-        @if (!machineCompatibility()?.compatibility?.is_compatible) {
+      <div class="card-actions mt-auto">
+        @if (machineCompatibility()) {
+          @if (!machineCompatibility()?.compatibility?.is_compatible) {
+            <div class="mt-4 p-3 bg-red-400/10 rounded-lg border border-red-400/20">
+              <p class="text-sm text-red-400 font-medium mb-1">Incompatible</p>
+              <ul class="text-xs text-red-400/70 list-disc pl-4 space-y-1">
+                @for (missing of machineCompatibility()!.compatibility.missing_capabilities; track missing.capability_name) {
+                   <li>Missing: {{ missing.capability_name }}</li>
+                }
+              </ul>
+            </div>
+          } @else if (machineCompatibility()!.compatibility.warnings.length > 0) {
+             <div class="mt-4 p-3 bg-amber-400/10 rounded-lg border border-amber-400/20">
+              <p class="text-sm text-amber-500 font-medium mb-1">Warnings</p>
+              <ul class="text-xs text-amber-600/70 list-disc pl-4 space-y-1">
+                @for (warn of machineCompatibility()!.compatibility.warnings; track warn) {
+                   <li>{{ warn }}</li>
+                }
+              </ul>
+            </div>
+          }
+        }
+
+        <!-- Physical Mode Warning -->
+        @if (isPhysicalMode() && isSimulated()) {
           <div class="mt-4 p-3 bg-red-400/10 rounded-lg border border-red-400/20">
-            <p class="text-sm text-red-400 font-medium mb-1">Incompatible</p>
-            <ul class="text-xs text-red-400/70 list-disc pl-4 space-y-1">
-              @for (missing of machineCompatibility()!.compatibility.missing_capabilities; track missing.capability_name) {
-                 <li>Missing: {{ missing.capability_name }}</li>
-              }
-            </ul>
-          </div>
-        } @else if (machineCompatibility()!.compatibility.warnings.length > 0) {
-           <div class="mt-4 p-3 bg-amber-400/10 rounded-lg border border-amber-400/20">
-            <p class="text-sm text-amber-500 font-medium mb-1">Warnings</p>
-            <ul class="text-xs text-amber-600/70 list-disc pl-4 space-y-1">
-              @for (warn of machineCompatibility()!.compatibility.warnings; track warn) {
-                 <li>{{ warn }}</li>
-              }
-            </ul>
+            <p class="text-sm text-red-400 font-medium">Not available for Physical mode</p>
           </div>
         }
-      }
-
-      <!-- Physical Mode Warning -->
-      @if (isPhysicalMode() && isSimulated()) {
-        <div class="mt-4 p-3 bg-red-400/10 rounded-lg border border-red-400/20">
-          <p class="text-sm text-red-400 font-medium">Not available for Physical mode</p>
-        </div>
-      }
+      </div>
     </div>
   `,
   styles: [`
-    .border-white-10 { border-color: var(--theme-border, rgba(255,255,255,0.1)); }
-    .bg-primary-05 { background-color: rgba(var(--primary-color-rgb, 99, 102, 241), 0.05); }
+    .machine-card {
+      min-height: 160px;
+      border-color: var(--mat-sys-outline-variant);
+      background: linear-gradient(135deg, var(--mat-sys-surface) 0%, var(--mat-sys-surface-container-low) 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .machine-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at center, var(--mat-sys-primary-container) 0%, transparent 70%);
+      opacity: 0.05;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .machine-card:hover::before {
+      opacity: 0.1;
+    }
+
+    .machine-card.border-outline {
+      border-color: var(--mat-sys-outline-variant);
+    }
+
+    .machine-card.border-primary {
+      border-color: var(--mat-sys-primary);
+      box-shadow: 0 0 15px -5px var(--mat-sys-primary);
+    }
+
+    .machine-card.selected-bg {
+      background: linear-gradient(135deg, var(--mat-sys-primary-container) 0%, var(--mat-sys-surface-container-low) 100%);
+    }
+
+    .machine-card-header {
+      display: flex;
+      align-items: center;
+      min-height: 32px;
+    }
+
+    .status-indicator {
+      flex-shrink: 0;
+      margin-right: 8px;
+      display: flex;
+      align-items: center;
+    }
+
     .border-primary { border-color: var(--sys-primary, #6366f1); }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,

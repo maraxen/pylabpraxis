@@ -10,19 +10,19 @@
 ### 1. Unique Name Parsing
 
 **Priority**: P2
-**Status**: ⏳ Todo
-**Issue**: When many assets have similar names (e.g., "Hamilton Core96 Tip Rack"), the filter chips can cut off the distinguishing parts.
-**Action**: Implement logic to extract and display only the unique identifying parts of asset names in the chip labels.
+**Status**: ✅ Complete
+**Action**: Implemented word-based logic in `name-parser.ts` to extract distinguishing name parts. Integrated with `FilterChipComponent` for full-name tooltips.
 
 ### 2. UI Visual Tweaks (from ui_polish.md)
 
 **Priority**: P3
-**Status**: ⏳ Todo
+**Status**: ✅ Complete (2026-01-08)
 **Tasks**:
 
-- [ ] **Registry Spacing**: Fix padding issues in the Asset Registry list view.
-- [ ] **Machine Tab Alignment**: Correct the vertical alignment of status indicators in the Machines tab.
-- [ ] **Grid Layout Consistency**: Ensure that resource cards have consistent height even with varying metadata density.
+- [x] **Registry Spacing**: Fix padding issues in the Asset Registry list view.
+- [x] **Machine Tab Alignment**: Correct the vertical alignment of status indicators in the Machines tab.
+- [x] **Grid Layout Consistency**: Ensure that resource cards have consistent height even with varying metadata density.
+- [x] **Themed Gradients**: Implemented subtle themed gradients and borders across asset cards and list items.
 
 ---
 

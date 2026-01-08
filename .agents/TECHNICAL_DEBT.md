@@ -19,11 +19,24 @@
 
 ## Active Items
 
-_No active items. All prior technical debt has been migrated to formal backlogs._
+- **High** — Playwright: Firefox unsupported for Browser Mode E2E. Document limitation and align CI matrices to run Chromium/WebKit only until Firefox flakiness (overlays, intercepted clicks, stepper gating) is resolved. Add note to QA docs and Playwright config guidance.
 
 ---
 
 ## Recently Resolved ✅
+
+### 2026-01-08 Migration
+
+| Item | Migrated To |
+|------|-------------|
+| Prompt Folder Cleanup | [cleanup_finalization.md](./backlog/cleanup_finalization.md) (Implicit in cleanup) |
+| Base Repo Cleanup | [cleanup_finalization.md](./backlog/cleanup_finalization.md) |
+| JupyterLite 404s/Load | [repl_enhancements.md](./backlog/repl_enhancements.md) |
+| pylibftdi Incompatibility | ✅ Obsolete (superseded by `ISerial` abstraction) |
+| Browser Schema Scripts | [browser_mode.md](./backlog/browser_mode.md) |
+| SqliteService Blob Cast | [quality_assurance.md](./backlog/quality_assurance.md) |
+| SettingsComponent Tests | [quality_assurance.md](./backlog/quality_assurance.md) |
+| E2E Asset Seeding | [quality_assurance.md](./backlog/quality_assurance.md) |
 
 ### 2026-01-07 Migration
 
@@ -45,15 +58,6 @@ The following items were migrated to formal tracking:
 | Resource Model Typing | [quality_assurance.md](./backlog/quality_assurance.md) |
 | REPL Shim Loading | [repl_enhancements.md](./backlog/repl_enhancements.md) |
 | Hardware VID/PID Matrix | [reference/hardware_matrix.md](./reference/hardware_matrix.md) |
-
-### Previously Resolved
-
-- **Protocol Queue and Reservation Management**: Base implementation complete (2026-01-06).
-- **Machine Frontend/Backend Separation**: Added `frontend_fqn` (2026-01-07).
-- **Asset Management Filter Dropdown**: Standardized via chip filters (2026-01-07).
-- **JupyterLite REPL Module Path**: Fixed via post-migration init (2026-01-06).
-- **FTDI Driver Architecture**: Implemented `ISerial` abstraction (2026-01-07).
-- **Serial Driver Main Thread Migration**: Moved to TypeScript (2026-01-07).
 
 ---
 

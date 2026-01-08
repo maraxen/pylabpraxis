@@ -226,14 +226,17 @@ export interface ResourceDefinitionGroup {
       display: flex;
       align-items: center;
       padding: 12px 16px;
-      background: var(--sys-surface-container);
+      background: linear-gradient(to right, var(--sys-surface-container), var(--sys-surface-container-low));
+      border: 1px solid var(--sys-outline-variant);
       border-radius: 8px;
       cursor: pointer;
-      transition: background 0.2s ease;
+      transition: all 0.2s ease;
     }
 
     .definition-item:hover {
-      background: var(--sys-surface-container-high);
+      background: linear-gradient(to right, var(--sys-surface-container-high), var(--sys-surface-container));
+      border-color: var(--sys-primary);
+      transform: translateX(4px);
     }
 
     .def-info {

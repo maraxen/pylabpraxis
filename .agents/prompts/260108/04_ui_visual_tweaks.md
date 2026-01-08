@@ -11,7 +11,7 @@ Examine `.agents/README.md` for development context.
 
 ## Task
 
-Fix UI spacing and alignment issues in the Asset Registry and Machine tabs.
+Fix UI spacing, alignment, and theme consistency in the Asset Registry and Machine components. Ensure all cards have clear boundaries via theme-synced outlines or gradients.
 
 ---
 
@@ -21,23 +21,25 @@ Fix UI spacing and alignment issues in the Asset Registry and Machine tabs.
 
 **Issue:** Padding issues in the Asset Registry list view.
 
-Update `praxis/web-client/src/app/features/assets/components/resource-list/resource-list.component.scss`:
+Update styles in `praxis/web-client/src/app/features/assets/components/resource-list/resource-list.component.ts` (inline styles):
 
 ```scss
-.resource-list {
-  // Ensure consistent padding between cards
-  .resource-card {
-    margin-bottom: 12px;
-    
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
+.resource-list-container {
+  // Ensure consistent padding
+  padding: 16px;
   
-  // Fix filter bar spacing
-  .filter-section {
-    padding: 16px;
-    margin-bottom: 16px;
+  .mat-table {
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .resource-row {
+    transition: background-color 0.2s ease;
+    
+    &:hover {
+      background-color: var(--mat-sys-surface-container-highest);
+    }
   }
 }
 ```
@@ -46,7 +48,7 @@ Update `praxis/web-client/src/app/features/assets/components/resource-list/resou
 
 **Issue:** Vertical alignment of status indicators in the Machines tab.
 
-Update `praxis/web-client/src/app/features/assets/components/machine-card/machine-card.component.scss`:
+Update styles in `praxis/web-client/src/app/shared/components/machine-card/machine-card.component.ts` (inline styles or template classes):
 
 ```scss
 .machine-card-header {
@@ -88,15 +90,32 @@ Update card styles to ensure consistent height:
 }
 ```
 
-### 4. Visual Verification
+### 4. Theme-Synced Card Boundaries
 
-Use the browser subagent to verify changes:
+**Issue:** Boundaries between items can be unclear in certain themes.
+**Goal:** Use theme-synced outlines or gradients to make item boundaries distinct.
+
+Update `praxis/web-client/src/app/shared/components/machine-card/machine-card.component.ts`:
+
+- Ensure the card has a visible border using `var(--mat-sys-outline-variant)`.
+- Consider using a subtle gradient: `linear-gradient(to bottom right, var(--mat-sys-surface-container-low), var(--mat-sys-surface-container))`.
+
+```html
+<!-- Example implementation in MachineCard template -->
+<div class="border-[1.5px] border-[var(--mat-sys-outline-variant)] bg-gradient-to-br from-[var(--mat-sys-surface-container-low)] to-[var(--mat-sys-surface-container)] rounded-2xl ...">
+  ...
+</div>
+```
+
+### 5. Visual Verification
+
+Use the browser subagent to verify changes in both light and dark modes (if available):
 
 1. Navigate to Assets → Resources tab
 2. Capture screenshot of resource list
 3. Navigate to Assets → Machines tab
 4. Capture screenshot of machine list
-5. Verify alignment and spacing in both views
+5. Verify boundaries are clear and colors are theme-consistent.
 
 ---
 
@@ -105,8 +124,8 @@ Use the browser subagent to verify changes:
 | File | Purpose |
 |:-----|:--------|
 | [chip_filter_standardization.md](../../backlog/chip_filter_standardization.md) | Backlog tracking |
-| [resource-list.component.scss](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/features/assets/components/resource-list/resource-list.component.scss) | Resource list styles |
-| [machine-card.component.scss](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/features/assets/components/machine-card/machine-card.component.scss) | Machine card styles |
+| [resource-list.component.ts](../../../features/assets/components/resource-list/resource-list.component.ts) | Resource list styles/logic |
+| [machine-card.component.ts](../../../shared/components/machine-card/machine-card.component.ts) | Machine card styles/logic |
 
 ---
 

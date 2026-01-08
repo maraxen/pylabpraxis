@@ -1,6 +1,6 @@
 # Praxis Development Matrix
 
-**Last Updated**: 2026-01-07 (SqliteService Unit Tests complete, dev matrix updated)
+**Last Updated**: 2026-01-08 (Unique Name Parsing complete, dev matrix updated)
 **Purpose**: Consolidated view of all remaining work items with priority and difficulty ratings.
 
 ---
@@ -54,7 +54,7 @@
 | ~~Core Filter Chip Component~~ | ~~P2~~ | ~~M~~ | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | ✅ Complete |
 | ~~Resource Filter Chips~~ | ~~P2~~ | ~~M~~ | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | ✅ Complete (Integrated with Resource Inventory) |
 | ~~Disabled Chip UX~~ | ~~P2~~ | ~~S~~ | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | ✅ Complete (shake animation implemented) |
-| **Unique Name Parsing** | P2 | M | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | Extract distinguishing name parts |
+| ~~Unique Name Parsing~~ | ~~P2~~ | ~~M~~ | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | ✅ Complete (Implemented `name-parser.ts` + tooltips) |
 
 ### JupyterLite REPL ✅ (ARCHIVED)
 
@@ -93,11 +93,21 @@
 |------|----------|------------|---------|-------------|
 | **SQLite Schema Mismatch** | P1 | 🟢 Easy | [browser_mode](./backlog/browser_mode.md) | Add `inferred_requirements_json` column |
 | **REPL Rendering Stability** | P2 | 🟡 Intricate | [repl_enhancements](./backlog/repl_enhancements.md) | Fix kernel refresh race condition |
-| **UI Consistency - Exec Monitor** | P2 | 🟡 Intricate | [ui_consistency](./backlog/ui_consistency.md) | Standardize dropdown chips, menus |
-| **Asset Management UX** | P2 | 🟡 Intricate | [asset_management_ux](./backlog/asset_management_ux.md) | Refactor Add Machine/Resource flows |
+| **UI Consistency - Exec Monitor** | P2 | 🟡 Intricate | [ui_consistency](./backlog/ui_consistency.md) | Standardize dropdown chips, menus (Not Started) |
+| **Asset Management UX** | P2 | 🟡 Intricate | [asset_management_ux](./backlog/asset_management_ux.md) | Phase 2 pending (Resource cards); Phase 1/3 complete |
 | **Dataviz & Well Selection** | P2 | 🔴 Complex | [dataviz_well_selection](./backlog/dataviz_well_selection.md) | Bridge WellDataOutput with visualization |
-| **Skipped Tests Investigation** | P2 | 🟢 Easy | [quality_assurance](./backlog/quality_assurance.md) | Audit and fix skipped unit tests |
+| ~~Skipped Tests Investigation~~ | ~~P2~~ | ~~🟢 Easy~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Fixed Orchestrator tests, cleaned frontend dead code) |
 | **Factory ORM Integration** | P2 | 🟡 Intricate | [quality_assurance](./backlog/quality_assurance.md) | Fix Factory Boy FK population |
+
+### Migrated from Technical Debt (2026-01-08)
+
+| Item | Priority | Difficulty | Backlog | Description |
+|------|----------|------------|---------|-------------|
+| **Browser Schema Scripts** | P2 | 🟡 Intricate | [browser_mode](./backlog/browser_mode.md) | Fix `generate_browser_schema.py` failure |
+| **E2E Data Seeding** | P2 | 🟡 Intricate | [quality_assurance](./backlog/quality_assurance.md) | Pre-populate DB for Playwright Asset tests |
+| **Frontend Type Safety** | P3 | 🟢 Easy | [quality_assurance](./backlog/quality_assurance.md) | Fix Blob casting and Window mocking |
+| **JupyterLite 404s/Load** | P3 | 🟡 Intricate | [repl_enhancements](./backlog/repl_enhancements.md) | Suppress 404s, optimize startup |
+| **Repo Cleanup** | P3 | 🟢 Easy | [cleanup_finalization](./backlog/cleanup_finalization.md) | Remove .pymon, debug files |
 
 ---
 
@@ -105,14 +115,17 @@
 
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
-| **UI Visual Tweaks** | P3 | S | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | Spacing fixes in Registry/Machine tabs |
-| ~~Protocol Inference "Sharp Bits" Docs~~ | ~~P3~~ | ~~M~~ | [cleanup_finalization](./backlog/cleanup_finalization.md) | ✅ Complete (Created `protocol_inference_sharp_bits.md`) |
+| **Protocol Inference "Sharp Bits" Docs** | ~~P3~~ | ~~M~~ | [cleanup_finalization](./backlog/cleanup_finalization.md) | ✅ Complete (Created `protocol_inference_sharp_bits.md`) |
 | ~~Spatial View Filters~~ | ~~P3~~ | ~~M~~ | [asset_management](./backlog/asset_management.md) | ✅ Complete (Implemented `SpatialViewComponent` with location search) |
 | **Pre-Merge Finalization** | P3 | M | [cleanup_finalization](./backlog/cleanup_finalization.md) | Archive docs, cleanup files |
 
 ---
 
 ## Completed ✅ (Recent Sessions)
+
+### UI & UX Standardization (2026-01-08)
+
+- **UI Visual Tweaks**: Fixed spacing in Registry, alignment in Machines, and implemented themed gradients across cards and list items.
 
 ### Documentation & Code Quality (2026-01-07)
 
@@ -134,6 +147,7 @@
 - **Linked Argument UI**: Implemented side-by-side grid selection with synchronization and unlink toggle.
 - **Spatial View**: Added `SpatialViewComponent` with filters for Workcell, Machine, Status, and Location search.
 - **Location Labels**: Added editable `location_label` to Machine and Resource dialogs.
+- **Unique Name Parsing**: Implemented word-based shortening for filter labels with full-name tooltips; integrated across all asset filters.
 
 ### Architecture & Hardware (2026-01-07)
 

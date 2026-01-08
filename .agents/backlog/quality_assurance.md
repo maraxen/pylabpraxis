@@ -132,10 +132,10 @@ Several unit tests are currently skipped to allow CI to pass. These need investi
 
 ### Tasks
 
-- [ ] Audit all skipped tests in `tests/` (Python)
-- [ ] Audit all skipped tests in `src/**/*.spec.ts` (Angular)
-- [ ] Identify root causes for skipping
-- [ ] Fix or properly mock dependencies
+- [x] Audit all skipped tests in `tests/` (Python)
+- [x] Audit all skipped tests in `src/**/*.spec.ts` (Angular)
+- [x] Identify root causes for skipping (Dead code, complex mocking)
+- [x] Fix or properly mock dependencies (Fixed Orchestrator tests, cleaned up AssetSelector tests)
 
 ---
 
@@ -164,6 +164,20 @@ SQLAlchemy's dataclass-style ORM mapping requires `kw_only=True` for non-default
 - [ ] Investigate factory flush timing
 - [ ] Review ORM model field ordering
 - [ ] Fix factory definitions or add manual flush calls
+
+---
+
+## 6. Migrated Technical Debt (2026-01-08)
+
+### Frontend Type Safety (P3)
+
+- **`SqliteService` Blob Casting**: Fix `Uint8Array` to `BlobPart[]` casting in `exportDatabase`. Verify `sql.js` types.
+- **`SettingsComponent` Tests**: Fix `window.location` mocking which currently requires `any` casting. Use DI token.
+
+### E2E Testing (P2)
+
+- **Asset Management Seeded Data**: E2E tests for creation fail because DB isn't seeded with definitions.
+  - *Task*: Implement "Wait for Database Ready" or pre-populate `praxis.db` for Playwright.
 
 ---
 

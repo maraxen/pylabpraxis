@@ -110,6 +110,32 @@ import { Machine, Resource, Workcell } from '../../models/asset.models';
       display: block;
       height: 100%;
     }
+
+    .asset-card {
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(135deg, var(--mat-sys-surface) 0%, var(--mat-sys-surface-container-low) 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .asset-card::before {
+      content: '';
+      position: absolute;
+      top: -20%;
+      right: -10%;
+      width: 100px;
+      height: 100px;
+      background: radial-gradient(circle at center, var(--mat-sys-primary) 0%, transparent 70%);
+      opacity: 0.03;
+      pointer-events: none;
+    }
+
+    .asset-card:hover {
+      border-color: var(--mat-sys-primary);
+      box-shadow: 0 8px 24px -12px var(--mat-sys-primary);
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

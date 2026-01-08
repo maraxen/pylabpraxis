@@ -30,12 +30,13 @@ import { ResourceFiltersComponent, ResourceFilterState } from '../resource-filte
         (filtersChange)="onFiltersChange($event)">
       </app-resource-filters>
 
-      <table mat-table [dataSource]="filteredResources()" class="mat-elevation-z2">
-        <!-- Name Column -->
-        <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef> Name </th>
-          <td mat-cell *matCellDef="let resource"> {{ resource.name }} </td>
-        </ng-container>
+      <div class="table-container">
+        <table mat-table [dataSource]="filteredResources()" class="resource-table">
+          <!-- Name Column -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef> Name </th>
+            <td mat-cell *matCellDef="let resource"> {{ resource.name }} </td>
+          </ng-container>
 
         <!-- Status Column -->
         <ng-container matColumnDef="status">
@@ -116,13 +117,24 @@ import { ResourceFiltersComponent, ResourceFilterState } from '../resource-filte
       padding: 16px;
     }
 
-    .mat-elevation-z2 {
+    .table-container {
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+
+    .resource-table {
       width: 100%;
+    }
+
+    .resource-row {
+      transition: background-color 0.2s ease;
+      cursor: pointer;
     }
 
     .resource-row:hover {
       background-color: var(--mat-sys-surface-container-highest);
-      cursor: pointer;
     }
 
     .status-badge {
