@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { DynamicCapabilityFormComponent } from './dynamic-capability-form.component';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl, ValidationErrors, FormControl } from '@angular/forms';
@@ -391,16 +391,22 @@ export class MachineDialogComponent implements OnInit {
     location_label: ['']
   });
 
+  private cdr = inject(ChangeDetectorRef);
+
   ngOnInit() {
+    console.debug('[ASSET-DEBUG] MachineDialogComponent: ngOnInit started');
     this.assetService.getMachineDefinitions().subscribe(defs => {
+      console.debug('[ASSET-DEBUG] MachineDialogComponent: Received definitions', defs.length);
       this.definitions = defs;
       // Extract categories
       this.machineCategories = [...new Set(defs.map(d => d.machine_category || 'Other'))].sort();
+      console.debug('[ASSET-DEBUG] MachineDialogComponent: Categories', this.machineCategories);
 
       this.filteredDefinitions$ = this.definitionSearchControl.valueChanges.pipe(
         startWith(''),
         map(val => this.filterDefinitions(val))
       );
+      this.cdr.markForCheck();
     });
   }
 

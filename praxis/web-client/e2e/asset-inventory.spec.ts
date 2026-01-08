@@ -19,10 +19,9 @@ test.describe('Asset Inventory Persistence', () => {
         // Ensure shell layout is visible
         await expect(page.locator('.sidebar-rail')).toBeVisible({ timeout: 10000 });
 
-        // Capture debug logs
         page.on('console', msg => {
             const text = msg.text();
-            if (text.includes('ASSET-DEBUG')) {
+            if (text.includes('ASSET-DEBUG') || text.includes('[SqliteService]')) {
                 console.log(`BROWSER_LOG: ${text}`);
             }
         });

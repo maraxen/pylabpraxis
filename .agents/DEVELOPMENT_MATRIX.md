@@ -117,7 +117,7 @@
 |------|----------|------------|---------|-------------|
 | **Protocol Inference "Sharp Bits" Docs** | ~~P3~~ | ~~M~~ | [cleanup_finalization](./backlog/cleanup_finalization.md) | ✅ Complete (Created `protocol_inference_sharp_bits.md`) |
 | ~~Spatial View Filters~~ | ~~P3~~ | ~~M~~ | [asset_management](./backlog/asset_management.md) | ✅ Complete (Implemented `SpatialViewComponent` with location search) |
-| **Pre-Merge Finalization** | P3 | M | [cleanup_finalization](./backlog/cleanup_finalization.md) | Archive docs, cleanup files |
+| ~~Pre-Merge Finalization~~ | ~~P3~~ | ~~M~~ | [cleanup_finalization](./backlog/cleanup_finalization.md) | ✅ Complete (Archive docs, cleanup files) |
 
 ---
 

@@ -165,13 +165,17 @@ export class AssetService {
   getMachineDefinitions(): Observable<MachineDefinition[]> {
     if (this.modeService.isBrowserMode()) {
       return this.sqliteService.machineDefinitions.pipe(
-        map(repo => repo.findAll().map(d => ({
-          ...d,
-          name: (d as any).name || 'Unknown Definition',
-          compatible_backends: (typeof d.compatible_backends === 'string'
-            ? (() => { try { return JSON.parse(d.compatible_backends); } catch { return []; } })()
-            : (Array.isArray(d.compatible_backends) ? d.compatible_backends : []))
-        }) as unknown as MachineDefinition))
+        map(repo => {
+          const defs = repo.findAll();
+          console.debug('[ASSET-DEBUG] getMachineDefinitions: Found', defs.length, 'definitions in DB');
+          return defs.map(d => ({
+            ...d,
+            name: (d as any).name || 'Unknown Definition',
+            compatible_backends: (typeof d.compatible_backends === 'string'
+              ? (() => { try { return JSON.parse(d.compatible_backends); } catch { return []; } })()
+              : (Array.isArray(d.compatible_backends) ? d.compatible_backends : []))
+          }) as unknown as MachineDefinition);
+        })
       );
     }
     return this.http.get<MachineDefinition[]>(`${this.API_URL}/machines/definitions?type=machine`);

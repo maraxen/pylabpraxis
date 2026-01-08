@@ -59,12 +59,16 @@ export class AssetsPage extends BasePage {
 
         // Step 1: Select Category - wait for categories to load from definitions
         // Categories are dynamically loaded, so we need to wait for them
+        // Step 1: Select Category - wait for dynamic content
+        // In browser mode, these come from SQLite which might take a moment to init
         const categoryCards = this.page.locator('.category-card');
-        await expect(categoryCards.first()).toBeVisible({ timeout: 10000 });
+
+        // Wait for at least one card to be present
+        await expect(categoryCards.first()).toBeVisible({ timeout: 15000 });
 
         // Try to find 'Liquid Handling' category or fall back to first available
-        const liquidCategory = categoryCards.filter({ hasText: /liquid/i }).first();
-        if (await liquidCategory.isVisible({ timeout: 1000 })) {
+        const liquidCategory = categoryCards.filter({ hasText: /liquid|handler/i }).first();
+        if (await liquidCategory.isVisible({ timeout: 2000 })) {
             await liquidCategory.click();
         } else {
             // Click the first available category
@@ -112,16 +116,35 @@ export class AssetsPage extends BasePage {
         const dialog = this.page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
-        // Step 1: Select Category
-        // Try to click 'plate' category or just the first one
-        const categoryCard = this.page.locator('.category-card').first();
-        await categoryCard.click();
+        // Step 1: Select Category (Accordion)
+        const accordion = this.page.locator('.resource-accordion');
+        await expect(accordion).toBeVisible({ timeout: 10000 });
 
-        // Step 2: Select Model
-        await expect(this.page.getByLabel('Resource Model')).toBeVisible();
-        await this.page.getByLabel('Resource Model').fill(modelQuery);
-        await this.page.waitForTimeout(500);
-        await this.page.getByRole('option').first().click();
+        // Find the "Plates" or "TipRacks" panel
+        const platePanel = accordion.locator('mat-expansion-panel-header', { hasText: /Plate/i }).first();
+
+        // If panel exists, click to expand
+        if (await platePanel.isVisible()) {
+            await platePanel.click();
+        } else {
+            // Fallback: click first panel
+            await accordion.locator('mat-expansion-panel-header').first().click();
+        }
+
+        // Wait for content (resource items)
+        const resourceItems = this.page.locator('.resource-item');
+        await expect(resourceItems.first()).toBeVisible({ timeout: 5000 });
+
+        // Filter/Select Model via search input or clicking item
+        // The dialog has a search input at the top
+        const searchInput = this.page.locator('.browse-container input[matInput]');
+        if (await searchInput.isVisible()) {
+            await searchInput.fill(modelQuery);
+            await this.page.waitForTimeout(500); // Wait for filter
+        }
+
+        // Click first visible item
+        await resourceItems.first().click();
 
         await this.page.getByLabel('Name').fill(name);
         await this.page.getByRole('button', { name: /Save Resource/i }).click();

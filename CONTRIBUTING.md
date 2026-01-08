@@ -21,7 +21,18 @@ Some VSCode Extensions I'd recommend:
 - [Code Spell Checker](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker)
 - [mypy](https://marketplace.visualstudio.com/items?itemName=matangover.mypy)
 
-## Testing
+## Agentic Development Workflow
+
+This project uses the `.agents/` directory for AI-assisted development:
+
+- **DEVELOPMENT_MATRIX.md**: Central priority/status tracking
+- **backlog/**: Detailed work item specifications
+- **prompts/**: Agent dispatch prompts organized by date
+- **codestyles/**: Language-specific conventions
+
+See `.agents/README.md` for full documentation.
+
+## Running Tests
 
 Praxis uses `pytest` to run unit tests. Please make sure tests pass when you submit a PR. You can run tests as follows.
 

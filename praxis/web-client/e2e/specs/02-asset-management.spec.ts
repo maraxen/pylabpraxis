@@ -17,6 +17,14 @@ test.describe('Asset Management Flow', () => {
 
         await welcomePage.goto();
         await welcomePage.handleSplashScreen();
+
+        // Capture debug logs
+        page.on('console', msg => {
+            const text = msg.text();
+            if (text.includes('ASSET-DEBUG') || text.includes('[SqliteService]')) {
+                console.log(`BROWSER_LOG: ${text}`);
+            }
+        });
     });
 
     test('should navigate to Assets page and see tabs', async ({ page }) => {
@@ -103,10 +111,8 @@ test.describe('Asset Management Flow', () => {
         await page.waitForTimeout(500);
     });
 
-    // Skip full CRUD tests if definitions aren't loaded
-    // These tests require seeded definition catalogs
-    test.describe('CRUD Operations (requires seeded data)', () => {
-        test.skip(({ browserName }) => true, 'Skipped: Requires pre-seeded definition catalogs in browser SQLite');
+    // CRUD Operations tests - Database is seeded with PLR definitions on startup
+    test.describe('CRUD Operations', () => {
 
         test('should add a new machine', async ({ page }) => {
             const machineName = `Test Machine ${Date.now()}`;
