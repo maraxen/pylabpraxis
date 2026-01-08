@@ -43,10 +43,10 @@ See [codestyles/](../../codestyles/) for language-specific guidelines.
 
 ## On Completion
 
-- [ ] Commit changes with descriptive message referencing the backlog item
-- [ ] Update backlog item status in `asset_management_ux.md`
-- [ ] Update [DEVELOPMENT_MATRIX.md](../../DEVELOPMENT_MATRIX.md)
-- [ ] Mark this prompt complete in batch README
+- [x] Commit changes with descriptive message referencing the backlog item
+- [x] Update backlog item status in `asset_management_ux.md`
+- [x] Update [DEVELOPMENT_MATRIX.md](../../DEVELOPMENT_MATRIX.md)
+- [x] Mark this prompt complete in batch README
 
 ---
 

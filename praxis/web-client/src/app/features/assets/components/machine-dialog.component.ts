@@ -131,23 +131,7 @@ interface FrontendType {
                 <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
                 <h3 class="text-lg font-medium">Select Backend</h3>
               </div>
-              <p class="text-sm sys-text-secondary">Choose the hardware driver for your {{ getSelectedFrontendLabel() }}.</p>
-
-              <!-- Simulated Option -->
-              <button type="button"
-                class="selection-card"
-                [class.card-selected]="selectedDefinition === null && form.get('backend_driver')?.value === 'sim'"
-                (click)="selectSimulated()">
-                <div class="flex items-center gap-3 w-full">
-                  <div class="icon-chip"><mat-icon>developer_mode</mat-icon></div>
-                  <div class="flex flex-col items-start">
-                    <span class="font-semibold text-primary">Simulated</span>
-                    <span class="text-xs sys-text-secondary">No physical hardware required</span>
-                  </div>
-                </div>
-              </button>
-
-              <mat-divider></mat-divider>
+              <p class="text-sm sys-text-secondary">Choose the hardware driver for your {{ getSelectedFrontendLabel() }}. Simulator backends are available for testing without hardware.</p>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
                 @for (def of filteredBackends; track def.accession_id) {
@@ -510,13 +494,21 @@ export class MachineDialogComponent implements OnInit {
 
   selectBackend(def: MachineDefinition) {
     this.selectedDefinition = def;
+
+    // Auto-detect if this is a simulated backend
+    const fqnLower = (def.fqn || '').toLowerCase();
+    const nameLower = (def.name || '').toLowerCase();
+    const isSimulatedBackend = fqnLower.includes('chatterbox') ||
+      fqnLower.includes('simulator') ||
+      nameLower.includes('simulated');
+
     this.form.patchValue({
       model: def.model || def.name,
       manufacturer: def.manufacturer || '',
       description: def.description || '',
       machine_definition_accession_id: def.accession_id,
       machine_category: def.machine_category || 'unknown',
-      backend_driver: def.fqn || def.name,
+      backend_driver: isSimulatedBackend ? 'sim' : (def.fqn || def.name),
       name: `${def.name} ${Math.floor(Math.random() * 100) + 1}`,
       connection_info: '',
       user_configured_capabilities: ''
@@ -544,7 +536,7 @@ export class MachineDialogComponent implements OnInit {
 
   canProceed(): boolean {
     if (this.currentStep === 0) return !!this.selectedFrontendFqn;
-    if (this.currentStep === 1) return (this.form.get('backend_driver')?.value === 'sim') || !!this.selectedDefinition;
+    if (this.currentStep === 1) return !!this.selectedDefinition;
     if (this.currentStep === 2) return !!this.form.get('name')?.valid;
     return false;
   }

@@ -1,6 +1,6 @@
 # Praxis Development Matrix
 
-**Last Updated**: 2026-01-08 (Settings & Stepper Polish complete)
+**Last Updated**: 2026-01-08 (ARIA migration complete)
 **Purpose**: Consolidated view of all remaining work items with priority and difficulty ratings.
 
 ---
@@ -102,7 +102,7 @@
 
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
-| **Browser Schema Scripts** | P2 | 🟡 Intricate | [browser_mode](./backlog/browser_mode.md) | Fix `generate_browser_schema.py` failure |
+| ~~Browser Schema Scripts~~ | ~~P2~~ | ~~🟡 Intricate~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Fixed generate_browser_db.py schema logic) |
 | **E2E Data Seeding** | P2 | 🟡 Intricate | [quality_assurance](./backlog/quality_assurance.md) | Pre-populate DB for Playwright Asset tests |
 | **Frontend Type Safety** | P3 | 🟢 Easy | [quality_assurance](./backlog/quality_assurance.md) | Fix Blob casting and Window mocking |
 | **JupyterLite 404s/Load** | P3 | 🟡 Intricate | [repl_enhancements](./backlog/repl_enhancements.md) | Suppress 404s, optimize startup |
@@ -113,9 +113,11 @@
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
 | **Asset Management UX Regressions** | P2 | 🟡 Intricate | [asset_management_ux](./backlog/asset_management_ux.md) | Phase 1 broken: backends in categories, no theme sync, no capability forms |
-| **Angular ARIA Migration** | P2 | 🔴 Complex | [angular_aria_migration](./backlog/angular_aria_migration.md) | Multiselect + Well Selector using `@angular/aria` |
+| ~~Angular ARIA Migration~~ | ~~P2~~ | ~~🔴 Complex~~ | [angular_aria_migration](./backlog/angular_aria_migration.md) | ✅ Complete (Redefined all `mat-select` as ARIA-compliant) |
 | ~~Settings & Stepper Polish~~ | ~~P3~~ | ~~🟡 Intricate~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Icons fixed, theme selector refined) |
-| Guided Deck Setup UI | 🟢 Completed | Fix layout/scrolling in wizard |
+| ~~Guided Deck Setup UI~~ | ~~P3~~ | ~~S~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Fixed layout/scrolling in wizard) |
+| ~~Simulated Machine Unification~~ | ~~P2~~ | ~~M~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Unified Simulated/Chatterbox UI & logic) |
+| ~~Machine Dialog Fixes~~ | ~~P1~~ | ~~M~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Fixed schema mismatch & NOT NULL error) |
 
 ---
 

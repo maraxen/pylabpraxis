@@ -90,10 +90,10 @@ See [codestyles/python.md](../../codestyles/python.md) for conventions.
 
 ## On Completion
 
-- [ ] Commit changes with message: `fix(scripts): resolve browser schema generation failures`
-- [ ] Update [browser_mode.md](../../backlog/browser_mode.md) - mark Browser Schema Scripts complete
-- [ ] Update [DEVELOPMENT_MATRIX.md](../../DEVELOPMENT_MATRIX.md)
-- [ ] Mark this prompt complete in batch README
+- [x] Commit changes with message: `fix(scripts): resolve browser schema generation failures`
+- [x] Update [browser_mode.md](../../backlog/browser_mode.md) - mark Browser Schema Scripts complete
+- [x] Update [DEVELOPMENT_MATRIX.md](../../DEVELOPMENT_MATRIX.md)
+- [x] Mark this prompt complete in batch README
 
 ---
 

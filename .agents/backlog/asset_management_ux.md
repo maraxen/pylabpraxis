@@ -19,11 +19,11 @@ Improve the "Add Machine" and "Add Resource" flows with better UX patterns, and 
 > [!CAUTION]
 > Items marked complete were verified broken on 2026-01-08.
 
-- [ ] ~~Sync stepper theme with application theme~~ → **BROKEN**: Number circles hardcoded white (same in light/dark)
-- [ ] ~~Flow: Frontend Category → Backend Selection (hide backends in category view)~~ → **BROKEN**: Backends still listed in categories
+- [x] ~~Sync stepper theme with application theme~~ ✅ Fixed (2026-01-08)
+- [x] ~~Flow: Frontend Category → Backend Selection~~ ✅ Fixed (cleaned up filtering logic)
 - [ ] Fix category toggle (cannot deselect currently selected category)
-- [ ] ~~Create proper interface for user-configured capabilities (replace hardcoded JSON)~~ → **BROKEN**: No capability config for liquid handlers; Advanced JSON shows uneditable blob
-- [ ] Remove redundant Step 2 backend selection (duplicates Category/Model choice)
+- [ ] Create proper interface for user-configured capabilities (replace hardcoded JSON)
+- [x] ~~Remove redundant Step 2 backend selection~~ ✅ Fixed (Unified Simulated/ChatterBox)
 
 ## Phase 2: Add Resource Flow Refactor
 

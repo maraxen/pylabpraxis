@@ -708,10 +708,17 @@ export class SqliteService {
                     insertAsset.free();
 
                     // 3. Insert Machine
+                    // Detect if this is a simulated machine
+                    const plrBackend = (machine.plr_backend || '').toLowerCase();
+                    const isSimulated = plrBackend.includes('chatterbox') ||
+                        plrBackend.includes('simulator') ||
+                        plrBackend.includes('simulated') ||
+                        machine.connection_type === 'sim';
+
                     const insertMachine = db.prepare(`
                         INSERT INTO machines (accession_id, machine_category, status, connection_info, description, manufacturer, model,
-                        maintenance_enabled, maintenance_schedule_json, last_maintenance_json, location_label)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        maintenance_enabled, maintenance_schedule_json, last_maintenance_json, location_label, is_simulation_override)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     `);
 
                     insertMachine.run([
@@ -729,7 +736,8 @@ export class SqliteService {
                         1, // maintenance_enabled (default true)
                         JSON.stringify({ frequency: 'monthly', last_maintenance: null }), // maintenance_schedule_json default
                         JSON.stringify({}), // last_maintenance_json default
-                        'Main Lab' // location_label default
+                        'Main Lab', // location_label default
+                        isSimulated ? 1 : 0 // is_simulation_override
                     ]);
                     insertMachine.free();
 

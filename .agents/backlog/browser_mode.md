@@ -128,9 +128,9 @@ detectMode(): DeploymentMode {
 
 ### Schema Generation Scripts Broken (P2)
 
-**Status**: Pending
+**Status**: ✅ Fixed (MATCH-FIX)
 **Issue**: `generate_browser_schema.py` and `generate_browser_db.py` are failing due to SQLAlchemy metadata initialization issues.
-**Fix**: Debug and fix scripts to ensure reliable schema generation.
+**Fix**: Scripts fixed and schema mismatch resolved (assets table first).
 
 ---
 

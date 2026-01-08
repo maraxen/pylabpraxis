@@ -226,8 +226,8 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
                 INSERT OR REPLACE INTO machines (
                     accession_id, machine_category, status, machine_definition_accession_id, 
                     maintenance_enabled, maintenance_schedule_json, 
-                    location_label
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    location_label, is_simulation_override
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     instance_id,
@@ -236,7 +236,8 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
                     accession_id,
                     1,
                     safe_json_dumps(maintenance_schedule),
-                    "Main Lab, Bench 1"
+                    "Main Lab, Bench 1",
+                    1  # All browser-mode machines are simulated
                 )
             )
 
@@ -419,8 +420,8 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
                 INSERT OR REPLACE INTO machines (
                     accession_id, machine_category, status, machine_definition_accession_id, 
                     maintenance_enabled, maintenance_schedule_json, 
-                    location_label, connection_info
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    location_label, connection_info, is_simulation_override
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     instance_id,
@@ -430,7 +431,8 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
                     1,
                     safe_json_dumps(maintenance_schedule),
                     "Virtual Lab",
-                    safe_json_dumps({"backend": "simulated"})
+                    safe_json_dumps({"backend": "simulated"}),
+                    1  # All browser-mode machines are simulated
                 )
             )
 
@@ -532,8 +534,8 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
                 INSERT OR REPLACE INTO machines (
                     accession_id, machine_category, status, machine_definition_accession_id, 
                     maintenance_enabled, maintenance_schedule_json, 
-                    location_label, connection_info
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    location_label, connection_info, is_simulation_override
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     instance_id,
@@ -543,7 +545,8 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
                     1,
                     "{}",
                     "Virtual Lab",
-                    safe_json_dumps({"backend": "simulated"})
+                    safe_json_dumps({"backend": "simulated"}),
+                    1  # All browser-mode machines are simulated
                 )
             )
 

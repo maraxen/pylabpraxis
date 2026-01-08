@@ -18,13 +18,13 @@
 | 07 | [ui_consistency_exec_monitor](./07_ui_consistency_exec_monitor.md) | Execution Monitor dropdown chips | P2 | M | ✅ Complete |
 | 08 | [asset_management_ux](./08_asset_management_ux.md) | Add Machine/Resource flow refactor | P2 | M | ⚠️ Regressions |
 | 09 | [factory_orm_integration](./09_factory_orm_integration.md) | Factory Boy FK population fixes | P2 | M | 🟢 Not Started |
-| 10 | [browser_schema_scripts](./10_browser_schema_scripts.md) | Fix schema generation scripts | P2 | M | 🟢 Not Started |
+| 10 | [browser_schema_scripts](./10_browser_schema_scripts.md) | Fix schema generation scripts | P2 | M | ✅ Complete |
 | 11 | [e2e_data_seeding](./11_e2e_data_seeding.md) | Pre-populate DB for Playwright tests | P2 | M | 🟢 Not Started |
 | 12 | [e2e_protocol_execution](./12_e2e_protocol_execution.md) | E2E Tests - Protocol execution flow | P2 | M | 🟢 Not Started |
 | 13 | [frontend_type_safety](./13_frontend_type_safety.md) | Fix Blob casting & Window mocking | P3 | S | 🟢 Not Started |
 | 14 | [jupyterlite_cleanup](./14_jupyterlite_cleanup.md) | Suppress 404s, optimize load | P3 | M | 🟢 Not Started |
 | 15 | [repo_cleanup](./15_repo_cleanup.md) | Remove .pymon, debug files | P3 | S | 🟢 Not Started |
-| 16 | [asset_management_ux_fix](./16_asset_management_ux_fix.md) | Fix Add Machine regressions | P2 | M | 🟢 Not Started |
+| 16 | [asset_management_ux_fix](./16_asset_management_ux_fix.md) | Fix Add Machine regressions | P2 | M | ✅ Partially Fixed |
 
 - [x] [17_guided_deck_setup_ui.md](./17_guided_deck_setup_ui.md) - Fix Guided Deck Setup UI issues
 | 18 | [angular_aria_multiselect](./18_angular_aria_multiselect.md) | ARIA multiselect component | P2 | L | 🟢 Not Started |
