@@ -158,19 +158,7 @@ interface GroupedDefinitions {
             </div>
           }
 
-          <div class="category-grid">
-            @for (group of groupedDefinitions(); track group) {
-              <div class="category-card" [class.card-active]="categoryFilters().includes(group.group)" (click)="toggleCategoryFilter(group.group)">
-                <div class="flex items-center gap-3">
-                  <div class="cat-icon"><mat-icon>{{ group.icon }}</mat-icon></div>
-                  <div class="flex flex-col">
-                    <span class="font-medium">{{ group.group }}</span>
-                    <span class="text-xs text-gray-500">{{ group.totalCount }} models</span>
-                  </div>
-                </div>
-              </div>
-            }
-          </div>
+
 
           <div class="models-grid">
             @for (def of filteredDefinitions(); track def) {

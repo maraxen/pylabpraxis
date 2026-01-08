@@ -146,8 +146,11 @@ interface FrontendType {
                       <div class="flex flex-col items-start min-w-0">
                         <div class="flex items-center gap-2 w-full">
                           <span class="font-medium truncate">{{ def.name }}</span>
+                          @if (isSimulatedDefinition(def)) {
+                            <span class="simulated-chip">Simulated</span>
+                          }
                           @if (selectedDefinition?.accession_id === def.accession_id) {
-                            <mat-icon class="text-primary !text-sm">check_circle</mat-icon>
+                            <mat-icon class="text-primary !text-sm ml-auto">check_circle</mat-icon>
                           }
                         </div>
                         <span class="text-xs sys-text-secondary truncate">
@@ -352,6 +355,16 @@ interface FrontendType {
       0% { transform: translateX(0); } 
       100% { transform: translateX(-50%); } 
     }
+
+    .simulated-chip {
+      font-size: 10px;
+      background-color: var(--mat-sys-tertiary-container);
+      color: var(--mat-sys-on-tertiary-container);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+      margin-left: 4px;
+    }
   `]
 })
 export class MachineDialogComponent implements OnInit {
@@ -492,15 +505,19 @@ export class MachineDialogComponent implements OnInit {
     });
   }
 
+  /** Check if a backend definition is a simulation backend */
+  isSimulatedDefinition(def: MachineDefinition): boolean {
+    const fqnLower = (def.fqn || '').toLowerCase();
+    const nameLower = (def.name || '').toLowerCase();
+    return fqnLower.includes('chatterbox') ||
+      fqnLower.includes('simulator') ||
+      nameLower.includes('simulated');
+  }
+
   selectBackend(def: MachineDefinition) {
     this.selectedDefinition = def;
 
-    // Auto-detect if this is a simulated backend
-    const fqnLower = (def.fqn || '').toLowerCase();
-    const nameLower = (def.name || '').toLowerCase();
-    const isSimulatedBackend = fqnLower.includes('chatterbox') ||
-      fqnLower.includes('simulator') ||
-      nameLower.includes('simulated');
+    const isSimulatedBackend = this.isSimulatedDefinition(def);
 
     this.form.patchValue({
       model: def.model || def.name,

@@ -94,6 +94,9 @@ class PLRSourceParser:
       for py_file in self.plr_source_root.glob(pattern):
         if py_file.name.startswith("_") and py_file.name != "__init__.py":
           continue
+        # Skip test directories to avoid picking up mock backends
+        if "/tests/" in str(py_file) or py_file.parent.name == "tests":
+          continue
         try:
           classes = self._parse_file(py_file)
           discovered.extend(classes)
@@ -161,8 +164,13 @@ class PLRSourceParser:
 
     all_classes = self.discover_all_classes()
     # Use the comprehensive backend type set from models
+    # Also filter out Mock backends which are for testing only
     self._backend_classes = [
-      c for c in all_classes if c.class_type in MACHINE_BACKEND_TYPES and not c.is_abstract
+      c
+      for c in all_classes
+      if c.class_type in MACHINE_BACKEND_TYPES
+      and not c.is_abstract
+      and "mock" not in c.name.lower()
     ]
     return self._backend_classes
 
@@ -375,11 +383,7 @@ class PLRSourceParser:
       Enriched list of classes.
 
     """
-    backends = [
-      c
-      for c in classes
-      if c.class_type in MACHINE_BACKEND_TYPES and not c.is_abstract
-    ]
+    backends = [c for c in classes if c.class_type in MACHINE_BACKEND_TYPES and not c.is_abstract]
 
     for cls in classes:
       # Infer manufacturer from module path
@@ -444,8 +448,8 @@ class PLRSourceParser:
 
       # Remove common suffixes/prefixes
       for term in ["liquidhandler", "platereader", "heatershaker", "backend", "_"]:
-          frontend_clean = frontend_clean.replace(term, "")
-          backend_clean = backend_clean.replace(term, "")
+        frontend_clean = frontend_clean.replace(term, "")
+        backend_clean = backend_clean.replace(term, "")
 
       if (
         frontend_clean
