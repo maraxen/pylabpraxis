@@ -94,8 +94,10 @@ class PLRSourceParser:
       for py_file in self.plr_source_root.glob(pattern):
         if py_file.name.startswith("_") and py_file.name != "__init__.py":
           continue
-        # Skip test directories to avoid picking up mock backends
+        # Skip test directories and test files to avoid picking up mock backends
         if "/tests/" in str(py_file) or py_file.parent.name == "tests":
+          continue
+        if py_file.name.endswith("_tests.py") or py_file.name.endswith("_test.py"):
           continue
         try:
           classes = self._parse_file(py_file)
@@ -505,6 +507,13 @@ def find_plr_source_root() -> Path:
   """
   # Check relative to this file (praxis project structure)
   praxis_root = Path(__file__).parent.parent.parent.parent.parent
+
+  # Check external/pylabrobot first (current project structure)
+  external_plr = praxis_root / "external" / "pylabrobot"
+  if (external_plr / "pylabrobot").is_dir():
+    return external_plr
+
+  # Then check lib/pylabrobot (legacy)
   lib_plr = praxis_root / "lib" / "pylabrobot"
   if (lib_plr / "pylabrobot").is_dir():
     return lib_plr
