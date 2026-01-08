@@ -141,6 +141,11 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
         </div>
     `,
     styles: [`
+        :host {
+            display: block;
+            height: 100%;
+        }
+
         .wizard-container {
             display: flex;
             flex-direction: column;
@@ -151,6 +156,7 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
         .wizard-header {
             padding: 16px 24px;
             border-bottom: 1px solid var(--sys-outline-variant);
+            flex-shrink: 0;
         }
         
         .wizard-header h2 {
@@ -164,6 +170,7 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
         .wizard-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
+            grid-template-rows: minmax(0, 1fr); /* Restrict row height to available space */
             gap: 24px;
             flex: 1;
             padding: 24px;
@@ -172,9 +179,9 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
         }
         
         .step-panel {
-            flex: 1;
             overflow-y: auto; /* Allow items list to scroll */
             min-height: 0;
+            padding-right: 8px; /* Avoid scrollbar covering content */
         }
         
         .deck-preview {
@@ -191,6 +198,9 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
             gap: 12px;
             padding: 16px 24px;
             border-top: 1px solid var(--sys-outline-variant);
+            flex-shrink: 0;
+            background: var(--sys-surface); /* Ensure footer background is opaque */
+            z-index: 10;
         }
         
         .spacer {
@@ -200,10 +210,20 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
         @media (max-width: 768px) {
             .wizard-content {
                 grid-template-columns: 1fr;
+                grid-template-rows: 1fr 1fr; /* Stack vertically on small screens */
+                overflow-y: auto; /* Allow main content to scroll on mobile if needed */
+                display: flex; /* Switch to flex column on mobile for better flow */
+                flex-direction: column;
             }
             
+            .step-panel {
+                flex: none; /* Let it grow */
+                overflow: visible;
+            }
+
             .deck-preview {
-                max-height: 250px;
+                max-height: 300px;
+                flex: none;
             }
         }
     `]

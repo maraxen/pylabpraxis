@@ -107,6 +107,15 @@ The deck display in Run Protocol workflow does not match the standalone Deck Vie
 - [ ] **Stepper Restriction**: Allow broader navigation within the protocol setup stepper.
 - [ ] **Example Protocols**: Add example protocols for no-liquid-handler and rich well selection scenarios.
 
+### Guided Deck Setup UI (2026-01-08 Verification)
+
+> [!WARNING]
+> User verification confirmed these issues on 2026-01-08.
+
+- [x] **Continue/Next Button Not Visible**: After adding carriers, the Continue button is not visible
+- [x] **Container Scrolling**: Scrolling behavior unclear; content may overflow without proper scroll indicators
+- [x] **Flex Container Fix**: Ensure deck setup wizard uses proper flex container with exposed navigation
+
 ### POST /resources/ API Error (from TECHNICAL_DEBT.md)
 
 **Priority**: Low (workaround exists)
