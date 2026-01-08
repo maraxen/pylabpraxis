@@ -54,11 +54,11 @@ Refinements to the Run Protocol workflow based on user feedback and usability te
   - [x] Update step labels and icons
   - [x] Ensure responsive label sizing
 
-- [ ] **Restore Asset Selection Step (REGRESSION)**
-  - [ ] Re-enable "Asset Selection" step after Machine Selection
-  - [ ] Implement resource autofill based on protocol requirements
-  - [ ] Allow user to select specific resource candidates from inventory
-  - [ ] Ensure selected resources are passed to Deck Setup phase
+- [x] **Restore Asset Selection Step** ~~(REGRESSION)~~ ✅ IMPLEMENTED
+  - [x] Re-enabled "Asset Selection" step after Machine Selection (Lines 317-343 in run-protocol.component.ts)
+  - [x] Implemented resource autofill via `<app-guided-setup>` integration
+  - [x] Allow user to select specific resource candidates from inventory
+  - [x] Ensure selected resources are passed to Deck Setup phase via `configuredAssets` signal
 
 ---
 
@@ -100,6 +100,46 @@ The deck display in Run Protocol workflow does not match the standalone Deck Vie
 
 - Tracked in: [browser_mode_issues.md](./browser_mode_issues.md)
 - Impacts: Cannot complete protocol workflow in browser mode
+
+### Workflow Blockers (2026-01-07)
+
+- [ ] **Continue Button Issue**: Debug "Continue" button on "Select Assets" step.
+- [ ] **Stepper Restriction**: Allow broader navigation within the protocol setup stepper.
+- [ ] **Example Protocols**: Add example protocols for no-liquid-handler and rich well selection scenarios.
+
+### POST /resources/ API Error (from TECHNICAL_DEBT.md)
+
+**Priority**: Low (workaround exists)
+**Added**: 2026-01-07
+
+**Issue:** The `POST /api/v1/resources/` endpoint returns 500 errors. Direct ORM insertion via `scripts/seed_direct.py` works.
+
+**Workaround:** Use `scripts/seed_direct.py` for seeding resources.
+
+**Files Affected:**
+
+- `praxis/backend/api/resources.py`
+- `praxis/backend/services/resource.py`
+
+### Consumables & Auto-Assignment (from TECHNICAL_DEBT.md)
+
+**Priority**: Medium
+**Added**: 2026-01-07
+
+Current auto-selection logic is naive (picks Nth item from filtered list).
+
+**Improvements Needed:**
+
+- [ ] Consider resource `status` (prefer `AVAILABLE_IN_STORAGE` over `IN_USE`)
+- [ ] Check remaining capacity for consumables (partial tip racks, plates)
+- [ ] Handle case where not enough unique resources exist
+- [ ] UI indication when resources must be shared or duplicated
+- [ ] Backend endpoint to suggest "best available" with smart ranking
+
+**Files Affected:**
+
+- `praxis/web-client/src/app/shared/formly-types/asset-selector.component.ts`
+- `praxis/web-client/src/app/features/run-protocol/components/parameter-config/parameter-config.component.ts`
 
 ---
 

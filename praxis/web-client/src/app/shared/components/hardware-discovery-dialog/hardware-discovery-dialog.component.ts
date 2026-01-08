@@ -1,4 +1,5 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
+import { Router } from '@angular/router';
 
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -10,6 +11,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import {
     HardwareDiscoveryService,
@@ -22,18 +24,20 @@ import {
     selector: 'app-hardware-discovery-dialog',
     standalone: true,
     imports: [
-    FormsModule,
-    MatDialogModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
-    MatTooltipModule,
-    MatChipsModule,
-    MatExpansionModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSnackBarModule
-],
+        FormsModule,
+        MatDialogModule,
+        MatButtonModule,
+        MatIconModule,
+        MatProgressSpinnerModule,
+        MatTooltipModule,
+        MatChipsModule,
+        MatExpansionModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatInputModule,
+        MatSnackBarModule,
+        MatCheckboxModule
+    ],
     template: `
         <h2 mat-dialog-title>
             <mat-icon>usb</mat-icon>
@@ -166,17 +170,29 @@ import {
                                         <div class="config-section">
                                             <h4>Configuration Required</h4>
                                             @for (field of getConfigFields(device); track field.key) {
-                                                <mat-form-field appearance="outline" class="config-field">
-                                                    <mat-label>{{ field.config.label }}</mat-label>
-                                                    @if (field.config.type === 'string') {
+                                                @if (field.config.type === 'string' || field.config.type === 'number') {
+                                                    <mat-form-field appearance="outline" class="config-field">
+                                                        <mat-label>{{ field.config.label }}</mat-label>
                                                         <input matInput
+                                                            [type]="field.config.type === 'number' ? 'number' : 'text'"
                                                             [value]="getConfigValue(device, field.key)"
                                                             (input)="setConfigValue(device, field.key, $event)">
-                                                    }
-                                                    @if (field.config.description) {
-                                                        <mat-hint>{{ field.config.description }}</mat-hint>
-                                                    }
-                                                </mat-form-field>
+                                                        @if (field.config.description) {
+                                                            <mat-hint>{{ field.config.description }}</mat-hint>
+                                                        }
+                                                    </mat-form-field>
+                                                } @else if (field.config.type === 'boolean') {
+                                                    <div class="checkbox-field">
+                                                        <mat-checkbox
+                                                            [checked]="getBoolConfigValue(device, field.key)"
+                                                            (change)="setBoolConfigValue(device, field.key, $event.checked)">
+                                                            {{ field.config.label }}
+                                                        </mat-checkbox>
+                                                        @if (field.config.description) {
+                                                            <div class="field-hint">{{ field.config.description }}</div>
+                                                        }
+                                                    </div>
+                                                }
                                             }
                                         </div>
                                     }
@@ -220,10 +236,12 @@ import {
                                             </button>
                                         }
                                         @if (hardwareService.isPlrSupported(device) && device.status !== 'requires_config' && device.status !== 'error') {
-                                            <button mat-flat-button color="primary" (click)="registerAsMachine(device)" [disabled]="device.status === 'connecting'">
-                                                <mat-icon>add_circle</mat-icon>
-                                                Register as Machine
-                                            </button>
+                                            @if (registeredDevices().has(device.id)) {
+                                                <button mat-flat-button color="accent" (click)="goToAsset(registeredDevices().get(device.id)!)">
+                                                    <mat-icon>arrow_forward</mat-icon>
+                                                    Go to Asset
+                                                </button>
+                                            }
                                         }
                                         <button mat-icon-button color="warn" (click)="removeDevice(device)" matTooltip="Remove from list">
                                             <mat-icon>delete</mat-icon>
@@ -516,9 +534,13 @@ export class HardwareDiscoveryDialogComponent {
     readonly hardwareService = inject(HardwareDiscoveryService);
     private readonly dialogRef = inject(MatDialogRef<HardwareDiscoveryDialogComponent>);
     private readonly snackBar = inject(MatSnackBar);
+    private readonly router = inject(Router);
 
     /** Tracks devices currently being connected */
     readonly connectingDevices = signal<Set<string>>(new Set());
+
+    /** Tracks newly registered devices: device.id -> asset.accession_id */
+    readonly registeredDevices = signal<Map<string, string>>(new Map());
 
     readonly filteredDevices = computed(() => {
         return this.hardwareService.discoveredDevices().filter(d =>
@@ -534,14 +556,22 @@ export class HardwareDiscoveryDialogComponent {
     async requestSerialDevice(): Promise<void> {
         const device = await this.hardwareService.requestSerialPort();
         if (device) {
-            this.snackBar.open(`Added: ${device.name}`, 'OK', { duration: 3000 });
+            if (this.hardwareService.isPlrSupported(device)) {
+                await this.registerAsMachine(device);
+            } else {
+                this.snackBar.open(`Added: ${device.name}`, 'OK', { duration: 3000 });
+            }
         }
     }
 
     async requestUsbDevice(): Promise<void> {
         const device = await this.hardwareService.requestUsbDevice();
         if (device) {
-            this.snackBar.open(`Added: ${device.name}`, 'OK', { duration: 3000 });
+            if (this.hardwareService.isPlrSupported(device)) {
+                await this.registerAsMachine(device);
+            } else {
+                this.snackBar.open(`Added: ${device.name}`, 'OK', { duration: 3000 });
+            }
         }
     }
 
@@ -586,10 +616,27 @@ export class HardwareDiscoveryDialogComponent {
     async registerAsMachine(device: DiscoveredDevice): Promise<void> {
         const result = await this.hardwareService.registerAsMachine(device);
         if (result) {
-            this.snackBar.open(`Registered: ${result.name}`, 'OK', { duration: 3000 });
+            this.snackBar.open(`Registered: ${result.name}`, 'View Asset', {
+                duration: 5000
+            }).onAction().subscribe(() => {
+                this.router.navigate(['/assets/machines', result.accession_id]);
+                this.dialogRef.close();
+            });
+
+            // Update local state to show "Go to Asset" button
+            this.registeredDevices.update(map => {
+                const newMap = new Map(map);
+                newMap.set(device.id, result.accession_id);
+                return newMap;
+            });
         } else {
             this.snackBar.open('Failed to register device', 'Dismiss', { duration: 5000 });
         }
+    }
+
+    goToAsset(accessionId: string): void {
+        this.router.navigate(['/assets/machines', accessionId]);
+        this.dialogRef.close();
     }
 
     removeDevice(device: DiscoveredDevice): void {
@@ -621,6 +668,15 @@ export class HardwareDiscoveryDialogComponent {
 
     setConfigValue(device: DiscoveredDevice, key: string, event: Event): void {
         const value = (event.target as HTMLInputElement).value;
+        const config = { ...(device.configuration || {}), [key]: value };
+        this.hardwareService.updateDeviceConfiguration(device.id, config);
+    }
+
+    getBoolConfigValue(device: DiscoveredDevice, key: string): boolean {
+        return !!(device.configuration?.[key]);
+    }
+
+    setBoolConfigValue(device: DiscoveredDevice, key: string, value: boolean): void {
         const config = { ...(device.configuration || {}), [key]: value };
         this.hardwareService.updateDeviceConfiguration(device.id, config);
     }

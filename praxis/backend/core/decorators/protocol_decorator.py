@@ -70,7 +70,7 @@ async def _prepare_function_arguments(
 
   if (
     "__praxis_run_context__" in processed_kwargs_for_call
-    and "__praxis_run_context__" not in cast(DecoratedProtocolFunc, func).__code__.co_varnames
+    and "__praxis_run_context__" not in cast("DecoratedProtocolFunc", func).__code__.co_varnames
     and not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig_check.parameters.values())
   ):
     del processed_kwargs_for_call["__praxis_run_context__"]
@@ -161,6 +161,7 @@ def protocol_function(
   solo: bool = False,
   is_top_level: bool = False,
   preconfigure_deck: bool = False,
+  requires_deck: bool | None = None,
   deck_param_name: str = DEFAULT_DECK_PARAM_NAME,
   deck_construction: Callable | None = None,
   deck_layout_path: str | None = None,
@@ -187,6 +188,8 @@ def protocol_function(
       called directly by the orchestrator.
     preconfigure_deck (bool): If True, the protocol expects a deck parameter
       for pre-configuration.
+    requires_deck (Optional[bool]): Explicitly declare if this protocol requires
+      a Liquid Handler or Deck layout.
     deck_param_name (str): Name of the deck parameter if preconfigure_deck is True.
     deck_construction (Optional[Callable]): Function to construct the deck.
       This is used when preconfigure_deck is True.
@@ -240,6 +243,7 @@ def protocol_function(
         solo=solo,
         is_top_level=is_top_level,
         preconfigure_deck=preconfigure_deck,
+        requires_deck=requires_deck,
         deck_param_name=deck_param_name,
         deck_construction=deck_construction,
         deck_layout_path=deck_layout_path,
@@ -252,7 +256,7 @@ def protocol_function(
         top_level_name_format=top_level_name_format,
       ),
     )
-    cast(DecoratedProtocolFunc, func)._protocol_definition = protocol_definition
+    cast("DecoratedProtocolFunc", func)._protocol_definition = protocol_definition
 
     # TODO: The protocol registration should be handled by a discovery service.
     # _register_protocol(protocol_definition, func, found_state_param_details)
@@ -264,12 +268,12 @@ def protocol_function(
       function_ref=func,
       found_state_param_details=found_state_param_details,
     )
-    cast(DecoratedProtocolFunc, func)._protocol_runtime_info = protocol_runtime_info
+    cast("DecoratedProtocolFunc", func)._protocol_runtime_info = protocol_runtime_info
 
     @functools.wraps(func)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
       # Get the runtime metadata from the function itself, not a global registry.
-      current_meta = cast(DecoratedProtocolFunc, func)._protocol_runtime_info
+      current_meta = cast("DecoratedProtocolFunc", func)._protocol_runtime_info
       protocol_unique_key = (
         f"{current_meta.pydantic_definition.name}_v{current_meta.pydantic_definition.version}"
       )

@@ -32,7 +32,7 @@ export interface GuidedSetupResult {
     MatTooltipModule,
     MatChipsModule,
     FormsModule
-],
+  ],
   template: `
     @if (!isInline) {
       <h2 mat-dialog-title>Deck Setup: {{ data?.protocol?.name }}</h2>
@@ -418,6 +418,11 @@ export class GuidedSetupComponent implements OnInit {
 
     this.selectedAssets.set(map);
     this.autofilledIds.set(autofilled);
+
+    // Emit if valid so the stepper can proceed
+    if (this.isInline && this.isValid()) {
+      this.selectionChange.emit(map as Record<string, Resource>);
+    }
   }
 
   /**

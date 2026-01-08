@@ -1,0 +1,70 @@
+# Development Notes
+
+Lessons learned, gotchas, and specialized knowledge discovered during Praxis development.
+
+> **Purpose**: Capture individual insights as they're discovered. Periodically distill patterns into [codestyles/](codestyles/) guides.
+
+---
+
+## How to Use
+
+Add entries as you encounter notable patterns:
+
+```markdown
+## [Short Title]
+
+**Date:** YYYY-MM-DD
+**Area:** Backend | Frontend | REPL | Hardware
+
+[Description of the lesson learned or gotcha]
+
+**Files:** `path/to/relevant/file.ts`
+```
+
+---
+
+## Entries
+
+### SQLAlchemy Dataclass ORM Mapping
+
+**Date:** 2026-01-06
+**Area:** Backend - Testing
+
+When using SQLAlchemy's dataclass-style ORM mapping, fields with defaults must use `kw_only=True` if they appear after non-default fields. Factory Boy's `SubFactory` doesn't automatically flush dependencies before creating the dependent ORM instance.
+
+**Files:** `tests/factories.py`, `praxis/backend/models/orm/outputs.py`
+
+---
+
+### Angular Signal Inputs in Tests
+
+**Date:** 2026-01-07
+**Area:** Frontend - Testing
+
+Angular's signal-based `input()` properties require special handling in unit tests. Use `fixture.componentRef.setInput('propertyName', value)` instead of direct assignment, and call `fixture.detectChanges()` afterward.
+
+**Files:** `praxis/web-client/src/app/features/*/components/*/*.spec.ts`
+
+---
+
+### FTDI USB Status Bytes
+
+**Date:** 2026-01-07
+**Area:** Hardware - Drivers
+
+FTDI chips prepend 2 status bytes to every 64-byte chunk of data. These must be stripped in the driver layer before passing data upstream. The standard WebSerial API doesn't handle this—use the custom `FtdiSerialDriver`.
+
+**Files:** `praxis/web-client/src/app/features/repl/drivers/ftdi-web-serial.ts`
+
+---
+
+### JupyterLite Pyodide Environment Init
+
+**Date:** 2026-01-06
+**Area:** REPL
+
+PyLabRobot module imports fail until `sys.path` is explicitly configured in the Pyodide worker. Run environment initialization code before any PLR imports.
+
+**Files:** `praxis/web-client/src/app/features/repl/components/jupyterlite-repl/`
+
+---

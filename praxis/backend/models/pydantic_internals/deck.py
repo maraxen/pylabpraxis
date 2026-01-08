@@ -109,6 +109,12 @@ class DeckPositionDefinitionBase(BaseModel):
 class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
   """Model for creating a new deck position definition."""
 
+  name: str = Field(..., description="Unique, human-readable name for the position.")
+  position_accession_id: str | None = Field(
+    None,
+    description="Human-readable identifier for the position (e.g., 'A1', 'trash_bin').",
+  )
+
   pylabrobot_position_type_name: str | None = Field(
     None,
     description="PyLabRobot specific position type name.",

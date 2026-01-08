@@ -175,6 +175,12 @@ class ProtocolFunctionVisitor(BasePLRVisitor):
     # Extract computation graph
     computation_graph, source_hash = self._extract_computation_graph(node, params_info)
 
+    # Infer requires_deck: False if no LiquidHandler or Deck param exists
+    # This enables machine-only protocols (e.g., plate reader)
+    requires_deck = any(
+      "LiquidHandler" in p.type_hint or "Deck" in p.type_hint for p in params_info
+    )
+
     definition = ProtocolFunctionInfo(
       name=function_name,
       fqn=f"{self.module_path}.{function_name}",
@@ -187,6 +193,7 @@ class ProtocolFunctionVisitor(BasePLRVisitor):
       hardware_requirements=self._extract_requirements(node),
       computation_graph=computation_graph,
       source_hash=source_hash,
+      requires_deck=requires_deck,
     )
 
     self.definitions.append(definition)

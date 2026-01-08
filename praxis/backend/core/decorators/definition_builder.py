@@ -89,7 +89,7 @@ def _create_protocol_definition(
   data: CreateProtocolDefinitionData,
 ) -> tuple[FunctionProtocolDefinitionCreate, dict[str, Any] | None]:
   """Parse a function signature and decorator args to create a protocol definition."""
-  resolved_name = data.name or cast(DecoratedProtocolFunc, data.func).__name__
+  resolved_name = data.name or cast("DecoratedProtocolFunc", data.func).__name__
   if not resolved_name:
     msg = (
       "Protocol function name cannot be empty (either provide 'name' argument or use "
@@ -147,6 +147,18 @@ def _create_protocol_definition(
   # Convert setup instructions to JSON-serializable format
   setup_instructions_json = _convert_setup_instructions(data.setup_instructions)
 
+  # Determine requires_deck value:
+  # - If explicitly set via decorator, use that value
+  # - Otherwise, infer from parameters: True if LiquidHandler/Deck param exists
+  if data.requires_deck is not None:
+    requires_deck = data.requires_deck
+  else:
+    # Infer from parameter types
+    requires_deck = any(
+      "LiquidHandler" in str(param_obj.annotation) or "Deck" in str(param_obj.annotation)
+      for param_obj in sig.parameters.values()
+    )
+
   protocol_definition = FunctionProtocolDefinitionCreate(
     accession_id=uuid7(),
     name=resolved_name,
@@ -154,11 +166,12 @@ def _create_protocol_definition(
     description=(data.description or inspect.getdoc(data.func) or "No description provided."),
     fqn=get_callable_fqn(data.func),
     source_file_path=inspect.getfile(data.func),
-    module_name=cast(DecoratedProtocolFunc, data.func).__module__,
-    function_name=cast(DecoratedProtocolFunc, data.func).__name__,
+    module_name=cast("DecoratedProtocolFunc", data.func).__module__,
+    function_name=cast("DecoratedProtocolFunc", data.func).__name__,
     is_top_level=data.is_top_level,
     solo_execution=data.solo,
     preconfigure_deck=data.preconfigure_deck,
+    requires_deck=requires_deck,
     deck_param_name=data.deck_param_name if data.preconfigure_deck else None,
     deck_construction_function_fqn=(
       get_callable_fqn(data.deck_construction) if data.deck_construction else None

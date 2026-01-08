@@ -78,7 +78,7 @@ interface FilterCategory {
     HardwareDiscoveryButtonComponent,
     DeckSetupWizardComponent,
     GuidedSetupComponent
-],
+  ],
   template: `
     <div class="h-full flex flex-col p-6 max-w-screen-2xl mx-auto">
       <!-- Top Bar -->
@@ -263,7 +263,7 @@ interface FilterCategory {
 
               <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
                 <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
-                <button mat-flat-button color="primary" matStepperNext class="!rounded-xl !px-8 !py-6">Continue</button>
+                <button mat-flat-button color="primary" matStepperNext [disabled]="parametersFormGroup.invalid" class="!rounded-xl !px-8 !py-6">Continue</button>
               </div>
             </form>
           </mat-step>
@@ -314,8 +314,8 @@ interface FilterCategory {
             </div>
           </mat-step>
 
-          <!-- Step 4: Asset Selection (Moved from Dialog) -->
-          <mat-step [optional]="false">
+          <!-- Step 4: Asset Selection -->
+          <mat-step [stepControl]="assetsFormGroup">
              <ng-template matStepLabel><span data-tour-id="run-step-label-assets">Select Assets</span></ng-template>
              <div class="h-full flex flex-col p-6" data-tour-id="run-step-assets">
                <div class="flex-1 overflow-y-auto">
@@ -337,16 +337,31 @@ interface FilterCategory {
 
                <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
                   <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
-                  <button mat-flat-button color="primary" matStepperNext [disabled]="!canProceedFromAssetSelection()" class="!rounded-xl !px-8 !py-6">Continue</button>
+                  <button mat-flat-button color="primary" matStepperNext [disabled]="assetsFormGroup.invalid" class="!rounded-xl !px-8 !py-6">Continue</button>
                </div>
              </div>
           </mat-step>
 
-          <!-- Step 5: Deck Setup (Inline Wizard) -->
-          <mat-step>
+          <!-- Step 5: Deck Setup (Inline Wizard) - Skipped for no-deck protocols -->
+          <mat-step [stepControl]="deckFormGroup" [optional]="selectedProtocol()?.requires_deck === false">
             <ng-template matStepLabel><span data-tour-id="run-step-label-deck">Deck Setup</span></ng-template>
             <div class="h-full flex flex-col" data-tour-id="run-step-deck">
-              @if (selectedProtocol()) {
+              @if (selectedProtocol()?.requires_deck === false) {
+                <!-- No deck required - show skip message -->
+                <div class="flex flex-col items-center justify-center h-full text-sys-text-tertiary">
+                  <div class="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
+                    <mat-icon class="!w-8 !h-8 !text-[32px] text-green-500">check_circle</mat-icon>
+                  </div>
+                  <h3 class="text-lg font-medium text-sys-text-primary mb-2">No Deck Setup Required</h3>
+                  <p class="text-sys-text-secondary mb-6 max-w-md text-center">
+                    This protocol operates on standalone machines and does not require deck configuration.
+                  </p>
+                  <div class="flex gap-4">
+                    <button mat-button matStepperPrevious class="!border-[var(--theme-border)] !rounded-xl !px-6 !py-6">Back</button>
+                    <button mat-flat-button color="primary" matStepperNext class="!rounded-xl !px-8 !py-6">Continue to Review</button>
+                  </div>
+                </div>
+              } @else if (selectedProtocol()) {
                 <app-deck-setup-wizard
                   [data]="{ protocol: selectedProtocol()!, deckResource: deckData()?.resource || null, assetMap: configuredAssets() || {} }" 
                   (setupComplete)="onDeckSetupComplete()"
@@ -362,7 +377,7 @@ interface FilterCategory {
           </mat-step>
 
           <!-- Step 6: Review & Run -->
-          <mat-step label="Review & Run">
+          <mat-step [stepControl]="readyFormGroup" label="Review & Run">
              <div class="h-full flex flex-col items-center p-6 text-center max-w-2xl mx-auto overflow-y-auto">
                <div class="my-auto w-full">
                <div class="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center text-primary mb-6 shadow-[0_0_30px_rgba(237,122,155,0.3)]">
@@ -515,10 +530,6 @@ export class RunProtocolComponent implements OnInit {
   private dialog = inject(MatDialog);
   public modeService = inject(ModeService);
 
-  protocolFormGroup = this._formBuilder.group({ protocolId: [''] });
-  machineFormGroup = this._formBuilder.group({ machineId: [''] });
-  parametersFormGroup = this._formBuilder.group({});
-
   // Signals
   protocols = signal<ProtocolDefinition[]>([]);
   selectedProtocol = signal<ProtocolDefinition | null>(null);
@@ -531,6 +542,13 @@ export class RunProtocolComponent implements OnInit {
   searchQuery = signal('');
   activeFilters = signal<Record<string, Set<string>>>({});
   configuredAssets = signal<Record<string, any> | null>(null);
+
+  protocolFormGroup = this._formBuilder.group({ protocolId: ['', { validators: (c: any) => c.value ? null : { required: true } }] });
+  machineFormGroup = this._formBuilder.group({ machineId: ['', { validators: (c: any) => c.value && !this.showMachineError() ? null : { required: true } }] });
+  parametersFormGroup = this._formBuilder.group({});
+  assetsFormGroup = this._formBuilder.group({ valid: [false, { validators: (c: any) => c.value ? null : { required: true } }] });
+  deckFormGroup = this._formBuilder.group({ valid: [false, { validators: (c: any) => c.value || this.selectedProtocol()?.requires_deck === false ? null : { required: true } }] });
+  readyFormGroup = this._formBuilder.group({ ready: [true] });
 
   /** Helper to check if a machine is simulated */
   isMachineSimulated = computed(() => {
@@ -553,6 +571,8 @@ export class RunProtocolComponent implements OnInit {
 
   onAssetSelectionChange(assetMap: Record<string, any>) {
     this.configuredAssets.set(assetMap);
+    const valid = this.canProceedFromAssetSelection();
+    this.assetsFormGroup.patchValue({ valid });
   }
 
   canProceedFromAssetSelection(): boolean {
@@ -588,12 +608,14 @@ export class RunProtocolComponent implements OnInit {
     // Get asset map from wizard state
     const assetMap = this.wizardState.getAssetMap();
     this.configuredAssets.set(assetMap);
+    this.deckFormGroup.patchValue({ valid: true });
   }
 
   /** Called when inline deck setup wizard is skipped */
   onDeckSetupSkipped() {
     // Allow proceeding even if skipped
     this.configuredAssets.set({});
+    this.deckFormGroup.patchValue({ valid: true });
   }
 
   // Computed
@@ -715,6 +737,8 @@ export class RunProtocolComponent implements OnInit {
       // so it remains empty as per the instruction's snippet.
     }
     this.protocolFormGroup.patchValue({ protocolId: protocol.accession_id });
+    this.assetsFormGroup.patchValue({ valid: false });
+    this.deckFormGroup.patchValue({ valid: protocol.requires_deck === false });
     this.addToRecents(protocol.accession_id);
     this.loadCompatibility(protocol.accession_id);
   }
@@ -738,7 +762,10 @@ export class RunProtocolComponent implements OnInit {
 
   onMachineSelect(machine: MachineCompatibility) {
     this.selectedMachine.set(machine);
-    this.machineFormGroup.patchValue({ machineId: machine.machine.accession_id });
+    const machineId = machine.machine.accession_id;
+    this.machineFormGroup.patchValue({ machineId });
+    // If machine selection made it valid, patch again to trigger status change
+    this.machineFormGroup.get('machineId')?.updateValueAndValidity();
   }
 
   clearProtocol() {

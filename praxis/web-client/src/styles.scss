@@ -388,3 +388,24 @@ body {
     color: var(--theme-text-primary) !important;
   }
 }
+
+/* Shared Search Field Styling */
+.praxis-search-field {
+  .mat-mdc-form-field-icon-prefix {
+    padding: 0 8px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .mat-mdc-form-field-icon-suffix {
+    padding: 0 8px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .mat-icon {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}

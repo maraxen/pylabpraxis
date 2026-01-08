@@ -17,9 +17,10 @@ import { ExecutionService } from '../run-protocol/services/execution.service';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 import { SparklineComponent } from '@shared/components/sparkline/sparkline.component';
 import { ModeService } from '@core/services/mode.service';
-import { Machine, Resource } from '../assets/models/asset.models';
+import { Machine, Resource, MachineStatus } from '../assets/models/asset.models';
 import { ProtocolDefinition } from '../protocols/models/protocol.models';
 import { ExecutionStatus } from '../run-protocol/models/execution.models';
+import { MachineCardComponent } from '@shared/components/machine-card/machine-card.component';
 
 interface RecentRun {
   id: string;
@@ -45,8 +46,9 @@ interface RecentRun {
     MatTooltipModule,
     MatBadgeModule,
     HardwareDiscoveryButtonComponent,
-    SparklineComponent
-],
+    SparklineComponent,
+    MachineCardComponent
+  ],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto" data-tour-id="dashboard-root">
       <!-- Header with Quick Actions -->
@@ -90,12 +92,17 @@ interface RecentRun {
         </div>
 
         <div class="group relative bg-surface border border-[var(--theme-border)] rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/assets" matTooltip="View laboratory machines">
-          <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500/20 to-purple-500/20 relative z-10">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500/20 to-purple-500/20 relative z-10 shrink-0">
             <mat-icon class="text-blue-400">precision_manufacturing</mat-icon>
           </div>
-          <div class="flex flex-col relative z-10">
-            <span class="text-2xl font-bold text-sys-text-primary">{{ activeMachines() }}<span class="text-base font-normal text-sys-text-tertiary">/{{ totalMachines() }}</span></span>
-            <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Machines Online</span>
+          <div class="flex flex-col relative z-10 flex-1">
+            <span class="text-2xl font-bold text-sys-text-primary">{{ physicalOnlineMachines() }}<span class="text-base font-normal text-sys-text-tertiary">/{{ physicalMachinesCount() }}</span></span>
+            <span class="text-[10px] font-medium text-sys-text-tertiary uppercase tracking-wide">Physical Hardware</span>
+          </div>
+          <!-- Simulated Counter Mini -->
+          <div class="flex flex-col items-end relative z-10 opacity-60">
+            <span class="text-sm font-bold text-sys-text-secondary">{{ simulatedOnlineMachines() }}/{{ simulatedMachinesCount() }}</span>
+            <span class="text-[8px] uppercase font-bold tracking-tighter">Simulated</span>
           </div>
         </div>
 
@@ -245,10 +252,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   private subscription = new Subscription();
 
   // Stats signals
-  totalMachines = signal(0);
-  activeMachines = signal(0);
   totalProtocols = signal(0);
   totalResources = signal(0);
+  allMachines = signal<Machine[]>([]);
 
   // Trend data for sparkline (mock data representing run activity over last 7 days)
   runTrend = signal([2, 1, 3, 2, 4, 3, 5]);
@@ -260,6 +266,16 @@ export class HomeComponent implements OnInit, OnDestroy {
   // Computed
   runningCount = computed(() => this.currentRuns().filter(r => r.status === 'running').length);
   hasRunningExperiments = computed(() => this.currentRuns().length > 0);
+
+  physicalMachinesCount = computed(() => this.allMachines().filter(m => !m.is_simulation_override).length);
+  simulatedMachinesCount = computed(() => this.allMachines().filter(m => m.is_simulation_override).length);
+
+  physicalOnlineMachines = computed(() =>
+    this.allMachines().filter(m => !m.is_simulation_override && m.status !== MachineStatus.OFFLINE && m.status !== MachineStatus.ERROR).length
+  );
+  simulatedOnlineMachines = computed(() =>
+    this.allMachines().filter(m => m.is_simulation_override && m.status !== MachineStatus.OFFLINE && m.status !== MachineStatus.ERROR).length
+  );
 
   ngOnInit() {
     this.loadStats();
@@ -275,8 +291,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     // Load machines
     this.subscription.add(
       this.assetService.getMachines().subscribe((machines: Machine[]) => {
-        this.totalMachines.set(machines.length);
-        this.activeMachines.set(machines.filter(m => m.status !== 'offline' && m.status !== 'error').length);
+        this.allMachines.set(machines);
       })
     );
 
@@ -393,4 +408,5 @@ export class HomeComponent implements OnInit, OnDestroy {
       default: return 'bg-[var(--mat-sys-surface-variant)]';
     }
   }
+
 }

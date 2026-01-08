@@ -253,12 +253,12 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
 
     // Hardware registration
     if (url.includes('/hardware/register') && method === 'POST') {
-        const body = req.body as { device_id?: string; name?: string; plr_backend?: string };
-        return of({
-            accession_id: crypto.randomUUID(),
+        const body = req.body as { device_id?: string; name?: string; plr_backend?: string; connection_type?: string; configuration?: any };
+        return sqliteService.createMachine({
             name: body?.name || 'Registered Machine',
-            status: 'registered',
-            message: `Machine '${body?.name}' registered successfully (demo mode)`,
+            plr_backend: body?.plr_backend || '',
+            connection_type: body?.connection_type,
+            configuration: body?.configuration
         });
     }
 

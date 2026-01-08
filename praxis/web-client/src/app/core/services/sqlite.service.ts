@@ -196,6 +196,9 @@ export class SqliteService {
             this.checkAndMigrate(db);
             // -----------------------
 
+            // Seed definition catalogs if empty (important for IndexedDB loaded DBs)
+            this.seedDefinitionCatalogs(db);
+
             // Seed defaults if needed (e.g. loaded from prebuilt but empty assets)
             this.seedDefaultAssets(db);
 
@@ -250,6 +253,20 @@ export class SqliteService {
                         this.safeAddColumn(d, 'machines', 'maintenance_schedule_json', 'TEXT');
                         this.safeAddColumn(d, 'machines', 'last_maintenance_json', 'TEXT');
                         this.safeAddColumn(d, 'resources', 'location_label', 'TEXT');
+                    }
+                },
+                {
+                    version: 2,
+                    name: 'add_protocol_inferred_requirements',
+                    run: (d: Database) => {
+                        this.safeAddColumn(d, 'function_protocol_definitions', 'inferred_requirements_json', 'TEXT');
+                    }
+                },
+                {
+                    version: 3,
+                    name: 'add_protocol_failure_modes',
+                    run: (d: Database) => {
+                        this.safeAddColumn(d, 'function_protocol_definitions', 'failure_modes_json', 'TEXT');
                     }
                 }
             ];
@@ -405,12 +422,22 @@ export class SqliteService {
      */
     private seedDefinitionCatalogs(db: Database): void {
         try {
-            // Check if catalogs are empty
-            const machCountRes = db.exec("SELECT COUNT(*) FROM machine_definition_catalog");
-            const machCount = machCountRes.length > 0 ? (machCountRes[0].values[0][0] as number) : 0;
+            // Check if catalogs table exists and has data
+            let machCount = 0;
+            let resCount = 0;
+            try {
+                const machCountRes = db.exec("SELECT COUNT(*) FROM machine_definition_catalog");
+                machCount = machCountRes.length > 0 ? (machCountRes[0].values[0][0] as number) : 0;
+                const resCountRes = db.exec("SELECT COUNT(*) FROM resource_definition_catalog");
+                resCount = resCountRes.length > 0 ? (resCountRes[0].values[0][0] as number) : 0;
+            } catch (tableCheck) {
+                console.warn('[SqliteService] Definition tables may not exist yet:', tableCheck);
+                // Tables don't exist - this is fine, they should be created by schema
+                return;
+            }
 
-            if (machCount > 0) {
-                console.log('[SqliteService] Definition catalogs already populated');
+            if (machCount > 0 && resCount > 0) {
+                console.log(`[SqliteService] Definition catalogs already populated (${resCount} resources, ${machCount} machines)`);
                 return;
             }
 
@@ -419,7 +446,7 @@ export class SqliteService {
 
             // Seed Resources
             const insertResDef = db.prepare(`
-                INSERT INTO resource_definition_catalog 
+                INSERT OR IGNORE INTO resource_definition_catalog 
                 (accession_id, name, fqn, resource_type, vendor, description, properties_json, is_consumable, is_reusable, num_items)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
@@ -442,8 +469,8 @@ export class SqliteService {
 
             // Seed Machines
             const insertMachDef = db.prepare(`
-                INSERT INTO machine_definition_catalog 
-                (accession_id, name, fqn, machine_category, vendor, description, has_deck, properties_json, capabilities_config)
+                INSERT OR IGNORE INTO machine_definition_catalog 
+                (accession_id, name, fqn, machine_category, manufacturer, description, has_deck, properties_json, capabilities_config)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
@@ -459,7 +486,7 @@ export class SqliteService {
                     def.name,
                     def.fqn,
                     def.machine_type, // maps to machine_category (enum string match ideally)
-                    def.vendor || null,
+                    def.vendor || null, // def uses .vendor, map to manufacturer column
                     def.description || null,
                     def.has_deck ? 1 : 0,
                     JSON.stringify(def.properties_json),
@@ -472,7 +499,7 @@ export class SqliteService {
             console.log(`[SqliteService] Seeded ${PLR_RESOURCE_DEFINITIONS.length} resource definitions and ${PLR_MACHINE_DEFINITIONS.length} machine definitions`);
 
         } catch (err) {
-            db.exec('ROLLBACK');
+            try { db.exec('ROLLBACK'); } catch { /* ignore rollback errors */ }
             console.error('[SqliteService] Failed to seed definition catalogs', err);
             // Don't throw, allow continuing with empty catalogs if needed
         }
@@ -498,11 +525,7 @@ export class SqliteService {
             const now = new Date().toISOString();
 
             // 2. Seed Resources from Definitions
-            // Query all resource definitions
-            const resDefs = db.exec("SELECT accession_id, name, fqn, kind_of_resource FROM resource_definition_catalog"); // kind_of_resource might check schema again?
-            // Checking schema.sql: table resource_definition_catalog has: resource_type, is_consumable, ... name, fqn, accession_id
-
-            // Let's re-query with correct columns from schema
+            // Query all resource definitions (schema uses resource_type, not kind_of_resource)
             const resDefQuery = "SELECT accession_id, name, fqn, resource_type, is_consumable FROM resource_definition_catalog";
             let resDefRows: any[] = [];
             try {
@@ -516,12 +539,12 @@ export class SqliteService {
 
             try {
                 const insertAsset = db.prepare(`
-                    INSERT INTO assets (accession_id, asset_type, name, fqn, created_at, updated_at, properties_json)
+                    INSERT OR IGNORE INTO assets (accession_id, asset_type, name, fqn, created_at, updated_at, properties_json)
                     VALUES (?, 'RESOURCE', ?, ?, ?, ?, ?)
                 `);
 
                 const insertResource = db.prepare(`
-                    INSERT INTO resources (accession_id, resource_definition_accession_id, status)
+                    INSERT OR IGNORE INTO resources (accession_id, resource_definition_accession_id, status)
                     VALUES (?, ?, ?)
                 `);
 
@@ -561,12 +584,12 @@ export class SqliteService {
                 }
 
                 const insertMachineAsset = db.prepare(`
-                    INSERT INTO assets (accession_id, asset_type, name, fqn, created_at, updated_at, properties_json)
+                    INSERT OR IGNORE INTO assets (accession_id, asset_type, name, fqn, created_at, updated_at, properties_json)
                     VALUES (?, 'MACHINE', ?, ?, ?, ?, ?)
                 `);
 
                 const insertMachine = db.prepare(`
-                    INSERT INTO machines (accession_id, machine_category, status, is_simulation_override, connection_info, description)
+                    INSERT OR IGNORE INTO machines (accession_id, machine_category, status, is_simulation_override, connection_info, description)
                     VALUES (?, ?, ?, ?, ?, ?)
                 `);
 
@@ -631,6 +654,103 @@ export class SqliteService {
     }
 
     /**
+     * Create a new machine asset (Browser Mode specific).
+     * Mimics backend registration.
+     */
+    public createMachine(machine: {
+        name: string;
+        plr_backend: string;
+        connection_type?: string;
+        connection_info?: any;
+        configuration?: any
+    }): Observable<any> {
+        return this.db$.pipe(
+            map(db => {
+                const now = new Date().toISOString();
+                const assetId = crypto.randomUUID();
+
+                try {
+                    db.exec('BEGIN TRANSACTION');
+
+                    // 1. Look up definition by PLR Backend (FQN)
+                    const defQuery = db.prepare("SELECT accession_id, machine_category, compatible_backends, manufacturer, description FROM machine_definition_catalog WHERE fqn = ?");
+                    let defRow: any[] | null = null;
+                    try {
+                        defQuery.bind([machine.plr_backend]);
+                        if (defQuery.step()) {
+                            defRow = defQuery.get();
+                        }
+                    } finally {
+                        defQuery.free();
+                    }
+
+                    // Defaults if no definition found (though it should exist for registered hardware)
+                    const defId = defRow ? defRow[0] : null;
+                    const category = defRow ? defRow[1] : 'liquid_handler';
+                    const description = defRow ? `User registered instance of ${defRow[4] || machine.name}` : `Registered Machine: ${machine.name}`;
+
+                    // 2. Insert Asset
+                    const insertAsset = db.prepare(`
+                        INSERT INTO assets (accession_id, asset_type, name, fqn, created_at, updated_at, properties_json)
+                        VALUES (?, 'MACHINE', ?, ?, ?, ?, ?)
+                    `);
+                    const fqn = `machines.user.${machine.name.replace(/\s+/g, '_').toLowerCase()}_${assetId.slice(0, 4)}`;
+
+                    insertAsset.run([
+                        assetId,
+                        machine.name,
+                        fqn,
+                        now,
+                        now,
+                        JSON.stringify(machine.configuration || {})
+                    ]);
+                    insertAsset.free();
+
+                    // 3. Insert Machine
+                    const insertMachine = db.prepare(`
+                        INSERT INTO machines (accession_id, machine_category, status, connection_info, description, manufacturer, model)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    `);
+
+                    insertMachine.run([
+                        assetId,
+                        category,
+                        'IDLE',
+                        JSON.stringify({
+                            connection_type: machine.connection_type || 'serial',
+                            plr_backend: machine.plr_backend, // Store PLR backend FQN for REPL code generation
+                            ...machine.connection_info
+                        }),
+                        description,
+                        defRow ? defRow[3] : 'Unknown', // manufacturer
+                        machine.name // model
+                    ]);
+                    insertMachine.free();
+
+                    db.exec('COMMIT');
+
+                    // Persist immediately
+                    this.saveToStore(db);
+
+                    console.log(`[SqliteService] Created machine: ${machine.name} (${assetId})`);
+
+                    return {
+                        accession_id: assetId,
+                        name: machine.name,
+                        status: 'registered',
+                        fqn: fqn
+                    };
+
+                } catch (err) {
+                    db.exec('ROLLBACK');
+                    console.error('[SqliteService] Failed to create machine:', err);
+                    throw err;
+                }
+            })
+        );
+    }
+
+    /**
      * Reset database assets to defaults
      * Deletes all current resources and machines, then re-seeds defaults.
      */
@@ -646,28 +766,18 @@ export class SqliteService {
             db.exec('BEGIN TRANSACTION');
 
             // 1. Delete all resources and machines instances (not definitions)
-            // assets table deletion will fail if foreign keys exist and cascade isn't set up perfect, 
-            // but we have ON DELETE SET NULL/CASCADE in strict mode.
-            // Let's delete leaf tables first manually to be safe.
             db.run("DELETE FROM resources");
             db.run("DELETE FROM machines");
 
             // Delete from assets table
             db.run("DELETE FROM assets WHERE asset_type IN ('RESOURCE', 'MACHINE')");
 
-            // Also clear protocol runs if they depend on specific assets?
-            // Usually protocol runs are historical, but they might link to deleted assets.
-            // Schema shows "ON DELETE SET NULL" for resolved assets links usually, but let's leave runs alone or clear them?
-            // Requirement says "Reset to Defaults" for asset population.
-            // Users might expect runs to stay, or be cleared. 
-            // Given "Default Asset Population" prompt, let's stick to Assets.
-
             db.exec('COMMIT');
 
             // 2. Reseed
             this.seedDefaultAssets(db);
 
-            // Update status to trigger any subscribers (optional)
+            // Update status
             const tableCount = this.getTableCount(db);
             this.statusSubject.next({
                 ...this.statusSubject.value,
@@ -984,35 +1094,57 @@ export class SqliteService {
     // ============================================
 
     /**
-     * Export the current database as a Uint8Array
+     * Export the current database as a downloadable file
      */
-    public exportDatabase(): Observable<Uint8Array> {
-        return this.db$.pipe(
-            map(db => db.export())
-        );
+    public async exportDatabase(): Promise<void> {
+        if (!this.dbInstance) {
+            throw new Error('Database not initialized');
+        }
+
+        const data = this.dbInstance.export();
+        const blob = new Blob([data as any], { type: 'application/x-sqlite3' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `praxis-backup-${new Date().toISOString().slice(0, 10)}.db`;
+        a.click();
+
+        URL.revokeObjectURL(url);
     }
 
     /**
-     * Import a database from a Uint8Array
+     * Import a database file, replacing current data
      */
-    public async importDatabase(data: Uint8Array): Promise<void> {
+    public async importDatabase(file: File): Promise<void> {
+        const buffer = await file.arrayBuffer();
+        const data = new Uint8Array(buffer);
+
         const SQL = await initSqlJs({
             locateFile: file => `./assets/wasm/${file}`
         });
 
+        // Close current database
         if (this.dbInstance) {
             this.dbInstance.close();
         }
 
+        // Initialize with imported data
         this.dbInstance = new SQL.Database(data);
         this.repositories = createRepositories(this.dbInstance);
 
+        // Save to IndexedDB
+        await this.saveToStore(this.dbInstance);
+
+        // Update status
         const tableCount = this.getTableCount(this.dbInstance);
         this.statusSubject.next({
             initialized: true,
-            source: 'prebuilt',
+            source: 'indexeddb',
             tableCount
         });
+
+        console.log('[SqliteService] Database imported successfully');
     }
 
     // ============================================

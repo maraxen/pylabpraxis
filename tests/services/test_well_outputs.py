@@ -86,7 +86,7 @@ async def test_create_well_data_output_invalid_well_name(
     well_data_output_in = WellDataOutputCreate(
         function_data_output_accession_id=function_data_output.accession_id,
         plate_resource_accession_id=plate_resource.accession_id,
-        well_name="Z99",  # Invalid well name
+        well_name="!!",  # Invalid well name format
         data_value=1.23,
     )
     with pytest.raises(ValueError, match="Invalid well name format"):
@@ -200,8 +200,8 @@ async def test_create_well_data_outputs_from_flat_array_invalid_length(
 ):
     """Test creating multiple well data outputs from a flat array with an invalid length."""
     function_data_output = FunctionDataOutputFactory.create()
-    # Plate dimensions are not set in the factory, so this should raise an error.
-    plate_resource = ResourceFactory.create()
+    # Explicitly clear dimensions to trigger the expected ValueError
+    plate_resource = ResourceFactory.create(res_def__plr_definition_details_json=None)
     data_array = [1.1, 2.2, 3.3]
     with pytest.raises(ValueError, match="Could not determine plate dimensions for resource"):
         await create_well_data_outputs_from_flat_array(

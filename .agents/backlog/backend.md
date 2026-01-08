@@ -14,6 +14,7 @@
 - [x] LibCST-based static analysis for machine/resource discovery
 - [x] Pyodide runtime with WebBridge integration
 - [ ] Disable the "+ Add Definition" button until sync is complete
+- [x] Added `frontend_fqn` to `MachineDefinitionOrm` and service for frontend class mapping
 
 ### Machine Autodiscovery + REPL - ✅ COMPLETE (2026-01-02)
 

@@ -28,6 +28,7 @@ export interface PlrMachineDefinition {
     machine_type: 'LiquidHandler' | 'PlateReader' | 'Shaker' | 'Centrifuge' | 'Incubator' | 'Other';
     properties_json: Record<string, unknown>;
     capabilities_config?: any;
+    frontend_fqn?: string;
 }
 
 // Fallback/Override capabilities for machines that don't expose them statically (e.g. auto-detected hardware)
@@ -150,7 +151,8 @@ export const PLR_MACHINE_DEFINITIONS: PlrMachineDefinition[] = [
     { accession_id: 'plr-mach-021', name: 'Fluent', fqn: 'pylabrobot.liquid_handling.backends.tecan.Fluent', vendor: 'Tecan', description: 'Tecan Fluent liquid handler', has_deck: true, machine_type: 'LiquidHandler', properties_json: { channels: 8 } },
 
     // Plate readers
-    { accession_id: 'plr-mach-030', name: 'CLARIOstar', fqn: 'pylabrobot.plate_reading.backends.bmg.CLARIOstar', vendor: 'BMG Labtech', description: 'BMG CLARIOstar plate reader', has_deck: false, machine_type: 'PlateReader', properties_json: { detection_modes: ['absorbance', 'fluorescence', 'luminescence'] } },
+    // Note: CLARIOstar backend FQN follows PLR's actual module structure
+    { accession_id: 'plr-mach-030', name: 'CLARIOstarBackend', fqn: 'pylabrobot.plate_reading.clario_star_backend.CLARIOstarBackend', vendor: 'BMG Labtech', description: 'BMG CLARIOstar plate reader backend', has_deck: false, machine_type: 'PlateReader', properties_json: { detection_modes: ['absorbance', 'fluorescence', 'luminescence'] } },
     { accession_id: 'plr-mach-031', name: 'SPECTROstar', fqn: 'pylabrobot.plate_reading.backends.bmg.SPECTROstar', vendor: 'BMG Labtech', description: 'BMG SPECTROstar plate reader', has_deck: false, machine_type: 'PlateReader', properties_json: { detection_modes: ['absorbance'] } },
 
     // Shakers

@@ -290,7 +290,12 @@ async def test_schedule_entry_service_update_status(
 
     assert updated is not None
     assert updated.status == ScheduleStatusEnum.EXECUTING
-    assert updated.execution_started_at == started_at
+    
+    # Handle SQLite potentially returning naive datetime
+    updated_started_at = updated.execution_started_at
+    if updated_started_at and updated_started_at.tzinfo is None:
+        updated_started_at = updated_started_at.replace(tzinfo=timezone.utc)
+    assert updated_started_at == started_at
 
     # Verify history was logged
     history = await get_schedule_history(db_session, entry.accession_id)
@@ -446,7 +451,12 @@ async def test_create_asset_reservation_with_custom_lock(
     assert reservation.redis_lock_value == custom_lock_value
     assert reservation.required_capabilities_json == {"temperature_control": True, "shaking": True}
     assert reservation.estimated_usage_duration_ms == 3600000
-    assert reservation.expires_at == expires_at
+    
+    # Handle SQLite potentially returning naive datetime
+    res_expires_at = reservation.expires_at
+    if res_expires_at and res_expires_at.tzinfo is None:
+        res_expires_at = res_expires_at.replace(tzinfo=timezone.utc)
+    assert res_expires_at == expires_at
 
 
 @pytest.mark.asyncio
@@ -640,7 +650,12 @@ async def test_update_asset_reservation_status(
 
     assert updated is not None
     assert updated.status == AssetReservationStatusEnum.RESERVED
-    assert updated.reserved_at == reserved_time
+    
+    # Handle SQLite potentially returning naive datetime
+    updated_reserved_at = updated.reserved_at
+    if updated_reserved_at and updated_reserved_at.tzinfo is None:
+        updated_reserved_at = updated_reserved_at.replace(tzinfo=timezone.utc)
+    assert updated_reserved_at == reserved_time
 
     # Update to RELEASED
     released_time = datetime.now(timezone.utc)
@@ -653,7 +668,12 @@ async def test_update_asset_reservation_status(
 
     assert updated is not None
     assert updated.status == AssetReservationStatusEnum.RELEASED
-    assert updated.released_at == released_time
+    
+    # Handle SQLite potentially returning naive datetime
+    updated_released_at = updated.released_at
+    if updated_released_at and updated_released_at.tzinfo is None:
+        updated_released_at = updated_released_at.replace(tzinfo=timezone.utc)
+    assert updated_released_at == released_time
 
 
 @pytest.mark.asyncio

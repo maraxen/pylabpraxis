@@ -81,7 +81,7 @@ interface GroupedDefinitions {
       @if (!selectedDefinition) {
         <div class="browse-container">
           <!-- Search Bar -->
-          <mat-form-field appearance="outline" class="w-full search-field">
+          <mat-form-field appearance="outline" class="w-full search-field praxis-search-field">
             <mat-icon matPrefix>search</mat-icon>
             <input matInput [formControl]="searchControl" placeholder="Search resources...">
             @if (searchControl.value) {
@@ -189,6 +189,17 @@ interface GroupedDefinitions {
               @if (form.get('name')?.hasError('required')) {
                 <mat-error>Name is required</mat-error>
               }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>Description</mat-label>
+              <textarea matInput formControlName="description" rows="2" placeholder="Optional description"></textarea>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>Physical Location Label</mat-label>
+              <input matInput formControlName="location_label" placeholder="e.g. Shelf 2, Box 3">
+              <mat-hint>Optional label for physical location</mat-hint>
             </mat-form-field>
             <div class="form-row">
               <mat-form-field appearance="outline" class="half-width">
@@ -342,7 +353,9 @@ export class ResourceDialogComponent implements OnInit {
     name: ['', Validators.required],
     status: [ResourceStatus.AVAILABLE],
     resource_definition_accession_id: [null as string | null],
-    parent_accession_id: [null as string | null]
+    parent_accession_id: [null as string | null],
+    location_label: [''],
+    description: ['']
   });
 
   ngOnInit() {

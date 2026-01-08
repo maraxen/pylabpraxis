@@ -172,6 +172,7 @@ class ParameterMetadataModel(BaseModel):
     default_factory=ParameterConstraintsModel,
   )
   ui_hint: UIHint | None = None
+  linked_to: str | None = None
 
 
 class LocationConstraintsModel(BaseModel):
@@ -239,7 +240,12 @@ class AssetRequirementModel(BaseModel):
 class FunctionProtocolDefinitionBase(BaseModel):
   """Base model for a function protocol definition."""
 
-  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
+  model_config = ConfigDict(
+    use_enum_values=True,
+    validate_assignment=True,
+    populate_by_name=True,
+    from_attributes=True,
+  )
 
   name: str
   fqn: str
@@ -257,6 +263,7 @@ class FunctionProtocolDefinitionBase(BaseModel):
   is_top_level: bool = False
   solo_execution: bool = False
   preconfigure_deck: bool = False
+  requires_deck: bool = True  # False for machine-only protocols (e.g., plate reader)
   deck_param_name: str | None = None
   deck_construction_function_fqn: str | None = None  # FQN of deck construction callable
   deck_layout_path: str | None = None  # Path to JSON deck layout configuration
@@ -268,8 +275,14 @@ class FunctionProtocolDefinitionBase(BaseModel):
 
   parameters: list[ParameterMetadataModel] = Field(default_factory=list)
   assets: list[AssetRequirementModel] = Field(default_factory=list)
-  data_views: list[DataViewMetadataModel] = Field(default_factory=list)
-  hardware_requirements: dict[str, Any] | None = None  # Inferred hardware requirements
+  data_views_json: list[DataViewMetadataModel] | None = Field(
+    default_factory=list,
+    alias="data_views",
+  )
+  hardware_requirements_json: dict[str, Any] | None = Field(
+    default=None,
+    alias="hardware_requirements",
+  )
   setup_instructions_json: list[dict[str, Any]] | None = Field(
     default=None,
     description="Pre-run setup instructions to display in Deck Setup wizard",
@@ -302,6 +315,7 @@ class FunctionProtocolDefinitionUpdate(BaseModel):
   is_top_level: bool | None = None
   solo_execution: bool | None = None
   preconfigure_deck: bool | None = None
+  requires_deck: bool | None = None
   deck_param_name: str | None = None
   deck_construction_function_fqn: str | None = None
   deck_layout_path: str | None = None
@@ -385,12 +399,12 @@ class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionBase, PraxisB
     validation_alias="simulation_result_json",
     description="Cached simulation result",
   )
-  inferred_requirements: list[InferredRequirementModel] = Field(
+  inferred_requirements: list[InferredRequirementModel] | None = Field(
     default_factory=list,
     validation_alias="inferred_requirements_json",
     description="Inferred state requirements",
   )
-  failure_modes: list[FailureModeModel] = Field(
+  failure_modes: list[FailureModeModel] | None = Field(
     default_factory=list,
     validation_alias="failure_modes_json",
     description="Known failure modes",

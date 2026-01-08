@@ -37,16 +37,11 @@ describe('FilterChipComponent', () => {
         expect(component).toBeTruthy();
     });
 
-    it('should display label when no value selected', () => {
-        const chipText = fixture.debugElement.query(By.css('.chip-text')).nativeElement.textContent;
-        expect(chipText).toContain('Test Filter');
-    });
-
-    it('should display selected label when value selected', () => {
+    it('should display base label even when value selected (per feedback)', () => {
         fixture.componentRef.setInput('selectedValue', 'opt1');
         fixture.detectChanges();
         const chipText = fixture.debugElement.query(By.css('.chip-text')).nativeElement.textContent;
-        expect(chipText).toContain('Test Filter: Option 1');
+        expect(chipText).toBe('Test Filter');
     });
 
     it('should toggle active class', () => {
@@ -62,6 +57,19 @@ describe('FilterChipComponent', () => {
         expect(spy).toHaveBeenCalledWith('opt1');
     });
 
+    it('should handle multi-select toggling', () => {
+        const spy = vi.spyOn(component.selectionChange, 'emit');
+        fixture.componentRef.setInput('multiple', true);
+        fixture.componentRef.setInput('selectedValue', ['opt1']);
+        fixture.detectChanges();
+
+        component.selectOption('opt2');
+        expect(spy).toHaveBeenCalledWith(['opt1', 'opt2']);
+
+        component.selectOption('opt1');
+        expect(spy).toHaveBeenCalledWith([]);
+    });
+
     it('should trigger shake when disabled and clicked', () => {
         vi.useFakeTimers();
         fixture.componentRef.setInput('disabled', true);
@@ -69,8 +77,6 @@ describe('FilterChipComponent', () => {
 
         const chip = fixture.debugElement.query(By.css('.filter-chip'));
         const event = new MouseEvent('click', { bubbles: true });
-        // Note: stopPropagation spy might not work if created on event before dispatch
-        // unless we spy on the method of the event object instance we pass.
         const stopSpy = vi.spyOn(event, 'stopPropagation');
 
         chip.triggerEventHandler('click', event);

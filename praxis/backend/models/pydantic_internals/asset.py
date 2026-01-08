@@ -38,22 +38,22 @@ class AssetUpdate(BaseModel):
 
   model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
-  name: str | None = Field(None, description="The unique name of the asset.")
+  name: str | None = Field(default=None, description="The unique name of the asset.")
   fqn: str | None = Field(
-    None,
+    default=None,
     description="Fully qualified name of the asset's class, if applicable.",
   )
-  location: str | None = Field(None, description="The location of the asset.")
+  location: str | None = Field(default=None, description="The location of the asset.")
   plr_state: dict[str, Any] | None = Field(
-    None,
+    default=None,
     description="A dictionary for additional state information about the asset.",
   )
   plr_definition: dict[str, Any] | None = Field(
-    None,
+    default=None,
     description="A dictionary for the PyLabRobot definition of the asset.",
   )
   properties_json: dict[str, Any] | None = Field(
-    None,
+    default=None,
     description="A dictionary for additional metadata about the asset.",
   )
 

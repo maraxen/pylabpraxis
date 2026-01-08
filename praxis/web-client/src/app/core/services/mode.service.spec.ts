@@ -7,7 +7,6 @@ vi.mock('../../../environments/environment', () => ({
     environment: {
         production: false,
         browserMode: false,
-        browserMode: false,
     }
 }));
 

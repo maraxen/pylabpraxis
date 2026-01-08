@@ -36,7 +36,7 @@ class DeckTypeDefinitionService(
     if position_definitions:
       for position_definition in position_definitions:
         # Map name to position_accession_id if missing
-        if "position_accession_id" not in position_definition and "name" in position_definition:
+        if not position_definition.get("position_accession_id") and position_definition.get("name"):
           position_definition["position_accession_id"] = position_definition["name"]
 
         # Remove fields that are not accepted by ORM init

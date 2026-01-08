@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { StateResolutionDialogComponent } from './state-resolution-dialog.component';
 import {
@@ -13,7 +14,7 @@ import {
 describe('StateResolutionDialogComponent', () => {
     let component: StateResolutionDialogComponent;
     let fixture: ComponentFixture<StateResolutionDialogComponent>;
-    let dialogRef: jasmine.SpyObj<MatDialogRef<StateResolutionDialogComponent>>;
+    let dialogRef: { close: any };
 
     const mockUncertainStates: UncertainStateChange[] = [
         {
@@ -53,7 +54,7 @@ describe('StateResolutionDialogComponent', () => {
     };
 
     beforeEach(async () => {
-        dialogRef = jasmine.createSpyObj('MatDialogRef', ['close']);
+        dialogRef = { close: vi.fn() } as any;
 
         await TestBed.configureTestingModule({
             imports: [
@@ -137,18 +138,18 @@ describe('StateResolutionDialogComponent', () => {
     describe('canEditValues', () => {
         it('should return true for partial or arbitrary resolution types', () => {
             component.form.patchValue({ resolutionType: 'partial' });
-            expect(component.canEditValues()).toBeTrue();
+            expect(component.canEditValues()).toBe(true);
 
             component.form.patchValue({ resolutionType: 'arbitrary' });
-            expect(component.canEditValues()).toBeTrue();
+            expect(component.canEditValues()).toBe(true);
         });
 
         it('should return false for other resolution types', () => {
             component.form.patchValue({ resolutionType: 'confirmed_success' });
-            expect(component.canEditValues()).toBeFalse();
+            expect(component.canEditValues()).toBe(false);
 
             component.form.patchValue({ resolutionType: 'unknown' });
-            expect(component.canEditValues()).toBeFalse();
+            expect(component.canEditValues()).toBe(false);
         });
     });
 
@@ -158,7 +159,7 @@ describe('StateResolutionDialogComponent', () => {
             component.submitAndResume();
 
             expect(dialogRef.close).toHaveBeenCalled();
-            const result = dialogRef.close.calls.mostRecent().args[0] as StateResolutionDialogResult;
+            const result = (dialogRef.close as any).mock.calls[0][0] as StateResolutionDialogResult;
             expect(result.action).toBe('resume');
             expect(result.resolution?.resolution_type).toBe('confirmed_success');
         });
@@ -167,7 +168,7 @@ describe('StateResolutionDialogComponent', () => {
             component.submitAndAbort();
 
             expect(dialogRef.close).toHaveBeenCalled();
-            const result = dialogRef.close.calls.mostRecent().args[0] as StateResolutionDialogResult;
+            const result = (dialogRef.close as any).mock.calls[0][0] as StateResolutionDialogResult;
             expect(result.action).toBe('abort');
         });
 

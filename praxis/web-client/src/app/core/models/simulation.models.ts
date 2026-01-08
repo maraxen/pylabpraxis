@@ -114,6 +114,8 @@ export interface OperationStateSnapshot {
     status: 'completed' | 'failed' | 'skipped';
     /** Error message if failed */
     error_message?: string;
+    /** Delta of state changes: key -> change amount/value */
+    state_delta?: Record<string, number | string>;
 }
 
 /**

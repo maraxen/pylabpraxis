@@ -14,6 +14,7 @@ from praxis.backend.services.plr_type_base import DiscoverableTypeServiceBase
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.plr_static_analysis import (
+  BACKEND_TYPE_TO_FRONTEND_FQN,
   DiscoveredClass,
   PLRSourceParser,
   find_plr_source_root,
@@ -100,6 +101,9 @@ class MachineTypeDefinitionService(
     # Convert capabilities to the expected format
     capabilities = cls.to_capabilities_dict()
 
+    # Lookup frontend FQN from class_type
+    frontend_fqn = BACKEND_TYPE_TO_FRONTEND_FQN.get(cls.class_type)
+
     if existing_def:
       update_data = MachineDefinitionUpdate(
         fqn=cls.fqn,
@@ -112,6 +116,7 @@ class MachineTypeDefinitionService(
         if cls.capabilities_config
         else None,
         connection_config=cls.connection_config.model_dump() if cls.connection_config else None,
+        frontend_fqn=frontend_fqn,
       )
       for key, value in update_data.model_dump(exclude_unset=True).items():
         setattr(existing_def, key, value)
@@ -128,6 +133,7 @@ class MachineTypeDefinitionService(
       compatible_backends=cls.compatible_backends,
       capabilities_config=cls.capabilities_config.model_dump() if cls.capabilities_config else None,
       connection_config=cls.connection_config.model_dump() if cls.connection_config else None,
+      frontend_fqn=frontend_fqn,
     )
     obj_in_data = create_data.model_dump()
     # Remove fields that are not accepted by ORM init

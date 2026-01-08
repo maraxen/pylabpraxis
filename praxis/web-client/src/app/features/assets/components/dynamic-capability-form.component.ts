@@ -82,6 +82,7 @@ import { MachineCapabilityConfigSchema, CapabilityConfigField } from '../models/
             <mat-form-field appearance="outline" class="w-full">
               <mat-label>{{ field.display_name }}</mat-label>
               <mat-select [formControlName]="field.field_name"
+                          panelClass="theme-aware-panel"
                           [id]="'cap-' + field.field_name"
                           [attr.aria-describedby]="field.help_text ? 'help-' + field.field_name : null">
                 @for (option of field.options; track option) {
@@ -103,6 +104,7 @@ import { MachineCapabilityConfigSchema, CapabilityConfigField } from '../models/
               <mat-label>{{ field.display_name }}</mat-label>
               <mat-select [formControlName]="field.field_name" 
                           multiple
+                          panelClass="theme-aware-panel"
                           [id]="'cap-' + field.field_name"
                           [attr.aria-describedby]="field.help_text ? 'help-' + field.field_name : null">
                 @for (option of field.options; track option) {

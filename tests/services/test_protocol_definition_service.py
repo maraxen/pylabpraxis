@@ -192,7 +192,7 @@ async def test_get_multi_protocol_definitions(
         await protocol_definition_service.create(db_session, obj_in=create_data)
 
     # Test get_multi without filters
-    all_defs = await protocol_definition_service.get_multi(db_session)
+    all_defs = await protocol_definition_service.get_multi(db_session, filters=SearchFilters())
     # We might have other tests running, so just check if we have at least 3
     assert len(all_defs) >= 3
 

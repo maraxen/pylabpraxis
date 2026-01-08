@@ -3,7 +3,11 @@ import { SettingsComponent } from './settings.component';
 import { AppStore } from '../../../core/store/app.store';
 import { OnboardingService } from '@core/services/onboarding.service';
 import { TutorialService } from '@core/services/tutorial.service';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { SqliteService } from '@core/services/sqlite.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
+import { of } from 'rxjs';
 
 describe('SettingsComponent', () => {
     let component: SettingsComponent;
@@ -14,7 +18,9 @@ describe('SettingsComponent', () => {
         theme: vi.fn(() => 'system'),
         setTheme: vi.fn(),
         maintenanceEnabled: vi.fn(() => true),
-        setMaintenanceEnabled: vi.fn()
+        setMaintenanceEnabled: vi.fn(),
+        infiniteConsumables: vi.fn(() => false),
+        setInfiniteConsumables: vi.fn()
     };
 
     const onboardingMock = {
@@ -27,19 +33,42 @@ describe('SettingsComponent', () => {
         start: vi.fn()
     };
 
+    const sqliteMock = {
+        exportDatabase: vi.fn(),
+        importDatabase: vi.fn(),
+        resetToDefaults: vi.fn()
+    };
+
+    const snackBarMock = {
+        open: vi.fn()
+    };
+
+    const dialogMock = {
+        open: vi.fn()
+    };
+
     beforeEach(async () => {
+        vi.clearAllMocks();
+
         await TestBed.configureTestingModule({
             imports: [SettingsComponent],
             providers: [
                 { provide: AppStore, useValue: storeMock },
                 { provide: OnboardingService, useValue: onboardingMock },
-                { provide: TutorialService, useValue: tutorialMock }
+                { provide: TutorialService, useValue: tutorialMock },
+                { provide: SqliteService, useValue: sqliteMock },
+                { provide: MatSnackBar, useValue: snackBarMock },
+                { provide: MatDialog, useValue: dialogMock }
             ]
         }).compileComponents();
 
         fixture = TestBed.createComponent(SettingsComponent);
         component = fixture.componentInstance;
         fixture.detectChanges();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     it('should create', () => {
@@ -66,5 +95,53 @@ describe('SettingsComponent', () => {
         component.restartTutorial();
         expect(onboardingMock.clearTutorialState).toHaveBeenCalled();
         expect(tutorialMock.start).toHaveBeenCalledWith(false);
+    });
+
+    it('should call exportDatabase when exportData is called', async () => {
+        sqliteMock.exportDatabase.mockResolvedValue(undefined);
+        await component.exportData();
+        expect(sqliteMock.exportDatabase).toHaveBeenCalled();
+        expect(snackBarMock.open).toHaveBeenCalledWith('Database exported', 'OK', { duration: 3000 });
+    });
+
+    it('should handle export failure', async () => {
+        sqliteMock.exportDatabase.mockRejectedValue(new Error('Export failed'));
+        await component.exportData();
+        expect(snackBarMock.open).toHaveBeenCalledWith('Export failed', 'OK', { duration: 3000 });
+    });
+
+    it('should open confirmation dialog when importData is called', async () => {
+        const file = new File([''], 'test.db', { type: 'application/x-sqlite3' });
+        const event = { target: { files: [file] } } as unknown as Event;
+
+        const dialogRefMock = {
+            afterClosed: vi.fn(() => of(true))
+        };
+        dialogMock.open.mockReturnValue(dialogRefMock);
+        sqliteMock.importDatabase.mockResolvedValue(undefined);
+
+        // Mock window.location.reload
+        const originalLocation = window.location;
+        // @ts-ignore
+        delete window.location;
+        // @ts-ignore
+        window.location = { ...originalLocation, reload: vi.fn() } as any;
+
+        await component.importData(event);
+
+        expect(dialogMock.open).toHaveBeenCalled();
+        expect(sqliteMock.importDatabase).toHaveBeenCalledWith(file);
+
+        // Use fake timers to test setTimeout
+        vi.useFakeTimers();
+        // Wait for the subscribe block to execute
+        await Promise.resolve();
+        vi.advanceTimersByTime(2000);
+
+        expect(window.location.reload).toHaveBeenCalled();
+
+        // @ts-ignore
+        window.location = originalLocation as any;
+        vi.useRealTimers();
     });
 });

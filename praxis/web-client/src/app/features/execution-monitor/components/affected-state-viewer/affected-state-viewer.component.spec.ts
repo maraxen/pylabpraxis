@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
@@ -162,26 +163,26 @@ describe('AffectedStateViewerComponent', () => {
         });
 
         it('should emit valueChange on input', () => {
-            spyOn(component.valueChange, 'emit');
+            const spy = vi.spyOn(component.valueChange, 'emit');
 
             component.onValueChange('plate.A1.volume', {
                 target: { value: '80' },
             } as unknown as Event);
 
-            expect(component.valueChange.emit).toHaveBeenCalledWith({
+            expect(spy).toHaveBeenCalledWith({
                 key: 'plate.A1.volume',
                 value: 80,
             });
         });
 
         it('should parse boolean values correctly', () => {
-            spyOn(component.valueChange, 'emit');
+            const spy = vi.spyOn(component.valueChange, 'emit');
 
             component.onValueChange('tip_rack.tips', {
                 target: { value: 'true' },
             } as unknown as Event);
 
-            expect(component.valueChange.emit).toHaveBeenCalledWith({
+            expect(spy).toHaveBeenCalledWith({
                 key: 'tip_rack.tips',
                 value: true,
             });

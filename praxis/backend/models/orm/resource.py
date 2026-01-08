@@ -14,7 +14,7 @@ These models define the database schema for:
 """
 
 import uuid
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from sqlalchemy import (
   UUID,
@@ -29,6 +29,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from praxis.backend.models.enums import AssetType
 from praxis.backend.models.enums.resource import ResourceStatusEnum
 from praxis.backend.models.orm.asset import AssetOrm
 from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
@@ -228,7 +229,7 @@ class ResourceOrm(AssetOrm):
   """
 
   __tablename__ = "resources"
-  __mapper_args__: ClassVar[dict[str, str]] = {"polymorphic_identity": "RESOURCE"}
+  __mapper_args__: ClassVar[dict[str, Any]] = {"polymorphic_identity": AssetType.RESOURCE}
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,

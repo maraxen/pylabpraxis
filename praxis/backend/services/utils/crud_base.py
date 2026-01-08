@@ -1,12 +1,13 @@
 """Generic CRUD base class for SQLAlchemy models."""
 
+import contextlib
 import enum
 import inspect as py_inspect
 from typing import Generic, TypeVar
 from uuid import UUID
 
-from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
+from sqlalchemy import Enum as SAEnumType
 from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -21,13 +22,15 @@ from praxis.backend.services.utils.query_builder import (
   apply_specific_id_filters,
 )
 from praxis.backend.utils.db import Base
+from praxis.backend.utils.logging import get_logger
 
 ModelType = TypeVar("ModelType", bound=Base)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
 
-from sqlalchemy import Enum as SAEnumType
+
+logger = get_logger(__name__)
 
 
 class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
@@ -116,11 +119,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         # Pydantic may have converted it to a string/int due to use_enum_values=True
         enum_class = getattr(col.type, "enum_class", None)
         if enum_class:
-          try:
+          with contextlib.suppress(ValueError, TypeError):
             filtered_data[key] = enum_class(value)
-          except (ValueError, TypeError):
-            # If value is invalid for the Enum, leave it as is; SQLAlchemy or DB will raise.
-            pass
 
     db_obj = self.model(**filtered_data)
     db.add(db_obj)
@@ -153,13 +153,20 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
       elif not is_enum_val and is_enum_col:
         enum_class = getattr(col.type, "enum_class", None)
         if enum_class:
-          try:
+          with contextlib.suppress(ValueError, TypeError):
             update_data[key] = enum_class(value)
-          except (ValueError, TypeError):
-            pass
+
+    # Filter update_data to only include valid model attributes
+    # This prevents issues with relationships being set to None/invalid types
+    mapper = inspect(self.model)
+    valid_fields = set(mapper.columns.keys())
 
     for field, value in update_data.items():
-      setattr(db_obj, field, value)
+      if field in valid_fields:
+        setattr(db_obj, field, value)
+      else:
+        logger.debug("Skipping update for non-column field: %s", field)
+
     db.add(db_obj)
     await db.flush()
     await db.refresh(db_obj)

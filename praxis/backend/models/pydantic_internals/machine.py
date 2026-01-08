@@ -177,6 +177,10 @@ class MachineDefinitionBase(PLRTypeDefinitionBase):
     default=None,
     description="Schema for connection parameters (host, port, etc).",
   )
+  frontend_fqn: str | None = Field(
+    default=None,
+    description="FQN of the PLR frontend class (e.g., pylabrobot.liquid_handling.LiquidHandler).",
+  )
 
 
 class MachineDefinitionCreate(MachineDefinitionBase, PLRTypeDefinitionCreate):
@@ -204,6 +208,7 @@ class MachineDefinitionUpdate(PLRTypeDefinitionUpdate):
   compatible_backends: list[str] | None = None
   capabilities_config: dict[str, Any] | None = None
   connection_config: dict[str, Any] | None = None
+  frontend_fqn: str | None = None
 
 
 class MachineDefinitionResponse(MachineDefinitionBase, PLRTypeDefinitionResponse):

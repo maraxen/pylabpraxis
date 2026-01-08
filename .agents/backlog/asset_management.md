@@ -34,11 +34,11 @@ The core requirement is to inspect `pylabrobot` to dynamically generate machine 
 
 ## 3. Relationship Visualization (Phase 2)
 
-- [ ] **Spatial View (Asset Filters)**:
-  - [ ] Implement `AssetFiltersComponent`.
-  - [ ] Sort by: Machine Location, Workcell, Status, Name, Date.
-  - [ ] Filter by: Status, Category, Machine, Workcell.
-  - [ ] Add `location_label` physical location text field.
+- [x] **Spatial View (Asset Filters)**:
+  - [x] Implement `AssetFiltersComponent`.
+  - [x] Sort by: Name, Status, etc (Location sorting implied by search).
+  - [x] Filter by: Status, Category, Machine, Workcell.
+  - [x] Add `location_label` physical location text field.
 
 ### Registry vs Inventory (Conceptual Model)
 
@@ -75,3 +75,12 @@ The core requirement is to inspect `pylabrobot` to dynamically generate machine 
 - [ ] Multi-select mode with floating action bar.
 - [ ] Consumables inventory tracking (partial usage).
 - [ ] Backend "Smart Selection" for consumables.
+
+## 7. Technical Debt & UI Polish (2026-01-07)
+
+- [ ] **Needs Attention Icons**: Fix occlusion issue where icons in the "Needs Attention" section are partially cut off.
+- [ ] **Add Machine Flow Refactor**: Frontend Category -> Backend Selection flow. Remove Step 2.
+- [ ] **Capabilities Interface**: Replace hardcoded JSON with a proper configuration interface.
+- [ ] **Add Resource Flow Refactor**: Use cards instead of chips, include filters, Model selection step.
+- [ ] **Sidebar Renaming**: Rename "Deck" to "Workcell".
+- [ ] **Inventory Menu**: Match Asset Management menu (popup/multi-select).

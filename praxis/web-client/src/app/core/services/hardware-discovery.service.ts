@@ -74,6 +74,11 @@ export interface RegisterMachineResponse {
     message: string;
 }
 
+// Shared schema configuration (Temporary: see hardware_definitions_sync.md)
+const HAMILTON_CONFIG_SCHEMA: Record<string, ConfigurationField> = {
+    deck_layout: { type: 'string', label: 'Deck Layout', required: false, description: 'Custom deck layout file' },
+};
+
 // Known USB Vendor/Product IDs for lab equipment
 const KNOWN_DEVICES: Record<string, { manufacturer: string; model: string; plrBackend: string; configSchema?: Record<string, ConfigurationField> }> = {
     // Hamilton devices
@@ -81,14 +86,13 @@ const KNOWN_DEVICES: Record<string, { manufacturer: string; model: string; plrBa
         manufacturer: 'Hamilton',
         model: 'STAR',
         plrBackend: 'pylabrobot.liquid_handling.backends.hamilton.STAR',
-        configSchema: {
-            deck_layout: { type: 'string', label: 'Deck Layout', required: false, description: 'Custom deck layout file' },
-        },
+        configSchema: HAMILTON_CONFIG_SCHEMA,
     },
     '0x08BB:0x0107': {
         manufacturer: 'Hamilton',
         model: 'Starlet',
         plrBackend: 'pylabrobot.liquid_handling.backends.hamilton.Starlet',
+        configSchema: HAMILTON_CONFIG_SCHEMA,
     },
     // Opentrons devices
     '0x04D8:0xE11A': {
@@ -98,6 +102,27 @@ const KNOWN_DEVICES: Record<string, { manufacturer: string; model: string; plrBa
         configSchema: {
             simulate: { type: 'boolean', label: 'Simulation Mode', required: false, default: false },
         },
+    },
+    // B&B Electronics USOPTL4 (Common Hamilton Adapter)
+    '0x0856:0xAC11': {
+        manufacturer: 'Hamilton',
+        model: 'STAR/Starlet (via B&B Adapter)',
+        plrBackend: 'pylabrobot.liquid_handling.backends.hamilton.STAR',
+        configSchema: HAMILTON_CONFIG_SCHEMA,
+    },
+    // BMG CLARIOstar Plate Reader
+    '0x0403:0xBB68': {
+        manufacturer: 'BMG LABTECH',
+        model: 'CLARIOstar',
+        plrBackend: 'pylabrobot.plate_reading.clario_star_backend.CLARIOstarBackend',
+        // configSchema removed per user request (no simulation config needed for physical discovery)
+    },
+    // MCT Adapter (Found on RPi for Hamilton)
+    '0x08AF:0x8000': {
+        manufacturer: 'Hamilton',
+        model: 'STAR/Starlet (via MCT Adapter)',
+        plrBackend: 'pylabrobot.liquid_handling.backends.hamilton.STAR',
+        configSchema: HAMILTON_CONFIG_SCHEMA
     },
     // Generic USB-Serial adapters
     '0x1A86:0x7523': { manufacturer: 'Generic', model: 'USB-Serial (CH340)', plrBackend: '' },
@@ -171,6 +196,36 @@ export class HardwareDiscoveryService {
                 console.error('Error requesting serial port:', error);
             }
             return null;
+        }
+    }
+
+    /**
+     * DEBUG ONLY: Requests access to a serial port without any filters.
+     * Useful for identifying devices that don't match known VID/PID.
+     */
+    async discoverAllDebug(): Promise<void> {
+        if (!this.hasWebSerialSupport()) {
+            console.warn('[HardwareDiscovery] WebSerial not supported');
+            return;
+        }
+
+        try {
+            console.log('[HardwareDiscovery] Requesting ALL ports (no filters)...');
+            // Explicitly pass empty filters array to be sure
+            const port = await navigator.serial.requestPort({ filters: [] });
+            const portInfo = port.getInfo();
+            console.log('[HardwareDiscovery] Selected Debug Port:', portInfo);
+
+            const device = this.createDeviceFromSerialPort(port, `debug-${Date.now()}`);
+
+            this.discoveredDevices.update(devices => {
+                // Remove existing if present
+                const filtered = devices.filter(d => d.id !== device.id);
+                return [...filtered, device];
+            });
+
+        } catch (err) {
+            console.error('[HardwareDiscovery] Debug Discovery failed:', err);
         }
     }
 

@@ -102,6 +102,7 @@ class CreateProtocolDefinitionData:
   solo: bool
   is_top_level: bool
   preconfigure_deck: bool
+  requires_deck: bool | None  # None = auto-detect from params; False = skip deck setup
   deck_param_name: str
   deck_construction: Callable | None
   deck_layout_path: str | None  # Path to JSON deck layout configuration
@@ -150,5 +151,5 @@ def get_callable_fqn(func: Callable) -> str:
       str: The fully qualified name (e.g., "module.submodule.function_name").
 
   """
-  f = cast(DecoratedProtocolFunc, func)
+  f = cast("DecoratedProtocolFunc", func)
   return f"{f.__module__}.{f.__qualname__}"

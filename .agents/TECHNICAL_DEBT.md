@@ -1,150 +1,64 @@
 # Technical Debt
 
-This document tracks known technical debt items that need future attention.
+> **Purpose**: Track issues that require resolution but are not currently planned in a backlog.
+>
+> 1. **Temporary Patches**: Solutions that work but need robust implementation.
+> 2. **Known Issues**: Problems identified that would interrupt current workflow.
+> 3. **Future Improvements**: Value-add items that don't fit a specific backlog yet.
+>
+> **Goal**: Keep this list short. If an item is critical, move it to a backlog file.
+
+**Priority Levels**:
+
+- **Critical**: Blocking or causing data integrity issues.
+- **High**: Significant hindrance or major value add.
+- **Medium**: Annoyance or maintenance burden.
+- **Low**: Polish or nice-to-have refactor.
 
 ---
 
-## Test Factory ORM Integration Issues
+## Active Items
 
-**Added:** 2026-01-06
-**Priority:** High
-**Area:** Testing - Factory Boy / SQLAlchemy Integration
-
-**Issue:**
-`FunctionDataOutputFactory` and related factories in `tests/factories.py` fail to correctly populate foreign key fields when creating ORM instances. This causes `NOT NULL constraint failed` errors for `function_data_outputs.function_call_log_accession_id` across the `tests/services/test_well_outputs.py` test suite.
-
-**Root Cause:**
-SQLAlchemy's dataclass-style ORM mapping requires `kw_only=True` for non-default fields that appear after default fields. The factories use `factory.SubFactory` and `factory.LazyAttribute` to create dependencies, but these don't properly flush to the database before the dependent ORM is created.
-
-**Handoff Prompt:**
-See `.agents/prompts/backend_test_debug_well_outputs.md` for detailed debugging notes and next steps.
-
-**Files Affected:**
-
-- `tests/services/test_well_outputs.py`
-- `tests/factories.py` (FunctionDataOutputFactory, FunctionCallLogFactory, WellDataOutputFactory)
-- `praxis/backend/models/orm/outputs.py` (FunctionDataOutputOrm, WellDataOutputOrm)
+_No active items. All prior technical debt has been migrated to formal backlogs._
 
 ---
 
-## Asset API Restructuring (Registry vs Inventory)
+## Recently Resolved ✅
 
-**Added:** 2026-01-02
-**Priority:** Medium
-**Area:** Backend - API Design
+### 2026-01-07 Migration
 
-**Issue:**
-The current API structure mixes definition/registry endpoints with physical/inventory endpoints under similar paths. A cleaner separation would align better with the "Registry (Definitions)" vs "Inventory (Instances)" conceptual model.
+The following items were migrated to formal tracking:
 
-**Proposed Changes:**
+| Item | Migrated To |
+|------|-------------|
+| SQLite Schema Mismatch | [browser_mode.md](./backlog/browser_mode.md) |
+| Test Factory ORM Issues | [quality_assurance.md](./backlog/quality_assurance.md) |
+| JupyterLite REPL Issues | [repl_enhancements.md](./backlog/repl_enhancements.md) |
+| Skipped Tests | [quality_assurance.md](./backlog/quality_assurance.md) |
+| Execution Monitor UI | [ui_consistency.md](./backlog/ui_consistency.md) |
+| Asset Management UX | [asset_management_ux.md](./backlog/asset_management_ux.md) |
+| Dataviz & Well Selection | [dataviz_well_selection.md](./backlog/dataviz_well_selection.md) |
+| Asset API Restructuring | [run_protocol_workflow.md](./backlog/run_protocol_workflow.md) |
+| Consumables & Auto-Assignment | [run_protocol_workflow.md](./backlog/run_protocol_workflow.md) |
+| POST /resources/ API Error | [run_protocol_workflow.md](./backlog/run_protocol_workflow.md) |
+| Navigation Rail Hover Menus | [ui_consistency.md](./backlog/ui_consistency.md) |
+| Resource Model Typing | [quality_assurance.md](./backlog/quality_assurance.md) |
+| REPL Shim Loading | [repl_enhancements.md](./backlog/repl_enhancements.md) |
+| Hardware VID/PID Matrix | [reference/hardware_matrix.md](./reference/hardware_matrix.md) |
 
-- Create distinct API routers: `/api/v1/registry/*` and `/api/v1/inventory/*`.
-- `/api/v1/registry/`: For `MachineDefinition` and `ResourceDefinition` CRUD.
-- `/api/v1/inventory/`: For `Machine` and `Resource` physical instance CRUD.
-- Migrate existing endpoints from `/api/v1/machines` and `/api/v1/resources` to these new paths.
-- Update frontend services (`AssetService`) to use new paths.
+### Previously Resolved
 
-**Files Affected:**
-
-- `praxis/backend/api/resources.py`
-- `praxis/backend/api/machines.py`
-- `praxis/backend/services/assets.py`
-
----
-
-## Consumables and Auto-Assignment
-
-**Added:** 2024-12-24  
-**Priority:** Medium  
-**Area:** Frontend - Asset Selector
-
-**Issue:**
-Current auto-selection logic is naive - it simply picks the Nth item from the filtered list where N is the `autoSelectIndex`. This works for basic cases but lacks sophistication.
-
-**Improvements Needed:**
-
-- [ ] Consider resource `status` (prefer `AVAILABLE_IN_STORAGE` over `IN_USE`)
-- [ ] Check remaining capacity for consumables (tip racks, plates with partial fills)
-- [ ] Handle case where not enough unique resources exist for all fields
-- [ ] UI indication when resources must be shared or duplicated
-- [ ] Backend endpoint to suggest "best available" with smart ranking
-
-**Files Affected:**
-
-- `praxis/web-client/src/app/shared/formly-types/asset-selector.component.ts`
-- `praxis/web-client/src/app/features/run-protocol/components/parameter-config/parameter-config.component.ts`
+- **Protocol Queue and Reservation Management**: Base implementation complete (2026-01-06).
+- **Machine Frontend/Backend Separation**: Added `frontend_fqn` (2026-01-07).
+- **Asset Management Filter Dropdown**: Standardized via chip filters (2026-01-07).
+- **JupyterLite REPL Module Path**: Fixed via post-migration init (2026-01-06).
+- **FTDI Driver Architecture**: Implemented `ISerial` abstraction (2026-01-07).
+- **Serial Driver Main Thread Migration**: Moved to TypeScript (2026-01-07).
 
 ---
 
-## POST /resources/ API Error
+## Related Documents
 
-**Added:** 2024-12-24  
-**Priority:** Low (workaround exists)  
-**Area:** Backend - Resource API
-
-**Issue:**
-The `POST /api/v1/resources/` endpoint returns 500 errors. Direct ORM insertion via `scripts/seed_direct.py` works. The API route needs debugging.
-
-**Workaround:**
-Use `scripts/seed_direct.py` for seeding resources.
-
-**Files Affected:**
-
-- `praxis/backend/api/resources.py`
-- `praxis/backend/services/resource.py`
-
----
-
-## Navigation Rail Hover Menus
-
-**Added:** 2024-12-24  
-**Priority:** Low  
-**Area:** Frontend - Navigation
-
-**Issue:**
-The navigation rail currently shows only icons with small labels beneath. For features with sub-menus (e.g., Assets → Machines, Resources, Decks), an overlay menu on hover would improve UX.
-
-**Future Improvements:**
-
-- [ ] Implement hover-triggered overlay menus for nav items with children
-- [ ] Add tooltips on hover for accessibility
-- [ ] Consider flyout menus for nested navigation
-
-**Files Affected:**
-
-- `praxis/web-client/src/app/layout/main-layout.component.ts`
-
----
-
-## Protocol Queue and Reservation Management
-
-**Added:** 2025-12-24
-**Updated:** 2025-12-31
-**Priority:** ~~High~~ Low (Core issues resolved)
-**Area:** Backend - Scheduler / Protocol Execution
-
-**Original Issue:**
-The scheduler used **in-memory** asset reservations. Server restarts caused orphaned reservations and "Asset already reserved" errors.
-
-**Status: MOSTLY RESOLVED**
-
-Core reservation persistence and inspection are now implemented:
-
-- [x] **Persistent Reservations**: `AssetReservationOrm` is now the source of truth. The in-memory `_asset_reservations_cache` is just a performance cache.
-- [x] **Startup Recovery**: `recover_stale_runs()` scans for stuck `QUEUED`/`PREPARING` runs on startup and marks them as `FAILED`.
-- [x] **Reservation Inspection API**: `GET /api/v1/scheduler/reservations` lists all active reservations with filtering options.
-- [x] **Reservation Clearing API**: `DELETE /api/v1/scheduler/reservations/{asset_key}` manually releases stuck reservations.
-
-**Remaining Items (Lower Priority):**
-
-- [ ] **User Permissions for Run Management**:
-  - Admin users can cancel any run
-  - Regular users can only cancel their own runs
-  - Require `created_by_user` field to be populated on run creation
-
-**Files Affected:**
-
-- `praxis/backend/core/scheduler.py` - Now uses `AssetReservationOrm` for persistence
-- `praxis/backend/api/scheduler.py` - New reservation inspection/clearing endpoints
-- `praxis/backend/models/orm/schedule.py` - `AssetReservationOrm` model
-- `praxis/backend/models/pydantic_internals/scheduler.py` - Response models for reservation APIs
+- [DEVELOPMENT_MATRIX.md](./DEVELOPMENT_MATRIX.md) - Priority tracking
+- [ROADMAP.md](./ROADMAP.md) - Milestone tracking
+- [backlog/](./backlog/) - Detailed work items

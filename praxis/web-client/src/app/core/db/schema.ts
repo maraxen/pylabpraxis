@@ -1,10 +1,10 @@
 /**
  * Auto-generated TypeScript interfaces from SQLAlchemy ORM models
- * Generated at: 2026-01-01T14:15:59.780340
+ * Generated at: 2026-01-07T20:42:01.308181
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 
- 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type {
   AssetType,
@@ -14,6 +14,8 @@ import type {
   MachineStatus,
   ProtocolRunStatus,
   ProtocolSourceStatus,
+  ResolutionAction,
+  ResolutionType,
   ResourceStatus,
   SpatialContext,
 } from './enums';
@@ -263,10 +265,14 @@ export interface FunctionProtocolDefinition {
   is_top_level: boolean | null;
   solo_execution: boolean | null;
   preconfigure_deck: boolean | null;
+  /** Whether this protocol requires deck setup. False for machine-only protocols (e.g., plate reader). */
+  requires_deck: boolean | null;
   /** Name of the deck parameter in the function signature. */
   deck_param_name: string | null;
   /** FQN of the function to construct the deck. */
   deck_construction_function_fqn: string | null;
+  /** Path to JSON file defining user-specified deck layout (overrides auto-layout). */
+  deck_layout_path: string | null;
   /** Name of the state parameter in the function signature. */
   state_param_name: string | null;
   /** Category of the protocol function, used for grouping or filtering. */
@@ -276,6 +282,34 @@ export interface FunctionProtocolDefinition {
   deprecated: boolean | null;
   /** Inferred hardware requirements from static analysis (ProtocolRequirements). */
   hardware_requirements_json: Record<string, unknown> | null;
+  /** Data view definitions specifying input data requirements (PLR state, function outputs). */
+  data_views_json: Record<string, unknown> | null;
+  /** Computation graph extracted from protocol (ProtocolComputationGraph). */
+  computation_graph_json: Record<string, unknown> | null;
+  /** Hash of the protocol source code for cache invalidation. */
+  source_hash: string | null;
+  /** Timestamp when the computation graph was last cached. */
+  graph_cached_at: string | null;
+  /** Pre-run setup instructions to display in Deck Setup wizard */
+  setup_instructions_json: Record<string, unknown> | null;
+  /** Cached ProtocolSimulationResult from state simulation. */
+  simulation_result_json: Record<string, unknown> | null;
+  /** Inferred state requirements (tips, liquid, deck placement). */
+  inferred_requirements_json: Record<string, unknown> | null;
+  /** Known failure modes from simulation. */
+  failure_modes_json: Record<string, unknown> | null;
+  /** Simulator version for cache invalidation. */
+  simulation_version: string | null;
+  /** Timestamp when simulation was last run. */
+  simulation_cached_at: string | null;
+  /** Cloudpickle serialized protocol function for caching/distributed execution. */
+  cached_bytecode: Uint8Array | null;
+  /** Python version when bytecode was cached (e.g., '3.13.5'). */
+  bytecode_python_version: string | null;
+  /** Cache format version for invalidation. */
+  bytecode_cache_version: string | null;
+  /** Timestamp when bytecode was cached. */
+  bytecode_cached_at: string | null;
   accession_id: string;
   /** Timestamp when the record was created. */
   created_at: string;
@@ -322,6 +356,10 @@ export interface MachineDefinitionCatalog {
   compatible_backends: Record<string, unknown> | null;
   /** Schema for user-configurable capabilities (questions for the user). */
   capabilities_config: Record<string, unknown> | null;
+  /** Schema for connection parameters (host, port, etc). */
+  connection_config: Record<string, unknown> | null;
+  /** FQN of the PLR frontend class (e.g., pylabrobot.liquid_handling.LiquidHandler). */
+  frontend_fqn: string | null;
   /** Foreign key to the asset requirement this machine definition satisfies. */
   asset_requirement_accession_id: string | null;
   /** Fully qualified name of the PyLabRobot class. */
@@ -356,6 +394,14 @@ export interface Machine {
   model: string | null;
   /** Unique serial number of the machine, if applicable. */
   serial_number: string | null;
+  /** Physical location label (e.g., 'Room 101, Bench A'). */
+  location_label: string | null;
+  /** Whether maintenance tracking is enabled for this asset. */
+  maintenance_enabled: boolean | null;
+  /** Custom maintenance schedule overriding category defaults. */
+  maintenance_schedule_json: Record<string, unknown> | null;
+  /** Record of last maintenance by type. */
+  last_maintenance_json: Record<string, unknown> | null;
   /** Date when the machine was installed or commissioned. */
   installation_date: string | null;
   status: MachineStatus | null;
@@ -379,6 +425,8 @@ export interface Machine {
   last_seen_online: string | null;
   /** Foreign key to the current protocol run this machine is executing, if applicable. */
   current_protocol_run_accession_id: string | null;
+  /** Foreign key to the machine definition catalog. */
+  machine_definition_accession_id: string | null;
 }
 
 /**
@@ -579,6 +627,8 @@ export interface Resource {
   status_details: string | null;
   /** Foreign key to the current protocol run this resource is used in, if applicable. */
   current_protocol_run_accession_id: string | null;
+  /** Physical location label (e.g., 'Freezer 1, Shelf 2'). */
+  location_label: string | null;
   /** Name of the deck position where the resource is currently located. */
   current_deck_position_name: string | null;
   /** Foreign key to the machine where this resource is currently located, if applicable. */
@@ -600,6 +650,46 @@ export interface SchedulerMetricsMv {
   protocols_cancelled: number;
   avg_queue_wait_time_ms: number;
   avg_execution_time_ms: number;
+  accession_id: string;
+  /** Timestamp when the record was created. */
+  created_at: string;
+  updated_at: string;
+  /** Arbitrary metadata. */
+  properties_json: Record<string, unknown> | null;
+  /** Unique, human-readable name for the object. */
+  name: string;
+}
+
+/**
+ * Interface for the 'state_resolution_log' table
+ */
+export interface StateResolutionLog {
+  /** Foreign key to the schedule entry this resolution belongs to. */
+  schedule_entry_accession_id: string;
+  /** Foreign key to the protocol run this resolution belongs to. */
+  protocol_run_accession_id: string;
+  /** Unique ID of the operation that failed. */
+  operation_id: string;
+  /** Human-readable description of the failed operation. */
+  operation_description: string;
+  /** Error message from the failed operation. */
+  error_message: string;
+  /** Type/class of the error (e.g., 'PressureFault'). */
+  error_type: string | null;
+  /** JSON list of UncertainStateChange objects. */
+  uncertain_states_json: Record<string, unknown>;
+  /** JSON representation of the StateResolution. */
+  resolution_json: Record<string, unknown>;
+  /** Type of resolution applied. */
+  resolution_type: ResolutionType;
+  /** Identifier of who resolved (user ID or 'system'). */
+  resolved_by: string | null;
+  /** Timestamp when resolution was provided. */
+  resolved_at: string;
+  /** Optional notes from the user about the resolution. */
+  notes: string | null;
+  /** Action taken after resolution (resume, abort, retry). */
+  action_taken: ResolutionAction;
   accession_id: string;
   /** Timestamp when the record was created. */
   created_at: string;

@@ -5,37 +5,40 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Machine } from '../../../features/assets/models/asset.models';
 import { MachineCompatibility } from '../../../features/run-protocol/components/machine-selection/machine-selection.component';
-import { SimulatedChipComponent } from '../simulated-chip/simulated-chip.component';
+import { HardwareBadgeComponent } from '../hardware-badge/hardware-badge.component';
+import { CommonModule } from '@angular/common';
 
 @Component({
-    selector: 'app-machine-card',
-    standalone: true,
-    imports: [
+  selector: 'app-machine-card',
+  standalone: true,
+  imports: [
+    CommonModule,
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
-    SimulatedChipComponent
-],
-    template: `
+    HardwareBadgeComponent
+  ],
+  template: `
     <div
-      class="relative bg-surface-elevated border rounded-2xl p-6 cursor-pointer transition-all duration-200 group hover:-translate-y-1 hover:shadow-lg h-full"
+      class="relative bg-surface/20 border rounded-2xl p-6 cursor-pointer transition-all duration-300 group hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 h-full backdrop-blur-xl flex flex-col"
       [class.border-white-10]="!selected()"
       [class.border-primary]="selected()"
-      [class.bg-primary-05]="selected()"
+      [class.bg-primary/20]="selected()"
       [class.opacity-60]="machineCompatibility() && !machineCompatibility()?.compatibility?.is_compatible"
       [class.opacity-40]="isPhysicalMode() && isSimulated()"
       [class.grayscale]="isPhysicalMode() && isSimulated()"
       (click)="onClick()"
     >
-      <!-- Simulated Chip -->
-      @if (isSimulated()) {
-         <div class="mb-2">
-           <app-simulated-chip />
-         </div>
-      }
+      <!-- Hardware Badge -->
+      <div class="mb-3">
+        <app-hardware-badge [isSimulated]="isSimulated()" />
+      </div>
 
-      <h3 class="text-lg font-bold text-sys-text-primary">{{ getMachine().name }}</h3>
-      <span class="text-xs uppercase tracking-wider text-sys-text-tertiary">{{ getMachine().machine_type }}</span>
+      <div class="flex-grow">
+        <h3 class="text-lg font-bold text-sys-text-primary group-hover:text-primary transition-colors">{{ getMachine().name }}</h3>
+        <span class="text-[10px] font-bold uppercase tracking-widest text-sys-text-tertiary block mt-1">{{ getMachine().machine_category || 'Laboratory Machine' }}</span>
+        <span class="text-xs text-sys-text-secondary block mt-0.5 opacity-60">{{ getMachine().manufacturer }} {{ getMachine().model }}</span>
+      </div>
 
       <!-- Compatibility Info -->
       @if (machineCompatibility()) {
@@ -68,42 +71,45 @@ import { SimulatedChipComponent } from '../simulated-chip/simulated-chip.compone
       }
     </div>
   `,
-    styles: [`
+  styles: [`
     .border-white-10 { border-color: var(--theme-border, rgba(255,255,255,0.1)); }
     .bg-primary-05 { background-color: rgba(var(--primary-color-rgb, 99, 102, 241), 0.05); }
     .border-primary { border-color: var(--sys-primary, #6366f1); }
   `],
-    changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MachineCardComponent {
-    // Inputs can be either a straight Machine or the Compatibility wrapper
-    machine = input<Machine | null>(null);
-    machineCompatibility = input<MachineCompatibility | null>(null);
+  // Inputs can be either a straight Machine or the Compatibility wrapper
+  machine = input<Machine | null>(null);
+  machineCompatibility = input<MachineCompatibility | null>(null);
 
-    selected = input<boolean>(false);
-    isPhysicalMode = input<boolean>(false);
+  selected = input<boolean>(false);
+  isPhysicalMode = input<boolean>(false);
 
-    cardClick = output<void>();
+  cardClick = output<void>();
 
-    getMachine(): Machine {
-        if (this.machine()) return this.machine()!;
-        if (this.machineCompatibility()) return this.machineCompatibility()!.machine;
-        throw new Error('MachineCard must provide either machine or machineCompatibility input');
-    }
+  getMachine(): Machine {
+    if (this.machine()) return this.machine()!;
+    if (this.machineCompatibility()) return this.machineCompatibility()!.machine;
+    throw new Error('MachineCard must provide either machine or machineCompatibility input');
+  }
 
-    isSimulated(): boolean {
-        const m = this.getMachine();
-        if (!m) return false;
+  isSimulated(): boolean {
+    const m = this.getMachine();
+    if (!m) return false;
 
-        const connectionInfo = m.connection_info || {};
-        const backend = (connectionInfo['backend'] || '').toString();
+    const connectionInfo = m.connection_info || {};
+    const backend = (connectionInfo['backend'] || '').toString();
+    const type = (m as any).type || '';
 
-        return m.is_simulation_override === true ||
-            (m as any).is_simulated === true ||
-            backend.includes('Simulator');
-    }
+    return m.is_simulation_override === true ||
+      (m as any).is_simulated === true ||
+      backend.includes('Simulator') ||
+      backend.includes('Simulation') ||
+      type.toLowerCase().includes('simulator');
+  }
 
-    onClick() {
-        this.cardClick.emit();
-    }
+  onClick() {
+    this.cardClick.emit();
+  }
 }

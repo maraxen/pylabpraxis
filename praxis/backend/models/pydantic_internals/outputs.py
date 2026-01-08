@@ -242,6 +242,9 @@ class WellDataOutputCreate(WellDataOutputBase):
     description="ID of the plate resource",
   )
 
+  well_row: int | None = Field(default=None, ge=0, description="0-based row index")
+  well_column: int | None = Field(default=None, ge=0, description="0-based column index")
+
 
 class WellDataOutputResponse(WellDataOutputBase):
   """Model for well data output responses."""

@@ -15,13 +15,13 @@ import { getMachineCategoryIcon } from '@shared/constants/asset-icons';
 export type MachineSortOption = 'name' | 'category' | 'created_at' | 'status';
 
 export interface MachineFilterState {
-    search: string;
-    status: MachineStatus[];
-    categories: string[];
-    simulated: boolean | null;  // null = all, true = simulated only, false = physical only
-    backends: string[];
-    sort_by: MachineSortOption;
-    sort_order: 'asc' | 'desc';
+  search: string;
+  status: MachineStatus[];
+  categories: string[];
+  simulated: boolean | null;  // null = all, true = simulated only, false = physical only
+  backends: string[];
+  sort_by: MachineSortOption;
+  sort_order: 'asc' | 'desc';
 }
 
 /**
@@ -35,9 +35,9 @@ export interface MachineFilterState {
  * - Backend (STAR, OT2, Chatterbox, Simulator)
  */
 @Component({
-    selector: 'app-machine-filters',
-    standalone: true,
-    imports: [
+  selector: 'app-machine-filters',
+  standalone: true,
+  imports: [
     FormsModule,
     MatFormFieldModule,
     MatChipsModule,
@@ -47,12 +47,12 @@ export interface MachineFilterState {
     MatSlideToggleModule,
     MatSelectModule,
     MatInputModule
-],
-    template: `
+  ],
+  template: `
     <div class="filters-container">
       <!-- Search Input -->
       <div class="filter-group search-group">
-        <mat-form-field appearance="outline" class="search-field">
+        <mat-form-field appearance="outline" class="search-field praxis-search-field">
           <mat-icon matPrefix>search</mat-icon>
           <input
             matInput
@@ -135,16 +135,34 @@ export interface MachineFilterState {
       @if (availableBackends().length > 0) {
         <div class="filter-group">
           <label class="filter-label">Backend</label>
-          <mat-chip-listbox
-            [multiple]="true"
-            [(ngModel)]="selectedBackends"
-            (change)="onFilterChange()"
-            aria-label="Filter by backend"
-          >
-            @for (backend of availableBackends(); track backend) {
-              <mat-chip-option [value]="backend">{{ backend }}</mat-chip-option>
-            }
-          </mat-chip-listbox>
+          @if (!shouldCollapseBackends()) {
+            <mat-chip-listbox
+              [multiple]="true"
+              [(ngModel)]="selectedBackends"
+              (change)="onFilterChange()"
+              aria-label="Filter by backend"
+            >
+              @for (backend of availableBackends(); track backend) {
+                <mat-chip-option [value]="backend">{{ backend }}</mat-chip-option>
+              }
+            </mat-chip-listbox>
+          } @else {
+            <mat-form-field appearance="outline" class="chip-dropdown">
+              <mat-select
+                [multiple]="true"
+                [(ngModel)]="selectedBackends"
+                (selectionChange)="onFilterChange()"
+                placeholder="Select backends"
+                panelClass="theme-aware-panel"
+              >
+                @for (backend of availableBackends(); track backend) {
+                  <mat-option [value]="backend">
+                    {{ backend }}
+                  </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          }
         </div>
       }
 
@@ -153,7 +171,7 @@ export interface MachineFilterState {
         <label class="filter-label">Sort</label>
         <div class="sort-controls">
           <mat-form-field appearance="outline" class="sort-field">
-            <mat-select [(ngModel)]="sortBy" (selectionChange)="onFilterChange()">
+            <mat-select [(ngModel)]="sortBy" (selectionChange)="onFilterChange()" panelClass="theme-aware-panel">
               <mat-option value="name">Name</mat-option>
               <mat-option value="category">Category</mat-option>
               <mat-option value="status">Status</mat-option>
@@ -190,7 +208,7 @@ export interface MachineFilterState {
       }
     </div>
   `,
-    styles: [`
+  styles: [`
     .filters-container {
       display: flex;
       flex-wrap: wrap;
@@ -205,6 +223,22 @@ export interface MachineFilterState {
 
     .filter-group {
       flex-shrink: 0;
+      max-width: 100%;
+    }
+
+    mat-chip-listbox {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    .chip-dropdown {
+      width: 200px;
+      :host ::ng-deep .mat-mdc-form-field-subscript-wrapper { display: none; }
+      :host ::ng-deep .mat-mdc-text-field-wrapper { height: 40px; }
+      :host ::ng-deep .mat-mdc-form-field-flex { height: 40px; }
     }
 
     .search-group {
@@ -232,7 +266,6 @@ export interface MachineFilterState {
       .mat-mdc-form-field-subscript-wrapper { display: none; }
       .mat-mdc-text-field-wrapper { height: 40px; }
       .mat-mdc-form-field-flex { height: 40px; }
-      .mat-mdc-form-field-icon-prefix { padding: 8px 0 0 8px; }
     }
 
     :host ::ng-deep .sort-field {
@@ -281,88 +314,94 @@ export interface MachineFilterState {
   `],
 })
 export class MachineFiltersComponent implements OnInit {
-    /** List of machines to derive available filters from */
-    machines = input<Machine[]>([]);
+  /** List of machines to derive available filters from */
+  machines = input<Machine[]>([]);
 
-    /** List of machine definitions for backend information */
-    machineDefinitions = input<MachineDefinition[]>([]);
+  /** List of machine definitions for backend information */
+  machineDefinitions = input<MachineDefinition[]>([]);
 
-    /** Emits when filters change */
-    filtersChange = output<MachineFilterState>();
+  /** Emits when filters change */
+  filtersChange = output<MachineFilterState>();
 
-    // Filter state
-    searchTerm = '';
-    selectedStatuses: MachineStatus[] = [];
-    selectedCategories: string[] = [];
-    simulatedFilter: boolean | null = null;
-    selectedBackends: string[] = [];
-    sortBy: MachineSortOption = 'name';
-    sortOrder: 'asc' | 'desc' = 'asc';
+  // Filter state
+  searchTerm = '';
+  selectedStatuses: MachineStatus[] = [];
+  selectedCategories: string[] = [];
+  simulatedFilter: boolean | null = null;
+  selectedBackends: string[] = [];
+  sortBy: MachineSortOption = 'name';
+  sortOrder: 'asc' | 'desc' = 'asc';
 
-    // Computed available options based on input machines
-    availableCategories = computed(() => {
-        const cats = new Set<string>();
-        this.machines().forEach(m => {
-            if (m.machine_category) cats.add(m.machine_category);
-        });
-        return Array.from(cats).sort();
+  // Computed available options based on input machines
+  availableCategories = computed(() => {
+    const cats = new Set<string>();
+    this.machines().forEach(m => {
+      if (m.machine_category) cats.add(m.machine_category);
     });
+    return Array.from(cats).sort();
+  });
 
-    availableBackends = computed(() => {
-        const backends = new Set<string>();
-        this.machineDefinitions().forEach(def => {
-            if (def.compatible_backends) {
-                def.compatible_backends.forEach(b => backends.add(b));
-            }
-        });
-        return Array.from(backends).sort();
+  availableBackends = computed(() => {
+    const backends = new Set<string>();
+    this.machineDefinitions().forEach(def => {
+      if (def.compatible_backends) {
+        def.compatible_backends.forEach(b => backends.add(b));
+      }
     });
+    return Array.from(backends).sort();
+  });
 
-    ngOnInit(): void {
-        // Emit initial filter state
-        this.onFilterChange();
-    }
+  readonly CHIP_COLLAPSE_THRESHOLD = 5;
 
-    onFilterChange(): void {
-        this.filtersChange.emit(this.getCurrentFilters());
-    }
+  shouldCollapseBackends = computed(() =>
+    this.availableBackends().length > this.CHIP_COLLAPSE_THRESHOLD
+  );
 
-    getCurrentFilters(): MachineFilterState {
-        return {
-            search: this.searchTerm,
-            status: this.selectedStatuses,
-            categories: this.selectedCategories,
-            simulated: this.simulatedFilter,
-            backends: this.selectedBackends,
-            sort_by: this.sortBy,
-            sort_order: this.sortOrder,
-        };
-    }
+  ngOnInit(): void {
+    // Emit initial filter state
+    this.onFilterChange();
+  }
 
-    hasActiveFilters(): boolean {
-        return (
-            this.searchTerm !== '' ||
-            this.selectedStatuses.length > 0 ||
-            this.selectedCategories.length > 0 ||
-            this.simulatedFilter !== null ||
-            this.selectedBackends.length > 0 ||
-            this.sortBy !== 'name' ||
-            this.sortOrder !== 'asc'
-        );
-    }
+  onFilterChange(): void {
+    this.filtersChange.emit(this.getCurrentFilters());
+  }
 
-    clearFilters(): void {
-        this.searchTerm = '';
-        this.selectedStatuses = [];
-        this.selectedCategories = [];
-        this.simulatedFilter = null;
-        this.selectedBackends = [];
-        this.sortBy = 'name';
-        this.sortOrder = 'asc';
-        this.onFilterChange();
-    }
+  getCurrentFilters(): MachineFilterState {
+    return {
+      search: this.searchTerm,
+      status: this.selectedStatuses,
+      categories: this.selectedCategories,
+      simulated: this.simulatedFilter,
+      backends: this.selectedBackends,
+      sort_by: this.sortBy,
+      sort_order: this.sortOrder,
+    };
+  }
 
-    getCategoryIcon(category: string): string {
-        return getMachineCategoryIcon(category);
-    }
+  hasActiveFilters(): boolean {
+    return (
+      this.searchTerm !== '' ||
+      this.selectedStatuses.length > 0 ||
+      this.selectedCategories.length > 0 ||
+      this.simulatedFilter !== null ||
+      this.selectedBackends.length > 0 ||
+      this.sortBy !== 'name' ||
+      this.sortOrder !== 'asc'
+    );
+  }
+
+  clearFilters(): void {
+    this.searchTerm = '';
+    this.selectedStatuses = [];
+    this.selectedCategories = [];
+    this.simulatedFilter = null;
+    this.selectedBackends = [];
+    this.sortBy = 'name';
+    this.sortOrder = 'asc';
+    this.onFilterChange();
+  }
+
+  getCategoryIcon(category: string): string {
+    return getMachineCategoryIcon(category);
+  }
 }

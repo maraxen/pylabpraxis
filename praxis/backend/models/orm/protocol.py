@@ -237,6 +237,12 @@ class FunctionProtocolDefinitionOrm(Base):
   is_top_level: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
   solo_execution: Mapped[bool] = mapped_column(Boolean, default=False)
   preconfigure_deck: Mapped[bool] = mapped_column(Boolean, default=False)
+  requires_deck: Mapped[bool] = mapped_column(
+    Boolean,
+    default=True,
+    nullable=False,
+    comment="Whether this protocol requires deck setup. False for machine-only protocols (e.g., plate reader).",
+  )
   deck_param_name: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
@@ -303,6 +309,12 @@ class FunctionProtocolDefinitionOrm(Base):
     DateTime(timezone=True),
     nullable=True,
     comment="Timestamp when the computation graph was last cached.",
+    default=None,
+  )
+  setup_instructions_json: Mapped[list | None] = mapped_column(
+    JsonVariant,
+    nullable=True,
+    comment="Pre-run setup instructions to display in Deck Setup wizard",
     default=None,
   )
 

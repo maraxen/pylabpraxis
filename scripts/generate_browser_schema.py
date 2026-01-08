@@ -390,6 +390,7 @@ def main() -> None:
     # Import all ORM models to populate metadata
     # This import triggers registration of all tables with Base.metadata
     from praxis.backend.utils.db import Base
+    import praxis.backend.models.orm  # noqa: F401 - registers all ORM models with Base.metadata
 
     # Ensure output directories exist
     ASSETS_DB_DIR.mkdir(parents=True, exist_ok=True)

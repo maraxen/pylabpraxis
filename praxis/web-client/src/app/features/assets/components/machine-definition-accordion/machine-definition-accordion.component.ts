@@ -40,7 +40,7 @@ export interface ManufacturerGroup {
     MatInputModule,
     FormsModule,
     ReactiveFormsModule
-],
+  ],
   template: `
     <div class="accordion-container">
       <div class="accordion-header">
@@ -49,7 +49,7 @@ export interface ManufacturerGroup {
       </div>
 
       <!-- Search Bar -->
-      <mat-form-field appearance="outline" class="filter-field">
+      <mat-form-field appearance="outline" class="filter-field praxis-search-field">
         <mat-label>Filter Machine Types</mat-label>
         <input matInput [formControl]="filterControl">
         <mat-icon matSuffix>search</mat-icon>

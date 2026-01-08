@@ -190,6 +190,12 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     comment="Schema for connection parameters (host, port, etc).",
     default=None,
   )
+  frontend_fqn: Mapped[str | None] = mapped_column(
+    String(512),
+    nullable=True,
+    default=None,
+    comment="FQN of the PLR frontend class (e.g., pylabrobot.liquid_handling.LiquidHandler).",
+  )
   asset_requirement_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("protocol_asset_requirements.accession_id"),

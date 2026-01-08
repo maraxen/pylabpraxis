@@ -147,6 +147,8 @@ export interface ProtocolDefinition {
   fqn?: string;
   tags?: string[];
   deprecated?: boolean;
+  /** Whether this protocol requires deck setup (false for machine-only protocols) */
+  requires_deck?: boolean;
   parameters: ParameterMetadata[];
   assets: AssetRequirement[];
   data_views?: DataViewMetadataModel[];

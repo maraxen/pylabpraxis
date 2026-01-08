@@ -1,14 +1,15 @@
-import { Component, inject, signal, output, OnInit, input } from '@angular/core';
+import { Component, inject, signal, output, OnInit, input, effect } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { Machine } from '../../models/asset.models';
+import { Machine, Workcell } from '../../models/asset.models';
 
 export type AssetSortOption =
   | 'name'
@@ -21,6 +22,7 @@ export type AssetSortOption =
 
 export interface AssetFilterState {
   status: string[];
+  search: string;
   category: string[];
   machine_id: string | null;
   workcell_id: string | null;
@@ -40,11 +42,25 @@ export interface AssetFilterState {
     MatIconModule,
     MatButtonModule,
     MatButtonToggleModule,
-    MatSlideToggleModule
-],
+    MatSlideToggleModule,
+    MatInputModule
+  ],
   template: `
     <div class="filters-container flex flex-wrap items-center gap-4 p-4 rounded-xl border border-[var(--theme-border)] bg-surface-container mb-2">
       
+      <!-- Text Search -->
+      <div class="filter-group min-w-[200px] flex-1">
+        <mat-form-field appearance="outline" class="w-full dense-field">
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput [(ngModel)]="searchTerm" (input)="onFilterChange()" placeholder="Search assets...">
+          @if (searchTerm) {
+            <button matSuffix mat-icon-button aria-label="Clear" (click)="searchTerm = ''; onFilterChange()">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+      </div>
+
       <!-- Status Filter -->
       <div class="filter-group">
         <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-2 block">Status</label>
@@ -88,6 +104,25 @@ export interface AssetFilterState {
             <mat-option [value]="null">Any location</mat-option>
             @for (machine of machines(); track machine.accession_id) {
                 <mat-option [value]="machine.accession_id">{{ machine.name }}</mat-option>
+            }
+            </mat-select>
+        </mat-form-field>
+        </div>
+      }
+
+      <!-- Workcell Filter -->
+      @if (showWorkcellFilter()) {
+        <div class="filter-group min-w-[160px]">
+        <mat-form-field appearance="outline" class="w-full dense-field">
+            <mat-label>Workcell</mat-label>
+            <mat-select
+            [(ngModel)]="selectedWorkcellId"
+            (selectionChange)="onFilterChange()"
+            placeholder="Any workcell">
+            <mat-option [value]="null">Any workcell</mat-option>
+            <!-- Assuming workcells are passed in or fetched. For now relying on input -->
+            @for (wc of workcells(); track wc.accession_id) {
+                <mat-option [value]="wc.accession_id">{{ wc.name }}</mat-option>
             }
             </mat-select>
         </mat-form-field>
@@ -173,7 +208,9 @@ export interface AssetFilterState {
 export class AssetFiltersComponent {
   categories = input<string[]>([]);
   machines = input<Machine[]>([]);
+  workcells = input<Workcell[]>([]);
   showMachineFilter = input<boolean>(false);
+  showWorkcellFilter = input<boolean>(false);
 
   filtersChange = output<AssetFilterState>();
 
@@ -181,6 +218,7 @@ export class AssetFiltersComponent {
   selectedCategories: string[] = [];
   selectedMachineId: string | null = null;
   selectedWorkcellId: string | null = null;
+  searchTerm: string = '';
   maintenanceDue = false;
   sortBy: AssetSortOption = 'created_at';
   sortOrder: 'asc' | 'desc' = 'desc';
@@ -192,6 +230,7 @@ export class AssetFiltersComponent {
   getCurrentFilters(): AssetFilterState {
     return {
       status: this.selectedStatuses,
+      search: this.searchTerm,
       category: this.selectedCategories,
       machine_id: this.selectedMachineId,
       workcell_id: this.selectedWorkcellId,
@@ -206,6 +245,8 @@ export class AssetFiltersComponent {
       this.selectedStatuses.length > 0 ||
       this.selectedCategories.length > 0 ||
       this.selectedMachineId !== null ||
+      this.selectedWorkcellId !== null ||
+      this.searchTerm !== '' ||
       this.maintenanceDue ||
       this.sortBy !== 'created_at' ||
       this.sortOrder !== 'desc'
@@ -216,6 +257,8 @@ export class AssetFiltersComponent {
     this.selectedStatuses = [];
     this.selectedCategories = [];
     this.selectedMachineId = null;
+    this.selectedWorkcellId = null;
+    this.searchTerm = '';
     this.maintenanceDue = false;
     this.sortBy = 'created_at';
     this.sortOrder = 'desc';

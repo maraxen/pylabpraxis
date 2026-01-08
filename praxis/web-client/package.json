@@ -61,6 +61,7 @@
     "shepherd.js": "^14.5.1",
     "sql.js": "^1.13.0",
     "tslib": "^2.3.0",
+    "web-serial-polyfill": "^1.0.15",
     "zone.js": "^0.16.0"
   },
   "devDependencies": {
@@ -76,6 +77,7 @@
     "@playwright/test": "^1.57.0",
     "@typescript-eslint/eslint-plugin": "^8.52.0",
     "@typescript-eslint/parser": "^8.52.0",
+    "@vitest/coverage-v8": "^4.0.16",
     "autoprefixer": "^10.4.23",
     "eslint": "^9.39.2",
     "jsdom": "^27.1.0",

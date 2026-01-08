@@ -12,7 +12,7 @@ import { ProtocolDefinition, ParameterMetadata } from '../../../protocols/models
     ReactiveFormsModule,
     FormlyModule,
     MatDividerModule
-],
+  ],
   template: `
     <div class="parameter-config-container">
       @if (hasParameters()) {
@@ -54,6 +54,19 @@ import { ProtocolDefinition, ParameterMetadata } from '../../../protocols/models
       padding: 32px;
       color: var(--sys-on-surface-variant);
     }
+    ::ng-deep .linked-parameter-row {
+      display: flex;
+      gap: 16px;
+      align-items: center; /* Center align with checkbox */
+    }
+    ::ng-deep .linked-parameter-row > .flex-grow {
+      flex: 1;
+      width: 0;
+    }
+    ::ng-deep .unlink-toggle {
+      margin-top: 16px; /* Align with input fields mostly */
+      min-width: 80px;
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -73,10 +86,64 @@ export class ParameterConfigComponent implements OnChanges {
   }
 
   private buildForm(protocol: ProtocolDefinition) {
-    // Build parameter fields (exclude state, deck params, and typed assets)
-    const paramConfigs: FormlyFieldConfig[] = (protocol.parameters || [])
-      .filter(p => !p.is_deck_param && p.name !== 'state')
-      .map(param => this.createParamField(param));
+    const params = (protocol.parameters || []).filter(p => !p.is_deck_param && p.name !== 'state');
+    const paramConfigs: FormlyFieldConfig[] = [];
+    const processedParams = new Set<string>();
+
+    for (const param of params) {
+      if (processedParams.has(param.name)) continue;
+
+      // Check for linked parameters
+      if (param.linked_to) {
+        const partner = params.find(p => p.name === param.linked_to);
+
+        // If partner exists and hasn't been processed yet
+        if (partner && !processedParams.has(partner.name)) {
+          const unlinkKey = `_unlink_${param.name}_${partner.name}`;
+
+          // Modify fields to handle dynamic linking
+          const param1Field = this.createParamField(param);
+          const param2Field = this.createParamField(partner);
+
+          // Add expression properties for linking
+          param1Field.expressionProperties = {
+            'props.linkedTo': (model: any) => model[unlinkKey] ? null : partner.name
+          };
+          param2Field.expressionProperties = {
+            'props.linkedTo': (model: any) => model[unlinkKey] ? null : param.name
+          };
+
+          // Add them as a side-by-side group with an unlink toggle
+          paramConfigs.push({
+            fieldGroupClassName: 'linked-parameter-row',
+            fieldGroup: [
+              { ...param1Field, className: 'flex-grow' },
+              {
+                key: unlinkKey,
+                type: 'checkbox',
+                defaultValue: false,
+                className: 'unlink-toggle',
+                props: {
+                  label: 'Unlink',
+                  attributes: {
+                    title: 'Unlink these parameters to select independently'
+                  }
+                }
+              },
+              { ...param2Field, className: 'flex-grow' }
+            ]
+          });
+          processedParams.add(param.name);
+          processedParams.add(partner.name);
+          continue;
+        }
+      }
+
+      // Default: add single field
+      paramConfigs.push(this.createParamField(param));
+      processedParams.add(param.name);
+    }
+
     this.paramFields.set(paramConfigs);
     this.hasParameters.set(paramConfigs.length > 0);
 

@@ -25,27 +25,27 @@ import { ExecutionStatus } from '../../../features/run-protocol/models/execution
       @if (currentRun()) {
         <div class="status-center">
           @switch (currentRun()?.status) {
-            @case ('RUNNING') {
+            @case ('running') {
               <span>
                 <mat-icon fontIcon="play_arrow"></mat-icon> Protocol Running: {{ currentRun()?.protocolName }}
               </span>
             }
-            @case ('PENDING') {
+            @case ('pending') {
               <span>
                 <mat-icon fontIcon="hourglass_empty"></mat-icon> Protocol Pending: {{ currentRun()?.protocolName }}
               </span>
             }
-            @case ('COMPLETED') {
+            @case ('completed') {
               <span>
                 <mat-icon fontIcon="check_circle_outline"></mat-icon> Protocol Completed: {{ currentRun()?.protocolName }}
               </span>
             }
-            @case ('FAILED') {
+            @case ('failed') {
               <span>
                 <mat-icon fontIcon="error_outline"></mat-icon> Protocol Failed: {{ currentRun()?.protocolName }}
               </span>
             }
-            @case ('CANCELLED') {
+            @case ('cancelled') {
               <span>
                 <mat-icon fontIcon="cancel"></mat-icon> Protocol Cancelled: {{ currentRun()?.protocolName }}
               </span>

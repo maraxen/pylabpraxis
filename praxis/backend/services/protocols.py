@@ -132,7 +132,18 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
       statuses,
     )
     stmt = select(self.model).options(
-      joinedload(self.model.top_level_protocol_definition),
+      joinedload(self.model.top_level_protocol_definition).selectinload(
+        FunctionProtocolDefinitionOrm.assets
+      ),
+      joinedload(self.model.top_level_protocol_definition).selectinload(
+        FunctionProtocolDefinitionOrm.parameters
+      ),
+      joinedload(self.model.top_level_protocol_definition).joinedload(
+        FunctionProtocolDefinitionOrm.source_repository
+      ),
+      joinedload(self.model.top_level_protocol_definition).joinedload(
+        FunctionProtocolDefinitionOrm.file_system_source
+      ),
     )
 
     if protocol_definition_accession_id is not None:

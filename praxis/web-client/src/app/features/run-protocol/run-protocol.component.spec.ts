@@ -21,7 +21,7 @@ describe('RunProtocolComponent', () => {
     beforeEach(async () => {
         mockStore = {
             simulationMode: signal(false), // Default to physical
-            setSimulationMode: jasmine.createSpy('setSimulationMode')
+            setSimulationMode: vi.fn()
         };
 
         const mockProtocolService = {

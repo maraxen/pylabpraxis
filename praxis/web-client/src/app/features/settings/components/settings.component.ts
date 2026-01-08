@@ -32,7 +32,7 @@ type Theme = 'light' | 'dark' | 'system';
     MatExpansionModule,
     MatButtonModule,
     MatDividerModule
-],
+  ],
   template: `
     <div class="p-6">
       <h1 class="text-3xl font-bold mb-6">Settings</h1>
@@ -211,6 +211,24 @@ type Theme = 'light' | 'dark' | 'system';
              <mat-card-subtitle>Manage local database</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content class="pt-4">
+             <div class="mb-6">
+                <h3 class="font-medium">Export/Import State</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Export your browser data for backup or import a previous backup.
+                </p>
+                <div class="flex gap-4">
+                  <button mat-stroked-button (click)="exportData()">
+                    <mat-icon>download</mat-icon> Export Database
+                  </button>
+                  <button mat-stroked-button (click)="fileInput.click()">
+                    <mat-icon>upload</mat-icon> Import Database
+                  </button>
+                  <input #fileInput type="file" accept=".db" hidden (change)="importData($event)" />
+                </div>
+             </div>
+
+             <mat-divider class="my-4"></mat-divider>
+
              <div class="flex items-center justify-between">
                <div>
                  <h3 class="font-medium">Reset Asset Inventory</h3>
@@ -281,6 +299,47 @@ export class SettingsComponent {
           this.snackBar.open('Failed to reset inventory', 'Close', { duration: 3000, panelClass: 'error-snackbar' });
         }
       }
+    });
+  }
+
+  async exportData() {
+    try {
+      await this.sqlite.exportDatabase();
+      this.snackBar.open('Database exported', 'OK', { duration: 3000 });
+    } catch (err) {
+      console.error(err);
+      this.snackBar.open('Export failed', 'OK', { duration: 3000 });
+    }
+  }
+
+  async importData(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: {
+        title: 'Import Database?',
+        message: 'This will replace all current data with the backup file. This action cannot be undone and the page will refresh.',
+        confirmText: 'Import and Refresh',
+        color: 'warn',
+        icon: 'upload'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(async result => {
+      if (result) {
+        try {
+          await this.sqlite.importDatabase(file);
+          this.snackBar.open('Database imported - refreshing...', 'OK', { duration: 2000 });
+          setTimeout(() => window.location.reload(), 2000);
+        } catch (err) {
+          console.error(err);
+          this.snackBar.open('Import failed', 'OK', { duration: 3000 });
+        }
+      }
+      // Reset input value so same file can be selected again
+      input.value = '';
     });
   }
 }

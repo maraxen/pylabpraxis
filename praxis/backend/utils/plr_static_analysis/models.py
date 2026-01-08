@@ -120,6 +120,8 @@ class ProtocolFunctionInfo(BaseModel):
   # Computation graph extracted from the function body
   computation_graph: dict[str, Any] | None = None
   source_hash: str | None = None
+  # Whether this protocol requires deck setup (False for machine-only protocols)
+  requires_deck: bool = True
 
 
 # =============================================================================
@@ -465,6 +467,24 @@ MACHINE_FRONTEND_TYPES = _frontend_types
 MACHINE_BACKEND_TYPES = _backend_types
 FRONTEND_TO_BACKEND_MAP = _frontend_to_backend
 
+# Backend type → Frontend FQN mapping for code generation
+BACKEND_TYPE_TO_FRONTEND_FQN: dict[PLRClassType, str] = {
+  PLRClassType.LH_BACKEND: "pylabrobot.liquid_handling.LiquidHandler",
+  PLRClassType.PR_BACKEND: "pylabrobot.plate_reading.PlateReader",
+  PLRClassType.HS_BACKEND: "pylabrobot.heating_shaking.HeaterShaker",
+  PLRClassType.SHAKER_BACKEND: "pylabrobot.shaking.Shaker",
+  PLRClassType.TEMP_BACKEND: "pylabrobot.temperature_controlling.TemperatureController",
+  PLRClassType.CENTRIFUGE_BACKEND: "pylabrobot.centrifuging.Centrifuge",
+  PLRClassType.THERMOCYCLER_BACKEND: "pylabrobot.thermocycling.Thermocycler",
+  PLRClassType.PUMP_BACKEND: "pylabrobot.pumping.Pump",
+  PLRClassType.PUMP_ARRAY_BACKEND: "pylabrobot.pumping.PumpArray",
+  PLRClassType.FAN_BACKEND: "pylabrobot.fans.Fan",
+  PLRClassType.SEALER_BACKEND: "pylabrobot.plate_sealing.Sealer",
+  PLRClassType.PEELER_BACKEND: "pylabrobot.plate_peeling.Peeler",
+  PLRClassType.POWDER_DISPENSER_BACKEND: "pylabrobot.powder_dispensing.PowderDispenser",
+  PLRClassType.INCUBATOR_BACKEND: "pylabrobot.incubating.Incubator",
+  PLRClassType.SCARA_BACKEND: "pylabrobot.scara.SCARA",
+}
 
 # =============================================================================
 # Computation Graph Models

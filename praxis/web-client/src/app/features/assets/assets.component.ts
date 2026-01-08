@@ -13,6 +13,7 @@ import { ResourceDialogComponent } from './components/resource-dialog.component'
 import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-discovery-dialog/hardware-discovery-dialog.component';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 import { AssetDashboardComponent } from './components/asset-dashboard/asset-dashboard.component';
+import { SpatialViewComponent } from './components/spatial-view/spatial-view.component';
 import { AssetService } from './services/asset.service';
 import { switchMap, filter, finalize } from 'rxjs/operators';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -35,8 +36,9 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
     ResourceAccordionComponent,
     DefinitionsListComponent,
     AssetDashboardComponent,
+    SpatialViewComponent,
     HardwareDiscoveryButtonComponent
-],
+  ],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col">
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
@@ -79,6 +81,18 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
             </ng-template>
             <div class="h-full overflow-hidden bg-[var(--mat-sys-surface-variant)] relative p-4">
               <app-asset-dashboard></app-asset-dashboard>
+            </div>
+          </mat-tab>
+
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <div class="flex items-center gap-2 px-2 py-1">
+                <mat-icon class="!w-5 !h-5 !text-[20px]">map</mat-icon>
+                <span class="font-medium">Spatial View</span>
+              </div>
+            </ng-template>
+            <div class="h-full overflow-hidden bg-[var(--mat-sys-surface-variant)] relative">
+              <app-spatial-view></app-spatial-view>
             </div>
           </mat-tab>
 
@@ -216,14 +230,17 @@ export class AssetsComponent implements OnInit, OnDestroy {
     this.route.queryParams.subscribe(params => {
       const type = params['type'];
       if (type === 'machine') {
-        this.selectedIndex = 1;
+        this.selectedIndex = 2;
         this.assetTypeLabel.set('Machine');
       } else if (type === 'resource') {
-        this.selectedIndex = 2;
+        this.selectedIndex = 3;
         this.assetTypeLabel.set('Resource');
       } else if (type === 'registry' || type === 'definition') {
-        this.selectedIndex = 3;
+        this.selectedIndex = 4;
         this.assetTypeLabel.set('Registry Item');
+      } else if (type === 'spatial') {
+        this.selectedIndex = 1;
+        this.assetTypeLabel.set('Asset');
       } else {
         this.selectedIndex = 0;
         this.assetTypeLabel.set('Asset');
@@ -246,14 +263,18 @@ export class AssetsComponent implements OnInit, OnDestroy {
         type = 'overview';
         break;
       case 1:
+        this.assetTypeLabel.set('Asset');
+        type = 'spatial';
+        break;
+      case 2:
         this.assetTypeLabel.set('Machine');
         type = 'machine';
         break;
-      case 2:
+      case 3:
         this.assetTypeLabel.set('Resource');
         type = 'resource';
         break;
-      case 3:
+      case 4:
         this.assetTypeLabel.set('Registry Item');
         type = 'registry';
         break;

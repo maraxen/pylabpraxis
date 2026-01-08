@@ -66,7 +66,7 @@ When a protocol argument defines indices for an itemized resource (wells, tip sp
 
 ---
 
-## Phase 2: Linked Arguments Support
+## Phase 2: Linked Arguments Support ✅
 
 When multiple protocol arguments share the same indices (e.g., source wells and destination wells, or tips and wells), they should be linked so selecting in one updates the other.
 
@@ -78,20 +78,20 @@ When multiple protocol arguments share the same indices (e.g., source wells and 
 
 ### Tasks
 
-- [ ] **Linked Argument Detection**
-  - Protocol decorator can specify `linked_to` parameter
-  - Or infer from matching Sequence lengths
-  - Example: `@protocol(tips: Sequence[TipSpot], wells: Sequence[Well], linked=["tips", "wells"])`
+- [x] **Linked Argument Detection**
+  - [x] Protocol decorator can specify `linked_to` parameter
+  - [x] Backend extracts and passes `linked_to` metadata
+  - [x] Frontend `ParameterConfigComponent` identifies linked params
 
-- [ ] **Linked Selection UI**
-  - Show both grids side-by-side
-  - Selection in one mirrors to the other
-  - Visual indication of linkage (connecting lines or shared highlight color)
-  - Option to unlink for independent selection
+- [x] **Linked Selection UI**
+  - [x] Show both grids side-by-side (via Flexbox)
+  - [x] Selection in one mirrors to the other (via `LinkedSelectorService`)
+  - [x] Visual indication of linkage (side-by-side grouping)
+  - [x] Option to unlink for independent selection (Unlink Checkbox)
 
 - [ ] **Index Mapping**
-  - Same indices selected in both
-  - Or offset mapping (source A1:A8 → dest B1:B8)
+  - [x] Same indices selected in both
+  - [ ] Offset mapping (source A1:A8 → dest B1:B8) (Future)
 
 ---
 

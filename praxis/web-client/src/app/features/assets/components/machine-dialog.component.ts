@@ -107,92 +107,79 @@ interface Step {
             </div>
           }
     
-          <!-- STEP 2: Definition Selection -->
+          <!-- STEP 2: Model & Backend Selection -->
           @if (currentStep === 1) {
             <div class="fade-in">
               <div class="flex items-center gap-2 mb-4">
                 <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
-                <h3 class="text-lg font-medium">Select {{ selectedCategory }} Model</h3>
+                <h3 class="text-lg font-medium">Select Model & Driver</h3>
               </div>
-              <mat-form-field appearance="outline" class="w-full">
-                <mat-label>Search Model</mat-label>
-                <mat-icon matPrefix>search</mat-icon>
-                <input matInput [formControl]="definitionSearchControl" placeholder="Filter by name...">
-              </mat-form-field>
-              <div class="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto">
-                @for (def of filteredDefinitions$ | async; track def) {
-                  <div
-                    class="definition-item sys-border border rounded-lg p-3 cursor-pointer flex justify-between items-center transition-colors"
-                    (click)="selectDefinition(def)">
-                    <div class="flex flex-col">
-                      <span class="font-medium">{{ def.name }}</span>
-                      <span class="text-xs sys-text-secondary">{{ def.manufacturer }} - {{ def.model || getShortFqn(def.fqn || '') }}</span>
-                    </div>
-                    <mat-icon>chevron_right</mat-icon>
-                  </div>
-                }
-                @if ((filteredDefinitions$ | async)?.length === 0) {
-                  <div class="text-center p-8 sys-text-secondary">
-                    No matching models found.
-                  </div>
-                }
-              </div>
-            </div>
-          }
-    
-          <!-- STEP 3: Backend Selection -->
-          @if (currentStep === 2) {
-            <div class="fade-in">
-              <div class="flex items-center gap-2 mb-4">
-                <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
-                <h3 class="text-lg font-medium">Configure Driver</h3>
-              </div>
-              <div class="sys-surface-container border sys-border rounded-lg p-4 mb-4 flex items-center gap-3">
-                <mat-icon class="sys-text-secondary">precision_manufacturing</mat-icon>
-                <div>
-                  <div class="font-medium">{{ selectedDefinition?.name }}</div>
-                  <div class="text-xs sys-text-secondary">{{ selectedDefinition?.manufacturer }}</div>
-                </div>
-              </div>
-              <mat-form-field appearance="outline" class="w-full">
-                <mat-label>Backend / Driver</mat-label>
-                <mat-select formControlName="backend_driver">
-                  <mat-option [value]="'sim'" class="font-mono text-sm">
-                    <span class="font-semibold text-primary">Simulated</span> (ChatterBoxBackend)
-                  </mat-option>
-                  @if (selectedDefinition?.compatible_backends?.length) {
-                    <mat-divider></mat-divider>
-                    @for (backend of selectedDefinition?.compatible_backends; track backend) {
-                      <mat-option [value]="backend" class="font-mono text-xs">
-                        {{ getShortBackendName(backend) }}
-                      </mat-option>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Left: Model Selection -->
+                <div class="flex flex-col gap-2">
+                  <mat-form-field appearance="outline" class="w-full praxis-search-field">
+                    <mat-label>Search Model</mat-label>
+                    <mat-icon matPrefix>search</mat-icon>
+                    <input matInput [formControl]="definitionSearchControl" placeholder="Filter by name...">
+                  </mat-form-field>
+                  <div class="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2">
+                    @for (def of filteredDefinitions$ | async; track def) {
+                      <div
+                        class="definition-item sys-border border rounded-lg p-3 cursor-pointer flex justify-between items-center transition-colors"
+                        [class.selected-def]="selectedDefinition?.accession_id === def.accession_id"
+                        (click)="selectDefinition(def)">
+                        <div class="flex flex-col">
+                          <span class="font-medium text-sm">{{ def.name }}</span>
+                          <span class="text-[10px] sys-text-secondary">{{ def.manufacturer }} - {{ def.model || getShortFqn(def.fqn || '') }}</span>
+                        </div>
+                        @if (selectedDefinition?.accession_id === def.accession_id) {
+                          <mat-icon class="text-primary">check_circle</mat-icon>
+                        } @else {
+                          <mat-icon class="text-xs opacity-20">chevron_right</mat-icon>
+                        }
+                      </div>
                     }
-                  }
-                </mat-select>
-                @if (isBrowserMode) {
-                  <mat-hint>Browser mode defaults to 'Simulated'</mat-hint>
-                }
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="w-full">
-                <mat-label>Name</mat-label>
-                <input matInput formControlName="name" placeholder="e.g. Robot 1">
-                @if (form.get('name')?.hasError('required')) {
-                  <mat-error>Name is required</mat-error>
-                }
-              </mat-form-field>
-              @if (form.get('backend_driver')?.value === 'sim') {
-                <div class="info-box flex flex-col gap-2 p-3 rounded-lg text-sm">
-                  <div class="flex items-center gap-2 font-medium">
-                    <mat-icon class="!w-5 !h-5 text-sm">info</mat-icon> Simulation Mode
                   </div>
-                  <p>This machine will be created in simulation mode. No physical hardware connection is required.</p>
                 </div>
-              }
+
+                <!-- Right: Backend & Basic Details -->
+                <div class="flex flex-col gap-3 p-4 sys-surface-container rounded-xl border sys-border" [class.opacity-50]="!selectedDefinition">
+                   <h4 class="text-sm font-bold uppercase tracking-wider text-sys-text-tertiary">Configuration</h4>
+                   
+                   <mat-form-field appearance="outline" class="w-full">
+                    <mat-label>Driver / Backend</mat-label>
+                    <mat-select formControlName="backend_driver" panelClass="theme-aware-panel">
+                      <mat-option [value]="'sim'" class="font-mono text-sm">
+                        <span class="font-semibold text-primary">Simulated</span>
+                      </mat-option>
+                      @if (selectedDefinition?.compatible_backends?.length) {
+                        <mat-divider></mat-divider>
+                        @for (backend of selectedDefinition?.compatible_backends; track backend) {
+                          <mat-option [value]="backend" class="font-mono text-xs">
+                            {{ getShortBackendName(backend) }}
+                          </mat-option>
+                        }
+                      }
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="w-full">
+                    <mat-label>Instance Name</mat-label>
+                    <input matInput formControlName="name" placeholder="e.g. Robot 1">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="w-full">
+                    <mat-label>Location (Optional)</mat-label>
+                    <input matInput formControlName="location_label" placeholder="e.g. Bench A">
+                  </mat-form-field>
+                </div>
+              </div>
             </div>
           }
     
-          <!-- STEP 4: Capabilities & Connection -->
-          @if (currentStep === 3) {
+          <!-- STEP 3: Capabilities & Connection -->
+          @if (currentStep === 2) {
             <div class="fade-in">
               <div class="flex items-center gap-2 mb-4">
                 <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
@@ -245,7 +232,7 @@ interface Step {
               <div class="mt-4">
                 <mat-form-field appearance="outline" class="w-full">
                   <mat-label>Initial Status</mat-label>
-                  <mat-select formControlName="status">
+                  <mat-select formControlName="status" panelClass="theme-aware-panel">
                     <mat-option [value]="MachineStatus.OFFLINE">Offline</mat-option>
                     <mat-option [value]="MachineStatus.IDLE">Idle</mat-option>
                   </mat-select>
@@ -260,7 +247,7 @@ interface Step {
       <mat-dialog-actions align="end" class="flex-shrink-0 border-t sys-border p-4 z-10">
         <button mat-button mat-dialog-close>Cancel</button>
     
-        @if (currentStep < 3) {
+        @if (currentStep < 2) {
           <button mat-flat-button color="primary"
             [disabled]="!canProceed()"
             (click)="nextStep()">
@@ -268,7 +255,7 @@ interface Step {
           </button>
         }
     
-        @if (currentStep === 3) {
+        @if (currentStep === 2) {
           <button mat-flat-button color="primary"
             [disabled]="form.invalid"
             (click)="save()">
@@ -335,6 +322,11 @@ interface Step {
       background-color: var(--mat-sys-primary-container, #e8eaf6); /* Subtle tint on hover */
     }
 
+    .definition-item.selected-def {
+      border-color: var(--mat-sys-primary);
+      background-color: var(--mat-sys-primary-container);
+    }
+
     /* Info Box */
     .info-box {
       background-color: var(--mat-sys-secondary-container, #e3f2fd);
@@ -373,9 +365,8 @@ export class MachineDialogComponent implements OnInit {
   currentStep = 0;
   steps: Step[] = [
     { label: 'Category', completed: false },
-    { label: 'Model', completed: false },
-    { label: 'Backend', completed: false },
-    { label: 'Config', completed: false }
+    { label: 'Model & Driver', completed: false },
+    { label: 'Optional Config', completed: false }
   ];
 
   // Category Selection
@@ -396,7 +387,8 @@ export class MachineDialogComponent implements OnInit {
     connection_info: ['', jsonValidator],
     user_configured_capabilities: ['', jsonValidator],
     machine_definition_accession_id: [null as string | null],
-    machine_category: ['']
+    machine_category: [''],
+    location_label: ['']
   });
 
   ngOnInit() {
@@ -430,7 +422,6 @@ export class MachineDialogComponent implements OnInit {
   selectDefinition(def: MachineDefinition) {
     this.selectedDefinition = def;
     this.onDefinitionSelected(def);
-    this.nextStep();
   }
 
   onDefinitionSelected(def: MachineDefinition) {
@@ -476,8 +467,7 @@ export class MachineDialogComponent implements OnInit {
 
   canProceed(): boolean {
     if (this.currentStep === 0) return !!this.selectedCategory;
-    if (this.currentStep === 1) return !!this.selectedDefinition;
-    if (this.currentStep === 2) return this.form.get('backend_driver')?.valid && this.form.get('name')?.valid ? true : false;
+    if (this.currentStep === 1) return !!this.selectedDefinition && this.form.get('name')?.valid && this.form.get('backend_driver')?.valid ? true : false;
     return false;
   }
 

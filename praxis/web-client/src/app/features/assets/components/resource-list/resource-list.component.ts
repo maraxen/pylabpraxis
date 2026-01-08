@@ -4,15 +4,11 @@ import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { AssetService } from '../../services/asset.service';
-import { Resource, ResourceStatus } from '../../models/asset.models';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { debounceTime, distinctUntilChanged, startWith, switchMap } from 'rxjs/operators';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { Resource } from '../../models/asset.models';
+import { ResourceFiltersComponent, ResourceFilterState } from '../resource-filters/resource-filters.component';
 
 @Component({
   selector: 'app-resource-list',
@@ -23,19 +19,16 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
-    MatInputModule,
-    MatFormFieldModule,
     MatMenuModule,
     MatDividerModule,
-    ReactiveFormsModule
+    ResourceFiltersComponent
   ],
   template: `
     <div class="resource-list-container">
-      <mat-form-field appearance="outline" class="filter-field">
-        <mat-label>Filter Resources</mat-label>
-        <input matInput [formControl]="filterControl">
-        <mat-icon matSuffix>search</mat-icon>
-      </mat-form-field>
+      <app-resource-filters
+        [resources]="resources()"
+        (filtersChange)="onFiltersChange($event)">
+      </app-resource-filters>
 
       <table mat-table [dataSource]="filteredResources()" class="mat-elevation-z2">
         <!-- Name Column -->
@@ -89,7 +82,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
         <!-- Row shown when there is no matching data. -->
         <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell" colspan="5">No resources matching the filter "{{ filterControl.value }}"</td>
+          <td class="mat-cell" colspan="5">No resources matching the filters</td>
         </tr>
       </table>
 
@@ -121,11 +114,6 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
   styles: [`
     .resource-list-container {
       padding: 16px;
-    }
-
-    .filter-field {
-      width: 100%;
-      margin-bottom: 16px;
     }
 
     .mat-elevation-z2 {
@@ -164,7 +152,6 @@ export class ResourceListComponent {
   private assetService = inject(AssetService);
   resources = signal<Resource[]>([]);
   filteredResources = signal<Resource[]>([]);
-  filterControl = new FormControl('', { nonNullable: true });
 
   displayedColumns: string[] = ['name', 'status', 'definition', 'parent', 'actions'];
 
@@ -173,22 +160,13 @@ export class ResourceListComponent {
 
   constructor() {
     this.loadResources();
-
-    this.filterControl.valueChanges.pipe(
-      takeUntilDestroyed(),
-      debounceTime(300),
-      distinctUntilChanged(),
-      startWith('')
-    ).subscribe(filterValue => {
-      this.applyFilter(filterValue);
-    });
   }
 
   loadResources(): void {
     this.assetService.getResources().subscribe(
       (data) => {
         this.resources.set(data);
-        this.applyFilter(this.filterControl.value);
+        this.filteredResources.set(data); // Initial set
       },
       (error) => {
         console.error('Error fetching resources:', error);
@@ -196,16 +174,55 @@ export class ResourceListComponent {
     );
   }
 
-  private applyFilter(filterValue: string): void {
-    const lowerCaseFilter = filterValue.toLowerCase();
-    this.filteredResources.set(
-      this.resources().filter(resource =>
-        resource.name.toLowerCase().includes(lowerCaseFilter) ||
-        resource.status.toLowerCase().includes(lowerCaseFilter) ||
-        resource.resource_definition_accession_id?.toLowerCase().includes(lowerCaseFilter) ||
-        resource.parent_accession_id?.toLowerCase().includes(lowerCaseFilter)
-      )
-    );
+  onFiltersChange(filters: ResourceFilterState): void {
+    const data = this.resources();
+    const searchLower = filters.search.toLowerCase();
+
+    const filtered = data.filter(resource => {
+      // Search
+      const matchesSearch = !filters.search ||
+        resource.name.toLowerCase().includes(searchLower) ||
+        resource.resource_definition_accession_id?.toLowerCase().includes(searchLower) ||
+        resource.parent_accession_id?.toLowerCase().includes(searchLower);
+
+      // Status
+      const matchesStatus = filters.status.length === 0 ||
+        (resource.status && filters.status.includes(resource.status));
+
+      // Category
+      const matchesCategory = filters.categories.length === 0 ||
+        ((resource as any).plr_category && filters.categories.includes((resource as any).plr_category));
+
+      // Brand
+      const matchesBrand = filters.brands.length === 0 ||
+        ((resource as any).definition?.vendor && filters.brands.includes((resource as any).definition.vendor));
+
+      return matchesSearch && matchesStatus && matchesCategory && matchesBrand;
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+      let comparison = 0;
+      switch (filters.sort_by) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'category':
+          const catA = (a as any).plr_category || '';
+          const catB = (b as any).plr_category || '';
+          comparison = catA.localeCompare(catB);
+          break;
+        case 'created_at':
+          // Assuming created_at exists, if not fall back to name or 0
+          const dateA = (a as any).created_at ? new Date((a as any).created_at).getTime() : 0;
+          const dateB = (b as any).created_at ? new Date((b as any).created_at).getTime() : 0;
+          comparison = dateA - dateB;
+          break;
+      }
+      return filters.sort_order === 'asc' ? comparison : -comparison;
+    });
+
+    this.filteredResources.set(filtered);
   }
 
   onContextMenu(event: MouseEvent, resource: Resource) {

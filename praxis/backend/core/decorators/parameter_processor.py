@@ -73,6 +73,7 @@ def _process_parameter(
       "description": p_description,
       "constraints": p_constraints if isinstance(p_constraints, dict) else {},
       "ui_hint": p_ui_hints,
+      "linked_to": param_meta_entry.get("linked_to"),
     }
     if data.preconfigure_deck and param_name_sig == data.deck_param_name:
       param_args["is_deck_param"] = True

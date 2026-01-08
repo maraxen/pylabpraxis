@@ -16,6 +16,7 @@ from praxis.backend.models.orm.protocol import (
 )
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
 from praxis.backend.models.orm.workcell import WorkcellOrm
+from praxis.backend.models.enums import AssetType
 
 _last_v7_timestamp = None
 
@@ -70,6 +71,7 @@ class MachineFactory(SQLAlchemyModelFactory):
 
     name = factory.Faker("word")
     fqn = factory.Faker("word")
+    asset_type = AssetType.MACHINE
     workcell_accession_id = factory.SelfAttribute("workcell.accession_id")
 
     workcell = factory.SubFactory(
@@ -89,6 +91,7 @@ class ResourceDefinitionFactory(SQLAlchemyModelFactory):
 
     name = factory.Faker("word")
     fqn = factory.Faker("word")
+    plr_definition_details_json = {"num_items_x": 12, "num_items_y": 8}
 
 
 class DeckDefinitionFactory(SQLAlchemyModelFactory):
@@ -131,6 +134,7 @@ class DeckFactory(SQLAlchemyModelFactory):
         machine_def = factory.SubFactory(MachineFactory)
 
     name = factory.Faker("word")
+    asset_type = AssetType.DECK
 
     # Use the transient parameters to correctly populate the model's foreign key fields.
     deck_type_id = factory.LazyAttribute(lambda o: o.deck_type_def.accession_id)
@@ -152,6 +156,7 @@ class ResourceFactory(SQLAlchemyModelFactory):
         res_def = factory.SubFactory(ResourceDefinitionFactory)
 
     name = factory.Faker("word")
+    asset_type = AssetType.RESOURCE
     resource_definition_accession_id = factory.LazyAttribute(
         lambda o: o.res_def.accession_id
     )

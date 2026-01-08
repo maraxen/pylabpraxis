@@ -28,7 +28,7 @@ import { MachineDefinitionAccordionComponent } from '../machine-definition-accor
     MatTabsModule,
     ReactiveFormsModule,
     MachineDefinitionAccordionComponent
-],
+  ],
   template: `
     <div class="definitions-list-container">
       <mat-tab-group animationDuration="0ms">
@@ -50,7 +50,7 @@ import { MachineDefinitionAccordionComponent } from '../machine-definition-accor
             </div>
           </ng-template>
           <div class="resource-tab-content">
-            <mat-form-field appearance="outline" class="filter-field">
+            <mat-form-field appearance="outline" class="filter-field praxis-search-field">
               <mat-label>Filter Resource Definitions</mat-label>
               <input matInput [formControl]="resourceFilterControl">
               <mat-icon matSuffix>search</mat-icon>

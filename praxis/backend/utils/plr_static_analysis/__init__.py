@@ -13,6 +13,7 @@ Usage:
 """
 
 from praxis.backend.utils.plr_static_analysis.models import (
+  BACKEND_TYPE_TO_FRONTEND_FQN,
   FRONTEND_TO_BACKEND_MAP,
   MACHINE_BACKEND_TYPES,
   MACHINE_FRONTEND_TYPES,
@@ -39,6 +40,7 @@ __all__ = [
   "MACHINE_FRONTEND_TYPES",
   "MACHINE_BACKEND_TYPES",
   "FRONTEND_TO_BACKEND_MAP",
+  "BACKEND_TYPE_TO_FRONTEND_FQN",
   "CapabilityRequirement",
   "ProtocolRequirements",
   "CapabilityMatchResult",

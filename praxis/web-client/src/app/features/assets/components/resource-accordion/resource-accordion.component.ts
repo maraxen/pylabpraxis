@@ -64,7 +64,7 @@ export interface ResourceDefinitionGroup {
     AssetStatusChipComponent,
     ResourceFiltersComponent,
     ResourceChipsComponent
-],
+  ],
   template: `
     <div class="resource-accordion-container">
       <!-- Resource Filters -->
@@ -344,7 +344,8 @@ export class ResourceAccordionComponent implements OnInit {
   activeFilters = signal<ResourceFilterState>({
     search: '',
     status: [],
-    category: [],
+    categories: [],
+    brands: [],
     machine_id: null,
     show_discarded: false,
     sort_by: 'name',
@@ -452,8 +453,8 @@ export class ResourceAccordionComponent implements OnInit {
     let groups = this.resourceGroups();
 
     // 1. Filter by Category
-    if (filters.category.length > 0) {
-      groups = groups.filter(g => filters.category.includes(g.category));
+    if (filters.categories.length > 0) {
+      groups = groups.filter(g => filters.categories.includes(g.category));
     }
 
     return groups.map(group => {

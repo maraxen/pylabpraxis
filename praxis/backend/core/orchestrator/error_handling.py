@@ -4,12 +4,14 @@ import datetime
 import json
 import traceback
 import uuid
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+if TYPE_CHECKING:
+  from praxis.backend.core.protocols.scheduler import IProtocolScheduler
+
 from praxis.backend.core.asset_manager import AssetManager
-from praxis.backend.core.protocols.scheduler import IProtocolScheduler
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models import (
   MachineStatusEnum,
@@ -184,7 +186,7 @@ class ErrorHandlingMixin:
     # Note: self.scheduler is typed as Any | None in Orchestrator, so we check for existence
     if hasattr(self, "scheduler") and self.scheduler:
       try:
-        await cast(IProtocolScheduler, self.scheduler).complete_scheduled_run(run_accession_id)
+        await cast("IProtocolScheduler", self.scheduler).complete_scheduled_run(run_accession_id)
       except Exception:
         logger.exception(
           "ORCH: Failed to complete scheduled run %s in scheduler",

@@ -13,7 +13,7 @@ describe('FilterResultService', () => {
         expect(service).toBeTruthy();
     });
 
-    describe('computeOptionAvailability', () => {
+    describe('computeOptionMetrics', () => {
         interface TestItem {
             category: string;
             value: number;
@@ -32,7 +32,7 @@ describe('FilterResultService', () => {
         ];
 
         it('should compute counts and disabled status correctly', () => {
-            const result = service.computeOptionAvailability(
+            const result = service.computeOptionMetrics(
                 testData,
                 (item, value) => item.category === value,
                 options
@@ -51,6 +51,20 @@ describe('FilterResultService', () => {
             // Cat C: 0 matches
             expect(result[2].count).toBe(0);
             expect(result[2].disabled).toBe(true);
+        });
+
+        it('should handle multi-select metrics (delta counting placeholder logic)', () => {
+            const result = service.computeOptionMetrics(
+                testData,
+                (item, value) => item.category === value,
+                options,
+                ['A'],
+                true
+            );
+
+            expect(result[0].count).toBe(2);
+            expect(result[1].count).toBe(1);
+            expect(result[2].count).toBe(0);
         });
     });
 });

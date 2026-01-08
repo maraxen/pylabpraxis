@@ -68,6 +68,7 @@ export interface Machine extends AssetBase {
   maintenance_enabled?: boolean;
   maintenance_schedule_json?: MaintenanceSchedule;
   last_maintenance_json?: Record<string, MaintenanceRecord>;
+  workcell_accession_id?: string;
 }
 
 export interface MachineCreate {
@@ -93,6 +94,8 @@ export interface Resource extends AssetBase {
   status_details?: string;
   resource_definition_accession_id?: string;
   parent_accession_id?: string;
+  machine_location_accession_id?: string;
+  workcell_accession_id?: string;
   children?: Resource[];
 }
 
@@ -116,6 +119,7 @@ export interface MachineDefinition {
   compatible_backends?: string[];
   capabilities_config?: any;
   connection_config?: any;
+  frontend_fqn?: string;
 }
 
 export interface MachineCapabilityConfigSchema {
@@ -163,5 +167,13 @@ export interface ActiveFilters {
   vendor: (string | number)[];
   num_items: (string | number)[];
   plate_type: (string | number)[];
+}
+
+export interface Workcell {
+  accession_id: string;
+  name: string;
+  description?: string;
+  physical_location?: string;
+  status: string;
 }
 

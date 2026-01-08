@@ -50,7 +50,7 @@ class StartRunResponse(BaseModel):
 
 
 @router.post(
-  "/runs",
+  "/runs/actions/start",
   response_model=StartRunResponse,
   status_code=status.HTTP_201_CREATED,
   tags=["Protocol Runs"],
@@ -95,6 +95,19 @@ class QueuedRunResponse(BaseModel):
   protocol_name: str | None = None
 
 
+router.include_router(
+  create_crud_router(
+    service=ProtocolDefinitionCRUDService(FunctionProtocolDefinitionOrm),
+    prefix="/definitions",
+    tags=["Protocol Definitions"],
+    create_schema=FunctionProtocolDefinitionCreate,
+    update_schema=FunctionProtocolDefinitionUpdate,
+    response_schema=FunctionProtocolDefinitionResponse,
+  ),
+)
+
+
+# Note: Specific routes must come before the CRUD router to take precedence
 @router.post(
   "/runs/{run_id}/cancel",
   response_model=CancelRunResponse,
@@ -174,21 +187,8 @@ async def get_protocol_queue(
 
 router.include_router(
   create_crud_router(
-    service=ProtocolDefinitionCRUDService(FunctionProtocolDefinitionOrm),
-    prefix="/definitions",
-    tags=["Protocol Definitions"],
-    create_schema=FunctionProtocolDefinitionCreate,
-    update_schema=FunctionProtocolDefinitionUpdate,
-    response_schema=FunctionProtocolDefinitionResponse,
-  ),
-)
-
-# Note: The /runs CRUD endpoints are kept for direct record management,
-# but the POST /runs endpoint above handles starting actual execution.
-router.include_router(
-  create_crud_router(
     service=ProtocolRunService(ProtocolRunOrm),
-    prefix="/runs/records",
+    prefix="/runs",
     tags=["Protocol Runs"],
     create_schema=ProtocolRunCreate,
     update_schema=ProtocolRunUpdate,

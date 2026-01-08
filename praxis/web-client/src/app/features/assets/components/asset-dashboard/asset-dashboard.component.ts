@@ -22,7 +22,7 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
     RouterLink,
     RouterLink,
     NgxSkeletonLoaderModule
-],
+  ],
   template: `
     <div class="h-full flex flex-col gap-6 overflow-y-auto">
       <!-- Stats Cards -->
@@ -38,13 +38,22 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
               @if (isLoading()) {
                  <ngx-skeleton-loader count="1" appearance="line" [theme]="{ width: '40px', height: '24px', 'margin-bottom': '0' }"></ngx-skeleton-loader>
               } @else {
-                 {{ onlineMachinesCount() }}<span class="text-lg font-normal text-sys-text-tertiary">/{{ totalMachinesCount() }}</span>
+                 {{ physicalOnlineMachinesCount() }}<span class="text-lg font-normal text-sys-text-tertiary">/{{ physicalMachinesCount() }}</span>
               }
             </span>
-            <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Machines Online</span>
+            <span class="text-[10px] font-medium text-sys-text-tertiary uppercase tracking-wide">Physical Machines Online</span>
+          </div>
+          <!-- Simulated Counter Mini -->
+          <div class="ml-auto flex flex-col items-end opacity-60">
+            <span class="text-sm font-bold text-sys-text-secondary">
+              @if (!isLoading()) {
+                {{ simulatedOnlineMachinesCount() }}/{{ simulatedMachinesCount() }}
+              }
+            </span>
+            <span class="text-[8px] uppercase font-bold tracking-tighter">Simulated</span>
           </div>
           @if (machinesAttentionCount() > 0) {
-            <div class="absolute top-4 right-4 flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-400/10 border border-red-400/20">
+            <div class="absolute -top-2 -right-2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-400/10 border border-red-400/20 backdrop-blur-md shadow-lg">
               <span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>
               <span class="text-xs font-bold text-red-400">{{ machinesAttentionCount() }} Issues</span>
             </div>
@@ -153,11 +162,12 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
                 @for (alert of allAlerts(); track alert.id) {
                   <div class="flex items-center gap-3 p-3 rounded-xl bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] hover:bg-surface-elevated transition-colors cursor-pointer group"
                        (click)="navigateTo(alert.type === 'machine' ? 'machine' : 'resource')">
-                    <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" 
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 mr-1" 
                          [class.bg-red-400-20]="alert.severity === 'error'"
                          [class.bg-amber-400-20]="alert.severity === 'warning'">
                       <mat-icon [class.text-red-400]="alert.severity === 'error'"
-                                [class.text-amber-400]="alert.severity === 'warning'">
+                                [class.text-amber-400]="alert.severity === 'warning'"
+                                class="!w-6 !h-6 !text-[24px]">
                         {{ alert.icon }}
                       </mat-icon>
                     </div>
@@ -208,9 +218,20 @@ export class AssetDashboardComponent implements OnInit, OnDestroy {
 
   // Computed Stats
   totalMachinesCount = computed(() => this.machines().length);
-  onlineMachinesCount = computed(() =>
-    this.machines().filter(m => m.status !== MachineStatus.OFFLINE && m.status !== MachineStatus.ERROR).length
+
+  physicalMachines = computed(() => this.machines().filter(m => !m.is_simulation_override));
+  simulatedMachines = computed(() => this.machines().filter(m => m.is_simulation_override));
+
+  physicalMachinesCount = computed(() => this.physicalMachines().length);
+  simulatedMachinesCount = computed(() => this.simulatedMachines().length);
+
+  physicalOnlineMachinesCount = computed(() =>
+    this.physicalMachines().filter(m => m.status !== MachineStatus.OFFLINE && m.status !== MachineStatus.ERROR).length
   );
+  simulatedOnlineMachinesCount = computed(() =>
+    this.simulatedMachines().filter(m => m.status !== MachineStatus.OFFLINE && m.status !== MachineStatus.ERROR).length
+  );
+
   machinesAttentionCount = computed(() =>
     this.machines().filter(m => m.status === MachineStatus.ERROR || m.status === MachineStatus.OFFLINE).length
   );

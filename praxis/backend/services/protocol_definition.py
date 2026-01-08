@@ -13,6 +13,7 @@ from praxis.backend.models.orm.protocol import (
   ParameterDefinitionOrm,
   ProtocolSourceRepositoryOrm,
 )
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.pydantic_internals.protocol import (
   AssetRequirementModel,
   FunctionProtocolDefinitionCreate,
@@ -203,11 +204,9 @@ class ProtocolDefinitionCRUDService(
       },
     )
 
-    # Map hardware_requirements to ORM field
-    if "hardware_requirements" in protocol_def_data:
-      protocol_def_data["hardware_requirements_json"] = protocol_def_data.pop(
-        "hardware_requirements",
-      )
+    # The Pydantic model now uses aliases/renamed fields to match ORM
+    # so we don't need manual mapping for hardware_requirements_json or data_views_json
+    # if they are already correctly named in the dict.
 
     protocol_def = FunctionProtocolDefinitionOrm(
       **protocol_def_data,
@@ -265,9 +264,8 @@ class ProtocolDefinitionCRUDService(
     params_data = update_data.pop("parameters", None)
     assets_data = update_data.pop("assets", None)
 
-    # Map hardware_requirements to ORM field
-    if "hardware_requirements" in update_data:
-      update_data["hardware_requirements_json"] = update_data.pop("hardware_requirements")
+    # The Pydantic model now uses aliases/renamed fields to match ORM
+    # so we don't need manual mapping for hardware_requirements_json or data_views_json
 
     # 2. Update scalar fields manually to avoid passing relationships as dicts to parent
     # We cannot use super().update(obj_in=obj_in) because obj_in still has the relationships
@@ -326,3 +324,43 @@ class ProtocolDefinitionCRUDService(
       stmt = stmt.filter(self.model.commit_hash == commit_hash)
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
+  async def get_by_fqn(
+    self,
+    db: AsyncSession,
+    fqn: str,
+  ) -> FunctionProtocolDefinitionOrm | None:
+    """Retrieve a protocol definition by its fully qualified name."""
+    stmt = select(self.model).filter(self.model.fqn == fqn)
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+  async def get_multi(
+    self,
+    db: AsyncSession,
+    *,
+    filters: SearchFilters,
+  ) -> list[FunctionProtocolDefinitionOrm]:
+    """List protocol definitions with eager loaded relationships."""
+    from sqlalchemy.orm import selectinload
+
+    from praxis.backend.services.utils.query_builder import (
+      apply_pagination,
+      apply_sorting,
+      apply_specific_id_filters,
+    )
+
+    stmt = select(self.model).options(
+      selectinload(self.model.parameters),
+      selectinload(self.model.assets),
+      selectinload(self.model.source_repository),
+      selectinload(self.model.file_system_source),
+    )
+
+    if filters.sort_by:
+      stmt = apply_sorting(stmt, self.model, filters.sort_by)
+    stmt = apply_specific_id_filters(stmt, filters, self.model)
+    stmt = apply_pagination(stmt, filters)
+
+    result = await db.execute(stmt)
+    return list(result.scalars().all())

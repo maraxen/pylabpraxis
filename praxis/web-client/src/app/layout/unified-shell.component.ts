@@ -73,9 +73,9 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
         <div class="nav-divider"></div>
 
         <!-- Views -->
-        <a class="nav-item" data-tour-id="nav-visualizer" routerLink="/app/visualizer" routerLinkActive="active" matTooltip="Deck Visualizer" matTooltipPosition="right">
+        <a class="nav-item" data-tour-id="nav-visualizer" routerLink="/app/visualizer" routerLinkActive="active" matTooltip="Workcell Visualizer" matTooltipPosition="right">
           <mat-icon>view_in_ar</mat-icon>
-          <span class="nav-label">Deck</span>
+          <span class="nav-label">Workcell</span>
         </a>
         <a class="nav-item" data-tour-id="nav-data" routerLink="/app/data" routerLinkActive="active" matTooltip="Data Analysis" matTooltipPosition="right">
           <mat-icon>bar_chart</mat-icon>

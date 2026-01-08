@@ -1,8 +1,6 @@
 """Pydantic models for runtime-specific data structures."""
 
-import uuid
-
-from pydantic import ConfigDict
+from pydantic import UUID7, ConfigDict
 
 from praxis.backend.models.orm.machine import MachineDefinitionOrm
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm
@@ -22,8 +20,8 @@ class RuntimeAssetRequirement(PraxisBaseModel):
   asset_type: str  # e.g., "asset", "deck"
   estimated_duration_ms: int | None = None
   priority: int = 1
-  reservation_id: uuid.UUID | None = None
-  suggested_asset_id: uuid.UUID | None = None  # Auto-assigned consumable suggestion
+  reservation_id: UUID7 | None = None
+  suggested_asset_id: UUID7 | None = None  # Auto-assigned consumable suggestion
 
   @property
   def asset_name(self) -> str:

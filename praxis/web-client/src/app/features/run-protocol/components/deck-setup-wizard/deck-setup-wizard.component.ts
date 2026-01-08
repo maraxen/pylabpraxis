@@ -25,20 +25,20 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
     selector: 'app-deck-setup-wizard',
     standalone: true,
     imports: [
-    MatStepperModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressBarModule,
-    MatProgressBarModule,
-    MatDialogModule,
-    DragDropModule,
-    CarrierPlacementStepComponent,
-    ResourcePlacementStepComponent,
-    VerificationStepComponent,
-    DeckViewComponent,
-    SetupInstructionsComponent,
-    RequirementsPanelComponent
-],
+        MatStepperModule,
+        MatButtonModule,
+        MatIconModule,
+        MatProgressBarModule,
+        MatProgressBarModule,
+        MatDialogModule,
+        DragDropModule,
+        CarrierPlacementStepComponent,
+        ResourcePlacementStepComponent,
+        VerificationStepComponent,
+        DeckViewComponent,
+        SetupInstructionsComponent,
+        RequirementsPanelComponent
+    ],
     template: `
         <div class="wizard-container" cdkDropListGroup>
             <div class="wizard-header">
@@ -167,11 +167,14 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
             gap: 24px;
             flex: 1;
             padding: 24px;
-            overflow: hidden;
+            overflow: hidden; /* Prevent container from scrolling */
+            min-height: 0;
         }
         
         .step-panel {
-            overflow-y: auto;
+            flex: 1;
+            overflow-y: auto; /* Allow items list to scroll */
+            min-height: 0;
         }
         
         .deck-preview {
@@ -179,6 +182,7 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
             border-radius: 8px;
             padding: 16px;
             overflow: auto;
+            min-height: 0;
         }
         
         .wizard-footer {

@@ -1,6 +1,6 @@
 # Praxis Development Roadmap
 
-**Last Updated**: 2026-01-05 (Roadmap Restructure)
+**Last Updated**: 2026-01-07 (SqliteService Unit Tests completed)
 **Current Phase**: Feature Development & Quality Assurance
 
 ---
@@ -9,24 +9,25 @@
 
 The backend simulation infrastructure is **complete** (87 tests passing). Focus now shifts to:
 
-1. **Simulation UI Integration** - Surface cached simulation results in the UI
-2. **Browser Mode Defaults** - Eliminate demo mode, make browser mode the default experience
-3. **Error Handling & State Resolution** - ✅ Complete (Backend + Frontend)
-4. **Browser Mode Defaults** - Eliminate demo mode, make browser mode the default experience
+1. **Simulation UI Integration** - Surface cached simulation results in the UI (mostly complete)
+2. **Browser Mode Defaults** - ✅ Complete (archived 2026-01-06)
+3. **Error Handling & State Resolution** - ✅ Complete (archived 2026-01-06)
+4. **JupyterLite REPL** - ✅ Core complete (archived 2026-01-06)
 5. **Chip-Based Filter Standardization** - Unified filter UX across all surfaces
-6. **Quality Assurance** - Comprehensive test suite and visual QA
+6. **Quality Assurance** - ✅ SqliteService Unit Tests complete, Playwright E2E pending.
 
 ---
 
-## Priority 1: Critical - Remaining Browser Mode Issues
+## Priority 1: Critical - Architecture & Core Issues
 
-**Goal**: Resolve final blocking issues in browser mode
+**Goal**: Resolve foundational architecture issues
 
 | Item | Status | Description | Backlog |
 |------|--------|-------------|---------|
-| **Restore Asset Selection Step** | 🔴 Regression | Asset selection step missing from workflow | [run_protocol_workflow.md](./backlog/run_protocol_workflow.md) |
-| **IndexedDB Persistence** | 🔴 Missing | SQLite DB must persist across page reloads | [browser_mode_issues.md](./backlog/browser_mode_issues.md) |
-| **DB Sync Issue** | 🔴 Root Cause | Browser praxis.db out of sync with features | [browser_mode_issues.md](./backlog/browser_mode_issues.md) |
+| **PLR Frontend/Backend Schema** | ✅ Done | Add `frontend_fqn` to machine definitions | [TECHNICAL_DEBT.md](./TECHNICAL_DEBT.md) |
+| **Serial/USB Driver Generalization** | ✅ Done | Generalize CLARIOstar pattern to all serial devices | [hardware_connectivity.md](./backlog/hardware_connectivity.md) |
+| ~~Restore Asset Selection Step~~ | ✅ Done | Asset selection step verified in code | [run_protocol_workflow.md](./backlog/run_protocol_workflow.md) |
+| ~~IndexedDB Persistence~~ | ✅ Done | `SqliteService.saveToIndexedDB()` implemented | [browser_mode.md](./backlog/browser_mode.md) |
 
 ---
 
@@ -43,24 +44,19 @@ The backend simulation infrastructure is **complete** (87 tests passing). Focus 
 
 | Item | Status | Description | Backlog |
 |------|--------|-------------|---------|
-| **Protocol Warnings** | ⏳ Todo | Show failure mode warnings in protocol selection | [simulation_ui_integration.md](./backlog/simulation_ui_integration.md) |
-| **Deck Setup Requirements** | ✅ Done | Surface requirements in deck setup wizard | [simulation_ui_integration.md](./backlog/simulation_ui_integration.md) |
-| **State Failure Visualization** | ⏳ Todo | Show state at each operation in Execution Monitor | [simulation_ui_integration.md](./backlog/simulation_ui_integration.md) |
-| **Time Travel Debugging** | ✅ Done | Inspect state at any operation step | [simulation_ui_integration.md](./backlog/simulation_ui_integration.md) |
-| **State History Timeline** | ✅ Done | Visual timeline of state changes | [simulation_ui_integration.md](./backlog/simulation_ui_integration.md) |
+| **Protocol Warnings** | ✅ Done | Show failure mode warnings in protocol selection | [simulation_ui_integration.md](./archive/2026-01-07_completed/simulation_ui_integration.md) |
+| **Deck Setup Requirements** | ✅ Done | Surface requirements in deck setup wizard | [simulation_ui_integration.md](./archive/2026-01-07_completed/simulation_ui_integration.md) |
+| **State Delta Display (8.4)** | ✅ Done | Show state at each operation in Execution Monitor | [simulation_ui_integration.md](./archive/2026-01-07_completed/simulation_ui_integration.md) |
+| **Time Travel Debugging** | ✅ Done | Inspect state at any operation step | [simulation_ui_integration.md](./archive/2026-01-07_completed/simulation_ui_integration.md) |
+| **State History Timeline** | ✅ Done | Visual timeline of state changes | [simulation_ui_integration.md](./archive/2026-01-07_completed/simulation_ui_integration.md) |
 
 ---
 
-## Priority 2: High - Browser Mode Defaults & Demo Elimination
+## Priority 2: High - Browser Mode Defaults & Demo Elimination ✅ COMPLETE
 
 **Goal**: Make browser mode the primary experience with sensible defaults
 
-| Item | Status | Description | Backlog |
-|------|--------|-------------|---------|
-| **Default Asset Population** | ⏳ Todo | 1 of every resource, 1 of every machine (simulated) | [browser_mode_defaults.md](./backlog/browser_mode_defaults.md) |
-| **Simulated Machine Indicator** | ⏳ Todo | Show "Simulated" chip on all sim-backend machines | [browser_mode_defaults.md](./backlog/browser_mode_defaults.md) |
-| **Infinite Consumables** | ⏳ Todo | Tips/consumables auto-replenish in simulation | [browser_mode_defaults.md](./backlog/browser_mode_defaults.md) |
-| **Remove Demo Mode Toggle** | ⏳ Todo | Eliminate separate demo mode - browser IS demo | [browser_mode_defaults.md](./backlog/browser_mode_defaults.md) |
+> ✅ **ARCHIVED** - All items completed 2026-01-06. See `archive/2026-01-06_completed/browser_mode_defaults.md`
 
 ---
 
@@ -70,23 +66,21 @@ The backend simulation infrastructure is **complete** (87 tests passing). Focus 
 
 | Item | Status | Description | Backlog |
 |------|--------|-------------|---------|
-| **Core Filter Chip Component** | ⏳ Todo | Reusable chip with active/inactive/disabled states | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
-| **Resource Filter Chips** | ⏳ Todo | Status, Brand, Count, Type, Volume | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
-| **Machine Filter Chips** | ⏳ Todo | Category, Simulated, Status, Backend | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
-| **Disabled Chip UX** | ⏳ Todo | Shake animation + message on disabled click | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+| **Core Filter Chip Component** | ✅ Done | Reusable chip with active/inactive/disabled states | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+| **Resource Filter Chips** | ✅ Done | Integrated Categories, Brands, Status | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+| **Machine Filter Chips** | ✅ Done | Category, Simulated, Status, Backend | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+| **Disabled Chip UX** | ✅ Done | Shake animation + message on disabled click | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
 | **Unique Name Parsing** | ⏳ Todo | Extract distinguishing name parts | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+| **Chip Filter Overflow** | ✅ Done | flex-wrap + collapse >5 into dropdown | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
 
 ---
 
-## Priority 2: High - JupyterLite REPL Enhancements
+## Priority 2: High - JupyterLite REPL ✅ COMPLETE
 
 **Goal**: Complete JupyterLite migration with search and filters
 
-| Item | Status | Description | Backlog |
-|------|--------|-------------|---------|
-| **Asset Menu Search & Filters** | ⏳ Todo | Search bar and filter chips in asset sidebar | [repl_jupyterlite.md](./backlog/repl_jupyterlite.md) |
-| **Empty State with Link** | ⏳ Todo | Link to Assets page when inventory empty | [repl_jupyterlite.md](./backlog/repl_jupyterlite.md) |
-| **Asset Preloading** | ⏳ Todo | Auto-inject resources, deck states, machines | [repl_jupyterlite.md](./backlog/repl_jupyterlite.md) |
+> ✅ **ARCHIVED** - Core integration complete 2026-01-06. See `archive/2026-01-06_completed/repl_jupyterlite.md`
+> Asset Preloading remains as future enhancement.
 
 ---
 
@@ -94,10 +88,10 @@ The backend simulation infrastructure is **complete** (87 tests passing). Focus 
 
 | Item | Status | Description | Backlog |
 |------|--------|-------------|---------|
-| **Code Quality Plan** | ⏳ Planning | Comprehensive strategy execution | [code_quality_plan.md](./backlog/code_quality_plan.md) |
-| **E2E Test Suite** | ⏳ Todo | Critical flow coverage with Playwright | [code_quality_plan.md](./backlog/code_quality_plan.md) |
-| **Unit Test Coverage** | ⏳ Todo | Service layer tests (SqliteService, etc.) | [code_quality_plan.md](./backlog/code_quality_plan.md) |
-| **Final Visual QA** | ⏳ Todo | Automated + manual review | [final_visual_qa.md](./backlog/final_visual_qa.md) |
+| **Code Quality Audit** | ✅ Partial | 12 fixed (Ruff) + `crud_base.py` | [quality_assurance.md](./backlog/quality_assurance.md) |
+| **E2E Test Suite** | ⏳ Todo | Critical flow coverage with Playwright | [quality_assurance.md](./backlog/quality_assurance.md) |
+| **Unit Test Coverage** | ✅ Done | SqliteService persistence and lifecycle tests | [quality_assurance.md](./backlog/quality_assurance.md) |
+| **Final Visual QA** | ⏳ Todo | Automated + manual review | [quality_assurance.md](./backlog/quality_assurance.md) |
 
 ---
 
@@ -105,9 +99,23 @@ The backend simulation infrastructure is **complete** (87 tests passing). Focus 
 
 | Item | Status | Description | Backlog |
 |------|--------|-------------|---------|
+| **Export/Import App State** | ✅ Done | Backup/Restore browser database | [browser_mode.md](./backlog/browser_mode.md) |
+| **Search Icon Centering** | ✅ Done | CSS fix for search input alignment | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+| **Chip Filter Overflow** | ✅ Done | Flex-wrap and collapse chips (>5) | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+| **Capability Dropdown Theme** | ✅ Done | Fix light-theme capability menu in dark mode | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
 | **Machine Capabilities Verification** | ⏳ Todo | Hamilton Starlet 96-head/iSwap verification | [browser_mode_issues.md](./backlog/browser_mode_issues.md) |
-| **Capability Dropdown Theme Sync** | ⏳ Todo | Fix light-theme-only capability menu | [browser_mode_issues.md](./backlog/browser_mode_issues.md) |
-| **Execution Monitor Filters** | ⏳ Todo | Make filters actually filter run list | [browser_mode_issues.md](./backlog/browser_mode_issues.md) |
+| **Serial Driver Migration (B)** | ✅ Done | Move FTDI/WebSerial I/O to main thread | [hardware_connectivity.md](./backlog/hardware_connectivity.md) |
+| **Hamilton E2E Validation** | ⏳ Todo | Final validation with physical Starlet | [hardware_connectivity.md](./backlog/hardware_connectivity.md) |
+
+### Migrated from Technical Debt (2026-01-07)
+
+| Item | Status | Description | Backlog |
+|------|--------|-------------|---------|
+| **SQLite Schema Mismatch** | ⏳ Todo | Add `inferred_requirements_json` column | [browser_mode.md](./backlog/browser_mode.md) |
+| **REPL Rendering Stability** | ⏳ Todo | Fix kernel refresh race condition | [repl_enhancements.md](./backlog/repl_enhancements.md) |
+| **UI Consistency** | ⏳ Todo | Standardize dropdown chips, menus | [ui_consistency.md](./backlog/ui_consistency.md) |
+| **Asset Management UX** | ⏳ Todo | Refactor Add Machine/Resource flows | [asset_management_ux.md](./backlog/asset_management_ux.md) |
+| **Dataviz & Well Selection** | ⏳ Todo | Bridge WellDataOutput with visualization | [dataviz_well_selection.md](./backlog/dataviz_well_selection.md) |
 
 ---
 
@@ -115,14 +123,47 @@ The backend simulation infrastructure is **complete** (87 tests passing). Focus 
 
 | Item | Status | Description | Backlog |
 |------|--------|-------------|---------|
-| **UI Visual Tweaks** | ⏳ Todo | Spacing on registry/machine tabs | [ui_visual_tweaks.md](./backlog/ui_visual_tweaks.md) |
-| **Protocol Inference "Sharp Bits"** | ⏳ Todo | Documentation for edge cases/gotchas | [docs.md](./backlog/docs.md) |
-| **Spatial View Filters** | ⏳ Todo | Asset location sorting/filtering | [asset_management.md](./backlog/asset_management.md) |
-| **Pre-Merge Finalization** | ⏳ Todo | Archive docs, cleanup files | [pre_merge_finalization.md](./backlog/pre_merge_finalization.md) |
+| **UI Visual Tweaks** | ⏳ Todo | Spacing on registry/machine tabs | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+| **Protocol Inference "Sharp Bits"** | ✅ Done | Documentation for edge cases/gotchas | [cleanup_finalization.md](./backlog/cleanup_finalization.md) |
+| ~~Spatial View Filters~~ | ✅ Done | Sorting/Filtering by location, name, workcell | [asset_management.md](./backlog/asset_management.md) |
+| **Pre-Merge Finalization** | ⏳ Todo | Archive docs, cleanup files | [cleanup_finalization.md](./backlog/cleanup_finalization.md) |
 
 ---
 
-## Recently Completed ✅ (2026-01-02 - 2026-01-05)
+## Recently Completed ✅ (2026-01-07)
+
+### Architecture & Hardware
+
+- **PLR Frontend/Backend Schema**: Standardized machine type detection for browser mode.
+- **Serial Driver Generalization**: Built `ISerial` abstraction supporting custom FTDI WebUSB drivers (Phase A).
+- **Main Thread Serial Migration**: Moved serial I/O and protocol logic to TypeScript main thread (Phase B).
+
+### UI Standardization & Polish
+
+- **No-Deck Protocol Support**: Enabled standalone machine protocols (Plate Readers, etc.) bypassing deck setup.
+- **Capability Dropdown Theme Sync**: Fixed Material Select panels theaming in dark mode.
+- **Search Icon Centering**: Unified search bar alignment across all features.
+- **Chip-Based Filters**: Completed standardization for Resources, Machines and Runs.
+- **Filter Result Counts**: Implemented dynamic result counts and delta counting for filter options.
+- **Filter Overflow**: Optimized filter bar for many categories (flexbox + collapse).
+- **State Delta Display**: Visualized state changes (volumes, tips) per operation.
+
+### Browser Mode Features
+
+- **Export/Import Database**: Implemented full state backup/restore for browser-mode users.
+- **REPL Code Generation**: Optimized Python generation using `frontend_fqn` for machines.
+- **Location & Maintenance Schema**: Unified `location_label` and maintenance fields across Models/DB.
+- **Linked Argument UI**: Implemented side-by-side grid selection with synchronization and unlink toggle.
+- **Protocol Inference "Sharp Bits"**: Documented resource inheritance, index mapping, and linked arguments.
+- **Protocol Inference "Sharp Bits"**: Documented resource inheritance, index mapping, and linked arguments.
+- **Systematic Linting (Phase 1)**: Executed Ruff auto-fixes (12 fixed) and addressed `crud_base.py`.
+- **Spatial View Filters**: Integrated `AssetFiltersComponent` with location/workcell search into new "Spatial View".
+- **Location & Description**: Added editable fields for physical location labeling and descriptions.
+- **SqliteService Unit Tests**: Implemented comprehensive `sql.js` and `IndexedDB` mocks to verify persistence and initialization.
+
+---
+
+## Previous Accomplishments ✅ (2026-01-05)
 
 ### Simulation UI Integration (2026-01-05)
 

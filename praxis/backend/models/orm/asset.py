@@ -79,7 +79,10 @@ class AssetOrm(Base):
     default_factory=list,
   )
 
-  __mapper_args__: ClassVar[dict] = {"polymorphic_on": asset_type, "polymorphic_identity": "asset"}  # type: ignore[override]
+  __mapper_args__: ClassVar[dict] = {
+    "polymorphic_on": asset_type,
+    "polymorphic_identity": AssetType.ASSET,
+  }  # type: ignore[override]
 
   def __repr__(self) -> str:
     """Render string representation of the Asset."""

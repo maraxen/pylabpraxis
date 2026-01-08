@@ -16,6 +16,7 @@ import { SimulationResultsService } from '@core/services/simulation-results.serv
 import { StateHistory } from '@core/models/simulation.models';
 import { StateInspectorComponent, StateDisplayComponent } from './state-inspector';
 import { StateHistoryTimelineComponent } from './state-history-timeline';
+import { StateDeltaComponent } from './state-delta/state-delta.component';
 
 /**
  * Displays detailed information about a single protocol run.
@@ -35,8 +36,10 @@ import { StateHistoryTimelineComponent } from './state-history-timeline';
     NgxSkeletonLoaderModule,
     StateInspectorComponent,
     StateDisplayComponent,
-    StateHistoryTimelineComponent
-],
+    StateDisplayComponent,
+    StateHistoryTimelineComponent,
+    StateDeltaComponent
+  ],
   template: `
     <div class="p-6 max-w-screen-xl mx-auto">
       <!-- Header -->
@@ -188,6 +191,63 @@ import { StateHistoryTimelineComponent } from './state-history-timeline';
               </mat-card>
             }
           </div>
+        </div>
+
+        <!-- Operation Timeline -->
+        <div class="mt-8">
+          <h3 class="text-lg font-bold mb-4 text-sys-text-primary">Operation Timeline</h3>
+          @if (stateHistory()?.operations; as operations) {
+            <mat-card class="detail-card">
+              <mat-card-content class="p-0">
+                <div class="operation-list">
+                  @for (operation of operations; track operation.operation_index) {
+                    <div class="operation-item p-4 border-b border-sys-outline-variant last:border-0 hover:bg-sys-surface-container-high transition-colors">
+                      <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-3">
+                          <span class="font-mono text-sm font-semibold text-sys-primary">{{ operation.operation_index + 1 }}.</span>
+                          <span class="font-mono text-sm font-bold text-sys-on-surface">{{ operation.method_name }}</span>
+                          @if (operation.resource) {
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-sys-surface-variant text-sys-on-surface-variant">{{ operation.resource }}</span>
+                          }
+                        </div>
+                        <div class="flex items-center gap-2">
+                           @if (operation.duration_ms) {
+                             <span class="text-xs font-mono text-sys-on-surface-variant">{{ (operation.duration_ms / 1000).toFixed(1) }}s</span>
+                           }
+                           <mat-icon [class]="operation.status === 'failed' ? 'text-sys-error' : 'text-sys-success'" class="!w-5 !h-5 !text-[20px]">
+                             {{ operation.status === 'failed' ? 'error' : 'check_circle' }}
+                           </mat-icon>
+                        </div>
+                      </div>
+                      
+                      @if (operation.error_message) {
+                        <div class="mb-2 text-xs text-sys-error bg-sys-error-container p-2 rounded">
+                          {{ operation.error_message }}
+                        </div>
+                      }
+
+                      <!-- State Deltas -->
+                      @if (operation.state_delta && hasKeys(operation.state_delta)) {
+                        <app-state-delta [deltas]="formatDeltas(operation.state_delta)" />
+                      }
+                    </div>
+                  }
+                  @if (operations.length === 0) {
+                    <div class="p-8 text-center text-sys-text-tertiary">
+                      No operations recorded.
+                    </div>
+                  }
+                </div>
+              </mat-card-content>
+            </mat-card>
+          } @else {
+             <!-- Loading or empty state for history -->
+             @if (isLoadingStateHistory()) {
+                <div class="flex justify-center p-8">
+                  <mat-spinner diameter="32"></mat-spinner>
+                </div>
+             }
+          }
         </div>
 
         <!-- Logs Section -->
@@ -371,6 +431,15 @@ export class RunDetailComponent implements OnInit {
 
   hasKeys(obj?: Record<string, unknown>): boolean {
     return !!obj && Object.keys(obj).length > 0;
+  }
+
+  formatDeltas(stateDelta: Record<string, number | string>): Array<{ key: string, before: number | string, after: number | string, change: number | string }> {
+    return Object.entries(stateDelta).map(([key, change]) => ({
+      key,
+      before: '-', // State before not readily available in simple delta view without lookup
+      after: '-',  // State after not readily available
+      change
+    }));
   }
 
   loadStateHistory(): void {
