@@ -1,6 +1,6 @@
 # Praxis Development Matrix
 
-**Last Updated**: 2026-01-08 (Unique Name Parsing complete, dev matrix updated)
+**Last Updated**: 2026-01-08 (Settings & Stepper Polish complete)
 **Purpose**: Consolidated view of all remaining work items with priority and difficulty ratings.
 
 ---
@@ -92,9 +92,8 @@
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
 | **SQLite Schema Mismatch** | P1 | 🟢 Easy | [browser_mode](./backlog/browser_mode.md) | Add `inferred_requirements_json` column |
-| **REPL Rendering Stability** | P2 | 🟡 Intricate | [repl_enhancements](./backlog/repl_enhancements.md) | Fix kernel refresh race condition |
-| **UI Consistency - Exec Monitor** | P2 | 🟡 Intricate | [ui_consistency](./backlog/ui_consistency.md) | Standardize dropdown chips, menus (Not Started) |
-| **Asset Management UX** | P2 | 🟡 Intricate | [asset_management_ux](./backlog/asset_management_ux.md) | Phase 2 pending (Resource cards); Phase 1/3 complete |
+| ~~UI Consistency - Exec Monitor~~ | ~~P2~~ | ~~🟡 Intricate~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Standardized chips; menus N/A) |
+| **Asset Management UX** | P2 | 🟡 Intricate | [asset_management_ux](./backlog/asset_management_ux.md) | ⚠️ Phase 1 regressions: backends in categories, theme sync, capability forms |
 | **Dataviz & Well Selection** | P2 | 🔴 Complex | [dataviz_well_selection](./backlog/dataviz_well_selection.md) | Bridge WellDataOutput with visualization |
 | ~~Skipped Tests Investigation~~ | ~~P2~~ | ~~🟢 Easy~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Fixed Orchestrator tests, cleaned frontend dead code) |
 | **Factory ORM Integration** | P2 | 🟡 Intricate | [quality_assurance](./backlog/quality_assurance.md) | Fix Factory Boy FK population |
@@ -108,6 +107,15 @@
 | **Frontend Type Safety** | P3 | 🟢 Easy | [quality_assurance](./backlog/quality_assurance.md) | Fix Blob casting and Window mocking |
 | **JupyterLite 404s/Load** | P3 | 🟡 Intricate | [repl_enhancements](./backlog/repl_enhancements.md) | Suppress 404s, optimize startup |
 | **Repo Cleanup** | P3 | 🟢 Easy | [cleanup_finalization](./backlog/cleanup_finalization.md) | Remove .pymon, debug files |
+
+### Added from User Verification (2026-01-08)
+
+| Item | Priority | Difficulty | Backlog | Description |
+|------|----------|------------|---------|-------------|
+| **Asset Management UX Regressions** | P2 | 🟡 Intricate | [asset_management_ux](./backlog/asset_management_ux.md) | Phase 1 broken: backends in categories, no theme sync, no capability forms |
+| **Angular ARIA Migration** | P2 | 🔴 Complex | [angular_aria_migration](./backlog/angular_aria_migration.md) | Multiselect + Well Selector using `@angular/aria` |
+| ~~Settings & Stepper Polish~~ | ~~P3~~ | ~~🟡 Intricate~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Icons fixed, theme selector refined) |
+| Guided Deck Setup UI | 🟢 Completed | Fix layout/scrolling in wizard |
 
 ---
 
@@ -126,6 +134,10 @@
 ### UI & UX Standardization (2026-01-08)
 
 - **UI Visual Tweaks**: Fixed spacing in Registry, alignment in Machines, and implemented themed gradients across cards and list items.
+
+### REPL Enhancements (2026-01-08)
+
+- **REPL Rendering Stability**: Fixed race condition in kernel initialization by implementing a ready signal handshake.
 
 ### Documentation & Code Quality (2026-01-07)
 

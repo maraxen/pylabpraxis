@@ -14,6 +14,7 @@ import { TutorialService } from '@core/services/tutorial.service';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { SqliteService } from '@core/services/sqlite.service';
 import { ConfirmationDialogComponent } from '@shared/components/confirmation-dialog';
 
@@ -31,7 +32,9 @@ type Theme = 'light' | 'dark' | 'system';
     MatSlideToggleModule,
     MatExpansionModule,
     MatButtonModule,
-    MatDividerModule
+    MatButtonModule,
+    MatDividerModule,
+    MatTooltipModule
   ],
   template: `
     <div class="p-6">
@@ -41,7 +44,7 @@ type Theme = 'light' | 'dark' | 'system';
         <!-- Appearance -->
         <mat-card class="glass-panel">
           <mat-card-header>
-            <mat-icon mat-card-avatar class="text-primary scale-125">palette</mat-icon>
+            <mat-icon mat-card-avatar class="text-primary scale-125 ml-1 box-content">palette</mat-icon>
             <mat-card-title>Appearance</mat-card-title>
             <mat-card-subtitle>Customize application look and feel</mat-card-subtitle>
           </mat-card-header>
@@ -52,15 +55,15 @@ type Theme = 'light' | 'dark' | 'system';
                  <p class="text-sm text-gray-500 dark:text-gray-400">Select your preferred color theme</p>
                </div>
 
-               <mat-button-toggle-group hideSingleSelectionIndicator [value]="store.theme()" (change)="setTheme($event.value)" appearance="legacy">
-                 <mat-button-toggle value="light">
-                    <mat-icon class="mr-1">light_mode</mat-icon> Light
+               <mat-button-toggle-group hideSingleSelectionIndicator [value]="store.theme()" (change)="setTheme($event.value)">
+                 <mat-button-toggle value="light" aria-label="Light Mode" matTooltip="Light Mode">
+                    <mat-icon>light_mode</mat-icon>
                  </mat-button-toggle>
-                 <mat-button-toggle value="system">
-                    <mat-icon class="mr-1">brightness_auto</mat-icon> System
+                 <mat-button-toggle value="system" aria-label="System Preference" matTooltip="System Preference">
+                    <mat-icon>brightness_auto</mat-icon>
                  </mat-button-toggle>
-                 <mat-button-toggle value="dark">
-                    <mat-icon class="mr-1">dark_mode</mat-icon> Dark
+                 <mat-button-toggle value="dark" aria-label="Dark Mode" matTooltip="Dark Mode">
+                    <mat-icon>dark_mode</mat-icon>
                  </mat-button-toggle>
                </mat-button-toggle-group>
              </div>
@@ -70,7 +73,7 @@ type Theme = 'light' | 'dark' | 'system';
         <!-- Features -->
         <mat-card class="glass-panel">
           <mat-card-header>
-            <mat-icon mat-card-avatar class="text-accent scale-125">extension</mat-icon>
+            <mat-icon mat-card-avatar class="text-accent scale-125 ml-1 box-content">extension</mat-icon>
             <mat-card-title>Features</mat-card-title>
             <mat-card-subtitle>Enable or disable optional capabilities</mat-card-subtitle>
           </mat-card-header>
@@ -106,7 +109,7 @@ type Theme = 'light' | 'dark' | 'system';
         <!-- Onboarding -->
         <mat-card class="glass-panel" data-tour-id="settings-onboarding">
           <mat-card-header>
-            <mat-icon mat-card-avatar class="text-primary scale-125">school</mat-icon>
+            <mat-icon mat-card-avatar class="text-primary scale-125 ml-1 box-content">school</mat-icon>
             <mat-card-title>Onboarding</mat-card-title>
             <mat-card-subtitle>Manage tutorial settings</mat-card-subtitle>
           </mat-card-header>
@@ -136,7 +139,7 @@ type Theme = 'light' | 'dark' | 'system';
         <!-- Remote Hardware Access -->
         <mat-card class="glass-panel">
           <mat-card-header>
-            <mat-icon mat-card-avatar class="text-warning scale-125">lan</mat-icon>
+            <mat-icon mat-card-avatar class="text-warning scale-125 ml-1 box-content">lan</mat-icon>
             <mat-card-title>Remote Hardware Access</mat-card-title>
             <mat-card-subtitle>Connect local hardware to cloud execution</mat-card-subtitle>
           </mat-card-header>
@@ -182,7 +185,7 @@ type Theme = 'light' | 'dark' | 'system';
         <!-- System Info / About -->
         <mat-card class="glass-panel">
           <mat-card-header>
-            <mat-icon mat-card-avatar class="text-secondary scale-125">info</mat-icon>
+            <mat-icon mat-card-avatar class="text-secondary scale-125 ml-1 box-content">info</mat-icon>
             <mat-card-title>About</mat-card-title>
              <mat-card-subtitle>System Information</mat-card-subtitle>
           </mat-card-header>
@@ -206,7 +209,7 @@ type Theme = 'light' | 'dark' | 'system';
          <!-- Data Management -->
          <mat-card class="glass-panel">
           <mat-card-header>
-            <mat-icon mat-card-avatar class="text-warn scale-125">storage</mat-icon>
+            <mat-icon mat-card-avatar class="text-warn scale-125 ml-1 box-content">storage</mat-icon>
             <mat-card-title>Data Management</mat-card-title>
              <mat-card-subtitle>Manage local database</mat-card-subtitle>
           </mat-card-header>
@@ -249,6 +252,30 @@ type Theme = 'light' | 'dark' | 'system';
   styles: [`
     mat-icon {
         vertical-align: middle;
+    }
+
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: var(--glass-border);
+      box-shadow: var(--glass-shadow);
+    }
+    
+    /* Fix for icon cutoff due to scaling */
+    mat-card-header {
+      overflow: visible !important;
+    }
+    
+    ::ng-deep .mat-mdc-card-header-text {
+      overflow: visible !important;
+    }
+
+    /* Override avatar clipping */
+    ::ng-deep .mat-mdc-card-header .mat-mdc-card-avatar {
+      border-radius: 0 !important;
+      overflow: visible !important;
+      margin-right: 16px !important; /* Ensure consistent gap to text */
     }
   `]
 })

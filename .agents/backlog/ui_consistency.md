@@ -13,22 +13,28 @@ Standardize UI patterns across the application for a cohesive user experience. A
 
 ---
 
-## Phase 1: Execution Monitor Consistency
+## Phase 1: Execution Monitor Standardization
 
-- [ ] Convert status display to dropdown chip (match Protocol Library pattern)
-- [ ] Audit inventory menus for consistency with Asset Management
-- [ ] Standardize popup menus for multi-item selection
+- [x] **Status Display**: Convert text/badges to `FilterChipComponent` dropdowns.
+- [x] **Filter Bar**: Standardize layout and spacing to match Asset Management.
+- [x] **Action Menus**: Audit and align popup menus (None found to standardize; buttons used instead).
 
-## Phase 2: Navigation & Labels
+## Phase 2: Navigation & Layout
 
 - [ ] Rename sidebar item "Deck" to "Workcell" or equivalent
 - [ ] Audit navigation labels for clarity and consistency
 - [ ] Implement hover-triggered overlay menus for nav items with children
 
-## Phase 3: Settings Polish
+## Phase 3: Settings & Stepper Polish
 
-- [ ] Improve Settings page layout and appearance
-- [ ] Add tooltips for accessibility
+> [!WARNING]
+> User verification confirmed these issues on 2026-01-08.
+
+- [x] **Settings Icons Cutoff**: Rounded corners cutting off icons in settings cards <!-- id: 1 -->
+- [x] **Settings Visual Consistency**: Improved layout, icon spacing, and button selector refinements. <!-- id: 2 -->
+- [x] **Stepper Theme Sync**: Fix hardcoded white number circles (verified resolved). <!-- id: 3 -->
+- [ ] **Stepper → ARIA Tabs**: Consider migrating stepper to `@angular/aria` tabs for accessibility
+- [x] Add tooltips for accessibility <!-- id: 4 -->
 - [ ] Consider flyout menus for nested navigation
 
 ---

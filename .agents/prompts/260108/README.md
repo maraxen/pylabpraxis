@@ -14,9 +14,9 @@
 | 03 | [unique_name_parsing](./03_unique_name_parsing.md) | Filter chip unique name extraction | P2 | M | ✅ Complete |
 | 04 | [ui_visual_tweaks](./04_ui_visual_tweaks.md) | Registry/Machine tab spacing | P3 | S | 🟡 In Progress |
 | 05 | [pre_merge_finalization](./05_pre_merge_finalization.md) | Archive & documentation cleanup | P3 | M | 🟢 Not Started |
-| 06 | [repl_rendering_stability](./06_repl_rendering_stability.md) | REPL kernel refresh race condition | P2 | M | 🟢 Not Started |
-| 07 | [ui_consistency_exec_monitor](./07_ui_consistency_exec_monitor.md) | Execution Monitor dropdown chips | P2 | M | 🟢 Not Started |
-| 08 | [asset_management_ux](./08_asset_management_ux.md) | Add Machine/Resource flow refactor | P2 | M | 🟢 Not Started |
+| 06 | [repl_rendering_stability](./06_repl_rendering_stability.md) | REPL kernel refresh race condition | P2 | M | ✅ Complete |
+| 07 | [ui_consistency_exec_monitor](./07_ui_consistency_exec_monitor.md) | Execution Monitor dropdown chips | P2 | M | ✅ Complete |
+| 08 | [asset_management_ux](./08_asset_management_ux.md) | Add Machine/Resource flow refactor | P2 | M | ⚠️ Regressions |
 | 09 | [factory_orm_integration](./09_factory_orm_integration.md) | Factory Boy FK population fixes | P2 | M | 🟢 Not Started |
 | 10 | [browser_schema_scripts](./10_browser_schema_scripts.md) | Fix schema generation scripts | P2 | M | 🟢 Not Started |
 | 11 | [e2e_data_seeding](./11_e2e_data_seeding.md) | Pre-populate DB for Playwright tests | P2 | M | 🟢 Not Started |
@@ -24,6 +24,12 @@
 | 13 | [frontend_type_safety](./13_frontend_type_safety.md) | Fix Blob casting & Window mocking | P3 | S | 🟢 Not Started |
 | 14 | [jupyterlite_cleanup](./14_jupyterlite_cleanup.md) | Suppress 404s, optimize load | P3 | M | 🟢 Not Started |
 | 15 | [repo_cleanup](./15_repo_cleanup.md) | Remove .pymon, debug files | P3 | S | 🟢 Not Started |
+| 16 | [asset_management_ux_fix](./16_asset_management_ux_fix.md) | Fix Add Machine regressions | P2 | M | 🟢 Not Started |
+
+- [x] [17_guided_deck_setup_ui.md](./17_guided_deck_setup_ui.md) - Fix Guided Deck Setup UI issues
+| 18 | [angular_aria_multiselect](./18_angular_aria_multiselect.md) | ARIA multiselect component | P2 | L | 🟢 Not Started |
+| 19 | [aria_well_selector_grid](./19_aria_well_selector_grid.md) | ARIA Grid well selector | P2 | L | 🟢 Not Started |
+| 20 | [settings_stepper_polish](./20_settings_stepper_polish.md) | Settings icons, stepper theme | P3 | S | ✅ Complete |
 
 ---
 
@@ -50,18 +56,18 @@ Items selected based on:
 
 ### P2 - UI & UX
 
-6. **03_unique_name_parsing** (P2) ✅ - Filter chip UX
+1. **03_unique_name_parsing** (P2) ✅ - Filter chip UX
 2. **07_ui_consistency_exec_monitor** (P2) - Dropdown chip patterns
 3. **08_asset_management_ux** (P2) - Add Machine/Resource flows
 
 ### P2 - Infrastructure
 
-9. **06_repl_rendering_stability** (P2) - Kernel initialization
+1. **06_repl_rendering_stability** (P2) - Kernel initialization
 2. **10_browser_schema_scripts** (P2) - Schema generation fix
 
 ### P3 - Polish & Cleanup (Execute Last)
 
-11. **04_ui_visual_tweaks** (P3) 🟡 - Visual polish
+1. **04_ui_visual_tweaks** (P3) 🟡 - Visual polish
 2. **13_frontend_type_safety** (P3) - Type fixes
 3. **14_jupyterlite_cleanup** (P3) - 404 suppression
 4. **15_repo_cleanup** (P3) - File cleanup
