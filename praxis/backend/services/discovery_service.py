@@ -157,6 +157,9 @@ class DiscoveryService:
                   "parameters": def_info.raw_parameters,
                   "assets": def_info.raw_assets,
                   "hardware_requirements": def_info.hardware_requirements,
+                  "computation_graph": def_info.computation_graph,
+                  "source_hash": def_info.source_hash,
+                  "requires_deck": def_info.requires_deck,
                 }
                 extracted_definitions.append(definition_dict)
 

@@ -1,6 +1,6 @@
 # Praxis Development Matrix
 
-**Last Updated**: 2026-01-08 (REPL Stability + Factory ORM Fixed)
+**Last Updated**: 2026-01-09 (Technical Debt Migration)
 **Purpose**: Consolidated view of all remaining work items with priority and difficulty ratings.
 
 ---
@@ -80,12 +80,13 @@
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
 | ~~Systematic Linting Fixes~~ | ~~P2~~ | ~~L~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (77+ bugs/lints resolved, clean check) |
-| **Code Quality Plan Execution** | P2 | XL | [quality_assurance](./backlog/quality_assurance.md) | Comprehensive quality strategy (using `ty`) |
-| **E2E Tests - Execution** | P2 | M | [quality_assurance](./backlog/quality_assurance.md) | Browser mode execution tests |
+| ~~Code Quality Plan Execution~~ | ~~P2~~ | ~~XL~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Systematic quality sweep using `ty`) |
+| ~~E2E Tests - Execution~~ | ~~P2~~ | ~~M~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Browser/Simulation execution flow) |
 | ~~E2E Tests - Asset Management~~ | ~~P2~~ | ~~M~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (5 UI tests passing, CRUD skipped) |
 | ~~Unit Tests - SqliteService~~ | ~~P2~~ | ~~M~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Comprehensive coverage, persistence verification) |
 | **Final Visual QA & Test Suite** | P2 | L | [quality_assurance](./backlog/quality_assurance.md) | Automated Playwright tests + manual QA checklist |
-| **Frontend Type Safety** | P3 | S | [TECHNICAL_DEBT](./TECHNICAL_DEBT.md) | Resolve `any` casts in SqliteService/Settings |
+| ~~Protocols "Not Analyzed" Status Fix~~ | ~~P2~~ | ~~🟢 Easy~~ | [run_protocol_workflow](./backlog/run_protocol_workflow.md) | ✅ Complete (Fixed persistence of source_hash and simulation results) |
+| ~~Frontend Type Safety~~ | ~~P3~~ | ~~🟢 Easy~~ | [TECHNICAL_DEBT](./TECHNICAL_DEBT.md) | ✅ Complete (Resolved Blob casting and Window mocking) |
 
 ### Migrated from Technical Debt (2026-01-07)
 
@@ -94,7 +95,7 @@
 | ~~SQLite Schema Mismatch~~ | ~~P1~~ | ~~🟢 Easy~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Added `inferred_requirements_json` column) |
 | ~~UI Consistency - Exec Monitor~~ | ~~P2~~ | ~~🟡 Intricate~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Standardized chips; menus N/A) |
 | ~~Asset Management UX~~ | ~~P2~~ | ~~🟡 Intricate~~ | [asset_management_ux](./backlog/asset_management_ux.md) | ✅ Complete (Resolved Phase 1 regressions) |
-| **Dataviz & Well Selection** | P2 | 🔴 Complex | [dataviz_well_selection](./backlog/dataviz_well_selection.md) | Bridge WellDataOutput with visualization |
+| ~~Dataviz & Well Selection~~ | ~~P2~~ | ~~🔴 Complex~~ | [dataviz_well_selection](./backlog/dataviz_well_selection.md) | ✅ Complete (Bridge WellDataOutput with visualization) |
 | ~~Skipped Tests Investigation~~ | ~~P2~~ | ~~🟢 Easy~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Fixed Orchestrator tests, cleaned frontend dead code) |
 | ~~Factory ORM Integration~~ | ~~P2~~ | ~~🟡 Intricate~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Fixed Factory Boy FK population) |
 
@@ -103,19 +104,34 @@
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
 | ~~Browser Schema Scripts~~ | ~~P2~~ | ~~🟡 Intricate~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Fixed generate_browser_db.py schema logic) |
-| **E2E Data Seeding** | P2 | 🟡 Intricate | [quality_assurance](./backlog/quality_assurance.md) | Pre-populate DB for Playwright Asset tests |
-| **Frontend Type Safety** | P3 | 🟢 Easy | [quality_assurance](./backlog/quality_assurance.md) | Fix Blob casting and Window mocking |
-| **JupyterLite 404s/Load** | P3 | 🟡 Intricate | [repl_enhancements](./backlog/repl_enhancements.md) | Suppress 404s, optimize startup |
-| **Repo Cleanup** | P3 | 🟢 Easy | [cleanup_finalization](./backlog/cleanup_finalization.md) | Remove .pymon, debug files |
+| ~~E2E Data Seeding~~ | ~~P2~~ | ~~🟡~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Implemented global-setup.ts) |
+| ~~Frontend Type Safety~~ | ~~P3~~ | ~~🟢 Easy~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Fix Blob casting and Window mocking) |
+| ~~JupyterLite 404s/Load~~ | ~~P3~~ | ~~🟡 Intricate~~ | [repl_enhancements](./backlog/repl_enhancements.md) | ✅ Complete (JupyterLite JSON + Shim Bundling) |
+| ~~Repo Cleanup~~ | ~~P3~~ | ~~🟢 Easy~~ | [cleanup_finalization](./backlog/cleanup_finalization.md) | ✅ Complete (Removed .pymon, debug files) |
+
+### Migrated from Technical Debt (2026-01-09)
+
+| Item | Priority | Difficulty | Backlog | Description |
+|------|----------|------------|---------|-------------|
+| **Firefox E2E Limitation** | P3 | 🟢 Easy | [quality_assurance](./backlog/quality_assurance.md) | Document Firefox flakiness, CI exclusion |
+| **Resource Dialog Facets** | P3 | 🟡 Intricate | [ui_consistency](./backlog/ui_consistency.md) | Dynamically derive filter facets from definitions |
+| ~~Navigation Renames~~ | ~~P3~~ | ~~🟢 Easy~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete ("Deck" -> "Workcell") |
+| ~~REPL Theme Sync~~ | ~~P3~~ | ~~🟢 Easy~~ | [repl_enhancements](./backlog/repl_enhancements.md) | ✅ Complete (Sync kernel theme with app) |
+| ~~Browser DB Sync~~ | ~~P2~~ | ~~🟡 Intricate~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Ensure backend/frontend DB parity) |
+| ~~Execution Monitor Phase 1~~ | ~~P2~~ | ~~🟡 Intricate~~ | [execution_monitor](./backlog/execution_monitor.md) | ✅ Complete (Basic monitoring layout) |
+| ~~Execution Monitor Active Runs~~ | ~~P2~~ | ~~🟡 Intricate~~ | [execution_monitor](./backlog/execution_monitor.md) | ✅ Complete (Active Runs Panel) |
+| ~~Execution Monitor History~~ | ~~P2~~ | ~~🟡 Intricate~~ | [execution_monitor](./backlog/execution_monitor.md) | ✅ Complete (Run History Table) |
+| ~~Browser Schema UNIQUE Constraint~~ | ~~P2~~ | ~~🟢 Easy~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Fix name unique constraint) |
+| ~~Machine Def Schema Linkage~~ | ~~P1~~ | ~~🟢 Easy~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Add definition_accession_id) |
 
 ### Added from User Verification (2026-01-08)
 
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
 | ~~Asset Management UX Regressions~~ | ~~P2~~ | ~~🟡 Intricate~~ | [asset_management_ux](./backlog/asset_management_ux.md) | ✅ Complete (Verified fixed) |
-| ~~Angular ARIA Migration~~ | ~~P2~~ | ~~🔴 Complex~~ | [angular_aria_migration](./backlog/angular_aria_migration.md) | ✅ Phase 1 Complete (Multiselect/Select components implemented & integrated) |
+| ~~Angular ARIA Migration~~ | ~~P2~~ | ~~🔴 Complex~~ | [angular_aria_migration](./backlog/angular_aria_migration.md) | ✅ Phase 1 & 3 Complete (Select/Multiselect/Autocomplete refactored to official pattern & integrated) |
 | ~~Settings & Stepper Polish~~ | ~~P3~~ | ~~🟡 Intricate~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Icons fixed, theme selector refined) |
-| **Guided Deck Setup UI** | P3 | S | [ui_consistency](./backlog/ui_consistency.md) | ⚠️ Items 1,3,4 fixed; Item 2 (Confirm button) remains broken |
+| ~~Guided Deck Setup UI~~ | ~~P3~~ | ~~S~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Resolved scrolling, visibility, and stepper advance logic) |
 | ~~Simulated Machine Unification~~ | ~~P2~~ | ~~M~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Unified Simulated/Chatterbox UI & logic) |
 | ~~Machine Dialog Fixes~~ | ~~P1~~ | ~~M~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Fixed schema mismatch & NOT NULL error) |
 
@@ -136,6 +152,7 @@
 ### UI & UX Standardization (2026-01-08)
 
 - **Asset Management UX**: Resolved Phase 1 regressions in the "Add Machine" dialog (stepper theme sync, backend filtering, dynamic capability forms, and JSON blob editing).
+- **Deck View Consistency**: Refactored `DeckGeneratorService` and `VisualizerComponent` to use real machine definitions/state instead of hardcoded mock data.
 - **UI Visual Tweaks**: Fixed spacing in Registry, alignment in Machines, and implemented themed gradients across cards and list items.
 
 ### REPL Enhancements (2026-01-08)
@@ -213,6 +230,8 @@
 - **Asset Menu Search & Filters** (✅ 2026-01-05)
 - **Empty State with Link** (✅ 2026-01-05)
 - **Inventory Dialog**: Replaced simple addition with guided multi-step wizard (Machine/Resource, Config, Filters).
+- [x] **(High) Fix "Buggy" Behavior**: User reported autoselection "seems buggy" (2026-01-08). Investigate failure cases.
+- [x] Consider resource `status` (prefer `AVAILABLE_IN_STORAGE` over `IN_USE`)
 
 ### Tutorial & Demo Mode ✅ (2026-01-05) [Superseded by Browser Mode Defaults]
 
@@ -271,4 +290,4 @@
 | **P3** | 4 | UI polish, documentation, finalization |
 
 **Total Active Items**: ~11
-**Archived This Session**: Prompts 01-10 from `250106` (All items completed), `plr_static_analysis_debugging.md`, `10_sqliteservice_unit_tests.md`
+**Archived This Session (2026-01-08)**: 11 prompts from `260108`, `chip_filter_standardization.md`, consolidated `ui_standardization_q1_2026.md` and `hardware_driver_refactor.md`

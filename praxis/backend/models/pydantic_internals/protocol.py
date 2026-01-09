@@ -273,6 +273,12 @@ class FunctionProtocolDefinitionBase(BaseModel):
   tags: Any = Field(default_factory=list)
   deprecated: bool = False
 
+  source_hash: str | None = None
+  computation_graph_json: dict[str, Any] | None = Field(
+    default=None,
+    alias="computation_graph",
+  )
+
   parameters: list[ParameterMetadataModel] = Field(default_factory=list)
   assets: list[AssetRequirementModel] = Field(default_factory=list)
   data_views_json: list[DataViewMetadataModel] | None = Field(
@@ -328,6 +334,8 @@ class FunctionProtocolDefinitionUpdate(BaseModel):
   data_views: list[DataViewMetadataModel] | None = None
   hardware_requirements: dict[str, Any] | None = None
   setup_instructions_json: list[dict[str, Any]] | None = None
+  source_hash: str | None = None
+  computation_graph: dict[str, Any] | None = None
 
 
 class InferredRequirementModel(BaseModel):

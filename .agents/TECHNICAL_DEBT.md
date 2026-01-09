@@ -23,20 +23,6 @@
 
 - **High** — Playwright: Firefox unsupported for Browser Mode E2E. Document limitation and align CI matrices to run Chromium/WebKit only until Firefox flakiness (overlays, intercepted clicks, stepper gating) is resolved. Add note to QA docs and Playwright config guidance.
 
-- **High** — Add Machine Dialog Regressions (2026-01-08 verification):
-  - Backends still listed in machine categories on add menu
-  - Cannot deselect categories (clicking toggles incorrectly)
-  - Stepper number circles not theme-synced (hardcoded white, same in light/dark)
-  - Category/Model selection redundant with Backend selection in Step 2
-  - No capability config form triggered for liquid handlers with Hamilton backend
-  - Advanced JSON shows uneditable blob after selection
-  - **Target**: [asset_management_ux.md](./backlog/asset_management_ux.md)
-
-- **High** — Guided Deck Setup UI:
-  - Continue/Next button not visible after adding carriers
-  - Container scrolling unclear
-  - **Target**: [run_protocol_workflow.md](./backlog/run_protocol_workflow.md)
-
 - **High** — Asset Autoselection:
   - User reports autoselection "seems buggy".
   - Investigate auto-assignment logic in `AssetManager` or `ProtocolService`.
@@ -53,22 +39,6 @@
 
 - **Medium** — Resource dialog "More filters" facets are hardcoded. Dynamically derive facet definitions/options from resource definitions so the filter chip dropdown stays in sync with available metadata.
 
-- **Medium** — Protocols All Say "Not Analyzed":
-  - Investigate why protocol analysis status is not persisting or displaying correctly.
-  - **Target**: NEW backlog `protocol_analysis_investigation.md` (or add to `protocol_enhancements.md`)
-
-- **Medium** — Angular ARIA Migration:
-  - Replace custom chip/dropdown components with `@angular/aria` primitives
-  - Use `@angular/aria/combobox` + `@angular/aria/listbox` for multiselect filters
-  - Use `@angular/aria/grid` for well selector component
-  - Targets: Machine filters, Backend filters, Spatial view categories, Well selector
-  - **Target**: NEW backlog `angular_aria_migration.md`
-
-- **Medium** — Settings Cards Visual Polish:
-  - Rounded corners cut off icons
-  - Visual inconsistency in layout
-  - **Target**: [ui_consistency.md](./backlog/ui_consistency.md)
-
 ### Low Priority
 
 - **Low** — Rename "REPL" to "Playground" throughout codebase. The JupyterLite-based notebook is not technically a REPL. Update component names, routes, nav labels, and documentation.
@@ -76,6 +46,21 @@
 ---
 
 ## Recently Resolved ✅
+
+### 2026-01-09 Migration
+
+| Item | Migrated To |
+|------|-------------|
+| Playwright Firefox E2E Limitation | [quality_assurance.md](./backlog/quality_assurance.md) |
+| Resource Dialog Facets | [ui_consistency.md](./backlog/ui_consistency.md) |
+| Add Machine Dialog Regressions | Already in [asset_management_ux.md](./backlog/asset_management_ux.md) (Phase 1) |
+| Guided Deck Setup UI | Already in [run_protocol_workflow.md](./backlog/run_protocol_workflow.md) |
+| Asset Autoselection | Already in [run_protocol_workflow.md](./backlog/run_protocol_workflow.md) |
+| Machine Backend Mismatch | Already in [asset_management_ux.md](./backlog/asset_management_ux.md) (Phase 4) |
+| Protocols "Not Analyzed" | Already in [run_protocol_workflow.md](./backlog/run_protocol_workflow.md) |
+| Angular ARIA Migration | Already in [angular_aria_migration.md](./backlog/angular_aria_migration.md) |
+| Settings Cards Visual Polish | Already in [ui_consistency.md](./backlog/ui_consistency.md) (Phase 3) |
+| Rename REPL to Playground | Already in [repl_enhancements.md](./backlog/repl_enhancements.md) (Phase 6) |
 
 ### 2026-01-08 Migration
 

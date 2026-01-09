@@ -104,10 +104,15 @@ class SimulationService:
 
     """
     # Check if cache is valid
-    if not force_resimulate and is_cache_valid(
-      cached_version=protocol_orm.simulation_version,
-      source_hash=protocol_orm.source_hash,
-      current_source_hash=protocol_orm.source_hash,
+    # If source_hash is missing from DB, we MUST resimulate to get it
+    if (
+      not force_resimulate
+      and protocol_orm.source_hash is not None
+      and is_cache_valid(
+        cached_version=protocol_orm.simulation_version,
+        source_hash=protocol_orm.source_hash,
+        current_source_hash=protocol_orm.source_hash,
+      )
     ):
       logger.debug(
         "Simulation cache valid for %s, skipping re-simulation",
@@ -115,9 +120,7 @@ class SimulationService:
       )
       # Return cached result if available
       if protocol_orm.simulation_result_json:
-        return ProtocolSimulationResult.from_cache_dict(
-          protocol_orm.simulation_result_json
-        )
+        return ProtocolSimulationResult.from_cache_dict(protocol_orm.simulation_result_json)
       return None
 
     # Try to import and get the protocol function

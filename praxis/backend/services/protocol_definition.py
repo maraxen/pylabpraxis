@@ -57,6 +57,8 @@ class ProtocolDefinitionCRUDService(
         param_dict["constraints_json"] = param_dict.pop("constraints")
       if "ui_hint" in param_dict:
         param_dict["ui_hint_json"] = param_dict.pop("ui_hint")
+      if "itemized_spec" in param_dict:
+        param_dict["itemized_spec_json"] = param_dict.pop("itemized_spec")
 
       param_orm = ParameterDefinitionOrm(
         protocol_definition_accession_id=protocol_def.accession_id,

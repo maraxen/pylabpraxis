@@ -497,10 +497,18 @@ class ParameterDefinitionOrm(Base):
     "constraints",
     JsonVariant,
     nullable=True,
-    comment="JSONB representation of any constraints on the parameter, such as allowed values or \
-      ranges.",
     default=None,  # TODO(mar): consider using a more structured type for constraints
   )
+  field_type: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
+  is_itemized: Mapped[bool] = mapped_column(Boolean, default=False)
+  itemized_spec_json: Mapped[dict | None] = mapped_column(
+    "itemized_spec",
+    JsonVariant,
+    nullable=True,
+    comment="JSONB representation of itemized resource specification (items_x, items_y).",
+    default=None,
+  )
+  linked_to: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
   ui_hint_json: Mapped[dict | None] = mapped_column(
     "ui_hint",
     JsonVariant,
