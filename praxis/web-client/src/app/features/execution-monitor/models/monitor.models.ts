@@ -61,4 +61,5 @@ export interface RunHistoryParams {
     protocol_id?: string | string[];
     sort_by?: 'created_at' | 'start_time' | 'status';
     sort_order?: 'asc' | 'desc';
+    search?: string;
 }

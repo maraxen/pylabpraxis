@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
@@ -195,6 +195,10 @@ export class ProtocolLibraryComponent {
 
   runProtocol(protocol: ProtocolDefinition) {
     this.router.navigate(['/run'], { queryParams: { protocolId: protocol.accession_id } });
+  }
+
+  onSearchChange(value: string) {
+    this.searchQuery.set(value);
   }
 
   uploadProtocol() {

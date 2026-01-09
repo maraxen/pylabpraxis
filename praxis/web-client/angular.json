@@ -52,23 +52,7 @@
               "node_modules/plotly.js-dist-min/plotly.min.js",
               "node_modules/mermaid/dist/mermaid.min.js"
             ],
-            "externalDependencies": [
-              "fs",
-              "path",
-              "crypto",
-              "node:crypto",
-              "node:fs",
-              "node:path",
-              "node:child_process",
-              "node:vm",
-              "node:url",
-              "node:fs/promises",
-              "node:buffer",
-              "node:stream",
-              "node:util",
-              "node:events",
-              "ws"
-            ]
+            "externalDependencies": []
           },
           "configurations": {
             "production": {
@@ -109,8 +93,9 @@
                   "with": "src/environments/environment.browser.ts"
                 }
               ],
-              "optimization": true,
-              "outputHashing": "all"
+              "optimization": false,
+              "outputHashing": "none",
+              "sourceMap": true
             }
           },
           "defaultConfiguration": "production"

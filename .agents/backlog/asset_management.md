@@ -1,86 +1,82 @@
-# Asset Management Backlog
+# Asset Management Issues
 
-**Priority**: CRITICAL
-**Owner**: Backend + Frontend
-**Last Updated**: 2026-01-02
-
----
-
-## 1. PLR Inspection & Discovery (Highest Priority)
-
-The core requirement is to inspect `pylabrobot` to dynamically generate machine definitions and capabilities.
-
-### Backend
-
-- [x] **Static PLR Inspection (LibCST)** - COMPLETED 2025-12-30
-- [x] **Capability Extraction** - COMPLETED
-- [x] **Discovery Service Update** - COMPLETED
-
-### Frontend
-
-- [x] **Collapsible Menus** - COMPLETED
-- [x] **Capability Chips** - COMPLETED
-- [x] **Manufacturer Rendering** - COMPLETED
-- [x] **Backend vs Frontend Selection** - COMPLETED
+**Created**: 2026-01-09
+**Priority**: P2
 
 ---
 
-## 2. Asset UX & Visualizer (Completed)
+## P2: Machine Category Filters Include Backends
 
-- [x] **Workcell Visualizer (Rewrite)** - COMPLETED
-- [x] **Deck Setup Debugging** - COMPLETED
+**Status**: Open
+**Difficulty**: Easy
 
----
+### Problem
+Machine category filters in asset management include backends even though that doesn't make sense from a user perspective.
 
-## 3. Relationship Visualization (Phase 2)
-
-- [x] **Spatial View (Asset Filters)**:
-  - [x] Implement `AssetFiltersComponent`.
-  - [x] Sort by: Name, Status, etc (Location sorting implied by search).
-  - [x] Filter by: Status, Category, Machine, Workcell.
-  - [x] Add `location_label` physical location text field.
-
-### Registry vs Inventory (Conceptual Model)
-
-- [x] **UI Distinction**: Separate tabs for Machines/Resources (Inventory) and Registry (Definitions) - COMPLETED.
-- [ ] **Data Model Separation**:
-  - [x] **Models**: `MachineDefinition` vs `Machine` exist.
-  - [ ] **API Restructuring**: Moved to TECHNICAL_DEBT.md.
+### Tasks
+- [ ] Remove backends from category filter options
+- [ ] Backend selection should be separate concern
 
 ---
 
-## 4. Groupings & Organization (P3)
+## P2: Backend Names Too Long
 
-- [x] **Machine Groupings (Inventory)**: Accordion by type - COMPLETED.
-- [x] **Resource Groupings**: Accordion by category - COMPLETED.
+**Status**: Open
+**Difficulty**: Easy
 
----
+### Problem
+The backend selector has names that are too long to be useful.
 
-## 5. Maintenance & Alerts (Completed 2026-01-03)
-
-- [x] **Maintenance Schema**:
-  - [x] Pydantic models: `MaintenanceInterval`, `MaintenanceSchedule` - `praxis/backend/models/pydantic_internals/maintenance.py`
-  - [x] `MAINTENANCE_DEFAULTS` by category (Liquid Handlers daily/weekly/etc).
-  - [x] Backend fields: `maintenance_enabled`, `maintenance_schedule_json` - Alembic migration `bb6b6f27cedb`
-- [x] **Frontend UI**:
-  - [x] Global "Enable Maintenance" toggle in Settings - `AppStore.maintenanceEnabled()`
-  - [x] Per-asset toggle and schedule override in details dialog - `machine-details-dialog.component.ts`
-  - [x] Maintenance status badges (OK, Warning, Overdue) - `MaintenanceBadgeComponent`
-  - [ ] "Log Maintenance" action - TODO: Add button to log maintenance event
+### Tasks
+- [ ] Implement name truncation with tooltips
+- [ ] Consider abbreviated display names
+- [ ] Show full name on hover
 
 ---
 
-## 6. Bulk & Advanced (Phase 4)
+## P2: Backend Selector UX
 
-- [ ] Multi-select mode with floating action bar.
-- [ ] Consumables inventory tracking (partial usage).
-- [ ] Backend "Smart Selection" for consumables.
+**Status**: Open
+**Difficulty**: Easy
 
-## 7. Technical Debt & UI Polish (2026-01-07)
+### Problem
+The backend selector should be disabled unless a category is selected, or we should move it to being an autocomplete which would be better.
 
-- [ ] **Needs Attention Icons**: Fix occlusion issue where icons in the "Needs Attention" section are partially cut off.
-- [ ] **Add Machine Flow Refactor**: Frontend Category -> Backend Selection flow. Remove Step 2.
-- [ ] **Capabilities Interface**: Replace hardcoded JSON with a proper configuration interface.
-- [ ] **Add Resource Flow Refactor**: Use cards instead of chips, include filters, Model selection step.
-- [ ] **Sidebar Renaming**: Rename "Deck" to "Workcell".
-- [ ] **Inventory Menu**: Match Asset Management menu (popup/multi-select).
+### Recommendation
+Convert to autocomplete for better UX.
+
+### Tasks
+- [ ] Implement autocomplete for backend selection
+- [ ] Filter backends by selected category
+- [ ] Show "Select category first" placeholder when no category
+
+---
+
+## P2: Add Asset Prompt Missing
+
+**Status**: Open
+**Difficulty**: Easy
+
+### Problem
+The add asset button when you're in the overview/spatial view tabs takes you to add machine when it should first prompt if you want to add a machine or resource.
+
+### Tasks
+- [ ] Add prompt dialog for asset type selection
+- [ ] Options: "Add Machine" or "Add Resource"
+- [ ] Navigate to appropriate flow based on selection
+
+---
+
+## P2: Registry UI Issues
+
+**Status**: Open
+**Difficulty**: Medium
+
+### Problem
+The add machine button links to the add resource button. Add resource says "definitions are precinct in browser mode". We need a better UI for the registry.
+
+### Tasks
+- [ ] Fix navigation between add machine/resource
+- [ ] Improve browser mode messaging for registry limitations
+- [ ] Design clearer registry interface
+- [ ] Consider read-only registry view for browser mode

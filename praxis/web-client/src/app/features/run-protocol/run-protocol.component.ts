@@ -14,8 +14,8 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatStepper, MatStepperModule } from '@angular/material/stepper';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Action } from 'rxjs/internal/scheduler/Action';
-import { MatDialog } from '@angular/material/dialog';
 import { finalize } from 'rxjs/operators';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { MatDialog } from '@angular/material/dialog';
 import { ModeService } from '@core/services/mode.service';
@@ -25,7 +25,6 @@ import { ProtocolService } from '@features/protocols/services/protocol.service';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 import { WellSelectorDialogComponent, WellSelectorDialogData, WellSelectorDialogResult } from '@shared/components/well-selector-dialog/well-selector-dialog.component';
 import { MachineStatus } from '../assets/models/asset.models';
-import { DeckSetupWizardComponent } from './components/deck-setup-wizard/deck-setup-wizard.component';
 import { DeckSetupWizardComponent } from './components/deck-setup-wizard/deck-setup-wizard.component';
 import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component'; // Import added
 import { MachineCompatibility, MachineSelectionComponent } from './components/machine-selection/machine-selection.component';
@@ -75,9 +74,7 @@ interface FilterCategory {
     ParameterConfigComponent,
     ProtocolCardComponent,
     ProtocolCardSkeletonComponent,
-    ProtocolCardSkeletonComponent,
     MachineSelectionComponent,
-    HardwareDiscoveryButtonComponent,
     HardwareDiscoveryButtonComponent,
     DeckSetupWizardComponent,
     GuidedSetupComponent
@@ -857,7 +854,7 @@ export class RunProtocolComponent implements OnInit {
     this.loadProtocols();
 
     // Check for pre-selected protocol from query params
-    this.route.queryParams.subscribe(params => {
+    this.route.queryParams.subscribe((params: any) => {
       const protocolId = params['protocolId'];
       if (protocolId && this.protocols().length > 0) {
         this.loadProtocolById(protocolId);

@@ -58,7 +58,8 @@ export interface InventoryItem {
     MatExpansionModule,
     MatBadgeModule,
     MatTooltipModule,
-    PraxisAutocompleteComponent
+    PraxisAutocompleteComponent,
+    FilterHeaderComponent
   ],
   template: `
     <h2 mat-dialog-title>Playground Inventory</h2>
