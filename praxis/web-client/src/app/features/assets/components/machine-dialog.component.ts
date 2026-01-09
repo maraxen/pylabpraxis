@@ -75,10 +75,12 @@ interface FrontendType {
           @for (step of steps; track step; let i = $index) {
             <div
               class="flex items-center gap-2 text-sm"
+              [class.cursor-pointer]="isStepValid(i) || i < currentStep"
               [class.step-text-active]="currentStep === i"
               [class.step-text-inactive]="currentStep !== i && !step.completed"
               [class.step-text-completed]="step.completed"
-              [class.font-bold]="currentStep === i">
+              [class.font-bold]="currentStep === i"
+              (click)="goToStep(i)">
               <div class="w-7 h-7 rounded-full flex items-center justify-center border transition-all"
                 [class.step-circle-active]="currentStep === i"
                 [class.step-circle-inactive]="currentStep !== i && !step.completed"
@@ -129,48 +131,56 @@ interface FrontendType {
           <!-- STEP 2: Backend Selection -->
           @if (currentStep === 1) {
             <div class="fade-in flex flex-col gap-4">
-              <div class="flex items-center gap-2 mb-1">
-                <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
-                <h3 class="text-lg font-medium">Select Backend</h3>
-              </div>
-              <p class="text-sm sys-text-secondary">Choose the hardware driver for your {{ getSelectedFrontendLabel() }}. Simulator backends are available for testing without hardware.</p>
+              @if (!selectedFrontendFqn) {
+                <div class="muted-box text-center py-8 flex flex-col items-center justify-center gap-2">
+                  <mat-icon class="!text-4xl opacity-20 mb-2">arrow_back</mat-icon>
+                  <p>Please select a machine type first</p>
+                  <button mat-stroked-button (click)="goBack()">Go Back</button>
+                </div>
+              } @else {
+                <div class="flex items-center gap-2 mb-1">
+                  <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
+                  <h3 class="text-lg font-medium">Select Backend</h3>
+                </div>
+                <p class="text-sm sys-text-secondary">Choose the hardware driver for your {{ getSelectedFrontendLabel() }}. Simulator backends are available for testing without hardware.</p>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
-                @for (def of filteredBackends; track def.accession_id) {
-                  <button type="button"
-                    class="selection-card definition-card"
-                    [class.card-selected]="selectedDefinition?.accession_id === def.accession_id"
-                    (click)="selectBackend(def)">
-                    <div class="flex items-start gap-3 w-full">
-                      <div class="icon-chip subtle">
-                        <mat-icon>memory</mat-icon>
-                      </div>
-                      <div class="flex flex-col items-start min-w-0">
-                        <div class="flex items-center gap-2 w-full">
-                          <span class="font-medium truncate" 
-                                [matTooltip]="def.name" 
-                                matTooltipShowDelay="300">{{ getTruncatedName(def.name) }}</span>
-                          @if (isSimulatedDefinition(def)) {
-                            <span class="simulated-chip">Simulated</span>
-                          }
-                          @if (selectedDefinition?.accession_id === def.accession_id) {
-                            <mat-icon class="text-primary !text-sm ml-auto">check_circle</mat-icon>
-                          }
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
+                  @for (def of filteredBackends; track def.accession_id) {
+                    <button type="button"
+                      class="selection-card definition-card"
+                      [class.card-selected]="selectedDefinition?.accession_id === def.accession_id"
+                      (click)="selectBackend(def)">
+                      <div class="flex items-start gap-3 w-full">
+                        <div class="icon-chip subtle">
+                          <mat-icon>memory</mat-icon>
                         </div>
-                        <span class="text-xs sys-text-secondary truncate">
-                          {{ def.manufacturer || 'Unknown vendor' }}
-                        </span>
-                        <span class="text-[11px] text-sys-text-tertiary fqn-wrap"
-                              [matTooltip]="def.fqn"
-                              matTooltipShowDelay="300">{{ getShortFqn(def.fqn || '') }}</span>
+                        <div class="flex flex-col items-start min-w-0">
+                          <div class="flex items-center gap-2 w-full">
+                            <span class="font-medium truncate" 
+                                  [matTooltip]="def.name" 
+                                  matTooltipShowDelay="300">{{ getTruncatedName(def.name) }}</span>
+                            @if (isSimulatedDefinition(def)) {
+                              <span class="simulated-chip">Simulated</span>
+                            }
+                            @if (selectedDefinition?.accession_id === def.accession_id) {
+                              <mat-icon class="text-primary !text-sm ml-auto">check_circle</mat-icon>
+                            }
+                          </div>
+                          <span class="text-xs sys-text-secondary truncate">
+                            {{ def.manufacturer || 'Unknown vendor' }}
+                          </span>
+                          <span class="text-[11px] text-sys-text-tertiary fqn-wrap"
+                                [matTooltip]="def.fqn"
+                                matTooltipShowDelay="300">{{ getShortFqn(def.fqn || '') }}</span>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                }
-                @if (filteredBackends.length === 0) {
-                  <div class="muted-box col-span-2">No backends available for this machine type.</div>
-                }
-              </div>
+                    </button>
+                  }
+                  @if (filteredBackends.length === 0) {
+                    <div class="muted-box col-span-2">No backends available for this machine type.</div>
+                  }
+                </div>
+              }
             </div>
           }
 
@@ -481,12 +491,17 @@ export class MachineDialogComponent implements OnInit {
     if (this.selectedFrontendFqn === fqn) {
       this.selectedFrontendFqn = null;
       this.filteredBackends = [];
+      this.steps[0].completed = false;
       return;
     }
     this.selectedFrontendFqn = fqn;
     this.filteredBackends = this.allDefinitions.filter(d => d.frontend_fqn === fqn);
     this.selectedDefinition = null;
     this.form.patchValue({ backend_driver: 'sim' });
+    
+    // Reset downstream steps
+    this.steps[1].completed = false;
+    this.steps[2].completed = false;
   }
 
   getSelectedFrontendLabel(): string {
@@ -504,6 +519,8 @@ export class MachineDialogComponent implements OnInit {
       user_configured_capabilities: '',
       name: `Simulated ${this.getSelectedFrontendLabel()} ${Math.floor(Math.random() * 100) + 1}`
     });
+    // Reset downstream step
+    this.steps[2].completed = false;
   }
 
   /** Check if a backend definition is a simulation backend */
@@ -531,6 +548,9 @@ export class MachineDialogComponent implements OnInit {
       connection_info: '',
       user_configured_capabilities: ''
     });
+
+    // Reset downstream step
+    this.steps[2].completed = false;
   }
 
   shouldShowConnectionConfig(): boolean {
@@ -538,25 +558,49 @@ export class MachineDialogComponent implements OnInit {
   }
 
   nextStep() {
-    this.steps[this.currentStep].completed = true;
-    if (this.currentStep < this.steps.length - 1) {
-      this.currentStep++;
+    if (this.canProceed()) {
+      this.steps[this.currentStep].completed = true;
+      if (this.currentStep < this.steps.length - 1) {
+        this.currentStep++;
+      }
     }
   }
 
   goBack() {
     if (this.currentStep > 0) {
-      this.steps[this.currentStep].completed = false;
+      // When going back, we don't necessarily want to mark the current step as incomplete,
+      // but we do want to allow the user to change their selection.
       this.currentStep--;
-      this.steps[this.currentStep].completed = false;
     }
   }
 
-  canProceed(): boolean {
-    if (this.currentStep === 0) return !!this.selectedFrontendFqn;
-    if (this.currentStep === 1) return !!this.selectedDefinition;
-    if (this.currentStep === 2) return !!this.form.get('name')?.valid;
+  goToStep(index: number) {
+    // If clicking current step, do nothing
+    if (index === this.currentStep) return;
+
+    // Going back is always allowed
+    if (index < this.currentStep) {
+      this.currentStep = index;
+      return;
+    }
+
+    // Going forward requires all intermediate steps to be valid
+    for (let i = this.currentStep; i < index; i++) {
+      if (!this.isStepValid(i)) return;
+      this.steps[i].completed = true;
+    }
+    this.currentStep = index;
+  }
+
+  isStepValid(stepIndex: number): boolean {
+    if (stepIndex === 0) return !!this.selectedFrontendFqn;
+    if (stepIndex === 1) return !!this.selectedDefinition;
+    if (stepIndex === 2) return !!this.form.get('name')?.valid;
     return false;
+  }
+
+  canProceed(): boolean {
+    return this.isStepValid(this.currentStep);
   }
 
   getShortFqn(fqn: string): string {
