@@ -104,7 +104,7 @@ export interface InventoryItem {
                       <mat-icon matListItemIcon>{{ getAssetIcon(item) }}</mat-icon>
                       <div matListItemTitle class="flex items-center gap-2">
                         {{ item.name }}
-                        <span class="category-badge">{{ getCategory(item) }}</span>
+                        <span class="category-badge">{{ formatCategory(getCategory(item)) }}</span>
                       </div>
                       <div matListItemLine>{{ getAssetDescription(item) }}</div>
                       <button mat-stroked-button color="primary" matListItemMeta (click)="quickAdd(item)">
@@ -167,7 +167,7 @@ export interface InventoryItem {
                       @for (cat of availableCategories(); track cat) {
                         <mat-chip-option [value]="cat">
                           <mat-icon matChipAvatar>{{ getCategoryIcon(cat) }}</mat-icon>
-                          {{ cat }}
+                          {{ formatCategory(cat) }}
                         </mat-chip-option>
                       }
                     </mat-chip-listbox>
@@ -274,7 +274,7 @@ export interface InventoryItem {
                         </mat-form-field>
                       </div>
                       <div matListItemLine>
-                        {{ item.asset.name }} • <span class="category-badge">{{ item.category }}</span>
+                        {{ item.asset.name }} • <span class="category-badge">{{ formatCategory(item.category) }}</span>
                       </div>
                       <button mat-icon-button matListItemMeta (click)="removeItem($index)" color="warn">
                         <mat-icon>remove_circle_outline</mat-icon>
@@ -555,14 +555,14 @@ export class InventoryDialogComponent {
   categoryOptions = computed<SelectOption[]>(() => {
     const type = this.quickFilterTypeValue();
     const allLabel: SelectOption = { label: 'All Categories', value: 'all' };
-    
+
     // Helper to map string[] to SelectOption[]
-    const mapCats = (cats: string[]) => cats.map(c => ({ label: c, value: c }));
+    const mapCats = (cats: string[]) => cats.map(c => ({ label: this.formatCategory(c), value: c }));
 
     if (type === 'machine') {
       return [allLabel, ...mapCats(this.machineCategories())];
     }
-    
+
     if (type === 'resource') {
       return [allLabel, ...mapCats(this.resourceCategories())];
     }
@@ -703,7 +703,7 @@ export class InventoryDialogComponent {
       });
     }
 
-    if (catFilter !== 'all') {
+    if (catFilter !== 'all' && !catFilter.startsWith('HEADER_')) {
       all = all.filter(a => this.getCategory(a) === catFilter);
     }
 
@@ -827,5 +827,12 @@ export class InventoryDialogComponent {
       return item.plr_definition.description;
     }
     return 'No description';
+  }
+
+  formatCategory(cat: string): string {
+    if (!cat) return '';
+    return cat
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
   }
 }
