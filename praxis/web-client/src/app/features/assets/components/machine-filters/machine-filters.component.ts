@@ -1,4 +1,4 @@
-import { Component, input, output, computed, OnInit, Input } from '@angular/core';
+import { Component, output, computed, OnInit, Input, signal } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -237,10 +237,16 @@ export interface MachineFilterState {
 })
 export class MachineFiltersComponent implements OnInit {
   /** List of machines to derive available filters from */
-  machines = input<Machine[]>([]);
+  @Input() set machines(value: Machine[]) {
+    this._machines.set(value || []);
+  }
+  private _machines = signal<Machine[]>([]);
 
   /** List of machine definitions for backend information */
-  machineDefinitions = input<MachineDefinition[]>([]);
+  @Input() set machineDefinitions(value: MachineDefinition[]) {
+    this._machineDefinitions.set(value || []);
+  }
+  private _machineDefinitions = signal<MachineDefinition[]>([]);
 
   /** Emits when filters change */
   filtersChange = output<MachineFilterState>();
@@ -261,15 +267,25 @@ export class MachineFiltersComponent implements OnInit {
   // Computed available options based on input machines
   availableCategories = computed(() => {
     const cats = new Set<string>();
-    this.machines().forEach(m => {
-      if (m.machine_category) cats.add(m.machine_category);
+    const backends = new Set(this.availableBackends());
+    const BACKEND_PATTERNS = ['Backend', 'Chatterbox', 'Simulator'];
+
+    this._machines().forEach(m => {
+      if (!m.machine_category) return;
+      
+      const isBackendMatch = backends.has(m.machine_category) || 
+                            BACKEND_PATTERNS.some(p => m.machine_category!.includes(p));
+      
+      if (!isBackendMatch) {
+        cats.add(m.machine_category);
+      }
     });
     return Array.from(cats).sort();
   });
 
   availableBackends = computed(() => {
     const backends = new Set<string>();
-    this.machineDefinitions().forEach(def => {
+    this._machineDefinitions().forEach(def => {
       if (def.compatible_backends) {
         def.compatible_backends.forEach(b => backends.add(b));
       }
