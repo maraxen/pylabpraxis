@@ -1,6 +1,6 @@
-import { Component, inject, signal, computed, effect, OnInit } from '@angular/core';
+import { Component, inject, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterOutlet, RouterLink, RouterLinkActive, NavigationEnd } from '@angular/router';
+import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,8 +10,6 @@ import { ModeService } from '@core/services/mode.service';
 import { BreadcrumbComponent } from '@core/components/breadcrumb/breadcrumb.component';
 import { ExecutionService } from '@features/run-protocol/services/execution.service';
 import { ExecutionStatus } from '@features/run-protocol/models/execution.models';
-import { filter } from 'rxjs/operators';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { CommandRegistryService } from '@core/services/command-registry.service';
 import { HardwareDiscoveryService } from '@core/services/hardware-discovery.service';
 import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-discovery-dialog/hardware-discovery-dialog.component';
@@ -148,12 +146,31 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
 
       <!-- Main Content -->
       <div class="main-wrapper">
-        <header class="px-6 py-4 flex items-center border-b border-[var(--mat-sys-outline-variant)] bg-[var(--mat-sys-surface)]">
+        <div class="breadcrumb-bar">
             <app-breadcrumb></app-breadcrumb>
-        </header>
+        </div>
         <main class="main-content">
           <router-outlet></router-outlet>
         </main>
+
+        <footer class="app-footer">
+            <a href="https://github.com/maraxen/pylabpraxis" target="_blank" class="footer-link" matTooltip="GitHub Repository">
+                <mat-icon>code</mat-icon>
+            </a>
+            <a href="https://github.com/maraxen/pylabpraxis" target="_blank" class="footer-link" matTooltip="Star on GitHub">
+                <mat-icon>star_border</mat-icon>
+            </a>
+            <a href="https://github.com/maraxen/pylabpraxis/issues/new" target="_blank" class="footer-link" matTooltip="Raise an Issue">
+                <mat-icon>bug_report</mat-icon>
+            </a>
+            <div class="footer-divider"></div>
+            <a href="https://labautomation.io" target="_blank" class="footer-link" matTooltip="LabAutomation.io">
+                <mat-icon>forum</mat-icon>
+            </a>
+            <a href="https://pylabrobot.org" target="_blank" class="footer-link" matTooltip="PyLabRobot.org">
+                <mat-icon>biotech</mat-icon>
+            </a>
+        </footer>
       </div>
     </div>
   `,
@@ -345,19 +362,76 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
       text-transform: uppercase;
     }
 
-    /* Main Content */
+  /* Main Content */
     .main-wrapper {
       flex: 1;
       display: flex;
       flex-direction: column;
       overflow: hidden;
       min-width: 0;
+      position: relative; /* For stacking context if needed */
+    }
+
+    .breadcrumb-bar {
+        padding: 8px 24px;
+        /* Subtle separation without heavy border */
+        display: flex;
+        align-items: center;
+        min-height: 48px;
     }
 
     .main-content {
       flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
+      /* Add padding if needed, or rely on child components */
+    }
+
+    /* Footer */
+    .app-footer {
+        height: 32px;
+        min-height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: var(--mat-sys-surface-container);
+        border-top: 1px solid var(--mat-sys-outline-variant);
+        padding: 0 16px;
+        z-index: 10;
+        font-size: 12px;
+    }
+
+    .footer-link {
+        color: var(--mat-sys-on-surface-variant);
+        opacity: 0.5;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+    }
+
+    .footer-link:hover {
+        opacity: 1;
+        background: var(--mat-sys-surface-variant);
+        color: var(--mat-sys-primary);
+    }
+
+    .footer-link mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+    }
+
+    .footer-divider {
+        width: 1px;
+        height: 16px;
+        background: var(--mat-sys-outline-variant);
+        opacity: 0.5;
     }
 
     /* Responsive */

@@ -1,4 +1,5 @@
 @use '@angular/material' as mat;
+@import '@angular/cdk/overlay-prebuilt.css';
 @import 'shepherd.js/dist/css/shepherd.css';
 @import 'styles/shepherd-theme.scss';
 @import 'styles/aria-select.scss';
@@ -164,6 +165,9 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --aurora-primary: rgba(237, 122, 155, 0.1);
   --aurora-secondary: rgba(115, 169, 194, 0.1);
 
+  // Gradient text
+  --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, #ff8fa8 50%, var(--tertiary-color) 100%);
+
   @include mat.all-component-themes($dark-theme);
 }
 
@@ -200,6 +204,9 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   // Aurora glow colors (more vibrant for light theme)
   --aurora-primary: rgba(237, 122, 155, 0.15);
   --aurora-secondary: rgba(115, 169, 194, 0.15);
+
+  // Gradient text for light theme
+  --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, #ff8fa8 50%, var(--tertiary-color) 100%);
 
   @include mat.all-component-themes($light-theme);
 }
