@@ -106,6 +106,24 @@ Captures lessons learned, specialized knowledge, and "gotchas" discovered during
 
 ---
 
+## 🤖 Jules Skill
+
+Use the **Jules** skill (`.agents/skills/jules-remote/`) to dispatch atomic coding tasks to Google's autonomous coding agent.
+
+### When to Use
+- **Atomic Tasks**: Unit tests, single components, bug fixes with reproduction steps.
+- **New Files**: Creating services or components from scratch.
+
+### Quick Workflow
+1. **Dispatch**: `jules new --session "Task Title" "Detailed Description..."`
+2. **List**: `jules remote list --session`
+3. **Review**: `jules remote pull --session <ID>` (downloads patch for review)
+4. **Apply**: `jules remote pull --session <ID> --apply`
+
+See [.agents/skills/jules-remote/SKILL.md](skills/jules-remote/SKILL.md) for full documentation and templates.
+
+---
+
 ## 📝 Prompts System
 
 ### Reusable Prompts
