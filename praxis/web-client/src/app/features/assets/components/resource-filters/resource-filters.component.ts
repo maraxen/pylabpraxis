@@ -58,7 +58,7 @@ export interface ResourceFilterState {
           [options]="categoryOptions()" 
           [selectedValue]="selectedCategories()"
           [multiple]="true"
-          (selectedValueChange)="selectedCategories.set($event); onFilterChange()"></app-aria-multiselect>
+          (selectedValueChange)="selectedCategories.set($any($event)); onFilterChange()"></app-aria-multiselect>
       </div>
 
       <!-- Status Chip Dropdown -->
@@ -69,7 +69,7 @@ export interface ResourceFilterState {
           [options]="statusOptions()" 
           [selectedValue]="selectedStatuses()"
           [multiple]="true"
-          (selectedValueChange)="selectedStatuses.set($event); onFilterChange()"></app-aria-multiselect>
+          (selectedValueChange)="selectedStatuses.set($any($event)); onFilterChange()"></app-aria-multiselect>
       </div>
 
       <!-- Brand Chip Dropdown -->
@@ -80,7 +80,7 @@ export interface ResourceFilterState {
           [options]="brandOptions()" 
           [selectedValue]="selectedBrands()"
           [multiple]="true"
-          (selectedValueChange)="selectedBrands.set($event); onFilterChange()"></app-aria-multiselect>
+          (selectedValueChange)="selectedBrands.set($any($event)); onFilterChange()"></app-aria-multiselect>
       </div>
 
       <!-- Clear -->

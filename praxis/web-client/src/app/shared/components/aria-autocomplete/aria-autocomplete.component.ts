@@ -2,6 +2,7 @@ import {
   Combobox,
   ComboboxInput,
   ComboboxPopup,
+  ComboboxPopupContainer,
 } from '@angular/aria/combobox';
 import { Listbox, Option } from '@angular/aria/listbox';
 import {
@@ -22,7 +23,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 export interface SelectOption {
   label: string;
-  value: any;
+  value: unknown;
   icon?: string;
   disabled?: boolean;
 }
@@ -38,6 +39,7 @@ export interface SelectOption {
     Combobox,
     ComboboxInput,
     ComboboxPopup,
+    ComboboxPopupContainer,
     Listbox,
     Option,
     OverlayModule,
@@ -52,72 +54,48 @@ export interface SelectOption {
     },
   ],
   template: `
-    <div
-      class="autocomplete-container"
-      ngCombobox
-      #combobox="ngCombobox"
-      [disabled]="disabled"
-    >
-      <div class="input-wrapper" [class.expanded]="combobox.expanded()">
+    <div ngCombobox class="aria-autocomplete-container" filterMode="auto-select">
+      <div #origin class="input-wrapper">
         <mat-icon class="search-icon">search</mat-icon>
-        
         <input
-          type="text"
-          ngComboboxInput
-          class="autocomplete-input"
-          [placeholder]="placeholder"
           [attr.aria-label]="label"
+          [placeholder]="placeholder"
           [(ngModel)]="query"
-          cdkOverlayOrigin
-          #trigger="cdkOverlayOrigin"
+          ngComboboxInput
         />
-
         @if (query()) {
           <mat-icon class="clear-icon" (click)="clearQuery($event)">close</mat-icon>
         }
-
-        <mat-icon class="trigger-chevron" (click)="toggle($event)">
-          {{ combobox.expanded() ? 'expand_less' : 'expand_more' }}
-        </mat-icon>
       </div>
 
-      <!-- Dropdown popup via CDK Overlay -->
-      <ng-template
-        cdkConnectedOverlay
-        [cdkConnectedOverlayOrigin]="trigger"
-        [cdkConnectedOverlayOpen]="combobox.expanded()"
-        [cdkConnectedOverlayWidth]="triggerWidth()"
-        [cdkConnectedOverlayPanelClass]="'aria-autocomplete-panel'"
-        [cdkConnectedOverlayPositions]="positions"
-        (detach)="combobox.close()"
-      >
-        <div
-          ngComboboxPopup
-          ngListbox
-          class="select-popup"
-          [multi]="false"
-          [(values)]="selectedValues"
-          (valuesChange)="onValueChange($event)"
-          orientation="vertical"
+      <ng-template ngComboboxPopupContainer>
+        <ng-template
+          [cdkConnectedOverlay]="{origin, usePopover: 'inline', matchWidth: true}"
+          [cdkConnectedOverlayOpen]="true"
         >
-          @for (option of filteredOptions(); track option.label) {
-            <div
-              ngOption
-              [value]="option.value"
-              [label]="option.label"
-              [disabled]="option.disabled ?? false"
-              class="select-option"
-              [class.selected]="isSelected(option.value)"
-            >
-              @if (option.icon) {
-                <mat-icon class="option-icon">{{ option.icon }}</mat-icon>
+          <div class="aria-autocomplete-panel">
+            @if (filteredOptions().length === 0) {
+              <div class="no-results">No matches found</div>
+            }
+            <div ngListbox>
+              @for (option of filteredOptions(); track option.label) {
+                <div
+                  ngOption
+                  [value]="option.value"
+                  [label]="option.label"
+                  [disabled]="option.disabled ?? false"
+                  class="aria-option"
+                >
+                  @if (option.icon) {
+                    <mat-icon class="option-icon">{{ option.icon }}</mat-icon>
+                  }
+                  <span class="option-label">{{ option.label }}</span>
+                  <mat-icon class="option-check">check</mat-icon>
+                </div>
               }
-              <span class="option-label">{{ option.label }}</span>
             </div>
-          } @empty {
-            <div class="no-results">No matches found</div>
-          }
-        </div>
+          </div>
+        </ng-template>
       </ng-template>
     </div>
   `,
@@ -128,106 +106,51 @@ export interface SelectOption {
         width: 100%;
       }
 
-      .autocomplete-container {
-        position: relative;
-        width: 100%;
-      }
-
       .input-wrapper {
         display: flex;
         align-items: center;
-        width: 100%;
-        height: 48px;
-        padding: 0 12px;
-        border-radius: 8px;
-        border: 1px solid var(--mat-sys-outline);
-        background-color: var(--mat-sys-surface-container);
-        transition: all 0.2s ease;
-        gap: 8px;
-
-        &:hover {
-          border-color: var(--mat-sys-on-surface);
-        }
-
-        &:focus-within, &.expanded {
-          border-color: var(--mat-sys-primary);
-          box-shadow: 0 0 0 1px var(--mat-sys-primary);
-        }
+        position: relative;
       }
 
       .search-icon {
+        left: 12px;
+        position: absolute;
+        pointer-events: none;
         color: var(--mat-sys-on-surface-variant);
         font-size: 20px;
-        width: 20px;
-        height: 20px;
-        flex-shrink: 0;
       }
 
-      .autocomplete-input {
-        flex: 1;
-        min-width: 0;
-        border: none;
-        background: transparent;
-        color: var(--mat-sys-on-surface);
+      [ngComboboxInput] {
+        width: 100%;
+        height: 48px;
         font-size: 14px;
-        font-family: inherit;
-        outline: none;
-        height: 100%;
-
-        &::placeholder {
-          color: var(--mat-sys-on-surface-variant);
-          opacity: 0.7;
-        }
-      }
-
-      .clear-icon, .trigger-chevron {
-        color: var(--mat-sys-on-surface-variant);
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
-        cursor: pointer;
-        flex-shrink: 0;
-        &:hover { color: var(--mat-sys-on-surface); }
-      }
-
-      .select-popup {
-        background: var(--mat-sys-surface-container);
         border-radius: 8px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-        max-height: 300px;
-        overflow: hidden;
-      }
-
-      .listbox-container {
-        max-height: 300px;
-        overflow-y: auto;
-        padding: 4px 0;
-      }
-
-      .select-option {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 16px;
-        cursor: pointer;
+        padding: 0 40px 0 40px;
         color: var(--mat-sys-on-surface);
-        font-size: 14px;
-
-        &:hover, &[data-active="true"] {
-          background: var(--mat-sys-surface-container-high);
-        }
-
-        &.selected {
-          background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
-          color: var(--mat-sys-primary);
-        }
+        border: 1px solid var(--mat-sys-outline-variant);
+        background: var(--mat-sys-surface-container);
+        outline: none;
       }
 
-      .option-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
-        color: var(--mat-sys-primary);
+      [ngComboboxInput]::placeholder {
+        color: var(--mat-sys-on-surface-variant);
+      }
+
+      [ngCombobox]:focus-within [ngComboboxInput] {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+      }
+
+      .clear-icon {
+        right: 12px;
+        position: absolute;
+        cursor: pointer;
+        color: var(--mat-sys-on-surface-variant);
+        font-size: 20px;
+      }
+
+      .clear-icon:hover {
+        color: var(--mat-sys-on-surface);
       }
 
       .no-results {
@@ -235,6 +158,15 @@ export interface SelectOption {
         color: var(--mat-sys-on-surface-variant);
         font-size: 14px;
         font-style: italic;
+      }
+
+      .option-check {
+        font-size: 18px;
+        margin-left: auto;
+      }
+
+      [ngOption]:not([aria-selected='true']) .option-check {
+        display: none;
       }
     `,
   ],
@@ -247,128 +179,96 @@ export class AriaAutocompleteComponent implements ControlValueAccessor {
   @Input() placeholder = 'Search...';
 
   /** Reference to the combobox directive */
-  combobox = viewChild<Combobox<any>>(Combobox);
+  combobox = viewChild<Combobox<unknown>>(Combobox);
   /** Reference to the listbox */
-  listbox = viewChild<Listbox<any>>(Listbox);
+  listbox = viewChild<Listbox<unknown>>(Listbox);
   /** All option elements */
-  optionElements = viewChildren<Option<any>>(Option);
+  optionElements = viewChildren<Option<unknown>>(Option);
 
-  /** Internal query signal */
+  /** Query signal for filtering */
   query = signal('');
 
-  /** Internal selected values signal */
-  selectedValues = signal<any[]>([]);
-
-  /** Overlay positions */
-  positions = [
-    { originX: 'start' as const, originY: 'bottom' as const, overlayX: 'start' as const, overlayY: 'top' as const },
-    { originX: 'start' as const, originY: 'top' as const, overlayX: 'start' as const, overlayY: 'bottom' as const },
-  ];
-
-  /** Trigger element width for overlay sizing */
-  triggerWidth = signal(300);
+  // ControlValueAccessor callbacks
+  private onChange: (value: unknown) => void = () => { };
+  private onTouched: () => void = () => { };
 
   /** Filtered options based on query */
   filteredOptions = computed(() => {
     const q = this.query().toLowerCase();
     if (!q) return this.options;
-    return this.options.filter(opt =>
+    return this.options.filter((opt) =>
       opt.label.toLowerCase().includes(q)
     );
   });
 
-  // ControlValueAccessor callbacks
-  private onChange: (value: any) => void = () => { };
-  private onTouched: () => void = () => { };
-
   constructor(private elementRef: ElementRef) {
-    // Scroll to active option when it changes
+    // Scrolls to active option when it changes
     afterRenderEffect(() => {
       const option = this.optionElements().find((opt) => opt.active());
       setTimeout(() => option?.element.scrollIntoView({ block: 'nearest' }), 50);
     });
 
-    // Reset scroll when closed
+    // Resets listbox scroll when closed
     afterRenderEffect(() => {
       if (!this.combobox()?.expanded()) {
         setTimeout(() => this.listbox()?.element.scrollTo(0, 0), 150);
       }
     });
 
-    // Update trigger width when rendered
+    // Watch for value changes and propagate to form
     afterRenderEffect(() => {
-      const wrapper = this.elementRef.nativeElement.querySelector('.input-wrapper');
-      if (wrapper) {
-        this.triggerWidth.set(wrapper.offsetWidth);
+      const values = this.listbox()?.values() || [];
+      const newValue = values.length > 0 ? values[0] : null;
+
+      // Update query to match selected label
+      if (newValue) {
+        const selectedOption = this.options.find((opt) => {
+          if (typeof opt.value === 'object' && opt.value !== null &&
+            typeof newValue === 'object' && newValue !== null) {
+            return (opt.value as { accession_id?: string }).accession_id ===
+              (newValue as { accession_id?: string }).accession_id;
+          }
+          return opt.value === newValue;
+        });
+        if (selectedOption) {
+          this.query.set(selectedOption.label);
+        }
       }
+
+      this.onChange(newValue);
+      this.onTouched();
     });
   }
 
-  toggle(event: MouseEvent) {
-    event.stopPropagation();
-    event.preventDefault();
-    if (this.combobox()?.expanded()) {
-      this.combobox()?.close();
-    } else {
-      this.combobox()?.open();
-    }
-  }
-
-  clearQuery(event: MouseEvent) {
+  clearQuery(event: MouseEvent): void {
     event.stopPropagation();
     event.preventDefault();
     this.query.set('');
-    this.selectedValues.set([]);
+    // Clear selection
+    this.listbox()?.values.set([]);
     this.onChange(null);
   }
 
-  isSelected(value: any): boolean {
-    // Compare by accession_id if value is an object
-    const selected = this.selectedValues();
-    if (selected.length === 0) return false;
-    const selectedVal = selected[0];
-    if (value?.accession_id && selectedVal?.accession_id) {
-      return value.accession_id === selectedVal.accession_id;
-    }
-    return selectedVal === value;
-  }
-
-  onValueChange(values: any[]): void {
-    const newValue = values.length > 0 ? values[0] : null;
-    this.onChange(newValue);
-    this.onTouched();
-
-    // Update query to match selected label
-    const selectedOption = this.options.find(opt => {
-      if (opt.value?.accession_id && newValue?.accession_id) {
-        return opt.value.accession_id === newValue.accession_id;
-      }
-      return opt.value === newValue;
-    });
-    if (selectedOption) {
-      this.query.set(selectedOption.label);
-    }
-
-    this.combobox()?.close();
-  }
-
   // ControlValueAccessor implementation
-  writeValue(value: any): void {
-    this.selectedValues.set(value != null ? [value] : []);
-    const selectedOption = this.options.find(opt => {
-      if (opt.value?.accession_id && value?.accession_id) {
-        return opt.value.accession_id === value.accession_id;
+  writeValue(value: unknown): void {
+    if (value != null) {
+      const selectedOption = this.options.find((opt) => {
+        if (typeof opt.value === 'object' && opt.value !== null &&
+          typeof value === 'object' && value !== null) {
+          return (opt.value as { accession_id?: string }).accession_id ===
+            (value as { accession_id?: string }).accession_id;
+        }
+        return opt.value === value;
+      });
+      if (selectedOption) {
+        this.query.set(selectedOption.label);
       }
-      return opt.value === value;
-    });
-    if (selectedOption) {
-      this.query.set(selectedOption.label);
     } else {
       this.query.set('');
     }
   }
 
-  registerOnChange(fn: (value: any) => void): void {
+  registerOnChange(fn: (value: unknown) => void): void {
     this.onChange = fn;
   }
 

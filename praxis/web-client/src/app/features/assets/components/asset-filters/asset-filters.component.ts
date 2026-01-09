@@ -74,7 +74,7 @@ export interface AssetFilterState {
           [options]="mappedStatusOptions()"
           [selectedValue]="selectedStatuses"
           [multiple]="true"
-          (selectedValueChange)="selectedStatuses = $event; onFilterChange()"
+          (selectedValueChange)="selectedStatuses = $any($event); onFilterChange()"
         ></app-aria-multiselect>
       </div>
 
@@ -86,7 +86,7 @@ export interface AssetFilterState {
           [options]="mappedCategoryOptions()"
           [selectedValue]="selectedCategories"
           [multiple]="true"
-          (selectedValueChange)="selectedCategories = $event; onFilterChange()"
+          (selectedValueChange)="selectedCategories = $any($event); onFilterChange()"
         ></app-aria-multiselect>
       </div>
 

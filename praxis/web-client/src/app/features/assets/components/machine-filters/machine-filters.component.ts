@@ -86,7 +86,7 @@ export interface MachineFilterState {
           [options]="mappedCategoryOptions()"
           [multiple]="true"
           [selectedValue]="selectedCategories"
-          (selectedValueChange)="selectedCategories = $event; onFilterChange()"
+          (selectedValueChange)="selectedCategories = $any($event); onFilterChange()"
         ></app-aria-multiselect>
       </div>
 
@@ -98,7 +98,7 @@ export interface MachineFilterState {
           [options]="mappedStatusOptions()"
           [multiple]="true"
           [selectedValue]="selectedStatuses"
-          (selectedValueChange)="selectedStatuses = $event; onFilterChange()"
+          (selectedValueChange)="selectedStatuses = $any($event); onFilterChange()"
         ></app-aria-multiselect>
       </div>
 
@@ -134,7 +134,7 @@ export interface MachineFilterState {
             [options]="mappedBackendOptions()"
             [multiple]="true"
             [selectedValue]="selectedBackends"
-            (selectedValueChange)="selectedBackends = $event; onFilterChange()">
+            (selectedValueChange)="selectedBackends = $any($event); onFilterChange()">
           </app-aria-multiselect>
         </div>
       }
