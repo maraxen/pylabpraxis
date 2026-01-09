@@ -2,7 +2,7 @@
 
 Examine `.agents/README.md` for development context.
 
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 **Batch:** [260108](./README.md)
 **Backlog:** [run_protocol_workflow.md](../../backlog/run_protocol_workflow.md)
 
@@ -13,9 +13,9 @@ Examine `.agents/README.md` for development context.
 Fix the Guided Deck Setup UI issues in the Run Protocol workflow. User verification on 2026-01-08 confirmed:
 
 - [x] **Continue Button Not Visible**: After adding carriers to the deck, the Continue/Next button is not visible.
-- [ ] **"Confirm & Continue" Action Broken**: Clicking "Confirm & Continue" does not trigger the next step or any apparent action. Investigate event handling and validation state.
-- [x] **Scrolling Issues**: Container scrolling behavior is unclear; content may overflow without proper scroll indicators.
-- [x] **Flex Container Fix**: Ensure the deck setup wizard uses a proper flex container layout.
+- [x] **"Confirm & Continue" Action Broken**: Clicking "Confirm & Continue" now triggers the next step in the Run Protocol stepper.
+- [x] **Scrolling Issues**: Container scrolling behavior fixed with independent scroll areas.
+- [x] **Flex Container Fix**: Deck setup wizard uses a proper flex container layout.
 
 ---
 

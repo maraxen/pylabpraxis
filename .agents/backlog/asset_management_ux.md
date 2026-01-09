@@ -41,8 +41,8 @@ Improve the "Add Machine" and "Add Resource" flows with better UX patterns, and 
 
 ## Phase 4: Backend Consistency Investigation
 
-- [ ] Investigate why 0 backends are listed in "Add Machine" despite 73 simulated loaded.
-- [ ] Enforce singleton pattern for simulated frontends per category to reduce noise (73 is too many).
+- [x] Investigate why 0 backends are listed in "Add Machine" despite 73 simulated loaded. ✅ FIXED
+- [x] Enforce singleton pattern for simulated frontends per category to reduce noise (73 is too many). ✅ FIXED
 
 ---
 

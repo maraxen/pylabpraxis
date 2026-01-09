@@ -21,8 +21,8 @@ Standardize UI patterns across the application for a cohesive user experience. A
 
 ## Phase 2: Navigation & Layout
 
-- [ ] Rename sidebar item "Deck" to "Workcell" or equivalent
-- [ ] Audit navigation labels for clarity and consistency
+- [x] Rename sidebar item "Deck" to "Workcell" or equivalent ✅ FIXED
+- [x] Audit navigation labels for clarity and consistency ✅ FIXED
 - [ ] Implement hover-triggered overlay menus for nav items with children
 
 ## Phase 3: Settings & Stepper Polish
@@ -48,6 +48,12 @@ Standardize UI patterns across the application for a cohesive user experience. A
 
 - [ ] **Rich Multiselect Options**:
   - **Requirement**: Use logos/icons (e.g., PLR resource types) instead of checkboxes whenever possible.
+
+## Phase 5: Resource Dialog Dynamic Facets
+
+- [ ] **Hardcoded Facets**: "More filters" facets are hardcoded in resource dialog.
+- [ ] **Dynamic Derivation**: Derive facet definitions/options from resource type definitions automatically.
+- [ ] **Sync with Metadata**: Ensure filter chip dropdown stays in sync with available resource metadata.
 
 ---
 

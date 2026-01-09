@@ -105,8 +105,8 @@ The deck display in Run Protocol workflow does not match the standalone Deck Vie
 
 - [ ] **Continue Button Issue**: Debug "Continue" button on "Select Assets" step.
 - [ ] **Stepper Restriction**: Allow broader navigation within the protocol setup stepper.
-- [ ] **Example Protocols**: Add example protocols for no-liquid-handler and rich well selection scenarios. Ensure they demonstrate complex well selection.
-- [ ] **Protocols Not Analyzed**: Investigate why protocols persistently show "Not Analyzed" status. Ensure analysis runs and persists correctly.
+- [x] **Example Protocols**: Add example protocols for no-liquid-handler and rich well selection scenarios. ✅ Added `plate_reader_assay`, `kinetic_assay`, and `selective_transfer` protocols (2026-01-09)
+- [x] **Protocols Not Analyzed**: Investigate why protocols persistently show "Not Analyzed" status. Ensure analysis runs and persists correctly. ✅ FIXED
 
 ### Guided Deck Setup UI (2026-01-08 Verification)
 
@@ -114,9 +114,9 @@ The deck display in Run Protocol workflow does not match the standalone Deck Vie
 > User verification confirmed these issues on 2026-01-08.
 
 - [x] **Continue/Next Button Not Visible**: After adding carriers, the Continue button is not visible
-- [ ] **Confirm & Continue Broken**: Clicking the button triggers no action. STILL NOT WORKING (2026-01-08). Investigate form validation and event handling.
-- [x] **Container Scrolling**: Scrolling behavior unclear; content may overflow without proper scroll indicators
-- [x] **Flex Container Fix**: Ensure deck setup wizard uses proper flex container with exposed navigation
+- [x] **Confirm & Continue Action Broken**: Clicking the button now advances the stepper. Verified fix on 2026-01-09.
+- [x] **Container Scrolling**: Scrolling behavior fixed with independent scroll areas for item list and deck preview.
+- [x] **Flex Container Fix**: Wizard uses proper flex container; footer navigation is always visible and functional.
 
 ### POST /resources/ API Error (from TECHNICAL_DEBT.md)
 
@@ -141,8 +141,8 @@ Current auto-selection logic is naive (picks Nth item from filtered list).
 
 **Improvements Needed:**
 
-- [ ] **(High) Fix "Buggy" Behavior**: User reported autoselection "seems buggy" (2026-01-08). Investigate failure cases.
-- [ ] Consider resource `status` (prefer `AVAILABLE_IN_STORAGE` over `IN_USE`)
+- [x] **(High) Fix "Buggy" Behavior**: User reported autoselection "seems buggy" (2026-01-08). Investigate failure cases.
+- [x] Consider resource `status` (prefer `AVAILABLE_IN_STORAGE` over `IN_USE`)
 - [ ] Check remaining capacity for consumables (partial tip racks, plates)
 - [ ] Handle case where not enough unique resources exist
 - [ ] UI indication when resources must be shared or duplicated

@@ -1,6 +1,6 @@
 # Praxis Development Roadmap
 
-**Last Updated**: 2026-01-07 (SqliteService Unit Tests completed)
+**Last Updated**: 2026-01-08 (Backlog Archiving)
 **Current Phase**: Feature Development & Quality Assurance
 
 ---
@@ -60,18 +60,20 @@ The backend simulation infrastructure is **complete** (87 tests passing). Focus 
 
 ---
 
-## Priority 2: High - Chip-Based Filter Standardization
+## Priority 2: High - Chip-Based Filter Standardization ✅ COMPLETE
 
 **Goal**: Unified chip-based filter UX across all surfaces
 
-| Item | Status | Description | Backlog |
-|------|--------|-------------|---------|
-| **Core Filter Chip Component** | ✅ Done | Reusable chip with active/inactive/disabled states | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
-| **Resource Filter Chips** | ✅ Done | Integrated Categories, Brands, Status | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
-| **Machine Filter Chips** | ✅ Done | Category, Simulated, Status, Backend | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
-| **Disabled Chip UX** | ✅ Done | Shake animation + message on disabled click | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
-| **Unique Name Parsing** | ⏳ Todo | Extract distinguishing name parts | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
-| **Chip Filter Overflow** | ✅ Done | flex-wrap + collapse >5 into dropdown | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+> ✅ **ARCHIVED** - All items completed 2026-01-08. See `archive/2026-01-08_completed/chip_filter_standardization.md`
+
+| Item | Status | Description |
+|------|--------|-------------|
+| **Core Filter Chip Component** | ✅ Done | Reusable chip with active/inactive/disabled states |
+| **Resource Filter Chips** | ✅ Done | Integrated Categories, Brands, Status |
+| **Machine Filter Chips** | ✅ Done | Category, Simulated, Status, Backend |
+| **Disabled Chip UX** | ✅ Done | Shake animation + message on disabled click |
+| **Unique Name Parsing** | ✅ Done | Extract distinguishing name parts |
+| **Chip Filter Overflow** | ✅ Done | flex-wrap + collapse >5 into dropdown |
 
 ---
 
@@ -111,10 +113,10 @@ The backend simulation infrastructure is **complete** (87 tests passing). Focus 
 
 | Item | Status | Description | Backlog |
 |------|--------|-------------|---------|
-| **SQLite Schema Mismatch** | ⏳ Todo | Add `inferred_requirements_json` column | [browser_mode.md](./backlog/browser_mode.md) |
-| **REPL Rendering Stability** | ⏳ Todo | Fix kernel refresh race condition | [repl_enhancements.md](./backlog/repl_enhancements.md) |
-| **UI Consistency** | ⏳ Todo | Standardize dropdown chips, menus | [ui_consistency.md](./backlog/ui_consistency.md) |
-| **Asset Management UX** | ⏳ Todo | Refactor Add Machine/Resource flows | [asset_management_ux.md](./backlog/asset_management_ux.md) |
+| **SQLite Schema Mismatch** | ✅ Done | Add `inferred_requirements_json` column | [browser_mode.md](./backlog/browser_mode.md) |
+| **REPL Rendering Stability** | ✅ Done | Fix kernel refresh race condition | [repl_enhancements.md](./backlog/repl_enhancements.md) |
+| **UI Consistency** | ✅ Partial | Standardized dropdown chips (Phase 1 & 3 done) | [ui_consistency.md](./backlog/ui_consistency.md) |
+| **Asset Management UX** | ✅ Partial | Refactored Add Machine/Resource flows (Phase 1-2 done) | [asset_management_ux.md](./backlog/asset_management_ux.md) |
 | **Dataviz & Well Selection** | ⏳ Todo | Bridge WellDataOutput with visualization | [dataviz_well_selection.md](./backlog/dataviz_well_selection.md) |
 
 ---
@@ -123,7 +125,7 @@ The backend simulation infrastructure is **complete** (87 tests passing). Focus 
 
 | Item | Status | Description | Backlog |
 |------|--------|-------------|---------|
-| **UI Visual Tweaks** | ⏳ Todo | Spacing on registry/machine tabs | [chip_filter_standardization.md](./backlog/chip_filter_standardization.md) |
+| **UI Visual Tweaks** | ✅ Done | Spacing on registry/machine tabs | [ui_standardization_q1_2026.md](./archive/2026-01-08_completed/ui_standardization_q1_2026.md) |
 | **Protocol Inference "Sharp Bits"** | ✅ Done | Documentation for edge cases/gotchas | [cleanup_finalization.md](./backlog/cleanup_finalization.md) |
 | ~~Spatial View Filters~~ | ✅ Done | Sorting/Filtering by location, name, workcell | [asset_management.md](./backlog/asset_management.md) |
 | **Pre-Merge Finalization** | ⏳ Todo | Archive docs, cleanup files | [cleanup_finalization.md](./backlog/cleanup_finalization.md) |

@@ -3,7 +3,7 @@
 **Priority**: P2 (High)
 **Owner**: Frontend
 **Created**: 2026-01-08 (new backlog from technical debt)
-**Status**: 🟡 In Progress (Phase 1 & 3 complete)
+**Status**: 🟢 Complete (Phase 1 & 3)
 
 ---
 
@@ -32,8 +32,9 @@ Replace custom filter chips and dropdowns with ARIA Combobox + Listbox:
 - [x] **Machine Asset Management**: Category/Status multiselect chips
 - [x] **Backend Filters**: Sort/filter dropdowns
 - [x] **Spatial View**: Category dropdowns
-- [x] Create shared `AriaMultiselectComponent` wrapper
-- [x] Create shared `AriaSelectComponent` wrapper
+- [x] Create shared `AriaMultiselectComponent` (Refactored to official pattern)
+- [x] Create shared `AriaSelectComponent` (Refactored to official pattern)
+- [x] Create shared `AriaAutocompleteComponent` (Refactored to official pattern)
 
 Files affected:
 

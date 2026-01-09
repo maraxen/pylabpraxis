@@ -21,8 +21,8 @@ Improve JupyterLite REPL stability, theme synchronization, and hardware discover
 
 ## Phase 2: Theme Synchronization
 
-- [ ] Implement JupyterLite theme sync (match app dark/light mode)
-- [ ] Inject CSS variables from main app into JupyterLite iframe
+- [x] Implement JupyterLite theme sync (match app dark/light mode) ✅ FIXED
+- [x] Inject CSS variables from main app into JupyterLite iframe ✅ FIXED
 
 ## Phase 3: Hardware Discovery Integration
 
@@ -37,8 +37,8 @@ Improve JupyterLite REPL stability, theme synchronization, and hardware discover
 
 ## Phase 5: Known Issues & Future Improvements
 
-- [ ] **404 Errors for PyLabRobot Paths**: Suppress harmless 404s for virtual filesystem imports (configure `jupyter-lite.json`).
-- [ ] **Slow Initial Load**: Explore pre-bundling or eager loading to reduce startup time/race conditions.
+- [x] **404 Errors for PyLabRobot Paths**: Suppress harmless 404s for virtual filesystem imports (configure `jupyter-lite.json`).
+- [x] **Slow Initial Load**: Explore pre-bundling or eager loading to reduce startup time/race conditions.
 
 ## Phase 6: Playground Transformation & Inventory Dialog
 

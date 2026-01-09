@@ -1,7 +1,7 @@
 # Prompt Batch: 260109
 
 **Created:** 2026-01-09  
-**Status:** 🔵 In Progress (15/24 complete)  
+**Status:** 🔵 In Progress (16/24 complete)  
 
 ---
 
@@ -25,7 +25,7 @@
 | 14 | [hardware_vid_pid_sync](./14_hardware_vid_pid_sync.md) | Dynamic VID/PID from PLR | P3 | M | 🟢 Not Started |
 | 15 | [ruff_remaining_fixes](./15_ruff_remaining_fixes.md) | Ruff errors < 20 | P2 | S | 🟢 Not Started |
 | 16 | [stepper_navigation_relaxation](./16_stepper_navigation_relaxation.md) | Allow broader step navigation | P3 | S | 🟢 Not Started |
-| 17 | [example_protocols](./17_example_protocols.md) | Add example protocols | P3 | S | 🟢 Not Started |
+| 17 | [example_protocols](./17_example_protocols.md) | Add example protocols | P3 | S | ✅ Done |
 | 18 | [execution_monitor_active_runs](./18_execution_monitor_active_runs.md) | Active Runs Panel (Phase 2) | P2 | M | ✅ Done |
 | 19 | [execution_monitor_history](./19_execution_monitor_history.md) | Run History Table (Phase 3) | P2 | M | ✅ Done |
 | 20 | [browser_schema_unique_constraint](./20_browser_schema_unique_constraint.md) | Fix UNIQUE constraint on name | P2 | S | ✅ Done |

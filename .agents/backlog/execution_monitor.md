@@ -103,39 +103,39 @@ WebSocket /ws/execution/:runId  →  Real-time updates
 
 **Goal**: Add Monitor to sidebar, create basic overview page
 
-- [ ] Add "Monitor" nav item to `unified-shell.component.ts`
+- [x] Add "Monitor" nav item to `unified-shell.component.ts` ✅ FIXED
   - Icon: `monitor_heart` or `assessment`
   - Route: `/app/monitor`
   - Position: After "Run" in sidebar
-- [ ] Create `execution-monitor` feature module
-- [ ] Create basic `ExecutionMonitorComponent` with placeholder content
-- [ ] Add routes to `app.routes.ts`
+- [x] Create `execution-monitor` feature module ✅ FIXED
+- [x] Create basic `ExecutionMonitorComponent` with placeholder content ✅ FIXED
+- [x] Add routes to `app.routes.ts` ✅ FIXED
 
 ### Phase 2: Active Runs Panel
 
 **Goal**: Show currently running protocols with real-time updates
 
-- [ ] Create `ActiveRunsPanelComponent`
+- [x] Create `ActiveRunsPanelComponent` ✅ FIXED
   - Subscribe to `ExecutionService` for current run
   - Show status, progress, elapsed time
   - Click to view details
-- [ ] Add visual indicators for run states:
+- [x] Add visual indicators for run states: ✅ FIXED
   - RUNNING: Pulsing green indicator
   - QUEUED: Yellow/amber indicator
   - PREPARING: Blue spinner
-- [ ] Show queue position for queued runs
+- [x] Show queue position for queued runs ✅ FIXED
 
 ### Phase 3: Run History Table
 
 **Goal**: Paginated table of past runs
 
-- [ ] Create `RunHistoryService` for API calls
-- [ ] Create `RunHistoryTableComponent`
+- [x] Create `RunHistoryService` for API calls ✅ FIXED
+- [x] Create `RunHistoryTableComponent` ✅ FIXED
   - Columns: Protocol Name, Status, Started, Duration, Machine
   - Sortable columns
   - Pagination controls
-- [ ] Add demo data support via `DemoInterceptor`
-- [ ] Click row to navigate to run detail
+- [x] Add demo data support via `DemoInterceptor` ✅ FIXED
+- [x] Click row to navigate to run detail ✅ FIXED
 
 ### Phase 4: Filtering & Search
 

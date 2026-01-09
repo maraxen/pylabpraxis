@@ -1,36 +1,45 @@
 # Prompt Batch: 260108
 
 **Created:** 2026-01-08
-**Status:** 🟡 In Progress
+**Status:** 🟡 In Progress (21 archived, 1 remaining)
+**Archived:** [archive/prompts/260108/](../../archive/prompts/260108/)
 
 ---
 
-## Prompts
+## Active Prompts
 
 | # | Prompt | Backlog Item | Priority | Difficulty | Status |
 |---|--------|--------------|----------|------------|--------|
-| 01 | [schema_mismatch_fix](./01_schema_mismatch_fix.md) | SQLite `inferred_requirements_json` column | CRITICAL | M | ✅ Complete |
-| 02 | [e2e_tests_asset_management](./02_e2e_tests_asset_management.md) | E2E Test Suite - Asset CRUD | P2 | M | 🟡 In Progress |
-| 03 | [unique_name_parsing](./03_unique_name_parsing.md) | Filter chip unique name extraction | P2 | M | ✅ Complete |
-| 04 | [ui_visual_tweaks](./04_ui_visual_tweaks.md) | Registry/Machine tab spacing | P3 | S | 🟡 In Progress |
-| 05 | [pre_merge_finalization](./05_pre_merge_finalization.md) | Archive & documentation cleanup | P3 | M | 🟢 Not Started |
-| 06 | [repl_rendering_stability](./06_repl_rendering_stability.md) | REPL kernel refresh race condition | P2 | M | ✅ Complete |
-| 07 | [ui_consistency_exec_monitor](./07_ui_consistency_exec_monitor.md) | Execution Monitor dropdown chips | P2 | M | ✅ Complete |
-| 08 | [asset_management_ux](./08_asset_management_ux.md) | Add Machine/Resource flow refactor | P2 | M | ✅ Complete |
-| 09 | [factory_orm_integration](./09_factory_orm_integration.md) | Factory Boy FK population fixes | P2 | M | ✅ Complete |
-| 10 | [browser_schema_scripts](./10_browser_schema_scripts.md) | Fix schema generation scripts | P2 | M | ✅ Complete |
-| 11 | [e2e_data_seeding](./11_e2e_data_seeding.md) | Pre-populate DB for Playwright tests | P2 | M | 🟢 Not Started |
-| 12 | [e2e_protocol_execution](./12_e2e_protocol_execution.md) | E2E Tests - Protocol execution flow | P2 | M | 🟢 Not Started |
-| 13 | [frontend_type_safety](./13_frontend_type_safety.md) | Fix Blob casting & Window mocking | P3 | S | 🟢 Not Started |
-| 14 | [jupyterlite_cleanup](./14_jupyterlite_cleanup.md) | Suppress 404s, optimize load | P3 | M | 🟢 Not Started |
-| 15 | [repo_cleanup](./15_repo_cleanup.md) | Remove .pymon, debug files | P3 | S | 🟢 Not Started |
-| 16 | [asset_management_ux_fix](./16_asset_management_ux_fix.md) | Fix Add Machine regressions | P2 | M | ✅ Complete |
-| 17 | [guided_deck_setup_ui](./17_guided_deck_setup_ui.md) | Fix Guided Deck Setup UI issues | P3 | S | 🟡 In Progress |
-| 18 | [angular_aria_multiselect](./18_angular_aria_multiselect.md) | ARIA multiselect component | P2 | L | ✅ Complete |
-| 19 | [aria_well_selector_grid](./19_aria_well_selector_grid.md) | ARIA Grid well selector | P2 | L | ✅ Complete |
-| 20 | [settings_stepper_polish](./20_settings_stepper_polish.md) | Settings icons, stepper theme | P3 | S | ✅ Complete |
+
 | 21 | [playground_enhancements](./21_playground_enhancements.md) | Playground rename & Inventory Dialog | P2 | M | 🟡 In Progress |
-| 22 | [deck_view_investigation](./22_deck_view_investigation.md) | Deck view inconsistency audit | P2 | M | 🟢 Not Started |
+
+## Archived Prompts ✅ (21)
+
+See [archive/prompts/260108/](../../archive/prompts/260108/) and [prompts_260108_batch1.md](../../archive/2026-01-08_completed/prompts_260108_batch1.md)
+
+| #  | Prompt                                                                         | Description                                    |
+|----|--------------------------------------------------------------------------------|------------------------------------------------|
+| 11 | [e2e_data_seeding](../../archive/prompts/260108/11_e2e_data_seeding.md)         | Pre-populate DB for Playwright tests           |
+| 12 | [e2e_protocol_execution](../../archive/prompts/260108/12_e2e_protocol_execution.md) | E2E Tests - Protocol execution flow            |
+| 15 | [repo_cleanup](../../archive/prompts/260108/15_repo_cleanup.md)                 | Remove .pymon, debug files                     |
+| 17 | [guided_deck_setup_ui](../../archive/prompts/260108/17_guided_deck_setup_ui.md) | Fix Guided Deck Setup UI issues                |
+| 22 | [deck_view_investigation](../../archive/prompts/260108/22_deck_view_investigation.md) | Deck view inconsistency audit              |
+| 02 | e2e_tests_asset_management                                                     | E2E Test Suite - Asset CRUD                    |
+| 01 | schema_mismatch_fix                                                            | SQLite `inferred_requirements_json` column fix |
+| 03 | unique_name_parsing                                                            | Filter chip unique name extraction             |
+| 04 | ui_visual_tweaks                                                               | Registry/Machine tab spacing & gradients        |
+| 05 | pre_merge_finalization                                                         | Archive & documentation cleanup                |
+| 06 | repl_rendering_stability                                                       | REPL kernel refresh race condition              |
+| 07 | ui_consistency_exec_monitor                                                    | Execution Monitor dropdown chips               |
+| 08 | asset_management_ux                                                            | Add Machine/Resource flow refactor             |
+| 09 | factory_orm_integration                                                        | Factory Boy FK population fixes                |
+| 10 | browser_schema_scripts                                                         | Fix schema generation scripts                  |
+| 16 | asset_management_ux_fix                                                        | Fix Add Machine regressions                    |
+| 18 | angular_aria_multiselect                                                       | ARIA multiselect component                     |
+| 19 | aria_well_selector_grid                                                        | ARIA Grid well selector                        |
+| 20 | settings_stepper_polish                                                        | Settings icons, stepper theme                  |
+| 13 | frontend_type_safety                                                           | Fix Blob casting & Window mocking              |
+| 14 | jupyterlite_cleanup                                                            | Suppress 404s, optimize load                   |
 
 ---
 

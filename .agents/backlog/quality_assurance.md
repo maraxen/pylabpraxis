@@ -32,7 +32,7 @@ This document consolidates all quality assurance work including linting, type ch
 
 - [x] Run `uv run ruff check --fix praxis/backend` to auto-fix (✅ 12 fixed)
 - [ ] Address remaining Ruff errors manually (circular imports deferred)
-- [ ] Run `uv run ty praxis/backend` and fix type errors
+- [x] Run `uv run ty praxis/backend` and fix type errors ✅ FIXED
 - [x] Configure ESLint for frontend (✅ Active)
 
 ---
@@ -59,8 +59,11 @@ This document consolidates all quality assurance work including linting, type ch
 | Flow | Status | Tool |
 |------|--------|------|
 | Asset Management | ✅ Complete | Playwright |
-| Protocol Execution | ⏳ Todo | Playwright |
+| Protocol Execution | ✅ Complete | Playwright |
 | Browser Mode | ⏳ Todo | Playwright |
+
+> [!WARNING]
+> **Firefox Unsupported**: Browser Mode E2E tests are flaky on Firefox (overlay issues, intercepted clicks, stepper gating). Run Chromium/WebKit only in CI until resolved. See [TECHNICAL_DEBT.md](../TECHNICAL_DEBT.md).
 
 ### Commands
 
@@ -169,15 +172,15 @@ SQLAlchemy's dataclass-style ORM mapping requires `kw_only=True` for non-default
 
 ## 6. Migrated Technical Debt (2026-01-08)
 
-### Frontend Type Safety (P3)
+### [x] Frontend Type Safety (P3)
 
-- **`SqliteService` Blob Casting**: Fix `Uint8Array` to `BlobPart[]` casting in `exportDatabase`. Verify `sql.js` types.
-- **`SettingsComponent` Tests**: Fix `window.location` mocking which currently requires `any` casting. Use DI token.
+- [x] **`SqliteService` Blob Casting**: Fix `Uint8Array` to `BlobPart[]` casting in `exportDatabase`. Verify `sql.js` types.
+- [x] **`SettingsComponent` Tests**: Fix `window.location` mocking which currently requires `any` casting. Use DI token.
 
 ### E2E Testing (P2)
 
-- **Asset Management Seeded Data**: E2E tests for creation fail because DB isn't seeded with definitions.
-  - *Task*: Implement "Wait for Database Ready" or pre-populate `praxis.db` for Playwright.
+- [x] **Asset Management Seeded Data**: E2E tests for creation fail because DB isn't seeded with definitions.
+  - *Status*: ✅ Implemented `global-setup.ts` to seed `SEED_RESOURCES` and `SEED_MACHINES` via exposed `SqliteService`.
 
 ---
 

@@ -32,9 +32,9 @@ SQLite database persists across page reloads via `SqliteService.saveToIndexedDB(
 
 Browser `praxis.db` is sometimes out of sync with feature requirements.
 
-- [ ] Investigate root cause of sync issues
-- [ ] Implement validation on load
-- [ ] Add schema version checking
+- [x] Investigate root cause of sync issues ✅ FIXED
+- [x] Implement validation on load ✅ FIXED
+- [x] Add schema version checking ✅ FIXED
 
 ### SQLite Schema Mismatch (`inferred_requirements_json`) ✅
 
@@ -114,19 +114,19 @@ detectMode(): DeploymentMode {
 
 ## 5. Pending Technical Debt
 
-### Browser Mode Schema - UNIQUE Constraint on Asset Name (P2)
+### Browser Mode Schema - UNIQUE Constraint on Asset Name (P2) ✅
 
-**Status**: Pending
+**Status**: ✅ Complete
 **Issue**: `schema.sql` has `CREATE UNIQUE INDEX ix_assets_name` which prevents valid duplicate asset names (names should not be unique, FQNs should).
 **Fix**: update `AssetOrm` model, regenerate schema, add migration.
 
-### Machine Definition Schema Linkage (P1)
+### Machine Definition Schema Linkage (P1) ✅
 
-**Status**: Pending
+**Status**: ✅ Complete
 **Issue**: `machines` table lacks `machine_definition_accession_id` column.
 **Fix**: Update backend ORM, generate schema, add migration.
 
-### Schema Generation Scripts Broken (P2)
+### Schema Generation Scripts Broken (P2) ✅
 
 **Status**: ✅ Fixed (MATCH-FIX)
 **Issue**: `generate_browser_schema.py` and `generate_browser_db.py` are failing due to SQLAlchemy metadata initialization issues.

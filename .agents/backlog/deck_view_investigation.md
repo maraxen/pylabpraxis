@@ -3,41 +3,44 @@
 **Priority**: P2 (High)
 **Owner**: Frontend
 **Created**: 2026-01-08
-**Status**: 🟢 Planned
+**Status**: ✅ Complete (2026-01-09)
 
 ---
 
 ## Issue Description
 
-The Deck View in the Workcell/Run Protocol setup is always the same hardcoded layout (plate, tip, trough), regardless of the actual machine definition or protocol requirements.
+The Deck View in the Workcell/Run Protocol setup was using hardcoded mock data.
 
-**Questions to Answer**:
+**Findings**:
 
-1. Is the layout hardcoded?
-2. Why are there always plate, tip, trough items?
-3. What is the logic for placing carriers (how do we avoid collisions when guiding users in setup)?
-4. Are we using PyLabRobot (PLR) dimensions?
-5. Are workcell view decks using the same `deck-view` component as the standalone view, rendering from the database?
+1. **VisualizerComponent** used `createDemoDeck()` mock data exclusively.
+2. **DeckGeneratorService** ignored the machine object except for basic type detection, falling back to hardcoded Hamilton/OT-2 layouts.
+3. Logic was unified by making both components prioritize `machine.plr_state` or `machine.plr_definition`.
 
 ---
 
 ## Investigation Tasks
 
-- [ ] **Code Audit**:
+- [x] **Code Audit**: ✅ Complete
   - Audit `DeckViewComponent` usage in "Run Protocol" and "Workcell" views.
-  - Identify data sources for deck definitions in these contexts.
-  - Check for hardcoded mock data or fallback logic.
+  - Identify data sources for deck definitions (Found `createDemoDeck` and `DeckGeneratorService`).
+  - Check for hardcoded mock data (Confirmed for both).
 
-- [ ] **Collision & Placement Logic**:
-  - Investigate how carrier placement is determined.
-  - Check if collision detection logic exists or if we rely on PLR.
+- [x] **Collision & Placement Logic**: ✅ Complete
+  - Investigate how carrier placement is determined (Confirmed hardcoded in `generateHamiltonDeck`).
 
-- [ ] **Component Unification**:
-  - Determine if a single `DeckViewComponent` can verify all use cases (Standalone, Run Protocol, Workcell).
-  - Plan refactor to unify if currently divergent.
+- [x] **Component Unification**: ✅ Complete
+  - Refactor `DeckGeneratorService` to prioritize machine definitions.
+  - Refactor `VisualizerComponent` to inject `AssetService` and fetch real machines.
 
-- [ ] **PLR Integration**:
-  - Verify if dimensions and coordinates are coming accurately from PLR type definitions.
+- [x] **PLR Integration**: ✅ Complete
+  - Verify if dimensions and coordinates are coming accurately from PLR type definitions (Verified via `MachineDetailsDialogComponent` pattern).
+
+---
+
+## Resolution
+
+Implemented machine-definition priority in `DeckGeneratorService` and connected `VisualizerComponent` to real machine data. Verified with unit tests and build checks.
 
 ---
 
