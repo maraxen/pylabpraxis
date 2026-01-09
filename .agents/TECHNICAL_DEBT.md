@@ -37,9 +37,25 @@
   - Container scrolling unclear
   - **Target**: [run_protocol_workflow.md](./backlog/run_protocol_workflow.md)
 
+- **High** — Asset Autoselection:
+  - User reports autoselection "seems buggy".
+  - Investigate auto-assignment logic in `AssetManager` or `ProtocolService`.
+  - Verify if it is strictly selecting compatible resources or if fallback logic is flawed.
+  - **Target**: [run_protocol_workflow.md](./backlog/run_protocol_workflow.md)
+
+- **High** — Machine Backend Mismatch:
+  - "Add Machine" lists 0 backends, but logs show 73 simulated backends loaded.
+  - Likely due to excessive simulated frontends per category.
+  - **Action**: Enforce singleton pattern for simulated frontends per category; investigate DB/processing.
+  - **Target**: [asset_management_ux.md](./backlog/asset_management_ux.md)
+
 ### Medium Priority
 
 - **Medium** — Resource dialog "More filters" facets are hardcoded. Dynamically derive facet definitions/options from resource definitions so the filter chip dropdown stays in sync with available metadata.
+
+- **Medium** — Protocols All Say "Not Analyzed":
+  - Investigate why protocol analysis status is not persisting or displaying correctly.
+  - **Target**: NEW backlog `protocol_analysis_investigation.md` (or add to `protocol_enhancements.md`)
 
 - **Medium** — Angular ARIA Migration:
   - Replace custom chip/dropdown components with `@angular/aria` primitives

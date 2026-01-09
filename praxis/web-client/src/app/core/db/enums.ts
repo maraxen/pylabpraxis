@@ -1,6 +1,6 @@
 /**
  * Auto-generated TypeScript enums from Python enums
- * Generated at: 2026-01-07T20:42:01.309123
+ * Generated at: 2026-01-08T19:08:06.741709
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 
@@ -232,35 +232,6 @@ export const ProtocolSourceStatusValues = {
   INACTIVE: 'inactive' as const,
   SYNC_ERROR: 'sync_error' as const,
   PENDING_DELETION: 'pending_deletion' as const,
-} as const;
-
-/**
- * Enumeration for actions a user can take after resolving state uncertainty.
- */
-export type ResolutionAction = 'resume' | 'abort' | 'retry';
-
-export const ResolutionActionValues = {
-  RESUME: 'resume' as const,
-  ABORT: 'abort' as const,
-  RETRY: 'retry' as const,
-} as const;
-
-/**
- * Enumeration for the type of resolution applied to a failed operation.
- */
-export type ResolutionType =
-  | 'confirmed_success'
-  | 'confirmed_failure'
-  | 'partial'
-  | 'arbitrary'
-  | 'unknown';
-
-export const ResolutionTypeValues = {
-  CONFIRMED_SUCCESS: 'confirmed_success' as const,
-  CONFIRMED_FAILURE: 'confirmed_failure' as const,
-  PARTIAL: 'partial' as const,
-  ARBITRARY: 'arbitrary' as const,
-  UNKNOWN: 'unknown' as const,
 } as const;
 
 /**

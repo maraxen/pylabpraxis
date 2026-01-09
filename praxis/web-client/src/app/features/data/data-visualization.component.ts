@@ -10,6 +10,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
 import { AriaSelectComponent, SelectOption } from '@shared/components/aria-select/aria-select.component';
+import { AriaAutocompleteComponent } from '@shared/components/aria-autocomplete/aria-autocomplete.component';
 import { PlotlyModule } from 'angular-plotly.js';
 import { interval, Subscription } from 'rxjs';
 import { ProtocolService } from '../protocols/services/protocol.service';
@@ -139,9 +140,10 @@ function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
     MatButtonModule,
     MatTableModule,
     MatTooltipModule,
-    FormsModule,
     PlotlyModule,
-    AriaSelectComponent
+    FormsModule,
+    AriaSelectComponent,
+    AriaAutocompleteComponent
   ],
   template: `
     <div class="data-page">
@@ -156,22 +158,24 @@ function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
           <div class="selector-row">
             <div class="protocol-select">
               <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block">Protocol</label>
-              <app-aria-select
+              <app-aria-autocomplete
                 label="Protocol"
                 [options]="protocolOptions()"
                 [(ngModel)]="selectedProtocolId"
                 (ngModelChange)="onProtocolChange($event)"
-              ></app-aria-select>
+                placeholder="Search protocols..."
+              ></app-aria-autocomplete>
             </div>
 
             <div class="run-select">
               <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block">Run</label>
-              <app-aria-select
+              <app-aria-autocomplete
                 label="Run"
                 [options]="runOptions()"
                 [(ngModel)]="selectedRunId"
                 (ngModelChange)="onRunChange($event)"
-              ></app-aria-select>
+                placeholder="Search runs..."
+              ></app-aria-autocomplete>
             </div>
           </div>
         </mat-card-content>

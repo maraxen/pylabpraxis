@@ -105,7 +105,8 @@ The deck display in Run Protocol workflow does not match the standalone Deck Vie
 
 - [ ] **Continue Button Issue**: Debug "Continue" button on "Select Assets" step.
 - [ ] **Stepper Restriction**: Allow broader navigation within the protocol setup stepper.
-- [ ] **Example Protocols**: Add example protocols for no-liquid-handler and rich well selection scenarios.
+- [ ] **Example Protocols**: Add example protocols for no-liquid-handler and rich well selection scenarios. Ensure they demonstrate complex well selection.
+- [ ] **Protocols Not Analyzed**: Investigate why protocols persistently show "Not Analyzed" status. Ensure analysis runs and persists correctly.
 
 ### Guided Deck Setup UI (2026-01-08 Verification)
 
@@ -113,7 +114,7 @@ The deck display in Run Protocol workflow does not match the standalone Deck Vie
 > User verification confirmed these issues on 2026-01-08.
 
 - [x] **Continue/Next Button Not Visible**: After adding carriers, the Continue button is not visible
-- [ ] **Confirm & Continue Broken**: Clicking the button triggers no action (investigate event handler/validation)
+- [ ] **Confirm & Continue Broken**: Clicking the button triggers no action. STILL NOT WORKING (2026-01-08). Investigate form validation and event handling.
 - [x] **Container Scrolling**: Scrolling behavior unclear; content may overflow without proper scroll indicators
 - [x] **Flex Container Fix**: Ensure deck setup wizard uses proper flex container with exposed navigation
 
@@ -140,6 +141,7 @@ Current auto-selection logic is naive (picks Nth item from filtered list).
 
 **Improvements Needed:**
 
+- [ ] **(High) Fix "Buggy" Behavior**: User reported autoselection "seems buggy" (2026-01-08). Investigate failure cases.
 - [ ] Consider resource `status` (prefer `AVAILABLE_IN_STORAGE` over `IN_USE`)
 - [ ] Check remaining capacity for consumables (partial tip racks, plates)
 - [ ] Handle case where not enough unique resources exist

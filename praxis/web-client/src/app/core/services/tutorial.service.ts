@@ -83,14 +83,14 @@ export class TutorialService {
             'assets-resources': 'nav-protocols',
             'nav-protocols': 'nav-run',
             'protocols-import': 'nav-run',
-            'nav-run': 'nav-repl',
-            'run-step-protocol': 'nav-repl',
-            'run-step-params': 'nav-repl',
-            'run-step-machine': 'nav-repl',
-            'run-step-assets': 'nav-repl',
-            'run-step-deck': 'nav-repl',
-            'nav-repl': 'nav-settings',
-            'repl-term': 'nav-settings',
+            'nav-run': 'nav-playground',
+            'run-step-protocol': 'nav-playground',
+            'run-step-params': 'nav-playground',
+            'run-step-machine': 'nav-playground',
+            'run-step-assets': 'nav-playground',
+            'run-step-deck': 'nav-playground',
+            'nav-playground': 'nav-settings',
+            'playground-term': 'nav-settings',
             'nav-settings': 'settings-finish',
             'settings-finish': 'settings-finish'
         };
@@ -211,22 +211,22 @@ export class TutorialService {
             attachTo: { element: '[data-tour-id="run-step-label-deck"]', on: 'bottom' }
         });
 
-        // Step 10: REPL Navigation
+        // Step 10: Playground Navigation
         this.addStep({
-            id: 'nav-repl',
-            title: 'Interactive REPL',
-            text: 'For direct control and testing, use the Python REPL.',
-            attachTo: { element: '[data-tour-id="nav-repl"]', on: 'right' },
-            advanceOn: { selector: '[data-tour-id="nav-repl"]', event: 'click' }
+            id: 'nav-playground',
+            title: 'Playground',
+            text: 'For direct control and testing, use the Python Playground (REPL).',
+            attachTo: { element: '[data-tour-id="nav-playground"]', on: 'right' },
+            advanceOn: { selector: '[data-tour-id="nav-playground"]', event: 'click' }
         });
 
-        // Step 11: REPL Terminal
+        // Step 11: Playground Notebook (JupyterLite)
         this.addStep({
-            id: 'repl-term',
-            title: 'JupyterLite Notebook',
+            id: 'playground-term',
+            title: 'Playground Notebook',
             text: 'This is a full JupyterLite environment running in your browser. You can control hardware directly using PyLabRobot commands.',
             attachTo: { element: '[data-tour-id="repl-notebook"]', on: 'center' },
-            route: '/app/repl',
+            route: '/app/playground',
             waitFor: '[data-tour-id="repl-notebook"]'
         });
 

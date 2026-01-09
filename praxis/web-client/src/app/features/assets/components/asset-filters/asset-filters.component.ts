@@ -67,18 +67,15 @@ export interface AssetFilterState {
       </div>
 
       <!-- Status Filter -->
-      <div class="filter-group">
-        <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-2 block">Status</label>
-        <mat-chip-listbox
+      <div class="filter-group min-w-[200px]">
+        <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-1 block">Status</label>
+        <app-aria-multiselect
+          label="Status"
+          [options]="mappedStatusOptions()"
+          [selectedValue]="selectedStatuses"
           [multiple]="true"
-          [(ngModel)]="selectedStatuses"
-          (change)="onFilterChange()"
-          aria-label="Filter by status">
-            <mat-chip-option value="available" class="status-available">Available</mat-chip-option>
-            <mat-chip-option value="in_use" class="status-in_use">In Use</mat-chip-option>
-            <mat-chip-option value="error" class="status-error">Error</mat-chip-option>
-            <mat-chip-option value="maintenance" class="status-maintenance">Maintenance</mat-chip-option>
-        </mat-chip-listbox>
+          (selectedValueChange)="selectedStatuses = $event; onFilterChange()"
+        ></app-aria-multiselect>
       </div>
 
       <!-- Category Filter -->
@@ -87,9 +84,9 @@ export interface AssetFilterState {
         <app-aria-multiselect
           label="Category"
           [options]="mappedCategoryOptions()"
-          [(ngModel)]="selectedCategories"
+          [selectedValue]="selectedCategories"
           [multiple]="true"
-          (selectionChange)="onFilterChange()"
+          (selectedValueChange)="selectedCategories = $event; onFilterChange()"
         ></app-aria-multiselect>
       </div>
 
@@ -208,6 +205,13 @@ export class AssetFiltersComponent {
       value: cat
     }));
   });
+
+  mappedStatusOptions = computed<SelectOption[]>(() => [
+    { label: 'Available', value: 'available', icon: 'check_circle' },
+    { label: 'In Use', value: 'in_use', icon: 'play_circle' },
+    { label: 'Error', value: 'error', icon: 'error' },
+    { label: 'Maintenance', value: 'maintenance', icon: 'build' }
+  ]);
 
   mappedMachineOptions = computed(() => {
     return [

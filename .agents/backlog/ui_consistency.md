@@ -37,6 +37,18 @@ Standardize UI patterns across the application for a cohesive user experience. A
 - [x] Add tooltips for accessibility <!-- id: 4 -->
 - [ ] Consider flyout menus for nested navigation
 
+## Phase 4: Component Styling & Interactions (2026-01-08)
+
+- [ ] **Interactive States (Multiselect/Select/Autocomplete)**:
+  - **Issue**: Clicking changes rendering permanently.
+  - **Requirement**:
+    - **Default/Active**: Primary application color with transparent text.
+    - **Selection Screen**: Theme background with primary color text.
+    - **Button**: Stays consistent.
+
+- [ ] **Rich Multiselect Options**:
+  - **Requirement**: Use logos/icons (e.g., PLR resource types) instead of checkboxes whenever possible.
+
 ---
 
 ## Notes

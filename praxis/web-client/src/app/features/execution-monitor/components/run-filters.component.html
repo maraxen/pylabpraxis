@@ -3,35 +3,17 @@
 
     <!-- Status Filter (Dropdown Chip) -->
     <app-aria-multiselect label="Status" [options]="statusOptions" [multiple]="true" [selectedValue]="selectedStatuses"
-        (selectionChange)="onStatusChange($event)">
+        (selectionChange)="onStatusChange($any($event))">
     </app-aria-multiselect>
 
     <!-- Protocol Filter -->
-    <div class="filter-group min-w-[200px]">
-        <mat-form-field appearance="outline" class="w-full dense-field">
-            <mat-label>Protocol</mat-label>
-            <mat-select [multiple]="true" [(ngModel)]="selectedProtocolIds" (selectionChange)="onFilterChange()"
-                placeholder="All protocols">
-                @for (protocol of protocols(); track protocol.accession_id) {
-                <mat-option [value]="protocol.accession_id">
-                    {{ protocol.name }}
-                </mat-option>
-                }
-            </mat-select>
-        </mat-form-field>
-    </div>
+    <app-aria-multiselect label="Protocol" [options]="protocolOptions()" [multiple]="true"
+        [selectedValue]="selectedProtocolIds" (selectionChange)="onProtocolChange($any($event))">
+    </app-aria-multiselect>
 
     <!-- Sort By -->
-    <div class="filter-group min-w-[160px]">
-        <mat-form-field appearance="outline" class="w-full dense-field">
-            <mat-label>Sort by</mat-label>
-            <mat-select [(ngModel)]="sortBy" (selectionChange)="onFilterChange()">
-                <mat-option value="created_at">Date Created</mat-option>
-                <mat-option value="start_time">Start Time</mat-option>
-                <mat-option value="status">Status</mat-option>
-            </mat-select>
-        </mat-form-field>
-    </div>
+    <app-aria-select label="Sort by" [options]="sortOptions" [(ngModel)]="sortBy" (ngModelChange)="onFilterChange()">
+    </app-aria-select>
 
     <!-- Sort Order Toggle -->
     <div class="filter-group">

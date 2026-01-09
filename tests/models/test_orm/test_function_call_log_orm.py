@@ -86,16 +86,9 @@ async def test_function_call_log_orm_creation_with_all_fields(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test creating FunctionCallLogOrm with all fields populated."""
+    from datetime import timedelta
     start_time = datetime.now(timezone.utc)
-    end_time = datetime(
-        start_time.year,
-        start_time.month,
-        start_time.day,
-        start_time.hour,
-        start_time.minute,
-        start_time.second + 5,
-        tzinfo=timezone.utc,
-    )
+    end_time = start_time + timedelta(seconds=5)
     input_args = {"volume": 100, "source": "A1", "dest": "B1"}
     return_value = {"success": True, "transferred_volume": 98.5}
 

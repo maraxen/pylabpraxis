@@ -18,7 +18,16 @@ Create a shared ARIA-compliant multiselect component using `@angular/aria` primi
 2. Create `AriaMultiselectComponent` in `src/app/shared/components/aria-multiselect/`
 3. Use `@angular/aria/combobox` + `@angular/aria/listbox` pattern
 
-### Phase 2: Replace Existing Components
+### Phase 2: Component Styling & Interactions (CRITICAL)
+
+**Strict Styling Requirements**:
+
+- **Default/Active State**: Primary application color background with transparent text.
+- **Selection Screen**: Theme background with primary color text.
+- **Button**: Styles must remain consistent (no layout shifts on selection).
+- **Icons**: Use logos/icons for options (e.g., PLR resource types) instead of checkboxes whenever possible.
+
+### Phase 3: Replace Existing Components
 
 Replace the following with the new ARIA multiselect:
 

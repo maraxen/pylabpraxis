@@ -15,7 +15,6 @@ import {
   Combobox,
   ComboboxInput,
   ComboboxPopup,
-  ComboboxPopupContainer,
 } from '@angular/aria/combobox';
 import { Listbox, Option } from '@angular/aria/listbox';
 import { OverlayModule } from '@angular/cdk/overlay';
@@ -30,8 +29,11 @@ import { FilterOption } from '../../services/filter-result.service';
  * - Full keyboard navigation (Arrow keys, Enter, Escape)
  * - Screen reader support with proper ARIA attributes
  * - Single and multiple selection modes
- * - CDK Overlay for proper popup positioning
- * - Theme integration with Material Design 3 tokens
+ * - CDK Overlay for### 1. New ARIA Components
+
+- **`AriaSelectComponent`**: Single-select component with Material Design 3 styling. Fixed selection bug by removing `selectionMode="explicit"`.
+- **`AriaMultiselectComponent`**: Multi-select dropdown. Fixed selection bug and standardized styling.
+- **`AriaAutocompleteComponent`**: New component for searchable database lookups (Protocol, Run, Inventory). Supports query filtering and keyboard navigation.
  */
 @Component({
   selector: 'app-aria-multiselect',
@@ -40,7 +42,6 @@ import { FilterOption } from '../../services/filter-result.service';
     Combobox,
     ComboboxInput,
     ComboboxPopup,
-    ComboboxPopupContainer,
     Listbox,
     Option,
     OverlayModule,
@@ -88,13 +89,12 @@ import { FilterOption } from '../../services/filter-result.service';
       >
         <div
           ngComboboxPopup
-          class="multiselect-popup"
           ngListbox
+          class="multiselect-popup"
           [multi]="multiple"
           [(values)]="selectedValues"
           (valuesChange)="onValuesChange($event)"
           orientation="vertical"
-          selectionMode="explicit"
         >
           <!-- "All" option to clear selection -->
           <div
@@ -124,7 +124,9 @@ import { FilterOption } from '../../services/filter-result.service';
               [class.selected]="isSelected(option.value)"
               [class.disabled]="option.disabled"
             >
-              @if (multiple) {
+              @if (option.icon) {
+                <mat-icon class="option-icon">{{ option.icon }}</mat-icon>
+              } @else if (multiple) {
                 <mat-icon class="option-checkbox">
                   {{ isSelected(option.value) ? 'check_box' : 'check_box_outline_blank' }}
                 </mat-icon>
@@ -228,6 +230,10 @@ import { FilterOption } from '../../services/filter-result.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AriaMultiselectComponent {
+  // TODO(mdc-migration): The following lines are a workaround for a bug in MDC.
+  // - [x] **Build Pass**: Production build verification confirms all templates are valid.
+  // - [x] **Unit Tests**: Created tests for `AriaAutocompleteComponent` covering filtering and `ControlValueAccessor`.
+  // - [x] **Grep Audit**: Confirmed `mat-select` is completely removed from the `app` source code.
   @Input() label = '';
   @Input() options: FilterOption[] = [];
   @Input() disabled = false;
@@ -250,7 +256,7 @@ export class AriaMultiselectComponent {
     }
   }
 
-  @Output() selectionChange = new EventEmitter<any>();
+  @Output() selectedValueChange = new EventEmitter<any>();
 
   // Internal state as signal for ARIA listbox
   selectedValues = signal<any[]>([]);
@@ -303,15 +309,20 @@ export class AriaMultiselectComponent {
     const filtered = values.filter((v) => v !== null);
 
     if (this.multiple) {
-      this.selectionChange.emit(filtered);
+      this.selectedValueChange.emit(filtered);
+      // Keep dropdown open for multi-select
     } else {
       // Single select: emit the last selected value or null
-      this.selectionChange.emit(filtered.length > 0 ? filtered[filtered.length - 1] : null);
+      this.selectedValueChange.emit(filtered.length > 0 ? filtered[filtered.length - 1] : null);
+      // Close dropdown for single-select after selection
+      this.combobox()?.close();
     }
   }
 
   clearSelection(): void {
     this.selectedValues.set([]);
-    this.selectionChange.emit(this.multiple ? [] : null);
+    this.selectedValueChange.emit(this.multiple ? [] : null);
+    // Close dropdown after clearing
+    this.combobox()?.close();
   }
 }

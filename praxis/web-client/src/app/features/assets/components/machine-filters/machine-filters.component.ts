@@ -13,6 +13,8 @@ import { MatInputModule } from '@angular/material/input';
 import { Machine, MachineStatus, MachineDefinition } from '../../models/asset.models';
 import { getMachineCategoryIcon } from '@shared/constants/asset-icons';
 import { extractUniqueNameParts } from '../../../../shared/utils/name-parser';
+import { AriaSelectComponent, SelectOption } from '@shared/components/aria-select/aria-select.component';
+import { AriaMultiselectComponent } from '@shared/components/aria-multiselect/aria-multiselect.component';
 
 export type MachineSortOption = 'name' | 'category' | 'created_at' | 'status';
 
@@ -44,12 +46,12 @@ export interface MachineFilterState {
     MatFormFieldModule,
     MatChipsModule,
     MatIconModule,
-    MatButtonModule,
-    MatButtonToggleModule,
     MatSlideToggleModule,
     MatTooltipModule,
-    MatSelectModule,
-    MatInputModule
+    MatInputModule,
+    MatButtonToggleModule,
+    AriaSelectComponent,
+    AriaMultiselectComponent
   ],
   template: `
     <div class="filters-container">
@@ -76,39 +78,28 @@ export interface MachineFilterState {
         </mat-form-field>
       </div>
 
-      <!-- Category Filter Chips -->
+      <!-- Category Filter -->
       <div class="filter-group">
         <label class="filter-label">Category</label>
-        <mat-chip-listbox
+        <app-aria-multiselect
+          label="Category"
+          [options]="mappedCategoryOptions()"
           [multiple]="true"
-          [(ngModel)]="selectedCategories"
-          (change)="onFilterChange()"
-          aria-label="Filter by category"
-        >
-          @for (cat of availableCategories(); track cat) {
-            <mat-chip-option [value]="cat" [matTooltip]="cat">
-              <mat-icon class="chip-icon">{{ getCategoryIcon(cat) }}</mat-icon>
-              {{ categoryMappings().get(cat) || cat }}
-            </mat-chip-option>
-          }
-        </mat-chip-listbox>
+          [selectedValue]="selectedCategories"
+          (selectedValueChange)="selectedCategories = $event; onFilterChange()"
+        ></app-aria-multiselect>
       </div>
 
-      <!-- Status Filter Chips -->
+      <!-- Status Filter -->
       <div class="filter-group">
         <label class="filter-label">Status</label>
-        <mat-chip-listbox
+        <app-aria-multiselect
+          label="Status"
+          [options]="mappedStatusOptions()"
           [multiple]="true"
-          [(ngModel)]="selectedStatuses"
-          (change)="onFilterChange()"
-          aria-label="Filter by status"
-        >
-          <mat-chip-option value="idle" class="status-idle">Idle</mat-chip-option>
-          <mat-chip-option value="running" class="status-running">Running</mat-chip-option>
-          <mat-chip-option value="error" class="status-error">Error</mat-chip-option>
-          <mat-chip-option value="offline" class="status-offline">Offline</mat-chip-option>
-          <mat-chip-option value="maintenance" class="status-maintenance">Maintenance</mat-chip-option>
-        </mat-chip-listbox>
+          [selectedValue]="selectedStatuses"
+          (selectedValueChange)="selectedStatuses = $event; onFilterChange()"
+        ></app-aria-multiselect>
       </div>
 
       <!-- Simulated Filter Toggle -->
@@ -138,34 +129,13 @@ export interface MachineFilterState {
       @if (availableBackends().length > 0) {
         <div class="filter-group">
           <label class="filter-label">Backend</label>
-          @if (!shouldCollapseBackends()) {
-            <mat-chip-listbox
-              [multiple]="true"
-              [(ngModel)]="selectedBackends"
-              (change)="onFilterChange()"
-              aria-label="Filter by backend"
-            >
-              @for (backend of availableBackends(); track backend) {
-                <mat-chip-option [value]="backend">{{ backend }}</mat-chip-option>
-              }
-            </mat-chip-listbox>
-          } @else {
-            <mat-form-field appearance="outline" class="chip-dropdown">
-              <mat-select
-                [multiple]="true"
-                [(ngModel)]="selectedBackends"
-                (selectionChange)="onFilterChange()"
-                placeholder="Select backends"
-                panelClass="theme-aware-panel"
-              >
-                @for (backend of availableBackends(); track backend) {
-                  <mat-option [value]="backend" [matTooltip]="backend">
-                    {{ backendMappings().get(backend) || backend }}
-                  </mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-          }
+          <app-aria-multiselect
+            label="Backend"
+            [options]="mappedBackendOptions()"
+            [multiple]="true"
+            [selectedValue]="selectedBackends"
+            (selectedValueChange)="selectedBackends = $event; onFilterChange()">
+          </app-aria-multiselect>
         </div>
       }
 
@@ -173,14 +143,14 @@ export interface MachineFilterState {
       <div class="filter-group">
         <label class="filter-label">Sort</label>
         <div class="sort-controls">
-          <mat-form-field appearance="outline" class="sort-field">
-            <mat-select [(ngModel)]="sortBy" (selectionChange)="onFilterChange()" panelClass="theme-aware-panel">
-              <mat-option value="name">Name</mat-option>
-              <mat-option value="category">Category</mat-option>
-              <mat-option value="status">Status</mat-option>
-              <mat-option value="created_at">Date Added</mat-option>
-            </mat-select>
-          </mat-form-field>
+          <app-aria-select
+            label="Sort by"
+            [options]="sortOptions"
+            [(ngModel)]="sortBy"
+            (ngModelChange)="onFilterChange()"
+            class="sort-field-select"
+          >
+          </app-aria-select>
           <mat-button-toggle-group
             hideSingleSelectionIndicator
             [(ngModel)]="sortOrder"
@@ -271,8 +241,8 @@ export interface MachineFilterState {
       .mat-mdc-form-field-flex { height: 40px; }
     }
 
-    :host ::ng-deep .sort-field {
-      width: 130px;
+    :host ::ng-deep .sort-field-select {
+      width: 140px;
     }
 
     .sort-controls {
@@ -367,6 +337,38 @@ export class MachineFiltersComponent implements OnInit {
   shouldCollapseBackends = computed(() =>
     this.availableBackends().length > this.CHIP_COLLAPSE_THRESHOLD
   );
+
+  readonly sortOptions: SelectOption[] = [
+    { label: 'Name', value: 'name' },
+    { label: 'Category', value: 'category' },
+    { label: 'Status', value: 'status' },
+    { label: 'Date Added', value: 'created_at' }
+  ];
+
+  mappedCategoryOptions = computed(() => {
+    return this.availableCategories().map(cat => ({
+      label: this.categoryMappings().get(cat) || cat,
+      value: cat,
+      icon: this.getCategoryIcon(cat)
+    }));
+  });
+
+  mappedStatusOptions = computed(() => {
+    return [
+      { label: 'Idle', value: 'idle' as MachineStatus, icon: 'hourglass_empty' },
+      { label: 'Running', value: 'running' as MachineStatus, icon: 'play_arrow' },
+      { label: 'Error', value: 'error' as MachineStatus, icon: 'error_outline' },
+      { label: 'Offline', value: 'offline' as MachineStatus, icon: 'wifi_off' },
+      { label: 'Maintenance', value: 'maintenance' as MachineStatus, icon: 'build' }
+    ];
+  });
+
+  mappedBackendOptions = computed(() => {
+    return this.availableBackends().map(backend => ({
+      label: this.backendMappings().get(backend) || backend,
+      value: backend
+    }));
+  });
 
   ngOnInit(): void {
     // Emit initial filter state

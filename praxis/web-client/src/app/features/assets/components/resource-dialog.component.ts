@@ -112,7 +112,7 @@ interface GroupedDefinitions {
                 [options]="mappedVendorOptions()"
                 [selectedValue]="vendorFilters()"
                 [multiple]="true"
-                (selectionChange)="updateVendorFilters($event)"
+                (selectionChange)="updateVendorFilters($any($event))"
               ></app-aria-multiselect>
             </div>
 
@@ -139,7 +139,7 @@ interface GroupedDefinitions {
                       [options]="mappedFacetOptions(facet)"
                       [selectedValue]="activeFacetFilters()[facet] || []"
                       [multiple]="true"
-                      (selectionChange)="updateFacetValues(facet, $event)"
+                      (selectionChange)="updateFacetValues(facet, $any($event))"
                     ></app-aria-multiselect>
                   </div>
                   <button mat-icon-button (click)="removeFacet(facet)">

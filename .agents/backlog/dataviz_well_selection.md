@@ -21,12 +21,12 @@ Bridge the `WellDataOutput` ORM with frontend Dataviz components, enable user-co
 
 ## Phase 2: Frontend Visualization
 
-- [ ] Refactor `WellSelectorComponent` to use `@angular/aria/grid`:
-  - [ ] ARIA-compliant grid pattern
-  - [ ] Click-and-drag selection support
-  - [ ] Individual cell clicking
-  - [ ] "Clear Selection" and "Invert Selection" buttons
-  - [ ] Selection animation rendering
+- [x] Refactor `WellSelectorComponent` to use `@angular/aria/grid`:
+  - [x] ARIA-compliant grid pattern
+  - [x] Click-and-drag selection support
+  - [x] Individual cell clicking
+  - [x] "Clear Selection" and "Invert Selection" buttons
+  - [x] Selection animation rendering
 - [ ] Share refactored component with protocol selection
 - [ ] Enable user-configurable visualization settings
 - [ ] Use rich selection screen pattern (consistent with protocols)

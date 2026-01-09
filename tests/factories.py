@@ -110,12 +110,9 @@ class DeckDefinitionFactory(SQLAlchemyModelFactory):
         "tests.factories.ResourceDefinitionFactory",
     )
 
-    @classmethod
-    def _create(cls, model_class, *args, **kwargs):
-        """Create a deck definition and a resource definition."""
-        resource_definition = ResourceDefinitionFactory()
-        kwargs["resource_definition"] = resource_definition
-        return super()._create(model_class, *args, **kwargs)
+    resource_definition = factory.SubFactory(
+        "tests.factories.ResourceDefinitionFactory",
+    )
 
 
 class DeckFactory(SQLAlchemyModelFactory):
@@ -214,27 +211,6 @@ class FunctionCallLogFactory(SQLAlchemyModelFactory):
         lambda o: o.executed_function_def.accession_id
     )
 
-    @classmethod
-    def _create(cls, model_class, *args, **kwargs):
-        """Create a FunctionCallLogOrm, ensuring dependencies are flushed."""
-        session = cls._meta.sqlalchemy_session
-        
-        def ensure_flushed(obj):
-            if obj and session:
-                if obj not in session:
-                    session.add(obj)
-                session.flush()
-
-        pr = kwargs.get("protocol_run_obj")
-        if pr:
-            ensure_flushed(pr)
-            if not kwargs.get("protocol_run_accession_id"):
-                 kwargs["protocol_run_accession_id"] = pr.accession_id
-
-        obj = super()._create(model_class, *args, **kwargs)
-        ensure_flushed(obj)
-        return obj
-
 
 class FunctionDataOutputFactory(SQLAlchemyModelFactory):
     """Factory for FunctionDataOutputOrm."""
@@ -253,12 +229,8 @@ class FunctionDataOutputFactory(SQLAlchemyModelFactory):
     
     _function_call_log = factory.SubFactory(FunctionCallLogFactory)
     
-    function_call_log_accession_id = factory.LazyAttribute(
-        lambda o: o._function_call_log.accession_id
-    )
-    protocol_run_accession_id = factory.LazyAttribute(
-        lambda o: o._function_call_log.protocol_run_accession_id
-    )
+    function_call_log_accession_id = factory.SelfAttribute("_function_call_log.accession_id")
+    protocol_run_accession_id = factory.SelfAttribute("_function_call_log.protocol_run_accession_id")
 
 
 class WellDataOutputFactory(SQLAlchemyModelFactory):
@@ -278,12 +250,8 @@ class WellDataOutputFactory(SQLAlchemyModelFactory):
     _function_data_output = factory.SubFactory(FunctionDataOutputFactory)
     _plate_resource = factory.SubFactory(ResourceFactory)
     
-    function_data_output_accession_id = factory.LazyAttribute(
-        lambda o: o._function_data_output.accession_id
-    )
-    plate_resource_accession_id = factory.LazyAttribute(
-        lambda o: o._plate_resource.accession_id
-    )
+    function_data_output_accession_id = factory.SelfAttribute("_function_data_output.accession_id")
+    plate_resource_accession_id = factory.SelfAttribute("_plate_resource.accession_id")
     
     well_name = "A1"
     well_row = 0

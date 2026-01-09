@@ -32,8 +32,12 @@ class TestCreateProtocolDefinitionData:
             solo=False,
             is_top_level=False,
             preconfigure_deck=False,
+            requires_deck=None,
             deck_param_name="deck",
             deck_construction=None,
+            deck_layout_path=None,
+            data_views=None,
+            setup_instructions=None,
             state_param_name="state",
             param_metadata={},
             category="test",
@@ -129,8 +133,7 @@ class TestGetCallableFqn:
 
     def test_get_callable_fqn_with_lambda(self) -> None:
         """Test getting FQN from a lambda function."""
-        def test_lambda(x):
-            return x + 1
+        test_lambda = lambda x: x + 1
         fqn = get_callable_fqn(test_lambda)
         assert "<lambda>" in fqn
 

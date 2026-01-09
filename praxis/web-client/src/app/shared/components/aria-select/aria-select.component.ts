@@ -1,31 +1,30 @@
 import {
-    Combobox,
-    ComboboxInput,
-    ComboboxPopup,
-    ComboboxPopupContainer,
+  Combobox,
+  ComboboxInput,
+  ComboboxPopup,
 } from '@angular/aria/combobox';
 import { Listbox, Option } from '@angular/aria/listbox';
 import {
-    afterRenderEffect,
-    ChangeDetectionStrategy,
-    Component,
-    computed,
-    ElementRef,
-    forwardRef,
-    Input,
-    signal,
-    viewChild,
-    viewChildren,
+  afterRenderEffect,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  forwardRef,
+  Input,
+  signal,
+  viewChild,
+  viewChildren,
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { OverlayModule, CdkConnectedOverlay } from '@angular/cdk/overlay';
 import { MatIconModule } from '@angular/material/icon';
 
 export interface SelectOption {
-    label: string;
-    value: any;
-    icon?: string;
-    disabled?: boolean;
+  label: string;
+  value: any;
+  icon?: string;
+  disabled?: boolean;
 }
 
 /**
@@ -39,26 +38,25 @@ export interface SelectOption {
  * - Theme integration with Material Design 3 tokens
  */
 @Component({
-    selector: 'app-aria-select',
-    standalone: true,
-    imports: [
-        Combobox,
-        ComboboxInput,
-        ComboboxPopup,
-        ComboboxPopupContainer,
-        Listbox,
-        Option,
-        OverlayModule,
-        MatIconModule,
-    ],
-    providers: [
-        {
-            provide: NG_VALUE_ACCESSOR,
-            useExisting: forwardRef(() => AriaSelectComponent),
-            multi: true,
-        },
-    ],
-    template: `
+  selector: 'app-aria-select',
+  standalone: true,
+  imports: [
+    Combobox,
+    ComboboxInput,
+    ComboboxPopup,
+    Listbox,
+    Option,
+    OverlayModule,
+    MatIconModule,
+  ],
+  providers: [
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => AriaSelectComponent),
+      multi: true,
+    },
+  ],
+  template: `
     <div
       class="select-container"
       ngCombobox
@@ -115,7 +113,6 @@ export interface SelectOption {
           [(values)]="selectedValues"
           (valuesChange)="onValueChange($event)"
           orientation="vertical"
-          selectionMode="explicit"
         >
           @for (option of options; track option.value) {
             <div
@@ -137,8 +134,8 @@ export interface SelectOption {
       </ng-template>
     </div>
   `,
-    styles: [
-        `
+  styles: [
+    `
       :host {
         display: inline-block;
         min-width: 120px;
@@ -222,111 +219,111 @@ export interface SelectOption {
         border: 0;
       }
     `,
-    ],
-    changeDetection: ChangeDetectionStrategy.OnPush,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AriaSelectComponent implements ControlValueAccessor {
-    @Input() label = '';
-    @Input() options: SelectOption[] = [];
-    @Input() disabled = false;
-    @Input() placeholder = 'Select an option';
+  @Input() label = '';
+  @Input() options: SelectOption[] = [];
+  @Input() disabled = false;
+  @Input() placeholder = 'Select an option';
 
-    /** Reference to the combobox directive */
-    combobox = viewChild<Combobox<any>>(Combobox);
-    /** Reference to the listbox */
-    listbox = viewChild<Listbox<any>>(Listbox);
-    /** All option elements */
-    optionElements = viewChildren<Option<any>>(Option);
+  /** Reference to the combobox directive */
+  combobox = viewChild<Combobox<any>>(Combobox);
+  /** Reference to the listbox */
+  listbox = viewChild<Listbox<any>>(Listbox);
+  /** All option elements */
+  optionElements = viewChildren<Option<any>>(Option);
 
-    /** Internal selected values signal (array of 1 for single select) */
-    selectedValues = signal<any[]>([]);
+  /** Internal selected values signal (array of 1 for single select) */
+  selectedValues = signal<any[]>([]);
 
-    /** Overlay positions */
-    positions = [
-        { originX: 'start' as const, originY: 'bottom' as const, overlayX: 'start' as const, overlayY: 'top' as const },
-        { originX: 'start' as const, originY: 'top' as const, overlayX: 'start' as const, overlayY: 'bottom' as const },
-    ];
+  /** Overlay positions */
+  positions = [
+    { originX: 'start' as const, originY: 'bottom' as const, overlayX: 'start' as const, overlayY: 'top' as const },
+    { originX: 'start' as const, originY: 'top' as const, overlayX: 'start' as const, overlayY: 'bottom' as const },
+  ];
 
-    /** Trigger element width for overlay sizing */
-    triggerWidth = signal(200);
+  /** Trigger element width for overlay sizing */
+  triggerWidth = signal(200);
 
-    // ControlValueAccessor callbacks
-    private onChange: (value: any) => void = () => { };
-    private onTouched: () => void = () => { };
+  // ControlValueAccessor callbacks
+  private onChange: (value: any) => void = () => { };
+  private onTouched: () => void = () => { };
 
-    /** Computed display value */
-    displayValue = computed(() => {
-        const values = this.selectedValues();
-        if (values.length === 0) {
-            return this.placeholder;
-        }
-        const option = this.options.find((opt) => opt.value === values[0]);
-        return option ? option.label : this.placeholder;
+  /** Computed display value */
+  displayValue = computed(() => {
+    const values = this.selectedValues();
+    if (values.length === 0) {
+      return this.placeholder;
+    }
+    const option = this.options.find((opt) => opt.value === values[0]);
+    return option ? option.label : this.placeholder;
+  });
+
+  /** Computed display icon */
+  displayIcon = computed(() => {
+    const values = this.selectedValues();
+    if (values.length === 0) {
+      return '';
+    }
+    const option = this.options.find((opt) => opt.value === values[0]);
+    return option?.icon || '';
+  });
+
+  constructor(private elementRef: ElementRef) {
+    // Scroll to active option when it changes
+    afterRenderEffect(() => {
+      const option = this.optionElements().find((opt) => opt.active());
+      setTimeout(() => option?.element.scrollIntoView({ block: 'nearest' }), 50);
     });
 
-    /** Computed display icon */
-    displayIcon = computed(() => {
-        const values = this.selectedValues();
-        if (values.length === 0) {
-            return '';
-        }
-        const option = this.options.find((opt) => opt.value === values[0]);
-        return option?.icon || '';
+    // Reset scroll when closed
+    afterRenderEffect(() => {
+      if (!this.combobox()?.expanded()) {
+        setTimeout(() => this.listbox()?.element.scrollTo(0, 0), 150);
+      }
     });
 
-    constructor(private elementRef: ElementRef) {
-        // Scroll to active option when it changes
-        afterRenderEffect(() => {
-            const option = this.optionElements().find((opt) => opt.active());
-            setTimeout(() => option?.element.scrollIntoView({ block: 'nearest' }), 50);
-        });
+    // Update trigger width when rendered
+    afterRenderEffect(() => {
+      const triggerEl = this.elementRef.nativeElement.querySelector('.select-trigger');
+      if (triggerEl) {
+        this.triggerWidth.set(triggerEl.offsetWidth);
+      }
+    });
+  }
 
-        // Reset scroll when closed
-        afterRenderEffect(() => {
-            if (!this.combobox()?.expanded()) {
-                setTimeout(() => this.listbox()?.element.scrollTo(0, 0), 150);
-            }
-        });
+  hasValue(): boolean {
+    return this.selectedValues().length > 0;
+  }
 
-        // Update trigger width when rendered
-        afterRenderEffect(() => {
-            const triggerEl = this.elementRef.nativeElement.querySelector('.select-trigger');
-            if (triggerEl) {
-                this.triggerWidth.set(triggerEl.offsetWidth);
-            }
-        });
-    }
+  isSelected(value: any): boolean {
+    return this.selectedValues().includes(value);
+  }
 
-    hasValue(): boolean {
-        return this.selectedValues().length > 0;
-    }
+  onValueChange(values: any[]): void {
+    const newValue = values.length > 0 ? values[0] : null;
+    this.onChange(newValue);
+    this.onTouched();
+    // Auto-close on selection for single select
+    this.combobox()?.close();
+  }
 
-    isSelected(value: any): boolean {
-        return this.selectedValues().includes(value);
-    }
+  // ControlValueAccessor implementation
+  writeValue(value: any): void {
+    this.selectedValues.set(value != null ? [value] : []);
+  }
 
-    onValueChange(values: any[]): void {
-        const newValue = values.length > 0 ? values[0] : null;
-        this.onChange(newValue);
-        this.onTouched();
-        // Auto-close on selection for single select
-        this.combobox()?.close();
-    }
+  registerOnChange(fn: (value: any) => void): void {
+    this.onChange = fn;
+  }
 
-    // ControlValueAccessor implementation
-    writeValue(value: any): void {
-        this.selectedValues.set(value != null ? [value] : []);
-    }
+  registerOnTouched(fn: () => void): void {
+    this.onTouched = fn;
+  }
 
-    registerOnChange(fn: (value: any) => void): void {
-        this.onChange = fn;
-    }
-
-    registerOnTouched(fn: () => void): void {
-        this.onTouched = fn;
-    }
-
-    setDisabledState(isDisabled: boolean): void {
-        this.disabled = isDisabled;
-    }
+  setDisabledState(isDisabled: boolean): void {
+    this.disabled = isDisabled;
+  }
 }

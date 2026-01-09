@@ -89,9 +89,9 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
         </a>
 
         <!-- Tools -->
-        <a class="nav-item" data-tour-id="nav-repl" routerLink="/app/repl" routerLinkActive="active" matTooltip="REPL" matTooltipPosition="right">
+        <a class="nav-item" data-tour-id="nav-playground" routerLink="/app/playground" routerLinkActive="active" matTooltip="Playground" matTooltipPosition="right">
           <mat-icon>terminal</mat-icon>
-          <span class="nav-label">REPL</span>
+          <span class="nav-label">Playground</span>
         </a>
 
         <div class="spacer"></div>
@@ -125,7 +125,7 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
           <span class="nav-label">{{ modeService.modeLabel() }}</span>
         </div>
 
-        @if (store.auth().isAuthenticated) {
+        @if (store.auth().isAuthenticated && !modeService.isBrowserMode()) {
           <button
             class="nav-item control-btn"
             (click)="logout()"
@@ -208,6 +208,15 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
       color: var(--mat-sys-on-primary-container);
     }
 
+    /* Gradient Hover & Active State for Icons */
+    .nav-item:hover mat-icon,
+    .nav-item.active mat-icon {
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--tertiary-color) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
     .nav-item mat-icon {
       font-size: 24px;
       width: 24px;
@@ -235,25 +244,28 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
     }
 
     .logo-container {
-      width: 56px;
-      height: 40px;
+      width: 80px;
+      height: 60px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--mat-sys-surface-container-high);
-      border-radius: 10px;
-      border: 1px solid var(--mat-sys-outline-variant);
+      background: none;
+      border: none;
+      outline: none;
       transition: all 0.3s ease;
     }
 
     .logo-item:hover .logo-container {
-      background: var(--mat-sys-surface-variant);
       transform: scale(1.05);
     }
 
+    .logo-item:hover {
+        background: none !important;
+    }
+
     .logo-image {
-      width: 44px;
-      height: 24px;
+      width: 100%;
+      height: 100%;
       background: linear-gradient(135deg, var(--primary-color) 0%, var(--tertiary-color) 100%);
       -webkit-mask: url('/assets/logo/praxis_logo.svg') no-repeat center;
       mask: url('/assets/logo/praxis_logo.svg') no-repeat center;

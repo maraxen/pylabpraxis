@@ -11,7 +11,9 @@ import { ProtocolService } from '../../protocols/services/protocol.service';
 import { ProtocolDefinition } from '../../protocols/models/protocol.models';
 import { RunStatus } from '../models/monitor.models';
 import { AriaMultiselectComponent } from '@shared/components/aria-multiselect/aria-multiselect.component';
+import { AriaSelectComponent, SelectOption } from '@shared/components/aria-select/aria-select.component';
 import { FilterOption } from '@shared/services/filter-result.service';
+import { computed } from '@angular/core';
 
 export interface FilterState {
   status: RunStatus[];
@@ -29,12 +31,11 @@ export interface FilterState {
   standalone: true,
   imports: [
     FormsModule,
-    MatSelectModule,
-    MatFormFieldModule,
     MatIconModule,
     MatButtonModule,
     MatButtonToggleModule,
-    AriaMultiselectComponent
+    AriaMultiselectComponent,
+    AriaSelectComponent
   ],
   templateUrl: './run-filters.component.html',
   styles: [`
@@ -88,6 +89,19 @@ export class RunFiltersComponent implements OnInit {
   selectedProtocolIds: string[] = [];
   sortBy: 'created_at' | 'start_time' | 'status' = 'created_at';
   sortOrder: 'asc' | 'desc' = 'desc';
+
+  readonly protocolOptions = computed(() =>
+    this.protocols().map(p => ({
+      label: p.name,
+      value: p.accession_id
+    }))
+  );
+
+  readonly sortOptions: SelectOption[] = [
+    { label: 'Date Created', value: 'created_at' },
+    { label: 'Start Time', value: 'start_time' },
+    { label: 'Status', value: 'status' }
+  ];
 
   ngOnInit(): void {
     this.loadProtocols();
@@ -148,6 +162,11 @@ export class RunFiltersComponent implements OnInit {
 
   onStatusChange(selected: RunStatus[]) {
     this.selectedStatuses = selected;
+    this.onFilterChange();
+  }
+
+  onProtocolChange(selected: string[]) {
+    this.selectedProtocolIds = selected;
     this.onFilterChange();
   }
 }

@@ -1,5 +1,5 @@
 -- Auto-generated SQLite schema from SQLAlchemy ORM models
--- Generated at: 2026-01-07T20:42:01.298613
+-- Generated at: 2026-01-08T19:08:06.735066
 -- DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
 
 -- Enable foreign key support
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS _schema_metadata (
     value TEXT NOT NULL
 );
 
-INSERT OR REPLACE INTO _schema_metadata (key, value) VALUES ('generated_at', '2026-01-07T20:42:01.298622');
+INSERT OR REPLACE INTO _schema_metadata (key, value) VALUES ('generated_at', '2026-01-08T19:08:06.735073');
 INSERT OR REPLACE INTO _schema_metadata (key, value) VALUES ('schema_version', '1.0.0');
 
 -- Table: assets
@@ -68,8 +68,8 @@ CREATE TABLE protocol_source_repositories (
 );
 
 CREATE UNIQUE INDEX ix_protocol_source_repositories_name ON protocol_source_repositories (name);
-CREATE INDEX ix_protocol_source_repositories_accession_id ON protocol_source_repositories (accession_id);
 CREATE INDEX ix_protocol_source_repositories_git_url ON protocol_source_repositories (git_url);
+CREATE INDEX ix_protocol_source_repositories_accession_id ON protocol_source_repositories (accession_id);
 
 -- Table: scheduler_metrics_mv
 CREATE TABLE scheduler_metrics_mv (
@@ -633,8 +633,8 @@ CREATE TABLE resources (
 	FOREIGN KEY(workcell_accession_id) REFERENCES workcells (accession_id)
 );
 
-CREATE INDEX ix_resources_status ON resources (status);
 CREATE INDEX ix_resources_deck_accession_id ON resources (deck_accession_id);
+CREATE INDEX ix_resources_status ON resources (status);
 CREATE INDEX ix_resources_machine_location_accession_id ON resources (machine_location_accession_id);
 CREATE INDEX ix_resources_resource_definition_accession_id ON resources (resource_definition_accession_id);
 CREATE INDEX ix_resources_accession_id ON resources (accession_id);

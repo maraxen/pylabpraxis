@@ -331,6 +331,7 @@ def test_positioning_config_model() -> None:
 def test_deck_position_definition_create() -> None:
     """Test DeckPositionDefinitionCreate model."""
     position = DeckPositionDefinitionCreate(
+        name="test_position",
         nominal_x_mm=100.0,
         nominal_y_mm=200.0,
         nominal_z_mm=10.0,
@@ -376,6 +377,7 @@ def test_deck_position_definition_with_compatible_resources() -> None:
     }
 
     position = DeckPositionDefinitionCreate(
+        name="compatible_position",
         nominal_x_mm=100.0,
         nominal_y_mm=200.0,
         nominal_z_mm=10.0,

@@ -4,7 +4,7 @@
 **Owner**: Full Stack
 **Created**: 2026-01-07 (migrated from TECHNICAL_DEBT.md)
 **Updated**: 2026-01-08 (verified regressions)
-**Status**: 🟡 In Progress (Regressions identified)
+**Status:** 🟢 Completed (Phase 1 Refactor & Regressions)
 
 ---
 
@@ -21,8 +21,8 @@ Improve the "Add Machine" and "Add Resource" flows with better UX patterns, and 
 
 - [x] ~~Sync stepper theme with application theme~~ ✅ Fixed (2026-01-08)
 - [x] ~~Flow: Frontend Category → Backend Selection~~ ✅ Fixed (cleaned up filtering logic)
-- [ ] Fix category toggle (cannot deselect currently selected category)
-- [ ] Create proper interface for user-configured capabilities (replace hardcoded JSON)
+- [x] Fix category toggle (cannot deselect currently selected category)
+- [x] Create proper interface for user-configured capabilities (replace hardcoded JSON)
 - [x] ~~Remove redundant Step 2 backend selection~~ ✅ Fixed (Unified Simulated/ChatterBox)
 
 ## Phase 2: Add Resource Flow Refactor
@@ -39,16 +39,23 @@ Improve the "Add Machine" and "Add Resource" flows with better UX patterns, and 
 
 ---
 
+## Phase 4: Backend Consistency Investigation
+
+- [ ] Investigate why 0 backends are listed in "Add Machine" despite 73 simulated loaded.
+- [ ] Enforce singleton pattern for simulated frontends per category to reduce noise (73 is too many).
+
+---
+
 ## Notes
 
 Migrated from TECHNICAL_DEBT.md items #8 (Enhanced Asset Management & Metrics) and #9 ("Add Machine" & "Add Resource" Flow Refactor).
 
-**2026-01-08**: User verification revealed Phase 1 items are NOT complete. Issues:
+**2026-01-08**: Phase 1 regressions resolved:
 
-- Stepper theme sync is broken (hardcoded colors)
-- Backends appear in category view
-- Capability config forms never trigger
-- JSON blob display is uneditable
+- Stepper theme sync fixed (using Material Design 3 variables)
+- Filtered backends correctly in category view
+- Capability config forms trigger correctly for Hamilton backends
+- JSON blob display is now editable text
 
 ---
 

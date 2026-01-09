@@ -85,8 +85,8 @@ export const routes: Routes = [
             loadComponent: () => import('./features/stress-test/stress-test.component').then(m => m.StressTestComponent)
           },
           {
-            path: 'repl',
-            loadComponent: () => import('./features/repl/jupyterlite-repl.component').then(m => m.JupyterliteReplComponent)
+            path: 'playground',
+            loadComponent: () => import('./features/repl/playground.component').then(m => m.PlaygroundComponent)
           },
         ]
       },

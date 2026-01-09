@@ -46,7 +46,7 @@ export class KeyboardService {
         switch (event.code) {
           case 'Backquote':
             event.preventDefault();
-            this.router.navigate(['/app/repl']);
+            this.router.navigate(['/app/playground']);
             break;
           case 'KeyP':
             event.preventDefault();
@@ -111,14 +111,14 @@ export class KeyboardService {
     });
 
     this.registry.registerCommand({
-      id: 'nav-repl',
-      label: 'Open REPL',
+      id: 'nav-playground',
+      label: 'Open Playground',
       description: 'Interactive Python console for hardware control',
       icon: 'terminal',
       category: 'Navigation',
       shortcut: 'Alt+`',
-      action: () => this.router.navigate(['/app/repl']),
-      keywords: ['console', 'terminal', 'python', 'interactive'],
+      action: () => this.router.navigate(['/app/playground']),
+      keywords: ['console', 'terminal', 'python', 'interactive', 'repl'],
     });
 
     this.registry.registerCommand({

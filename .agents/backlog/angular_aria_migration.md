@@ -3,7 +3,7 @@
 **Priority**: P2 (High)
 **Owner**: Frontend
 **Created**: 2026-01-08 (new backlog from technical debt)
-**Status**: 🟢 Planned
+**Status**: 🟡 In Progress (Phase 1 & 3 complete)
 
 ---
 
@@ -29,10 +29,11 @@ These replace custom implementations with browser-native accessibility patterns.
 
 Replace custom filter chips and dropdowns with ARIA Combobox + Listbox:
 
-- [ ] **Machine Asset Management**: Category/Status multiselect chips
-- [ ] **Backend Filters**: Sort/filter dropdowns
-- [ ] **Spatial View**: Category dropdowns
-- [ ] Create shared `AriaMultiselectComponent` wrapper
+- [x] **Machine Asset Management**: Category/Status multiselect chips
+- [x] **Backend Filters**: Sort/filter dropdowns
+- [x] **Spatial View**: Category dropdowns
+- [x] Create shared `AriaMultiselectComponent` wrapper
+- [x] Create shared `AriaSelectComponent` wrapper
 
 Files affected:
 
@@ -57,9 +58,9 @@ Files affected:
 
 ## Phase 3: Theme Integration
 
-- [ ] Style ARIA components with Material Design 3 tokens
-- [ ] Ensure dark/light mode compatibility
-- [ ] Match existing design system gradients and borders
+- [x] Style ARIA components with Material Design 3 tokens
+- [x] Ensure dark/light mode compatibility
+- [x] Match existing design system gradients and borders
 
 ---
 

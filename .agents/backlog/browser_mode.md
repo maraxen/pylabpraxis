@@ -36,17 +36,17 @@ Browser `praxis.db` is sometimes out of sync with feature requirements.
 - [ ] Implement validation on load
 - [ ] Add schema version checking
 
-### SQLite Schema Mismatch (`inferred_requirements_json`) 🚨
+### SQLite Schema Mismatch (`inferred_requirements_json`) ✅
 
-**Status**: 🔴 Critical (from TECHNICAL_DEBT.md)
+**Status**: ✅ Complete (2026-01-08)
 **Added**: 2026-01-07
 
 **Issue:** `Error fetching simulation data: Error: no such column: inferred_requirements_json` in `SqliteService`. Column missing from browser-mode schema.
 
 **Action:**
 
-- [ ] Update `schema.sql` to include `inferred_requirements_json` column
-- [ ] Implement migration for existing browser databases in `SqliteService`
+- [x] Update `schema.sql` to include `inferred_requirements_json` column
+- [x] Implement migration for existing browser databases in `SqliteService`
 
 ---
 
