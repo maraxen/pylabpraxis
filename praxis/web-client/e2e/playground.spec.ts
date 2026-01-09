@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('REPL Enhancements', () => {
+test.describe('Playground Enhancements', () => {
     test.beforeEach(async ({ page }) => {
-        // Navigate to the REPL page
-        await page.goto('/app/repl');
+        // Navigate to the Playground page
+        await page.goto('/app/playground');
 
-        // Wait for the REPL component to load
-        await page.waitForSelector('app-repl', { timeout: 30000 });
+        // Wait for the Playground component to load
+        await page.waitForSelector('app-playground', { timeout: 30000 });
 
         // Wait for the terminal to be visible
         await page.waitForSelector('.xterm-rows', { timeout: 30000 });

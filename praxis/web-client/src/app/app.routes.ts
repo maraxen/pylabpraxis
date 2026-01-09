@@ -86,8 +86,12 @@ export const routes: Routes = [
           },
           {
             path: 'playground',
-            loadComponent: () => import('./features/repl/playground.component').then(m => m.PlaygroundComponent)
+            loadComponent: () => import('./features/playground/playground.component').then(m => m.PlaygroundComponent)
           },
+          {
+            path: 'repl',
+            redirectTo: 'playground'
+          }
         ]
       },
 

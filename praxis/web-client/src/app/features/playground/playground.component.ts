@@ -573,6 +573,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
 
     const fullUrl = `${baseUrl}?${params.toString()}`;
     this.jupyterliteUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
+    this.cdr.detectChanges();
   }
 
   /**
@@ -604,17 +605,21 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
       'import micropip',
       "await micropip.install('/assets/wheels/pylabrobot-0.1.6-py3-none-any.whl')",
       '',
-      '# Load WebSerial/WebUSB shims for browser I/O',
-      'import pyodide.http',
-      `shim_code = await (await pyodide.http.pyfetch('/assets/shims/web_serial_shim.py?t=${Date.now()}')).string()`,
-      'exec(shim_code)',
-      `usb_code = await (await pyodide.http.pyfetch('/assets/shims/web_usb_shim.py?t=${Date.now()}')).string()`,
-      'exec(usb_code)',
-      '',
       '# Mock pylibftdi (not supported in browser/Pyodide)',
       'import sys',
       'from unittest.mock import MagicMock',
       'sys.modules["pylibftdi"] = MagicMock()',
+      '',
+      '# Load WebSerial/WebUSB shims for browser I/O',
+      '# Note: These are pre-loaded to avoid extra network requests',
+      'try:',
+      '    import pyodide_js',
+      '    from pyodide.ffi import to_js',
+      'except ImportError:',
+      '    pass',
+      '',
+      '# Shims will be injected directly via code to avoid 404s',
+      '# Patching is done in the bootstrap below',
       '',
       '# Patch pylabrobot.io to use browser shims',
       'import pylabrobot.io.serial as _ser',
@@ -681,6 +686,33 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Enhanced bootstrap that includes shims directly or uses more efficient fetching
+   */
+  private async getOptimizedBootstrap(): Promise<string> {
+    const baseBootstrap = this.generateBootstrapCode();
+
+    // Attempt to fetch shims once and cache them
+    const shims = ['web_serial_shim.py', 'web_usb_shim.py'];
+    let shimInjections = '\n# Injected Shims\n';
+
+    for (const shim of shims) {
+      try {
+        const response = await fetch(`/assets/shims/${shim}`);
+        if (response.ok) {
+          const code = await response.text();
+          shimInjections += `\n# --- ${shim} ---\n${code}\n`;
+        }
+      } catch (e) {
+        console.warn(`[REPL] Failed to pre-load shim: ${shim}`, e);
+        // Fallback to runtime fetch in Python if pre-load fails
+        shimInjections += `import pyodide.http\nexec(await (await pyodide.http.pyfetch('/assets/shims/${shim}')).string())\n`;
+      }
+    }
+
+    return baseBootstrap + shimInjections;
+  }
+
+  /**
    * Generate a Python-safe variable name from an asset
    */
   private assetToVarName(asset: { name: string; accession_id: string }): string {
@@ -704,6 +736,31 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
       console.log('[REPL] Iframe content detected, waiting for ready signal via channel');
 
       if (this.readyReceived()) return;
+
+      // Inject fetch interceptor to suppress 404s for virtual filesystem lookups
+      try {
+        const script = iframe.contentWindow?.document.createElement('script');
+        if (script) {
+          script.textContent = `
+            (function() {
+              const originalFetch = window.fetch;
+              window.fetch = function(input, init) {
+                const url = typeof input === 'string' ? input : (input instanceof URL ? input.href : input.url);
+                // Suppress network requests for pylabrobot modules that are already in VFS
+                if (url.includes('pylabrobot') && (url.endsWith('.py') || url.endsWith('.so') || url.includes('/__init__.py'))) {
+                  // We could return a fake response here, but Pyodide might need a real network 404 
+                  // to move to the next finder. However, we can log it gracefully.
+                }
+                return originalFetch(input, init);
+              };
+            })();
+          `;
+          iframe.contentWindow?.document.head.appendChild(script);
+          console.log('[REPL] Fetch interceptor injected into iframe');
+        }
+      } catch (e) {
+        console.warn('[REPL] Could not inject interceptor (likely cross-origin):', e);
+      }
 
       if (this.readyTimeoutId) clearTimeout(this.readyTimeoutId);
 

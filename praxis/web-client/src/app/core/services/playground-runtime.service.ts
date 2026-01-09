@@ -9,7 +9,7 @@ import { BehaviorSubject, filter } from 'rxjs';
 @Injectable({
     providedIn: 'root'
 })
-export class BackendReplService implements ReplRuntime {
+export class PlaygroundRuntimeService implements ReplRuntime {
     private readonly WS_URL = `${environment.wsUrl}/repl/session`;
     private readonly API_URL = `${environment.apiUrl}/repl`;
     private socket$: WebSocketSubject<any> | null = null;
