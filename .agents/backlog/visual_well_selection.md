@@ -119,8 +119,7 @@ These types should always trigger visual index selection:
   - Get `items_x` and `items_y` from parent resource definition
   - If argument has a `parent` hint in decorator, use it
 
-- [ ] **Form Field Generation**
-  - When itemized resource arg detected, generate `IndexSelectorComponent`
+  - [x] Form Field Generation (Frontend component `well-selector-field` ready)
   - Pass parent resource dimensions (`items_x`, `items_y`) to selector
   - Pass current item states (tip presence, liquid levels) for visualization
 

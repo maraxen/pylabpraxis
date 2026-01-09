@@ -27,7 +27,7 @@ Bridge the `WellDataOutput` ORM with frontend Dataviz components, enable user-co
   - [x] Individual cell clicking
   - [x] "Clear Selection" and "Invert Selection" buttons
   - [x] Selection animation rendering
-- [ ] Share refactored component with protocol selection
+- [x] Share refactored component with protocol selection
 - [ ] Enable user-configurable visualization settings
 - [ ] Use rich selection screen pattern (consistent with protocols)
 
