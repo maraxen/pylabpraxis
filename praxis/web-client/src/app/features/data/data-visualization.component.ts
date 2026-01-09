@@ -197,8 +197,8 @@ function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
               <app-praxis-select
                 placeholder="X-Axis"
                 [options]="xAxisOptions"
-                [(ngModel)]="xAxis"
-                (ngModelChange)="updateChart()"
+                [ngModel]="xAxis()"
+                (ngModelChange)="xAxis.set($event)"
               ></app-praxis-select>
             </div>
 
@@ -207,8 +207,8 @@ function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
               <app-praxis-select
                 placeholder="Y-Axis"
                 [options]="yAxisOptions"
-                [(ngModel)]="yAxis"
-                (ngModelChange)="updateChart()"
+                [ngModel]="yAxis()"
+                (ngModelChange)="yAxis.set($event)"
               ></app-praxis-select>
             </div>
 
@@ -555,8 +555,8 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   selectedWells = signal<string[]>(['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4']); // Initial selection
 
   // Chart configuration
-  xAxis = 'timestamp';
-  yAxis = 'volumeTransferred';
+  xAxis = signal<string>('timestamp');
+  yAxis = signal<string>('volumeTransferred');
 
   // Selection state
   selectedProtocolId = '';
@@ -758,18 +758,18 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
       'timestamp': 'Time',
       'well': 'Well'
     };
-    return `${yLabels[this.yAxis]} over ${xLabels[this.xAxis]}`;
+    return `${yLabels[this.yAxis()]} over ${xLabels[this.xAxis()]}`;
   });
 
   chartData = computed(() => {
     const data = this.filteredData();
     const wells = [...new Set(data.map(d => d.well))];
 
-    if (this.xAxis === 'well') {
+    if (this.xAxis() === 'well') {
       // Bar chart grouped by well
       const grouped = wells.map(well => {
         const wellData = data.filter(d => d.well === well);
-        const total = wellData.reduce((sum, d) => sum + (d as Record<string, any>)[this.yAxis], 0);
+        const total = wellData.reduce((sum, d) => sum + (d as Record<string, any>)[this.yAxis()], 0);
         return { well, value: total / wellData.length };
       });
 
@@ -790,7 +790,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
 
       return {
         x: wellData.map(d => d.timestamp.toLocaleTimeString()),
-        y: wellData.map(d => (d as Record<string, any>)[this.yAxis]),
+        y: wellData.map(d => (d as Record<string, any>)[this.yAxis()]),
         type: 'scatter',
         mode: 'lines+markers',
         name: well,
@@ -814,12 +814,12 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
       xaxis: {
         gridcolor: 'rgba(128,128,128,0.2)',
         tickfont: { color: 'var(--sys-on-surface)' },
-        title: { text: this.xAxis === 'timestamp' ? 'Time' : 'Well', font: { color: 'var(--sys-on-surface)' } }
+        title: { text: this.xAxis() === 'timestamp' ? 'Time' : 'Well', font: { color: 'var(--sys-on-surface)' } }
       },
       yaxis: {
         gridcolor: 'rgba(128,128,128,0.2)',
         tickfont: { color: 'var(--sys-on-surface)' },
-        title: { text: yLabels[this.yAxis], font: { color: 'var(--sys-on-surface)' } }
+        title: { text: yLabels[this.yAxis()], font: { color: 'var(--sys-on-surface)' } }
       },
       margin: { t: 20, r: 30, l: 60, b: 50 },
       autosize: true,
@@ -868,9 +868,5 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
 
   clearWells() {
     this.selectedWells.set([]);
-  }
-
-  updateChart() {
-    // Triggers reactivity through signal updates
   }
 }
