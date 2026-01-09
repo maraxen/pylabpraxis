@@ -113,6 +113,7 @@
 
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
+| **Protocol Workflow Debugging** | P2 | 🟡 Intricate | [run_protocol_workflow](./backlog/run_protocol_workflow.md) | Parameter form mix-up, layout fixes, name/notes, skip setup |
 | **Firefox E2E Limitation** | P3 | 🟢 Easy | [quality_assurance](./backlog/quality_assurance.md) | Document Firefox flakiness, CI exclusion |
 | **Resource Dialog Facets** | P3 | 🟡 Intricate | [ui_consistency](./backlog/ui_consistency.md) | Dynamically derive filter facets from definitions |
 | ~~Navigation Renames~~ | ~~P3~~ | ~~🟢 Easy~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete ("Deck" -> "Workcell") |
@@ -121,6 +122,7 @@
 | ~~Execution Monitor Phase 1~~ | ~~P2~~ | ~~🟡 Intricate~~ | [execution_monitor](./backlog/execution_monitor.md) | ✅ Complete (Basic monitoring layout) |
 | ~~Execution Monitor Active Runs~~ | ~~P2~~ | ~~🟡 Intricate~~ | [execution_monitor](./backlog/execution_monitor.md) | ✅ Complete (Active Runs Panel) |
 | ~~Execution Monitor History~~ | ~~P2~~ | ~~🟡 Intricate~~ | [execution_monitor](./backlog/execution_monitor.md) | ✅ Complete (Run History Table) |
+| ~~Well Selector Dialog~~ | ~~P2~~ | ~~🔴 Complex~~ | [dataviz_well_selection](./backlog/dataviz_well_selection.md) | ✅ Complete (ARIA-compliant dialog + bulk selection) |
 | ~~Browser Schema UNIQUE Constraint~~ | ~~P2~~ | ~~🟢 Easy~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Fix name unique constraint) |
 | ~~Machine Def Schema Linkage~~ | ~~P1~~ | ~~🟢 Easy~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Add definition_accession_id) |
 
@@ -141,8 +143,10 @@
 
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
-| **Protocol Inference "Sharp Bits" Docs** | ~~P3~~ | ~~M~~ | [cleanup_finalization](./backlog/cleanup_finalization.md) | ✅ Complete (Created `protocol_inference_sharp_bits.md`) |
+| ~~Protocol Inference "Sharp Bits" Docs~~ | ~~P3~~ | ~~M~~ | [cleanup_finalization](./backlog/cleanup_finalization.md) | ✅ Complete (Created `protocol_inference_sharp_bits.md`) |
+| ~~Example Protocols~~ | ~~P3~~ | ~~S~~ | [run_protocol_workflow](./backlog/run_protocol_workflow.md) | ✅ Complete (Added plate_reader, kinetic, and selective_transfer protocols) |
 | ~~Spatial View Filters~~ | ~~P3~~ | ~~M~~ | [asset_management](./backlog/asset_management.md) | ✅ Complete (Implemented `SpatialViewComponent` with location search) |
+| ~~Footer & Header Layout~~ | ~~P3~~ | ~~🟢 Easy Win~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Refactored UnifiedShell layout) |
 | ~~Pre-Merge Finalization~~ | ~~P3~~ | ~~M~~ | [cleanup_finalization](./backlog/cleanup_finalization.md) | ✅ Complete (Archive docs, cleanup files) |
 
 ---

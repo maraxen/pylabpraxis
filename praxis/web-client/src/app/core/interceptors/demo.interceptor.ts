@@ -5,7 +5,6 @@ import { ModeService } from '../services/mode.service';
 import { SqliteService } from '../services/sqlite.service';
 
 // Import mock data for fallback
-import { MOCK_PROTOCOLS } from '../../../assets/demo-data/protocols';
 import { MOCK_PROTOCOL_RUNS } from '../../../assets/demo-data/protocol-runs';
 import { MOCK_RESOURCES, MOCK_RESOURCE_DEFINITIONS } from '../../../assets/demo-data/resources';
 import { MOCK_MACHINES } from '../../../assets/demo-data/machines';
@@ -20,10 +19,9 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
     const url = req.url;
     const method = req.method;
 
-    // Protocol definitions - return full mock data with assets
-    // (SQLite only stores basic columns, not the full object with assets)
+    // Protocol definitions - return list from SQLite
     if (url.includes('/protocols/definitions') && method === 'GET') {
-        return of(MOCK_PROTOCOLS);
+        return sqliteService.getProtocols();
     }
 
     // Protocol run queue - return active/running runs
@@ -289,7 +287,7 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
         return of({
             device_id: body?.device_id || 'unknown',
             command: body?.command || '',
-            output: `[Demo REPL] Executed: ${body?.command}\n> OK`,
+            output: `[Demo Playground] Executed: ${body?.command}\n> OK`,
             success: true,
             error: null,
         });

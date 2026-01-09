@@ -105,69 +105,9 @@ export interface SelectOption {
         display: inline-block;
         width: 100%;
       }
-
-      .input-wrapper {
-        display: flex;
-        align-items: center;
-        position: relative;
-      }
-
-      .search-icon {
-        left: 12px;
-        position: absolute;
-        pointer-events: none;
-        color: var(--mat-sys-on-surface-variant);
-        font-size: 20px;
-      }
-
-      [ngComboboxInput] {
-        width: 100%;
-        height: 48px;
-        font-size: 14px;
-        border-radius: 8px;
-        padding: 0 40px 0 40px;
-        color: var(--mat-sys-on-surface);
-        border: 1px solid var(--mat-sys-outline-variant);
-        background: var(--mat-sys-surface-container);
-        outline: none;
-      }
-
-      [ngComboboxInput]::placeholder {
-        color: var(--mat-sys-on-surface-variant);
-      }
-
-      [ngCombobox]:focus-within [ngComboboxInput] {
-        outline: 2px solid var(--primary-color);
-        outline-offset: 2px;
-      }
-
-      .clear-icon {
-        right: 12px;
-        position: absolute;
-        cursor: pointer;
-        color: var(--mat-sys-on-surface-variant);
-        font-size: 20px;
-      }
-
-      .clear-icon:hover {
-        color: var(--mat-sys-on-surface);
-      }
-
-      .no-results {
-        padding: 12px 16px;
-        color: var(--mat-sys-on-surface-variant);
-        font-size: 14px;
-        font-style: italic;
-      }
-
-      .option-check {
-        font-size: 18px;
-        margin-left: auto;
-      }
-
-      [ngOption]:not([aria-selected='true']) .option-check {
-        display: none;
-      }
+      
+      // Additional specific styles not covered by shared SCSS can remain here if needed
+      // Currently all styles are moved to aria-select.scss
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

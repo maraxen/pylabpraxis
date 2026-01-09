@@ -21,7 +21,9 @@ import {
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { FilterOption } from '../../services/filter-result.service';
+import { CommonModule } from '@angular/common';
 
 /**
  * ARIA-compliant multiselect component using @angular/aria primitives.
@@ -38,6 +40,8 @@ import { FilterOption } from '../../services/filter-result.service';
     Option,
     OverlayModule,
     MatIconModule,
+    MatTooltipModule,
+    CommonModule
   ],
   providers: [
     {
@@ -62,27 +66,39 @@ import { FilterOption } from '../../services/filter-result.service';
         </mat-icon>
       </div>
 
+      <!-- Chips for partial selection -->
+      @if (!isAllSelected() && selectedValues().length > 0) {
+        <div class="selected-chips">
+          @for (chip of visibleChips(); track chip.value) {
+            <span class="selection-chip">
+              <span class="chip-label">{{ chip.label }}</span>
+            </span>
+          }
+          @if (overflowCount() > 0) {
+            <span class="overflow-badge" [matTooltip]="overflowTooltip()">
+              +{{ overflowCount() }}
+            </span>
+          }
+        </div>
+      }
+
       <ng-template ngComboboxPopupContainer>
         <ng-template
           [cdkConnectedOverlay]="{origin, usePopover: 'inline', matchWidth: true}"
           [cdkConnectedOverlayOpen]="true"
         >
           <div class="aria-multiselect-panel">
-            <div ngListbox [multi]="multiple">
-              <!-- "All" option to clear selection -->
-              <div
-                ngOption
-                [value]="null"
-                label="All"
-                class="aria-option"
-                (click)="clearSelection()"
-              >
-                <mat-icon class="option-checkbox">
-                  {{ !hasSelection() ? 'check_box' : 'check_box_outline_blank' }}
-                </mat-icon>
-                <span class="option-label">All</span>
-              </div>
+            <!-- Sticky Header -->
+            <div class="panel-header">
+              <button type="button" class="header-btn" (click)="selectAll($event)">
+                Select All
+              </button>
+              <button type="button" class="header-btn" (click)="clearAll($event)">
+                Clear All
+              </button>
+            </div>
 
+            <div ngListbox [multi]="true">
               @for (option of options; track option.value) {
                 <div
                   ngOption
@@ -93,18 +109,12 @@ import { FilterOption } from '../../services/filter-result.service';
                 >
                   @if (option.icon) {
                     <mat-icon class="option-icon">{{ option.icon }}</mat-icon>
-                  } @else if (multiple) {
-                    <mat-icon class="option-checkbox">
-                      {{ isSelected(option.value) ? 'check_box' : 'check_box_outline_blank' }}
-                    </mat-icon>
                   }
                   <span class="option-label">{{ option.label }}</span>
                   @if (option.count !== undefined) {
                     <span class="option-count">({{ option.count }})</span>
                   }
-                  @if (!multiple) {
-                    <mat-icon class="option-check">check</mat-icon>
-                  }
+                  <mat-icon class="option-check">check</mat-icon>
                 </div>
               }
             </div>
@@ -154,15 +164,6 @@ import { FilterOption } from '../../services/filter-result.service';
         opacity: 0.6;
         margin-left: 4px;
       }
-
-      .option-check {
-        font-size: 18px;
-        margin-left: auto;
-      }
-
-      [ngOption]:not([aria-selected='true']) .option-check {
-        display: none;
-      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -171,7 +172,7 @@ export class AriaMultiselectComponent implements ControlValueAccessor {
   @Input() label = '';
   @Input() options: FilterOption[] = [];
   @Input() disabled = false;
-  @Input() multiple = false;
+  @Input() placeholder = '';
 
   /** Backward-compatible input for initial selection */
   @Input()
@@ -179,6 +180,7 @@ export class AriaMultiselectComponent implements ControlValueAccessor {
     this._pendingValue = val;
   }
   private _pendingValue: unknown = null;
+  private _initialized = false;
 
   @Output() selectedValueChange = new EventEmitter<any>();
   /** Alias for backward compatibility with (selectionChange) binding */
@@ -195,75 +197,129 @@ export class AriaMultiselectComponent implements ControlValueAccessor {
   private onChange: (value: unknown) => void = () => { };
   private onTouched: () => void = () => { };
 
+  /** Computed currently selected values */
+  selectedValues = computed(() => {
+    const values = this.listbox()?.values() || [];
+    return values.filter((v) => v !== null);
+  });
+
+  /** Computed if all options are selected */
+  isAllSelected = computed(() => {
+    if (this.options.length === 0) return false;
+    return this.selectedValues().length === this.options.length;
+  });
+
   /** Computed display label */
   displayLabel = computed(() => {
-    const values = this.listbox()?.values() || [];
-    const filteredValues = values.filter((v) => v !== null);
-    if (filteredValues.length === 0) {
-      return this.label;
+    // If all selected or options not loaded yet
+    if (this.isAllSelected() || (this.options.length > 0 && !this._initialized)) {
+      return `All ${this.label}`;
     }
-    if (this.multiple) {
-      return `${this.label} (${filteredValues.length})`;
+
+    const count = this.selectedValues().length;
+    if (count === 0) {
+      return this.placeholder || `None ${this.label}`;
     }
-    const option = this.options.find((opt) => opt.value === filteredValues[0]);
-    return option ? option.label : this.label;
+
+    return `${this.label} (${count})`;
+  });
+
+  /** Computed visible chips (max 2) */
+  visibleChips = computed(() => {
+    const values = this.selectedValues();
+    return values.slice(0, 2).map((v) => {
+      const opt = this.options.find((o) => o.value === v);
+      return { value: v, label: opt?.label || String(v) };
+    });
+  });
+
+  /** Computed overflow count */
+  overflowCount = computed(() => Math.max(0, this.selectedValues().length - 2));
+
+  /** Computed tooltip for overflow items */
+  overflowTooltip = computed(() => {
+    const values = this.selectedValues();
+    return values
+      .slice(2)
+      .map((v) => {
+        const opt = this.options.find((o) => o.value === v);
+        return opt?.label || String(v);
+      })
+      .join(', ');
   });
 
   constructor(private elementRef: ElementRef) {
-    // Scrolls to active option when it changes
+    // Scroll handling (standard boilerplate)
     afterRenderEffect(() => {
       const option = this.optionElements().find((opt) => opt.active());
       setTimeout(() => option?.element.scrollIntoView({ block: 'nearest' }), 50);
     });
 
-    // Resets listbox scroll when closed
     afterRenderEffect(() => {
       if (!this.combobox()?.expanded()) {
         setTimeout(() => this.listbox()?.element.scrollTo(0, 0), 150);
       }
     });
 
+    // Default initialization: Select All (Full Array)
+    afterRenderEffect(() => {
+      if (this.options.length > 0 && !this._initialized && !this._pendingValue) {
+        // Only auto-select all if no pending value from writeValue/Input
+        const allValues = this.options.map(o => o.value);
+        // Defer to next tick to ensure listbox is ready
+        setTimeout(() => {
+          if (this.listbox()) { // Safe check
+            this.listbox()?.values.set(allValues);
+            this._initialized = true;
+          }
+        });
+      }
+    });
+
+    // Handle incoming input value (late binding)
+    afterRenderEffect(() => {
+      if (this._pendingValue !== null && this.listbox()) {
+        const val = this._pendingValue;
+        const valuesToSelect = Array.isArray(val) ? val : [val];
+        this.listbox()?.values.set(valuesToSelect);
+        this._pendingValue = null;
+        this._initialized = true;
+      }
+    });
+
     // Watch for value changes and propagate to form
     afterRenderEffect(() => {
-      const values = this.listbox()?.values() || [];
-      const filteredValues = values.filter((v) => v !== null);
-
-      let emitValue: unknown;
-      if (this.multiple) {
-        emitValue = filteredValues;
-      } else {
-        emitValue = filteredValues.length > 0 ? filteredValues[0] : null;
-      }
-
-      this.onChange(emitValue);
+      const values = this.selectedValues();
+      this.onChange(values);
       this.onTouched();
-      this.selectedValueChange.emit(emitValue);
-      this.selectionChange.emit(emitValue);
+      this.selectedValueChange.emit(values);
+      this.selectionChange.emit(values);
     });
   }
 
-  hasSelection(): boolean {
-    const values = this.listbox()?.values() || [];
-    return values.filter((v) => v !== null).length > 0;
+  selectAll(event: MouseEvent): void {
+    event.stopPropagation();
+    event.preventDefault(); // Prevent closing
+    const allValues = this.options.map((o) => o.value);
+    this.listbox()?.values.set(allValues);
   }
 
-  isSelected(value: unknown): boolean {
-    const values = this.listbox()?.values() || [];
-    return values.includes(value);
-  }
-
-  clearSelection(): void {
+  clearAll(event: MouseEvent): void {
+    event.stopPropagation();
+    event.preventDefault(); // Prevent closing
     this.listbox()?.values.set([]);
-    this.combobox()?.close();
   }
 
   // ControlValueAccessor implementation
   writeValue(value: unknown): void {
-    if (this.listbox() && value != null) {
-      const valuesToSelect = this.multiple
+    if (this.listbox()) {
+      const valuesToSelect = value != null
         ? (Array.isArray(value) ? value : [value])
-        : [value];
+        : [];
       this.listbox()?.values.set(valuesToSelect);
+      this._initialized = true;
+    } else {
+      this._pendingValue = value;
     }
   }
 
@@ -279,3 +335,4 @@ export class AriaMultiselectComponent implements ControlValueAccessor {
     this.disabled = isDisabled;
   }
 }
+

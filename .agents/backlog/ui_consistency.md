@@ -55,11 +55,23 @@ Standardize UI patterns across the application for a cohesive user experience. A
 - [ ] **Dynamic Derivation**: Derive facet definitions/options from resource type definitions automatically.
 - [ ] **Sync with Metadata**: Ensure filter chip dropdown stays in sync with available resource metadata.
 
+## Phase 6: Footer & Minimalist Header Layout (2026-01-09)
+
+- [x] **Eliminate Main Header**: Remove the top header bar (containing Breadcrumb) from `UnifiedShellComponent`. <!-- id: 5 -->
+- [x] **Implement Persistent Footer**: Add a thin footer bar to the `UnifiedShellComponent` layout. <!-- id: 6 -->
+- [x] **Footer Content**:
+  - GitHub Repository icon/link.
+  - GitHub "Star" button link.
+  - "Raise an Issue" link (to GitHub issues form).
+  - Community link: `labautomation.io` (Discourse forum).
+  - Project link: `pylabrobot.org` (Discourse forum).
+
 ---
 
 ## Notes
 
 Migrated from TECHNICAL_DEBT.md items #7 (Execution Monitor & UI Consistency) and #12 (Navigation Rail Hover Menus).
+Added footer/header refactor task on 2026-01-09.
 
 ---
 

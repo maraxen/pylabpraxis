@@ -118,6 +118,23 @@ The deck display in Run Protocol workflow does not match the standalone Deck Vie
 - [x] **Container Scrolling**: Scrolling behavior fixed with independent scroll areas for item list and deck preview.
 - [x] **Flex Container Fix**: Wizard uses proper flex container; footer navigation is always visible and functional.
 
+### Protocol Workflow Debugging (2026-01-09)
+
+> [!WARNING]
+> User verification confirmed these issues on 2026-01-09.
+
+- [ ] **Parameter Form Mix-up**: Parameter selection form incorrectly includes machine and resource categories as selectable options <!-- id: 10 -->
+- [ ] **First Step Layout**: Protocol description takes too much space, needs constrained scrollable flex container <!-- id: 11 -->
+- [ ] **Navigation Buttons Location**: Move "Back to Selection" and "Continue" buttons to top of first step display <!-- id: 12 -->
+- [ ] **Name & Notes Section**: Add user-editable name and notes fields for protocol runs <!-- id: 13 -->
+- [ ] **Draft Run Persistence**: Investigate if configured state can be preserved when user navigates away <!-- id: 14 -->
+- [ ] **Skip Setup Broken**: "Skip Setup" button in deck setup step does not advance the stepper <!-- id: 15 -->
+
+**Technical Debt (Related)**:
+
+- [ ] Markdown support for protocol description text (with linebreaks)
+- [ ] Draft protocol run status for in-progress configurations
+
 ### POST /resources/ API Error (from TECHNICAL_DEBT.md)
 
 **Priority**: Low (workaround exists)

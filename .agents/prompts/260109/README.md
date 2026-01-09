@@ -31,8 +31,10 @@
 | 20 | [browser_schema_unique_constraint](./20_browser_schema_unique_constraint.md) | Fix UNIQUE constraint on name | P2 | S | ✅ Done |
 | 21 | [machine_definition_schema_linkage](./21_machine_definition_schema_linkage.md) | Add definition_accession_id | P1 | S | ✅ Done |
 | 22 | [aria_component_polish](./22_aria_component_polish.md) | ARIA focus, theme, sleek multiselect | P2 | M | 🟡 In Progress |
-| 23 | [well_selector_dialog](./23_well_selector_dialog.md) | Well dialog with row/col selection | P2 | L | 🟢 Not Started |
+| 23 | [well_selector_dialog](./23_well_selector_dialog.md) | Well dialog with row/col selection | P2 | L | ✅ Done |
 | 24 | [well_selection_protocol](./24_well_selection_protocol.md) | Example protocol for well selection | P2 | M | 🟢 Not Started |
+| 25 | [footer_navigation_layout](./25_footer_navigation_layout.md) | Eliminate header, add footer bar | P3 | S | 🟢 Not Started |
+| 26 | [protocol_workflow_debugging](./26_protocol_workflow_debugging.md) | Protocol workflow bugs & layout | P2 | M | 🟢 Not Started |
 
 ---
 
