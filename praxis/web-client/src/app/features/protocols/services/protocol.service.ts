@@ -15,6 +15,10 @@ export class ProtocolService {
     return this.http.get<ProtocolDefinition[]>(`${this.API_URL}/protocols/definitions`);
   }
 
+  getRuns(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.API_URL}/protocols/runs`);
+  }
+
   // If uploading a file
   uploadProtocol(file: File): Observable<ProtocolDefinition> {
     const formData = new FormData();

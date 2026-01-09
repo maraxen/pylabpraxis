@@ -627,34 +627,52 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit() {
-    // Load protocols
+    // Load protocols first to populate filter options
     this.protocolService.getProtocols().subscribe({
       next: (protocols) => {
         this.protocols.set(protocols);
-        // Generate mock runs based on loaded protocols
-        const mockRuns = generateMockRuns(protocols);
-        this.runs.set(mockRuns);
+      },
+      error: (e) => console.warn('Failed to load protocols', e)
+    });
 
-        // Auto-select first run
-        if (mockRuns.length > 0) {
-          this.selectedRunId = mockRuns[0].id;
-          this.loadRunData(mockRuns[0]);
+    // Load runs (from seeded DB or backend)
+    this.protocolService.getRuns().subscribe({
+      next: (runs) => {
+        if (runs && runs.length > 0) {
+          // Map backend/SQLite run objects to MockRun interface for visualization
+          const mappedRuns: MockRun[] = runs.map(r => {
+            const name = r.name || r.protocol_name || 'Unknown Protocol';
+            // Infer well count based on protocol name/type
+            let wellCount = 96;
+            if (name.includes('Simple') || name.includes('Transfer')) wellCount = 12;
+
+            return {
+              id: r.accession_id,
+              protocolName: name,
+              protocolId: r.top_level_protocol_definition_accession_id || r.protocol_definition_accession_id || 'unknown',
+              status: (r.status || 'failed').toLowerCase() as 'completed' | 'running' | 'failed',
+              startTime: r.started_at ? new Date(r.started_at) : new Date(r.created_at),
+              endTime: r.completed_at ? new Date(r.completed_at) : undefined,
+              wellCount: wellCount,
+              totalVolume: 1000 // Default for seeded runs
+            };
+          });
+
+          this.runs.set(mappedRuns);
+
+          // Auto-select first run
+          if (mappedRuns.length > 0) {
+            this.selectedRunId = mappedRuns[0].id;
+            this.loadRunData(mappedRuns[0]);
+          }
+        } else {
+          // Fallback to client-side mock generation if no runs found (e.g. empty DB)
+          this.generateFallbackData();
         }
       },
-      error: () => {
-        // Fallback: generate mock protocols for browser mode
-        const fallbackProtocols: ProtocolDefinition[] = [
-          { accession_id: 'proto-001', name: 'Simple Transfer', is_top_level: true, version: '1.0', parameters: [], assets: [] },
-          { accession_id: 'proto-002', name: 'Serial Dilution', is_top_level: true, version: '1.0', parameters: [], assets: [] },
-          { accession_id: 'proto-003', name: 'Plate Replication', is_top_level: true, version: '1.0', parameters: [], assets: [] }
-        ];
-        this.protocols.set(fallbackProtocols);
-        const mockRuns = generateMockRuns(fallbackProtocols);
-        this.runs.set(mockRuns);
-        if (mockRuns.length > 0) {
-          this.selectedRunId = mockRuns[0].id;
-          this.loadRunData(mockRuns[0]);
-        }
+      error: (e) => {
+        console.warn('Failed to load runs, using fallback', e);
+        this.generateFallbackData();
       }
     });
 
@@ -665,6 +683,25 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
         this.addLiveDataPoint();
       }
     });
+  }
+
+  private generateFallbackData() {
+    // Original mock generation logic as fallback
+    if (this.protocols().length === 0) {
+      const fallbackProtocols: ProtocolDefinition[] = [
+        { accession_id: 'proto-001', name: 'Simple Transfer', is_top_level: true, version: '1.0', parameters: [], assets: [] },
+        { accession_id: 'proto-002', name: 'Serial Dilution', is_top_level: true, version: '1.0', parameters: [], assets: [] },
+        { accession_id: 'proto-003', name: 'Plate Replication', is_top_level: true, version: '1.0', parameters: [], assets: [] }
+      ];
+      this.protocols.set(fallbackProtocols);
+    }
+
+    const mockRuns = generateMockRuns(this.protocols());
+    this.runs.set(mockRuns);
+    if (mockRuns.length > 0) {
+      this.selectedRunId = mockRuns[0].id;
+      this.loadRunData(mockRuns[0]);
+    }
   }
 
   ngOnDestroy() {

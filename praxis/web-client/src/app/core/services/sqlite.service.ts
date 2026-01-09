@@ -38,6 +38,8 @@ import type {
 
 // Legacy mock data imports (for fallback seeding)
 import { OFFLINE_CAPABILITY_OVERRIDES, PLR_MACHINE_DEFINITIONS, PLR_RESOURCE_DEFINITIONS } from '../../../assets/browser-data/plr-definitions';
+import { MOCK_PROTOCOLS } from '../../../assets/browser-data/protocols';
+import { MOCK_PROTOCOL_RUNS } from '../../../assets/browser-data/protocol-runs';
 
 
 export interface SqliteStatus {
@@ -224,8 +226,11 @@ export class SqliteService {
             // Seed definition catalogs if empty (important for IndexedDB loaded DBs)
             this.seedDefinitionCatalogs(db);
 
-            // Seed defaults if needed (e.g. loaded from prebuilt but empty assets)
+            // Seed defaults if needed (e.g. if definitions exist but no assets)
             this.seedDefaultAssets(db);
+
+            // Seed default runs for data visualization
+            this.seedDefaultRuns(db);
 
             // Save immediately to ensure persistence initialized
             this.saveToStore(db);
@@ -441,6 +446,90 @@ export class SqliteService {
 
     // Seeding logic moved to seedDefaultAssets
 
+
+    /**
+     * Seed default protocols and runs if none exist
+     */
+    private seedDefaultRuns(db: Database): void {
+        try {
+            // Check if runs exist
+            let runCount = 0;
+            try {
+                const countRes = db.exec("SELECT COUNT(*) FROM protocol_runs");
+                runCount = countRes.length > 0 ? (countRes[0].values[0][0] as number) : 0;
+            } catch (e) {
+                // Table might not exist yet
+                return;
+            }
+
+            if (runCount > 0) return;
+
+            console.log('[SqliteService] Seeding default protocols and runs...');
+            db.exec('BEGIN TRANSACTION');
+
+            // 1. Seed Protocols
+            // Check if protocols exist first to avoid duplicates/errors if partially seeded
+            const insertProtocol = db.prepare(`
+                INSERT OR IGNORE INTO function_protocol_definitions
+                (accession_id, name, description, version, is_top_level, category, source_file_path,
+                 module_name, function_name, fqn, tags_json, deprecated,
+                 hardware_requirements_json, inferred_requirements_json, failure_modes_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+
+            for (const p of MOCK_PROTOCOLS) {
+                 insertProtocol.run([
+                    p.accession_id,
+                    p.name,
+                    p.description,
+                    p.version,
+                    p.is_top_level ? 1 : 0,
+                    p.category,
+                    p.source_file_path,
+                    p.module_name,
+                    p.function_name,
+                    p.fqn,
+                    JSON.stringify(p.tags || []),
+                    p.deprecated ? 1 : 0,
+                    JSON.stringify({}), // hardware_requirements
+                    JSON.stringify([]), // inferred_requirements
+                    JSON.stringify([])  // failure_modes
+                 ]);
+            }
+            insertProtocol.free();
+
+            // 2. Seed Runs
+            const insertRun = db.prepare(`
+                INSERT INTO protocol_runs
+                (accession_id, top_level_protocol_definition_accession_id, name, status,
+                 created_at, updated_at, input_parameters_json, properties_json, started_at, completed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+
+            for (const r of MOCK_PROTOCOL_RUNS) {
+                insertRun.run([
+                    r.accession_id,
+                    r.protocol_definition_accession_id,
+                    r.protocol_name,
+                    r.status,
+                    r.created_at,
+                    r.completed_at || r.created_at, // updated_at
+                    JSON.stringify(r.input_parameters_json),
+                    JSON.stringify({}),
+                    (r as any).started_at || null,
+                    (r as any).completed_at || null
+                ]);
+            }
+            insertRun.free();
+
+            db.exec('COMMIT');
+            console.log(`[SqliteService] Seeded ${MOCK_PROTOCOL_RUNS.length} default runs`);
+
+        } catch (e) {
+            try { db.exec('ROLLBACK'); } catch { /* ignore */ }
+            console.error('[SqliteService] Failed to seed default runs', e);
+        }
+    }
 
     /**
      * Seed definition catalogs from PLR definitions
