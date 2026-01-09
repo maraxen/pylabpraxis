@@ -21,34 +21,34 @@ Machine category filters in asset management include backends even though that d
 
 ## P2: Backend Names Too Long
 
-**Status**: Open
+**Status**: Completed
 **Difficulty**: Easy
 
 ### Problem
 The backend selector has names that are too long to be useful.
 
 ### Tasks
-- [ ] Implement name truncation with tooltips
-- [ ] Consider abbreviated display names
-- [ ] Show full name on hover
+- [x] Implement name truncation with tooltips
+- [x] Consider abbreviated display names
+- [x] Show full name on hover
 
 ---
 
 ## P2: Backend Selector UX
 
-**Status**: Open
+**Status**: Completed
 **Difficulty**: Easy
 
 ### Problem
 The backend selector should be disabled unless a category is selected, or we should move it to being an autocomplete which would be better.
 
 ### Recommendation
-Convert to autocomplete for better UX.
+Implemented gating in MachineDialog stepper and added defensive UI.
 
 ### Tasks
-- [ ] Implement autocomplete for backend selection
-- [ ] Filter backends by selected category
-- [ ] Show "Select category first" placeholder when no category
+- [x] Enforce linear stepper flow with gating
+- [x] Add defensive UI for Step 2 when no category selected
+- [x] Ensure "Next" button properly gates progression
 
 ---
 
