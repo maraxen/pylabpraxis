@@ -1,6 +1,6 @@
 # Praxis Development Matrix
 
-**Last Updated**: 2026-01-08 (ARIA migration complete)
+**Last Updated**: 2026-01-08 (REPL Stability Fixed)
 **Purpose**: Consolidated view of all remaining work items with priority and difficulty ratings.
 
 ---
@@ -91,9 +91,9 @@
 
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
-| **SQLite Schema Mismatch** | P1 | 🟢 Easy | [browser_mode](./backlog/browser_mode.md) | Add `inferred_requirements_json` column |
+| ~~SQLite Schema Mismatch~~ | ~~P1~~ | ~~🟢 Easy~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Added `inferred_requirements_json` column) |
 | ~~UI Consistency - Exec Monitor~~ | ~~P2~~ | ~~🟡 Intricate~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Standardized chips; menus N/A) |
-| **Asset Management UX** | P2 | 🟡 Intricate | [asset_management_ux](./backlog/asset_management_ux.md) | ⚠️ Phase 1 regressions: backends in categories, theme sync, capability forms |
+| ~~Asset Management UX~~ | ~~P2~~ | ~~🟡 Intricate~~ | [asset_management_ux](./backlog/asset_management_ux.md) | ✅ Complete (Resolved Phase 1 regressions) |
 | **Dataviz & Well Selection** | P2 | 🔴 Complex | [dataviz_well_selection](./backlog/dataviz_well_selection.md) | Bridge WellDataOutput with visualization |
 | ~~Skipped Tests Investigation~~ | ~~P2~~ | ~~🟢 Easy~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Fixed Orchestrator tests, cleaned frontend dead code) |
 | **Factory ORM Integration** | P2 | 🟡 Intricate | [quality_assurance](./backlog/quality_assurance.md) | Fix Factory Boy FK population |
@@ -112,10 +112,10 @@
 
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
-| **Asset Management UX Regressions** | P2 | 🟡 Intricate | [asset_management_ux](./backlog/asset_management_ux.md) | Phase 1 broken: backends in categories, no theme sync, no capability forms |
-| ~~Angular ARIA Migration~~ | ~~P2~~ | ~~🔴 Complex~~ | [angular_aria_migration](./backlog/angular_aria_migration.md) | ✅ Complete (Redefined all `mat-select` as ARIA-compliant) |
+| ~~Asset Management UX Regressions~~ | ~~P2~~ | ~~🟡 Intricate~~ | [asset_management_ux](./backlog/asset_management_ux.md) | ✅ Complete (Verified fixed) |
+| ~~Angular ARIA Migration~~ | ~~P2~~ | ~~🔴 Complex~~ | [angular_aria_migration](./backlog/angular_aria_migration.md) | ✅ Phase 1 Complete (Multiselect/Select components implemented & integrated) |
 | ~~Settings & Stepper Polish~~ | ~~P3~~ | ~~🟡 Intricate~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Icons fixed, theme selector refined) |
-| ~~Guided Deck Setup UI~~ | ~~P3~~ | ~~S~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Fixed layout/scrolling in wizard) |
+| **Guided Deck Setup UI** | P3 | S | [ui_consistency](./backlog/ui_consistency.md) | ⚠️ Items 1,3,4 fixed; Item 2 (Confirm button) remains broken |
 | ~~Simulated Machine Unification~~ | ~~P2~~ | ~~M~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Unified Simulated/Chatterbox UI & logic) |
 | ~~Machine Dialog Fixes~~ | ~~P1~~ | ~~M~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Fixed schema mismatch & NOT NULL error) |
 
@@ -135,6 +135,7 @@
 
 ### UI & UX Standardization (2026-01-08)
 
+- **Asset Management UX**: Resolved Phase 1 regressions in the "Add Machine" dialog (stepper theme sync, backend filtering, dynamic capability forms, and JSON blob editing).
 - **UI Visual Tweaks**: Fixed spacing in Registry, alignment in Machines, and implemented themed gradients across cards and list items.
 
 ### REPL Enhancements (2026-01-08)
@@ -211,6 +212,7 @@
 - JupyterLite basic integration
 - **Asset Menu Search & Filters** (✅ 2026-01-05)
 - **Empty State with Link** (✅ 2026-01-05)
+- **Inventory Dialog**: Replaced simple addition with guided multi-step wizard (Machine/Resource, Config, Filters).
 
 ### Tutorial & Demo Mode ✅ (2026-01-05) [Superseded by Browser Mode Defaults]
 

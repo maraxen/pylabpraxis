@@ -42,6 +42,19 @@ Improve JupyterLite REPL stability, theme synchronization, and hardware discover
 - [ ] **404 Errors for PyLabRobot Paths**: Suppress harmless 404s for virtual filesystem imports (configure `jupyter-lite.json`).
 - [ ] **Slow Initial Load**: Explore pre-bundling or eager loading to reduce startup time/race conditions.
 
+## Phase 6: Playground Transformation & Inventory Dialog
+
+- [ ] **Rename REPL to Playground**:
+  - Update all UI labels, route paths, and documentation from "REPL" to "Playground".
+  - Retain "REPL" only where technically accurate (e.g., the underlying kernel interaction).
+
+- [x] **New Inventory Dialog**:
+  - Replace current simple addition with a multi-step guided dialog.
+  - **Flow**: Machine/Resource -> Category -> (Backend for Machine) -> Specifications -> Add to List.
+  - **Features**:
+    - Allow adding multiple items in one session ("Add to list" action).
+    - Custom Variable Names: Allow user to define variable names for instantiated assets.
+
 ---
 
 ## Notes
