@@ -1,5 +1,6 @@
 import { Component, computed, effect, ElementRef, HostListener, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { AppStore } from '../../../core/store/app.store';
 import { DiagramOverlayComponent } from '../../../shared/components/diagram-overlay/diagram-overlay.component';
@@ -13,9 +14,25 @@ import { SystemTopologyComponent } from './system-topology/system-topology.compo
 @Component({
   selector: 'app-docs-page',
   standalone: true,
-  imports: [MarkdownModule, SystemTopologyComponent, MatButtonModule, MatIconModule, DiagramOverlayComponent],
+  imports: [
+    MarkdownModule,
+    SystemTopologyComponent,
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatIconModule,
+    DiagramOverlayComponent
+  ],
   template: `
     <div class="docs-page">
+      @if (showModeSwitch()) {
+        <div class="mode-switch-container">
+          <mat-button-toggle-group [value]="viewMode()" (change)="viewMode.set($event.value)" aria-label="Documentation Mode">
+            <mat-button-toggle value="production">Production Mode</mat-button-toggle>
+            <mat-button-toggle value="browser">Browser Mode</mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+      }
+
       @if (loading()) {
         <div class="loading">
           <div class="loading-spinner"></div>
@@ -57,6 +74,12 @@ import { SystemTopologyComponent } from './system-topology/system-topology.compo
       margin: 0 auto;
       padding: 32px 48px;
       position: relative;
+    }
+
+    .mode-switch-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 32px;
     }
 
     .docs-header-actions {
@@ -444,6 +467,8 @@ export class DocsPageComponent {
   sourcePath = signal<string | null>(null);
   loading = signal(true);
   error = signal<string | null>(null);
+  viewMode = signal<'production' | 'browser'>('production');
+  showModeSwitch = signal(false);
 
   showSystemTopology = signal(false);
 
@@ -451,13 +476,18 @@ export class DocsPageComponent {
     effect(() => {
       const params = this.route.snapshot.params;
       const data = this.route.snapshot.data;
+      const mode = this.viewMode();
 
       const section = data['section'] || params['section'];
       const page = params['page'] || data['page'] || 'index';
 
-      this.loadMarkdown(section, page);
+      this.loadMarkdown(section, page, mode);
 
-      this.showSystemTopology.set(section === 'architecture' && page === 'overview');
+      // Only show mode switch for architecture pages where it matters
+      this.showModeSwitch.set(section === 'architecture' && (page === 'overview' || page === 'backend'));
+
+      // We are handling topology in the markdown files now via mode switching
+      this.showSystemTopology.set(false);
     }, { allowSignalWrites: true });
 
     // Also react to route changes
@@ -468,25 +498,33 @@ export class DocsPageComponent {
       const section = data['section'] || params['section'];
       const page = params['page'] || data['page'] || 'index';
 
-      this.loadMarkdown(section, page);
-      this.showSystemTopology.set(section === 'architecture' && page === 'overview');
+      this.loadMarkdown(section, page, this.viewMode());
+      this.showModeSwitch.set(section === 'architecture' && (page === 'overview' || page === 'backend'));
+      this.showSystemTopology.set(false);
     });
   }
 
-  private loadMarkdown(section: string, page: string): void {
+  private loadMarkdown(section: string, page: string, mode: string): void {
     this.loading.set(true);
     this.error.set(null);
     this.sourcePath.set(null);
 
-    // Try to load from assets
-    const path = `assets/docs/${section}/${page}.md`;
+    // Try to load mode-specific file first: page-mode.md
+    const modePath = `assets/docs/${section}/${page}-${mode}.md`;
+    // Default fallback
+    const defaultPath = `assets/docs/${section}/${page}.md`;
 
-    this.http.get(path, { responseType: 'text' })
+    this.http.get(modePath, { responseType: 'text' })
       .pipe(
         catchError(() => {
-          // If not found, try without section
-          return this.http.get(`assets/docs/${page}.md`, { responseType: 'text' }).pipe(
-            catchError(() => of(null))
+          // If mode specific not found, try default
+          return this.http.get(defaultPath, { responseType: 'text' }).pipe(
+            catchError(() => {
+               // If default not found with section, try root default
+               return this.http.get(`assets/docs/${page}.md`, { responseType: 'text' }).pipe(
+                 catchError(() => of(null))
+               );
+            })
           );
         })
       )
@@ -502,12 +540,7 @@ export class DocsPageComponent {
               processedContent = processedContent.replace(/^Source:\s*.+$/m, '').trim();
             }
 
-            if (section === 'architecture' && page === 'overview') {
-              // Strip out the System Diagram section + mermaid block
-              // We'll replace it with the component
-              // Regex matches "## System Diagram" until "## Layer Responsibilities"
-              processedContent = processedContent.replace(/## System Diagram[\s\S]*?(?=## Layer Responsibilities)/, '');
-            }
+            // We removed the special system diagram stripping since we are using mode-specific files
             this.markdownContent.set(processedContent);
             this.loading.set(false);
           } else {
