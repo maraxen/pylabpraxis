@@ -190,3 +190,86 @@ async def test_find_compatible_consumable_reserved_excluded(service, mock_db_ses
     
     # Should pick res2 because score is higher (availability=1.0 vs 0.0)
     assert result == "res2"
+
+
+class TestIsConsumable:
+    """Tests for _is_consumable type detection."""
+
+    @pytest.fixture
+    def service(self, mock_db_session):
+        return ConsumableAssignmentService(mock_db_session)
+
+    @pytest.mark.parametrize("type_hint,expected", [
+        ("pylabrobot.resources.Plate", True),
+        ("pylabrobot.resources.TipRack", True),
+        ("pylabrobot.resources.Trough", True),
+        ("pylabrobot.resources.Reservoir", True),
+        ("pylabrobot.resources.Tube", True),
+        ("pylabrobot.resources.Well", True),
+        ("pylabrobot.machines.LiquidHandler", False),
+        ("pylabrobot.resources.Deck", False),
+        ("str", False),
+    ])
+    def test_is_consumable_type_detection(self, service, type_hint, expected):
+        """Verify type hint detection for consumables."""
+        req = AssetRequirementModel(
+            accession_id=uuid7(),
+            name="test",
+            fqn=type_hint,
+            type_hint_str=type_hint.split(".")[-1]  # Just the class name
+        )
+        assert service._is_consumable(req) == expected
+
+
+class TestTypeMatches:
+    """Tests for _type_matches FQN pattern matching."""
+
+    @pytest.fixture
+    def service(self, mock_db_session):
+        return ConsumableAssignmentService(mock_db_session)
+
+    @pytest.mark.parametrize("required,resource_fqn,expected", [
+        ("plate", "pylabrobot.resources.corning.Cor_96_wellplate", True),
+        ("plate", "pylabrobot.resources.microplate", True),
+        ("tip", "pylabrobot.resources.tip_rack", True),
+        ("tip", "pylabrobot.resources.tiprack", True),
+        ("trough", "pylabrobot.resources.reservoir", True),
+        ("plate", "pylabrobot.machines.LiquidHandler", False),
+    ])
+    def test_type_matching_patterns(self, service, required, resource_fqn, expected):
+        """Verify FQN pattern matching logic."""
+        assert service._type_matches(required, resource_fqn) == expected
+
+
+class TestCandidateScoring:
+    """Tests for multi-factor candidate scoring."""
+
+    @pytest.mark.asyncio
+    async def test_multiple_candidates_best_score_wins(self, service, mock_db_session):
+        """Verify highest scoring candidate is selected."""
+        # Create two candidates: one with better volume match
+        candidate_good = create_mock_resource(
+            "res1", "pylabrobot.resources.Plate", "Good Plate",
+            nominal_volume_ul=500
+        )
+        candidate_ok = create_mock_resource(
+            "res2", "pylabrobot.resources.Plate", "OK Plate",
+            nominal_volume_ul=200
+        )
+        
+        req = AssetRequirementModel(
+            accession_id=uuid7(),
+            name="plate",
+            fqn="pylabrobot.resources.Plate",
+            type_hint_str="Plate",
+            constraints=AssetConstraintsModel(min_volume_ul=400)
+        )
+        
+        service._get_reserved_asset_ids = AsyncMock(return_value=[])
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [candidate_ok, candidate_good]
+        mock_db_session.execute.return_value = mock_result
+        
+        result = await service.find_compatible_consumable(req)
+        assert result == "res1"  # Better volume match wins
+
