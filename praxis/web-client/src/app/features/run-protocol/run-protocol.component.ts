@@ -1,9 +1,9 @@
-import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit, ViewChild } from '@angular/core';
 
-import { MatStepperModule } from '@angular/material/stepper';
+import { MatStepper, MatStepperModule } from '@angular/material/stepper';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -26,7 +26,7 @@ import { DeckVisualizerComponent } from './components/deck-visualizer/deck-visua
 import { AppStore } from '@core/store/app.store';
 import { ModeService } from '@core/services/mode.service';
 import { DeckGeneratorService } from './services/deck-generator.service';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatDialog } from '@angular/material/dialog';
 import { DeckSetupWizardComponent } from './components/deck-setup-wizard/deck-setup-wizard.component';
 import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component'; // Import added
 import { MachineSelectionComponent, MachineCompatibility } from './components/machine-selection/machine-selection.component';
@@ -522,6 +522,7 @@ interface FilterCategory {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RunProtocolComponent implements OnInit {
+  @ViewChild('stepper') stepper!: MatStepper;
   private _formBuilder = inject(FormBuilder);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -657,6 +658,11 @@ export class RunProtocolComponent implements OnInit {
     const assetMap = this.wizardState.getAssetMap();
     this.configuredAssets.set(assetMap);
     this.deckFormGroup.patchValue({ valid: true });
+
+    // Auto-advance to verification step
+    setTimeout(() => {
+      this.stepper.next();
+    }, 0);
   }
 
   /** Called when inline deck setup wizard is skipped */

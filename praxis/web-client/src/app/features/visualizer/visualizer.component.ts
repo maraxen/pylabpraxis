@@ -1,7 +1,9 @@
-import { Component, ChangeDetectionStrategy, signal, computed, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, effect, inject } from '@angular/core';
 
 import { DeckViewComponent } from '@shared/components/deck-view/deck-view.component';
 import { PlrResource, PlrDeckData } from '@core/models/plr.models';
+import { AssetService } from '@features/assets/services/asset.service';
+import { Machine } from '@features/assets/models/asset.models';
 
 interface DeckWindow {
   id: string;
@@ -20,6 +22,11 @@ interface DeckWindow {
       <aside class="sidebar">
         <h3>Workcell</h3>
         <div class="deck-list">
+          @if (decks().length === 0) {
+            <div class="no-machines">
+              No machines found
+            </div>
+          }
           @for (deck of decks(); track deck.id) {
             <button 
               class="deck-toggle" 
@@ -36,7 +43,7 @@ interface DeckWindow {
       <main class="canvas" data-tour-id="visualizer-canvas">
         @if (openDecks().length === 0) {
           <div class="empty-state">
-            <p>Select a deck to visualize</p>
+            <p>Select a deck to visualize or add a machine in Assets</p>
           </div>
         } @else {
           <div class="windows-grid">
@@ -47,10 +54,16 @@ interface DeckWindow {
                   <button class="close-btn" (click)="toggleDeck(deck.id)">×</button>
                 </header>
                 <div class="window-content">
-                  <app-deck-view 
-                    [resource]="deck.data.resource"
-                    [state]="deck.data.state">
-                  </app-deck-view>
+                  @if (deck.data.resource) {
+                    <app-deck-view 
+                      [resource]="deck.data.resource"
+                      [state]="deck.data.state">
+                    </app-deck-view>
+                  } @else {
+                    <div class="no-data">
+                      No deck state available
+                    </div>
+                  }
                 </div>
               </div>
             }
@@ -91,6 +104,13 @@ interface DeckWindow {
       display: flex;
       flex-direction: column;
       gap: 8px;
+    }
+    
+    .no-machines {
+      color: var(--sys-on-surface-variant);
+      font-style: italic;
+      font-size: 0.9rem;
+      padding: 8px;
     }
 
     .deck-toggle {
@@ -190,105 +210,86 @@ interface DeckWindow {
       position: relative;
       height: 400px; /* Fixed height for now */
       overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .no-data {
+      color: var(--sys-outline);
+      font-style: italic;
     }
     
     app-deck-view {
       height: 100%;
+      width: 100%;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class VisualizerComponent {
+  private assetService = inject(AssetService);
+
   // Signals
   decks = signal<DeckWindow[]>([]);
   openDecks = computed(() => this.decks().filter(d => d.visible));
 
   constructor() {
-    // Load persisted state or default
-    const saved = localStorage.getItem('praxis_workcell_layout');
-
-    // Demo data creation
-    const demoDeck = this.createDemoDeck();
-
-    if (saved) {
-      try {
-        const savedState = JSON.parse(saved);
-        // Merge saved visibility with fresh data
-        // For MVP just resetting to demo
-        this.decks.set([
-          { id: 'deck-1', title: 'Hamilton STAR', data: demoDeck, visible: true },
-          { id: 'deck-2', title: 'Opentrons Flex', data: demoDeck, visible: false }
-        ]);
-      } catch (e) {
-        this.setDefaultState(demoDeck);
-      }
-    } else {
-      this.setDefaultState(demoDeck);
-    }
+    this.loadMachines();
 
     // Persist changes
     effect(() => {
       const state = this.decks().map(d => ({ id: d.id, visible: d.visible }));
-      localStorage.setItem('praxis_workcell_layout', JSON.stringify(state));
+      if (state.length > 0) {
+        localStorage.setItem('praxis_workcell_layout', JSON.stringify(state));
+      }
     });
   }
 
-  setDefaultState(data: PlrDeckData) {
-    this.decks.set([
-      { id: 'deck-1', title: 'Hamilton STAR', data: data, visible: true },
-      { id: 'deck-2', title: 'Opentrons Flex', data: data, visible: false } // Placeholder for second machine
-    ]);
+  private loadMachines() {
+    this.assetService.getMachines().subscribe((machines: Machine[]) => {
+      const saved = localStorage.getItem('praxis_workcell_layout');
+      let savedState: any[] = [];
+      try {
+        if (saved) savedState = JSON.parse(saved);
+      } catch (e) {
+        console.warn('Failed to parse saved layout', e);
+      }
+
+      const deckWindows: DeckWindow[] = machines.map((m: Machine) => {
+        // Try to find saved visibility
+        const savedMachine = savedState.find((s: any) => s.id === m.accession_id);
+        const isVisible = savedMachine ? savedMachine.visible : false;
+
+        // Use PLR state or legacy definition
+        let deckData: PlrDeckData = { resource: null as any, state: {} };
+
+        if (m.plr_state) {
+          deckData = { resource: m.plr_state, state: {} };
+        } else if (m.plr_definition) {
+          deckData = { resource: m.plr_definition, state: {} };
+        }
+
+        return {
+          id: m.accession_id,
+          title: m.name,
+          data: deckData,
+          visible: isVisible
+        };
+      });
+
+      // If no persisted state and we have machines, open the first one by default
+      if (!saved && deckWindows.length > 0) {
+        deckWindows[0].visible = true;
+      }
+
+      this.decks.set(deckWindows);
+    });
   }
 
   toggleDeck(id: string) {
     this.decks.update(decks =>
       decks.map(d => d.id === id ? { ...d, visible: !d.visible } : d)
     );
-  }
-
-  createDemoDeck(): PlrDeckData {
-    return {
-      resource: {
-        name: 'deck',
-        type: 'Deck',
-        location: { x: 0, y: 0, z: 0 },
-        size_x: 600,
-        size_y: 400,
-        size_z: 0,
-        children: [
-          {
-            name: 'plate_1',
-            type: 'Plate',
-            location: { x: 100, y: 100, z: 0 },
-            size_x: 127.76,
-            size_y: 85.48,
-            size_z: 14,
-            children: [],
-            color: 'rgba(100, 150, 255, 0.2)'
-          },
-          {
-            name: 'tips_1',
-            type: 'TipRack',
-            location: { x: 300, y: 100, z: 0 },
-            size_x: 127.76,
-            size_y: 85.48,
-            size_z: 60,
-            children: [],
-            color: 'rgba(255, 150, 100, 0.2)'
-          },
-          {
-            name: 'trash',
-            type: 'Trash',
-            location: { x: 500, y: 50, z: 0 },
-            size_x: 80,
-            size_y: 80,
-            size_z: 100,
-            children: [],
-            color: 'rgba(100, 100, 100, 0.1)'
-          }
-        ]
-      },
-      state: {}
-    };
   }
 }

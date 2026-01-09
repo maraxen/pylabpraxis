@@ -80,6 +80,7 @@ describe('AssetSelectorComponent', () => {
 
     component.field = field;
     Object.defineProperty(component, 'to', { get: () => component.field.templateOptions });
+    Object.defineProperty(component, 'props', { get: () => component.field.templateOptions });
   });
 
   it('should create', () => {
@@ -110,5 +111,40 @@ describe('AssetSelectorComponent', () => {
     expect(mockDialog.open).toHaveBeenCalled();
     expect(mockAssetService.createResource).toHaveBeenCalledWith(mockResult);
     expect(component.formControl.value).toEqual(mockCreatedRes);
+  });
+
+  it('should prioritize available assets over in_use assets in auto mode', () => {
+    if (component.field.templateOptions) {
+      component.field.templateOptions['assetType'] = 'resource';
+      component.field.templateOptions['plrTypeFilter'] = 'plate';
+    }
+
+    // Initial load triggers loadAssets -> selectBestAuto
+    fixture.detectChanges();
+
+    // res-1 is available, res-3 is in_use. Both are plates (implied by definitions)
+    // res-1 should be selected
+    const autoAsset = component.autoAsset();
+    expect(autoAsset).toBeTruthy();
+    expect(autoAsset?.accession_id).toBe('res-1');
+  });
+
+  it('should sort options by score (available first)', (done) => {
+    if (component.field.templateOptions) {
+      component.field.templateOptions['assetType'] = 'resource';
+    }
+    fixture.detectChanges();
+
+    // Trigger filtering
+    (component as any).getFilteredOptions('').subscribe((options: any[]) => {
+      // options should be sorted: res-1 (available), res-2 (available), res-3 (in_use)
+      // Note: both 1 and 2 are available. Tie-breaker is name length?
+      // "Plate 1" vs "TipRack 1". Plate 1 is shorter.
+
+      expect(options.length).toBe(3);
+      expect(options[0].asset.accession_id).toBe('res-1');
+      expect(options[options.length - 1].asset.accession_id).toBe('res-3');
+      done();
+    });
   });
 });

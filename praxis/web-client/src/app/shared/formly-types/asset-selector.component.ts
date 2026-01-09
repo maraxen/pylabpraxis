@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { FieldType, FieldTypeConfig, FormlyModule } from '@ngx-formly/core';
@@ -11,8 +11,8 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { AssetService } from '../../features/assets/services/asset.service';
-import { Observable, forkJoin, of, BehaviorSubject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, startWith, map, filter, take, tap } from 'rxjs/operators';
+import { Observable, forkJoin, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, startWith, filter, take } from 'rxjs/operators';
 import { AssetBase, Resource, ResourceDefinition } from '../../features/assets/models/asset.models';
 import { ResourceDialogComponent } from '../../features/assets/components/resource-dialog.component';
 
@@ -259,7 +259,7 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
       distinctUntilChanged(),
       switchMap(value => {
         const query = typeof value === 'string' ? value : (value?.name || '');
-        return this.getFilteredOptions(query, assetType);
+        return this.getFilteredOptions(query);
       })
     );
 
@@ -317,6 +317,39 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
     }
   }
 
+  private calculateAssetScore(asset: AssetBase): number {
+    let score = 0;
+    const status = (asset as any).status?.toLowerCase() || 'unknown';
+
+    // Status scoring (Lower is better)
+    switch (status) {
+      case 'available':
+      case 'idle':
+        score = 0;
+        break;
+      case 'in_use':
+      case 'running':
+        score = 10;
+        break;
+      case 'reserved':
+        score = 20;
+        break;
+      case 'maintenance':
+      case 'error':
+      case 'depleted':
+      case 'expired':
+        score = 100;
+        break;
+      default:
+        score = 50;
+    }
+
+    // Name length tie-breaker (prefer shorter, simpler names)
+    score += (asset.name?.length || 0) / 100;
+
+    return score;
+  }
+
   private selectBestAuto(assets: AssetBase[]) {
     if (assets.length === 0) {
       this.canUseAuto.set(false);
@@ -324,10 +357,14 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
       return;
     }
 
+    // Sort by score
+    const sorted = [...assets].sort((a, b) => this.calculateAssetScore(a) - this.calculateAssetScore(b));
+
     // Use autoSelectIndex to pick a unique asset (fallback to 0)
+    // We apply the index to the SORTED list, so index 0 is the best available asset
     const autoIndex = this.props['autoSelectIndex'] || 0;
-    const assetIndex = Math.min(autoIndex, assets.length - 1);
-    const best = assets[assetIndex];
+    const assetIndex = Math.min(autoIndex, sorted.length - 1);
+    const best = sorted[assetIndex];
 
     this.autoAsset.set(best);
     this.autoAssetTags.set(this.getAssetTags(best));
@@ -348,10 +385,12 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
       this.formControl.setValue({ mode: 'auto', resolvedAsset: best });
     } else {
       this.formControl.setValue(null);
+      // Trigger filtering to show all options
+      this.formControl.updateValueAndValidity({ emitEvent: true });
     }
   }
 
-  private getFilteredOptions(query: string, type: 'machine' | 'resource'): Observable<AssetOption[]> {
+  private getFilteredOptions(query: string): Observable<AssetOption[]> {
     const assets = this.allAssets();
     let filtered = assets;
 
@@ -363,6 +402,9 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
       );
     }
 
+    // Sort by smart score
+    filtered.sort((a, b) => this.calculateAssetScore(a) - this.calculateAssetScore(b));
+
     return of(filtered.map(asset => ({
       asset,
       label: asset.name,
@@ -371,15 +413,25 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
   }
 
   private getAssetTags(asset: AssetBase): string[] {
-    const res = asset as Resource;
-    if (!res.resource_definition_accession_id) return [];
-    const def = this.definitionsMap.get(res.resource_definition_accession_id);
-    if (!def) return [];
-
     const tags: string[] = [];
-    if (def.num_items) tags.push(`${def.num_items}`);
-    if (def.plate_type) tags.push(def.plate_type);
-    if (def.tip_volume_ul) tags.push(`${def.tip_volume_ul}µL`);
+
+    // Add status tag first
+    if ((asset as any).status) {
+      tags.push((asset as any).status);
+    }
+
+    const res = asset as Resource;
+    if (res.resource_definition_accession_id) {
+      const def = this.definitionsMap.get(res.resource_definition_accession_id);
+      if (def) {
+        if (def.num_items) tags.push(`${def.num_items}`);
+        if (def.plate_type) tags.push(def.plate_type);
+        if (def.tip_volume_ul) tags.push(`${def.tip_volume_ul}µL`);
+      }
+    } else if ((asset as any).machine_type) {
+      // Machine fallback
+      tags.push((asset as any).machine_type);
+    }
 
     return tags;
   }

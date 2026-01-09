@@ -24,6 +24,36 @@ describe('DeckGeneratorService', () => {
         expect(service).toBeTruthy();
     });
 
+    it('should use machine definition when available', () => {
+        const protocol: ProtocolDefinition = {
+            name: 'Test',
+            is_top_level: true,
+            accession_id: 'test_1',
+            assets: [],
+            version: '1.0',
+            parameters: []
+        };
+
+        const machineWithDef: Machine = {
+            accession_id: 'mach_def_1',
+            name: 'Machine with Def',
+            status: MachineStatus.IDLE,
+            plr_definition: {
+                name: 'Custom Deck',
+                type: 'CustomDeck',
+                location: { x: 0, y: 0, z: 0 },
+                children: []
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        const data = service.generateDeckForProtocol(protocol, undefined, machineWithDef);
+
+        expect(data.resource.name).toBe('Custom Deck');
+        expect(data.resource.type).toBe('CustomDeck');
+    });
+
     it('should generate a Hamilton STAR deck by default (no machine)', () => {
         const protocol: ProtocolDefinition = {
             name: 'Test Protocol',

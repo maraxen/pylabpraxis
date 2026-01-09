@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 import { PlrDeckData, PlrResource } from '@core/models/plr.models';
 import { DeckCatalogService } from './deck-catalog.service';
@@ -80,6 +80,27 @@ export class DeckGeneratorService {
         assetMap?: Record<string, any>,
         machine?: Machine
     ): PlrDeckData {
+        // Priority 1: Use machine's existing PLR state (live state)
+        if (machine?.plr_state) {
+            return {
+                resource: machine.plr_state,
+                state: {} // TODO: Populate state if needed
+            };
+        }
+
+        // Priority 2: Use machine's PLR definition (static definition)
+        if (machine?.plr_definition) {
+            // If definition is available, use it as the base resource
+            // We might need to wrap it if it's just the root resource
+            const resource = machine.plr_definition as PlrResource;
+            return {
+                resource: resource,
+                state: {}
+            };
+        }
+
+        // Priority 3: Fallback to hardcoded generation (legacy)
+
         // Detect deck type from machine or default to Hamilton STAR
         const deckType = this.detectDeckType(machine);
         const spec = this.deckCatalog.getDeckDefinition(deckType);

@@ -156,7 +156,7 @@ interface FrontendType {
                         <span class="text-xs sys-text-secondary truncate">
                           {{ def.manufacturer || 'Unknown vendor' }}
                         </span>
-                        <span class="text-[11px] text-sys-text-tertiary fqn-marquee">{{ getShortFqn(def.fqn || '') }}</span>
+                        <span class="text-[11px] text-sys-text-tertiary fqn-wrap">{{ getShortFqn(def.fqn || '') }}</span>
                       </div>
                     </div>
                   </button>
@@ -341,19 +341,14 @@ interface FrontendType {
     .sys-divider { background-color: var(--mat-sys-outline-variant, #e0e0e0); }
     .text-primary { color: var(--primary-color, var(--mat-sys-primary, #ED7A9B)); }
 
-    /* Marquee animation for FQN text overflow */
-    .fqn-marquee { 
+    /* FQN text wrapping (replaced marquee) */
+    .fqn-wrap { 
       display: block; 
-      max-width: 100%; 
-      overflow: hidden; 
-      white-space: nowrap; 
-    }
-    .fqn-marquee:hover { 
-      animation: marquee 8s linear infinite; 
-    }
-    @keyframes marquee { 
-      0% { transform: translateX(0); } 
-      100% { transform: translateX(-50%); } 
+      width: 100%; 
+      white-space: normal; 
+      overflow-wrap: break-word;
+      word-break: break-word;
+      line-height: 1.25;
     }
 
     .simulated-chip {

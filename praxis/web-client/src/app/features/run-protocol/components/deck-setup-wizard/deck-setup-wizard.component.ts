@@ -142,15 +142,17 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
     `,
     styles: [`
         :host {
-            display: block;
+            display: flex;
+            flex-direction: column;
             height: 100%;
+            overflow: hidden;
         }
 
         .wizard-container {
             display: flex;
             flex-direction: column;
             height: 100%;
-            min-height: 500px;
+            min-height: 0; /* Allow shrinking below previous 500px fixed min */
         }
         
         .wizard-header {
@@ -170,18 +172,18 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
         .wizard-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            grid-template-rows: minmax(0, 1fr); /* Restrict row height to available space */
+            grid-template-rows: minmax(0, 1fr);
             gap: 24px;
-            flex: 1;
+            flex: 1; /* Grow to fill available space */
             padding: 24px;
-            overflow: hidden; /* Prevent container from scrolling */
+            overflow: hidden; /* Prevent this level from scrolling */
             min-height: 0;
         }
         
         .step-panel {
             overflow-y: auto; /* Allow items list to scroll */
             min-height: 0;
-            padding-right: 8px; /* Avoid scrollbar covering content */
+            padding-right: 8px;
         }
         
         .deck-preview {
@@ -198,8 +200,8 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
             gap: 12px;
             padding: 16px 24px;
             border-top: 1px solid var(--sys-outline-variant);
-            flex-shrink: 0;
-            background: var(--sys-surface); /* Ensure footer background is opaque */
+            flex-shrink: 0; /* Footer must never shrink or disappear */
+            background: var(--sys-surface);
             z-index: 10;
         }
         
@@ -207,23 +209,23 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
             flex: 1;
         }
         
-        @media (max-width: 768px) {
+        @media (max-width: 992px) {
             .wizard-content {
                 grid-template-columns: 1fr;
-                grid-template-rows: 1fr 1fr; /* Stack vertically on small screens */
-                overflow-y: auto; /* Allow main content to scroll on mobile if needed */
-                display: flex; /* Switch to flex column on mobile for better flow */
-                flex-direction: column;
+                grid-template-rows: auto 1fr;
+                overflow-y: auto;
             }
             
             .step-panel {
-                flex: none; /* Let it grow */
+                flex: none;
                 overflow: visible;
+                max-height: 400px;
+                overflow-y: auto;
             }
 
             .deck-preview {
-                max-height: 300px;
-                flex: none;
+                min-height: 300px;
+                flex: 1;
             }
         }
     `]

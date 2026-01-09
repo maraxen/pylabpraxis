@@ -71,8 +71,24 @@ class MachineTypeDefinitionService(
     logger.info("Discovering machine types via static analysis...")
 
     # Use static analysis to discover machines
-    discovered_machines = self.parser.discover_machine_classes()
-    logger.info("Discovered %d machine types.", len(discovered_machines))
+    all_discovered = self.parser.discover_machine_classes()
+    logger.info("Discovered %d machine types total.", len(all_discovered))
+
+    # Enforce singleton pattern for simulated frontends/backends per category
+    # to avoid UI noise and potential DB clobbering.
+    simulated_seen = set()
+    discovered_machines = []
+
+    for cls in all_discovered:
+      if cls.is_simulated():
+        # Identify category (either from backend mapping or class type itself)
+        category = BACKEND_TYPE_TO_FRONTEND_FQN.get(cls.class_type) or cls.class_type
+        if category in simulated_seen:
+          continue
+        simulated_seen.add(category)
+      discovered_machines.append(cls)
+
+    logger.info("Kept %d machine types after deduplication.", len(discovered_machines))
 
     synced_definitions = []
     for cls in discovered_machines:
