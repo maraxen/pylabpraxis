@@ -64,6 +64,60 @@ export class ProtocolPage extends BasePage {
         });
     }
 
+    async navigateToProtocols() {
+        await this.goto();
+    }
+
+    async selectProtocol(name: string) {
+        await this.selectProtocolByName(name);
+        await this.continueFromSelection();
+    }
+
+    async configureParameter(name: string, value: string) {
+        // Assuming we are on the parameters step
+        const paramInput = this.page.getByLabel(name).or(this.page.locator(`input[name="${name}"]`)).first();
+        if (await paramInput.isVisible()) {
+            await paramInput.fill(value);
+        } else {
+            console.log(`Parameter ${name} not found or not visible, skipping.`);
+        }
+    }
+
+    async advanceToReview() {
+        // This is a helper to move through the wizard steps
+        // We might need to import WizardPage or duplicate some logic here if we want to be strictly independent,
+        // but ideally we should reuse. Since I cannot easily inject WizardPage here without changing the constructor signature significantly 
+        // or instantiating it internally, I'll instantiate it internally.
+        const { WizardPage } = await import('./wizard.page');
+        const wizard = new WizardPage(this.page);
+
+        await wizard.completeParameterStep();
+        await wizard.selectFirstCompatibleMachine();
+        await wizard.waitForAssetsAutoConfigured();
+        await wizard.advanceDeckSetup();
+        await wizard.openReviewStep();
+    }
+
+    async startExecution() {
+        const { WizardPage } = await import('./wizard.page');
+        const wizard = new WizardPage(this.page);
+        await wizard.startExecution();
+    }
+
+    async getExecutionStatus(): Promise<string> {
+        const { ExecutionMonitorPage } = await import('./monitor.page');
+        const monitor = new ExecutionMonitorPage(this.page);
+        // We assume we are on the monitor page now
+        const statusChip = this.page.locator('mat-chip'); // Using locator from monitor page logic
+        return await statusChip.textContent() || '';
+    }
+
+    async waitForCompletion(timeout: number = 300000) { // 5 minutes default
+        const { ExecutionMonitorPage } = await import('./monitor.page');
+        const monitor = new ExecutionMonitorPage(this.page);
+        await monitor.waitForStatus(/(Completed|Succeeded|Finished)/i, timeout);
+    }
+
     async continueFromSelection() {
         const continueButton = this.protocolStep.getByRole('button', { name: /Continue/i }).last();
         await expect(continueButton).toBeEnabled({ timeout: 15000 });
