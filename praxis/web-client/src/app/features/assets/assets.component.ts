@@ -10,6 +10,7 @@ import { ResourceAccordionComponent } from './components/resource-accordion/reso
 import { DefinitionsListComponent } from './components/definitions-list/definitions-list.component';
 import { MachineDialogComponent } from './components/machine-dialog.component';
 import { ResourceDialogComponent } from './components/resource-dialog.component';
+import { AddAssetChoiceDialogComponent } from './components/add-asset-choice-dialog.component';
 import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-discovery-dialog/hardware-discovery-dialog.component';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 import { AssetDashboardComponent } from './components/asset-dashboard/asset-dashboard.component';
@@ -301,15 +302,14 @@ export class AssetsComponent implements OnInit, OnDestroy {
   openAddAsset() {
     if (this.isLoading()) return; // Prevent multiple clicks
 
-    if (this.selectedIndex === 1) { // Machine tab
+    if (this.selectedIndex === 2) { // Machines tab
       this.openAddMachine();
-    } else if (this.selectedIndex === 2) { // Resource tab
+    } else if (this.selectedIndex === 3) { // Resources tab
       this.openAddResource();
-    } else if (this.selectedIndex === 0) {
-      // If on dashboard, ask what to add? Or default to machine?
-      // For now let's open machine dialog as default
-      this.openAddMachine();
-    } else {
+    } else if (this.selectedIndex === 0 || this.selectedIndex === 1) {
+      // Overview or Spatial View - prompt for choice
+      this.openAddAssetChoice();
+    } else if (this.selectedIndex === 4) {
       // Registry tab
       if (this.modeService.isBrowserMode()) {
         this.snackBar.open('Definitions are pre-synced in Browser Mode.', 'Close', { duration: 3000 });
@@ -317,6 +317,17 @@ export class AssetsComponent implements OnInit, OnDestroy {
       }
       this.triggerSyncDefinitions();
     }
+  }
+
+  private openAddAssetChoice() {
+    const dialogRef = this.dialog.open(AddAssetChoiceDialogComponent, {
+      width: '500px'
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result === 'machine') this.openAddMachine();
+      if (result === 'resource') this.openAddResource();
+    });
   }
 
   private triggerSyncDefinitions() {
