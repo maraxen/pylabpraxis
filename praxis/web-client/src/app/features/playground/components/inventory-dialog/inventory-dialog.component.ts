@@ -162,16 +162,23 @@ export interface InventoryItem {
               <mat-step [stepControl]="categoryForm" [completed]="categoryForm.valid">
                 <ng-template matStepLabel>Category</ng-template>
                 <div class="step-wrapper">
-                  <div class="chip-container">
-                    <mat-chip-listbox [formControl]="categoryControl">
-                      @for (cat of availableCategories(); track cat) {
-                        <mat-chip-option [value]="cat">
-                          <mat-icon matChipAvatar>{{ getCategoryIcon(cat) }}</mat-icon>
-                          {{ cat }}
-                        </mat-chip-option>
-                      }
-                    </mat-chip-listbox>
-                  </div>
+                  @if (availableCategories().length > 0) {
+                    <div class="chip-container">
+                      <mat-chip-listbox [formControl]="categoryControl">
+                        @for (cat of availableCategories(); track cat) {
+                          <mat-chip-option [value]="cat">
+                            <mat-icon matChipAvatar>{{ getCategoryIcon(cat) }}</mat-icon>
+                            {{ cat }}
+                          </mat-chip-option>
+                        }
+                      </mat-chip-listbox>
+                    </div>
+                  } @else {
+                    <div class="empty-state">
+                      <mat-icon>category</mat-icon>
+                      <p>No categories available. Please select an asset type first.</p>
+                    </div>
+                  }
                   <div class="step-actions">
                     <button mat-button matStepperPrevious>Back</button>
                     <button mat-flat-button color="primary" matStepperNext [disabled]="categoryControl.invalid">Continue</button>
@@ -535,6 +542,11 @@ export class InventoryDialogComponent {
   quickFilterTypeValue = toSignal(this.quickFilterType.valueChanges, { initialValue: 'all' });
   quickFilterCategoryValue = toSignal(this.quickFilterCategory.valueChanges, { initialValue: 'all' });
 
+  // Browser Tab Signals
+  typeValue = toSignal(this.typeControl.valueChanges, { initialValue: '' });
+  categoryValue = toSignal(this.categoryControl.valueChanges, { initialValue: '' });
+  searchValue = toSignal(this.searchControl.valueChanges, { initialValue: '' });
+
   machineCategories = computed(() => {
     const cats = new Set<string>();
     this.machines()?.forEach(m => {
@@ -648,7 +660,7 @@ export class InventoryDialogComponent {
   });
 
   availableCategories = computed(() => {
-    const type = this.typeControl.value;
+    const type = this.typeValue();
     const cats = new Set<string>();
 
     if (type === 'machine') {
@@ -665,9 +677,9 @@ export class InventoryDialogComponent {
   });
 
   filteredAssets = computed(() => {
-    const type = this.typeControl.value;
-    const category = this.categoryControl.value;
-    const search = this.searchControl.value?.toLowerCase() || '';
+    const type = this.typeValue();
+    const category = this.categoryValue();
+    const search = this.searchValue()?.toLowerCase() || '';
 
     if (!type || !category) return [];
 
@@ -761,7 +773,7 @@ export class InventoryDialogComponent {
   }
 
   getCategoryIcon(cat: string): string {
-    const type = this.typeControl.value;
+    const type = this.typeValue();
     if (type === 'machine') return getMachineCategoryIcon(cat);
     return getResourceCategoryIcon(cat);
   }
