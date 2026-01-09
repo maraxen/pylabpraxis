@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { SerialManagerService, SerialRequest, SerialResponse } from './serial-manager.service';
-import { MockSerial, MockSerialDriver } from '../../features/repl/drivers/mock-serial';
-import { registerDriver, resetRegistry, enableTestMode, findDriverByName, unregisterDriver } from '../../features/repl/drivers/driver-registry';
+import { MockSerial, MockSerialDriver } from '../../features/playground/drivers/mock-serial';
+import { registerDriver, resetRegistry, enableTestMode, findDriverByName, unregisterDriver } from '../../features/playground/drivers/driver-registry';
 
 // Mock BroadcastChannel
 class MockBroadcastChannel {

@@ -365,9 +365,13 @@ class DiscoveredClass(BaseModel):
   compatible_backends: list[str] = Field(default_factory=list)
   capabilities_config: MachineCapabilityConfigSchema | None = None
   connection_config: MachineCapabilityConfigSchema | None = None
-  # Resource-specific fields
   category: str | None = None
   vendor: str | None = None
+
+  def is_simulated(self) -> bool:
+    """Check if this is a simulated machine class."""
+    name_lower = self.name.lower()
+    return any(s in name_lower for s in ["simulat", "chatterbox", "mock", "virtual"])
 
   def to_capabilities_dict(self) -> dict[str, Any]:
     """Convert capabilities to the format expected by MachineDefinitionOrm.

@@ -14,9 +14,10 @@
 
 import { Injectable, inject, OnDestroy } from '@angular/core';
 import { Subject, BehaviorSubject, Observable } from 'rxjs';
-import { ISerial, SerialOpenOptions } from '../../features/repl/drivers/serial-interface';
-import { findDriverForDevice } from '../../features/repl/drivers/driver-registry';
-import { FtdiSerial } from '../../features/repl/drivers/ftdi-web-serial';
+import { ISerial, SerialOpenOptions } from '../../features/playground/drivers/serial-interface';
+import { findDriverForDevice } from '../../features/playground/drivers/driver-registry';
+import { PlaygroundComponent } from '../../features/playground/playground.component';
+import { FtdiSerial } from '../../features/playground/drivers/ftdi-web-serial';
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 

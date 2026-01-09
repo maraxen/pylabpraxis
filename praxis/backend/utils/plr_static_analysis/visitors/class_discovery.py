@@ -145,6 +145,12 @@ LH_BACKEND_BASES: frozenset[str] = frozenset(
   {
     "LiquidHandlerBackend",
     "HamiltonLiquidHandler",  # Hamilton-specific abstract base
+    "STARBackend",
+    "STARletBackend",
+    "VantageBackend",
+    "OpentronsBackend",
+    "ChatterboxBackend",
+    "LiquidHandlerChatterboxBackend",
   }
 )
 

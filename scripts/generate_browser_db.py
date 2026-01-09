@@ -296,6 +296,131 @@ def discover_decks_static(conn: sqlite3.Connection) -> int:
     return count
 
 
+    conn.commit()
+    return count
+
+
+def discover_protocols_static(conn: sqlite3.Connection) -> int:
+    """Discover and insert all protocol definitions using static analysis."""
+    from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
+        ProtocolFunctionVisitor,
+    )
+    import libcst as cst
+
+    protocols_dir = PROJECT_ROOT / "praxis" / "protocol" / "protocols"
+    now = datetime.now().isoformat()
+    count = 0
+
+    if not protocols_dir.exists():
+        return 0
+
+    for protocol_file in protocols_dir.glob("*.py"):
+        if protocol_file.name.startswith("__"):
+            continue
+
+        try:
+            module_name = f"praxis.protocol.protocols.{protocol_file.stem}"
+            source_code = protocol_file.read_text()
+            
+            # Parse with LibCST
+            tree = cst.parse_module(source_code)
+            visitor = ProtocolFunctionVisitor(module_name, str(protocol_file))
+            tree.visit(visitor)
+
+            for definition in visitor.definitions:
+                accession_id = generate_uuid_from_fqn(definition.fqn)
+                
+                # Default category based on keywords
+                category = "General"
+                name_lower = definition.name.lower()
+                if "plate" in name_lower or "prep" in name_lower:
+                    category = "Assay Prep"
+                elif "transfer" in name_lower:
+                    category = "Liquid Handling"
+                elif "kinetic" in name_lower or "reader" in name_lower:
+                    category = "Plate Reading"
+
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO function_protocol_definitions (
+                        accession_id, name, fqn, module_name, function_name,
+                        source_file_path, description, category, tags,
+                        hardware_requirements_json,
+                        inferred_requirements_json, failure_modes_json, simulation_result_json,
+                        computation_graph_json, source_hash, requires_deck,
+                        is_top_level, created_at, updated_at, version,
+                        solo_execution, preconfigure_deck, deprecated
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        accession_id,
+                        definition.name.replace("_", " ").title(),
+                        definition.fqn,
+                        definition.module_name,
+                        definition.name,
+                        str(protocol_file.relative_to(PROJECT_ROOT)),
+                        definition.docstring,
+                        category,
+                        safe_json_dumps(["demo", category.lower().replace(" ", "-")]),
+                        safe_json_dumps(definition.hardware_requirements or {}),
+                        safe_json_dumps([]), # Inferred requirements (simulation step)
+                        safe_json_dumps([]), # Failure modes (simulation step)
+                        safe_json_dumps(None), # Simulation result
+                        safe_json_dumps(definition.computation_graph),
+                        definition.source_hash,
+                        1 if definition.requires_deck else 0,
+                        1, # is_top_level default
+                        now,
+                        now,
+                        "0.1.0", # default version
+                        0, # solo_execution default
+                        0, # preconfigure_deck default
+                        0, # deprecated default
+                    ),
+                )
+                
+                # Insert parameters into parameter_definitions table
+                for param in definition.parameters:
+                    param_id = generate_uuid_from_fqn(f"param:{definition.fqn}:{param.name}")
+                    conn.execute(
+                        """
+                        INSERT OR REPLACE INTO parameter_definitions (
+                            accession_id, protocol_definition_accession_id, name, type_hint, fqn,
+                            is_deck_param, optional, default_value_repr, description,
+                            constraints, field_type, is_itemized, itemized_spec, linked_to, ui_hint,
+                            created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            param_id,
+                            accession_id,
+                            param.name,
+                            param.type_hint,
+                            f"{definition.fqn}.{param.name}",
+                            0, # is_deck_param (simplified)
+                            param.is_optional,
+                            str(param.default_value) if param.default_value is not None else None,
+                            "", # description
+                            safe_json_dumps(param.constraints) if hasattr(param, "constraints") and param.constraints else safe_json_dumps({}),
+                            param.field_type.value if hasattr(param, "field_type") and param.field_type else None,
+                            1 if hasattr(param, "is_itemized") and param.is_itemized else 0,
+                            safe_json_dumps(param.itemized_spec.model_dump()) if hasattr(param, "itemized_spec") and param.itemized_spec else None,
+                            param.linked_to if hasattr(param, "linked_to") else None,
+                            safe_json_dumps({}), # ui_hint
+                            now,
+                            now,
+                        ),
+                    )
+                count += 1
+
+        except Exception as e:
+            print(f"Failed to process {protocol_file.name}: {e}")
+            pass
+
+    conn.commit()
+    return count
+
+
 def discover_backends_static(conn: sqlite3.Connection) -> int:
     """Discover and insert all PLR backend definitions using static analysis."""
     from praxis.backend.utils.plr_static_analysis import (
@@ -623,6 +748,8 @@ def main() -> None:
         discover_machines_static(conn)
 
         discover_decks_static(conn)
+
+        discover_protocols_static(conn)
 
         discover_backends_static(conn)
 

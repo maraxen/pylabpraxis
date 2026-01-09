@@ -1,5 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { LocalStorageAdapter } from './local-storage.adapter';
+import { BrowserService } from './browser.service';
 
 export const ONBOARDING_STORAGE_KEYS = {
     ONBOARDING_COMPLETED: 'praxis_onboarding_completed',
@@ -15,6 +16,7 @@ export interface TutorialState {
 @Injectable({ providedIn: 'root' })
 export class OnboardingService {
     private localStorageAdapter = inject(LocalStorageAdapter);
+    private browserService = inject(BrowserService);
 
     readonly hasCompletedOnboarding = signal<boolean>(this.checkOnboardingStatus());
 
@@ -50,7 +52,7 @@ export class OnboardingService {
         localStorage.removeItem(ONBOARDING_STORAGE_KEYS.TUTORIAL_STATE);
         this.hasCompletedOnboarding.set(false);
         this.hasCompletedTutorial.set(false);
-        window.location.reload();
+        this.browserService.reload();
     }
 
     // Tutorial Session Tracking

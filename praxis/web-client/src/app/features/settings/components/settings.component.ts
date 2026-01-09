@@ -12,6 +12,7 @@ import { AppStore } from '../../../core/store/app.store';
 import { OnboardingService } from '@core/services/onboarding.service';
 import { TutorialService } from '@core/services/tutorial.service';
 import { MatButtonModule } from '@angular/material/button';
+import { BrowserService } from '@core/services/browser.service';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -286,6 +287,7 @@ export class SettingsComponent {
   sqlite = inject(SqliteService);
   dialog = inject(MatDialog);
   snackBar = inject(MatSnackBar);
+  browserService = inject(BrowserService);
 
 
   setTheme(theme: Theme) {
@@ -359,7 +361,7 @@ export class SettingsComponent {
         try {
           await this.sqlite.importDatabase(file);
           this.snackBar.open('Database imported - refreshing...', 'OK', { duration: 2000 });
-          setTimeout(() => window.location.reload(), 2000);
+          setTimeout(() => this.browserService.reload(), 2000);
         } catch (err) {
           console.error(err);
           this.snackBar.open('Import failed', 'OK', { duration: 3000 });

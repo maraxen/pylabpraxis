@@ -1,6 +1,6 @@
 /**
  * Auto-generated TypeScript enums from Python enums
- * Generated at: 2026-01-08T19:08:06.741709
+ * Generated at: 2026-01-09T00:43:57.679918
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 
@@ -391,4 +391,33 @@ export const WorkcellStatusValues = {
   ERROR: 'error' as const,
   INACTIVE: 'inactive' as const,
   MAINTENANCE: 'maintenance' as const,
+} as const;
+
+/**
+ * Enumeration for the actions taken after a state resolution.
+ */
+export type ResolutionAction = 'resume' | 'abort' | 'retry';
+
+export const ResolutionActionValues = {
+  RESUME: 'resume' as const,
+  ABORT: 'abort' as const,
+  RETRY: 'retry' as const,
+} as const;
+
+/**
+ * Enumeration for the types of state resolution.
+ */
+export type ResolutionType =
+  | 'confirmed_success'
+  | 'confirmed_failure'
+  | 'partial'
+  | 'arbitrary'
+  | 'unknown';
+
+export const ResolutionTypeValues = {
+  CONFIRMED_SUCCESS: 'confirmed_success' as const,
+  CONFIRMED_FAILURE: 'confirmed_failure' as const,
+  PARTIAL: 'partial' as const,
+  ARBITRARY: 'arbitrary' as const,
+  UNKNOWN: 'unknown' as const,
 } as const;

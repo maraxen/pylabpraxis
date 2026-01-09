@@ -166,6 +166,10 @@ export class SqliteService {
             if (persistedData) {
                 try {
                     db = new SQL.Database(persistedData);
+
+                    // VALIDATION: Ensure the loaded database has the new schema
+                    db.exec("SELECT 1 FROM function_protocol_definitions LIMIT 1");
+
                     console.log('[SqliteService] Loaded database from IndexedDB persistence');
                     this.statusSubject.next({
                         initialized: true,
@@ -173,7 +177,8 @@ export class SqliteService {
                         tableCount: this.getTableCount(db)
                     });
                 } catch (e) {
-                    console.warn('[SqliteService] Failed to load persisted DB, fallback to prebuilt/fresh', e);
+                    console.warn('[SqliteService] Failed to load persisted DB or schema invalid, fallback to prebuilt/fresh', e);
+                    db = null;
                 }
             }
 
@@ -817,27 +822,70 @@ export class SqliteService {
     public getProtocols(): Observable<any[]> {
         return this.db$.pipe(
             map(db => {
-                // Try new schema first
                 try {
                     const res = db.exec("SELECT * FROM function_protocol_definitions");
-                    if (res.length > 0) {
-                        return this.resultToObjects(res[0]).map(p => ({
+                    if (res.length === 0) return [];
+
+                    const protocols = this.resultToObjects(res[0]);
+
+                    // Fetch Parameters
+                    let parameters: any[] = [];
+                    try {
+                        const paramRes = db.exec("SELECT * FROM parameter_definitions");
+                        if (paramRes.length > 0) {
+                            parameters = this.resultToObjects(paramRes[0]);
+                        }
+                    } catch (e) {
+                        console.warn('[SqliteService] Failed to fetch parameters', e);
+                    }
+
+                    // Fetch Assets
+                    let assets: any[] = [];
+                    try {
+                        const assetRes = db.exec("SELECT * FROM protocol_asset_requirements");
+                        if (assetRes.length > 0) {
+                            assets = this.resultToObjects(assetRes[0]);
+                        }
+                    } catch (e) {
+                        console.warn('[SqliteService] Failed to fetch assets', e);
+                    }
+
+                    return protocols.map(p => {
+                        // Join Parameters
+                        const protocolParams = parameters
+                            .filter(param => param['protocol_definition_accession_id'] === p['accession_id'])
+                            .map(param => ({
+                                ...param,
+                                constraints: param['constraints'] ? JSON.parse(param['constraints'] as string) : {},
+                                ui_hint: param['ui_hint'] ? JSON.parse(param['ui_hint'] as string) : {},
+                                itemized_spec: param['itemized_spec'] ? JSON.parse(param['itemized_spec'] as string) : undefined
+                            }));
+
+                        // Join Assets
+                        const protocolAssets = assets
+                            .filter(asset => asset['protocol_definition_accession_id'] === p['accession_id'])
+                            .map(asset => ({
+                                ...asset,
+                                constraints: asset['constraints'] ? JSON.parse(asset['constraints'] as string) : {},
+                                location_constraints: asset['location_constraints'] ? JSON.parse(asset['location_constraints'] as string) : undefined
+                            }));
+
+                        return {
                             ...p,
                             is_top_level: p['is_top_level'] === 1 || p['is_top_level'] === true,
-                            parameters: p['hardware_requirements_json'] ? JSON.parse(p['hardware_requirements_json'] as string) : null
-                        }));
-                    }
-                } catch {
-                    // Fall back to legacy table
+                            parameters: protocolParams,
+                            assets: protocolAssets,
+                            hardware_requirements: p['hardware_requirements_json'] ? JSON.parse(p['hardware_requirements_json'] as string) : {},
+                            computation_graph: p['computation_graph_json'] ? JSON.parse(p['computation_graph_json'] as string) : undefined,
+                            simulation_result: p['simulation_result_json'] ? JSON.parse(p['simulation_result_json'] as string) : undefined,
+                            inferred_requirements: p['inferred_requirements_json'] ? JSON.parse(p['inferred_requirements_json'] as string) : undefined,
+                            failure_modes: p['failure_modes_json'] ? JSON.parse(p['failure_modes_json'] as string) : undefined,
+                        } as unknown as FunctionProtocolDefinition;
+                    });
+                } catch (e) {
+                    console.error('[SqliteService] Error fetching protocols:', e);
+                    return [];
                 }
-
-                const res = db.exec("SELECT * FROM protocols");
-                if (res.length === 0) return [];
-                return this.resultToObjects(res[0]).map(p => ({
-                    ...p,
-                    is_top_level: p['is_top_level'] === 1 || p['is_top_level'] === 'true',
-                    parameters: p['parameters_json'] ? JSON.parse(p['parameters_json'] as string) : null
-                }));
             })
         );
     }
@@ -849,27 +897,64 @@ export class SqliteService {
         return new Promise((resolve) => {
             this.db$.pipe(take(1)).subscribe(db => {
                 try {
-                    // Try new schema first
                     const res = db.exec(
                         `SELECT * FROM function_protocol_definitions WHERE accession_id = '${accessionId}'`
                     );
-                    if (res.length > 0 && res[0].values.length > 0) {
-                        const protocols = this.resultToObjects(res[0]);
-                        resolve(protocols[0] as FunctionProtocolDefinition);
+                    if (res.length === 0 || res[0].values.length === 0) {
+                        resolve(null);
                         return;
                     }
 
-                    // Fall back to legacy table
-                    const legacyRes = db.exec(
-                        `SELECT * FROM protocols WHERE accession_id = '${accessionId}'`
-                    );
-                    if (legacyRes.length > 0 && legacyRes[0].values.length > 0) {
-                        const protocols = this.resultToObjects(legacyRes[0]);
-                        resolve(protocols[0] as FunctionProtocolDefinition);
-                        return;
+                    const protocol = this.resultToObjects(res[0])[0];
+
+                    // Fetch Parameters
+                    let protocolParams: any[] = [];
+                    try {
+                        const paramRes = db.exec(
+                            `SELECT * FROM parameter_definitions WHERE protocol_definition_accession_id = '${accessionId}'`
+                        );
+                        if (paramRes.length > 0) {
+                            protocolParams = this.resultToObjects(paramRes[0]).map(param => ({
+                                ...param,
+                                constraints: param['constraints'] ? JSON.parse(param['constraints'] as string) : {},
+                                ui_hint: param['ui_hint'] ? JSON.parse(param['ui_hint'] as string) : {},
+                                itemized_spec: param['itemized_spec'] ? JSON.parse(param['itemized_spec'] as string) : undefined
+                            }));
+                        }
+                    } catch (error) {
+                        console.warn('[SqliteService] Failed to fetch parameters for protocol', error);
                     }
 
-                    resolve(null);
+                    // Fetch Assets
+                    let protocolAssets: any[] = [];
+                    try {
+                        const assetRes = db.exec(
+                            `SELECT * FROM protocol_asset_requirements WHERE protocol_definition_accession_id = '${accessionId}'`
+                        );
+                        if (assetRes.length > 0) {
+                            protocolAssets = this.resultToObjects(assetRes[0]).map(asset => ({
+                                ...asset,
+                                constraints: asset['constraints'] ? JSON.parse(asset['constraints'] as string) : {},
+                                location_constraints: asset['location_constraints'] ? JSON.parse(asset['location_constraints'] as string) : undefined
+                            }));
+                        }
+                    } catch (error) {
+                        console.warn('[SqliteService] Failed to fetch assets for protocol', error);
+                    }
+
+                    const result = {
+                        ...protocol,
+                        is_top_level: protocol['is_top_level'] === 1 || protocol['is_top_level'] === true,
+                        parameters: protocolParams,
+                        assets: protocolAssets,
+                        hardware_requirements: protocol['hardware_requirements_json'] ? JSON.parse(protocol['hardware_requirements_json'] as string) : {},
+                        computation_graph: protocol['computation_graph_json'] ? JSON.parse(protocol['computation_graph_json'] as string) : undefined,
+                        simulation_result: protocol['simulation_result_json'] ? JSON.parse(protocol['simulation_result_json'] as string) : undefined,
+                        inferred_requirements: protocol['inferred_requirements_json'] ? JSON.parse(protocol['inferred_requirements_json'] as string) : undefined,
+                        failure_modes: protocol['failure_modes_json'] ? JSON.parse(protocol['failure_modes_json'] as string) : undefined,
+                    } as unknown as FunctionProtocolDefinition;
+
+                    resolve(result);
                 } catch (error) {
                     console.error('[SqliteService] Error fetching protocol by ID:', error);
                     resolve(null);
@@ -1116,7 +1201,7 @@ export class SqliteService {
         }
 
         const data = this.dbInstance.export();
-        const blob = new Blob([data as any], { type: 'application/x-sqlite3' });
+        const blob = new Blob([data.buffer as ArrayBuffer], { type: 'application/x-sqlite3' });
         const url = URL.createObjectURL(blob);
 
         const a = document.createElement('a');

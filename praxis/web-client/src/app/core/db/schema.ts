@@ -1,6 +1,6 @@
 /**
  * Auto-generated TypeScript interfaces from SQLAlchemy ORM models
- * Generated at: 2026-01-08T19:08:06.741051
+ * Generated at: 2026-01-09T00:43:57.679165
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 
@@ -448,8 +448,12 @@ export interface ParameterDefinition {
   default_value_repr: string | null;
   /** A human-readable description of the parameter. */
   description: string | null;
-  /** JSONB representation of any constraints on the parameter, such as allowed values or       ranges. */
   constraints: Record<string, unknown> | null;
+  field_type: string | null;
+  is_itemized: boolean | null;
+  /** JSONB representation of itemized resource specification (items_x, items_y). */
+  itemized_spec: Record<string, unknown> | null;
+  linked_to: string | null;
   /** JSONB representation of UI hints for the parameter. */
   ui_hint: Record<string, unknown> | null;
   accession_id: string;

@@ -5,6 +5,7 @@ import { OnboardingService } from '@core/services/onboarding.service';
 import { TutorialService } from '@core/services/tutorial.service';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { SqliteService } from '@core/services/sqlite.service';
+import { BrowserService } from '@core/services/browser.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
@@ -47,6 +48,10 @@ describe('SettingsComponent', () => {
         open: vi.fn()
     };
 
+    const browserMock = {
+        reload: vi.fn()
+    };
+
     beforeEach(async () => {
         vi.clearAllMocks();
 
@@ -58,7 +63,8 @@ describe('SettingsComponent', () => {
                 { provide: TutorialService, useValue: tutorialMock },
                 { provide: SqliteService, useValue: sqliteMock },
                 { provide: MatSnackBar, useValue: snackBarMock },
-                { provide: MatDialog, useValue: dialogMock }
+                { provide: MatDialog, useValue: dialogMock },
+                { provide: BrowserService, useValue: browserMock }
             ]
         }).compileComponents();
 
@@ -120,13 +126,6 @@ describe('SettingsComponent', () => {
         dialogMock.open.mockReturnValue(dialogRefMock);
         sqliteMock.importDatabase.mockResolvedValue(undefined);
 
-        // Mock window.location.reload
-        const originalLocation = window.location;
-        // @ts-ignore
-        delete window.location;
-        // @ts-ignore
-        window.location = { ...originalLocation, reload: vi.fn() } as any;
-
         await component.importData(event);
 
         expect(dialogMock.open).toHaveBeenCalled();
@@ -138,10 +137,8 @@ describe('SettingsComponent', () => {
         await Promise.resolve();
         vi.advanceTimersByTime(2000);
 
-        expect(window.location.reload).toHaveBeenCalled();
+        expect(browserMock.reload).toHaveBeenCalled();
 
-        // @ts-ignore
-        window.location = originalLocation as any;
         vi.useRealTimers();
     });
 });
