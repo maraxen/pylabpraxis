@@ -62,16 +62,16 @@ Playground inventory filter menu should use our styled select components.
 
 ## P2: Category Structure
 
-**Status**: Open
+**Status:** Completed
 **Difficulty**: Easy
 
 ### Problem
 Categories need to be properly structured in the quick add inventory category filter.
 
 ### Tasks
-- [ ] Review category hierarchy
-- [ ] Implement proper nesting/grouping
-- [ ] Test filter behavior
+- [x] Review category hierarchy
+- [x] Implement proper nesting/grouping
+- [x] Test filter behavior
 
 ---
 
