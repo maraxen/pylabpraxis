@@ -1,6 +1,6 @@
 # Praxis Development Matrix
 
-**Last Updated**: 2026-01-08 (REPL Stability Fixed)
+**Last Updated**: 2026-01-08 (REPL Stability + Factory ORM Fixed)
 **Purpose**: Consolidated view of all remaining work items with priority and difficulty ratings.
 
 ---
@@ -96,7 +96,7 @@
 | ~~Asset Management UX~~ | ~~P2~~ | ~~🟡 Intricate~~ | [asset_management_ux](./backlog/asset_management_ux.md) | ✅ Complete (Resolved Phase 1 regressions) |
 | **Dataviz & Well Selection** | P2 | 🔴 Complex | [dataviz_well_selection](./backlog/dataviz_well_selection.md) | Bridge WellDataOutput with visualization |
 | ~~Skipped Tests Investigation~~ | ~~P2~~ | ~~🟢 Easy~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Fixed Orchestrator tests, cleaned frontend dead code) |
-| **Factory ORM Integration** | P2 | 🟡 Intricate | [quality_assurance](./backlog/quality_assurance.md) | Fix Factory Boy FK population |
+| ~~Factory ORM Integration~~ | ~~P2~~ | ~~🟡 Intricate~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Fixed Factory Boy FK population) |
 
 ### Migrated from Technical Debt (2026-01-08)
 

@@ -161,9 +161,9 @@ SQLAlchemy's dataclass-style ORM mapping requires `kw_only=True` for non-default
 
 ### Tasks
 
-- [ ] Investigate factory flush timing
-- [ ] Review ORM model field ordering
-- [ ] Fix factory definitions or add manual flush calls
+- [x] Investigate factory flush timing
+- [x] Review ORM model field ordering
+- [x] Fix factory definitions or add manual flush calls
 
 ---
 

@@ -3,7 +3,7 @@
 **Priority**: P2 (High)
 **Owner**: Frontend
 **Created**: 2026-01-07 (migrated from TECHNICAL_DEBT.md)
-**Status**: 🟢 Planned
+**Status**: 🟡 In Progress
 
 ---
 
@@ -12,8 +12,6 @@
 Improve JupyterLite REPL stability, theme synchronization, and hardware discovery integration.
 
 ---
-
-## Phase 1: Rendering Stability
 
 ## Phase 1: Rendering Stability
 

@@ -17,7 +17,7 @@
 | 06 | [repl_rendering_stability](./06_repl_rendering_stability.md) | REPL kernel refresh race condition | P2 | M | ✅ Complete |
 | 07 | [ui_consistency_exec_monitor](./07_ui_consistency_exec_monitor.md) | Execution Monitor dropdown chips | P2 | M | ✅ Complete |
 | 08 | [asset_management_ux](./08_asset_management_ux.md) | Add Machine/Resource flow refactor | P2 | M | ✅ Complete |
-| 09 | [factory_orm_integration](./09_factory_orm_integration.md) | Factory Boy FK population fixes | P2 | M | 🟢 Not Started |
+| 09 | [factory_orm_integration](./09_factory_orm_integration.md) | Factory Boy FK population fixes | P2 | M | ✅ Complete |
 | 10 | [browser_schema_scripts](./10_browser_schema_scripts.md) | Fix schema generation scripts | P2 | M | ✅ Complete |
 | 11 | [e2e_data_seeding](./11_e2e_data_seeding.md) | Pre-populate DB for Playwright tests | P2 | M | 🟢 Not Started |
 | 12 | [e2e_protocol_execution](./12_e2e_protocol_execution.md) | E2E Tests - Protocol execution flow | P2 | M | 🟢 Not Started |
