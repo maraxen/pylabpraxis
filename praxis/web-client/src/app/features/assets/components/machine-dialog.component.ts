@@ -13,6 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatCardModule } from '@angular/material/card';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
 import { MachineStatus, MachineDefinition } from '../models/asset.models';
 import { AssetService } from '../services/asset.service';
@@ -60,6 +61,7 @@ interface FrontendType {
     MatDividerModule,
     MatStepperModule,
     MatCardModule,
+    MatTooltipModule,
     DynamicCapabilityFormComponent,
     PraxisSelectComponent
   ],
@@ -145,7 +147,9 @@ interface FrontendType {
                       </div>
                       <div class="flex flex-col items-start min-w-0">
                         <div class="flex items-center gap-2 w-full">
-                          <span class="font-medium truncate">{{ def.name }}</span>
+                          <span class="font-medium truncate" 
+                                [matTooltip]="def.name" 
+                                matTooltipShowDelay="300">{{ getTruncatedName(def.name) }}</span>
                           @if (isSimulatedDefinition(def)) {
                             <span class="simulated-chip">Simulated</span>
                           }
@@ -156,7 +160,9 @@ interface FrontendType {
                         <span class="text-xs sys-text-secondary truncate">
                           {{ def.manufacturer || 'Unknown vendor' }}
                         </span>
-                        <span class="text-[11px] text-sys-text-tertiary fqn-wrap">{{ getShortFqn(def.fqn || '') }}</span>
+                        <span class="text-[11px] text-sys-text-tertiary fqn-wrap"
+                              [matTooltip]="def.fqn"
+                              matTooltipShowDelay="300">{{ getShortFqn(def.fqn || '') }}</span>
                       </div>
                     </div>
                   </button>
@@ -556,6 +562,11 @@ export class MachineDialogComponent implements OnInit {
   getShortFqn(fqn: string): string {
     const parts = fqn.split('.');
     return parts.length > 2 ? parts.slice(-2).join('.') : fqn;
+  }
+
+  getTruncatedName(name: string, maxLength: number = 25): string {
+    if (name.length <= maxLength) return name;
+    return name.substring(0, maxLength - 3) + '...';
   }
 
   updateCapabilities(val: any) {
