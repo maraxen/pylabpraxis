@@ -1,14 +1,14 @@
-import { Component, inject, signal, effect, computed, ElementRef, HostListener } from '@angular/core';
+import { Component, computed, effect, ElementRef, HostListener, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { AppStore } from '../../../core/store/app.store';
 import { DiagramOverlayComponent } from '../../../shared/components/diagram-overlay/diagram-overlay.component';
 
+import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { MarkdownModule } from 'ngx-markdown';
-import { HttpClient } from '@angular/common/http';
-import { SystemTopologyComponent } from './system-topology/system-topology.component';
 import { catchError, of } from 'rxjs';
+import { SystemTopologyComponent } from './system-topology/system-topology.component';
 
 @Component({
   selector: 'app-docs-page',
@@ -184,6 +184,21 @@ import { catchError, of } from 'rxjs';
         padding: 2px 6px;
         border-radius: 4px;
         color: var(--primary-color);
+      }
+
+      kbd {
+        display: inline-block;
+        padding: 2px 6px;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.85em;
+        line-height: 1.2;
+        color: var(--theme-text-primary);
+        vertical-align: middle;
+        background-color: var(--mat-sys-surface-container);
+        border: 1px solid var(--theme-border);
+        border-radius: 6px;
+        box-shadow: 0 2px 0 var(--theme-border);
+        margin: 0 2px;
       }
 
       pre {
@@ -382,71 +397,45 @@ export class DocsPageComponent {
       isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
 
-    const common = {
-      fontFamily: '"Roboto Flex", sans-serif',
-      fontSize: '18px',
-      flowchart: {
-        nodeSpacing: 60,
-        rankSpacing: 60,
-        curve: 'basis'
-      }
-    };
-
     return {
       theme: 'base' as const,
       flowchart: {
         htmlLabels: true,
         useMaxWidth: false,
+        nodeSpacing: 60,
+        rankSpacing: 60,
+        curve: 'basis' as const
       },
-      themeVariables: isDark ? {
-        ...common,
-        darkMode: true,
+      themeVariables: {
+        fontFamily: '"Roboto Flex", sans-serif',
+        fontSize: '18px',
+        darkMode: isDark,
         background: 'transparent',
         mainBkg: 'transparent',
+        primaryColor: 'var(--mat-sys-primary-container)',
+        primaryTextColor: 'var(--mat-sys-on-primary-container)',
+        primaryBorderColor: 'var(--mat-sys-outline)',
+        lineColor: 'var(--mat-sys-outline)',
+        secondaryColor: 'var(--mat-sys-secondary-container)',
+        tertiaryColor: 'var(--mat-sys-tertiary-container)',
+        nodeBkg: 'var(--mat-sys-surface-container-high)',
+        textColor: 'var(--mat-sys-on-surface)',
+        noteBkgColor: 'var(--mat-sys-surface-container-low)',
+        noteTextColor: 'var(--mat-sys-on-surface)',
+        noteBorderColor: 'var(--mat-sys-outline)',
 
-        // Primary (Standard Nodes)
-        primaryColor: '#2a2a3c',         // Surface Container High
-        primaryTextColor: '#ffffff',
-        primaryBorderColor: '#ed7a9b',   // Rose Pompadour
-
-        // Secondary (e.g. subgraphs)
-        secondaryColor: '#1a1a2e',       // Surface Container Low
-        secondaryTextColor: '#ffffff',
-        secondaryBorderColor: '#73a9c2', // Moonstone Blue
-
-        // Tertiary
-        tertiaryColor: '#1e1e2d',
-        tertiaryTextColor: '#ffffff',
-        tertiaryBorderColor: '#ed7a9b',
-
-        // Lines and Text
-        lineColor: 'rgba(255, 255, 255, 0.6)',
-        textColor: '#ffffff',
-        noteBkgColor: '#2a2a3c',
-        noteTextColor: '#ffffff',
-        noteBorderColor: '#73a9c2'
-      } : {
-        ...common,
-        darkMode: false,
-        background: 'transparent',
-        mainBkg: 'transparent',
-
-        // Primary
-        primaryColor: '#fbf9e6',         // Cream
-        primaryTextColor: '#020617',     // Slate 950
-        primaryBorderColor: '#ed7a9b',
-
-        // Secondary
-        secondaryColor: '#ffffff',
-        secondaryTextColor: '#020617',
-        secondaryBorderColor: '#73a9c2',
-
-        // Lines and Text
-        lineColor: '#1e293b',            // Slate 800
-        textColor: '#020617',
-        noteBkgColor: '#fffdf5',         // Lightest cream
-        noteTextColor: '#020617',
-        noteBorderColor: '#73a9c2'
+        // Sequence Diagram specific
+        actorBkg: 'var(--mat-sys-surface-container-high)',
+        actorBorder: 'var(--mat-sys-outline)',
+        actorTextColor: 'var(--mat-sys-on-surface)',
+        actorLineColor: 'var(--mat-sys-outline)',
+        signalColor: 'var(--mat-sys-on-surface)',
+        signalTextColor: 'var(--mat-sys-on-surface)',
+        labelBoxBkgColor: 'var(--mat-sys-surface-container-high)',
+        labelBoxBorderColor: 'var(--mat-sys-outline)',
+        labelTextColor: 'var(--mat-sys-on-surface)',
+        loopTextColor: 'var(--mat-sys-on-surface)',
+        sequenceNumberColor: 'var(--mat-sys-on-primary-container)',
       }
     };
   });

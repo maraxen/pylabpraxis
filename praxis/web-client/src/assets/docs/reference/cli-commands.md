@@ -33,7 +33,7 @@ cd praxis/web-client
 # Development
 npm start
 
-# Browser mode
+# Demo mode
 npm run start:browser
 
 # Production build
@@ -245,28 +245,28 @@ Common targets in `Makefile`:
 .PHONY: dev test lint build
 
 dev:
- docker compose up -d db redis
- uv run uvicorn praxis.backend.main:app --reload
+	docker compose up -d db redis
+	uv run uvicorn praxis.backend.main:app --reload
 
 test:
- uv run pytest
+	uv run pytest
 
 lint:
- uv run ruff check .
- cd praxis/web-client && npm run lint
+	uv run ruff check .
+	cd praxis/web-client && npm run lint
 
 build:
- cd praxis/web-client && npm run build
+	cd praxis/web-client && npm run build
 
 db-test:
- docker run -d --name praxis_test_db \
-  -e POSTGRES_PASSWORD=postgres \
-  -p 5432:5432 postgres:15
+	docker run -d --name praxis_test_db \
+		-e POSTGRES_PASSWORD=postgres \
+		-p 5432:5432 postgres:15
 
 clean:
- docker compose down -v
- rm -rf .pytest_cache htmlcov
- cd praxis/web-client && rm -rf dist node_modules
+	docker compose down -v
+	rm -rf .pytest_cache htmlcov
+	cd praxis/web-client && rm -rf dist node_modules
 ```
 
 ## Environment Shortcuts

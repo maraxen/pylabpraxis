@@ -1,51 +1,64 @@
 # Architecture Overview
 
+Source: praxis/backend/core/protocols/orchestrator.py
+
 Praxis is designed as a modular, service-oriented system for laboratory automation. This document provides a comprehensive overview of the architecture, components, and data flow.
 
 ## System Diagram
 
+### Production Mode
+
 ```mermaid
 graph TD
-    subgraph "Frontend (Angular)"
+    %% Styling for Subgraph Titles
+    classDef sectionTitle font-size:22px,font-weight:bold,fill:none,stroke:none;
+
+    subgraph Frontend ["Frontend (Angular)"]
         UI[Web UI]
         Store[NgRx Store]
         Services[Frontend Services]
     end
+    style Frontend fill:transparent,stroke:var(--mat-sys-primary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
-    subgraph "API Layer"
-        API[FastAPI Server]
+    subgraph API ["API Layer"]
+        Server[FastAPI Server]
         WS[WebSocket Handler]
     end
+    style API fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
-    subgraph "Core Engine"
+    subgraph Core ["Core Engine"]
         Orch[Orchestrator]
         Sched[Scheduler]
         Proto[Protocol Engine]
         Asset[Asset Manager]
     end
+    style Core fill:transparent,stroke:var(--mat-sys-primary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
-    subgraph "Runtime"
+    subgraph Runtime ["Runtime"]
         WCR[WorkcellRuntime]
         PLR[PyLabRobot]
         Sim[Simulators]
     end
+    style Runtime fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
-    subgraph "Workers"
+    subgraph Workers ["Workers"]
         Celery[Celery Workers]
     end
+    style Workers fill:transparent,stroke:var(--mat-sys-primary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
-    subgraph "Data Layer"
+    subgraph Data ["Data Layer"]
         PG[(PostgreSQL)]
         Redis[(Redis)]
     end
+    style Data fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
-    UI --> API
+    UI --> Server
     UI --> WS
     Store --> Services
-    Services --> API
+    Services --> Server
 
-    API --> Orch
-    API --> Asset
+    Server --> Orch
+    Server --> Asset
     WS --> Orch
 
     Orch --> Proto
@@ -58,10 +71,96 @@ graph TD
     WCR --> PLR
     WCR --> Sim
 
-    API --> PG
+    Server --> PG
     Orch --> Redis
     Celery --> Redis
     WCR --> PG
+```
+
+### Lite Mode
+
+```mermaid
+graph TD
+    subgraph Frontend_Lite ["Frontend (Angular)"]
+        UI_L[Web UI]
+        Store_L[NgRx Store]
+    end
+    style Frontend_Lite fill:transparent,stroke:var(--mat-sys-primary),stroke-width:2px,color:var(--mat-sys-on-surface)
+
+    subgraph API_Lite ["Local API"]
+        Server_L[FastAPI Process]
+    end
+    style API_Lite fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
+
+    subgraph Core_Lite ["Core Engine"]
+        Orch_L[Orchestrator]
+        Asset_L[Asset Manager]
+    end
+    style Core_Lite fill:transparent,stroke:var(--mat-sys-primary),stroke-width:2px,color:var(--mat-sys-on-surface)
+
+    subgraph Runtime_Lite ["Runtime"]
+        WCR_L[WorkcellRuntime]
+        PLR_L[PyLabRobot]
+    end
+    style Runtime_Lite fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
+
+    subgraph Data_Lite ["Data Layer"]
+        SQLite[(SQLite)]
+    end
+    style Data_Lite fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
+
+    UI_L --> Server_L
+    Store_L --> Server_L
+    Server_L --> Orch_L
+    Server_L --> Asset_L
+    Orch_L --> WCR_L
+    Asset_L --> WCR_L
+    WCR_L --> PLR_L
+    Server_L --> SQLite
+    WCR_L --> SQLite
+```
+
+### Browser Mode (Pyodide)
+
+```mermaid
+graph TD
+    subgraph Frontend_Browser ["Frontend (Browser Only)"]
+        UI_B[Web UI]
+        Store_B[NgRx Store]
+        IO_Shim[IO Shim Service]
+    end
+    style Frontend_Browser fill:transparent,stroke:var(--mat-sys-primary),stroke-width:2px,color:var(--mat-sys-on-surface)
+
+    subgraph WebWorker ["Web Worker (Pyodide)"]
+        PyBridge[Python Bridge]
+        Core_B[Core Engine]
+        PLR_B[PyLabRobot]
+    end
+    style WebWorker fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
+
+    subgraph BrowserData ["Browser Storage"]
+        IDB[(IndexedDB)]
+        LocalStorage[(LocalStorage)]
+    end
+    style BrowserData fill:transparent,stroke:var(--mat-sys-primary),stroke-width:2px,color:var(--mat-sys-on-surface)
+
+    subgraph Hardware ["Physical Hardware"]
+        USB[WebSerial / USB]
+        Bluetooth[WebBluetooth]
+    end
+    style Hardware fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
+
+    UI_B --> Store_B
+    Store_B --> PyBridge
+    PyBridge --> Core_B
+    Core_B --> PLR_B
+    
+    PLR_B --> IO_Shim
+    IO_Shim --> USB
+    IO_Shim --> Bluetooth
+    
+    Store_B --> IDB
+    Store_B --> LocalStorage
 ```
 
 ## Layer Responsibilities
@@ -103,54 +202,8 @@ graph TD
 
 | Component | Responsibility |
 |-----------|----------------|
-| **PostgreSQL** | Persistent storage for configurations, history, and logs (Production Mode) |
-| **Redis** | Distributed state, task queue, and caching (Production Mode) |
-| **SQLite (WASM)** | Client-side persistent storage using LocalStorage syncing (Browser/Demo Mode) |
-
-## Application Modes
-
-Praxis supports multiple operational modes to suit different environments:
-
-### 1. Production Mode
-
-The full distributed system. Requires a backend server, PostgreSQL database, and Redis. Best for multi-user labs and complex scheduling.
-
-### 2. Browser Mode
-
-A pure client-side experience. The entire Python service layer and hardware drivers run in the browser via **Pyodide**.
-
-- **IO**: Hardware is controlled via [WebSerial](https://developer.mozilla.org/en-US/docs/Web/API/WebSerial_API) and [WebUSB](https://developer.mozilla.org/en-US/docs/Web/API/WebUSB_API).
-- **Persistence**: Data is stored in an in-browser SQLite database and synchronized with the browser's `LocalStorage`.
-
-### 3. Demo Mode
-
-A specialized version of Browser Mode that loads mock assets and protocols. Used for demonstrations and testing UI features without physical hardware.
-
-## Browser Runtime Architecture
-
-In Browser/Demo modes, the architecture shifts to a "Local-First" model:
-
-```mermaid
-graph LR
-    subgraph "Main Thread"
-        UI[Angular UI]
-        HW[WebSerial/WebUSB]
-    end
-
-    subgraph "Web Worker"
-        Py[Pyodide / Python]
-        DB[SQLite WASM]
-    end
-
-    UI -->|Execute| Py
-    Py -->|SQL| DB
-    Py -->|IO Request| UI
-    UI -->|Serial Write| HW
-    HW -->|Serial Read| UI
-    UI -->|IO Response| Py
-```
-
-This model enables zero-install laboratory automation while maintaining the same Python API used in Production Mode.
+| **PostgreSQL** | Persistent storage for configurations, history, and logs |
+| **Redis** | Distributed state, task queue, and caching |
 
 ## Key Design Principles
 

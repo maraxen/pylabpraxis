@@ -18,7 +18,7 @@ Choosing the right mode depends on your use case:
 |------|----------|---------------------|
 | **Browser Mode** | Direct hardware control from laptop, single-user research, portability. | **Minimal** (Browser only) |
 | **Production Mode** | Shared lab infrastructure, scheduled runs, multi-user environments. | **Full** (Python + Postgres + Redis) |
-| **Demo Mode** | Software evaluation, UI testing, presentations. | **None** (Online Demo) |
+| **Browser Mode** | Software evaluation, UI testing, presentations. | **None** (Online Demo) |
 
 ## Browser Mode (Recommended for Local Use)
 
@@ -129,13 +129,13 @@ KEYCLOAK_CLIENT_ID=praxis-web
 2. You should see the Praxis dashboard
 3. Check the backend health: `curl http://localhost:8000/health`
 
-## Demo Mode (No Backend Required)
+## Browser Mode (No Backend Required)
 
 For quick demonstrations without setting up the backend:
 
 ```bash
 cd praxis/web-client
-npm run start:demo
+npm run start:browser
 ```
 
 This runs the frontend with mock data - perfect for demos or UI development.

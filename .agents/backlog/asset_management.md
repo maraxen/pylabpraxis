@@ -54,16 +54,16 @@ Implemented gating in MachineDialog stepper and added defensive UI.
 
 ## P2: Add Asset Prompt Missing
 
-**Status**: Open
+**Status**: Completed
 **Difficulty**: Easy
 
 ### Problem
 The add asset button when you're in the overview/spatial view tabs takes you to add machine when it should first prompt if you want to add a machine or resource.
 
 ### Tasks
-- [ ] Add prompt dialog for asset type selection
-- [ ] Options: "Add Machine" or "Add Resource"
-- [ ] Navigate to appropriate flow based on selection
+- [x] Add prompt dialog for asset type selection
+- [x] Options: "Add Machine" or "Add Resource"
+- [x] Navigate to appropriate flow based on selection
 
 ---
 

@@ -37,8 +37,8 @@ nav:
   - Getting Started:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md
-    - Demo Mode: getting-started/demo-mode.md
-    - Demo Script: getting-started/demo-script.md
+    - Browser Mode: getting-started/browser-mode.md
+    - Browser Script: getting-started/browser-script.md
   - Architecture:
     - Overview: architecture/overview.md
     - Backend Components: architecture/backend.md

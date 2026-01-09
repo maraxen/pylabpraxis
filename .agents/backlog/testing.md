@@ -11,9 +11,11 @@
 **Difficulty**: Medium
 
 ### Problem
+
 Need tests related to the maintenance tracking system.
 
 ### Tasks
+
 - [ ] Test maintenance schedule creation
 - [ ] Test maintenance status updates
 - [ ] Test maintenance badge display
@@ -27,9 +29,11 @@ Need tests related to the maintenance tracking system.
 **Difficulty**: Easy
 
 ### Problem
+
 Need tests for the consumable tracking system.
 
 ### Tasks
+
 - [ ] Test consumable inventory tracking
 - [ ] Test consumption during protocol execution
 - [ ] Test low-stock warnings
@@ -43,10 +47,12 @@ Need tests for the consumable tracking system.
 **Difficulty**: Easy
 
 ### Problem
+
 Need tests for import and export functionality.
 
 ### Tasks
-- [ ] Test database export in browser mode
+
+- [x] Test database export in browser mode (Stub created)
 - [ ] Test database import/restore
 - [ ] Test data integrity after import
 - [ ] Test version compatibility

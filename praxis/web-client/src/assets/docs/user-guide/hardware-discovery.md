@@ -23,13 +23,13 @@ Hardware discovery uses:
 
 **From Command Palette:**
 
-1. Press ++cmd+k++ (or ++ctrl+k++)
+1. Press <kbd>Cmd</kbd>+<kbd>K</kbd> (or <kbd>Ctrl</kbd>+<kbd>K</kbd>)
 2. Type "discover hardware"
 3. Select the action
 
 **Keyboard shortcut:**
 
-- ++alt+d++ opens hardware discovery directly
+- <kbd>Alt</kbd>+<kbd>D</kbd> opens hardware discovery directly
 
 ### Scanning for Devices
 

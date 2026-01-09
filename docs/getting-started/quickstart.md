@@ -103,12 +103,12 @@ Connect USB/serial devices automatically:
 
 | Shortcut | Action |
 |----------|--------|
-| ++cmd+k++ | Command palette |
-| ++alt+h++ | Go to Home |
-| ++alt+p++ | Go to Protocols |
-| ++alt+m++ | Go to Machines |
-| ++alt+r++ | Go to Resources |
-| ++alt+d++ | Discover Hardware |
+| <kbd>Cmd</kbd>+<kbd>K</kbd> | Command palette |
+| <kbd>Alt</kbd>+<kbd>H</kbd> | Go to Home |
+| <kbd>Alt</kbd>+<kbd>P</kbd> | Go to Protocols |
+| <kbd>Alt</kbd>+<kbd>M</kbd> | Go to Machines |
+| <kbd>Alt</kbd>+<kbd>R</kbd> | Go to Resources |
+| <kbd>Alt</kbd>+<kbd>D</kbd> | Discover Hardware |
 
 ## Next Steps
 

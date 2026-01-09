@@ -527,22 +527,60 @@ export class InventoryDialogComponent {
     { label: 'Resources', value: 'resource', icon: 'science' }
   ];
 
-  categoryOptions = computed<SelectOption[]>(() => [
-    { label: 'All Categories', value: 'all' },
-    ...this.allCategories().map(cat => ({
-      label: cat,
-      value: cat
-    }))
-  ]);
-
   quickSearch = signal('');
   quickFilterType = new FormControl('all', { nonNullable: true });
   quickFilterCategory = new FormControl('all', { nonNullable: true });
 
+  // Signals for form controls to drive computed values
+  quickFilterTypeValue = toSignal(this.quickFilterType.valueChanges, { initialValue: 'all' });
+  quickFilterCategoryValue = toSignal(this.quickFilterCategory.valueChanges, { initialValue: 'all' });
+
+  machineCategories = computed(() => {
+    const cats = new Set<string>();
+    this.machines()?.forEach(m => {
+      if (m.machine_category) cats.add(m.machine_category);
+    });
+    return Array.from(cats).sort();
+  });
+
+  resourceCategories = computed(() => {
+    const cats = new Set<string>();
+    this.resources()?.forEach(r => {
+      const cat = this.getResourceCategory(r);
+      if (cat) cats.add(cat);
+    });
+    return Array.from(cats).sort();
+  });
+
+  categoryOptions = computed<SelectOption[]>(() => {
+    const type = this.quickFilterTypeValue();
+    const allLabel: SelectOption = { label: 'All Categories', value: 'all' };
+    
+    // Helper to map string[] to SelectOption[]
+    const mapCats = (cats: string[]) => cats.map(c => ({ label: c, value: c }));
+
+    if (type === 'machine') {
+      return [allLabel, ...mapCats(this.machineCategories())];
+    }
+    
+    if (type === 'resource') {
+      return [allLabel, ...mapCats(this.resourceCategories())];
+    }
+
+    // If 'all', return grouped with separators
+    return [
+      allLabel,
+      { label: '── Machines ──', value: 'HEADER_MACHINES', disabled: true },
+      ...mapCats(this.machineCategories()),
+      { label: '── Resources ──', value: 'HEADER_RESOURCES', disabled: true },
+      ...mapCats(this.resourceCategories())
+    ];
+  });
+
   quickFiltersCount = computed(() => {
     let count = 0;
-    if (this.quickFilterType.value !== 'all') count++;
-    if (this.quickFilterCategory.value !== 'all') count++;
+    if (this.quickFilterTypeValue() !== 'all') count++;
+    if (this.quickFilterCategoryValue() !== 'all') count++;
     return count;
   });
 
@@ -575,6 +613,11 @@ export class InventoryDialogComponent {
       if (val) {
         this.generateVariableName(val);
       }
+    });
+
+    // Reset quick filter category when quick filter type changes
+    this.quickFilterType.valueChanges.subscribe(() => {
+      this.quickFilterCategory.setValue('all');
     });
   }
 
@@ -643,8 +686,8 @@ export class InventoryDialogComponent {
   });
 
   filteredQuickAssets = computed(() => {
-    const typeFilter = this.quickFilterType.value;
-    const catFilter = this.quickFilterCategory.value;
+    const typeFilter = this.quickFilterTypeValue();
+    const catFilter = this.quickFilterCategoryValue();
     const search = this.quickSearch().toLowerCase();
 
     let all: (Machine | Resource)[] = [...(this.machines() || []), ...(this.resources() || [])];

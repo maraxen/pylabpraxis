@@ -11,9 +11,11 @@
 **Difficulty**: Medium
 
 ### Problem
+
 API documentation pages are not working/rendering.
 
 ### Tasks
+
 - [ ] Investigate API docs generation
 - [ ] Fix rendering issues
 - [ ] Verify all endpoints documented
@@ -23,16 +25,18 @@ API documentation pages are not working/rendering.
 
 ## P2: Keyboard Shortcut Column Formatting
 
-**Status**: Open
+**Status**: COMPLETE
 **Difficulty**: Easy
 
 ### Problem
+
 Keyboard shortcut column formatting is not working properly.
 
 ### Tasks
-- [ ] Identify affected docs page
-- [ ] Fix column/table formatting
-- [ ] Verify responsiveness
+
+- [x] Identify affected docs page
+- [x] Fix column/table formatting
+- [x] Verify responsiveness
 
 ---
 
@@ -42,9 +46,11 @@ Keyboard shortcut column formatting is not working properly.
 **Difficulty**: Medium
 
 ### Problem
+
 Trying to expand the system architecture views does not work and instead yields just the text, not the actual visual view.
 
 ### Tasks
+
 - [ ] Debug diagram rendering in docs
 - [ ] Check if Mermaid/diagram library loading
 - [ ] Fix expand/collapse functionality
@@ -54,16 +60,18 @@ Trying to expand the system architecture views does not work and instead yields 
 
 ## P2: Dead Links
 
-**Status**: Open
+**Status**: COMPLETE
 **Difficulty**: Easy
 
 ### Problem
+
 Dead links exist in the documentation.
 
 ### Tasks
-- [ ] Run link checker across docs
-- [ ] Fix or remove dead links
-- [ ] Update any moved pages
+
+- [x] Run link checker across docs
+- [x] Fix or remove dead links
+- [x] Update any moved pages
 
 ---
 
@@ -73,9 +81,11 @@ Dead links exist in the documentation.
 **Difficulty**: Medium
 
 ### Problem
+
 We should have separate tabs for browser-lite and production mode in the backend/architecture section of the docs.
 
 ### Tasks
+
 - [ ] Add tabbed view for mode-specific architecture
 - [ ] Document browser-lite limitations
 - [ ] Document production mode requirements
@@ -89,9 +99,11 @@ We should have separate tabs for browser-lite and production mode in the backend
 **Difficulty**: Easy
 
 ### Problem
+
 State management overview diagram is improperly formatted for theming.
 
 ### Tasks
+
 - [ ] Fix diagram CSS for dark/light mode
 - [ ] Verify colors are theme-aware
 - [ ] Test in both themes
@@ -100,16 +112,18 @@ State management overview diagram is improperly formatted for theming.
 
 ## P2: Execution Flow Diagram
 
-**Status**: Open
+**Status**: COMPLETE
 **Difficulty**: Easy
 
 ### Problem
+
 Execution flow diagram has formatting issues.
 
 ### Tasks
-- [ ] Identify specific formatting problems
-- [ ] Fix diagram layout/styling
-- [ ] Test rendering
+
+- [x] Identify specific formatting problems
+- [x] Fix diagram layout/styling
+- [x] Test rendering
 
 ---
 
@@ -119,9 +133,11 @@ Execution flow diagram has formatting issues.
 **Difficulty**: Medium
 
 ### Problem
+
 The tutorial needs to be brought up to date.
 
 ### Tasks
+
 - [ ] Review current tutorial steps
 - [ ] Update screenshots if UI changed
 - [ ] Verify all described features still work
@@ -135,9 +151,11 @@ The tutorial needs to be brought up to date.
 **Difficulty**: Medium
 
 ### Problem
+
 Need to verify all docs are up to date.
 
 ### Tasks
+
 - [ ] Create checklist of all doc pages
 - [ ] Review each page for accuracy
 - [ ] Flag outdated content

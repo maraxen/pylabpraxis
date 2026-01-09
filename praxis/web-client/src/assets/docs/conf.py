@@ -1,4 +1,4 @@
-"""Sphinx configuration file for PyLabPraxis documentation."""
+"""Sphinx configuration file for Praxis documentation."""
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -11,7 +11,7 @@ import sys
 sys.path.insert(0, os.path.abspath(".."))
 
 # -- Project information -----------------------------------------------------
-project = "PyLabPraxis"
+project = "Praxis"
 copyright = "2025, Marielle Russo"
 author = "Marielle Russo"
 release = "0.0.1"

@@ -76,7 +76,7 @@ Examine `.agents/README.md` for development context.
 - [ ] Update backlog item status
 - [ ] Update DEVELOPMENT_MATRIX.md if applicable
 - [ ] Release browser_subagent in status.json if used
-- [ ] Mark this prompt complete in batch README
+- [ ] Mark this prompt complete in batch README and set the status in this prompt document to 🟢 Completed
 
 ---
 

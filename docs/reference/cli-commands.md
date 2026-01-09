@@ -34,7 +34,7 @@ cd praxis/web-client
 npm start
 
 # Demo mode
-npm run start:demo
+npm run start:browser
 
 # Production build
 npm run build

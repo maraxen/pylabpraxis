@@ -84,7 +84,7 @@ Frontend build configuration:
             "demo": {
               "fileReplacements": [{
                 "replace": "src/environments/environment.ts",
-                "with": "src/environments/environment.demo.ts"
+                "with": "src/environments/environment.browser.ts"
               }]
             }
           }
@@ -114,7 +114,7 @@ export const environment = {
   demoMode: false
 };
 
-// environment.demo.ts
+// environment.browser.ts
 export const environment = {
   production: false,
   apiUrl: '/api/v1',

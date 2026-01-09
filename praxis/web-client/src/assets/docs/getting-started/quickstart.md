@@ -6,7 +6,27 @@ Get up and running with Praxis in 5 minutes.
 
 Complete the [Installation](installation.md) guide first.
 
-## Your First Protocol
+## Modes: Pick Your Flow
+
+Praxis can be run in two main ways. For a 5-minute start, we recommend **Browser Mode**.
+
+### Option A: Browser Mode (Zero Backend)
+
+1. Clone the repo: `git clone https://github.com/maraxen/pylabpraxis.git`
+2. Install & Start:
+
+   ```bash
+   cd pylabpraxis/praxis/web-client
+   npm install && npm run start:browser
+   ```
+
+3. Open <http://localhost:4200>. You're ready to go!
+
+### Option B: Production Mode (Full Stack)
+
+Requires Python 3.11+, PostgreSQL, and Redis. Follow the [Installation Guide](installation.md) for full setup.
+
+## Running Your First Protocol
 
 ### 1. Start the Services
 
@@ -32,7 +52,7 @@ Or use the UI: Navigate to **Protocols** and click **Sync**.
 
 ### 3. Run a Protocol
 
-1. Open http://localhost:4200
+1. Open <http://localhost:4200>
 2. Navigate to **Protocols** in the sidebar
 3. Select a protocol (e.g., "Simple Transfer")
 4. Click **Run Protocol**
@@ -83,12 +103,12 @@ Connect USB/serial devices automatically:
 
 | Shortcut | Action |
 |----------|--------|
-| ++cmd+k++ | Command palette |
-| ++alt+h++ | Go to Home |
-| ++alt+p++ | Go to Protocols |
-| ++alt+m++ | Go to Machines |
-| ++alt+r++ | Go to Resources |
-| ++alt+d++ | Discover Hardware |
+| <kbd>Cmd</kbd>+<kbd>K</kbd> | Command palette |
+| <kbd>Alt</kbd>+<kbd>H</kbd> | Go to Home |
+| <kbd>Alt</kbd>+<kbd>P</kbd> | Go to Protocols |
+| <kbd>Alt</kbd>+<kbd>M</kbd> | Go to Machines |
+| <kbd>Alt</kbd>+<kbd>R</kbd> | Go to Resources |
+| <kbd>Alt</kbd>+<kbd>D</kbd> | Discover Hardware |
 
 ## Next Steps
 

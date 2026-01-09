@@ -48,7 +48,6 @@ async def kinetic_assay(ctx):
 ```
 
 The visualization shows:
-
 - X-axis: Time
 - Y-axis: Measurement values
 - Multiple traces for different wells/conditions
@@ -71,7 +70,6 @@ async def endpoint_assay(ctx):
 ```
 
 The visualization shows:
-
 - 8x12 grid (or 16x24 for 384-well)
 - Color intensity for values
 - Hover for exact values
@@ -240,7 +238,7 @@ async def my_protocol(ctx):
 In browser mode, protocols generate deterministic sample data:
 
 ```python
-# Browser mode detection
+# Demo mode detection
 if ctx.is_browser:
     # Return sample data for visualization testing
     return generate_sample_growth_curve()

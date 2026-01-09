@@ -1,8 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 
-import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MarkdownModule } from 'ngx-markdown';
 import { AppStore } from '../../../../core/store/app.store';
 import { DiagramOverlayComponent } from '../../../../shared/components/diagram-overlay/diagram-overlay.component';
@@ -166,12 +166,17 @@ export class SystemTopologyComponent {
     const common = {
       fontFamily: '"Roboto Flex", sans-serif',
       fontSize: '16px',
-      flowchart: { nodeSpacing: 60, rankSpacing: 60, curve: 'basis' }
     };
 
     return {
       theme: 'base' as const,
-      flowchart: { htmlLabels: true, useMaxWidth: false },
+      flowchart: {
+        htmlLabels: true,
+        useMaxWidth: false,
+        nodeSpacing: 60,
+        rankSpacing: 60,
+        curve: 'basis' as const
+      },
       themeVariables: isDark ? {
         ...common,
         darkMode: true,

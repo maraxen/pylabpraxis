@@ -52,7 +52,17 @@
               "node_modules/plotly.js-dist-min/plotly.min.js",
               "node_modules/mermaid/dist/mermaid.min.js"
             ],
-            "externalDependencies": []
+            "externalDependencies": [
+              "node:vm",
+              "node:path",
+              "node:crypto",
+              "node:child_process",
+              "node:fs",
+              "node:fs/promises",
+              "node:url",
+              "crypto",
+              "ws"
+            ]
           },
           "configurations": {
             "production": {

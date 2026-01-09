@@ -42,9 +42,9 @@
 |------|------------|---------|-------------|
 | Simulated Backend Clarity | Medium | [simulation.md](./backlog/simulation.md) | Unclear simulated backend behavior; demo naming persists |
 | Backend Selector UX | Easy | [asset_management.md](./backlog/asset_management.md) | Disable unless category selected, or use autocomplete |
-| Backend Name Truncation | Easy | [asset_management.md](./backlog/asset_management.md) | Names too long to be useful |
+| ✅ Backend Name Truncation | Easy | [asset_management.md](./backlog/asset_management.md) | Names too long to be useful |
 | Machine Filter Backends | Easy | [asset_management.md](./backlog/asset_management.md) | Category filters incorrectly include backends |
-| Duplicate Clear Button | Easy | [ui_polish.md](./backlog/ui_polish.md) | Remove duplicate in filter dialog |
+| ✅ Duplicate Clear Button | Easy | [ui_polish.md](./backlog/ui_polish.md) | Remove duplicate in filter dialog |
 | Add Asset Prompt | Easy | [asset_management.md](./backlog/asset_management.md) | Overview should prompt machine vs resource |
 | Registry UI | Medium | [asset_management.md](./backlog/asset_management.md) | "Definitions precinct in browser mode" error; needs redesign |
 | Protocol Library Filters | Medium | [protocol_workflow.md](./backlog/protocol_workflow.md) | No filters implemented |
@@ -52,11 +52,7 @@
 
 ### Visualization Issues
 
-| Item | Difficulty | Backlog | Description |
-|------|------------|---------|-------------|
-| Workcell Deck Views | Hard | [workcell.md](./backlog/workcell.md) | No deck visualizations; dynamic deck mapping issues |
-| Data Viz Dashboard | Medium | [dataviz.md](./backlog/dataviz.md) | X/Y axis selects not responding |
-| Sample Data Seeding | Medium | [dataviz.md](./backlog/dataviz.md) | Ship with simulated well data outputs |
+...
 
 ### Documentation Issues
 
@@ -68,7 +64,7 @@
 | Dead Links | Easy | [docs.md](./backlog/docs.md) | Fix broken documentation links |
 | Mode Separation in Docs | Medium | [docs.md](./backlog/docs.md) | Separate browser-lite vs production tabs |
 | State Management Diagram | Easy | [docs.md](./backlog/docs.md) | Improperly formatted for theming |
-| Execution Flow Diagram | Easy | [docs.md](./backlog/docs.md) | Formatting issues |
+| ✅ Execution Flow Diagram | Easy | [docs.md](./backlog/docs.md) | Formatting issues |
 | Tutorial Updates | Medium | [docs.md](./backlog/docs.md) | Bring tutorial up to date |
 | Docs Accuracy Audit | Medium | [docs.md](./backlog/docs.md) | Verify all docs are current |
 
@@ -76,7 +72,7 @@
 
 | Item | Difficulty | Backlog | Description |
 |------|------------|---------|-------------|
-| Inventory Filter Styling | Easy | [playground.md](./backlog/playground.md) | Use styled select components |
+| ✅ Inventory Filter Styling | Easy | [playground.md](./backlog/playground.md) | Use styled select components |
 | Category Structure | Easy | [playground.md](./backlog/playground.md) | Proper structure in quick add filter |
 | Resource Filter Broken | Medium | [playground.md](./backlog/playground.md) | Filters not working, inconsistent styling |
 | Browser Tab Blank | Medium | [playground.md](./backlog/playground.md) | Categories shows blank area |

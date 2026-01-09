@@ -48,8 +48,8 @@ These issues from the development matrix must be resolved:
 - [ ] Simulated backend clarity / demo naming cleanup
 - [ ] Asset management UX issues (backend selector, filters, registry)
 - [ ] Data visualization axis selects responding
-- [ ] Documentation accuracy (API docs, dead links, diagrams)
-- [ ] UI polish items (duplicate buttons, filter styling)
+- [ ] Documentation accuracy (API docs, dead links, [x] Execution Flow Diagram)
+- [ ] UI polish items ([x] Duplicate Clear Button, filter styling)
 
 #### Quality Gates
 

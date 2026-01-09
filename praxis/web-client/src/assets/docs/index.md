@@ -6,7 +6,7 @@ Praxis is a comprehensive platform for automating laboratory workflows. It provi
 
 <div class="grid cards" markdown>
 
-- :material-rocket-launch:{ .lg .middle } **Getting Started**
+-   :material-rocket-launch:{ .lg .middle } **Getting Started**
 
     ---
 
@@ -14,7 +14,7 @@ Praxis is a comprehensive platform for automating laboratory workflows. It provi
 
     [:octicons-arrow-right-24: Installation](getting-started/installation.md)
 
-- :material-architecture:{ .lg .middle } **Architecture**
+-   :material-architecture:{ .lg .middle } **Architecture**
 
     ---
 
@@ -22,7 +22,7 @@ Praxis is a comprehensive platform for automating laboratory workflows. It provi
 
     [:octicons-arrow-right-24: Overview](architecture/overview.md)
 
-- :material-book-open-variant:{ .lg .middle } **User Guide**
+-   :material-book-open-variant:{ .lg .middle } **User Guide**
 
     ---
 
@@ -30,7 +30,7 @@ Praxis is a comprehensive platform for automating laboratory workflows. It provi
 
     [:octicons-arrow-right-24: Protocols](user-guide/protocols.md)
 
-- :material-api:{ .lg .middle } **API Reference**
+-   :material-api:{ .lg .middle } **API Reference**
 
     ---
 
@@ -103,7 +103,7 @@ The system consists of:
     npm run start:browser
     ```
 
-    Browser mode runs entirely in the browser with mock data - no backend required.
+    Demo mode runs entirely in the browser with mock data - no backend required.
 
 ---
 

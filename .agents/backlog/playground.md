@@ -48,15 +48,15 @@ Need to audit the polyfill/webusb based communication to ensure it works correct
 
 ## P2: Inventory Filter Styling
 
-**Status**: Open
+**Status**: Completed
 **Difficulty**: Easy
 
 ### Problem
 Playground inventory filter menu should use our styled select components.
 
 ### Tasks
-- [ ] Replace current filter controls with shared styled components
-- [ ] Ensure consistency with other asset filter UI
+- [x] Replace current filter controls with shared styled components
+- [x] Ensure consistency with other asset filter UI
 
 ---
 

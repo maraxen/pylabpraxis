@@ -233,13 +233,13 @@ async def my_protocol(ctx):
         await asyncio.sleep(interval)
 ```
 
-## Demo Mode Data
+## Browser Mode Data
 
-In demo mode, protocols generate deterministic sample data:
+In browser mode, protocols generate deterministic sample data:
 
 ```python
 # Demo mode detection
-if ctx.is_demo:
+if ctx.is_browser:
     # Return sample data for visualization testing
     return generate_sample_growth_curve()
 ```

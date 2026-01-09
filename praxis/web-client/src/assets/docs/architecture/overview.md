@@ -18,13 +18,13 @@ graph TD
         Store[NgRx Store]
         Services[Frontend Services]
     end
-    style Frontend fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+    style Frontend fill:transparent,stroke:var(--mat-sys-primary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     subgraph API ["API Layer"]
         Server[FastAPI Server]
         WS[WebSocket Handler]
     end
-    style API fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style API fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     subgraph Core ["Core Engine"]
         Orch[Orchestrator]
@@ -32,25 +32,25 @@ graph TD
         Proto[Protocol Engine]
         Asset[Asset Manager]
     end
-    style Core fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+    style Core fill:transparent,stroke:var(--mat-sys-primary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     subgraph Runtime ["Runtime"]
         WCR[WorkcellRuntime]
         PLR[PyLabRobot]
         Sim[Simulators]
     end
-    style Runtime fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style Runtime fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     subgraph Workers ["Workers"]
         Celery[Celery Workers]
     end
-    style Workers fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+    style Workers fill:transparent,stroke:var(--mat-sys-primary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     subgraph Data ["Data Layer"]
         PG[(PostgreSQL)]
         Redis[(Redis)]
     end
-    style Data fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style Data fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     UI --> Server
     UI --> WS
@@ -85,29 +85,29 @@ graph TD
         UI_L[Web UI]
         Store_L[NgRx Store]
     end
-    style Frontend_Lite fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+    style Frontend_Lite fill:transparent,stroke:var(--mat-sys-primary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     subgraph API_Lite ["Local API"]
         Server_L[FastAPI Process]
     end
-    style API_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style API_Lite fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     subgraph Core_Lite ["Core Engine"]
         Orch_L[Orchestrator]
         Asset_L[Asset Manager]
     end
-    style Core_Lite fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+    style Core_Lite fill:transparent,stroke:var(--mat-sys-primary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     subgraph Runtime_Lite ["Runtime"]
         WCR_L[WorkcellRuntime]
         PLR_L[PyLabRobot]
     end
-    style Runtime_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style Runtime_Lite fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     subgraph Data_Lite ["Data Layer"]
         SQLite[(SQLite)]
     end
-    style Data_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style Data_Lite fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     UI_L --> Server_L
     Store_L --> Server_L
@@ -129,26 +129,26 @@ graph TD
         Store_B[NgRx Store]
         IO_Shim[IO Shim Service]
     end
-    style Frontend_Browser fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+    style Frontend_Browser fill:transparent,stroke:var(--mat-sys-primary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     subgraph WebWorker ["Web Worker (Pyodide)"]
         PyBridge[Python Bridge]
         Core_B[Core Engine]
         PLR_B[PyLabRobot]
     end
-    style WebWorker fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style WebWorker fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     subgraph BrowserData ["Browser Storage"]
         IDB[(IndexedDB)]
         LocalStorage[(LocalStorage)]
     end
-    style BrowserData fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+    style BrowserData fill:transparent,stroke:var(--mat-sys-primary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     subgraph Hardware ["Physical Hardware"]
         USB[WebSerial / USB]
         Bluetooth[WebBluetooth]
     end
-    style Hardware fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style Hardware fill:transparent,stroke:var(--mat-sys-secondary),stroke-width:2px,color:var(--mat-sys-on-surface)
 
     UI_B --> Store_B
     Store_B --> PyBridge
