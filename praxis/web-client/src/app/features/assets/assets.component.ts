@@ -49,7 +49,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
         </div>
         <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <app-hardware-discovery-button class="sm:mr-2"></app-hardware-discovery-button>
-          <span class="flex-1 sm:flex-initial" [matTooltip]="selectedIndex === 4 ? (modeService.isBrowserMode() ? 'Definitions are pre-synced in Browser Mode.' : 'Sync all hardware and protocol definitions from the backend.') : ''">
+          <span class="flex-1 sm:flex-initial" [matTooltip]="selectedIndex === 4 ? (modeService.isBrowserMode() ? 'Resource definitions are loaded from bundled data in Browser Mode.' : 'Sync all hardware and protocol definitions from the backend.') : ''">
             <button 
               mat-flat-button 
               class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-3 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto" 
@@ -312,7 +312,7 @@ export class AssetsComponent implements OnInit, OnDestroy {
     } else if (this.selectedIndex === 4) {
       // Registry tab
       if (this.modeService.isBrowserMode()) {
-        this.snackBar.open('Definitions are pre-synced in Browser Mode.', 'Close', { duration: 3000 });
+        this.snackBar.open('Resource definitions are loaded from bundled data in Browser Mode. Connect to a backend to add custom definitions.', 'Close', { duration: 5000 });
         return;
       }
       this.triggerSyncDefinitions();

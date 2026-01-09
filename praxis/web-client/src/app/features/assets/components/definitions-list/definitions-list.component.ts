@@ -15,6 +15,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { getPropertyTooltip } from '@shared/constants/resource-tooltips';
 import { MachineDefinitionAccordionComponent } from '../machine-definition-accordion/machine-definition-accordion.component';
 import { FilterHeaderComponent } from '../filter-header/filter-header.component';
+import { ModeService } from '@core/services/mode.service';
 
 @Component({
   selector: 'app-definitions-list',
@@ -33,6 +34,15 @@ import { FilterHeaderComponent } from '../filter-header/filter-header.component'
   ],
   template: `
     <div class="definitions-list-container">
+      @if (modeService.isBrowserMode()) {
+        <div class="browser-mode-banner">
+          <mat-icon>info</mat-icon>
+          <span>
+            Registry is read-only in browser mode.
+            Definitions are loaded from bundled PyLabRobot data.
+          </span>
+        </div>
+      }
       <mat-tab-group animationDuration="0ms">
         <mat-tab>
           <ng-template mat-tab-label>
@@ -130,6 +140,19 @@ import { FilterHeaderComponent } from '../filter-header/filter-header.component'
     .definitions-list-container {
       /* Remove padding to allow tabs to be full width */
       height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .browser-mode-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--mat-sys-secondary-container);
+      color: var(--mat-sys-on-secondary-container);
+      padding: 12px 16px;
+      margin: 16px 16px 0 16px;
+      border-radius: 8px;
     }
 
     .filter-field {
@@ -171,6 +194,7 @@ import { FilterHeaderComponent } from '../filter-header/filter-header.component'
 })
 export class DefinitionsListComponent {
   private assetService = inject(AssetService);
+  public modeService = inject(ModeService);
 
   resourceDefinitions = signal<ResourceDefinition[]>([]);
   machineSearch = signal('');
