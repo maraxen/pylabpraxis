@@ -14,11 +14,13 @@ Examine `.agents/README.md` for development context.
 Review and complete the stub tests for database import/export functionality. Test files already exist but are marked `xfail` as the feature is not yet implemented.
 
 **Current State:**
+
 - `tests/backend/api/test_database_export.py` - Stub tests (118 lines, marked xfail)
 - `tests/integration/test_browser_export.py` - Stub tests (marked xfail)
 - **No API endpoints exist** for `/api/v1/admin/export` or `/api/v1/admin/import`
 
 **Related Functionality:**
+
 - `WorkcellRuntime` has `save_state_to_file()` for runtime state backup
 - `WorkcellRuntime` config includes `backup_interval` and `num_backups` for rolling backups
 - This is runtime state persistence, NOT full database export
@@ -32,11 +34,13 @@ Review and complete the stub tests for database import/export functionality. Tes
 ### Current Codebase Analysis
 
 **What EXISTS:**
+
 - `WorkcellRuntime.save_state_to_file(fn, indent)` - Saves runtime state to JSON
 - `WorkcellRuntime` backup config (`backup_interval=60`, `num_backups=3`)
 - Stub test files with expected test structure
 
 **What does NOT EXIST:**
+
 - Admin API endpoints for export/import
 - Full database dump/restore functionality
 - Version migration for imports
@@ -44,11 +48,13 @@ Review and complete the stub tests for database import/export functionality. Tes
 ### Decision Required
 
 **Option A: Update tests to match existing functionality**
+
 - Convert stub tests to test `WorkcellRuntime.save_state_to_file()`
 - Test the rolling backup mechanism
 - Remove xfail markers for implemented features
 
 **Option B: Document gap and keep stubs**
+
 - Keep xfail tests as specification for future implementation
 - Add TECHNICAL_DEBT.md entry for missing database export feature
 - Create follow-up backlog item
@@ -58,6 +64,7 @@ Review and complete the stub tests for database import/export functionality. Tes
 Update tests to verify workcell state persistence:
 
 \`\`\`python
+
 # tests/backend/core/test_workcell_state_persistence.py
 
 import pytest
@@ -106,10 +113,9 @@ class TestWorkcellStatePersistence:
         workcell_runtime.backup_num = (workcell_runtime.backup_num + 1) % workcell_runtime.num_backups
         assert workcell_runtime.backup_num == (initial_num + 1) % 3
 
-
 class TestDatabaseExportStubs:
     """Stub tests for future database export API.
-    
+
     These tests document the expected API contract for full database
     export/import. Remove xfail when the feature is implemented.
     """
@@ -199,6 +205,7 @@ class TestDatabaseExportStubs:
 ## Notes for Implementer
 
 The original prompt assumed database export/import endpoints exist. Investigation revealed:
+
 - Only runtime state persistence exists (`WorkcellRuntime.save_state_to_file()`)
 - No admin API endpoints for full database export
 - Stub test files already exist with xfail markers

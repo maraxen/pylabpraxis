@@ -101,7 +101,7 @@
 |------|------------|---------|-------------|
 | Maintenance Tracking Tests | Medium | [testing.md](./backlog/testing.md) | Test maintenance system |
 | ✅ Infinite Consumables Tests | Easy | [testing.md](./backlog/testing.md) | Test consumable system |
-| Import/Export Tests | Easy | [testing.md](./backlog/testing.md) | Test backup/restore |
+| ✅ Import/Export Tests | Easy | [testing.md](./backlog/testing.md) | Test backup/restore |
 
 ---
 

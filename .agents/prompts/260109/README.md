@@ -88,7 +88,7 @@ This batch addresses all priority items from the fresh reset of `.agents/DEVELOP
 | # | Prompt | Status | Difficulty |
 |---|--------|--------|------------|
 | 26 | [11_testing_consumables.md](./11_testing_consumables.md) | 🟢 Completed | Easy |
-| 27 | [12_testing_import_export.md](./12_testing_import_export.md) | 🟢 Not Started | Easy |
+| 27 | [12_testing_import_export.md](./12_testing_import_export.md) | 🟢 Completed | Easy |
 
 ---
 
