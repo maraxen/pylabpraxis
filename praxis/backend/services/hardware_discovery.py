@@ -186,7 +186,7 @@ class HardwareDiscoveryService:
         connection_type=ConnectionType.SIMULATOR,
         status=DeviceStatus.AVAILABLE,
         manufacturer="PyLabRobot",
-        model="SimulatorBackend",
+        model="SimulatedLiquidHandler",
         plr_backend="pylabrobot.liquid_handling.backends.simulation.SimulatorBackend",
         properties={"simulated": True, "visualizer": True},
       ),
