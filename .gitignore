@@ -91,3 +91,13 @@ __marimo__/
 
 # Allow frontend source code
 !praxis/frontend/lib/
+
+# Temporary and debug files
+.pymon
+debug_*.py
+*.tar.gz
+
+# Test results and reports
+praxis/web-client/test-results/
+praxis/web-client/playwright-report/
+praxis/web-client/test_output*.txt
