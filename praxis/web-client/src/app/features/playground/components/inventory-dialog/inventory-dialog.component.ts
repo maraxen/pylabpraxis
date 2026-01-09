@@ -22,8 +22,7 @@ import { AssetService } from '../../../assets/services/asset.service';
 import { Machine, Resource } from '../../../assets/models/asset.models';
 import { getResourceCategoryIcon, getMachineCategoryIcon } from '@shared/constants/asset-icons';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { PraxisAutocompleteComponent } from '@shared/components/praxis-autocomplete/praxis-autocomplete.component';
-import { SelectOption } from '@shared/components/praxis-select/praxis-select.component';
+import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
 import { FilterHeaderComponent } from '../../../assets/components/filter-header/filter-header.component';
 
 export interface InventoryItem {
@@ -58,7 +57,7 @@ export interface InventoryItem {
     MatExpansionModule,
     MatBadgeModule,
     MatTooltipModule,
-    PraxisAutocompleteComponent,
+    PraxisSelectComponent,
     FilterHeaderComponent
   ],
   template: `
@@ -77,24 +76,23 @@ export interface InventoryItem {
                 (clearFilters)="clearQuickFilters()">
                 
                 <div class="filters-grid" filterContent>
-                  <mat-form-field appearance="outline">
-                    <mat-label>Asset Type</mat-label>
-                    <mat-select [formControl]="quickFilterType">
-                      <mat-option value="all">All Types</mat-option>
-                      <mat-option value="machine">Machines</mat-option>
-                      <mat-option value="resource">Resources</mat-option>
-                    </mat-select>
-                  </mat-form-field>
+                  <div class="filter-group">
+                    <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-1 block">Asset Type</label>
+                    <app-praxis-select
+                      [options]="assetTypeOptions"
+                      [formControl]="quickFilterType"
+                      placeholder="All Types">
+                    </app-praxis-select>
+                  </div>
 
-                  <mat-form-field appearance="outline">
-                    <mat-label>Category</mat-label>
-                    <mat-select [formControl]="quickFilterCategory">
-                      <mat-option value="all">All Categories</mat-option>
-                      @for (cat of allCategories(); track cat) {
-                        <mat-option [value]="cat">{{ cat }}</mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
+                  <div class="filter-group">
+                    <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-1 block">Category</label>
+                    <app-praxis-select
+                      [options]="categoryOptions()"
+                      [formControl]="quickFilterCategory"
+                      placeholder="All Categories">
+                    </app-praxis-select>
+                  </div>
                 </div>
               </app-filter-header>
 
@@ -523,6 +521,20 @@ export class InventoryDialogComponent {
   });
 
   // Quick Add Filters
+  readonly assetTypeOptions: SelectOption[] = [
+    { label: 'All Types', value: 'all', icon: 'apps' },
+    { label: 'Machines', value: 'machine', icon: 'precision_manufacturing' },
+    { label: 'Resources', value: 'resource', icon: 'science' }
+  ];
+
+  categoryOptions = computed<SelectOption[]>(() => [
+    { label: 'All Categories', value: 'all' },
+    ...this.allCategories().map(cat => ({
+      label: cat,
+      value: cat
+    }))
+  ]);
+
   quickSearch = signal('');
   quickFilterType = new FormControl('all', { nonNullable: true });
   quickFilterCategory = new FormControl('all', { nonNullable: true });
