@@ -86,7 +86,7 @@ No filters are implemented in the protocol library.
 
 ## P2: Protocol Dialog Asset Classification
 
-**Status**: Open
+**Status**: 🟢 Completed (Assigned: [Prompt 15](../prompts/260109/15_protocol_dialog_asset_classification.md))
 **Difficulty**: Easy
 
 ### Problem

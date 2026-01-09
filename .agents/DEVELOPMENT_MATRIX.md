@@ -8,6 +8,7 @@
 ## Legend
 
 ### Priority
+
 | Priority | Description |
 |----------|-------------|
 | **P1** | Critical - Blocking alpha release |
@@ -16,6 +17,7 @@
 | **P4** | Low - Nice to have / post-alpha |
 
 ### Difficulty
+
 | Difficulty | Description |
 |------------|-------------|
 | **Hard** | Complex architecture, multi-system, likely debugging |
@@ -48,7 +50,7 @@
 | Add Asset Prompt | Easy | [asset_management.md](./backlog/asset_management.md) | Overview should prompt machine vs resource |
 | Registry UI | Medium | [asset_management.md](./backlog/asset_management.md) | "Definitions precinct in browser mode" error; needs redesign |
 | Protocol Library Filters | Medium | [protocol_workflow.md](./backlog/protocol_workflow.md) | No filters implemented |
-| Protocol Dialog Assets | Easy | [protocol_workflow.md](./backlog/protocol_workflow.md) | Machines should be in asset requirements, not parameters |
+| ✅ Protocol Dialog Assets | Easy | [protocol_workflow.md](./backlog/protocol_workflow.md) | Machines should be in asset requirements, not parameters |
 
 ### Visualization Issues
 
@@ -73,7 +75,7 @@
 | Item | Difficulty | Backlog | Description |
 |------|------------|---------|-------------|
 | ✅ Inventory Filter Styling | Easy | [playground.md](./backlog/playground.md) | Use styled select components |
-| Category Structure | Easy | [playground.md](./backlog/playground.md) | Proper structure in quick add filter |
+| ✅ Category Structure | Easy | [playground.md](./backlog/playground.md) | Proper structure in quick add filter |
 | Resource Filter Broken | Medium | [playground.md](./backlog/playground.md) | Filters not working, inconsistent styling |
 | Browser Tab Blank | Medium | [playground.md](./backlog/playground.md) | Categories shows blank area |
 | WebUSB/Polyfill Audit | Hard | [playground.md](./backlog/playground.md) | Audit polyfill/webusb communication |
@@ -98,7 +100,7 @@
 | Item | Difficulty | Backlog | Description |
 |------|------------|---------|-------------|
 | Maintenance Tracking Tests | Medium | [testing.md](./backlog/testing.md) | Test maintenance system |
-| Infinite Consumables Tests | Easy | [testing.md](./backlog/testing.md) | Test consumable system |
+| ✅ Infinite Consumables Tests | Easy | [testing.md](./backlog/testing.md) | Test consumable system |
 | Import/Export Tests | Easy | [testing.md](./backlog/testing.md) | Test backup/restore |
 
 ---

@@ -15,8 +15,9 @@ export default async function globalSetup(config: FullConfig) {
     const page = await browser.newPage();
 
     try {
-        // Navigate to app
-        await page.goto(targetUrl);
+        // Navigate to app home to ensure services load and reduce redirect likelihood
+        // Note: in browser mode, auth should be bypassed or mocked
+        await page.goto(targetUrl + '/app/home');
 
         // Wait for the application to be stable and SqliteService to be available
         console.log('[Global Setup] Waiting for SqliteService...');

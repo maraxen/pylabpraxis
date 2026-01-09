@@ -7,15 +7,15 @@
 
 ## P2: Machine Category Filters Include Backends
 
-**Status**: Open
+**Status**: Completed
 **Difficulty**: Easy
 
 ### Problem
 Machine category filters in asset management include backends even though that doesn't make sense from a user perspective.
 
 ### Tasks
-- [ ] Remove backends from category filter options
-- [ ] Backend selection should be separate concern
+- [x] Remove backends from category filter options
+- [x] Backend selection should be separate concern
 
 ---
 

@@ -1,4 +1,4 @@
-# Agent Prompt: Import/Export Database Tests
+# Agent Prompt: Database Import/Export Tests
 
 Examine `.agents/README.md` for development context.
 
@@ -11,12 +11,17 @@ Examine `.agents/README.md` for development context.
 
 ## 1. The Task
 
-Create tests for the database import and export functionality. This includes:
+Review and complete the stub tests for database import/export functionality. Test files already exist but are marked `xfail` as the feature is not yet implemented.
 
-- Database export in browser mode (SQLite dump)
-- Database import/restore functionality
-- Data integrity verification after import
-- Version compatibility handling
+**Current State:**
+- `tests/backend/api/test_database_export.py` - Stub tests (118 lines, marked xfail)
+- `tests/integration/test_browser_export.py` - Stub tests (marked xfail)
+- **No API endpoints exist** for `/api/v1/admin/export` or `/api/v1/admin/import`
+
+**Related Functionality:**
+- `WorkcellRuntime` has `save_state_to_file()` for runtime state backup
+- `WorkcellRuntime` config includes `backup_interval` and `num_backups` for rolling backups
+- This is runtime state persistence, NOT full database export
 
 **User Value:** Confidence that users can safely backup and restore their data without corruption or loss.
 
@@ -24,173 +29,127 @@ Create tests for the database import and export functionality. This includes:
 
 ## 2. Technical Implementation Strategy
 
-### Architecture Analysis
+### Current Codebase Analysis
 
-**Browser Mode:** Uses SQLite (via Pyodide/sql.js) with in-memory or IndexedDB persistence.
-**Production Mode:** Uses PostgreSQL with standard pg_dump/pg_restore.
+**What EXISTS:**
+- `WorkcellRuntime.save_state_to_file(fn, indent)` - Saves runtime state to JSON
+- `WorkcellRuntime` backup config (`backup_interval=60`, `num_backups=3`)
+- Stub test files with expected test structure
 
-The import/export functionality likely exists in:
+**What does NOT EXIST:**
+- Admin API endpoints for export/import
+- Full database dump/restore functionality
+- Version migration for imports
 
-- Frontend: Service that orchestrates export/download
-- Backend: API endpoints for export/import
+### Decision Required
 
-### Investigation Required
+**Option A: Update tests to match existing functionality**
+- Convert stub tests to test `WorkcellRuntime.save_state_to_file()`
+- Test the rolling backup mechanism
+- Remove xfail markers for implemented features
 
-Before writing tests, locate the actual implementation:
+**Option B: Document gap and keep stubs**
+- Keep xfail tests as specification for future implementation
+- Add TECHNICAL_DEBT.md entry for missing database export feature
+- Create follow-up backlog item
 
-1. **Search for export functionality:**
+### Recommended: Option A (Test What Exists)
 
-   ```bash
-   grep -rn "export\|backup\|dump" praxis/backend/api/
-   grep -rn "export\|backup" praxis/web-client/src/app/
-   ```
+Update tests to verify workcell state persistence:
 
-2. **Check WorkcellRuntime for state backup:**
-   - `praxis/backend/core/workcell.py` has backup_interval and num_backups
-   - This may be runtime state, not full DB
-
-3. **Browser mode persistence:**
-   - Check Pyodide/sql.js integration
-   - Look for IndexedDB interaction
-
-### Test Structure
-
-```python
-# tests/backend/api/test_database_export.py
+\`\`\`python
+# tests/backend/core/test_workcell_state_persistence.py
 
 import pytest
 import json
-from unittest.mock import AsyncMock, patch
-from fastapi.testclient import TestClient
+import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+from praxis.backend.core.workcell import WorkcellRuntime
 
-class TestDatabaseExport:
-    """Tests for database export functionality."""
-
-    async def test_export_endpoint_returns_valid_format(self, client: TestClient):
-        """Test that export endpoint returns valid JSON/SQL dump."""
-        response = client.get("/api/v1/admin/export")
-        assert response.status_code == 200
-        # Verify response is valid JSON or SQL
-        # Check content-type header
-
-    async def test_export_includes_all_tables(self, client: TestClient, db_with_data):
-        """Test that export includes machines, resources, protocols, etc."""
-        response = client.get("/api/v1/admin/export")
-        data = response.json()
-        assert "machines" in data
-        assert "resources" in data
-        assert "protocol_definitions" in data
-
-    async def test_export_excludes_sensitive_data(self, client: TestClient):
-        """Test that export doesn't include credentials or tokens."""
-        response = client.get("/api/v1/admin/export")
-        data = response.content.decode()
-        assert "password" not in data.lower()
-        assert "secret" not in data.lower()
-
-
-class TestDatabaseImport:
-    """Tests for database import/restore functionality."""
+class TestWorkcellStatePersistence:
+    """Tests for workcell runtime state backup/restore."""
 
     @pytest.fixture
-    def valid_export_data(self):
-        """Create valid export data for testing import."""
-        return {
-            "version": "1.0",
-            "timestamp": "2026-01-09T00:00:00Z",
-            "machines": [],
-            "resources": [],
-            "protocol_definitions": []
-        }
-
-    async def test_import_valid_data_succeeds(self, client: TestClient, valid_export_data):
-        """Test successful import of valid data."""
-        response = client.post(
-            "/api/v1/admin/import",
-            json=valid_export_data
+    def workcell_runtime(self):
+        """Create a WorkcellRuntime with test configuration."""
+        return WorkcellRuntime(
+            workcell_accession_id="test-workcell-001",
+            backup_interval=60,
+            num_backups=3,
         )
-        assert response.status_code in [200, 201]
 
-    async def test_import_invalid_format_rejected(self, client: TestClient):
-        """Test that malformed data is rejected."""
-        response = client.post(
-            "/api/v1/admin/import",
-            json={"invalid": "data"}
+    def test_save_state_to_file_creates_valid_json(self, workcell_runtime, tmp_path):
+        """Test that save_state_to_file creates valid JSON."""
+        filepath = tmp_path / "state.json"
+        workcell_runtime.save_state_to_file(str(filepath))
+        
+        assert filepath.exists()
+        with open(filepath) as f:
+            data = json.load(f)
+        assert isinstance(data, dict)
+
+    def test_backup_interval_configuration(self):
+        """Test backup interval is properly configured."""
+        runtime = WorkcellRuntime(
+            workcell_accession_id="test",
+            backup_interval=120,
+            num_backups=5,
         )
-        assert response.status_code == 400
+        assert runtime.backup_interval == 120
+        assert runtime.num_backups == 5
 
-    async def test_import_preserves_data_integrity(self, client: TestClient, valid_export_data):
-        """Test that imported data matches original."""
-        # Import data
-        client.post("/api/v1/admin/import", json=valid_export_data)
-        
-        # Export it back
-        response = client.get("/api/v1/admin/export")
-        exported = response.json()
-        
-        # Verify data integrity
-        assert exported["machines"] == valid_export_data["machines"]
+    def test_rolling_backup_counter(self, workcell_runtime, tmp_path):
+        """Test backup_num increments for rolling backups."""
+        initial_num = workcell_runtime.backup_num
+        # Simulate backup cycle
+        workcell_runtime.backup_num = (workcell_runtime.backup_num + 1) % workcell_runtime.num_backups
+        assert workcell_runtime.backup_num == (initial_num + 1) % 3
 
 
-class TestVersionCompatibility:
-    """Tests for cross-version import compatibility."""
+class TestDatabaseExportStubs:
+    """Stub tests for future database export API.
+    
+    These tests document the expected API contract for full database
+    export/import. Remove xfail when the feature is implemented.
+    """
 
-    async def test_import_older_version_with_migration(self, client: TestClient):
-        """Test importing data from older version triggers migration."""
-        old_format_data = {
-            "version": "0.9",  # Older version
-            "machines": []
-        }
-        response = client.post("/api/v1/admin/import", json=old_format_data)
-        # Should either succeed with migration or fail gracefully
+    pytestmark = pytest.mark.xfail(reason="Database export API not implemented")
 
-    async def test_import_newer_version_rejected(self, client: TestClient):
-        """Test that future version data is rejected."""
-        future_data = {
-            "version": "99.0",
-            "machines": []
-        }
-        response = client.post("/api/v1/admin/import", json=future_data)
-        assert response.status_code == 400
-```
+    async def test_export_endpoint_exists(self, async_client):
+        """Export endpoint should exist at /api/v1/admin/export."""
+        response = await async_client.get("/api/v1/admin/export")
+        assert response.status_code != 404
 
-### Browser Mode Specific Tests
-
-If browser mode has different export mechanism, create separate tests:
-
-```python
-# tests/integration/test_browser_export.py
-
-class TestBrowserModeExport:
-    """Tests for browser-mode specific export (SQLite/IndexedDB)."""
-
-    async def test_sqlite_export_to_file(self):
-        """Test SQLite database export to downloadable file."""
-        pass
-
-    async def test_indexeddb_persistence(self):
-        """Test data persists across sessions in IndexedDB."""
-        pass
-```
+    async def test_import_endpoint_exists(self, async_client):
+        """Import endpoint should exist at /api/v1/admin/import."""
+        response = await async_client.post("/api/v1/admin/import", json={})
+        assert response.status_code != 404
+\`\`\`
 
 ---
 
 ## 3. Context & References
 
-**Primary Files to Create:**
+**Files to Modify:**
 
 | Path | Description |
 |:-----|:------------|
-| `tests/backend/api/test_database_export.py` | **NEW** - Export/import API tests |
-| `tests/integration/test_browser_export.py` | **NEW** - Browser mode tests (if applicable) |
+| `tests/backend/api/test_database_export.py` | Update stub tests, clarify scope |
+| `tests/integration/test_browser_export.py` | Update or keep as specification |
 
-**Reference Files to Investigate:**
+**Files to Create:**
 
 | Path | Description |
 |:-----|:------------|
-| `praxis/backend/api/` | Look for admin or export endpoints |
-| `praxis/backend/core/workcell.py` | Backup functionality reference |
-| `praxis/web-client/src/app/core/services/` | Frontend export service |
+| `tests/backend/core/test_workcell_state_persistence.py` | **NEW** - Test actual state save functionality |
+
+**Reference Files:**
+
+| Path | Description |
+|:-----|:------------|
+| `praxis/backend/core/workcell.py` | `WorkcellRuntime` with `save_state_to_file()` |
+| `praxis/backend/services/state.py` | State service with JSON serialization |
 
 ---
 
@@ -198,9 +157,9 @@ class TestBrowserModeExport:
 
 - **Commands**: Use `uv run pytest` for testing
 - **Backend Path**: `praxis/backend`
-- **Test Path**: `tests/backend/api/` for API tests
-- **Fixtures**: Use existing patterns from `tests/conftest.py`
-- **Database**: Use test database fixtures for isolation
+- **Test Path**: `tests/backend/core/` for state tests
+- **xfail**: Keep for unimplemented features as living documentation
+- **Async**: Use `pytest-asyncio` for API tests
 
 ---
 
@@ -208,31 +167,30 @@ class TestBrowserModeExport:
 
 **Definition of Done:**
 
-1. Locate actual export/import implementation
-2. All new tests pass:
+1. State persistence tests pass:
 
-   ```bash
+   \`\`\`bash
+   uv run pytest tests/backend/core/test_workcell_state_persistence.py -v
+   \`\`\`
+
+2. Existing stub tests remain valid (still xfail):
+
+   \`\`\`bash
    uv run pytest tests/backend/api/test_database_export.py -v
-   ```
+   \`\`\`
 
-3. Integration tests (if applicable):
+3. No regressions:
 
-   ```bash
-   uv run pytest tests/integration/test_browser_export.py -v
-   ```
-
-4. No regressions:
-
-   ```bash
-   uv run pytest tests/backend/api/ -v
-   ```
+   \`\`\`bash
+   uv run pytest tests/backend/ -v --ignore=tests/backend/integration
+   \`\`\`
 
 ---
 
 ## On Completion
 
-- [ ] Document where export/import is implemented (may need to create if missing)
-- [ ] Commit changes with message: `test: add database import/export tests`
+- [ ] Document database export gap in TECHNICAL_DEBT.md if not creating full implementation
+- [ ] Commit changes with message: `test: add workcell state persistence tests, clarify export stubs`
 - [ ] Update backlog item status in [testing.md](../../backlog/testing.md)
 - [ ] Mark this prompt complete in batch README, update DEVELOPMENT_MATRIX.md if applicable, and set the status in this prompt document to 🟢 Completed
 
@@ -240,12 +198,12 @@ class TestBrowserModeExport:
 
 ## Notes for Implementer
 
-**If export/import doesn't exist yet:**
-This prompt may reveal that the functionality needs to be implemented first. In that case:
+The original prompt assumed database export/import endpoints exist. Investigation revealed:
+- Only runtime state persistence exists (`WorkcellRuntime.save_state_to_file()`)
+- No admin API endpoints for full database export
+- Stub test files already exist with xfail markers
 
-1. Document the gap in TECHNICAL_DEBT.md
-2. Create stub tests that mark expected behavior
-3. Create a follow-up backlog item for implementation
+Focus on testing what exists, keep stubs as specification for future work.
 
 ---
 

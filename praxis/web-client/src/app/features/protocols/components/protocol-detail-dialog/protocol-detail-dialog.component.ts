@@ -10,18 +10,18 @@ import { Router } from '@angular/router';
 import { ProtocolDefinition } from '../../models/protocol.models';
 
 @Component({
-    selector: 'app-protocol-detail-dialog',
-    standalone: true,
-    imports: [
-        CommonModule,
-        MatDialogModule,
-        MatButtonModule,
-        MatIconModule,
-        MatChipsModule,
-        MatDividerModule,
-        MatListModule
-    ],
-    template: `
+  selector: 'app-protocol-detail-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatIconModule,
+    MatChipsModule,
+    MatDividerModule,
+    MatListModule
+  ],
+  template: `
     <div class="dialog-container">
       <div mat-dialog-title class="dialog-header">
         <div class="header-content">
@@ -70,7 +70,7 @@ import { ProtocolDefinition } from '../../models/protocol.models';
             <mat-icon>inventory_2</mat-icon>
             Asset Requirements
           </h3>
-          <mat-list *ngIf="data.protocol.assets.length > 0; else noAssets">
+          <mat-list *ngIf="data.protocol.assets.length > 0 || machineParameters.length > 0; else noAssets">
             <mat-list-item *ngFor="let asset of data.protocol.assets">
               <mat-icon matListItemIcon>view_in_ar</mat-icon>
               <div matListItemTitle class="flex items-center gap-2">
@@ -78,6 +78,14 @@ import { ProtocolDefinition } from '../../models/protocol.models';
                 <span class="chip optional" *ngIf="asset.optional">Optional</span>
               </div>
               <div matListItemLine class="text-xs opacity-70">{{ asset.fqn }}</div>
+            </mat-list-item>
+            <mat-list-item *ngFor="let param of machineParameters">
+              <mat-icon matListItemIcon>precision_manufacturing</mat-icon>
+              <div matListItemTitle class="flex items-center gap-2">
+                <span class="font-medium">{{ param.name }}</span>
+                <span class="chip param-type">{{ param.type_hint }}</span>
+              </div>
+              <div matListItemLine class="text-xs opacity-70">Machine Parameter</div>
             </mat-list-item>
           </mat-list>
           <ng-template #noAssets>
@@ -93,8 +101,8 @@ import { ProtocolDefinition } from '../../models/protocol.models';
             <mat-icon>tune</mat-icon>
             Parameters
           </h3>
-          <mat-list *ngIf="data.protocol.parameters.length > 0; else noParams">
-            <mat-list-item *ngFor="let param of data.protocol.parameters">
+          <mat-list *ngIf="runtimeParameters.length > 0; else noParams">
+            <mat-list-item *ngFor="let param of runtimeParameters">
               <mat-icon matListItemIcon>settings_input_component</mat-icon>
               <div matListItemTitle class="flex items-center gap-2">
                 <span class="font-medium">{{ param.name }}</span>
@@ -140,7 +148,7 @@ import { ProtocolDefinition } from '../../models/protocol.models';
       </mat-dialog-actions>
     </div>
   `,
-    styles: [`
+  styles: [`
     .dialog-container {
       display: flex;
       flex-direction: column;
@@ -307,12 +315,29 @@ import { ProtocolDefinition } from '../../models/protocol.models';
   `],
 })
 export class ProtocolDetailDialogComponent {
-    private dialogRef = inject(MatDialogRef<ProtocolDetailDialogComponent>);
-    public data = inject<{ protocol: ProtocolDefinition }>(MAT_DIALOG_DATA);
-    private router = inject(Router);
+  private dialogRef = inject(MatDialogRef<ProtocolDetailDialogComponent>);
+  public data = inject<{ protocol: ProtocolDefinition }>(MAT_DIALOG_DATA);
+  private router = inject(Router);
 
-    runProtocol() {
-        this.dialogRef.close();
-        this.router.navigate(['/app/run'], { queryParams: { protocolId: this.data.protocol.accession_id } });
-    }
+  private readonly MACHINE_TYPE_HINTS = [
+    'LiquidHandler', 'PlateReader', 'HeaterShaker', 'Centrifuge',
+    'Incubator', 'Sealer', 'Peeler', 'Barcode', 'Washer'
+  ];
+
+  get machineParameters() {
+    return this.data.protocol.parameters.filter(p =>
+      this.MACHINE_TYPE_HINTS.some(hint => p.type_hint?.includes(hint))
+    );
+  }
+
+  get runtimeParameters() {
+    return this.data.protocol.parameters.filter(p =>
+      !this.MACHINE_TYPE_HINTS.some(hint => p.type_hint?.includes(hint))
+    );
+  }
+
+  runProtocol() {
+    this.dialogRef.close();
+    this.router.navigate(['/app/run'], { queryParams: { protocolId: this.data.protocol.accession_id } });
+  }
 }

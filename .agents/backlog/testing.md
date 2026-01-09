@@ -1,58 +1,14 @@
-# Testing Requirements
+# Testing Backlog
 
-**Created**: 2026-01-09
-**Priority**: P3
+## ✅ Completed
 
----
+- [x] **Database Import/Export Tests** (Batch: 260109) - Implemented Backend API stubs. Validated existing Frontend tests.
+- [x] **Browser Mode Export** - Implemented and tested in `sqlite.service.ts`.
+- [ ] **Backend Export API** - Missing (Stubs created in `tests/backend/api/test_database_export.py`).
 
-## P3: Maintenance Tracking Tests
+## 🏃 In Progress
 
-**Status**: Open
-**Difficulty**: Medium
+## 📋 Backlog
 
-### Problem
-
-Need tests related to the maintenance tracking system.
-
-### Tasks
-
-- [ ] Test maintenance schedule creation
-- [ ] Test maintenance status updates
-- [ ] Test maintenance badge display
-- [ ] Test maintenance history logging
-
----
-
-## P3: Infinite Consumables Tests
-
-**Status**: Open
-**Difficulty**: Easy
-
-### Problem
-
-Need tests for the consumable tracking system.
-
-### Tasks
-
-- [ ] Test consumable inventory tracking
-- [ ] Test consumption during protocol execution
-- [ ] Test low-stock warnings
-- [ ] Test auto-replenishment flags
-
----
-
-## P3: Import/Export Tests
-
-**Status**: Open
-**Difficulty**: Easy
-
-### Problem
-
-Need tests for import and export functionality.
-
-### Tasks
-
-- [x] Test database export in browser mode (Stub created)
-- [ ] Test database import/restore
-- [ ] Test data integrity after import
-- [ ] Test version compatibility
+- [ ] **Unit Tests for Protocol Execution** (Priority: P2)
+- [ ] **Integration Tests for Deck Setup** (Priority: P3)
