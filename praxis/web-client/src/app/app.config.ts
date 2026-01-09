@@ -54,8 +54,8 @@ const keycloakInterceptor = (req: HttpRequest<unknown>, next: HttpHandlerFn) => 
 
   const keycloakService = inject(KeycloakService);
 
-  // Skip token for non-API requests
-  if (!req.url.includes('/api/')) {
+  // Skip token for non-API requests (exclude assets)
+  if (!req.url.includes('/api/') || req.url.includes('assets/')) {
     return next(req);
   }
 

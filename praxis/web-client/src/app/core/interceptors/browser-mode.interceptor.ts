@@ -311,8 +311,8 @@ export const browserModeInterceptor = (req: HttpRequest<unknown>, next: HttpHand
         return next(req);
     }
 
-    // Only intercept API requests
-    if (!req.url.includes('/api/')) {
+    // Only intercept API requests (exclude assets)
+    if (!req.url.includes('/api/') || req.url.includes('assets/')) {
         return next(req);
     }
 
