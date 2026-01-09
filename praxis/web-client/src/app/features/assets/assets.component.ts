@@ -48,7 +48,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
         </div>
         <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <app-hardware-discovery-button class="sm:mr-2"></app-hardware-discovery-button>
-          <span class="flex-1 sm:flex-initial" [matTooltip]="selectedIndex === 3 ? (modeService.isBrowserMode() ? 'Definitions are pre-synced in Browser Mode.' : 'Sync all hardware and protocol definitions from the backend.') : ''">
+          <span class="flex-1 sm:flex-initial" [matTooltip]="selectedIndex === 4 ? (modeService.isBrowserMode() ? 'Definitions are pre-synced in Browser Mode.' : 'Sync all hardware and protocol definitions from the backend.') : ''">
             <button 
               mat-flat-button 
               class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-3 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto" 
@@ -56,8 +56,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
               [disabled]="isLoading() || isSyncing()"
               data-tour-id="add-asset-btn"
             >
-              <mat-icon>{{ selectedIndex === 3 ? 'sync' : 'add' }}</mat-icon>
-              {{ selectedIndex === 3 ? 'Sync Definitions' : 'Add ' + assetTypeLabel() }}
+              <mat-icon>{{ selectedIndex === 4 ? 'sync' : 'add' }}</mat-icon>
+              {{ selectedIndex === 4 ? 'Sync Definitions' : 'Add ' + assetTypeLabel() }}
             </button>
           </span>
         </div>

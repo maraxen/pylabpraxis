@@ -1,8 +1,7 @@
 import { Component, inject, signal, output, OnInit } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
-import { MatSelectModule } from '@angular/material/select';
-import { MatFormFieldModule } from '@angular/material/form-field';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -10,8 +9,9 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { ProtocolService } from '../../protocols/services/protocol.service';
 import { ProtocolDefinition } from '../../protocols/models/protocol.models';
 import { RunStatus } from '../models/monitor.models';
-import { AriaMultiselectComponent } from '@shared/components/aria-multiselect/aria-multiselect.component';
-import { AriaSelectComponent, SelectOption } from '@shared/components/aria-select/aria-select.component';
+
+import { PraxisMultiselectComponent } from '@shared/components/praxis-multiselect/praxis-multiselect.component';
+import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
 import { FilterOption } from '@shared/services/filter-result.service';
 import { computed } from '@angular/core';
 
@@ -34,35 +34,75 @@ export interface FilterState {
     MatIconModule,
     MatButtonModule,
     MatButtonToggleModule,
-    AriaMultiselectComponent,
-    AriaSelectComponent
+    PraxisMultiselectComponent,
+    PraxisSelectComponent
   ],
   templateUrl: './run-filters.component.html',
   styles: [`
     .filters-container {
-      display: flex !important;
-      flex-wrap: wrap !important;
-      align-items: center;
-      gap: 0.5rem;
-      padding-bottom: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      /* Padding and border removed as it's inside accordion now */
       width: 100%;
     }
 
+    .filters-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: flex-end;
+    }
+
+    .selectors-row {
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+      padding-bottom: 16px;
+    }
+
     .filter-group {
-      flex-shrink: 0;
+      flex: 0 1 auto;
+      min-width: 140px;
+    }
+
+    .sort-group {
+        min-width: 200px;
+    }
+
+    .order-group {
+        min-width: 120px;
+    }
+
+    .praxis-toggle-group {
+        height: 40px;
+        border-radius: 8px !important;
+        overflow: hidden;
+        border: 1px solid var(--mat-sys-outline-variant) !important;
+        background: var(--mat-sys-surface) !important;
+    }
+
+    ::ng-deep .praxis-toggle-group .mat-button-toggle-label-content {
+        line-height: 38px !important;
+        padding: 0 12px !important;
+        font-size: 13px !important;
+    }
+
+    .clear-group {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        align-self: flex-end;
+        padding-bottom: 2px;
+    }
+
+    .clear-btn {
+      height: 40px;
+      border-radius: 8px;
     }
 
     :host ::ng-deep .dense-field {
-      .mat-mdc-form-field-subscript-wrapper {
-        display: none;
-      }
-      .mat-mdc-text-field-wrapper {
-        height: 40px;
-      }
-      .mat-mdc-form-field-flex {
-        height: 40px;
-        padding-top: 0;
-      }
+      .mat-mdc-form-field-subscript-wrapper { display: none; }
+      .mat-mdc-text-field-wrapper { height: 40px; }
+      .mat-mdc-form-field-flex { height: 40px; padding-top: 0; }
     }
   `],
 })

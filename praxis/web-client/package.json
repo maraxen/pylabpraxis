@@ -6,10 +6,12 @@
     "start": "ng serve",
     "start:dev": "../../scripts/dev-frontend.sh",
     "start:browser": "ng serve --configuration=browser",
+    "start:gh-pages": "ng serve --configuration=gh-pages",
     "jupyterlite:build": "cd ../.. && uv run jupyter lite build --config praxis/web-client/jupyterlite-config.json --output-dir praxis/web-client/src/assets/jupyterlite",
     "prebuild": "npm run jupyterlite:build",
     "build": "ng build",
     "build:browser": "ng build --configuration=browser",
+    "build:gh-pages": "ng build --configuration=gh-pages",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

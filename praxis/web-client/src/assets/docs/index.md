@@ -6,7 +6,7 @@ Praxis is a comprehensive platform for automating laboratory workflows. It provi
 
 <div class="grid cards" markdown>
 
--   :material-rocket-launch:{ .lg .middle } **Getting Started**
+- :material-rocket-launch:{ .lg .middle } **Getting Started**
 
     ---
 
@@ -14,7 +14,7 @@ Praxis is a comprehensive platform for automating laboratory workflows. It provi
 
     [:octicons-arrow-right-24: Installation](getting-started/installation.md)
 
--   :material-architecture:{ .lg .middle } **Architecture**
+- :material-architecture:{ .lg .middle } **Architecture**
 
     ---
 
@@ -22,7 +22,7 @@ Praxis is a comprehensive platform for automating laboratory workflows. It provi
 
     [:octicons-arrow-right-24: Overview](architecture/overview.md)
 
--   :material-book-open-variant:{ .lg .middle } **User Guide**
+- :material-book-open-variant:{ .lg .middle } **User Guide**
 
     ---
 
@@ -30,7 +30,7 @@ Praxis is a comprehensive platform for automating laboratory workflows. It provi
 
     [:octicons-arrow-right-24: Protocols](user-guide/protocols.md)
 
--   :material-api:{ .lg .middle } **API Reference**
+- :material-api:{ .lg .middle } **API Reference**
 
     ---
 
@@ -51,7 +51,7 @@ Praxis is a comprehensive platform for automating laboratory workflows. It provi
 | **Hardware Discovery** | Detect connected USB/serial devices via WebSerial/WebUSB |
 | **Real-time Monitoring** | WebSocket-based live updates during protocol execution |
 | **Data Visualization** | Plotly-powered charts for protocol outputs |
-| **Demo Mode** | Frontend-only mode for demonstrations without backend |
+| **Browser Mode** | Frontend-only mode for demonstrations without backend |
 | **Simulation Support** | Run protocols in simulation for testing and development |
 
 ---
@@ -96,14 +96,14 @@ The system consists of:
     cd praxis/web-client && npm start
     ```
 
-=== "Demo Mode"
+=== "Browser Mode"
 
     ```bash
     cd praxis/web-client
-    npm run start:demo
+    npm run start:browser
     ```
 
-    Demo mode runs entirely in the browser with mock data - no backend required.
+    Browser mode runs entirely in the browser with mock data - no backend required.
 
 ---
 
@@ -117,7 +117,7 @@ Praxis is under active development at the [Ovchinnikov Lab](https://ovchinnikovl
 | Asset Management | :material-check-circle:{ .green } Production |
 | Hardware Discovery | :material-check-circle:{ .green } Production |
 | Data Visualization | :material-check-circle:{ .green } Production |
-| Demo Mode | :material-check-circle:{ .green } Production |
+| Browser Mode | :material-check-circle:{ .green } Production |
 | Multi-workcell Scheduling | :material-progress-clock: In Progress |
 | E2E Testing | :material-progress-clock: Planned |
 

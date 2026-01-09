@@ -170,7 +170,7 @@ export class SimulationResultsService {
     // =========================================================================
 
     /**
-     * Create a mock state history for demo/testing purposes.
+     * Create a mock state history for browser mode/testing purposes.
      */
     createMockStateHistory(runId: string, operationCount: number = 10): StateHistory {
         const operations: OperationStateSnapshot[] = [];

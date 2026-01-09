@@ -72,7 +72,7 @@ export class TutorialService {
 
     /**
      * Skip to the next section of the tutorial.
-     * Sections: Assets (2-4), Protocols (5-6), Run (7-9), REPL (10-11), Settings (12-13)
+     * Sections: Assets (2-4), Protocols (5-6), Run (7-9), Playground (10-11), Settings (12-13)
      */
     skipSection() {
         const currentStepId = this.tour.getCurrentStep()?.id;
@@ -215,7 +215,7 @@ export class TutorialService {
         this.addStep({
             id: 'nav-playground',
             title: 'Playground',
-            text: 'For direct control and testing, use the Python Playground (REPL).',
+            text: 'For direct control and testing, use the Python Playground.',
             attachTo: { element: '[data-tour-id="nav-playground"]', on: 'right' },
             advanceOn: { selector: '[data-tour-id="nav-playground"]', event: 'click' }
         });

@@ -28,49 +28,23 @@
 
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
-| ~~PLR Frontend/Backend Schema~~ | ~~P1~~ | ~~M~~ | [TECHNICAL_DEBT](./TECHNICAL_DEBT.md) | ✅ Complete (Added `frontend_fqn`, updated services/scrapers) |
-| ~~Serial/USB Driver Generalization~~ | ~~P1~~ | ~~L~~ | [hardware_connectivity](./backlog/hardware_connectivity.md) | ✅ Complete (Implemented `ISerial` abstraction + FTDI driver) |
-| ~~Restore Asset Selection Step~~ | ~~P1~~ | | [run_protocol_workflow](./backlog/run_protocol_workflow.md) | ✅ Complete (verified in code) |
-| ~~IndexedDB Persistence~~ | ~~P1~~ | | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (`SqliteService.saveToIndexedDB()`) |
 
 ---
 
 ## P2 - High Priority (New Feature Development)
 
-### Simulation UI Integration (Phase 8) - ✅ Complete
+### Simulation UI Integration (Phase 8) - ✅ Complete (Archived)
 
-| Item | Priority | Difficulty | Backlog | Description |
-|------|----------|------------|---------|-------------|
-| ~~State Delta Display (Phase 8.4)~~ | ~~P2~~ | ~~M~~ | [simulation_ui_integration](./archive/2026-01-07_completed/simulation_ui_integration.md) | ✅ Complete (Operation timeline state diffs) |
+### Browser Mode Defaults & Demo Elimination ✅ (Archived 2026-01-06)
 
-### Browser Mode Defaults & Demo Elimination ✅ (ARCHIVED)
+### Chip-Based Filter Standardization - ✅ Complete (Archived 2026-01-08)
 
-> All items completed and archived to `archive/2026-01-06_completed/browser_mode_defaults.md`
-
-### Chip-Based Filter Standardization - Mostly Complete
-
-| Item | Priority | Difficulty | Backlog | Description |
-|------|----------|------------|---------|-------------|
-| ~~Core Filter Chip Component~~ | ~~P2~~ | ~~M~~ | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | ✅ Complete |
-| ~~Resource Filter Chips~~ | ~~P2~~ | ~~M~~ | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | ✅ Complete (Integrated with Resource Inventory) |
-| ~~Disabled Chip UX~~ | ~~P2~~ | ~~S~~ | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | ✅ Complete (shake animation implemented) |
-| ~~Unique Name Parsing~~ | ~~P2~~ | ~~M~~ | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | ✅ Complete (Implemented `name-parser.ts` + tooltips) |
-
-### JupyterLite REPL ✅ (ARCHIVED)
-
-> Core integration completed. Archived to `archive/2026-01-06_completed/repl_jupyterlite.md`.
-> Remaining: Asset Preloading is future enhancement (tracked in TECHNICAL_DEBT.md).
+### JupyterLite REPL ✅ (Archived 2026-01-06)
 
 ### Other P2 Items
 
-| Item | Priority | Difficulty | Backlog | Description |
-|------|----------|------------|---------|-------------|
-| ~~Export/Import App State~~ | ~~P2~~ | ~~M~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (SqliteService export/import methods) |
-| ~~Chip Filter Overflow~~ | ~~P2~~ | ~~S~~ | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | ✅ Complete (Flex-wrap + dropdown collapsing) |
-| ~~Search Icon Centering~~ | ~~P2~~ | ~~S~~ | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | ✅ Complete (CSS fix for alignment) |
-| ~~Capability Dropdown Theme~~ | ~~P2~~ | ~~S~~ | [chip_filter_standardization](./backlog/chip_filter_standardization.md) | ✅ Complete (Sync select panels with dark theme) |
 | **Machine Capabilities Verification** | P2 | M | [browser_mode](./backlog/browser_mode.md) | Hamilton Starlet 96-head/iSwap verification |
-| ~~Physical Connection Testing~~ | ~~P2~~ | ~~L~~ | [hardware_connectivity](./backlog/hardware_connectivity.md) | ✅ Phase B Complete (Main Thread Migration) |
+
 | **Hamilton E2E Validation** | P2 | M | [hardware_connectivity](./backlog/hardware_connectivity.md) | Final validation with Starlet |
 
 ---
@@ -79,63 +53,10 @@
 
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
-| ~~Systematic Linting Fixes~~ | ~~P2~~ | ~~L~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (77+ bugs/lints resolved, clean check) |
-| ~~Code Quality Plan Execution~~ | ~~P2~~ | ~~XL~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Systematic quality sweep using `ty`) |
-| ~~E2E Tests - Execution~~ | ~~P2~~ | ~~M~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Browser/Simulation execution flow) |
-| ~~E2E Tests - Asset Management~~ | ~~P2~~ | ~~M~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (5 UI tests passing, CRUD skipped) |
-| ~~Unit Tests - SqliteService~~ | ~~P2~~ | ~~M~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Comprehensive coverage, persistence verification) |
+
 | **Final Visual QA & Test Suite** | P2 | L | [quality_assurance](./backlog/quality_assurance.md) | Automated Playwright tests + manual QA checklist |
-| ~~Protocols "Not Analyzed" Status Fix~~ | ~~P2~~ | ~~🟢 Easy~~ | [run_protocol_workflow](./backlog/run_protocol_workflow.md) | ✅ Complete (Fixed persistence of source_hash and simulation results) |
-| ~~Frontend Type Safety~~ | ~~P3~~ | ~~🟢 Easy~~ | [TECHNICAL_DEBT](./TECHNICAL_DEBT.md) | ✅ Complete (Resolved Blob casting and Window mocking) |
 
-### Migrated from Technical Debt (2026-01-07)
-
-| Item | Priority | Difficulty | Backlog | Description |
-|------|----------|------------|---------|-------------|
-| ~~SQLite Schema Mismatch~~ | ~~P1~~ | ~~🟢 Easy~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Added `inferred_requirements_json` column) |
-| ~~UI Consistency - Exec Monitor~~ | ~~P2~~ | ~~🟡 Intricate~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Standardized chips; menus N/A) |
-| ~~Asset Management UX~~ | ~~P2~~ | ~~🟡 Intricate~~ | [asset_management_ux](./backlog/asset_management_ux.md) | ✅ Complete (Resolved Phase 1 regressions) |
-| ~~Dataviz & Well Selection~~ | ~~P2~~ | ~~🔴 Complex~~ | [dataviz_well_selection](./backlog/dataviz_well_selection.md) | ✅ Complete (Bridge WellDataOutput with visualization) |
-| ~~Skipped Tests Investigation~~ | ~~P2~~ | ~~🟢 Easy~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Fixed Orchestrator tests, cleaned frontend dead code) |
-| ~~Factory ORM Integration~~ | ~~P2~~ | ~~🟡 Intricate~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Fixed Factory Boy FK population) |
-
-### Migrated from Technical Debt (2026-01-08)
-
-| Item | Priority | Difficulty | Backlog | Description |
-|------|----------|------------|---------|-------------|
-| ~~Browser Schema Scripts~~ | ~~P2~~ | ~~🟡 Intricate~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Fixed generate_browser_db.py schema logic) |
-| ~~E2E Data Seeding~~ | ~~P2~~ | ~~🟡~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Implemented global-setup.ts) |
-| ~~Frontend Type Safety~~ | ~~P3~~ | ~~🟢 Easy~~ | [quality_assurance](./backlog/quality_assurance.md) | ✅ Complete (Fix Blob casting and Window mocking) |
-| ~~JupyterLite 404s/Load~~ | ~~P3~~ | ~~🟡 Intricate~~ | [repl_enhancements](./backlog/repl_enhancements.md) | ✅ Complete (JupyterLite JSON + Shim Bundling) |
-| ~~Repo Cleanup~~ | ~~P3~~ | ~~🟢 Easy~~ | [cleanup_finalization](./backlog/cleanup_finalization.md) | ✅ Complete (Removed .pymon, debug files) |
-
-### Migrated from Technical Debt (2026-01-09)
-
-| Item | Priority | Difficulty | Backlog | Description |
-|------|----------|------------|---------|-------------|
-| **Protocol Workflow Debugging** | P2 | 🟡 Intricate | [run_protocol_workflow](./backlog/run_protocol_workflow.md) | Parameter form mix-up, layout fixes, name/notes, skip setup |
-| **Firefox E2E Limitation** | P3 | 🟢 Easy | [quality_assurance](./backlog/quality_assurance.md) | Document Firefox flakiness, CI exclusion |
-| **Resource Dialog Facets** | P3 | 🟡 Intricate | [ui_consistency](./backlog/ui_consistency.md) | Dynamically derive filter facets from definitions |
-| ~~Navigation Renames~~ | ~~P3~~ | ~~🟢 Easy~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete ("Deck" -> "Workcell") |
-| ~~REPL Theme Sync~~ | ~~P3~~ | ~~🟢 Easy~~ | [repl_enhancements](./backlog/repl_enhancements.md) | ✅ Complete (Sync kernel theme with app) |
-| ~~Browser DB Sync~~ | ~~P2~~ | ~~🟡 Intricate~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Ensure backend/frontend DB parity) |
-| ~~Execution Monitor Phase 1~~ | ~~P2~~ | ~~🟡 Intricate~~ | [execution_monitor](./backlog/execution_monitor.md) | ✅ Complete (Basic monitoring layout) |
-| ~~Execution Monitor Active Runs~~ | ~~P2~~ | ~~🟡 Intricate~~ | [execution_monitor](./backlog/execution_monitor.md) | ✅ Complete (Active Runs Panel) |
-| ~~Execution Monitor History~~ | ~~P2~~ | ~~🟡 Intricate~~ | [execution_monitor](./backlog/execution_monitor.md) | ✅ Complete (Run History Table) |
-| ~~Well Selector Dialog~~ | ~~P2~~ | ~~🔴 Complex~~ | [dataviz_well_selection](./backlog/dataviz_well_selection.md) | ✅ Complete (ARIA-compliant dialog + bulk selection) |
-| ~~Browser Schema UNIQUE Constraint~~ | ~~P2~~ | ~~🟢 Easy~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Fix name unique constraint) |
-| ~~Machine Def Schema Linkage~~ | ~~P1~~ | ~~🟢 Easy~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Add definition_accession_id) |
-
-### Added from User Verification (2026-01-08)
-
-| Item | Priority | Difficulty | Backlog | Description |
-|------|----------|------------|---------|-------------|
-| ~~Asset Management UX Regressions~~ | ~~P2~~ | ~~🟡 Intricate~~ | [asset_management_ux](./backlog/asset_management_ux.md) | ✅ Complete (Verified fixed) |
-| ~~Angular ARIA Migration~~ | ~~P2~~ | ~~🔴 Complex~~ | [angular_aria_migration](./backlog/angular_aria_migration.md) | ✅ Phase 1 & 3 Complete (Select/Multiselect/Autocomplete refactored to official pattern & integrated) |
-| ~~Settings & Stepper Polish~~ | ~~P3~~ | ~~🟡 Intricate~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Icons fixed, theme selector refined) |
-| ~~Guided Deck Setup UI~~ | ~~P3~~ | ~~S~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Resolved scrolling, visibility, and stepper advance logic) |
-| ~~Simulated Machine Unification~~ | ~~P2~~ | ~~M~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Unified Simulated/Chatterbox UI & logic) |
-| ~~Machine Dialog Fixes~~ | ~~P1~~ | ~~M~~ | [browser_mode](./backlog/browser_mode.md) | ✅ Complete (Fixed schema mismatch & NOT NULL error) |
+### Migrated from Technical Debt - ✅ All Complete (Archived)
 
 ---
 
@@ -143,11 +64,6 @@
 
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
-| ~~Protocol Inference "Sharp Bits" Docs~~ | ~~P3~~ | ~~M~~ | [cleanup_finalization](./backlog/cleanup_finalization.md) | ✅ Complete (Created `protocol_inference_sharp_bits.md`) |
-| ~~Example Protocols~~ | ~~P3~~ | ~~S~~ | [run_protocol_workflow](./backlog/run_protocol_workflow.md) | ✅ Complete (Added plate_reader, kinetic, and selective_transfer protocols) |
-| ~~Spatial View Filters~~ | ~~P3~~ | ~~M~~ | [asset_management](./backlog/asset_management.md) | ✅ Complete (Implemented `SpatialViewComponent` with location search) |
-| ~~Footer & Header Layout~~ | ~~P3~~ | ~~🟢 Easy Win~~ | [ui_consistency](./backlog/ui_consistency.md) | ✅ Complete (Refactored UnifiedShell layout) |
-| ~~Pre-Merge Finalization~~ | ~~P3~~ | ~~M~~ | [cleanup_finalization](./backlog/cleanup_finalization.md) | ✅ Complete (Archive docs, cleanup files) |
 
 ---
 
@@ -156,6 +72,7 @@
 ### UI & UX Standardization (2026-01-08)
 
 - **Asset Management UX**: Resolved Phase 1 regressions in the "Add Machine" dialog (stepper theme sync, backend filtering, dynamic capability forms, and JSON blob editing).
+- **Playground Inventory Dialog**: ✅ Complete (Redesigned with tabbed layout, quick add autocomplete, and polished stepper).
 - **Deck View Consistency**: Refactored `DeckGeneratorService` and `VisualizerComponent` to use real machine definitions/state instead of hardcoded mock data.
 - **UI Visual Tweaks**: Fixed spacing in Registry, alignment in Machines, and implemented themed gradients across cards and list items.
 
@@ -285,13 +202,48 @@
 
 ---
 
+### Archived Cleanup (2026-01-09)
+
+- **PLR Frontend/Backend Schema**: ✅ Complete (Added `frontend_fqn`, updated services/scrapers)
+- **Serial/USB Driver Generalization**: ✅ Complete (Implemented `ISerial` abstraction + FTDI driver)
+- **Restore Asset Selection Step**: ✅ Complete (verified in code)
+- **IndexedDB Persistence**: ✅ Complete (`SqliteService.saveToIndexedDB()`)
+- **State Delta Display (Phase 8.4)**: ✅ Complete (Operation timeline state diffs)
+- **Core Filter Chip Component**: ✅ Complete
+- **Resource Filter Chips**: ✅ Complete (Integrated with Resource Inventory)
+- **Disabled Chip UX**: ✅ Complete (shake animation implemented)
+- **Unique Name Parsing**: ✅ Complete (Implemented `name-parser.ts` + tooltips)
+- **Export/Import App State**: ✅ Complete (SqliteService export/import methods)
+- **Chip Filter Overflow**: ✅ Complete (Flex-wrap + dropdown collapsing)
+- **Search Icon Centering**: ✅ Complete (CSS fix for alignment)
+- **Capability Dropdown Theme**: ✅ Complete (Sync select panels with dark theme)
+- **Physical Connection Testing**: ✅ Phase B Complete (Main Thread Migration)
+- **Systematic Linting Fixes**: ✅ Complete (77+ bugs/lints resolved, clean check)
+- **Code Quality Plan Execution**: ✅ Complete (Systematic quality sweep using `ty`)
+- **E2E Tests - Execution**: ✅ Complete (Browser/Simulation execution flow)
+- **E2E Tests - Asset Management**: ✅ Complete (5 UI tests passing, CRUD skipped)
+- **Unit Tests - SqliteService**: ✅ Complete (Comprehensive coverage, persistence verification)
+- **Protocols "Not Analyzed" Status Fix**: ✅ Complete (Fixed persistence of source_hash and simulation results)
+- **Frontend Type Safety**: ✅ Complete (Resolved Blob casting and Window mocking)
+- **Migrated Tech Debt Items**:
+  - SQLite Schema Mismatch, UI Consistency, Asset Management UX, Dataviz & Well Selection
+  - Browser Schema Scripts, E2E Data Seeding, JupyterLite, Repo Cleanup
+  - Protocol Hydration, Workflow Debugging, Navigation, REPL Theme, Browser DB, Exec Monitor, Well Selector, Schema linkage
+  - Asset Management Regressions, Angular ARIA Migration, Settings/Stepper Polish
+  - Guided Deck Setup, Simulated Machine Unification, Machine Dialog Fixes
+- **UI & Documentation Polish**:
+  - Protocol Inference Docs, Example Protocols, Spatial View Filters
+  - Diagram Expansion, Footer/Header Layout, Pre-Merge Finalization
+
+---
+
 ## Summary by Priority
 
 | Priority | Count | Description |
 |----------|-------|-------------|
 | **P1** | 0 | All architecture/core issues resolved |
-| **P2** | ~7 | Code Quality (QA suite), Hardware testing |
-| **P3** | 4 | UI polish, documentation, finalization |
+| **P2** | ~4 | Code Quality (QA suite), Hardware testing, Run Persistence |
+| **P3** | 2 | UI polish (Firefox, Facets) |
 
-**Total Active Items**: ~11
-**Archived This Session (2026-01-08)**: 11 prompts from `260108`, `chip_filter_standardization.md`, consolidated `ui_standardization_q1_2026.md` and `hardware_driver_refactor.md`
+**Total Active Items**: ~6
+**Archived This Session (2026-01-09)**: Massive cleanup of completed items from Q1 2026 backlog.

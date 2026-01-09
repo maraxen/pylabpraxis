@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit, Input } from '@angular/core';
 
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
@@ -47,13 +47,6 @@ export interface ManufacturerGroup {
         <h3>Machine Registry</h3>
         <span class="total-badge">{{ definitions().length }} types</span>
       </div>
-
-      <!-- Search Bar -->
-      <mat-form-field appearance="outline" class="filter-field praxis-search-field">
-        <mat-label>Filter Machine Types</mat-label>
-        <input matInput [formControl]="filterControl">
-        <mat-icon matSuffix>search</mat-icon>
-      </mat-form-field>
 
       <mat-accordion multi="true">
         @for (category of filteredCategories(); track category.category) {
@@ -120,7 +113,7 @@ export interface ManufacturerGroup {
       @if (filteredCategories().length === 0) {
         <div class="empty-state">
           <mat-icon>inventory_2</mat-icon>
-          <p>No machine types matching "{{ filterControl.value }}"</p>
+          <p>No machine types matching "{{ filterValue() }}"</p>
         </div>
       }
     </div>
@@ -284,18 +277,15 @@ export class MachineDefinitionAccordionComponent implements OnInit {
   private assetService = inject(AssetService);
 
   definitions = signal<MachineDefinition[]>([]);
-  filterControl = new FormControl('', { nonNullable: true });
+  // Removed filterControl
   filterValue = signal('');
 
+  @Input() set search(val: string) {
+    this.filterValue.set(val);
+  }
+
   constructor() {
-    this.filterControl.valueChanges.pipe(
-      takeUntilDestroyed(),
-      debounceTime(200),
-      distinctUntilChanged(),
-      startWith('')
-    ).subscribe(value => {
-      this.filterValue.set(value);
-    });
+    // Removed valueChanges subscription
   }
 
   categoryGroups = computed(() => {

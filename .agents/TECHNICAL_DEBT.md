@@ -39,6 +39,12 @@
 
 - **Medium** — Resource dialog "More filters" facets are hardcoded. Dynamically derive facet definitions/options from resource definitions so the filter chip dropdown stays in sync with available metadata.
 
+- **Medium** — **Improved Well Parameter Detection**: Current heuristic (`isWellSelectionParameter`) checks for "well" in parameter name. Future improvement needed:
+  1. **Tracer Integration**: During protocol simulation, trace which parameters are used as indices to plate resources
+  2. **Parameter Metadata**: Add explicit `ui_hint: { type: 'well_selector' }` to parameter definitions
+  3. **Protocol Analysis**: Backend protocol analyzer should flag parameters that receive well indices
+  - **Target**: [run_protocol_workflow.md](./backlog/run_protocol_workflow.md)
+
 ### Low Priority
 
 - **Low** — Rename "REPL" to "Playground" throughout codebase. The JupyterLite-based notebook is not technically a REPL. Update component names, routes, nav labels, and documentation.

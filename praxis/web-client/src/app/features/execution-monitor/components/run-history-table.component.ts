@@ -1,16 +1,16 @@
-import { Component, inject, signal, input, effect, OnInit } from '@angular/core';
+import { Component, effect, inject, input, OnDestroy, OnInit, signal } from '@angular/core';
 
-import { RouterLink } from '@angular/router';
-import { MatTableModule } from '@angular/material/table';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatIconModule } from '@angular/material/icon';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTableModule } from '@angular/material/table';
+import { RouterLink } from '@angular/router';
 import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 
+import { RunSummary } from '../models/monitor.models';
 import { RunHistoryService } from '../services/run-history.service';
-import { RunSummary, RunStatus } from '../models/monitor.models';
 import { FilterState } from './run-filters.component';
 
 /**
@@ -132,11 +132,12 @@ import { FilterState } from './run-filters.component';
     }
   `],
 })
-export class RunHistoryTableComponent implements OnInit {
+export class RunHistoryTableComponent implements OnInit, OnDestroy {
   readonly runHistoryService = inject(RunHistoryService);
 
   /** Filter state from parent */
   readonly filters = input<FilterState | null>(null);
+  readonly search = input<string>('');
 
   readonly runs = signal<RunSummary[]>([]);
   readonly isLoading = signal(true);
@@ -145,12 +146,14 @@ export class RunHistoryTableComponent implements OnInit {
   readonly displayedColumns = ['status', 'protocol', 'started', 'duration', 'actions'];
   readonly pageSize = 10;
   private currentOffset = 0;
+  private refreshInterval?: ReturnType<typeof setInterval>;
 
   constructor() {
-    // React to filter changes
+    // React to filter/search changes
     effect(() => {
-      const currentFilters = this.filters();
-      // Reset to first page when filters change
+      const _currentFilters = this.filters();
+      const _search = this.search();
+      // Reset to first page when filters/search change
       this.currentOffset = 0;
       this.loadRuns();
     });
@@ -158,6 +161,17 @@ export class RunHistoryTableComponent implements OnInit {
 
   ngOnInit(): void {
     // Initial load handled by effect
+    
+    // Auto-refresh every 10 seconds
+    this.refreshInterval = setInterval(() => {
+      this.loadRuns();
+    }, 10000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+    }
   }
 
   loadRuns(): void {
@@ -172,6 +186,7 @@ export class RunHistoryTableComponent implements OnInit {
         protocol_id: currentFilters?.protocol_id ?? undefined,
         sort_by: currentFilters?.sort_by ?? 'created_at',
         sort_order: currentFilters?.sort_order ?? 'desc',
+        search: this.search() || undefined
       })
       .subscribe({
         next: (runs) => {

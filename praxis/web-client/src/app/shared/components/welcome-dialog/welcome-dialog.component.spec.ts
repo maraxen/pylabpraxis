@@ -16,13 +16,12 @@ describe('WelcomeDialogComponent', () => {
     };
 
     const onboardingMock = {
-        isDemoModeEnabled: vi.fn(() => false),
+        hasCompletedOnboarding: vi.fn(() => false),
         markOnboardingComplete: vi.fn(),
-        setDemoMode: vi.fn()
     };
 
     const modeServiceMock = {
-        isDemoMode: vi.fn(() => false)
+        isBrowserMode: vi.fn(() => false)
     };
 
     const tutorialMock = {

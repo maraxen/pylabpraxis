@@ -7,8 +7,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { AriaSelectComponent, SelectOption } from '@shared/components/aria-select/aria-select.component';
-import { AriaMultiselectComponent } from '@shared/components/aria-multiselect/aria-multiselect.component';
+import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
+import { PraxisMultiselectComponent } from '@shared/components/praxis-multiselect/praxis-multiselect.component';
 import { MachineCapabilityConfigSchema, CapabilityConfigField } from '../models/asset.models';
 
 @Component({
@@ -19,8 +19,8 @@ import { MachineCapabilityConfigSchema, CapabilityConfigField } from '../models/
     MatFormFieldModule,
     MatInputModule,
     MatTooltipModule,
-    AriaSelectComponent,
-    AriaMultiselectComponent
+    PraxisSelectComponent,
+    PraxisMultiselectComponent
   ],
   template: `
     <form [formGroup]="form" class="flex flex-col gap-3">
@@ -82,11 +82,11 @@ import { MachineCapabilityConfigSchema, CapabilityConfigField } from '../models/
           @if (field.field_type === 'select') {
             <div class="mb-4">
               <label class="text-xs font-medium text-gray-500 mb-1 block">{{ field.display_name }}</label>
-              <app-aria-select
-                [label]="field.display_name"
+              <app-praxis-select
+                [placeholder]="field.display_name"
                 [formControlName]="field.field_name"
                 [options]="mapToSelectOptions(field.options || [])"
-              ></app-aria-select>
+              ></app-praxis-select>
               @if (field.help_text) {
                 <div class="text-xs text-gray-400 mt-1">{{ field.help_text }}</div>
               }
@@ -100,14 +100,13 @@ import { MachineCapabilityConfigSchema, CapabilityConfigField } from '../models/
           @if (field.field_type === 'multiselect') {
             <div class="mb-4">
               <label class="text-xs font-medium text-gray-500 mb-1 block">{{ field.display_name }}</label>
-              <app-aria-multiselect
-                [label]="field.display_name"
+              <app-praxis-multiselect
+                [placeholder]="field.display_name"
                 [formControlName]="field.field_name"
-                [multiple]="true"
                 [options]="mapToFilterOptions(field.options || [])"
-                [selectedValue]="form.get(field.field_name)?.value"
-                (selectionChange)="form.get(field.field_name)?.setValue($event)"
-              ></app-aria-multiselect>
+                [value]="form.get(field.field_name)?.value"
+                (valueChange)="form.get(field.field_name)?.setValue($event)"
+              ></app-praxis-multiselect>
               @if (field.help_text) {
                 <div class="text-xs text-gray-400 mt-1">{{ field.help_text }}</div>
               }

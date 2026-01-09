@@ -91,11 +91,11 @@
               "extractLicenses": false,
               "sourceMap": true
             },
-            "demo": {
+            "gh-pages": {
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.demo.ts"
+                  "with": "src/environments/environment.gh-pages.ts"
                 }
               ],
               "baseHref": "/praxis/",
@@ -127,8 +127,8 @@
             "development": {
               "buildTarget": "web-client:build:development"
             },
-            "demo": {
-              "buildTarget": "web-client:build:demo"
+            "gh-pages": {
+              "buildTarget": "web-client:build:gh-pages"
             },
             "browser": {
               "buildTarget": "web-client:build:browser"

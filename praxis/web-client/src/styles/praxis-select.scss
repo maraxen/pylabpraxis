@@ -1,0 +1,294 @@
+/* praxis/web-client/src/styles/praxis-select.scss */
+
+// Theme Variables (Project Integrated)
+$primary-color: var(--primary-color, #ED7A9B);
+$border-color: var(--mat-sys-outline-variant, #ccc);
+$hover-bg: var(--mat-sys-surface-container-high, #f5f5f5);
+$text-color: var(--mat-sys-on-surface, rgba(0, 0, 0, 0.87));
+
+// Gradient text mixin
+@mixin gradient-text {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+// -----------------------------------------------------
+// 0. Host Styling (Ensure components take full width)
+// -----------------------------------------------------
+app-praxis-select,
+app-praxis-multiselect {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+}
+
+// -----------------------------------------------------
+// 1. Trigger Styling (mat-form-field override)
+// -----------------------------------------------------
+
+// Wrapper to ensure full width and column layout
+.praxis-multiselect-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    overflow: hidden; // Prevent accidental overflow
+    min-width: 0; // Essential for nested flex scrolling
+}
+
+.praxis-select-field {
+    width: 100%;
+
+    // Remove default Material underline/box styles we don't want
+    // We want a unified capsule/rounded look
+
+    .mat-mdc-text-field-wrapper {
+        background-color: transparent !important; // Remove fill
+        padding: 0 !important;
+    }
+
+    .mat-mdc-form-field-flex {
+        padding: 0 12px !important;
+        align-items: center;
+        border: 1px solid $primary-color;
+        border-radius: 8px; // Or 4px if you prefer sharper
+        transition: all 0.2s ease;
+        height: 40px; // Strict fixed height
+        min-height: 40px;
+        box-sizing: border-box;
+    }
+
+    // Hover state
+    &:hover .mat-mdc-form-field-flex {
+        background: rgba(237, 122, 155, 0.1);
+    }
+
+    // Focus state (when opened)
+    &.mat-focused .mat-mdc-form-field-flex {
+        background: rgba(237, 122, 155, 0.15);
+        outline: 2px solid $primary-color;
+        border-color: transparent;
+    }
+
+    // Hide the standard outline elements since we style the flex container
+    .mdc-notched-outline {
+        display: none !important;
+    }
+
+    // Input/Select styling
+    .mat-mdc-select-trigger,
+    .mat-mdc-input-element {
+        font-size: 14px;
+        color: $primary-color !important;
+        font-weight: 500;
+        // Ensure trigger doesn't overflow vertically
+        height: 100%;
+        display: flex;
+        align-items: center;
+    }
+
+    // Custom content wrapper in trigger
+    .praxis-select-trigger-content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        max-width: 100%;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+
+        .selected-icon {
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+            line-height: 20px; // Prevent icon line-height expansion
+        }
+
+        .selected-text {
+            line-height: normal;
+        }
+    }
+
+    // Placeholder
+    .mat-mdc-select-placeholder {
+        color: rgba($primary-color, 0.7);
+        line-height: normal;
+    }
+
+    // Icons (Suffix icons like dropdown arrow)
+    .mat-icon {
+        color: $primary-color;
+    }
+}
+
+// -----------------------------------------------------
+// 2. Chip Styling (inside trigger)
+// -----------------------------------------------------
+
+.selected-chips {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    align-items: center;
+    overflow: hidden;
+}
+
+.selection-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--mat-sys-surface-container-high);
+    color: var(--theme-text-primary);
+    border: 1px solid var(--mat-sys-outline-variant);
+    white-space: nowrap;
+
+    .chip-label {
+        @include gradient-text;
+    }
+}
+
+.overflow-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--mat-sys-surface-variant);
+    color: var(--primary-color);
+    cursor: help;
+}
+
+// -----------------------------------------------------
+// 3. Panel Styling (Dropdown)
+// -----------------------------------------------------
+
+.praxis-select-panel.mat-mdc-select-panel,
+.praxis-select-panel.mat-mdc-autocomplete-panel {
+    background: var(--mat-sys-surface-container, white);
+    border: 1px solid $border-color;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    padding: 4px 0;
+
+    // Option Styling
+    .mat-mdc-option {
+        min-height: 40px;
+        font-size: 14px;
+        color: $text-color;
+
+        // Content wrapper
+        .praxis-option-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .option-icon {
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+            color: var(--mat-sys-on-surface-variant);
+        }
+
+        .option-count {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-left: 4px;
+        }
+
+        // Selected state
+        &.mdc-list-item--selected {
+            background-color: var(--mat-sys-surface-container-high);
+
+            .mdc-list-item__primary-text {
+                @include gradient-text;
+                font-weight: 600;
+            }
+
+            .option-icon {
+                color: inherit; // Make icon take gradient if possible or primary
+            }
+        }
+
+        // Hover state
+        &:hover:not(.mdc-list-item--disabled) {
+            background-color: $hover-bg;
+        }
+    }
+}
+
+// -----------------------------------------------------
+// 4. External Chip Grid (Refactor)
+// -----------------------------------------------------
+
+.praxis-chip-grid {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-top: 8px;
+
+    // Layout & Sizing Fixes
+    width: 100%; // CHANGE: Must be explicit width, not max-width
+    min-width: 0; // Essential: Allows flex child to shrink below content size
+    box-sizing: border-box;
+
+    height: 48px;
+    min-height: 48px;
+
+    // Scrolling
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    // Alignment
+    align-items: center;
+    padding-bottom: 4px;
+
+    // Custom Scrollbar
+    &::-webkit-scrollbar {
+        height: 4px;
+        width: 100%;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background-color: var(--mat-sys-outline-variant);
+        border-radius: 4px;
+    }
+
+    .chip-none {
+        font-size: 12px;
+        color: var(--mat-sys-on-surface-variant);
+        font-style: italic;
+        opacity: 0.7;
+        padding: 4px 0;
+        // prevent 'None' text from wrapping if container is very small
+        white-space: nowrap;
+    }
+
+    .selection-chip {
+        // Enhance chip slightly for external view
+        padding-right: 4px;
+        // Ensure chip itself doesn't shrink or wrap
+        flex-shrink: 0;
+
+        .remove-icon {
+            font-size: 14px;
+            width: 14px;
+            height: 14px;
+            margin-left: 4px;
+            cursor: pointer;
+            opacity: 0.6;
+
+            &:hover {
+                opacity: 1;
+            }
+        }
+    }
+}

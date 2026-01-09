@@ -37,19 +37,19 @@ export class KeycloakService {
    * @param options Configuration options
    */
   async init(options?: { onLoad?: 'login-required' | 'check-sso' }): Promise<boolean> {
-    // Handle Demo Mode
+    // Handle Browser Mode
     if (isBrowserModeEnv()) {
-      console.log('[KeycloakService] Demo mode detected - simulating authentication');
+      console.log('[KeycloakService] Browser mode detected - simulating authentication');
       this._isAuthenticated.set(true);
       this._user.set({
-        id: 'demo-user',
-        username: 'demo',
-        email: 'demo@praxis.example',
-        firstName: 'Demo',
+        id: 'local-user',
+        username: 'local',
+        email: 'local@praxis.local',
+        firstName: 'Local',
         lastName: 'User',
-        roles: ['user', 'demo', 'admin']
+        roles: ['user', 'browser-mode', 'admin']
       });
-      this._token.set('demo-token');
+      this._token.set('local-token');
       return true;
     }
 
@@ -95,7 +95,7 @@ export class KeycloakService {
    */
   login(redirectUri?: string): Promise<void> {
     if (isBrowserModeEnv()) {
-      console.log('[KeycloakService] Demo mode - login simulated');
+      console.log('[KeycloakService] Browser mode - login simulated');
       this._isAuthenticated.set(true);
       return Promise.resolve();
     }
@@ -113,7 +113,7 @@ export class KeycloakService {
    */
   register(redirectUri?: string): Promise<void> {
     if (isBrowserModeEnv()) {
-      console.log('[KeycloakService] Demo mode - registration simulated');
+      console.log('[KeycloakService] Browser mode - registration simulated');
       return Promise.resolve();
     }
 
@@ -134,7 +134,7 @@ export class KeycloakService {
     this._token.set(null);
 
     if (isBrowserModeEnv()) {
-      console.log('[KeycloakService] Demo mode - logout simulated');
+      console.log('[KeycloakService] Browser mode - logout simulated');
       window.location.href = '/';
       return Promise.resolve();
     }
@@ -153,7 +153,7 @@ export class KeycloakService {
    */
   async getToken(): Promise<string | null> {
     if (isBrowserModeEnv()) {
-      return 'demo-token';
+      return 'local-token';
     }
 
     if (!this.keycloak || !this.keycloak.authenticated) {
@@ -177,7 +177,7 @@ export class KeycloakService {
    */
   hasRole(role: string): boolean {
     if (isBrowserModeEnv()) {
-      return ['user', 'demo', 'admin'].includes(role);
+      return ['user', 'browser-mode', 'admin'].includes(role);
     }
     return this.keycloak?.hasRealmRole(role) || false;
   }

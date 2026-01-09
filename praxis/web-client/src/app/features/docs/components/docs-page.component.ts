@@ -1,5 +1,8 @@
-import { Component, inject, signal, effect, computed } from '@angular/core';
+import { Component, inject, signal, effect, computed, ElementRef, HostListener } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { AppStore } from '../../../core/store/app.store';
+import { DiagramOverlayComponent } from '../../../shared/components/diagram-overlay/diagram-overlay.component';
 
 import { ActivatedRoute } from '@angular/router';
 import { MarkdownModule } from 'ngx-markdown';
@@ -10,7 +13,7 @@ import { catchError, of } from 'rxjs';
 @Component({
   selector: 'app-docs-page',
   standalone: true,
-  imports: [MarkdownModule, SystemTopologyComponent],
+  imports: [MarkdownModule, SystemTopologyComponent, MatButtonModule, MatIconModule, DiagramOverlayComponent],
   template: `
     <div class="docs-page">
       @if (loading()) {
@@ -36,8 +39,15 @@ import { catchError, of } from 'rxjs';
           @if (showSystemTopology()) {
             <app-system-topology></app-system-topology>
           }
-          <markdown [data]="markdownContent()" mermaid [mermaidOptions]="mermaidOptions()"></markdown>
+          <markdown [data]="markdownContent()" mermaid [mermaidOptions]="mermaidOptions()" (ready)="onMarkdownReady()"></markdown>
         </article>
+
+        @if (expandedDiagram()) {
+          <app-diagram-overlay
+            [diagramHtml]="expandedDiagram()!"
+            (closed)="closeExpanded()">
+          </app-diagram-overlay>
+        }
       }
     </div>
   `,
@@ -278,7 +288,6 @@ import { catchError, of } from 'rxjs';
         color: var(--theme-text-primary);
       }
 
-      /* Mermaid diagrams */
       .mermaid {
         background: linear-gradient(145deg, var(--mat-sys-surface-variant) 0%, transparent 100%);
         border: 1px solid var(--theme-border);
@@ -288,6 +297,45 @@ import { catchError, of } from 'rxjs';
         display: flex;
         justify-content: center;
         overflow-x: auto;
+        position: relative;
+      }
+
+      .diagram-wrapper {
+        position: relative;
+        margin: 24px 0;
+      }
+
+      .diagram-wrapper .mermaid {
+        margin: 0;
+      }
+
+      .expand-btn {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        z-index: 20;
+        background: var(--mat-sys-surface-container-highest) !important;
+        color: var(--theme-text-primary) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        opacity: 0.7;
+        transition: all 0.2s ease !important;
+        border: none;
+        border-radius: 8px;
+        padding: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .expand-btn:hover {
+        opacity: 1;
+        transform: scale(1.05);
+        background: var(--theme-surface-elevated) !important;
+      }
+
+      .expand-btn i {
+        font-size: 20px !important;
       }
     }
 
@@ -322,6 +370,9 @@ export class DocsPageComponent {
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   private store = inject(AppStore);
+  private el = inject(ElementRef);
+
+  expandedDiagram = signal<string | null>(null);
 
   mermaidOptions = computed(() => {
     const theme = this.store.theme();
@@ -489,5 +540,47 @@ export class DocsPageComponent {
       const githubRepo = 'https://github.com/maraxen/pylabpraxis/blob/main/';
       window.open(`${githubRepo}${path}`, '_blank');
     }
+  }
+
+  onMarkdownReady(): void {
+    // Inject expand buttons into Mermaid diagrams
+    setTimeout(() => {
+      const article = this.el.nativeElement.querySelector('.docs-article');
+      if (!article) return;
+
+      const diagrams = article.querySelectorAll('.mermaid');
+      diagrams.forEach((d: HTMLElement) => {
+        // Skip if already wrapped or has button
+        if (d.parentElement?.classList.contains('diagram-wrapper')) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'diagram-wrapper';
+
+        d.parentNode?.insertBefore(wrapper, d);
+        wrapper.appendChild(d);
+
+        const btn = document.createElement('button');
+        btn.className = 'expand-btn';
+        btn.title = 'Fullscreen';
+        btn.innerHTML = '<i class="material-icons">fullscreen</i>';
+
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          // We need to get the innerHTML of the mermaid div
+          this.expandedDiagram.set(d.innerHTML);
+        };
+
+        wrapper.appendChild(btn);
+      });
+    }, 100);
+  }
+
+  closeExpanded(): void {
+    this.expandedDiagram.set(null);
+  }
+
+  @HostListener('window:keydown.escape')
+  onEscape(): void {
+    this.closeExpanded();
   }
 }

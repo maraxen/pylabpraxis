@@ -8,7 +8,7 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { PLR_MACHINE_DEFINITIONS, PlrMachineDefinition } from '@assets/demo-data/plr-definitions';
+import { PLR_MACHINE_DEFINITIONS, PlrMachineDefinition } from '@assets/browser-data/plr-definitions';
 
 export type ConnectionType = 'serial' | 'usb' | 'network' | 'simulator';
 export type DeviceStatus = 'available' | 'connected' | 'connecting' | 'disconnected' | 'busy' | 'error' | 'requires_config' | 'unknown';

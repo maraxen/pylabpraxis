@@ -25,6 +25,7 @@ import { getUiGroup, UI_GROUP_ORDER, shouldHideCategory, ResourceUiGroup } from 
 import { ResourceChipsComponent } from '../resource-chips/resource-chips.component';
 import { getDisplayLabel } from '../../utils/resource-name-parser';
 import { AppStore } from '../../../../core/store/app.store';
+import { FilterHeaderComponent } from '../filter-header/filter-header.component';
 
 export interface ResourceGroup {
   category: string;
@@ -63,16 +64,25 @@ export interface ResourceDefinitionGroup {
     ReactiveFormsModule,
     AssetStatusChipComponent,
     ResourceFiltersComponent,
-    ResourceChipsComponent
+    ResourceChipsComponent,
+    FilterHeaderComponent
   ],
   template: `
     <div class="resource-accordion-container">
       <!-- Resource Filters -->
-      <app-resource-filters
-        [categories]="categories()"
-        [machines]="machines()"
-        (filtersChange)="onFiltersChange($event)">
-      </app-resource-filters>
+      <app-filter-header
+        searchPlaceholder="Search resources..."
+        [filterCount]="activeFiltersCount()"
+        [searchValue]="currentSearch()"
+        (searchChange)="onSearch($event)">
+        
+        <app-resource-filters filterContent
+          [categories]="categories()"
+          [machines]="machines()"
+          [search]="currentSearch()"
+          (filtersChange)="onFiltersChange($event)">
+        </app-resource-filters>
+      </app-filter-header>
 
       <mat-accordion multi="true">
         @for (group of filteredGroups(); track group.category) {
@@ -355,8 +365,25 @@ export class ResourceAccordionComponent implements OnInit {
     sort_order: 'asc'
   });
 
+  currentSearch = signal('');
+
+  activeFiltersCount = computed(() => {
+    const f = this.activeFilters();
+    let count = 0;
+    if (f.status.length) count++;
+    if (f.categories.length) count++;
+    if (f.brands.length) count++;
+    if (f.machine_id) count++;
+    if (f.show_discarded) count++;
+    return count;
+  });
+
   constructor() {
     // Removed old filterControl logic
+  }
+
+  onSearch(term: string) {
+     this.currentSearch.set(term);
   }
 
   // Computed Categories for Filter
@@ -599,6 +626,9 @@ export class ResourceAccordionComponent implements OnInit {
 
   onFiltersChange(filters: ResourceFilterState) {
     this.activeFilters.set(filters);
+    if (filters.search !== this.currentSearch()) {
+      this.currentSearch.set(filters.search);
+    }
   }
 
   getCategoryIcon(category: string): string {

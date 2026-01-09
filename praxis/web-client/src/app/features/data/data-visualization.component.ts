@@ -9,8 +9,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
-import { AriaSelectComponent, SelectOption } from '@shared/components/aria-select/aria-select.component';
-import { AriaAutocompleteComponent } from '@shared/components/aria-autocomplete/aria-autocomplete.component';
+import { MatDialog } from '@angular/material/dialog';
+import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
+import { PraxisAutocompleteComponent } from '@shared/components/praxis-autocomplete/praxis-autocomplete.component';
+import { WellSelectorDialogComponent } from '@shared/components/well-selector-dialog/well-selector-dialog.component';
+import { FilterHeaderComponent } from '../assets/components/filter-header/filter-header.component';
 import { PlotlyModule } from 'angular-plotly.js';
 import { interval, Subscription } from 'rxjs';
 import { ProtocolService } from '../protocols/services/protocol.service';
@@ -142,8 +145,9 @@ function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
     MatTooltipModule,
     PlotlyModule,
     FormsModule,
-    AriaSelectComponent,
-    AriaAutocompleteComponent
+    PraxisSelectComponent,
+    PraxisAutocompleteComponent,
+    FilterHeaderComponent
   ],
   template: `
     <div class="data-page">
@@ -152,34 +156,37 @@ function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
         <p class="subtitle">Analyze experiment data and transfer volumes</p>
       </header>
 
-      <!-- Protocol & Run Selection -->
-      <mat-card class="selector-card">
-        <mat-card-content>
-          <div class="selector-row">
-            <div class="protocol-select">
-              <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block">Protocol</label>
-              <app-aria-autocomplete
-                label="Protocol"
-                [options]="protocolOptions()"
-                [(ngModel)]="selectedProtocolId"
-                (ngModelChange)="onProtocolChange($event)"
-                placeholder="Search protocols..."
-              ></app-aria-autocomplete>
-            </div>
-
-            <div class="run-select">
-              <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block">Run</label>
-              <app-aria-autocomplete
-                label="Run"
-                [options]="runOptions()"
-                [(ngModel)]="selectedRunId"
-                (ngModelChange)="onRunChange($event)"
-                placeholder="Search runs..."
-              ></app-aria-autocomplete>
-            </div>
+      <!-- Filter Header -->
+      <app-filter-header
+        searchPlaceholder="Filter runs and protocols..."
+        [searchValue]="searchQuery()"
+        (searchChange)="searchQuery.set($event)"
+        (clearFilters)="clearFilters()">
+        
+        <div class="selector-row" filterContent>
+          <div class="protocol-select">
+            <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block uppercase tracking-wide">Protocol</label>
+            <app-praxis-autocomplete
+              label="Protocol"
+              [options]="protocolOptions()"
+              [(ngModel)]="selectedProtocolId"
+              (ngModelChange)="onProtocolChange($event)"
+              placeholder="Search protocols..."
+            ></app-praxis-autocomplete>
           </div>
-        </mat-card-content>
-      </mat-card>
+
+          <div class="run-select">
+            <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block uppercase tracking-wide">Run</label>
+            <app-praxis-autocomplete
+              label="Run"
+              [options]="runOptions()"
+              [(ngModel)]="selectedRunId"
+              (ngModelChange)="onRunChange($event)"
+              placeholder="Search runs..."
+            ></app-praxis-autocomplete>
+          </div>
+        </div>
+      </app-filter-header>
 
       <!-- Chart Configuration -->
       <mat-card class="config-card">
@@ -187,37 +194,56 @@ function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
           <div class="config-row">
             <div>
               <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block">X-Axis</label>
-              <app-aria-select
-                label="X-Axis"
+              <app-praxis-select
+                placeholder="X-Axis"
                 [options]="xAxisOptions"
                 [(ngModel)]="xAxis"
                 (ngModelChange)="updateChart()"
-              ></app-aria-select>
+              ></app-praxis-select>
             </div>
 
             <div>
               <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block">Y-Axis</label>
-              <app-aria-select
-                label="Y-Axis"
+              <app-praxis-select
+                placeholder="Y-Axis"
                 [options]="yAxisOptions"
                 [(ngModel)]="yAxis"
                 (ngModelChange)="updateChart()"
-              ></app-aria-select>
+              ></app-praxis-select>
             </div>
 
             <div class="well-filter">
-              <span class="filter-label">Wells:</span>
-              <mat-chip-set>
-                @for (well of allWells; track well) {
-                  <mat-chip
-                    [class.selected]="selectedWells().includes(well)"
-                    (click)="toggleWell(well)">
-                    {{ well }}
-                  </mat-chip>
-                }
-              </mat-chip-set>
-              <button mat-button (click)="selectAllWells()">All</button>
-              <button mat-button (click)="clearWells()">Clear</button>
+              <button mat-stroked-button (click)="openWellSelector()">
+                <mat-icon>grid_view</mat-icon>
+                {{ selectedWells().length > 0
+                   ? selectedWells().length + ' wells selected'
+                   : 'Select Wells' }}
+              </button>
+
+              <!-- Show selected wells as preview chips (collapsed if >5) -->
+              @if (selectedWells().length > 0 && selectedWells().length <= 5) {
+                <mat-chip-set>
+                  @for (well of selectedWells(); track well) {
+                    <mat-chip (removed)="removeWell(well)">
+                      {{ well }}
+                      <button matChipRemove>
+                        <mat-icon>cancel</mat-icon>
+                      </button>
+                    </mat-chip>
+                  }
+                </mat-chip-set>
+              }
+
+              @if (selectedWells().length > 5) {
+                <span class="text-sm text-sys-on-surface-variant">
+                  {{ selectedWells().slice(0, 3).join(', ') }}... and {{ selectedWells().length - 3 }} more
+                </span>
+              }
+
+              <div class="well-actions">
+                <button mat-button (click)="selectAllWells()">All</button>
+                <button mat-button (click)="clearWells()">Clear</button>
+              </div>
             </div>
           </div>
         </mat-card-content>
@@ -287,7 +313,7 @@ function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
           <mat-card-title>Run History</mat-card-title>
         </mat-card-header>
         <mat-card-content>
-          <table mat-table [dataSource]="filteredRuns()" class="run-table">
+          <table mat-table [dataSource]="filteredRunsTable()" class="run-table">
             <ng-container matColumnDef="status">
               <th mat-header-cell *matHeaderCellDef>Status</th>
               <td mat-cell *matCellDef="let run">
@@ -414,8 +440,18 @@ function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
     .well-filter {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
       flex-wrap: wrap;
+      background: var(--sys-surface-container-low);
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--sys-outline-variant);
+    }
+
+    .well-actions {
+      display: flex;
+      gap: 4px;
+      margin-left: auto;
     }
 
     .filter-label {
@@ -424,9 +460,9 @@ function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
       white-space: nowrap;
     }
 
-    mat-chip.selected {
-      background: var(--sys-primary) !important;
-      color: var(--sys-on-primary) !important;
+    mat-chip {
+      --mdc-chip-label-text-size: 12px;
+      height: 32px !important;
     }
 
     .chart-card {
@@ -505,13 +541,18 @@ function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
 })
 export class DataVisualizationComponent implements OnInit, OnDestroy {
   private protocolService = inject(ProtocolService);
+  private dialog = inject(MatDialog);
 
   // Table columns
   displayedColumns = ['status', 'protocol', 'startTime', 'duration', 'wells', 'volume', 'actions'];
 
   // Well configuration
-  allWells = ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4'];
-  selectedWells = signal<string[]>(['A1', 'A2', 'A3', 'B1', 'B2', 'B3']);
+  allWells = Array.from({ length: 96 }, (_, i) => {
+    const row = String.fromCharCode(65 + Math.floor(i / 12));
+    const col = (i % 12) + 1;
+    return `${row}${col}`;
+  });
+  selectedWells = signal<string[]>(['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4']); // Initial selection
 
   // Chart configuration
   xAxis = 'timestamp';
@@ -520,6 +561,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   // Selection state
   selectedProtocolId = '';
   selectedRunId = '';
+  searchQuery = signal('');
 
   // Data signals
   protocols = signal<ProtocolDefinition[]>([]);
@@ -568,6 +610,17 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
     return runs.filter(r => r.protocolId === this.selectedProtocolId);
   });
 
+  filteredRunsTable = computed(() => {
+    const runs = this.filteredRuns();
+    const q = this.searchQuery().toLowerCase();
+    if (!q) return runs;
+    return runs.filter(r => 
+      r.protocolName.toLowerCase().includes(q) || 
+      r.id.toLowerCase().includes(q) ||
+      r.status.toLowerCase().includes(q)
+    );
+  });
+
   // Computed: get selected run object
   selectedRun = computed(() => {
     return this.runs().find(r => r.id === this.selectedRunId) || null;
@@ -589,7 +642,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
         }
       },
       error: () => {
-        // Fallback: generate mock protocols for demo mode
+        // Fallback: generate mock protocols for browser mode
         const fallbackProtocols: ProtocolDefinition[] = [
           { accession_id: 'proto-001', name: 'Simple Transfer', is_top_level: true, version: '1.0', parameters: [], assets: [] },
           { accession_id: 'proto-002', name: 'Serial Dilution', is_top_level: true, version: '1.0', parameters: [], assets: [] },
@@ -638,6 +691,16 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   selectRun(run: MockRun) {
     this.selectedRunId = run.id;
     this.loadRunData(run);
+  }
+
+  clearFilters() {
+    this.searchQuery.set('');
+    this.selectedProtocolId = '';
+    // Reset to all runs
+    const allRuns = this.runs();
+    if (allRuns.length > 0) {
+        this.selectRun(allRuns[0]);
+    }
   }
 
   private loadRunData(run: MockRun) {
@@ -706,7 +769,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
       // Bar chart grouped by well
       const grouped = wells.map(well => {
         const wellData = data.filter(d => d.well === well);
-        const total = wellData.reduce((sum, d) => sum + (d as any)[this.yAxis], 0);
+        const total = wellData.reduce((sum, d) => sum + (d as Record<string, any>)[this.yAxis], 0);
         return { well, value: total / wellData.length };
       });
 
@@ -727,7 +790,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
 
       return {
         x: wellData.map(d => d.timestamp.toLocaleTimeString()),
-        y: wellData.map(d => (d as any)[this.yAxis]),
+        y: wellData.map(d => (d as Record<string, any>)[this.yAxis]),
         type: 'scatter',
         mode: 'lines+markers',
         name: well,
@@ -774,6 +837,29 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
     } else {
       this.selectedWells.set([...current, well]);
     }
+  }
+
+  removeWell(well: string) {
+    this.selectedWells.update(wells => wells.filter(w => w !== well));
+  }
+
+  openWellSelector() {
+    const dialogRef = this.dialog.open(WellSelectorDialogComponent, {
+      data: {
+        plateType: '96',
+        initialSelection: this.selectedWells(),
+        mode: 'multi',
+        title: 'Select Wells for Visualization'
+      },
+      width: '800px',
+      maxHeight: '90vh'
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result?.confirmed) {
+        this.selectedWells.set(result.wells);
+      }
+    });
   }
 
   selectAllWells() {

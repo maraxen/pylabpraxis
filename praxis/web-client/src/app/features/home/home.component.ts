@@ -311,7 +311,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private loadRuns() {
-    // Simulated recent runs for demo
+    // Simulated recent runs for browser mode
     // In production, this would come from a runs API
     this.recentRuns.set([
       {

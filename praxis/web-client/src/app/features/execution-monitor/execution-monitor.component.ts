@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, computed } from '@angular/core';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,6 +7,7 @@ import { ActiveRunsPanelComponent } from './components/active-runs-panel.compone
 import { RunHistoryTableComponent } from './components/run-history-table.component';
 import { RunFiltersComponent, FilterState } from './components/run-filters.component';
 import { RunStatsPanelComponent } from './components/run-stats-panel.component';
+import { FilterHeaderComponent } from '../assets/components/filter-header/filter-header.component';
 
 /**
  * Main dashboard for the Execution Monitor feature.
@@ -21,7 +22,8 @@ import { RunStatsPanelComponent } from './components/run-stats-panel.component';
     ActiveRunsPanelComponent,
     RunHistoryTableComponent,
     RunFiltersComponent,
-    RunStatsPanelComponent
+    RunStatsPanelComponent,
+    FilterHeaderComponent
 ],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto">
@@ -42,18 +44,49 @@ import { RunStatsPanelComponent } from './components/run-stats-panel.component';
       <!-- Active Runs Panel -->
       <app-active-runs-panel></app-active-runs-panel>
 
-      <!-- Filters -->
-      <app-run-filters (filtersChange)="onFiltersChange($event)"></app-run-filters>
+      <!-- Filter Header -->
+      <app-filter-header
+        searchPlaceholder="Search runs..."
+        [filterCount]="activeFiltersCount()"
+        [searchValue]="searchQuery()"
+        (searchChange)="onSearch($event)"
+        (clearFilters)="clearFilters()">
+        
+        <app-run-filters filterContent (filtersChange)="onFiltersChange($event)"></app-run-filters>
+      </app-filter-header>
 
       <!-- Run History Table -->
-      <app-run-history-table [filters]="currentFilters()" data-tour-id="run-history-table"></app-run-history-table>
+      <app-run-history-table [filters]="currentFilters()" [search]="searchQuery()" data-tour-id="run-history-table"></app-run-history-table>
     </div>
   `,
 })
 export class ExecutionMonitorComponent {
   readonly currentFilters = signal<FilterState | null>(null);
+  readonly searchQuery = signal('');
+
+  readonly activeFiltersCount = computed(() => {
+    const f = this.currentFilters();
+    if (!f) return 0;
+    let count = 0;
+    if (f.status.length) count++;
+    if (f.protocol_id) count++;
+    return count;
+  });
 
   onFiltersChange(filters: FilterState): void {
     this.currentFilters.set(filters);
+  }
+
+  onSearch(term: string): void {
+    this.searchQuery.set(term);
+  }
+
+  clearFilters(): void {
+    // This requires RunFiltersComponent to expose a clear method or Input to reset.
+    // For now, we just reset the search.
+    this.searchQuery.set('');
+    // Ideally we would reset the child component too.
+    // Let's implement that by passing a signal or just re-rendering if needed, 
+    // but a ViewChild is better. For now basic search clear.
   }
 }

@@ -168,8 +168,8 @@ class PraxisConfiguration:
 
     Possible values:
       - "postgresql": Production mode with PostgreSQL + Redis
-      - "memory": Demo mode with in-memory storage
-      - "sqlite": Demo mode with SQLite + in-memory KV store
+      - "memory": Lite mode with in-memory storage
+      - "sqlite": Lite mode with SQLite + in-memory KV store
 
     Priority: STORAGE_BACKEND env var > [storage] section > default "postgresql"
     """
@@ -178,14 +178,14 @@ class PraxisConfiguration:
     )
 
   @property
-  def is_demo_mode(self) -> bool:
-    """Return True if running in demo mode (no production dependencies).
+  def is_lite_mode(self) -> bool:
+    """Return True if running in lite mode (no production dependencies).
 
-    Demo mode uses in-memory or SQLite backends instead of PostgreSQL/Redis.
+    Lite mode uses in-memory or SQLite backends instead of PostgreSQL/Redis.
     This is triggered by STORAGE_BACKEND being 'memory' or 'sqlite',
-    or by setting PRAXIS_DEMO_MODE=true.
+    or by setting PRAXIS_LITE_MODE=true.
     """
-    if os.getenv("PRAXIS_DEMO_MODE", "").lower() in ("true", "1", "yes"):
+    if os.getenv("PRAXIS_LITE_MODE", "").lower() in ("true", "1", "yes"):
       return True
     return self.storage_backend in ("memory", "sqlite")
 

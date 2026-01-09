@@ -13,7 +13,7 @@ import { isBrowserModeEnv } from '../../core/services/mode.service';
     RouterLink,
     MatCardModule,
     MatProgressSpinnerModule
-],
+  ],
   template: `
     <div class="login-container">
       <div class="login-card">
@@ -189,11 +189,11 @@ export class LoginComponent implements OnInit {
   error = '';
   loading = true;
 
-  // Check if we're in browser/demo mode
+  // Check if we're in browser mode
   private isBrowserMode = isBrowserModeEnv();
 
   async ngOnInit() {
-    // Browser/Demo mode: redirect directly to home without auth
+    // Browser mode: redirect directly to home without auth
     if (this.isBrowserMode) {
       console.log('[Browser Mode] Bypassing login, redirecting to home');
       window.location.href = '/app/home';

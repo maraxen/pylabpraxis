@@ -169,5 +169,39 @@ describe('DeckCatalogService', () => {
 
             expect(carrier.slots[0].compatibleResourceTypes).toContain('TipRack');
         });
+
+        describe('getDeckTypeForMachine', () => {
+            it('should return Hamilton deck for Hamilton machine', () => {
+                const machine: any = {
+                    machine_category: 'HamiltonSTAR',
+                    model: 'STAR',
+                    manufacturer: 'Hamilton'
+                };
+                expect(service.getDeckTypeForMachine(machine)).toBe('pylabrobot.resources.hamilton.HamiltonSTARDeck');
+            });
+
+            it('should return OT-2 deck for Opentrons machine', () => {
+                const machine: any = {
+                    machine_category: 'OpentronsOT2',
+                    model: 'OT-2',
+                    manufacturer: 'Opentrons'
+                };
+                expect(service.getDeckTypeForMachine(machine)).toBe('pylabrobot.resources.opentrons.deck.OTDeck');
+            });
+
+            it('should return Hamilton deck from connection info', () => {
+                const machine: any = {
+                    connection_info: { backend: 'pylabrobot.liquid_handling.backends.hamilton.STAR' }
+                };
+                expect(service.getDeckTypeForMachine(machine)).toBe('pylabrobot.resources.hamilton.HamiltonSTARDeck');
+            });
+
+            it('should return null for unknown machine', () => {
+                const machine: any = {
+                    machine_category: 'Unknown',
+                    manufacturer: 'Unknown'
+                };
+                expect(service.getDeckTypeForMachine(machine)).toBeNull();
+            });
+        });
     });
-});

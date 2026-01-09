@@ -1,13 +1,16 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MarkdownModule } from 'ngx-markdown';
 import { AppStore } from '../../../../core/store/app.store';
+import { DiagramOverlayComponent } from '../../../../shared/components/diagram-overlay/diagram-overlay.component';
 
 @Component({
   selector: 'app-system-topology',
   standalone: true,
-  imports: [MatTabsModule, MarkdownModule],
+  imports: [MatTabsModule, MatButtonModule, MatIconModule, MarkdownModule, DiagramOverlayComponent],
   template: `
     <div class="system-topology surface-elevated">
       <div class="header">
@@ -19,6 +22,9 @@ import { AppStore } from '../../../../core/store/app.store';
         <mat-tab label="Production">
           <ng-template matTabContent>
             <div class="diagram-container">
+              <button mat-icon-button class="expand-btn" (click)="expandDiagram($event)" title="Fullscreen">
+                <mat-icon>fullscreen</mat-icon>
+              </button>
               <markdown [data]="productionDiagram" mermaid [mermaidOptions]="mermaidOptions()"></markdown>
                <div class="legend">
                 <div class="item"><span class="dot angular"></span> Frontend</div>
@@ -31,6 +37,9 @@ import { AppStore } from '../../../../core/store/app.store';
         <mat-tab label="Lite Mode">
           <ng-template matTabContent>
             <div class="diagram-container">
+              <button mat-icon-button class="expand-btn" (click)="expandDiagram($event)" title="Fullscreen">
+                <mat-icon>fullscreen</mat-icon>
+              </button>
               <markdown [data]="liteDiagram" mermaid [mermaidOptions]="mermaidOptions()"></markdown>
             </div>
           </ng-template>
@@ -38,11 +47,21 @@ import { AppStore } from '../../../../core/store/app.store';
         <mat-tab label="Browser (Pyodide)">
           <ng-template matTabContent>
             <div class="diagram-container">
+              <button mat-icon-button class="expand-btn" (click)="expandDiagram($event)" title="Fullscreen">
+                <mat-icon>fullscreen</mat-icon>
+              </button>
               <markdown [data]="browserDiagram" mermaid [mermaidOptions]="mermaidOptions()"></markdown>
             </div>
           </ng-template>
         </mat-tab>
       </mat-tab-group>
+
+      @if (expandedDiagram()) {
+        <app-diagram-overlay
+          [diagramHtml]="expandedDiagram()!"
+          (closed)="closeExpanded()">
+        </app-diagram-overlay>
+      }
     </div>
   `,
   styles: [`
@@ -68,6 +87,22 @@ import { AppStore } from '../../../../core/store/app.store';
       display: flex;
       flex-direction: column;
       align-items: center;
+      position: relative;
+    }
+
+    .expand-btn {
+      position: absolute;
+      top: 32px;
+      right: 32px;
+      z-index: 10;
+      background: var(--mat-sys-surface-container-highest);
+      color: var(--theme-text-primary);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .expand-btn:hover {
+      background: var(--theme-surface-elevated);
+      transform: scale(1.1);
     }
 
     .legend {
@@ -106,6 +141,21 @@ import { AppStore } from '../../../../core/store/app.store';
 })
 export class SystemTopologyComponent {
   private store = inject(AppStore);
+  expandedDiagram = signal<string | null>(null);
+
+  expandDiagram(event: Event): void {
+    const target = event.currentTarget as HTMLElement;
+    const container = target.closest('.diagram-container');
+    const mermaidDiv = container?.querySelector('.mermaid');
+
+    if (mermaidDiv) {
+      this.expandedDiagram.set(mermaidDiv.innerHTML);
+    }
+  }
+
+  closeExpanded(): void {
+    this.expandedDiagram.set(null);
+  }
 
   mermaidOptions = computed(() => {
     const theme = this.store.theme();

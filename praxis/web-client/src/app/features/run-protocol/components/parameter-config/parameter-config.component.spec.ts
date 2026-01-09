@@ -1,9 +1,8 @@
-import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormlyModule } from '@ngx-formly/core';
+import { ParameterMetadata, ProtocolDefinition } from '../../../protocols/models/protocol.models';
 import { ParameterConfigComponent } from './parameter-config.component';
-import { ReactiveFormsModule, FormGroup } from '@angular/forms';
-import { FormlyModule, FieldType } from '@ngx-formly/core';
-import { ProtocolDefinition, ParameterMetadata } from '../../../protocols/models/protocol.models';
 
 describe('ParameterConfigComponent', () => {
     let component: ParameterConfigComponent;
@@ -122,5 +121,77 @@ describe('ParameterConfigComponent', () => {
         expect(fields.length).toBe(2);
         expect(fields[0].key).toBe('param1');
         expect(fields[1].key).toBe('param2');
+    });
+
+    it('should filter out machine/resource parameters', () => {
+        const mockProtocol: ProtocolDefinition = {
+            accession_id: '789',
+            name: 'Machine Filter Test',
+            version: '1.0.0',
+            is_top_level: true,
+            assets: [
+                {
+                    accession_id: 'asset-1',
+                    name: 'lh',
+                    fqn: 'pylabrobot.liquid_handling.LiquidHandler',
+                    type_hint_str: 'LiquidHandler',
+                    optional: false,
+                    constraints: {
+                        required_methods: [],
+                        required_attributes: [],
+                        required_method_signatures: {},
+                        required_method_args: {}
+                    },
+                    location_constraints: {
+                        location_requirements: [],
+                        on_resource_type: '',
+                        stack: false,
+                        directly_position: false,
+                        position_condition: []
+                    }
+                }
+            ],
+            parameters: [
+                {
+                    name: 'lh',
+                    type_hint: 'pylabrobot.liquid_handling.LiquidHandler',
+                    fqn: 'pylabrobot.liquid_handling.LiquidHandler',
+                    is_deck_param: false,
+                    optional: false,
+                    constraints: {}
+                } as ParameterMetadata,
+                {
+                    name: 'volume',
+                    type_hint: 'float',
+                    fqn: 'float',
+                    is_deck_param: false,
+                    optional: false,
+                    constraints: {}
+                } as ParameterMetadata,
+                {
+                    name: 'plate',
+                    type_hint: 'pylabrobot.resources.Plate',
+                    fqn: 'pylabrobot.resources.Plate',
+                    is_deck_param: false,
+                    optional: false,
+                    constraints: {}
+                } as ParameterMetadata
+            ]
+        };
+
+        component.protocol = mockProtocol;
+        component.ngOnChanges({
+            protocol: {
+                currentValue: mockProtocol,
+                previousValue: null,
+                firstChange: true,
+                isFirstChange: () => true
+            }
+        });
+
+        const fields = component.paramFields();
+        // Should only have 'volume' - 'lh' and 'plate' should be filtered out
+        expect(fields.length).toBe(1);
+        expect(fields[0].key).toBe('volume');
     });
 });

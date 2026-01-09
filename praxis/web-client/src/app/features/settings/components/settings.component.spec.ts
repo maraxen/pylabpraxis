@@ -26,8 +26,7 @@ describe('SettingsComponent', () => {
 
     const onboardingMock = {
         getTutorialState: vi.fn(() => null),
-        clearTutorialState: vi.fn(),
-        isDemoModeEnabled: vi.fn(() => false)
+        clearTutorialState: vi.fn()
     };
 
     const tutorialMock = {

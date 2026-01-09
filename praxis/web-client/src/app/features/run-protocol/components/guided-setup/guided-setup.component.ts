@@ -1,17 +1,17 @@
-import { Component, Inject, inject, signal, computed, OnInit, Input, Output, EventEmitter, booleanAttribute, Optional } from '@angular/core';
+import { booleanAttribute, Component, computed, EventEmitter, Inject, inject, Input, OnInit, Optional, Output, signal } from '@angular/core';
 
-import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { MatButtonModule } from '@angular/material/button';
-import { MatSelectModule } from '@angular/material/select';
-import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatChipsModule } from '@angular/material/chips';
 import { FormsModule } from '@angular/forms';
-import { AriaSelectComponent, SelectOption } from '@shared/components/aria-select/aria-select.component';
-import { AriaAutocompleteComponent } from '@shared/components/aria-autocomplete/aria-autocomplete.component';
-import { ProtocolDefinition, AssetRequirement } from '@features/protocols/models/protocol.models';
+import { MatButtonModule } from '@angular/material/button';
+import { MatChipsModule } from '@angular/material/chips';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Resource } from '@features/assets/models/asset.models';
 import { AssetService } from '@features/assets/services/asset.service';
+import { AssetRequirement, ProtocolDefinition } from '@features/protocols/models/protocol.models';
+import { PraxisAutocompleteComponent } from '@shared/components/praxis-autocomplete/praxis-autocomplete.component';
+import { SelectOption } from '@shared/components/praxis-select/praxis-select.component';
 
 export interface GuidedSetupData {
   protocol: ProtocolDefinition;
@@ -34,8 +34,8 @@ export interface GuidedSetupResult {
     MatTooltipModule,
     MatChipsModule,
     FormsModule,
-    AriaSelectComponent,
-    AriaAutocompleteComponent
+    FormsModule,
+    PraxisAutocompleteComponent
   ],
   template: `
     @if (!isInline) {
@@ -85,13 +85,12 @@ export interface GuidedSetupResult {
 
               <div class="resource-select">
                 <label class="text-xs font-medium text-gray-500 mb-1 block">Select Inventory Item</label>
-                <app-aria-autocomplete
-                  label="Select Inventory Item"
+                <app-praxis-autocomplete
                   [options]="requirementsOptions()[req.accession_id] || []"
                   [ngModel]="selectedAssets()[req.accession_id]"
                   (ngModelChange)="updateSelection(req.accession_id, $event)"
                   [placeholder]="'Search inventory...'"
-                ></app-aria-autocomplete>
+                ></app-praxis-autocomplete>
                 @if (!req.optional && !selectedAssets()[req.accession_id]) {
                   <div class="text-xs text-red-500 mt-1">Required</div>
                 }
@@ -318,7 +317,8 @@ export class GuidedSetupComponent implements OnInit {
   constructor(@Inject(MAT_DIALOG_DATA) @Optional() public data: GuidedSetupData) { }
 
   get requiredAssets(): AssetRequirement[] {
-    return (this.protocol || this.data?.protocol)?.assets || [];
+    const protocol = this.protocol || this.data?.protocol;
+    return protocol?.assets || [];
   }
 
   // Pre-compute options to ensure stable references

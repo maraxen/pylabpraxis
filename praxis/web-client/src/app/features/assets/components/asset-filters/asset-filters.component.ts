@@ -1,4 +1,4 @@
-import { Component, inject, signal, output, OnInit, input, effect, computed } from '@angular/core';
+import { Component, input, output, computed } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,8 +9,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { AriaSelectComponent, SelectOption } from '../../../../shared/components/aria-select/aria-select.component';
-import { AriaMultiselectComponent } from '../../../../shared/components/aria-multiselect/aria-multiselect.component';
+import { PraxisSelectComponent } from '../../../../shared/components/praxis-select/praxis-select.component';
+import { PraxisMultiselectComponent } from '../../../../shared/components/praxis-multiselect/praxis-multiselect.component';
+import { SelectOption } from '../../../../shared/components/praxis-select/praxis-select.component';
 import { Machine, Workcell } from '../../models/asset.models';
 import { extractUniqueNameParts } from '../../../../shared/utils/name-parser';
 
@@ -47,8 +48,8 @@ export interface AssetFilterState {
     MatSlideToggleModule,
     MatTooltipModule,
     MatInputModule,
-    AriaSelectComponent,
-    AriaMultiselectComponent
+    PraxisSelectComponent,
+    PraxisMultiselectComponent
   ],
   template: `
     <div class="filters-container flex flex-wrap items-center gap-4 p-4 rounded-xl border border-[var(--theme-border)] bg-surface-container mb-2">
@@ -69,38 +70,35 @@ export interface AssetFilterState {
       <!-- Status Filter -->
       <div class="filter-group min-w-[200px]">
         <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-1 block">Status</label>
-        <app-aria-multiselect
-          label="Status"
+        <app-praxis-multiselect
           [options]="mappedStatusOptions()"
-          [selectedValue]="selectedStatuses"
-          [multiple]="true"
-          (selectedValueChange)="selectedStatuses = $any($event); onFilterChange()"
-        ></app-aria-multiselect>
+          [value]="selectedStatuses"
+          (valueChange)="selectedStatuses = $any($event); onFilterChange()"
+          placeholder="Status"
+        ></app-praxis-multiselect>
       </div>
 
       <!-- Category Filter -->
       <div class="filter-group min-w-[200px]">
         <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-1 block">Category</label>
-        <app-aria-multiselect
-          label="Category"
+        <app-praxis-multiselect
           [options]="mappedCategoryOptions()"
-          [selectedValue]="selectedCategories"
-          [multiple]="true"
-          (selectedValueChange)="selectedCategories = $any($event); onFilterChange()"
-        ></app-aria-multiselect>
+          [value]="selectedCategories"
+          (valueChange)="selectedCategories = $any($event); onFilterChange()"
+          placeholder="Category"
+        ></app-praxis-multiselect>
       </div>
 
       <!-- Machine Location Filter (for Resources) -->
       @if (showMachineFilter()) {
         <div class="filter-group min-w-[200px]">
           <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-1 block">Location</label>
-          <app-aria-select
-            label="Location"
+          <app-praxis-select
             [options]="mappedMachineOptions()"
             [(ngModel)]="selectedMachineId"
             (ngModelChange)="onFilterChange()"
             [placeholder]="'Any location'"
-          ></app-aria-select>
+          ></app-praxis-select>
         </div>
       }
 
@@ -108,25 +106,24 @@ export interface AssetFilterState {
       @if (showWorkcellFilter()) {
         <div class="filter-group min-w-[200px]">
           <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-1 block">Workcell</label>
-          <app-aria-select
-            label="Workcell"
+          <app-praxis-select
             [options]="mappedWorkcellOptions()"
             [(ngModel)]="selectedWorkcellId"
             (ngModelChange)="onFilterChange()"
             [placeholder]="'Any workcell'"
-          ></app-aria-select>
+          ></app-praxis-select>
         </div>
       }
 
       <!-- Sort By -->
       <div class="filter-group min-w-[200px]">
         <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-1 block">Sort by</label>
-        <app-aria-select
-          label="Sort by"
+        <app-praxis-select
           [options]="mappedSortOptions()"
           [(ngModel)]="sortBy"
           (ngModelChange)="onFilterChange()"
-        ></app-aria-select>
+          placeholder="Sort by"
+        ></app-praxis-select>
       </div>
 
       <!-- Sort Order -->
@@ -171,7 +168,11 @@ export interface AssetFilterState {
   `,
   styles: [`
     .filters-container { container-type: inline-size; }
-    .filter-group { flex-shrink: 0; }
+    .filter-group { 
+      flex: 1 1 200px;
+      min-width: 140px;
+      max-width: 200px;
+    }
     
     :host ::ng-deep .dense-field {
       .mat-mdc-form-field-subscript-wrapper { display: none; }

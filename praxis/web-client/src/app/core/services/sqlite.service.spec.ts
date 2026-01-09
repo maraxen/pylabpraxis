@@ -145,12 +145,12 @@ describe('SqliteService', () => {
     // Helper to wait for DB instance explicitly to avoid race condition
     const waitForDb = async (srv: SqliteService) => {
         return new Promise<void>((resolve, reject) => {
-            const sub = srv.db$.subscribe({
+            const sub = (srv as any).db$.subscribe({
                 next: () => {
                     resolve();
                     sub.unsubscribe();
                 },
-                error: (e) => reject(e)
+                error: (e: any) => reject(e)
             });
         });
     };
@@ -220,7 +220,7 @@ describe('SqliteService', () => {
         });
 
         await waitForDb(service);
-        expect(service.status$.value.source).toBe('prebuilt');
+        expect((service as any).statusSubject.value.source).toBe('prebuilt');
     });
 
     it('should fall back to schema.sql if prebuilt fails', async () => {
@@ -268,7 +268,7 @@ describe('SqliteService', () => {
         });
 
         await waitForDb(service);
-        expect(service.status$.value.source).toBe('indexeddb');
+        expect((service as any).statusSubject.value.source).toBe('indexeddb');
         expect(mockSqlJsModule.Database).toHaveBeenCalledWith(dummyData);
     });
 

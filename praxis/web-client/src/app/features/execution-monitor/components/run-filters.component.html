@@ -1,39 +1,47 @@
 <div id="praxis-run-filters-container"
-    class="filters-container p-4 rounded-xl border border-[var(--theme-border)] bg-surface-container mb-4">
+    class="filters-container">
 
-    <!-- Status Filter (Dropdown Chip) -->
-    <app-aria-multiselect label="Status" [options]="statusOptions" [multiple]="true" [selectedValue]="selectedStatuses"
-        (selectionChange)="onStatusChange($any($event))">
-    </app-aria-multiselect>
+    <div class="filters-row selectors-row">
+        <!-- Status Filter (Dropdown Chip) -->
+        <app-praxis-multiselect label="Status" [options]="statusOptions" [value]="selectedStatuses"
+            (valueChange)="onStatusChange($any($event))">
+        </app-praxis-multiselect>
 
-    <!-- Protocol Filter -->
-    <app-aria-multiselect label="Protocol" [options]="protocolOptions()" [multiple]="true"
-        [selectedValue]="selectedProtocolIds" (selectionChange)="onProtocolChange($any($event))">
-    </app-aria-multiselect>
-
-    <!-- Sort By -->
-    <app-aria-select label="Sort by" [options]="sortOptions" [(ngModel)]="sortBy" (ngModelChange)="onFilterChange()">
-    </app-aria-select>
-
-    <!-- Sort Order Toggle -->
-    <div class="filter-group">
-        <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-2 block">Order</label>
-        <mat-button-toggle-group hideSingleSelectionIndicator [(ngModel)]="sortOrder" (change)="onFilterChange()"
-            aria-label="Sort order">
-            <mat-button-toggle value="desc" aria-label="Newest first">
-                <mat-icon>arrow_downward</mat-icon>
-            </mat-button-toggle>
-            <mat-button-toggle value="asc" aria-label="Oldest first">
-                <mat-icon>arrow_upward</mat-icon>
-            </mat-button-toggle>
-        </mat-button-toggle-group>
+        <!-- Protocol Filter -->
+        <app-praxis-multiselect label="Protocol" [options]="protocolOptions()" [value]="selectedProtocolIds"
+            (valueChange)="onProtocolChange($any($event))">
+        </app-praxis-multiselect>
     </div>
 
-    <!-- Clear Filters -->
-    @if (hasActiveFilters()) {
-    <button mat-stroked-button (click)="clearFilters()" class="ml-auto" aria-label="Clear all filters">
-        <mat-icon>filter_alt_off</mat-icon>
-        Clear
-    </button>
-    }
+    <div class="filters-row toggles-row">
+        <!-- Sort By -->
+        <div class="filter-group sort-group">
+            <app-praxis-select label="Sort by" [options]="sortOptions" [(ngModel)]="sortBy" (ngModelChange)="onFilterChange()" class="dense-field">
+            </app-praxis-select>
+        </div>
+
+        <!-- Sort Order Toggle -->
+        <div class="filter-group order-group">
+            <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide mb-2 block">Order</label>
+            <mat-button-toggle-group hideSingleSelectionIndicator [(ngModel)]="sortOrder" (change)="onFilterChange()"
+                aria-label="Sort order" class="praxis-toggle-group">
+                <mat-button-toggle value="desc" aria-label="Newest first">
+                    <mat-icon>arrow_downward</mat-icon>
+                </mat-button-toggle>
+                <mat-button-toggle value="asc" aria-label="Oldest first">
+                    <mat-icon>arrow_upward</mat-icon>
+                </mat-button-toggle>
+            </mat-button-toggle-group>
+        </div>
+
+        <!-- Clear Filters -->
+        @if (hasActiveFilters()) {
+        <div class="filter-group clear-group">
+            <button mat-stroked-button (click)="clearFilters()" aria-label="Clear all filters" class="clear-btn">
+                <mat-icon>filter_alt_off</mat-icon>
+                Clear
+            </button>
+        </div>
+        }
+    </div>
 </div>

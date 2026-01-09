@@ -379,8 +379,12 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
                     ),
                 )
                 
-                # Insert parameters into parameter_definitions table
+                # Insert parameters into parameter_definitions table (excluding assets)
                 for param in definition.parameters:
+                    # Skip assets - they go to protocol_asset_requirements
+                    if param.is_asset:
+                        continue
+                    
                     param_id = generate_uuid_from_fqn(f"param:{definition.fqn}:{param.name}")
                     conn.execute(
                         """
@@ -411,6 +415,35 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
                             now,
                         ),
                     )
+                
+                # Insert asset requirements into protocol_asset_requirements table
+                for asset in definition.raw_assets:
+                    asset_id = generate_uuid_from_fqn(f"asset:{definition.fqn}:{asset['name']}")
+                    conn.execute(
+                        """
+                        INSERT OR REPLACE INTO protocol_asset_requirements (
+                            accession_id, protocol_definition_accession_id, name, type_hint_str,
+                            actual_type_str, fqn, optional, default_value_repr, description,
+                            constraints, location_constraints, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            asset_id,
+                            accession_id,
+                            asset['name'],
+                            asset['type_hint_str'],
+                            asset['actual_type_str'],
+                            asset['fqn'],
+                            asset.get('optional', False),
+                            asset.get('default_value_repr'),
+                            asset.get('description', ''),
+                            safe_json_dumps({}),  # constraints (empty for now)
+                            safe_json_dumps({}),  # location_constraints (empty for now)
+                            now,
+                            now,
+                        ),
+                    )
+                
                 count += 1
 
         except Exception as e:

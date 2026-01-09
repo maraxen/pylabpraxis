@@ -1,23 +1,19 @@
-import { Component, inject, OnInit, ChangeDetectorRef, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormBuilder, Validators, FormControl } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatButtonModule } from '@angular/material/button';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { AssetService, ResourceFacets, FacetItem } from '../services/asset.service';
-import { ResourceStatus, ResourceDefinition, ActiveFilters } from '../models/asset.models';
-import { Observable, map, startWith, of, combineLatest, BehaviorSubject, forkJoin, switchMap, debounceTime, finalize, tap, catchError, shareReplay } from 'rxjs';
+import { AssetService, FacetItem } from '../services/asset.service';
+import { ResourceStatus, ResourceDefinition } from '../models/asset.models';
+import { startWith, BehaviorSubject, debounceTime } from 'rxjs';
 import { getResourceCategoryIcon } from '@shared/constants/asset-icons';
-import { AriaSelectComponent, SelectOption } from '@shared/components/aria-select/aria-select.component';
-import { AriaMultiselectComponent } from '@shared/components/aria-multiselect/aria-multiselect.component';
+import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
+import { PraxisMultiselectComponent } from '@shared/components/praxis-multiselect/praxis-multiselect.component';
 import { FilterOption } from '@shared/services/filter-result.service';
 import { getUiGroup, UI_GROUP_ORDER, shouldHideCategory, ResourceUiGroup, CATEGORY_TO_UI_GROUP, getSubCategory } from '../utils/resource-category-groups';
 import { ResourceChipsComponent } from './resource-chips/resource-chips.component';
@@ -46,8 +42,8 @@ interface GroupedDefinitions {
     MatExpansionModule,
     MatSlideToggleModule,
     ResourceChipsComponent,
-    AriaSelectComponent,
-    AriaMultiselectComponent
+    PraxisSelectComponent,
+    PraxisMultiselectComponent
   ],
   template: `
     <h2 mat-dialog-title>
@@ -107,24 +103,22 @@ interface GroupedDefinitions {
 
             <div class="vendor-field">
               <label class="text-[11px] uppercase font-bold text-gray-400 mb-1 block">Vendor</label>
-              <app-aria-multiselect
-                label="Vendor"
+              <app-praxis-multiselect
+                placeholder="Vendor"
                 [options]="mappedVendorOptions()"
-                [selectedValue]="vendorFilters()"
-                [multiple]="true"
-                (selectionChange)="updateVendorFilters($any($event))"
-              ></app-aria-multiselect>
+                [value]="vendorFilters()"
+                (valueChange)="updateVendorFilters($any($event))"
+              ></app-praxis-multiselect>
             </div>
 
             <div class="facet-field">
               <label class="text-[11px] uppercase font-bold text-gray-400 mb-1 block">More filters</label>
-              <app-aria-select
-                label="Add Filter"
+              <app-praxis-select
+                placeholder="Add Filter"
                 [options]="mappedAvailableFacetOptions()"
-                [placeholder]="'Select filter'"
                 (ngModelChange)="addFacet($event)"
                 [ngModel]="''"
-              ></app-aria-select>
+              ></app-praxis-select>
             </div>
           </div>
 
@@ -134,13 +128,12 @@ interface GroupedDefinitions {
                 <div class="facet-chip">
                   <div class="facet-title">{{ facetLabel(facet) }}</div>
                   <div class="w-full">
-                    <app-aria-multiselect
-                      [label]="facetLabel(facet)"
+                    <app-praxis-multiselect
+                      [placeholder]="facetLabel(facet)"
                       [options]="mappedFacetOptions(facet)"
-                      [selectedValue]="activeFacetFilters()[facet] || []"
-                      [multiple]="true"
-                      (selectionChange)="updateFacetValues(facet, $any($event))"
-                    ></app-aria-multiselect>
+                      [value]="activeFacetFilters()[facet] || []"
+                      (valueChange)="updateFacetValues(facet, $any($event))"
+                    ></app-praxis-multiselect>
                   </div>
                   <button mat-icon-button (click)="removeFacet(facet)">
                     <mat-icon>close</mat-icon>
@@ -223,11 +216,11 @@ interface GroupedDefinitions {
             <div class="form-row">
               <div class="half-width">
                 <label class="text-xs font-medium text-gray-500 mb-1 block">Status</label>
-                <app-aria-select
-                  label="Status"
+                <app-praxis-select
+                  placeholder="Status"
                   formControlName="status"
                   [options]="statusOptions"
-                ></app-aria-select>
+                ></app-praxis-select>
               </div>
               <mat-form-field appearance="outline" class="half-width">
                 <mat-label>Parent ID (Optional)</mat-label>

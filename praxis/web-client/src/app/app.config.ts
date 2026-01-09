@@ -6,7 +6,7 @@ import { provideMarkdown } from 'ngx-markdown';
 import { inject } from '@angular/core';
 import { routes } from './app.routes';
 import { errorInterceptor } from './core/http/error.interceptor';
-import { demoInterceptor } from './core/interceptors/demo.interceptor';
+import { browserModeInterceptor } from './core/interceptors/browser-mode.interceptor';
 import { importProvidersFrom } from '@angular/core';
 import { FormlyModule } from '@ngx-formly/core';
 import { FormlyMaterialModule } from '@ngx-formly/material';
@@ -22,7 +22,7 @@ import { CustomIconRegistryService } from './core/services/custom-icon-registry.
 import { from, switchMap } from 'rxjs';
 
 /**
- * Initialize Keycloak on app startup (skipped in demo mode)
+ * Initialize Keycloak on app startup (skipped in browser mode)
  */
 function initializeKeycloak(keycloakService: KeycloakService) {
   return () => {
@@ -47,7 +47,7 @@ function initializeIcons(iconRegistryService: CustomIconRegistryService) {
 const keycloakInterceptor = (req: HttpRequest<unknown>, next: HttpHandlerFn) => {
   const modeService = inject(ModeService);
 
-  // Skip token in browser/demo modes
+  // Skip token in browser modes
   if (modeService.isBrowserMode()) {
     return next(req);
   }
@@ -80,8 +80,8 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withComponentInputBinding(), withInMemoryScrolling({ anchorScrolling: 'enabled', scrollPositionRestoration: 'enabled' })),
     provideAnimationsAsync(),
-    // Demo interceptor runs FIRST to catch API requests before they hit proxy
-    provideHttpClient(withInterceptors([demoInterceptor, keycloakInterceptor, errorInterceptor])),
+    // Browser Mode interceptor runs FIRST to catch API requests before they hit proxy
+    provideHttpClient(withInterceptors([browserModeInterceptor, keycloakInterceptor, errorInterceptor])),
     provideMarkdown({
       loader: HttpClient,
       mermaid: true

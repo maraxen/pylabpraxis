@@ -152,6 +152,16 @@ class ParameterConstraintsModel(BaseModel):
   )
 
 
+class ItemizedSpecModel(BaseModel):
+  """Defines itemized specification for grid-based parameters (e.g., well selection)."""
+
+  model_config = ConfigDict(from_attributes=True)
+
+  items_x: int | None = None
+  items_y: int | None = None
+  label_format: str | None = None
+
+
 class ParameterMetadataModel(BaseModel):
   """Provides comprehensive metadata for a protocol parameter.
 
@@ -159,8 +169,14 @@ class ParameterMetadataModel(BaseModel):
   constraints, and UI rendering hints.
   """
 
-  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
+  model_config = ConfigDict(
+    use_enum_values=True,
+    validate_assignment=True,
+    from_attributes=True,
+    populate_by_name=True,
+  )
 
+  accession_id: Any | None = None  # UUID from ORM
   name: str
   type_hint: str
   fqn: str
@@ -168,10 +184,20 @@ class ParameterMetadataModel(BaseModel):
   optional: bool
   default_value_repr: str | None = None
   description: str | None = None
+  field_type: str | None = None
+  is_itemized: bool = False
   constraints: ParameterConstraintsModel = Field(
     default_factory=ParameterConstraintsModel,
+    validation_alias="constraints_json",
   )
-  ui_hint: UIHint | None = None
+  ui_hint: UIHint | None = Field(
+    default=None,
+    validation_alias="ui_hint_json",
+  )
+  itemized_spec: ItemizedSpecModel | None = Field(
+    default=None,
+    validation_alias="itemized_spec_json",
+  )
   linked_to: str | None = None
 
 

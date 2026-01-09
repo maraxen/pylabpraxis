@@ -6,7 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Resource, ResourceStatus, Machine } from '../../models/asset.models';
-import { AriaMultiselectComponent } from '../../../../shared/components/aria-multiselect/aria-multiselect.component';
+import { PraxisMultiselectComponent } from '../../../../shared/components/praxis-multiselect/praxis-multiselect.component';
 import { FilterOption, FilterResultService } from '../../../../shared/services/filter-result.service';
 import { extractUniqueNameParts } from '../../../../shared/utils/name-parser';
 
@@ -31,71 +31,56 @@ export interface ResourceFilterState {
     MatButtonModule,
     MatInputModule,
     MatSelectModule,
-    AriaMultiselectComponent,
+    PraxisMultiselectComponent,
   ],
   template: `
     <div class="filters-container">
-      <!-- Search -->
-      <div class="filter-group search-group">
-        <mat-form-field appearance="outline" class="search-field praxis-search-field">
-          <mat-icon matPrefix>search</mat-icon>
-          <input matInput placeholder="Search resources..." 
-                 [ngModel]="searchTerm()" 
-                 (ngModelChange)="searchTerm.set($event); onFilterChange()" />
-          @if (searchTerm()) {
-            <button matSuffix mat-icon-button (click)="searchTerm.set(''); onFilterChange()">
-              <mat-icon>close</mat-icon>
-            </button>
-          }
-        </mat-form-field>
-      </div>
+      <div class="filters-row">
+        <!-- Category Chip Dropdown -->
+        <div class="filter-group">
+          <label class="filter-label">Category</label>
+          <app-praxis-multiselect 
+            label="Category" 
+            [options]="categoryOptions()" 
+            [value]="selectedCategories()"
+            (valueChange)="selectedCategories.set($any($event)); onFilterChange()"></app-praxis-multiselect>
+        </div>
 
-      <!-- Category Chip Dropdown -->
-      <div class="filter-group">
-        <label class="filter-label">Category</label>
-        <app-aria-multiselect 
-          label="Category" 
-          [options]="categoryOptions()" 
-          [selectedValue]="selectedCategories()"
-          [multiple]="true"
-          (selectedValueChange)="selectedCategories.set($any($event)); onFilterChange()"></app-aria-multiselect>
-      </div>
+        <!-- Status Chip Dropdown -->
+        <div class="filter-group">
+          <label class="filter-label">Status</label>
+          <app-praxis-multiselect 
+            label="Status" 
+            [options]="statusOptions()" 
+            [value]="selectedStatuses()"
+            (valueChange)="selectedStatuses.set($any($event)); onFilterChange()"></app-praxis-multiselect>
+        </div>
 
-      <!-- Status Chip Dropdown -->
-      <div class="filter-group">
-        <label class="filter-label">Status</label>
-        <app-aria-multiselect 
-          label="Status" 
-          [options]="statusOptions()" 
-          [selectedValue]="selectedStatuses()"
-          [multiple]="true"
-          (selectedValueChange)="selectedStatuses.set($any($event)); onFilterChange()"></app-aria-multiselect>
-      </div>
-
-      <!-- Brand Chip Dropdown -->
-      <div class="filter-group">
-        <label class="filter-label">Brand</label>
-        <app-aria-multiselect 
-          label="Brand" 
-          [options]="brandOptions()" 
-          [selectedValue]="selectedBrands()"
-          [multiple]="true"
-          (selectedValueChange)="selectedBrands.set($any($event)); onFilterChange()"></app-aria-multiselect>
+        <!-- Brand Chip Dropdown -->
+        <div class="filter-group">
+          <label class="filter-label">Brand</label>
+          <app-praxis-multiselect 
+            label="Brand" 
+            [options]="brandOptions()" 
+            [value]="selectedBrands()"
+            (valueChange)="selectedBrands.set($any($event)); onFilterChange()"></app-praxis-multiselect>
+        </div>
       </div>
 
       <!-- Clear -->
       @if (hasActiveFilters()) {
-        <button mat-stroked-button (click)="clearFilters()" class="clear-btn">
-          <mat-icon>filter_alt_off</mat-icon> Clear
-        </button>
+        <div class="filter-group clear-group">
+          <button mat-stroked-button (click)="clearFilters()" class="clear-btn">
+            <mat-icon>filter_alt_off</mat-icon> Clear
+          </button>
+        </div>
       }
     </div>
   `,
   styles: [`
     .filters-container {
       display: flex;
-      flex-wrap: wrap;
-      align-items: flex-start;
+      flex-direction: column;
       gap: 16px;
       padding: 16px;
       border-radius: 12px;
@@ -103,11 +88,19 @@ export interface ResourceFilterState {
       background: var(--mat-sys-surface-container);
       margin-bottom: 16px;
     }
-    .filter-group {
-      flex-shrink: 0;
-      max-width: 100%;
+
+    .filters-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: flex-end;
     }
-    .search-group { flex: 1; min-width: 200px; max-width: 300px; }
+
+    .filter-group {
+      flex: 0 1 auto;
+      min-width: 140px;
+    }
+
     .filter-label {
       display: block;
       font-size: 0.75rem;
@@ -117,8 +110,18 @@ export interface ResourceFilterState {
       color: var(--mat-sys-on-surface-variant);
       margin-bottom: 8px;
     }
-    .search-field { width: 100%; }
-    .clear-btn { margin-left: auto; align-self: center; }
+
+    .clear-group {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        align-self: flex-end;
+    }
+
+    .clear-btn {
+      height: 40px;
+      border-radius: 8px;
+    }
   `]
 })
 export class ResourceFiltersComponent implements OnInit {
@@ -136,6 +139,12 @@ export class ResourceFiltersComponent implements OnInit {
   private filterResultService = inject(FilterResultService);
 
   // State Signals
+  @Input() set search(val: string) {
+    if (this.searchTerm() !== val) {
+       this.searchTerm.set(val);
+       this.onFilterChange();
+    }
+  }
   searchTerm = signal('');
   selectedStatuses = signal<ResourceStatus[]>([]);
   selectedCategories = signal<string[]>([]);

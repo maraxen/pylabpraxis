@@ -1,15 +1,15 @@
 
-import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
-import { Observable, Subject, of } from 'rxjs';
-import { catchError, tap, retry } from 'rxjs/operators';
-import { ExecutionState, ExecutionMessage, ExecutionStatus } from '../models/execution.models';
-import { environment } from '@env/environment';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { MOCK_PROTOCOLS } from '@assets/browser-data/protocols';
 import { ModeService } from '@core/services/mode.service';
 import { PythonRuntimeService } from '@core/services/python-runtime.service';
 import { SqliteService } from '@core/services/sqlite.service';
-import { MOCK_PROTOCOLS } from '@assets/demo-data/protocols';
+import { environment } from '@env/environment';
+import { Observable, Subject, of } from 'rxjs';
+import { catchError, retry, tap } from 'rxjs/operators';
+import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
+import { ExecutionMessage, ExecutionState, ExecutionStatus } from '../models/execution.models';
 
 @Injectable({
   providedIn: 'root'
@@ -63,11 +63,12 @@ export class ExecutionService {
     protocolId: string,
     runName: string,
     parameters?: Record<string, any>,
-    simulationMode: boolean = true
+    simulationMode: boolean = true,
+    notes?: string
   ): Observable<{ run_id: string }> {
     // Browser mode: execute via Pyodide
     if (this.modeService.isBrowserMode()) {
-      return this.startBrowserRun(protocolId, runName, parameters);
+      return this.startBrowserRun(protocolId, runName, parameters, notes);
     }
 
     // Production mode: use HTTP API
@@ -96,7 +97,8 @@ export class ExecutionService {
   private startBrowserRun(
     protocolId: string,
     runName: string,
-    parameters?: Record<string, any>
+    parameters?: Record<string, any>,
+    notes?: string
   ): Observable<{ run_id: string }> {
     const runId = crypto.randomUUID();
 
@@ -107,6 +109,21 @@ export class ExecutionService {
       status: ExecutionStatus.PENDING,
       progress: 0,
       logs: ['[Browser Mode] Starting execution...']
+    });
+
+    // Persist run to IndexedDB
+    const runRecord = {
+      accession_id: runId,
+      protocol_definition_accession_id: protocolId,
+      name: runName,
+      status: 'QUEUED',
+      created_at: new Date().toISOString(),
+      input_parameters_json: JSON.stringify(parameters || {}),
+      properties_json: JSON.stringify({ notes, simulation_mode: true })
+    };
+
+    this.sqliteService.createProtocolRun(runRecord).subscribe({
+      error: (err) => console.warn('[ExecutionService] Failed to persist run:', err)
     });
 
     // Execute asynchronously
@@ -181,6 +198,9 @@ export class ExecutionService {
       });
       this.addLog('[Browser Mode] Execution completed successfully.');
 
+      // Update run status in IndexedDB
+      this.sqliteService.updateProtocolRunStatus(runId, 'COMPLETED').subscribe();
+
     } catch (error) {
       console.error('[Browser Execution Error]', error);
       const current = this._currentRun();
@@ -191,6 +211,9 @@ export class ExecutionService {
           logs: [...current.logs, `[Error] ${String(error)}`]
         });
       }
+
+      // Update run status in IndexedDB
+      this.sqliteService.updateProtocolRunStatus(runId, 'FAILED').subscribe();
     }
   }
 

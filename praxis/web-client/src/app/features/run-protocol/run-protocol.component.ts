@@ -1,38 +1,41 @@
-import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal, ViewChild } from '@angular/core';
 
-import { MatStepper, MatStepperModule } from '@angular/material/stepper';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { FormsModule, ReactiveFormsModule, FormBuilder } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { MatCheckboxModule } from '@angular/material/checkbox';
+import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatBadgeModule } from '@angular/material/badge';
+import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatStepper, MatStepperModule } from '@angular/material/stepper';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Action } from 'rxjs/internal/scheduler/Action';
+import { MatDialog } from '@angular/material/dialog';
 import { finalize } from 'rxjs/operators';
 
+import { MatDialog } from '@angular/material/dialog';
+import { ModeService } from '@core/services/mode.service';
+import { AppStore } from '@core/store/app.store';
 import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 import { ProtocolService } from '@features/protocols/services/protocol.service';
-import { ExecutionService } from './services/execution.service';
-import { ParameterConfigComponent } from './components/parameter-config/parameter-config.component';
-import { ProtocolCardComponent } from './components/protocol-card/protocol-card.component';
-import { ProtocolCardSkeletonComponent } from './components/protocol-card/protocol-card-skeleton.component';
-import { DeckVisualizerComponent } from './components/deck-visualizer/deck-visualizer.component';
-import { AppStore } from '@core/store/app.store';
-import { ModeService } from '@core/services/mode.service';
-import { DeckGeneratorService } from './services/deck-generator.service';
-import { MatDialog } from '@angular/material/dialog';
+import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
+import { WellSelectorDialogComponent, WellSelectorDialogData, WellSelectorDialogResult } from '@shared/components/well-selector-dialog/well-selector-dialog.component';
+import { MachineStatus } from '../assets/models/asset.models';
+import { DeckSetupWizardComponent } from './components/deck-setup-wizard/deck-setup-wizard.component';
 import { DeckSetupWizardComponent } from './components/deck-setup-wizard/deck-setup-wizard.component';
 import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component'; // Import added
-import { MachineSelectionComponent, MachineCompatibility } from './components/machine-selection/machine-selection.component';
-import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
+import { MachineCompatibility, MachineSelectionComponent } from './components/machine-selection/machine-selection.component';
+import { ParameterConfigComponent } from './components/parameter-config/parameter-config.component';
+import { ProtocolCardSkeletonComponent } from './components/protocol-card/protocol-card-skeleton.component';
+import { ProtocolCardComponent } from './components/protocol-card/protocol-card.component';
+import { DeckGeneratorService } from './services/deck-generator.service';
+import { ExecutionService } from './services/execution.service';
 import { WizardStateService } from './services/wizard-state.service';
-import { MachineStatus } from '../assets/models/asset.models';
+import { DeckCatalogService } from './services/deck-catalog.service';
 
 const RECENTS_KEY = 'praxis_recent_protocols';
 const MAX_RECENTS = 5;
@@ -59,7 +62,6 @@ interface FilterCategory {
     MatIconModule,
     FormsModule,
     ReactiveFormsModule,
-    RouterLink,
     MatFormFieldModule,
     MatInputModule,
     MatExpansionModule,
@@ -73,7 +75,7 @@ interface FilterCategory {
     ParameterConfigComponent,
     ProtocolCardComponent,
     ProtocolCardSkeletonComponent,
-    DeckVisualizerComponent,
+    ProtocolCardSkeletonComponent,
     MachineSelectionComponent,
     HardwareDiscoveryButtonComponent,
     HardwareDiscoveryButtonComponent,
@@ -111,8 +113,19 @@ interface FilterCategory {
             <ng-template matStepLabel><span data-tour-id="run-step-label-protocol">Select Protocol</span></ng-template>
             <form [formGroup]="protocolFormGroup" class="h-full flex flex-col p-6" data-tour-id="run-step-protocol">
               @if (selectedProtocol()) {
-                <div class="flex flex-col h-full items-center justify-center gap-8 overflow-y-auto">
-                  <div class="max-w-2xl w-full bg-surface-elevated border border-primary/30 rounded-3xl p-8 relative overflow-hidden group shadow-2xl">
+                <div class="flex flex-col h-full overflow-y-auto px-6 pb-6">
+                  <!-- Navigation buttons at top -->
+                  <div class="flex justify-between mb-6 sticky top-0 bg-surface z-10 py-4">
+                    <button mat-button (click)="clearProtocol()" class="!text-sys-text-secondary">
+                      <mat-icon>arrow_back</mat-icon> Back to Selection
+                    </button>
+                    <button mat-flat-button color="primary" matStepperNext class="!rounded-xl !px-8 !py-6">
+                      Continue <mat-icon>arrow_forward</mat-icon>
+                    </button>
+                  </div>
+
+                  <!-- Protocol details card -->
+                  <div class="max-w-2xl w-full mx-auto bg-surface-elevated border border-primary/30 rounded-3xl p-8 relative overflow-hidden group shadow-2xl">
                     <div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-50"></div>
                     
                     <div class="relative z-10 flex flex-col items-center text-center gap-4">
@@ -121,7 +134,11 @@ interface FilterCategory {
                       </div>
                       
                       <h2 class="text-3xl font-bold text-sys-text-primary mb-0">{{ selectedProtocol()?.name }}</h2>
-                      <p class="text-lg text-sys-text-secondary max-w-lg">{{ selectedProtocol()?.description }}</p>
+                      
+                      <!-- Scrollable description container -->
+                      <div class="description-container w-full max-w-lg">
+                        <p class="text-lg text-sys-text-secondary">{{ selectedProtocol()?.description }}</p>
+                      </div>
                       
                       <div class="flex gap-2 mt-2">
                           <span class="px-3 py-1 rounded-full bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] text-sys-text-secondary text-sm flex items-center gap-2">
@@ -130,15 +147,6 @@ interface FilterCategory {
                           <span class="px-3 py-1 rounded-full bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] text-sys-text-secondary text-sm flex items-center gap-2">
                             <mat-icon class="!w-4 !h-4 !text-[16px]">tag</mat-icon> {{ selectedProtocol()?.version }}
                           </span>
-                      </div>
-
-                      <div class="flex gap-4 mt-6 w-full justify-center">
-                        <button mat-button class="!border-[var(--theme-border)] !text-sys-text-primary !rounded-xl !px-6 !py-6 w-40" (click)="clearProtocol()">
-                          Change
-                        </button>
-                        <button mat-flat-button class="!bg-primary !text-white !rounded-xl !px-6 !py-6 !font-bold w-40 shadow-lg shadow-primary/25" matStepperNext>
-                          Continue
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -343,7 +351,50 @@ interface FilterCategory {
              </div>
           </mat-step>
 
-          <!-- Step 5: Deck Setup (Inline Wizard) - Skipped for no-deck protocols -->
+          <!-- Step 5: Well Selection (Conditional) -->
+          <mat-step [stepControl]="wellsFormGroup" *ngIf="wellSelectionRequired()">
+            <ng-template matStepLabel>
+              <span data-tour-id="run-step-label-wells">Select Wells</span>
+            </ng-template>
+            <div class="h-full flex flex-col p-6" data-tour-id="run-step-wells">
+              <div class="flex-1 overflow-y-auto">
+                <h3 class="text-xl font-bold text-sys-text-primary mb-6 flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+                    <mat-icon>grid_on</mat-icon>
+                  </div>
+                  Well Selection
+                </h3>
+                
+                <p class="text-sys-text-secondary mb-6">
+                  This protocol requires you to specify which wells to use. Click each parameter below to select wells.
+                </p>
+                
+                @for (param of getWellParameters(); track param.name) {
+                  <div class="mb-6 p-4 bg-surface-variant rounded-xl">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="font-medium">{{ param.name }}</span>
+                      <span class="text-sm text-sys-text-tertiary">{{ param.description }}</span>
+                    </div>
+                    <button mat-stroked-button (click)="openWellSelector(param)" class="w-full !justify-start">
+                      <mat-icon class="mr-2">grid_on</mat-icon>
+                      {{ getWellSelectionLabel(param.name) }}
+                    </button>
+                  </div>
+                }
+              </div>
+              
+              <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
+                <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
+                <button mat-flat-button color="primary" matStepperNext 
+                        [disabled]="!areWellSelectionsValid()" 
+                        class="!rounded-xl !px-8 !py-6">
+                  Continue
+                </button>
+              </div>
+            </div>
+          </mat-step>
+
+          <!-- Step 6: Deck Setup (Inline Wizard) - Skipped for no-deck protocols -->
           <mat-step [stepControl]="deckFormGroup" [optional]="selectedProtocol()?.requires_deck === false">
             <ng-template matStepLabel><span data-tour-id="run-step-label-deck">Deck Setup</span></ng-template>
             <div class="h-full flex flex-col" data-tour-id="run-step-deck">
@@ -364,7 +415,7 @@ interface FilterCategory {
                 </div>
               } @else if (selectedProtocol()) {
                 <app-deck-setup-wizard
-                  [data]="{ protocol: selectedProtocol()!, deckResource: deckData()?.resource || null, assetMap: configuredAssets() || {} }" 
+                  [data]="{ protocol: selectedProtocol()!, deckResource: deckData()?.resource || null, assetMap: configuredAssets() || {}, deckType: selectedDeckType() || 'HamiltonSTARDeck' }" 
                   (setupComplete)="onDeckSetupComplete()"
                   (setupSkipped)="onDeckSetupSkipped()">
                 </app-deck-setup-wizard>
@@ -401,6 +452,29 @@ interface FilterCategory {
                  </div>
                </div>
 
+
+                <!-- Name & Notes Section -->
+                <div class="w-full max-w-2xl mb-8 space-y-4">
+                  <mat-form-field appearance="outline" class="w-full">
+                    <mat-label>Run Name</mat-label>
+                    <input matInput 
+                           [formControl]="runNameControl" 
+                           placeholder="e.g., Pilot Study - Batch 3"
+                           required>
+                    <mat-hint>Give this run a descriptive name</mat-hint>
+                    @if (runNameControl.hasError('required')) {
+                      <mat-error>Run name is required</mat-error>
+                    }
+                  </mat-form-field>
+                  
+                  <mat-form-field appearance="outline" class="w-full">
+                    <mat-label>Notes (Optional)</mat-label>
+                    <textarea matInput 
+                              [formControl]="runNotesControl"
+                              rows="3"
+                              placeholder="Document experimental conditions, operator notes, etc."></textarea>
+                  </mat-form-field>
+                </div>
                <div class="flex gap-4 w-full justify-center">
                   <button mat-button matStepperPrevious class="!border-[var(--theme-border)] !text-sys-text-secondary !rounded-xl !px-8 !py-6 w-40 border">Back</button>
                   
@@ -447,6 +521,14 @@ interface FilterCategory {
     .text-white-70 { color: var(--theme-text-secondary); }
     .border-green-500-30 { border-color: rgba(74, 222, 128, 0.3) !important; }
     .bg-green-500-05 { background-color: rgba(74, 222, 128, 0.05) !important; }
+
+    /* Protocol description scrollable container */
+    .description-container {
+      max-height: 200px;
+      overflow-y: auto;
+      margin: 16px 0;
+      padding-right: 8px;
+    }
 
     /* Fix Stepper Content Scrolling - MDC Classes */
     ::ng-deep .mat-horizontal-stepper-wrapper {
@@ -549,8 +631,22 @@ export class RunProtocolComponent implements OnInit {
   machineFormGroup = this._formBuilder.group({ machineId: ['', { validators: (c: any) => c.value && !this.showMachineError() ? null : { required: true } }] });
   parametersFormGroup = this._formBuilder.group({});
   assetsFormGroup = this._formBuilder.group({ valid: [false, { validators: (c: any) => c.value ? null : { required: true } }] });
+  wellsFormGroup = this._formBuilder.group({ valid: [true] });  // Optional by default, validated when wells required
   deckFormGroup = this._formBuilder.group({ valid: [false, { validators: (c: any) => c.value || this.selectedProtocol()?.requires_deck === false ? null : { required: true } }] });
   readyFormGroup = this._formBuilder.group({ ready: [true] });
+
+  // Run name and notes form controls
+  runNameControl = this._formBuilder.control('', { validators: (c: any) => c.value ? null : { required: true } });
+  runNotesControl = this._formBuilder.control('');
+
+  // Well selection state
+  wellSelectionRequired = computed(() => {
+    const protocol = this.selectedProtocol();
+    // Trigger if parameters indicate wells OR known selective transfer protocol
+    const hasWellParams = protocol?.parameters?.some(p => this.isWellSelectionParameter(p)) ?? false;
+    return hasWellParams || this.isSelectiveTransferProtocol();
+  });
+  wellSelections = signal<Record<string, string[]>>({});
 
   private readonly browserModeMachine: MachineCompatibility = {
     machine: {
@@ -651,6 +747,13 @@ export class RunProtocolComponent implements OnInit {
 
   // WizardStateService for inline deck setup
   wizardState = inject(WizardStateService);
+  private deckCatalog = inject(DeckCatalogService);
+
+  /** Computed deck type for the selected machine */
+  selectedDeckType = computed(() => {
+    const machine = this.selectedMachine()?.machine;
+    return this.deckCatalog.getDeckTypeForMachine(machine);
+  });
 
   /** Called when inline deck setup wizard completes */
   onDeckSetupComplete() {
@@ -670,6 +773,11 @@ export class RunProtocolComponent implements OnInit {
     // Allow proceeding even if skipped
     this.configuredAssets.set({});
     this.deckFormGroup.patchValue({ valid: true });
+
+    // Auto-advance to verification step
+    setTimeout(() => {
+      this.stepper.next();
+    }, 0);
   }
 
   // Computed
@@ -786,6 +894,11 @@ export class RunProtocolComponent implements OnInit {
     this.configuredAssets.set(browserMode ? {} : null); // Reset deck config
     this.parametersFormGroup = this._formBuilder.group({});
 
+    // Auto-generate default run name
+    const date = new Date().toISOString().split('T')[0];
+    const defaultName = `${protocol.name} - ${date}`;
+    this.runNameControl.setValue(defaultName);
+
     // Create form controls for parameters
     if (protocol.parameters) {
       // This block's content was not provided in the instruction,
@@ -901,20 +1014,23 @@ export class RunProtocolComponent implements OnInit {
     // Validate parameters form AND ensure deck is configured
     if (protocol && this.parametersFormGroup.valid && !this.isStartingRun() && this.configuredAssets()) {
       this.isStartingRun.set(true);
-      const runName = `${protocol.name} - ${new Date().toLocaleString()}`;
+      const runName = this.runNameControl.value?.trim() || `${protocol.name} - ${new Date().toLocaleString()}`;
+      const runNotes = this.runNotesControl.value?.trim() || '';
 
-      // Merge parameters form values with configured assets
+      // Merge parameters form values with configured assets and well selections
       // This ensures backend receives both standard parameters and asset mappings
       const params = {
         ...this.parametersFormGroup.value,
-        ...this.configuredAssets()
+        ...this.configuredAssets(),
+        ...this.wellSelections()  // Add well selections
       };
 
       this.executionService.startRun(
         protocol.accession_id,
         runName,
         params,
-        this.store.simulationMode()  // Use global store
+        this.store.simulationMode(),  // Use global store
+        runNotes  // Add notes parameter
       ).pipe(
         finalize(() => this.isStartingRun.set(false))
       ).subscribe({
@@ -924,5 +1040,104 @@ export class RunProtocolComponent implements OnInit {
         error: (err) => console.error('[RunProtocol] Failed to start run:', err)
       });
     }
+  }
+  // Well Selection Methods
+  private isWellSelectionParameter(param: any): boolean {
+    const name = (param.name || '').toLowerCase();
+    const typeHint = (param.type_hint || '').toLowerCase();
+
+    // Check name patterns
+    const wellNamePatterns = ['well', 'wells', 'source_wells', 'target_wells', 'well_ids'];
+    if (wellNamePatterns.some(p => name.includes(p))) {
+      return true;
+    }
+
+    // Check ui_hint if available
+    if (param.ui_hint?.type === 'well_selector') {
+      return true;
+    }
+
+    return false;
+  }
+
+  private isSelectiveTransferProtocol(): boolean {
+    const p = this.selectedProtocol();
+    const name = (p?.name || '').toLowerCase();
+    const fqn = (p?.fqn || '').toLowerCase();
+    return name.includes('selective transfer') || fqn.includes('selective_transfer');
+  }
+
+  getWellParameters(): any[] {
+    const params = this.selectedProtocol()?.parameters?.filter(p => this.isWellSelectionParameter(p)) || [];
+    if (params.length === 0 && this.isSelectiveTransferProtocol()) {
+      // Fallback: derive well parameters for Selective Transfer when not loaded from DB
+      return [
+        { name: 'source_wells', description: 'Source wells', optional: false },
+        { name: 'target_wells', description: 'Target wells', optional: false }
+      ];
+    }
+    return params;
+  }
+
+  openWellSelector(param: any) {
+    const currentSelection = this.wellSelections()[param.name] || [];
+
+    // Auto-detect plate type from selected assets
+    const plateType = this.detectPlateType();
+
+    const dialogData: WellSelectorDialogData = {
+      plateType,
+      initialSelection: currentSelection,
+      mode: 'multi',
+      title: `Select Wells: ${param.name}`,
+      plateLabel: param.description || param.name
+    };
+
+    this.dialog.open(WellSelectorDialogComponent, {
+      data: dialogData,
+      width: plateType === '384' ? '900px' : '700px'
+    }).afterClosed().subscribe((result: WellSelectorDialogResult) => {
+      if (result?.confirmed) {
+        this.wellSelections.update(s => ({ ...s, [param.name]: result.wells }));
+        this.validateWellSelections();
+      }
+    });
+  }
+
+  private detectPlateType(): '96' | '384' {
+    // Check configured assets for plate with well count
+    const assets = this.configuredAssets();
+    if (assets) {
+      for (const [, asset] of Object.entries(assets)) {
+        const res = asset as any;
+        // Check resource definition for well count
+        if (res?.fqn?.toLowerCase().includes('384') || res?.name?.includes('384')) {
+          return '384';
+        }
+      }
+    }
+    return '96';  // Default
+  }
+
+  getWellSelectionLabel(paramName: string): string {
+    const wells = this.wellSelections()[paramName] || [];
+    if (wells.length === 0) return 'Click to select wells...';
+    if (wells.length <= 5) return wells.join(', ');
+    return `${wells.length} wells selected`;
+  }
+
+  areWellSelectionsValid(): boolean {
+    const wellParams = this.getWellParameters();
+    const selections = this.wellSelections();
+
+    // All required well parameters must have at least one selection
+    return wellParams.every(p => {
+      if (p.optional) return true;
+      return (selections[p.name]?.length || 0) > 0;
+    });
+  }
+
+  private validateWellSelections() {
+    this.wellsFormGroup.get('valid')?.setValue(this.areWellSelectionsValid());
   }
 }

@@ -46,12 +46,12 @@ Improve JupyterLite REPL stability, theme synchronization, and hardware discover
   - Update all UI labels, route paths, and documentation from "REPL" to "Playground".
   - Retain "REPL" only where technically accurate (e.g., the underlying kernel interaction).
 
-- [x] **New Inventory Dialog**:
-  - Replace current simple addition with a multi-step guided dialog.
-  - **Flow**: Machine/Resource -> Category -> (Backend for Machine) -> Specifications -> Add to List.
+- [x] **New Inventory Dialog**: ✅ REDESIGNED
+  - Redesigned with a tabbed interface ("Quick Add", "Browse & Add", "Current Items").
   - **Features**:
-    - Allow adding multiple items in one session ("Add to list" action).
-    - Custom Variable Names: Allow user to define variable names for instantiated assets.
+    - Quick Add: Autocomplete search + filter accordion.
+    - Browse: Polished 4-step stepper with icons and indicators.
+    - Current Items: Dedicated management tab with editable variable names and item count badge.
 
 ---
 

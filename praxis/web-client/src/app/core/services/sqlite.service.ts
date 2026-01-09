@@ -1,49 +1,43 @@
 /**
  * SQLite Service for Browser-Mode Database Operations
- *
- * This service provides a sql.js-based database for browser-only mode.
- * It uses the auto-generated schema from SQLAlchemy ORM models and
- * provides repository-based access to all entities.
+    *
+ * This service provides a sql.js - based database for browser - only mode.
+ * It uses the auto - generated schema from SQLAlchemy ORM models and
+    * provides repository - based access to all entities.
  *
  * Key Features:
- * - Loads prebuilt database with PLR definitions (if available)
+ * - Loads prebuilt database with PLR definitions(if available)
  * - Falls back to fresh database with schema.sql
- * - Provides typed repositories for all entities
- * - Maintains compatibility with existing mock data
- */
+* - Provides typed repositories for all entities
+    * - Maintains compatibility with existing browser/simulated mode data
+        */
 
 import { Injectable } from '@angular/core';
+import { BehaviorSubject, from, Observable } from 'rxjs';
+import { map, shareReplay, take, tap } from 'rxjs/operators';
 import initSqlJs, { Database, SqlJsStatic } from 'sql.js';
-import { BehaviorSubject, from, Observable, of } from 'rxjs';
-import { catchError, filter, map, shareReplay, switchMap, take, tap } from 'rxjs/operators';
 
 // Type imports
-import type {
-    Asset,
-    ProtocolRun,
-    FunctionProtocolDefinition,
-    Machine,
-    Resource,
-    Workcell,
-} from '../db/schema';
 import {
     createRepositories,
-    type Repositories,
-    type ProtocolRunRepository,
-    type ProtocolDefinitionRepository,
-    type MachineRepository,
-    type MachineDefinitionRepository,
-    type ResourceRepository,
-    type ResourceDefinitionRepository,
-    type DeckRepository,
     type DeckDefinitionRepository,
     type DeckPositionRepository,
+    type DeckRepository,
+    type MachineDefinitionRepository,
+    type MachineRepository,
+    type ProtocolDefinitionRepository,
+    type ProtocolRunRepository,
+    type Repositories,
+    type ResourceDefinitionRepository,
+    type ResourceRepository,
     type WorkcellRepository,
 } from '../db/repositories';
+import type {
+    FunctionProtocolDefinition
+} from '../db/schema';
 
 // Legacy mock data imports (for fallback seeding)
-// Legacy mock data imports (for fallback seeding)
-import { PLR_RESOURCE_DEFINITIONS, PLR_MACHINE_DEFINITIONS, OFFLINE_CAPABILITY_OVERRIDES } from '../../../assets/demo-data/plr-definitions';
+import { OFFLINE_CAPABILITY_OVERRIDES, PLR_MACHINE_DEFINITIONS, PLR_RESOURCE_DEFINITIONS } from '../../../assets/browser-data/plr-definitions';
 
 
 export interface SqliteStatus {
@@ -74,13 +68,39 @@ export class SqliteService {
     );
 
     constructor() {
-        this.db$ = from(this.initDb()).pipe(
+        this.db$ = from(this.initDbWithOptionalReset()).pipe(
             tap(db => {
                 this.dbInstance = db;
                 this.repositories = createRepositories(db);
             }),
             shareReplay(1)
         );
+    }
+
+    /**
+     * Optional reset hook: if URL has ?resetdb=1 or localStorage 'praxis_reset_db' === '1',
+     * clear IndexedDB before initializing. Useful for local regeneration.
+     */
+    private async initDbWithOptionalReset(): Promise<Database> {
+        try {
+            if (typeof window !== 'undefined') {
+                const url = new URL(window.location.href);
+                const shouldReset = url.searchParams.get('resetdb') === '1' ||
+                    (typeof localStorage !== 'undefined' && localStorage.getItem('praxis_reset_db') === '1');
+
+                if (shouldReset) {
+                    console.warn('[SqliteService] Reset flag detected. Clearing IndexedDB store...');
+                    await this.clearStore();
+                    if (typeof localStorage !== 'undefined') {
+                        localStorage.removeItem('praxis_reset_db');
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[SqliteService] Optional reset failed or unsupported:', e);
+        }
+
+        return this.initDb();
     }
 
     /**
@@ -451,7 +471,7 @@ export class SqliteService {
 
             // Seed Resources
             const insertResDef = db.prepare(`
-                INSERT OR IGNORE INTO resource_definition_catalog 
+                INSERT OR IGNORE INTO resource_definition_catalog
                 (accession_id, name, fqn, resource_type, vendor, description, properties_json, is_consumable, is_reusable, num_items)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
@@ -474,7 +494,7 @@ export class SqliteService {
 
             // Seed Machines
             const insertMachDef = db.prepare(`
-                INSERT OR IGNORE INTO machine_definition_catalog 
+                INSERT OR IGNORE INTO machine_definition_catalog
                 (accession_id, name, fqn, machine_category, manufacturer, description, has_deck, properties_json, capabilities_config, frontend_fqn)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
@@ -555,7 +575,7 @@ export class SqliteService {
                 `);
 
                 for (const row of resDefRows) {
-                    const [defId, name, defFqn] = row;
+                    const [defId, name, _defFqn] = row;
                     const assetId = generateUuid();
                     const cleanName = (name as string).replace(/\s+/g, '_').toLowerCase();
                     const instanceFqn = `resources.default.${cleanName}`;
@@ -600,11 +620,11 @@ export class SqliteService {
                 `);
 
                 for (const row of machDefRows) {
-                    const [defId, name, defFqn, compatibleBackendsStr, category] = row;
+                    const [defId, name, _defFqn, compatibleBackendsStr, category] = row;
                     const assetId = generateUuid();
 
                     // Logic to check simulation
-                    const isSimulated = true; // Default to true as per requirements
+                    const _isSimulated = true; // Default to true as per requirements
                     // "If definition has 'Simulator' or 'Chatterbox' in compatible_backends, use it"
                     // compatible_backends is JSON string
                     let backends: string[] = [];
@@ -691,7 +711,7 @@ export class SqliteService {
                     }
 
                     // Defaults if no definition found (though it should exist for registered hardware)
-                    const defId = defRow ? defRow[0] : null;
+                    const _defId = defRow ? defRow[0] : null;
                     const category = defRow ? defRow[1] : 'liquid_handler';
                     const description = defRow ? `User registered instance of ${defRow[4] || machine.name}` : `Registered Machine: ${machine.name}`;
 
@@ -819,7 +839,7 @@ export class SqliteService {
     // Legacy API (backwards compatibility)
     // ============================================
 
-    public getProtocols(): Observable<any[]> {
+    public getProtocols(): Observable<FunctionProtocolDefinition[]> {
         return this.db$.pipe(
             map(db => {
                 try {
@@ -987,46 +1007,25 @@ export class SqliteService {
     public createProtocolRun(run: any): Observable<any> {
         return this.db$.pipe(
             map(db => {
-                // Try new schema first
-                try {
-                    const protocolDefs = db.exec('SELECT accession_id FROM function_protocol_definitions LIMIT 1');
-                    if (protocolDefs.length > 0 && protocolDefs[0].values.length > 0) {
-                        const stmt = db.prepare(`
-                            INSERT INTO protocol_runs
-                            (accession_id, top_level_protocol_definition_accession_id, status, created_at, updated_at, properties_json, name)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
-                        `);
-                        const now = new Date().toISOString();
-                        stmt.run([
-                            run.accession_id,
-                            run.protocol_definition_accession_id || protocolDefs[0].values[0][0],
-                            run.status || 'QUEUED',
-                            run.created_at || now,
-                            now,
-                            JSON.stringify({}),
-                            run.name || `Run ${run.accession_id.slice(-6)}`
-                        ]);
-                        stmt.free();
-                        return run;
-                    }
-                } catch {
-                    // Fall back to legacy
-                }
-
-                const stmt = db.prepare("INSERT INTO protocol_runs VALUES (?, ?, ?, ?, ?, ?)");
-                const params = run.parameters ? JSON.stringify(run.parameters) : null;
-                const userParams = run.user_params ? JSON.stringify(run.user_params) : null;
-                const protocolId = run.protocol_definition_accession_id || run.protocol_accession_id || null;
-
+                const stmt = db.prepare(`
+                    INSERT INTO protocol_runs 
+                    (accession_id, top_level_protocol_definition_accession_id, name, status, 
+                     created_at, updated_at, input_parameters_json, properties_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                `);
+                const now = new Date().toISOString();
                 stmt.run([
                     run.accession_id,
-                    protocolId,
+                    run.protocol_definition_accession_id,
+                    run.name,
                     run.status || 'QUEUED',
-                    run.created_at || new Date().toISOString(),
-                    params,
-                    userParams
+                    run.created_at || now,
+                    now,
+                    run.input_parameters_json || null,
+                    run.properties_json || null
                 ]);
                 stmt.free();
+                this.saveToStore(db);  // Persist to IndexedDB
                 return run;
             })
         );
@@ -1060,7 +1059,7 @@ export class SqliteService {
                 try {
                     const res = db.exec(
                         `SELECT inferred_requirements_json, failure_modes_json, simulation_result_json
-                         FROM function_protocol_definitions 
+                         FROM function_protocol_definitions
                          WHERE accession_id = '${protocolId}'`
                     );
 
@@ -1092,8 +1091,8 @@ export class SqliteService {
                 try {
                     // Check if state_history_json column exists
                     const res = db.exec(
-                        `SELECT state_history_json, name 
-                         FROM protocol_runs 
+                        `SELECT state_history_json, name
+                         FROM protocol_runs
                          WHERE accession_id = '${runId}'`
                     );
 
@@ -1106,22 +1105,22 @@ export class SqliteService {
                     const protocolName = row[1] as string || 'Unknown';
 
                     if (!stateHistoryJson) {
-                        // Return mock state history for demo purposes
+                        // Return mock state history for browser mode purposes
                         return this.createMockStateHistory(runId, protocolName);
                     }
 
                     return JSON.parse(stateHistoryJson as string);
                 } catch (error) {
                     console.warn('[SqliteService] State history not available, using mock:', error);
-                    // Return mock for demo
-                    return this.createMockStateHistory(runId, 'Demo Protocol');
+                    // Return mock for browser mode
+                    return this.createMockStateHistory(runId, 'Browser Protocol');
                 }
             })
         );
     }
 
     /**
-     * Create a mock state history for demo/testing purposes.
+     * Create a mock state history for simulated/testing purposes.
      */
     private createMockStateHistory(runId: string, protocolName: string): any {
         const operations = [];

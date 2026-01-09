@@ -1,9 +1,9 @@
-import { Component, ChangeDetectionStrategy, Input, OnChanges, SimpleChanges, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, OnChanges, SimpleChanges, signal } from '@angular/core';
 
-import { ReactiveFormsModule, FormGroup } from '@angular/forms';
-import { FormlyModule, FormlyFieldConfig } from '@ngx-formly/core';
+import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatDividerModule } from '@angular/material/divider';
-import { ProtocolDefinition, ParameterMetadata } from '../../../protocols/models/protocol.models';
+import { FormlyFieldConfig, FormlyModule } from '@ngx-formly/core';
+import { ParameterMetadata, ProtocolDefinition } from '../../../protocols/models/protocol.models';
 
 @Component({
   selector: 'app-parameter-config',
@@ -86,7 +86,20 @@ export class ParameterConfigComponent implements OnChanges {
   }
 
   private buildForm(protocol: ProtocolDefinition) {
-    const params = (protocol.parameters || []).filter(p => !p.is_deck_param && p.name !== 'state');
+    // Filter out:
+    // 1. Deck parameters (handled by deck setup)
+    // 2. State parameter (internal)
+    // 3. Machine/resource parameters (handled by asset selection)
+    const params = (protocol.parameters || []).filter(p => {
+      // Skip deck params and state
+      if (p.is_deck_param || p.name === 'state') return false;
+
+      // Skip if this parameter matches an asset requirement by name or fqn
+      if (this.isAssetParameter(p, protocol)) return false;
+
+      return true;
+    });
+
     const paramConfigs: FormlyFieldConfig[] = [];
     const processedParams = new Set<string>();
 
@@ -228,5 +241,41 @@ export class ParameterConfigComponent implements OnChanges {
     return name
       .replace(/_/g, ' ')
       .replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  /**
+   * Check if a parameter is an asset/machine/resource parameter that should
+   * be filtered from the user-configurable form. These are handled by the
+   * asset selection step instead.
+   */
+  private isAssetParameter(param: ParameterMetadata, protocol: ProtocolDefinition): boolean {
+    // Check if this parameter matches an asset requirement by name or fqn
+    const assetNames = protocol.assets?.map(a => a.name) || [];
+    const assetFqns = protocol.assets?.map(a => a.fqn) || [];
+
+    if (assetNames.includes(param.name) || assetFqns.includes(param.fqn)) {
+      return true;
+    }
+
+    // Check for machine/resource type hints
+    const machinePatterns = [
+      'pylabrobot.machines',
+      'pylabrobot.liquid_handling',
+      'LiquidHandler',
+      'Machine',
+    ];
+
+    const resourcePatterns = [
+      'pylabrobot.resources',
+      'Plate',
+      'TipRack',
+      'Carrier',
+      'Deck',
+    ];
+
+    const typeHint = param.type_hint || '';
+
+    return machinePatterns.some(p => typeHint.includes(p)) ||
+           resourcePatterns.some(p => typeHint.includes(p));
   }
 }

@@ -189,8 +189,8 @@ console = PyodideConsole(
 # Import web_bridge to make it available
 import web_bridge
 
-# Bootstrap the REPL environment (redirects sys.stdout/stderr, auto-imports)
-web_bridge.bootstrap_repl(console.globals)
+# Bootstrap the Playground environment (redirects sys.stdout/stderr, auto-imports)
+web_bridge.bootstrap_playground(console.globals)
 
 console
 `;

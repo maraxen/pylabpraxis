@@ -13,7 +13,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, startWith, finalize } from 'rxjs/operators';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; // Import MatProgressSpinnerModule
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { FilterHeaderComponent } from '../../../assets/components/filter-header/filter-header.component';
+
+import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protocol-detail-dialog.component';
 
 @Component({
   selector: 'app-protocol-library',
@@ -27,8 +30,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; /
     MatFormFieldModule,
     MatDialogModule,
     ReactiveFormsModule,
-    MatProgressSpinnerModule
-],
+    MatProgressSpinnerModule,
+    FilterHeaderComponent
+  ],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col">
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -43,19 +47,19 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; /
       </div>
 
       <div class="bg-surface border border-[var(--theme-border)] rounded-3xl overflow-hidden backdrop-blur-xl flex flex-col flex-1 min-h-0 shadow-xl">
-        <div class="p-4 border-b border-[var(--theme-border)] bg-[var(--mat-sys-surface-variant)] flex gap-4 items-center">
-          <mat-icon class="text-sys-text-secondary">search</mat-icon>
-          <input 
-            [formControl]="filterControl" 
-            placeholder="Search protocols..." 
-            class="bg-transparent border-none outline-none text-sys-text-primary placeholder-sys-text-tertiary w-full h-full text-lg"
-          >
-          @if (isLoading()) {
-            <mat-spinner diameter="24" class="mr-2"></mat-spinner>
-          }
-        </div>
+        <app-filter-header
+          searchPlaceholder="Search protocols..."
+          [searchValue]="searchQuery()"
+          (searchChange)="onSearchChange($event)">
+          <!-- No filters content yet -->
+        </app-filter-header>
 
         <div class="flex-1 overflow-auto bg-[var(--mat-sys-surface-variant)] relative">
+           @if (isLoading()) {
+             <div class="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-black/50 z-10 backdrop-blur-sm">
+               <mat-spinner diameter="40"></mat-spinner>
+             </div>
+           }
            
           @if (filteredProtocols().length > 0) {
             <table mat-table [dataSource]="filteredProtocols()" class="!bg-transparent w-full" data-tour-id="protocol-table">
@@ -107,10 +111,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; /
                 <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4 text-right"> Actions </th>
                 <td mat-cell *matCellDef="let protocol" class="border-b !border-[var(--theme-border)] px-6 py-4">
                   <div class="flex justify-end gap-2">
-                    <button mat-icon-button class="!text-sys-text-secondary hover:!text-primary transition-colors" matTooltip="View Details" (click)="viewDetails(protocol)">
-                      <mat-icon>info</mat-icon>
-                    </button>
-                    <button mat-icon-button class="!text-green-400 hover:!bg-green-400/20 transition-all" matTooltip="Run Protocol" (click)="runProtocol(protocol)">
+                    <button mat-icon-button class="!text-green-400 hover:!bg-green-400/20 transition-all" matTooltip="Run Protocol" (click)="$event.stopPropagation(); runProtocol(protocol)">
                       <mat-icon>play_arrow</mat-icon>
                     </button>
                   </div>
@@ -118,7 +119,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; /
               </ng-container>
 
               <tr mat-header-row *matHeaderRowDef="displayedColumns" class="!h-12"></tr>
-              <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="hover:bg-[var(--mat-sys-surface-variant)] transition-colors cursor-default !h-16"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="viewDetails(row)" class="hover:bg-[var(--mat-sys-surface-variant)] transition-colors cursor-pointer !h-16"></tr>
             </table>
           } @else {
             <div class="flex flex-col items-center justify-center h-full text-sys-text-tertiary py-20">
@@ -150,54 +151,46 @@ export class ProtocolLibraryComponent {
   private dialog = inject(MatDialog);
 
   protocols = signal<ProtocolDefinition[]>([]);
-  filteredProtocols = signal<ProtocolDefinition[]>([]);
-  filterControl = new FormControl('', { nonNullable: true });
-  isLoading = signal(false); // New loading signal
+  searchQuery = signal('');
+  isLoading = signal(false);
+
+  filteredProtocols = computed(() => {
+    const query = this.searchQuery().toLowerCase();
+    return this.protocols().filter(protocol =>
+      protocol.name.toLowerCase().includes(query) ||
+      protocol.description?.toLowerCase().includes(query) ||
+      protocol.category?.toLowerCase().includes(query)
+    );
+  });
 
   displayedColumns: string[] = ['name', 'version', 'description', 'category', 'actions'];
 
   constructor() {
     this.loadProtocols();
-
-    this.filterControl.valueChanges.pipe(
-      takeUntilDestroyed(),
-      debounceTime(300),
-      distinctUntilChanged(),
-      startWith('')
-    ).subscribe(filterValue => {
-      this.applyFilter(filterValue);
-    });
   }
 
-  loadProtocols(): void { // Made public for potential parent component refresh
-    this.isLoading.set(true); // Set loading true before API call
+  loadProtocols(): void {
+    this.isLoading.set(true);
     this.protocolService.getProtocols().pipe(
-      finalize(() => this.isLoading.set(false)) // Set loading false after API call completes
+      finalize(() => this.isLoading.set(false))
     ).subscribe(
       (data) => {
         this.protocols.set(data);
-        this.applyFilter(this.filterControl.value);
       },
       (error) => {
         console.error('Error fetching protocols:', error);
-        // TODO: Integrate global error handling
       }
     );
   }
 
-  private applyFilter(filterValue: string): void {
-    const lowerCaseFilter = filterValue.toLowerCase();
-    this.filteredProtocols.set(
-      this.protocols().filter(protocol =>
-        protocol.name.toLowerCase().includes(lowerCaseFilter) ||
-        protocol.description?.toLowerCase().includes(lowerCaseFilter) ||
-        protocol.category?.toLowerCase().includes(lowerCaseFilter)
-      )
-    );
-  }
-
   viewDetails(protocol: ProtocolDefinition) {
-    this.router.navigate(['/protocols', protocol.accession_id]);
+    this.dialog.open(ProtocolDetailDialogComponent, {
+      data: { protocol },
+      width: '700px',
+      maxWidth: '90vw',
+      maxHeight: '90vh',
+      panelClass: 'praxis-dialog-panel'
+    });
   }
 
   runProtocol(protocol: ProtocolDefinition) {

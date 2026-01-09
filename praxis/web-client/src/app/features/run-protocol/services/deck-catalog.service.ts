@@ -6,9 +6,9 @@ import {
     CarrierSlot,
     DeckDefinitionSpec,
     DeckSlotSpec,
-    CarrierDefinition,
-    CarrierType
+    CarrierDefinition
 } from '../models/deck-layout.models';
+import { Machine } from '../../assets/models/asset.models';
 
 /**
  * Service for fetching deck and carrier specifications.
@@ -60,13 +60,58 @@ export class DeckCatalogService {
     }
 
     /**
+     * Get deck type (FQN) for a given machine instance.
+     */
+    getDeckTypeForMachine(machine: Machine | null | undefined): string | null {
+        if (!machine) return null;
+
+        // 1. Check machine definition/category
+        const category = machine.machine_category || machine.machine_type || '';
+        const model = machine.model || '';
+        const manufacturer = (machine.manufacturer || '').toLowerCase();
+
+        // Hamilton STAR family
+        if (category.includes('Hamilton') || category.includes('STAR') ||
+            model.includes('STAR') || manufacturer.includes('hamilton')) {
+            return 'pylabrobot.resources.hamilton.HamiltonSTARDeck';
+        }
+
+        // Opentrons OT-2
+        if (category.includes('Opentrons') || category.includes('OT') ||
+            model.includes('OT') || manufacturer.includes('opentrons')) {
+            return 'pylabrobot.resources.opentrons.deck.OTDeck';
+        }
+
+        // 2. Check connection info (fallback for simulators)
+        const connectionInfo = machine.connection_info || {};
+        const backend = (connectionInfo['backend'] || '').toString();
+
+        if (backend.includes('hamilton.STAR') || backend.includes('HamiltonDeck')) {
+            return 'pylabrobot.resources.hamilton.HamiltonSTARDeck';
+        }
+        if (backend.includes('opentrons.OT2') || backend.includes('OTDeck')) {
+            return 'pylabrobot.resources.opentrons.deck.OTDeck';
+        }
+
+        return null;
+    }
+
+    /**
      * Get all available carriers compatible with a deck type.
      */
     getCompatibleCarriers(deckFqn: string): CarrierDefinition[] {
-        // For now, return standard Hamilton carriers for any Hamilton deck
+        if (!deckFqn) return [];
+
+        // Hamilton STAR Deck (legacy check + FQN check)
         if (deckFqn.includes('Hamilton') || deckFqn.includes('STAR')) {
             return this.getHamiltonCarriers();
         }
+
+        // Opentrons OT-2 Deck
+        // Currently we don't have separate carrier definitions for OT-2 since it uses
+        // direct slot placement for labware, but we might want to return empty or specific ones.
+        // For now, returning empty array is correct as OT-2 doesn't use "carriers" in the same way.
+
         return [];
     }
 

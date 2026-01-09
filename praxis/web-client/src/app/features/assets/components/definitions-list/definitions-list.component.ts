@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,6 +14,7 @@ import { debounceTime, distinctUntilChanged, startWith } from 'rxjs/operators';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { getPropertyTooltip } from '@shared/constants/resource-tooltips';
 import { MachineDefinitionAccordionComponent } from '../machine-definition-accordion/machine-definition-accordion.component';
+import { FilterHeaderComponent } from '../filter-header/filter-header.component';
 
 @Component({
   selector: 'app-definitions-list',
@@ -27,7 +28,8 @@ import { MachineDefinitionAccordionComponent } from '../machine-definition-accor
     MatFormFieldModule,
     MatTabsModule,
     ReactiveFormsModule,
-    MachineDefinitionAccordionComponent
+    MachineDefinitionAccordionComponent,
+    FilterHeaderComponent
   ],
   template: `
     <div class="definitions-list-container">
@@ -39,7 +41,15 @@ import { MachineDefinitionAccordionComponent } from '../machine-definition-accor
               <span>Machine Types</span>
             </div>
           </ng-template>
-          <app-machine-definition-accordion></app-machine-definition-accordion>
+          <div class="tab-content">
+            <app-filter-header
+              searchPlaceholder="Search machine types..."
+              [searchValue]="machineSearch()"
+              (searchChange)="machineSearch.set($event)">
+              <!-- No additional filters yet -->
+            </app-filter-header>
+            <app-machine-definition-accordion [search]="machineSearch()"></app-machine-definition-accordion>
+          </div>
         </mat-tab>
 
         <mat-tab>
@@ -50,13 +60,14 @@ import { MachineDefinitionAccordionComponent } from '../machine-definition-accor
             </div>
           </ng-template>
           <div class="resource-tab-content">
-            <mat-form-field appearance="outline" class="filter-field praxis-search-field">
-              <mat-label>Filter Resource Definitions</mat-label>
-              <input matInput [formControl]="resourceFilterControl">
-              <mat-icon matSuffix>search</mat-icon>
-            </mat-form-field>
+            <app-filter-header
+              searchPlaceholder="Filter Resource Definitions..."
+              [searchValue]="resourceSearch()"
+              (searchChange)="resourceSearch.set($event)">
+              <!-- No additional filters yet -->
+            </app-filter-header>
 
-            <table mat-table [dataSource]="filteredResourceDefinitions()" class="mat-elevation-z2">
+            <table mat-table [dataSource]="filteredResourceDefinitions()" class="mat-elevation-z2 mt-4">
               <ng-container matColumnDef="name">
                 <th mat-header-cell *matHeaderCellDef> Name </th>
                 <td mat-cell *matCellDef="let def"> {{ def.name }} </td>
@@ -105,7 +116,7 @@ import { MachineDefinitionAccordionComponent } from '../machine-definition-accor
                 <td class="mat-cell" colspan="6">
                   <div class="empty-state">
                     <mat-icon>search_off</mat-icon>
-                    <span>No resource definitions matching the filter "{{ resourceFilterControl.value }}"</span>
+                    <span>No resource definitions matching the filter "{{ resourceSearch() }}"</span>
                   </div>
                 </td>
               </tr>
@@ -153,7 +164,7 @@ import { MachineDefinitionAccordionComponent } from '../machine-definition-accor
     }
 
     .resource-tab-content {
-      padding: 16px;
+      padding: 0 16px 16px 16px;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -162,45 +173,33 @@ export class DefinitionsListComponent {
   private assetService = inject(AssetService);
 
   resourceDefinitions = signal<ResourceDefinition[]>([]);
-  filteredResourceDefinitions = signal<ResourceDefinition[]>([]);
-  resourceFilterControl = new FormControl('', { nonNullable: true });
+  machineSearch = signal('');
+  resourceSearch = signal('');
+  
+  filteredResourceDefinitions = computed(() => {
+    const filterValue = this.resourceSearch().toLowerCase();
+    return this.resourceDefinitions().filter(def =>
+      def.name.toLowerCase().includes(filterValue) ||
+      def.resource_type?.toLowerCase().includes(filterValue) ||
+      def.manufacturer?.toLowerCase().includes(filterValue) ||
+      def.model?.toLowerCase().includes(filterValue)
+    );
+  });
 
   displayedResourceColumns: string[] = ['name', 'type', 'manufacturer', 'model', 'consumable', 'actions'];
 
   constructor() {
     this.loadResourceDefinitions();
-
-    this.resourceFilterControl.valueChanges.pipe(
-      takeUntilDestroyed(),
-      debounceTime(300),
-      distinctUntilChanged(),
-      startWith('')
-    ).subscribe(filterValue => {
-      this.applyResourceFilter(filterValue);
-    });
   }
 
   private loadResourceDefinitions(): void {
     this.assetService.getResourceDefinitions().subscribe(
       (data) => {
         this.resourceDefinitions.set(data);
-        this.applyResourceFilter(this.resourceFilterControl.value);
       },
       (error) => {
         console.error('Error fetching resource definitions:', error);
       }
-    );
-  }
-
-  private applyResourceFilter(filterValue: string): void {
-    const lowerCaseFilter = filterValue.toLowerCase();
-    this.filteredResourceDefinitions.set(
-      this.resourceDefinitions().filter(def =>
-        def.name.toLowerCase().includes(lowerCaseFilter) ||
-        def.resource_type?.toLowerCase().includes(lowerCaseFilter) ||
-        def.manufacturer?.toLowerCase().includes(lowerCaseFilter) ||
-        def.model?.toLowerCase().includes(lowerCaseFilter)
-      )
     );
   }
 

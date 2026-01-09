@@ -81,10 +81,10 @@ Frontend build configuration:
                 "with": "src/environments/environment.prod.ts"
               }]
             },
-            "demo": {
+            "browser": {
               "fileReplacements": [{
                 "replace": "src/environments/environment.ts",
-                "with": "src/environments/environment.demo.ts"
+                "with": "src/environments/environment.browser.ts"
               }]
             }
           }
@@ -103,7 +103,7 @@ export const environment = {
   production: false,
   apiUrl: 'http://localhost:8000/api/v1',
   wsUrl: 'ws://localhost:8000',
-  demoMode: false
+  browserMode: false
 };
 
 // environment.prod.ts
@@ -111,15 +111,15 @@ export const environment = {
   production: true,
   apiUrl: '/api/v1',
   wsUrl: '',  // Relative WebSocket
-  demoMode: false
+  browserMode: false
 };
 
-// environment.demo.ts
+// environment.browser.ts
 export const environment = {
   production: false,
   apiUrl: '/api/v1',
   wsUrl: '',
-  demoMode: true
+  browserMode: true
 };
 ```
 
@@ -283,7 +283,7 @@ from pydantic_settings import BaseSettings
 class FeatureFlags(BaseSettings):
     enable_scheduling: bool = True
     enable_hardware_discovery: bool = True
-    enable_demo_data: bool = False
+    enable_lite_data: bool = False
     enable_experimental_visualizer: bool = False
 
     class Config:

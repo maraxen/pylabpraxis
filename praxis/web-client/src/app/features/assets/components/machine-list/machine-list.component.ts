@@ -18,6 +18,7 @@ import { MachineFiltersComponent, MachineFilterState } from '../machine-filters/
 import { MaintenanceBadgeComponent } from '../maintenance-badge/maintenance-badge.component';
 import { calculateMaintenanceStatus } from '../../utils/maintenance.utils';
 import { MachineDetailsDialogComponent } from './machine-details-dialog.component';
+import { FilterHeaderComponent } from '../filter-header/filter-header.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, startWith, switchMap, filter, finalize } from 'rxjs/operators';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -40,15 +41,24 @@ import { AppStore } from '../../../../core/store/app.store';
     AssetStatusChipComponent,
     LocationBreadcrumbComponent,
     MachineFiltersComponent,
-    MaintenanceBadgeComponent
+    MaintenanceBadgeComponent,
+    FilterHeaderComponent
 ],
   template: `
     <div class="machine-list-container">
-      <app-machine-filters
-        [machines]="machines()"
-        [machineDefinitions]="machineDefinitions()"
-        (filtersChange)="onFiltersChange($event)">
-      </app-machine-filters>
+      <app-filter-header
+        searchPlaceholder="Search machines..."
+        [filterCount]="activeFiltersCount()"
+        [searchValue]="currentSearch()"
+        (searchChange)="onSearch($event)">
+        
+        <app-machine-filters filterContent
+          [machines]="machines()"
+          [machineDefinitions]="machineDefinitions()"
+          [search]="currentSearch()"
+          (filtersChange)="onFiltersChange($event)">
+        </app-machine-filters>
+      </app-filter-header>
 
       <table mat-table [dataSource]="filteredMachines()" class="mat-elevation-z2">
         <!-- Name Column -->
@@ -215,6 +225,18 @@ export class MachineListComponent {
   filteredMachines = signal<Machine[]>([]);
   machineDefinitions = signal<MachineDefinition[]>([]);
   activeFilters = signal<MachineFilterState | null>(null);
+  currentSearch = signal('');
+
+  activeFiltersCount = computed(() => {
+    const f = this.activeFilters();
+    if (!f) return 0;
+    let count = 0;
+    if (f.status.length) count++;
+    if (f.categories.length) count++;
+    if (f.simulated !== null) count++;
+    if (f.backends.length) count++;
+    return count;
+  });
 
   displayedColumns = computed(() => {
     const cols = ['name', 'simulated', 'status', 'category', 'model', 'location'];
@@ -260,7 +282,16 @@ export class MachineListComponent {
 
   onFiltersChange(filters: MachineFilterState) {
     this.activeFilters.set(filters);
+    // Sync search if updated from filters (e.g. clear)
+    if (filters.search !== this.currentSearch()) {
+      this.currentSearch.set(filters.search);
+    }
     this.applyFilters(filters);
+  }
+
+  onSearch(term: string) {
+    this.currentSearch.set(term);
+    // MachineFiltersComponent will receive this update via input and emit filtersChange
   }
 
   private applyFilters(filters: MachineFilterState): void {

@@ -117,7 +117,7 @@ The backend simulation infrastructure is **complete** (87 tests passing). Focus 
 | **REPL Rendering Stability** | ✅ Done | Fix kernel refresh race condition | [repl_enhancements.md](./backlog/repl_enhancements.md) |
 | **UI Consistency** | ✅ Partial | Standardized dropdown chips (Phase 1 & 3 done) | [ui_consistency.md](./backlog/ui_consistency.md) |
 | **Asset Management UX** | ✅ Partial | Refactored Add Machine/Resource flows (Phase 1-2 done) | [asset_management_ux.md](./backlog/asset_management_ux.md) |
-| **Dataviz & Well Selection** | ⏳ Todo | Bridge WellDataOutput with visualization | [dataviz_well_selection.md](./backlog/dataviz_well_selection.md) |
+| **Dataviz & Well Selection** | ✅ Done | Bridge WellDataOutput with visualization | [dataviz_well_selection.md](./archive/2026-01-09_cleanup/dataviz_well_selection.md) |
 
 ---
 
@@ -126,9 +126,9 @@ The backend simulation infrastructure is **complete** (87 tests passing). Focus 
 | Item | Status | Description | Backlog |
 |------|--------|-------------|---------|
 | **UI Visual Tweaks** | ✅ Done | Spacing on registry/machine tabs | [ui_standardization_q1_2026.md](./archive/2026-01-08_completed/ui_standardization_q1_2026.md) |
-| **Protocol Inference "Sharp Bits"** | ✅ Done | Documentation for edge cases/gotchas | [cleanup_finalization.md](./backlog/cleanup_finalization.md) |
+| **Protocol Inference "Sharp Bits"** | ✅ Done | Documentation for edge cases/gotchas | [cleanup_finalization.md](./archive/2026-01-09_cleanup/cleanup_finalization.md) |
 | ~~Spatial View Filters~~ | ✅ Done | Sorting/Filtering by location, name, workcell | [asset_management.md](./backlog/asset_management.md) |
-| **Pre-Merge Finalization** | ⏳ Todo | Archive docs, cleanup files | [cleanup_finalization.md](./backlog/cleanup_finalization.md) |
+| **Pre-Merge Finalization** | ✅ Done | Archive docs, cleanup files | [cleanup_finalization.md](./archive/2026-01-09_cleanup/cleanup_finalization.md) |
 
 ---
 

@@ -1,20 +1,17 @@
-import { Component, input, output, signal, computed, OnInit } from '@angular/core';
+import { Component, input, output, computed, OnInit, Input } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { Machine, MachineStatus, MachineDefinition } from '../../models/asset.models';
 import { getMachineCategoryIcon } from '@shared/constants/asset-icons';
 import { extractUniqueNameParts } from '../../../../shared/utils/name-parser';
-import { AriaSelectComponent, SelectOption } from '@shared/components/aria-select/aria-select.component';
-import { AriaMultiselectComponent } from '@shared/components/aria-multiselect/aria-multiselect.component';
+import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
+import { PraxisMultiselectComponent } from '@shared/components/praxis-multiselect/praxis-multiselect.component';
 
 export type MachineSortOption = 'name' | 'category' | 'created_at' | 'status';
 
@@ -46,146 +43,126 @@ export interface MachineFilterState {
     MatFormFieldModule,
     MatChipsModule,
     MatIconModule,
-    MatSlideToggleModule,
     MatTooltipModule,
     MatInputModule,
     MatButtonToggleModule,
-    AriaSelectComponent,
-    AriaMultiselectComponent
+    PraxisSelectComponent,
+    PraxisMultiselectComponent
   ],
   template: `
     <div class="filters-container">
-      <!-- Search Input -->
-      <div class="filter-group search-group">
-        <mat-form-field appearance="outline" class="search-field praxis-search-field">
-          <mat-icon matPrefix>search</mat-icon>
-          <input
-            matInput
-            placeholder="Search machines..."
-            [(ngModel)]="searchTerm"
-            (ngModelChange)="onFilterChange()"
-          />
-          @if (searchTerm) {
-            <button
-              matSuffix
-              mat-icon-button
-              aria-label="Clear search"
-              (click)="searchTerm = ''; onFilterChange()"
-            >
-              <mat-icon>close</mat-icon>
-            </button>
-          }
-        </mat-form-field>
-      </div>
-
-      <!-- Category Filter -->
-      <div class="filter-group">
-        <label class="filter-label">Category</label>
-        <app-aria-multiselect
-          label="Category"
-          [options]="mappedCategoryOptions()"
-          [multiple]="true"
-          [selectedValue]="selectedCategories"
-          (selectedValueChange)="selectedCategories = $any($event); onFilterChange()"
-        ></app-aria-multiselect>
-      </div>
-
-      <!-- Status Filter -->
-      <div class="filter-group">
-        <label class="filter-label">Status</label>
-        <app-aria-multiselect
-          label="Status"
-          [options]="mappedStatusOptions()"
-          [multiple]="true"
-          [selectedValue]="selectedStatuses"
-          (selectedValueChange)="selectedStatuses = $any($event); onFilterChange()"
-        ></app-aria-multiselect>
-      </div>
-
-      <!-- Simulated Filter Toggle -->
-      <div class="filter-group">
-        <label class="filter-label">Mode</label>
-        <mat-button-toggle-group
-          hideSingleSelectionIndicator
-          [(ngModel)]="simulatedFilter"
-          (change)="onFilterChange()"
-          aria-label="Filter by simulation mode"
-        >
-          <mat-button-toggle [value]="null" matTooltip="Show all machines">
-            All
-          </mat-button-toggle>
-          <mat-button-toggle [value]="false" matTooltip="Physical hardware only">
-            <mat-icon>precision_manufacturing</mat-icon>
-            Physical
-          </mat-button-toggle>
-          <mat-button-toggle [value]="true" matTooltip="Simulated only">
-            <mat-icon>computer</mat-icon>
-            Simulated
-          </mat-button-toggle>
-        </mat-button-toggle-group>
-      </div>
-
-      <!-- Backend Filter (if backends available) -->
-      @if (availableBackends().length > 0) {
+      <div class="filters-row selectors-row">
+        <!-- Category Filter -->
         <div class="filter-group">
-          <label class="filter-label">Backend</label>
-          <app-aria-multiselect
-            label="Backend"
-            [options]="mappedBackendOptions()"
-            [multiple]="true"
-            [selectedValue]="selectedBackends"
-            (selectedValueChange)="selectedBackends = $any($event); onFilterChange()">
-          </app-aria-multiselect>
+          <label class="filter-label">Category</label>
+          <app-praxis-multiselect
+            placeholder="Category"
+            [options]="mappedCategoryOptions()"
+            [value]="selectedCategories"
+            (valueChange)="selectedCategories = $any($event); onFilterChange()"
+          ></app-praxis-multiselect>
         </div>
-      }
 
-      <!-- Sort Controls -->
-      <div class="filter-group">
-        <label class="filter-label">Sort</label>
-        <div class="sort-controls">
-          <app-aria-select
-            label="Sort by"
-            [options]="sortOptions"
-            [(ngModel)]="sortBy"
-            (ngModelChange)="onFilterChange()"
-            class="sort-field-select"
-          >
-          </app-aria-select>
+        <!-- Status Filter -->
+        <div class="filter-group">
+          <label class="filter-label">Status</label>
+          <app-praxis-multiselect
+            placeholder="Status"
+            [options]="mappedStatusOptions()"
+            [value]="selectedStatuses"
+            (valueChange)="selectedStatuses = $any($event); onFilterChange()"
+          ></app-praxis-multiselect>
+        </div>
+
+        <!-- Backend Filter (if backends available) -->
+        @if (availableBackends().length > 0) {
+          <div class="filter-group">
+            <label class="filter-label">Backend</label>
+            <app-praxis-multiselect
+              placeholder="Backend"
+              [options]="mappedBackendOptions()"
+              [value]="selectedBackends"
+              (valueChange)="selectedBackends = $any($event); onFilterChange()">
+            </app-praxis-multiselect>
+          </div>
+        }
+      </div>
+
+      <div class="filters-row toggles-row">
+        <!-- Simulated Filter Toggle -->
+        <div class="filter-group toggle-group">
+          <label class="filter-label">Mode</label>
           <mat-button-toggle-group
             hideSingleSelectionIndicator
-            [(ngModel)]="sortOrder"
+            [(ngModel)]="simulatedFilter"
             (change)="onFilterChange()"
-            aria-label="Sort order"
+            aria-label="Filter by simulation mode"
+            class="praxis-toggle-group"
           >
-            <mat-button-toggle value="asc" aria-label="Ascending">
-              <mat-icon>arrow_upward</mat-icon>
+            <mat-button-toggle [value]="null" matTooltip="Show all machines">
+              All
             </mat-button-toggle>
-            <mat-button-toggle value="desc" aria-label="Descending">
-              <mat-icon>arrow_downward</mat-icon>
+            <mat-button-toggle [value]="false" matTooltip="Physical hardware only">
+              <mat-icon>precision_manufacturing</mat-icon>
+              Physical
+            </mat-button-toggle>
+            <mat-button-toggle [value]="true" matTooltip="Simulated only">
+              <mat-icon>computer</mat-icon>
+              Simulated
             </mat-button-toggle>
           </mat-button-toggle-group>
         </div>
-      </div>
 
-      <!-- Clear Filters -->
-      @if (hasActiveFilters()) {
-        <button
-          mat-stroked-button
-          (click)="clearFilters()"
-          class="clear-btn"
-          aria-label="Clear all filters"
-        >
-          <mat-icon>filter_alt_off</mat-icon>
-          Clear
-        </button>
-      }
+        <!-- Sort Controls -->
+        <div class="filter-group sort-group">
+          <label class="filter-label">Sort</label>
+          <div class="sort-controls">
+            <app-praxis-select
+              placeholder="Sort by"
+              [options]="sortOptions"
+              [(ngModel)]="sortBy"
+              (ngModelChange)="onFilterChange()"
+              class="sort-field-select"
+            >
+            </app-praxis-select>
+            <mat-button-toggle-group
+              hideSingleSelectionIndicator
+              [(ngModel)]="sortOrder"
+              (change)="onFilterChange()"
+              aria-label="Sort order"
+              class="praxis-toggle-group"
+            >
+              <mat-button-toggle value="asc" aria-label="Ascending">
+                <mat-icon>arrow_upward</mat-icon>
+              </mat-button-toggle>
+              <mat-button-toggle value="desc" aria-label="Descending">
+                <mat-icon>arrow_downward</mat-icon>
+              </mat-button-toggle>
+            </mat-button-toggle-group>
+          </div>
+        </div>
+
+        <!-- Clear Filters -->
+        @if (hasActiveFilters()) {
+          <div class="filter-group clear-group">
+            <button
+              mat-stroked-button
+              (click)="clearFilters()"
+              class="clear-btn"
+              aria-label="Clear all filters"
+            >
+              <mat-icon>filter_alt_off</mat-icon>
+              Clear
+            </button>
+          </div>
+        }
+      </div>
     </div>
   `,
   styles: [`
     .filters-container {
       display: flex;
-      flex-wrap: wrap;
-      align-items: flex-start;
+      flex-direction: column;
       gap: 16px;
       padding: 16px;
       border-radius: 12px;
@@ -194,30 +171,30 @@ export interface MachineFilterState {
       margin-bottom: 16px;
     }
 
-    .filter-group {
-      flex-shrink: 0;
-      max-width: 100%;
-    }
-
-    mat-chip-listbox {
+    .filters-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 4px;
-      max-height: 120px;
-      overflow-y: auto;
+      gap: 16px;
+      align-items: flex-end;
     }
 
-    .chip-dropdown {
-      width: 200px;
-      :host ::ng-deep .mat-mdc-form-field-subscript-wrapper { display: none; }
-      :host ::ng-deep .mat-mdc-text-field-wrapper { height: 40px; }
-      :host ::ng-deep .mat-mdc-form-field-flex { height: 40px; }
+    .selectors-row {
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+      padding-bottom: 16px;
     }
 
-    .search-group {
-      flex: 1;
-      min-width: 200px;
-      max-width: 300px;
+    .filter-group {
+      flex: 0 1 auto;
+      min-width: 140px;
+    }
+
+    .toggle-group {
+        min-width: 200px;
+    }
+
+    .sort-group {
+        flex: 1;
+        min-width: 300px;
     }
 
     .filter-label {
@@ -230,25 +207,39 @@ export interface MachineFilterState {
       margin-bottom: 8px;
     }
 
-    .search-field {
-      width: 100%;
+    .praxis-toggle-group {
+        height: 40px;
+        border-radius: 8px !important;
+        overflow: hidden;
+        border: 1px solid var(--mat-sys-outline-variant) !important;
+        background: var(--mat-sys-surface) !important;
     }
 
-    :host ::ng-deep .search-field,
-    :host ::ng-deep .sort-field {
-      .mat-mdc-form-field-subscript-wrapper { display: none; }
-      .mat-mdc-text-field-wrapper { height: 40px; }
-      .mat-mdc-form-field-flex { height: 40px; }
-    }
-
-    :host ::ng-deep .sort-field-select {
-      width: 140px;
+    ::ng-deep .praxis-toggle-group .mat-button-toggle-label-content {
+        line-height: 38px !important;
+        padding: 0 12px !important;
+        font-size: 13px !important;
     }
 
     .sort-controls {
       display: flex;
       gap: 8px;
-      align-items: flex-start;
+      align-items: center;
+    }
+
+    :host ::ng-deep .sort-field-select {
+      width: 160px;
+    }
+
+    .clear-group {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+    }
+
+    .clear-btn {
+      height: 40px;
+      border-radius: 8px;
     }
 
     :host ::ng-deep .chip-icon {
@@ -256,33 +247,6 @@ export interface MachineFilterState {
       width: 16px;
       height: 16px;
       margin-right: 4px;
-    }
-
-    .clear-btn {
-      margin-left: auto;
-      align-self: center;
-    }
-
-    /* Status chip colors */
-    .status-idle {
-      --mdc-chip-elevated-selected-container-color: rgba(34, 197, 94, 0.2);
-      --mdc-chip-selected-label-text-color: rgb(34, 197, 94);
-    }
-    .status-running {
-      --mdc-chip-elevated-selected-container-color: rgba(59, 130, 246, 0.2);
-      --mdc-chip-selected-label-text-color: rgb(59, 130, 246);
-    }
-    .status-error {
-      --mdc-chip-elevated-selected-container-color: rgba(239, 68, 68, 0.2);
-      --mdc-chip-selected-label-text-color: rgb(239, 68, 68);
-    }
-    .status-offline {
-      --mdc-chip-elevated-selected-container-color: rgba(107, 114, 128, 0.2);
-      --mdc-chip-selected-label-text-color: rgb(107, 114, 128);
-    }
-    .status-maintenance {
-      --mdc-chip-elevated-selected-container-color: rgba(245, 158, 11, 0.2);
-      --mdc-chip-selected-label-text-color: rgb(245, 158, 11);
     }
   `],
 })
@@ -297,6 +261,10 @@ export class MachineFiltersComponent implements OnInit {
   filtersChange = output<MachineFilterState>();
 
   // Filter state
+  @Input() set search(value: string) {
+    this.searchTerm = value;
+    this.onFilterChange();
+  }
   searchTerm = '';
   selectedStatuses: MachineStatus[] = [];
   selectedCategories: string[] = [];

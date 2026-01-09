@@ -144,7 +144,6 @@ describe('AssetSelectorComponent', () => {
       expect(options.length).toBe(3);
       expect(options[0].asset.accession_id).toBe('res-1');
       expect(options[options.length - 1].asset.accession_id).toBe('res-3');
-      done();
     });
   });
 });

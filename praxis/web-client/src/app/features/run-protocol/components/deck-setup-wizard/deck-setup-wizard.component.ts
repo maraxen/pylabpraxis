@@ -232,7 +232,7 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
 })
 export class DeckSetupWizardComponent implements OnInit {
     // Input for inline usage (when not opened via dialog)
-    data = input<{ protocol: ProtocolDefinition, deckResource: PlrResource | null, assetMap?: Record<string, any> } | null>(null);
+    data = input<{ protocol: ProtocolDefinition, deckResource: PlrResource | null, assetMap?: Record<string, any>, deckType?: string } | null>(null);
 
     // Signals initialized from Dialog Data or Input
     protocol = signal<ProtocolDefinition | null>(null);
@@ -311,7 +311,8 @@ export class DeckSetupWizardComponent implements OnInit {
             // For dialog usage, we might need to update the dialog data interface too, 
             // but currently the priority is inline usage.
             const assetMap = (inputData as any)?.assetMap || {};
-            this.wizardState.initialize(p, 'HamiltonSTARDeck', assetMap);
+            const deckType = (inputData as any)?.deckType || 'HamiltonSTARDeck';
+            this.wizardState.initialize(p, deckType, assetMap);
         }
     }
 

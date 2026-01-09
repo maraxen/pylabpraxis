@@ -11,6 +11,7 @@ import { AssetService } from '../../services/asset.service';
 import { AssetFiltersComponent, AssetFilterState } from '../asset-filters/asset-filters.component';
 import { AssetStatusChipComponent } from '../asset-status-chip/asset-status-chip.component';
 import { Machine, Resource, Workcell } from '../../models/asset.models';
+import { FilterHeaderComponent } from '../filter-header/filter-header.component';
 
 @Component({
   selector: 'app-spatial-view',
@@ -23,13 +24,20 @@ import { Machine, Resource, Workcell } from '../../models/asset.models';
     MatProgressSpinnerModule,
     MatTooltipModule,
     AssetFiltersComponent,
-    AssetStatusChipComponent
+    AssetStatusChipComponent,
+    FilterHeaderComponent
   ],
   template: `
     <div class="h-full flex flex-col bg-[var(--mat-sys-surface-variant)]">
       <!-- Filters Header -->
-      <div class="p-4 pb-0 bg-[var(--mat-sys-surface)] border-b border-[var(--theme-border)] z-10">
-        <app-asset-filters
+      <app-filter-header
+        searchPlaceholder="Search spatial view..."
+        [filterCount]="activeFiltersCount()"
+        [searchValue]="currentFilters().search"
+        (searchChange)="onSearch($event)"
+        (clearFilters)="clearFilters()">
+        
+        <app-asset-filters filterContent
           [categories]="categories()"
           [machines]="machines()"
           [workcells]="workcells()"
@@ -37,7 +45,7 @@ import { Machine, Resource, Workcell } from '../../models/asset.models';
           [showWorkcellFilter]="true"
           (filtersChange)="onFiltersChange($event)">
         </app-asset-filters>
-      </div>
+      </app-filter-header>
 
       <!-- Main Content -->
       <div class="flex-1 overflow-y-auto p-6 relative">
@@ -164,6 +172,17 @@ export class SpatialViewComponent implements OnInit {
   });
 
   // Derived
+  activeFiltersCount = computed(() => {
+    const f = this.currentFilters();
+    let count = 0;
+    if (f.status.length) count++;
+    if (f.category.length) count++;
+    if (f.machine_id) count++;
+    if (f.workcell_id) count++;
+    if (f.maintenance_due) count++;
+    return count;
+  });
+
   categories = computed(() => {
     // Collect all unique categories from machines and resources
     const cats = new Set<string>();
@@ -284,6 +303,23 @@ export class SpatialViewComponent implements OnInit {
 
   onFiltersChange(filters: AssetFilterState) {
     this.currentFilters.set(filters);
+  }
+
+  onSearch(term: string) {
+    this.currentFilters.update(f => ({ ...f, search: term }));
+  }
+
+  clearFilters() {
+    this.currentFilters.set({
+      status: [],
+      search: '',
+      category: [],
+      machine_id: null,
+      workcell_id: null,
+      maintenance_due: false,
+      sort_by: 'created_at',
+      sort_order: 'desc'
+    });
   }
 
   // Helpers

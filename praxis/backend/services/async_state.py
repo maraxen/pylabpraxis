@@ -2,7 +2,7 @@
 
 This module provides an async-compatible state management service that uses
 the KeyValueStore protocol, enabling both Redis-backed (production) and
-in-memory (demo) backends.
+in-memory (lite) backends.
 """
 
 import json

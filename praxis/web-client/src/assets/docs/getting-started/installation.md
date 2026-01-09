@@ -92,20 +92,20 @@ KEYCLOAK_CLIENT_ID=praxis-web
 
 ## Verify Installation
 
-1. Open http://localhost:4200 in your browser
+1. Open <http://localhost:4200> in your browser
 2. You should see the Praxis dashboard
 3. Check the backend health: `curl http://localhost:8000/health`
 
-## Demo Mode (No Backend Required)
+## Browser Mode (No Backend Required)
 
 For quick demonstrations without setting up the backend:
 
 ```bash
 cd praxis/web-client
-npm run start:demo
+npm run start:browser
 ```
 
-This runs the frontend with mock data - perfect for demos or UI development.
+This runs the frontend with mock data - perfect for local exploration or UI development.
 
 ## Production Deployment
 

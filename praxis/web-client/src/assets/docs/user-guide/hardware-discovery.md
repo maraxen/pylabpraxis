@@ -17,15 +17,18 @@ Hardware discovery uses:
 ### Opening the Dialog
 
 **From Assets page:**
+
 1. Navigate to **Assets** → **Machines** tab
 2. Click **Discover Hardware**
 
 **From Command Palette:**
+
 1. Press ++cmd+k++ (or ++ctrl+k++)
 2. Type "discover hardware"
 3. Select the action
 
 **Keyboard shortcut:**
+
 - ++alt+d++ opens hardware discovery directly
 
 ### Scanning for Devices
@@ -113,15 +116,18 @@ The device appears in your Machines list.
 ### No Devices Found
 
 **Check physical connections:**
+
 - Ensure cables are securely connected
 - Try a different USB port
 - Check power to the device
 
 **Check browser permissions:**
+
 - Clear site permissions and try again
 - Some browsers require HTTPS for WebSerial/WebUSB
 
 **Try manual selection:**
+
 - Use **Add Serial Device** or **Add USB Device**
 - Browser shows a picker even if auto-scan fails
 
@@ -189,9 +195,9 @@ Best practices:
 3. Revoke browser permissions when not needed
 4. Use device authentication where available
 
-## Demo Mode Behavior
+## Browser Mode Behavior
 
-In demo mode, hardware discovery returns mock devices:
+In browser mode, hardware discovery returns mock devices:
 
 - Simulated serial and USB devices
 - Pre-configured PLR types

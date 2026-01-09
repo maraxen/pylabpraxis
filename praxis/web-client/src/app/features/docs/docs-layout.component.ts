@@ -170,7 +170,7 @@ export class DocsLayoutComponent {
       pages: [
         { title: 'Installation', slug: 'installation', icon: 'download' },
         { title: 'Quick Start', slug: 'quickstart', icon: 'rocket_launch' },
-        { title: 'Demo Mode', slug: 'demo-mode', icon: 'play_circle' }
+        { title: 'Browser Mode', slug: 'browser-mode', icon: 'play_circle' }
       ]
     },
     {

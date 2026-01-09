@@ -362,8 +362,8 @@ class StdoutRedirector(io.TextIOBase):
     return len(s)
 
 
-def bootstrap_repl(namespace=None):
-  """Sets up the environment for the web REPL:
+def bootstrap_playground(namespace=None):
+  """Sets up the environment for the web playground:
   1. Redirects stdout/stderr to the browser.
   2. Imports common PyLabRobot classes.
 
@@ -459,7 +459,6 @@ def _ensure_jedi():
         # Run in event loop
         loop = asyncio.get_event_loop()
         loop.run_until_complete(install_jedi())
-
 
         _jedi_available = True
         return True

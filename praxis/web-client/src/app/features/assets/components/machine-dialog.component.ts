@@ -13,7 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatCardModule } from '@angular/material/card';
-import { AriaSelectComponent, SelectOption } from '@shared/components/aria-select/aria-select.component';
+import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
 import { MachineStatus, MachineDefinition } from '../models/asset.models';
 import { AssetService } from '../services/asset.service';
 import { ModeService } from '../../../core/services/mode.service';
@@ -61,7 +61,7 @@ interface FrontendType {
     MatStepperModule,
     MatCardModule,
     DynamicCapabilityFormComponent,
-    AriaSelectComponent
+    PraxisSelectComponent
   ],
   template: `
     <div class="h-full flex flex-col max-h-[85vh]">
@@ -191,11 +191,11 @@ interface FrontendType {
 
                   <div class="mb-4">
                     <label class="text-xs font-medium text-sys-text-secondary mb-1 block">Initial Status</label>
-                    <app-aria-select
-                      label="Initial Status"
+                    <app-praxis-select
+                      placeholder="Initial Status"
                       formControlName="status"
                       [options]="statusOptions"
-                    ></app-aria-select>
+                    ></app-praxis-select>
                   </div>
                 </div>
 

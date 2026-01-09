@@ -101,8 +101,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Determine storage backend from configuration
     storage_backend_str = praxis_config.storage_backend
-    is_demo = praxis_config.is_demo_mode
-    logger.info("Storage backend: %s (demo mode: %s)", storage_backend_str, is_demo)
+    is_lite = praxis_config.is_lite_mode
+    logger.info("Storage backend: %s (lite mode: %s)", storage_backend_str, is_lite)
 
     # Map string to enum
     backend_map = {
@@ -194,7 +194,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       logger.info("Orchestrator dependencies initialized.")
 
       # Configure Celery (only in production mode)
-      if not is_demo:
+      if not is_lite:
         logger.info("Configuring Celery app...")
         configure_celery_app(
           celery_app,
@@ -204,7 +204,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("Celery app configured.")
         scheduler_task_queue = celery_app
       else:
-        logger.info("Demo mode: Skipping Celery configuration, using in-memory task queue")
+        logger.info("Lite mode: Skipping Celery configuration, using in-memory task queue")
         scheduler_task_queue = task_queue
 
       # Initialize ProtocolExecutionService

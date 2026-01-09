@@ -7,7 +7,7 @@ import { ModeService } from '../services/mode.service';
 export const authGuard: CanActivateFn = (route, state) => {
   const modeService = inject(ModeService);
 
-  // Browser/Demo modes: allow all access without auth
+  // Browser modes: allow all access without auth
   if (modeService.isBrowserMode()) {
     return true;
   }

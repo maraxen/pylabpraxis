@@ -120,15 +120,21 @@ The deck display in Run Protocol workflow does not match the standalone Deck Vie
 
 ### Protocol Workflow Debugging (2026-01-09)
 
-> [!WARNING]
-> User verification confirmed these issues on 2026-01-09.
+> [!NOTE]
+> Most issues resolved. Remaining items tracked below.
 
-- [ ] **Parameter Form Mix-up**: Parameter selection form incorrectly includes machine and resource categories as selectable options <!-- id: 10 -->
-- [ ] **First Step Layout**: Protocol description takes too much space, needs constrained scrollable flex container <!-- id: 11 -->
-- [ ] **Navigation Buttons Location**: Move "Back to Selection" and "Continue" buttons to top of first step display <!-- id: 12 -->
+- [x] **Parameter Form Mix-up**: ✅ Fixed with `isAssetParameter()` filtering (prompt 37)
+- [x] **First Step Layout**: ✅ Verified working
+- [x] **Navigation Buttons Location**: ✅ Verified working  
+- [x] **Skip Setup Broken**: ✅ Verified working
+
+**Remaining Items**:
+
 - [ ] **Name & Notes Section**: Add user-editable name and notes fields for protocol runs <!-- id: 13 -->
-- [ ] **Draft Run Persistence**: Investigate if configured state can be preserved when user navigates away <!-- id: 14 -->
-- [ ] **Skip Setup Broken**: "Skip Setup" button in deck setup step does not advance the stepper <!-- id: 15 -->
+- [ ] **Run Persistence (IndexedDB)**: Save configured runs to IndexedDB so they appear in Execution Monitor <!-- id: 14 -->
+- [ ] **Well Selection Step**: Add conditional stepper step for protocols requiring well selection <!-- id: 16 -->
+
+**Consolidated into**: [38_run_persistence_well_selection.md](../prompts/260109/38_run_persistence_well_selection.md)
 
 **Technical Debt (Related)**:
 

@@ -4,8 +4,7 @@ import { environment } from '../../../environments/environment';
 
 /**
  * Application mode types:
- * - browser: Pure client-side, no backend, LocalStorage persistence
- * - demo: Browser mode + pre-loaded fake assets/protocols
+ * - browser: Pure client-side, no backend, LocalStorage persistence, pre-loaded assets
  * - lite: Local Python server with SQLite
  * - production: Full Postgres/Redis/FastAPI/Keycloak stack
  */
@@ -18,14 +17,14 @@ const MODE_OVERRIDE_KEY = 'praxis_mode_override';
  * Can be called before Angular DI is available (e.g., in service constructors).
  */
 export function isBrowserModeEnv(): boolean {
-    const env = environment as { browserMode?: boolean; demo?: boolean };
-    return env.browserMode === true || env.demo === true;
+    const env = environment as { browserMode?: boolean };
+    return env.browserMode === true;
 }
 
 /**
  * Centralized service for application mode detection and configuration.
  * 
- * Replaces scattered `environment.demo` checks throughout the codebase.
+ * Replaces scattered `environment.browserMode` checks throughout the codebase.
  * All mode-dependent logic should inject this service and use its computed signals.
  */
 @Injectable({ providedIn: 'root' })
@@ -85,12 +84,11 @@ export class ModeService {
 
         const env = environment as {
             browserMode?: boolean;
-            demo?: boolean;
             production?: boolean;
             lite?: boolean;
         };
 
-        if (env.browserMode || env.demo) {
+        if (env.browserMode) {
             return 'browser';
         }
         if (env.lite) {

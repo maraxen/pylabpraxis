@@ -36,6 +36,30 @@ class ProtocolDefinitionCRUDService(
 ):
   """CRUD service for protocol definitions."""
 
+  async def get(
+    self,
+    db: AsyncSession,
+    accession_id: Any,
+  ) -> FunctionProtocolDefinitionOrm | None:
+    """Get a single protocol definition with eager loaded relationships.
+
+    Overrides base class to ensure parameters and assets are loaded.
+    """
+    from sqlalchemy.orm import selectinload
+
+    stmt = (
+      select(self.model)
+      .where(self.model.accession_id == accession_id)
+      .options(
+        selectinload(self.model.parameters),
+        selectinload(self.model.assets),
+        selectinload(self.model.source_repository),
+        selectinload(self.model.file_system_source),
+      )
+    )
+    result = await db.execute(stmt)
+    return result.scalars().first()
+
   def _update_parameters(
     self,
     protocol_def: FunctionProtocolDefinitionOrm,
