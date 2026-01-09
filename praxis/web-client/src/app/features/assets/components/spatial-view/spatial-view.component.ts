@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, ChangeDetectionStrategy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -149,6 +149,8 @@ import { FilterHeaderComponent } from '../filter-header/filter-header.component'
 })
 export class SpatialViewComponent implements OnInit {
   private assetService = inject(AssetService);
+
+  @ViewChild(AssetFiltersComponent) assetFilters!: AssetFiltersComponent;
 
   // Data Signals
   machines = signal<Machine[]>([]);
@@ -320,6 +322,11 @@ export class SpatialViewComponent implements OnInit {
       sort_by: 'created_at',
       sort_order: 'desc'
     });
+    
+    // Also reset child component state
+    if (this.assetFilters) {
+      this.assetFilters.clearFilters();
+    }
   }
 
   // Helpers

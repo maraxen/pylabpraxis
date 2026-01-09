@@ -152,18 +152,6 @@ export interface AssetFilterState {
             Maintenance Due
         </mat-slide-toggle>
       </div>
-
-      <!-- Clear Filters -->
-      @if (hasActiveFilters()) {
-        <button
-          mat-stroked-button
-          (click)="clearFilters()"
-          class="ml-auto"
-          aria-label="Clear all filters">
-          <mat-icon>filter_alt_off</mat-icon>
-          Clear
-        </button>
-      }
     </div>
   `,
   styles: [`

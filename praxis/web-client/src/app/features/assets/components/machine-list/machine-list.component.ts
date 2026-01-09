@@ -50,7 +50,8 @@ import { AppStore } from '../../../../core/store/app.store';
         searchPlaceholder="Search machines..."
         [filterCount]="activeFiltersCount()"
         [searchValue]="currentSearch()"
-        (searchChange)="onSearch($event)">
+        (searchChange)="onSearch($event)"
+        (clearFilters)="machineFilters.clearFilters()">
         
         <app-machine-filters filterContent
           [machines]="machines()"
@@ -248,6 +249,7 @@ export class MachineListComponent {
   });
 
   @ViewChild(MatMenuTrigger) contextMenuTrigger!: MatMenuTrigger;
+  @ViewChild(MachineFiltersComponent) machineFilters!: MachineFiltersComponent;
   contextMenuPosition = { x: '0px', y: '0px' };
 
   constructor() {

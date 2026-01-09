@@ -141,21 +141,6 @@ export interface MachineFilterState {
             </mat-button-toggle-group>
           </div>
         </div>
-
-        <!-- Clear Filters -->
-        @if (hasActiveFilters()) {
-          <div class="filter-group clear-group">
-            <button
-              mat-stroked-button
-              (click)="clearFilters()"
-              class="clear-btn"
-              aria-label="Clear all filters"
-            >
-              <mat-icon>filter_alt_off</mat-icon>
-              Clear
-            </button>
-          </div>
-        }
       </div>
     </div>
   `,
