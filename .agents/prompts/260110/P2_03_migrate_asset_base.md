@@ -362,10 +362,10 @@ class TestAssetSQLModel:
 
 ## On Completion
 
-- [ ] Commit changes with message: `feat(models): migrate Asset to unified SQLModel domain model`
-- [ ] Update backlog item status in `sqlmodel_codegen_refactor.md` (Phase 2.1 → Done)
-- [ ] Mark this prompt complete in batch README
-- [ ] Document any polymorphic inheritance gotchas in `.agents/NOTES.md`
+- [x] Commit changes with message: `feat(models): migrate Asset to unified SQLModel domain model`
+- [x] Update backlog item status in `sqlmodel_codegen_refactor.md` (Phase 2.1 → Done)
+- [x] Mark this prompt complete in batch README
+- [x] Document any polymorphic inheritance gotchas in `.agents/NOTES.md`
 
 ---
 
