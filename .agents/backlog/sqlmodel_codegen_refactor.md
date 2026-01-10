@@ -74,6 +74,7 @@ A phased migration from 4 sources of truth (SQLAlchemy ORM + Pydantic + TypeScri
 
 - Unify `praxis/backend/models/orm/scheduler.py` + `praxis/backend/models/pydantic_internals/scheduler.py`
 - Preserve `AssetReservation` relationship to unified Asset
+- **Note**: Resolve `asset_reservations` relationship conflict in `Asset` model (currently commented out) when migrating this entity
 - **Tests**: `pytest tests/backend/models/orm/test_schedule*.py tests/backend/models/orm/test_asset_reservation*.py tests/backend/api/v1/test_scheduler*.py`
 
 ### 3.3 — Migrate `ProtocolSource` (Repository + FileSystem)
