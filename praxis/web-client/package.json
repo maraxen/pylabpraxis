@@ -13,7 +13,9 @@
     "build:browser": "ng build --configuration=browser",
     "build:gh-pages": "ng build --configuration=gh-pages",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "generate-api": "npx openapi-typescript-codegen --input ./src/assets/api/openapi.json --output ./src/app/core/api-generated --client fetch --useUnionTypes",
+    "prebuild": "npm run generate-api"
   },
   "prettier": {
     "printWidth": 100,

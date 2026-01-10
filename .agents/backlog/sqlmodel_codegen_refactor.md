@@ -10,14 +10,14 @@ A phased migration from 4 sources of truth (SQLAlchemy ORM + Pydantic + TypeScri
 
 ## Phase 1: Foundation Setup (2 prompts)
 
-### 1.1 — Add SQLModel dependency and base infrastructure
+### 1.1 — Add SQLModel dependency and base infrastructure (✅ Done)
 
 - Add `sqlmodel>=0.0.22` to `pyproject.toml`
 - Create `praxis/backend/models/sqlmodel_base.py` with unified `PraxisBase(SQLModel)` that combines `BaseOrm` metadata (accession_id UUID7, timestamps) with Pydantic config
 - Update `alembic/env.py` to import SQLModel metadata alongside existing ORM metadata
 - **Tests**: `pytest tests/backend/models/orm/ -k "base"`
 
-### 1.2 — Setup frontend OpenAPI codegen pipeline
+### 1.2 — Setup frontend OpenAPI codegen pipeline (✅ Done)
 
 - Add `openapi-typescript-codegen` to `frontend/package.json` devDependencies
 - Create `npm run generate-api` script targeting `src/app/core/api-generated/`

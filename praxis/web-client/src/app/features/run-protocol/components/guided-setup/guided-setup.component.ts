@@ -7,7 +7,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { PLRCategory } from '@app/core/db/plr-category';
+import { PLRCategory } from '@core/db/plr-category';
 import { Resource } from '@features/assets/models/asset.models';
 import { AssetService } from '@features/assets/services/asset.service';
 import { AssetRequirement, ProtocolDefinition } from '@features/protocols/models/protocol.models';
@@ -611,7 +611,7 @@ export class GuidedSetupComponent implements OnInit {
       if (resFqn && reqFqn && resFqn === reqFqn) return true;
       if (resClassName && reqClassName && resClassName === reqClassName) return true;
       if (reqType && resClassName && resClassName.includes(reqType)) return true;
-      if (this.matchesByCategory(reqType, reqClassName, resName, resFqn)) return true;
+      if (this.matchesByCategory(req, res)) return true;
 
       return false;
     });

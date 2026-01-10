@@ -8,7 +8,7 @@
  * This function uses the canonical PLRCategory enum values.
  */
 
-import { PLRCategory } from '@app/core/db/plr-category';
+import { PLRCategory } from '@core/db/plr-category';
 import { ResourceDefinition } from '../models/asset.models';
 
 export function inferCategory(def: ResourceDefinition): string {

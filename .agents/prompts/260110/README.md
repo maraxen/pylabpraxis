@@ -11,6 +11,7 @@
 This batch implements a phased migration from 4 sources of truth (SQLAlchemy ORM + Pydantic + TypeScript interfaces + manual services) to 1.5 sources of truth using **SQLModel** for unified backend models and **OpenAPI Generator** for auto-generated frontend code.
 
 **Goals:**
+
 - Eliminate duplicate model definitions (ORM vs Pydantic)
 - Automatic TypeScript type generation from backend
 - Improved type safety across the full stack
@@ -60,7 +61,7 @@ Phase 7: Cleanup
 | # | Prompt | Phase | Status | Depends On | Parallelizable |
 |---|--------|-------|--------|------------|----------------|
 | 01 | [P2_01_sqlmodel_foundation_setup.md](./P2_01_sqlmodel_foundation_setup.md) | 1.1 | 🟢 Not Started | None | ✅ Yes (with 02) |
-| 02 | [P2_02_openapi_codegen_pipeline.md](./P2_02_openapi_codegen_pipeline.md) | 1.2 | 🟢 Not Started | None | ✅ Yes (with 01) |
+| 02 | [P2_02_openapi_codegen_pipeline.md](./P2_02_openapi_codegen_pipeline.md) | 1.2 | ✅ Completed | None | ✅ Yes (with 01) |
 | 03 | [P2_03_migrate_asset_base.md](./P2_03_migrate_asset_base.md) | 2.1 | 🟢 Not Started | 01 | ❌ Sequential |
 | 04 | [P2_04_migrate_machine.md](./P2_04_migrate_machine.md) | 2.2 | 🟢 Not Started | 03 | ⚠️ After 03 |
 | 05 | [P2_05_migrate_resource.md](./P2_05_migrate_resource.md) | 2.3 | 🟢 Not Started | 03 | ⚠️ Parallel with 04 |
@@ -82,35 +83,43 @@ Phase 7: Cleanup
 ## Execution Order (Optimal)
 
 ### Parallel Group 1 (Can start immediately)
+
 - `P2_01_sqlmodel_foundation_setup.md`
 - `P2_02_openapi_codegen_pipeline.md`
 
 ### Sequential: Asset Base
+
 - `P2_03_migrate_asset_base.md` (after 01)
 
 ### Parallel Group 2 (After 03)
+
 - `P2_04_migrate_machine.md`
 - `P2_05_migrate_resource.md`
 - `P2_06_migrate_deck.md`
 
 ### Parallel Group 3 (After Phase 2)
+
 - `P2_07_migrate_protocol_run.md`
 - `P2_08_migrate_schedule.md`
 - `P2_09_migrate_protocol_source.md`
 
 ### Parallel Group 4 (After 07)
+
 - `P2_10_migrate_data_outputs.md`
 - `P2_11_migrate_workcell_user.md`
 
 ### Parallel Group 5 (After Phase 4)
+
 - `P2_12_update_crud_services.md`
 - `P2_13_update_test_fixtures.md`
 
 ### Sequential: Frontend (After Phase 5)
+
 - `P2_14_generate_typescript_client.md`
 - `P2_15_migrate_angular_services.md`
 
 ### Sequential: Cleanup (After Phase 6)
+
 - `P2_16_cleanup_legacy_files.md`
 - `P2_17_final_validation.md`
 

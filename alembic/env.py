@@ -5,11 +5,13 @@ from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlmodel import SQLModel
 
 from alembic import context
 from praxis.backend.utils.db import Base as PraxisBase
 # --- MODIFICATION FOR PRAXIS ---
 from praxis.backend.models import orm  # Ensure all models are loaded
+from praxis.backend.models import domain  # Ensure SQLModel models are loaded
 # --- END MODIFICATION ---
 
 # this is the Alembic Config object, which provides
@@ -22,12 +24,17 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # --- MODIFICATION FOR PRAXIS ---
-target_metadata = PraxisBase.metadata
+target_metadata = [PraxisBase.metadata, SQLModel.metadata]
 # --- END MODIFICATION ---
 
-# Override sqlalchemy.url from environment variable if set.
-database_url = os.getenv("DATABASE_URL")
+# Override sqlalchemy.url from environment variable if set, otherwise use config.
+database_url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
 if database_url:
+    # Ensure we use an async driver if this is a postgres URL
+    if database_url.startswith("postgresql://") and "+asyncpg" not in database_url:
+        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif database_url.startswith("postgres://") and "+asyncpg" not in database_url:
+        database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
     config.set_main_option("sqlalchemy.url", database_url)
 
 

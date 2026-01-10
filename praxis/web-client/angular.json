@@ -55,6 +55,12 @@
             "externalDependencies": [
               "node:vm",
               "node:path",
+              "node:child_process",
+              "node:crypto",
+              "node:fs",
+              "node:url",
+              "node:os",
+              "crypto",
               "ws"
             ]
           },

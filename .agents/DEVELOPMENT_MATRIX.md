@@ -121,6 +121,8 @@
 | Keyboard Shortcut Column | P2 | 2026-01-09 | Fixed formatting in docs |
 | Dead Links | P2 | 2026-01-09 | Resolved broken links in docs |
 | Machine Filter Backends | P2 | 2026-01-09 | Category filters now exclude backends |
+| OpenAPI Codegen Pipeline | P2 | 2026-01-10 | Automated TypeScript client generation from FastAPI |
+| SQLModel Foundation | P2 | 2026-01-10 | Established unified PraxisBase and SQLModel metadata integration |
 
 ---
 

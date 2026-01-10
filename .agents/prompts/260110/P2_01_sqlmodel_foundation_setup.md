@@ -2,7 +2,7 @@
 
 Examine `.agents/README.md` for development context.
 
-**Status:** 🟢 Not Started
+**Status:** ✅ Complete
 **Priority:** P2
 **Batch:** [260110](./README.md)
 **Backlog Reference:** [sqlmodel_codegen_refactor.md](../../backlog/sqlmodel_codegen_refactor.md)
@@ -227,9 +227,9 @@ from sqlmodel import SQLModel
 
 ## On Completion
 
-- [ ] Commit changes with message: `feat(models): add SQLModel foundation and PraxisBase class`
-- [ ] Update backlog item status in `sqlmodel_codegen_refactor.md` (Phase 1.1 → Done)
-- [ ] Mark this prompt complete in batch README
+- [x] Commit changes with message: `feat(models): add SQLModel foundation and PraxisBase class`
+- [x] Update backlog item status in `sqlmodel_codegen_refactor.md` (Phase 1.1 → Done)
+- [x] Mark this prompt complete in batch README
 
 ---
 
