@@ -261,6 +261,7 @@ class AssetRequirementModel(BaseModel):
     default_factory=LocationConstraintsModel,
     validation_alias="location_constraints_json",
   )
+  required_plr_category: str | None = None
 
 
 class FunctionProtocolDefinitionBase(BaseModel):

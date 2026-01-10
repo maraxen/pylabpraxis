@@ -68,6 +68,7 @@ export interface AssetRequirement {
   description?: string;
   constraints: AssetConstraints;
   location_constraints: LocationConstraints;
+  required_plr_category?: string;
 }
 
 /**

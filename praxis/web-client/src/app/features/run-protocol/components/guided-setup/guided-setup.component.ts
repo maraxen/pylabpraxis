@@ -7,6 +7,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { PLRCategory } from '@app/core/db/plr-category';
 import { Resource } from '@features/assets/models/asset.models';
 import { AssetService } from '@features/assets/services/asset.service';
 import { AssetRequirement, ProtocolDefinition } from '@features/protocols/models/protocol.models';
@@ -415,6 +416,12 @@ export class GuidedSetupComponent implements OnInit {
       const resName = res.name.toLowerCase();
       const resClassName = this.getClassName(resFqn);
 
+      // EXCLUDE carriers when requirement is for a non-carrier resource
+      const resCategory = this.getResourceCategory(res);
+      if (resCategory === PLRCategory.CARRIER && req.required_plr_category && req.required_plr_category !== PLRCategory.CARRIER) {
+        return false;
+      }
+
       // 1. Exact FQN match
       if (resFqn && reqFqn && resFqn === reqFqn) {
         return true;
@@ -430,8 +437,8 @@ export class GuidedSetupComponent implements OnInit {
         return true;
       }
 
-      // 4. Category/keyword matching for common resource types
-      if (this.matchesByCategory(reqType, reqClassName, resName, resFqn)) {
+      // 4. Category matching (uses backend-provided required_plr_category)
+      if (this.matchesByCategory(req, res)) {
         return true;
       }
 
@@ -449,43 +456,59 @@ export class GuidedSetupComponent implements OnInit {
   }
 
   /**
-   * Category-based matching for common PLR resource types
+   * Get PLR category from a resource.
+   * Checks plr_definition first, then falls back to FQN inference.
    */
-  private matchesByCategory(reqType: string, reqClassName: string, resName: string, resFqn: string): boolean {
-    const combined = `${reqType} ${reqClassName}`.toLowerCase();
-    const resNameLower = resName.toLowerCase();
-    const resFqnLower = resFqn.toLowerCase();
-
-    // Plate matching
-    if ((combined.includes('plate') || combined.includes('microplate')) &&
-      (resNameLower.includes('plate') || resFqnLower.includes('plate'))) {
-      return true;
+  private getResourceCategory(res: Resource): string | null {
+    // Primary: Check if category is in plr_definition
+    if (res.plr_definition && typeof res.plr_definition === 'object') {
+      const category = (res.plr_definition as any).category;
+      if (category && typeof category === 'string') {
+        return category;
+      }
     }
 
-    // Tip rack matching
-    if ((combined.includes('tip') || combined.includes('tiprack')) &&
-      (resNameLower.includes('tip') || resFqnLower.includes('tip'))) {
-      return true;
+    // Fallback: Infer from FQN (less reliable but needed until all resources have definitions)
+    if (!res.fqn) return null;
+    const fqnLower = res.fqn.toLowerCase();
+
+    if (fqnLower.includes('plate') && !fqnLower.includes('carrier') && !fqnLower.includes('reader')) {
+      return PLRCategory.PLATE;
+    }
+    if (fqnLower.includes('tiprack') || (fqnLower.includes('tip') && fqnLower.includes('rack'))) {
+      return PLRCategory.TIP_RACK;
+    }
+    if (fqnLower.includes('trough') || fqnLower.includes('reservoir')) {
+      return PLRCategory.TROUGH;
+    }
+    if (fqnLower.includes('carrier')) {
+      return PLRCategory.CARRIER;
+    }
+    if (fqnLower.includes('tube') && !fqnLower.includes('rack')) {
+      return PLRCategory.TUBE;
+    }
+    if (fqnLower.includes('tuberack') || (fqnLower.includes('tube') && fqnLower.includes('rack'))) {
+      return PLRCategory.TUBE_RACK;
     }
 
-    // Trough/reservoir matching
-    if ((combined.includes('trough') || combined.includes('reservoir')) &&
-      (resNameLower.includes('trough') || resNameLower.includes('reservoir') || resFqnLower.includes('trough'))) {
-      return true;
+    return null;
+  }
+
+  /**
+   * Category-based matching using backend-provided required_plr_category.
+   * This is the CORRECT way - no string matching on names/FQNs.
+   */
+  private matchesByCategory(req: AssetRequirement, res: Resource): boolean {
+    // If requirement specifies a category, use it (backend provides this)
+    if (req.required_plr_category) {
+      const resCategory = this.getResourceCategory(res);
+      if (!resCategory) return false;
+
+      // Exact category match
+      return resCategory.toLowerCase() === req.required_plr_category.toLowerCase();
     }
 
-    // Tube/vial matching
-    if ((combined.includes('tube') || combined.includes('vial')) &&
-      (resNameLower.includes('tube') || resNameLower.includes('vial') || resFqnLower.includes('tube'))) {
-      return true;
-    }
-
-    // Well plate matching
-    if (combined.includes('wellplate') &&
-      (resNameLower.includes('plate') || resFqnLower.includes('plate'))) {
-      return true;
-    }
-
+    // No category specified - don't filter by category
     return false;
   }
 
@@ -579,6 +602,11 @@ export class GuidedSetupComponent implements OnInit {
       const resFqn = (res.fqn || '').toLowerCase();
       const resName = res.name.toLowerCase();
       const resClassName = this.getClassName(resFqn);
+
+      // EXCLUDE carriers - they are container resources, not consumables
+      if (resFqn.includes('carrier') || resClassName.toLowerCase().includes('carrier')) {
+        return false;
+      }
 
       if (resFqn && reqFqn && resFqn === reqFqn) return true;
       if (resClassName && reqClassName && resClassName === reqClassName) return true;

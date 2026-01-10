@@ -34,7 +34,7 @@
   - Interactive hardware control working
   - Asset inventory integration functional
 - [ ] **Protocol Workflow Complete**
-  - Well selection triggering correctly
+  - [x] Well selection triggering correctly
   - Asset filtering to appropriate PLR classes
   - End-to-end protocol run flow
 
@@ -42,14 +42,14 @@
 
 These issues from the development matrix must be resolved:
 
-- [ ] Protocol well selection not triggering
+- [x] Protocol well selection not triggering
 - [ ] Playground initialization flow (WebSerial error)
 - [ ] Asset filtering not filtered to PLR class
 - [ ] Simulated backend clarity / demo naming cleanup
-- [ ] Asset management UX issues (backend selector, filters, registry)
+- [x] Asset management UX issues (backend selector, filters, registry)
 - [ ] Data visualization axis selects responding
-- [ ] Documentation accuracy (API docs, dead links, [x] Execution Flow Diagram)
-- [ ] UI polish items ([x] Duplicate Clear Button, filter styling)
+- [x] Documentation accuracy (API docs, dead links, [x] Execution Flow Diagram)
+- [x] UI polish items ([x] Duplicate Clear Button, filter styling)
 
 #### Quality Gates
 
@@ -65,12 +65,14 @@ These issues from the development matrix must be resolved:
 **Goal**: Production mode validation and expanded testing.
 
 **Core Requirements**:
+
 - [ ] Production mode fully validated and documented
 - [ ] Maintenance tracking system complete
 - [ ] Import/export tested and documented
 - [ ] Additional hardware backends as needed
 
 **Quality Gates**:
+
 - [ ] Production deployment guide complete
 - [ ] Performance benchmarks documented
 
@@ -81,6 +83,7 @@ These issues from the development matrix must be resolved:
 **Goal**: Enhanced user experience and advanced features.
 
 **Potential Features**:
+
 - [ ] Advanced protocol scheduling
 - [ ] Multi-workcell support
 - [ ] Cost optimization for consumables

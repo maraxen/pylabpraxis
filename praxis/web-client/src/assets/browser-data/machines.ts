@@ -4,7 +4,7 @@
 export const MOCK_MACHINES = [
     {
         accession_id: 'machine-001',
-        name: 'Hamilton STAR',
+        name: 'Simulated Hamilton STAR',
         fqn: 'pylabrobot.machines.hamilton.STAR',
         type: 'liquid_handler',
         category: 'LiquidHandler',
@@ -23,7 +23,7 @@ export const MOCK_MACHINES = [
     },
     {
         accession_id: 'machine-002',
-        name: 'Opentrons OT-2',
+        name: 'Simulated Opentrons OT-2',
         fqn: 'pylabrobot.machines.opentrons.OT2',
         type: 'liquid_handler',
         category: 'LiquidHandler',
@@ -42,7 +42,7 @@ export const MOCK_MACHINES = [
     },
     {
         accession_id: 'machine-003',
-        name: 'BioTek ELx405',
+        name: 'Simulated BioTek ELx405',
         fqn: 'pylabrobot.machines.biotek.ELx405',
         type: 'plate_washer',
         category: 'PlateWasher',
@@ -59,7 +59,7 @@ export const MOCK_MACHINES = [
     },
     {
         accession_id: 'machine-004',
-        name: 'Tecan Infinite 200',
+        name: 'Simulated Tecan Infinite 200',
         fqn: 'pylabrobot.machines.tecan.Infinite200',
         type: 'plate_reader',
         category: 'PlateReader',

@@ -20,7 +20,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatListModule } from '@angular/material/list';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -57,7 +56,6 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
     MatTooltipModule,
     MatListModule,
     MatSnackBarModule,
-    MatProgressSpinnerModule,
     MatFormFieldModule,
     MatInputModule,
     MatMenuModule,
@@ -99,17 +97,7 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
 
           <!-- JupyterLite iframe -->
           <div class="repl-notebook-wrapper" data-tour-id="repl-notebook">
-            @if (isLoading) {
-              <div class="loading-overlay">
-                <mat-spinner diameter="48"></mat-spinner>
-                <p>Loading Playground...</p>
-                <p class="loading-hint">This may take a moment on first load</p>
-                <p class="loading-hint">If the notebook doesn't appear, try clicking "Restart Kernel" (↻)</p>
-                <button mat-stroked-button color="warn" class="dismiss-btn" (click)="dismissLoading()">
-                  Dismiss Loading
-                </button>
-              </div>
-            }
+
             @if (jupyterliteUrl) {
               <iframe
                 #notebookFrame
@@ -376,36 +364,7 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
         font-size: 0.85rem;
       }
 
-      .loading-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: var(--mat-sys-surface-container);
-        z-index: 10;
-        pointer-events: auto; /* Ensure buttons are clickable */
-      }
 
-      .loading-overlay p {
-        margin-top: 16px;
-        font-size: 1rem;
-        color: var(--mat-sys-on-surface);
-      }
-
-      .loading-hint {
-        font-size: 0.85rem !important;
-        color: var(--mat-sys-on-surface-variant) !important;
-      }
-
-      .dismiss-btn {
-        margin-top: 16px;
-        transform: scale(0.9);
-      }
 
       .truncation-notice {
         padding: 8px 16px;
@@ -441,14 +400,11 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
   // JupyterLite Iframe Configuration
   jupyterliteUrl: SafeResourceUrl | undefined;
   currentTheme = 'light';
-  isLoading = true;
 
   private subscription = new Subscription();
 
   // Ready signal handshake
   private replChannel: BroadcastChannel | null = null;
-  private readyReceived = signal(false);
-  private readyTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     effect(() => {
@@ -486,17 +442,8 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
     // Set up BroadcastChannel listener for ready signal from Pyodide kernel
     this.replChannel = new BroadcastChannel('praxis_repl');
     this.replChannel.onmessage = (event) => {
-      console.log('[REPL] Received message:', event.data);
       if (event.data?.type === 'praxis:ready') {
         console.log('[REPL] Received kernel ready signal');
-        this.isLoading = false;
-        this.readyReceived.set(true);
-        this.cdr.detectChanges();
-        // Clean up timeout since we got the signal
-        if (this.readyTimeoutId) {
-          clearTimeout(this.readyTimeoutId);
-          this.readyTimeoutId = null;
-        }
       }
     };
   }
@@ -507,9 +454,6 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
     if (this.replChannel) {
       this.replChannel.close();
       this.replChannel = null;
-    }
-    if (this.readyTimeoutId) {
-      clearTimeout(this.readyTimeoutId);
     }
   }
 
@@ -726,16 +670,14 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Handle iframe load event - waits for kernel ready signal
+   * Handle iframe load event
    */
   onIframeLoad() {
     console.log('[REPL] Iframe loaded event fired');
     // Check if iframe has actual content
     const iframe = this.notebookFrame?.nativeElement;
     if (iframe && (iframe.contentDocument?.body?.childNodes?.length ?? 0) > 0) {
-      console.log('[REPL] Iframe content detected, waiting for ready signal via channel');
-
-      if (this.readyReceived()) return;
+      console.log('[REPL] Iframe content detected');
 
       // Inject fetch interceptor to suppress 404s for virtual filesystem lookups
       try {
@@ -761,42 +703,15 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
       } catch (e) {
         console.warn('[REPL] Could not inject interceptor (likely cross-origin):', e);
       }
-
-      if (this.readyTimeoutId) clearTimeout(this.readyTimeoutId);
-
-      this.readyTimeoutId = setTimeout(() => {
-        if (!this.readyReceived()) {
-          console.warn('[REPL] Kernel ready signal not received after 30s, proceeding anyway');
-          this.isLoading = false;
-          this.cdr.detectChanges();
-        }
-      }, 30000);
     } else {
       console.warn('[REPL] Iframe load event fired but no content detected');
     }
   }
 
   /**
-   * Manually dismiss loading state
-   */
-  dismissLoading() {
-    console.log('[REPL] Loading manually dismissed');
-    this.isLoading = false;
-    this.cdr.detectChanges();
-  }
-
-  /**
    * Reload the notebook (restart kernel)
    */
   reloadNotebook() {
-    this.isLoading = true;
-    this.readyReceived.set(false);
-
-    if (this.readyTimeoutId) {
-      clearTimeout(this.readyTimeoutId);
-      this.readyTimeoutId = null;
-    }
-
     // Force iframe reload by momentarily clearing URL or just rebuilding
     this.jupyterliteUrl = undefined; // Force DOM cleanup
     this.cdr.detectChanges();

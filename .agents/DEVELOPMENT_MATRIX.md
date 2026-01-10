@@ -30,8 +30,6 @@
 
 | Item | Difficulty | Backlog | Description |
 |------|------------|---------|-------------|
-| Protocol Well Selection | Medium | [protocol_workflow.md](./backlog/protocol_workflow.md) | Well selection not triggering in protocol run |
-| Playground Initialization | Medium | [playground.md](./backlog/playground.md) | Must click reload kernel + dismiss loading; WebSerial error |
 | Asset Filtering | Medium | [asset_management.md](./backlog/asset_management.md) | Autofill not filtered to appropriate PLR class |
 
 ---
@@ -43,14 +41,8 @@
 | Item | Difficulty | Backlog | Description |
 |------|------------|---------|-------------|
 | Simulated Backend Clarity | Medium | [simulation.md](./backlog/simulation.md) | Unclear simulated backend behavior; demo naming persists |
-| Backend Selector UX | Easy | [asset_management.md](./backlog/asset_management.md) | Disable unless category selected, or use autocomplete |
-| ✅ Backend Name Truncation | Easy | [asset_management.md](./backlog/asset_management.md) | Names too long to be useful |
-| Machine Filter Backends | Easy | [asset_management.md](./backlog/asset_management.md) | Category filters incorrectly include backends |
-| ✅ Duplicate Clear Button | Easy | [ui_polish.md](./backlog/ui_polish.md) | Remove duplicate in filter dialog |
-| Add Asset Prompt | Easy | [asset_management.md](./backlog/asset_management.md) | Overview should prompt machine vs resource |
 | Registry UI | Medium | [asset_management.md](./backlog/asset_management.md) | "Definitions precinct in browser mode" error; needs redesign |
 | Protocol Library Filters | Medium | [protocol_workflow.md](./backlog/protocol_workflow.md) | No filters implemented |
-| ✅ Protocol Dialog Assets | Easy | [protocol_workflow.md](./backlog/protocol_workflow.md) | Machines should be in asset requirements, not parameters |
 
 ### Visualization Issues
 
@@ -61,12 +53,9 @@
 | Item | Difficulty | Backlog | Description |
 |------|------------|---------|-------------|
 | API Docs Broken | Medium | [docs.md](./backlog/docs.md) | API documentation not rendering |
-| Keyboard Shortcut Column | Easy | [docs.md](./backlog/docs.md) | Formatting broken |
 | Architecture View Expansion | Medium | [docs.md](./backlog/docs.md) | Shows text instead of visual diagrams |
-| Dead Links | Easy | [docs.md](./backlog/docs.md) | Fix broken documentation links |
 | Mode Separation in Docs | Medium | [docs.md](./backlog/docs.md) | Separate browser-lite vs production tabs |
 | State Management Diagram | Easy | [docs.md](./backlog/docs.md) | Improperly formatted for theming |
-| ✅ Execution Flow Diagram | Easy | [docs.md](./backlog/docs.md) | Formatting issues |
 | Tutorial Updates | Medium | [docs.md](./backlog/docs.md) | Bring tutorial up to date |
 | Docs Accuracy Audit | Medium | [docs.md](./backlog/docs.md) | Verify all docs are current |
 
@@ -74,8 +63,6 @@
 
 | Item | Difficulty | Backlog | Description |
 |------|------------|---------|-------------|
-| ✅ Inventory Filter Styling | Easy | [playground.md](./backlog/playground.md) | Use styled select components |
-| ✅ Category Structure | Easy | [playground.md](./backlog/playground.md) | Proper structure in quick add filter |
 | Resource Filter Broken | Medium | [playground.md](./backlog/playground.md) | Filters not working, inconsistent styling |
 | Browser Tab Blank | Medium | [playground.md](./backlog/playground.md) | Categories shows blank area |
 | WebUSB/Polyfill Audit | Hard | [playground.md](./backlog/playground.md) | Audit polyfill/webusb communication |
@@ -100,8 +87,6 @@
 | Item | Difficulty | Backlog | Description |
 |------|------------|---------|-------------|
 | Maintenance Tracking Tests | Medium | [testing.md](./backlog/testing.md) | Test maintenance system |
-| ✅ Infinite Consumables Tests | Easy | [testing.md](./backlog/testing.md) | Test consumable system |
-| ✅ Import/Export Tests | Easy | [testing.md](./backlog/testing.md) | Test backup/restore |
 
 ---
 
@@ -115,16 +100,40 @@
 
 ---
 
+---
+
+## Completed Items
+
+| Item | Priority | Date | Description |
+|------|----------|------|-------------|
+| Playground Initialization | P1 | 2026-01-10 | Removed unnecessary loading overlay |
+| Protocol Well Selection | P1 | 2026-01-09 | Well selection enabled for protocol parameters |
+| Backend Name Truncation | P2 | 2026-01-09 | Names truncated with tooltips in selectors |
+| Duplicate Clear Button | P2 | 2026-01-09 | Removed redundant button in filter dialog |
+| Protocol Dialog Assets | P2 | 2026-01-09 | Correctly classified machines as asset requirements |
+| Execution Flow Diagram | P2 | 2026-01-09 | Fixed formatting in docs |
+| Inventory Filter Styling | P2 | 2026-01-09 | Styled selects used in playground |
+| Category Structure | P2 | 2026-01-09 | Proper hierarchy in playground quick add |
+| Infinite Consumables Tests| P3 | 2026-01-09 | Comprehensive tests for consumables |
+| Import/Export Tests | P3 | 2026-01-09 | Tests for backup/restore functionality |
+| Backend Selector UX | P2 | 2026-01-09 | Gated selection with stepper logic |
+| Add Asset Prompt | P2 | 2026-01-09 | Selection between machine/resource |
+| Keyboard Shortcut Column | P2 | 2026-01-09 | Fixed formatting in docs |
+| Dead Links | P2 | 2026-01-09 | Resolved broken links in docs |
+| Machine Filter Backends | P2 | 2026-01-09 | Category filters now exclude backends |
+
+---
+
 ## Summary
 
 | Priority | Count | Focus |
 |----------|-------|-------|
-| **P1** | 3 | Alpha blockers |
-| **P2** | 29 | Alpha quality (including hardware) |
-| **P3** | 3 | Should have for alpha |
+| **P1** | 2 | Alpha blockers |
+| **P2** | 20 | Alpha quality (including hardware) |
+| **P3** | 1 | Should have for alpha |
 | **P4** | 3 | Post-alpha / beta |
 
-**Total Active Items**: 38
+**Total Active Items**: 26
 
 ---
 

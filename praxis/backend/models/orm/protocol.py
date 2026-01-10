@@ -612,6 +612,13 @@ class AssetRequirementOrm(Base):
     comment="JSONB representation of location constraints for the asset requirement.",
     default=None,
   )
+  required_plr_category: Mapped[str | None] = mapped_column(
+    String,
+    nullable=True,
+    index=True,
+    comment="PLR category required (Plate, TipRack, Carrier, LiquidHandler, etc). Computed by backend during protocol analysis.",
+    default=None,
+  )
   protocol_definition: Mapped["FunctionProtocolDefinitionOrm"] = relationship(
     "FunctionProtocolDefinitionOrm",
     back_populates="assets",

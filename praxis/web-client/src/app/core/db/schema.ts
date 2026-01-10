@@ -1,6 +1,6 @@
 /**
  * Auto-generated TypeScript interfaces from SQLAlchemy ORM models
- * Generated at: 2026-01-09T00:43:57.679165
+ * Generated at: 2026-01-09T18:10:10.478928
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 
@@ -488,6 +488,8 @@ export interface ProtocolAssetRequirement {
   constraints: Record<string, unknown> | null;
   /** JSONB representation of location constraints for the asset requirement. */
   location_constraints: Record<string, unknown> | null;
+  /** PLR category required (Plate, TipRack, Carrier, LiquidHandler, etc). Computed by backend during protocol analysis. */
+  required_plr_category: string | null;
   accession_id: string;
   /** Timestamp when the record was created. */
   created_at: string;

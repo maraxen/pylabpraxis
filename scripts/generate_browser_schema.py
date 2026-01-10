@@ -329,6 +329,10 @@ def generate_typescript_enums() -> str:
         SpatialContextEnum,
         WorkcellStatusEnum,
     )
+    from praxis.backend.models.orm import (
+        ResolutionActionEnum,
+        ResolutionTypeEnum,
+    )
 
     all_enums = [
         AssetReservationStatusEnum,
@@ -339,6 +343,8 @@ def generate_typescript_enums() -> str:
         MachineStatusEnum,
         ProtocolRunStatusEnum,
         ProtocolSourceStatusEnum,
+        ResolutionActionEnum,
+        ResolutionTypeEnum,
         ResourceCategoryEnum,
         ResourceStatusEnum,
         SpatialContextEnum,

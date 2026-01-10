@@ -9,7 +9,7 @@ Examine .agents/README.md for development context.
 
 ## Prompt
 
-```
+```markdown
 Examine .agents/README.md for development context.
 
 ## Task

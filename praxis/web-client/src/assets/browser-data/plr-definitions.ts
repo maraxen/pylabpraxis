@@ -159,7 +159,7 @@ export const PLR_MACHINE_DEFINITIONS: PlrMachineDefinition[] = [
     { accession_id: 'plr-mach-041', name: 'InhecoTEC', fqn: 'pylabrobot.heating_shaking.backends.inheco.InhecoTEC', vendor: 'Inheco', description: 'Inheco TEC controller', has_deck: false, machine_type: 'Shaker', properties_json: { temp_range: '4-110°C' }, frontend_fqn: 'pylabrobot.heating_shaking.HeaterShaker' },
 
     // Simulators
-    { accession_id: 'plr-mach-090', name: 'SimulatorBackend', fqn: 'pylabrobot.liquid_handling.backends.simulation.SimulatorBackend', vendor: 'PyLabRobot', description: 'Simulation backend for testing', has_deck: true, machine_type: 'LiquidHandler', properties_json: { simulated: true }, frontend_fqn: 'pylabrobot.liquid_handling.LiquidHandler' },
+    { accession_id: 'plr-mach-090', name: 'SimulatedLiquidHandler', fqn: 'pylabrobot.liquid_handling.backends.simulation.SimulatorBackend', vendor: 'PyLabRobot', description: 'Simulation backend for testing', has_deck: true, machine_type: 'LiquidHandler', properties_json: { simulated: true }, frontend_fqn: 'pylabrobot.liquid_handling.LiquidHandler' },
 ];
 
 // ============================================================================

@@ -7,7 +7,7 @@
 
 ## P1: Well Selection Not Triggering
 
-**Status**: 🟡 In Progress (Assigned: [Prompt 13](../prompts/260109/13_protocol_well_selection_fix.md))
+**Status**: 🟢 Completed (Assigned: [Prompt 13](../archive/prompts/260109/13_protocol_well_selection_fix.md))
 **Difficulty**: Medium
 
 ### Problem
@@ -86,7 +86,7 @@ No filters are implemented in the protocol library.
 
 ## P2: Protocol Dialog Asset Classification
 
-**Status**: 🟢 Completed (Assigned: [Prompt 15](../prompts/260109/15_protocol_dialog_asset_classification.md))
+**Status**: 🟢 Completed (Assigned: [Prompt 15](../archive/prompts/260109/15_protocol_dialog_asset_classification.md))
 **Difficulty**: Easy
 
 ### Problem

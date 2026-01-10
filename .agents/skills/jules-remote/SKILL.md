@@ -10,18 +10,20 @@ This skill guides the use of Jules for dispatching development tasks to a remote
 ## Quick Reference
 
 ```bash
+# List recent sessions (full IDs, most recent first)
+jules remote list --session 2>&1 | cat | head -20
+
 # Create a new Jules task
 jules remote new --session "Task title and detailed description"
 
-# List all remote sessions
-jules remote list --session
-
-# Pull completed task and apply patch
-jules remote pull --session <task_id> --apply
-
-# Pull without applying (review only)
+# Pull completed task (review only)
 jules remote pull --session <task_id>
+
+# Pull and apply patch
+jules remote pull --session <task_id> --apply
 ```
+
+> **Note:** The `2>&1 | cat` trick prevents terminal truncation of session IDs. Use `head -N` to limit to the N most recent tasks.
 
 ## When to Use Jules
 
@@ -76,40 +78,16 @@ Description:
 ## Best Practices
 
 1. **Include exact file paths** in task descriptions
-2. **Reference conductor tracks** for context: `conductor/tracks/<track>/spec.md`
+2. **Reference relevant design docs or backlog items** for context (see `.agents/backlog/` or `.agents/reference/` for up-to-date specs and requirements)
 3. **Pull tasks promptly** after completion to avoid conflicts
 4. **New files apply cleanly**; modifications to existing files often conflict
 
-## Integration Session Log
+## Lessons Learned
 
-### 2025-12-29
+- **"In Progress" may be complete**: When Jules shows "In Progress", the task may still have complete diff output. Always check with `jules remote pull <id>` before assuming work is ongoing.
+- **Extract intent from conflicts**: When patches conflict, extract the **intent** and apply logic manually. Don't force-apply corrupted patches.
+- **Pull quickly**: File modifications conflict if local development continues on the same files.
 
-**New Applied:**
+## Integration History
 
-- `4034787287612031698`: Mock data generator backend service (`mock_data_generator.py`) ✅
-
-**Manually Integrated (from conflicting patches):**
-
-- `8164906329227431094`: Stale run recovery → Applied `recover_stale_runs()` method + `statuses` param to `protocols.py`
-- `17187202815358803296`: Loading skeletons → Created `protocol-list-skeleton.component.ts`
-
-**Skipped (already implemented or no diff):**
-
-- `10313850461911995554`: Asset auto-selection ranking (no diff in VM)
-- `13592632197674260968`: Keyboard shortcuts (already has better implementation)
-- `6849380947438220668`: Log streaming (complex conflicts with main.py)
-- `633514496330525370`: Test DB fix (file already exists)
-
-**Stalled (need manual resolution):**
-
-- `2018483486353036781`: Command palette navigation (awaiting feedback)
-- `12364093375820506759`: Reservation inspection API (awaiting plan approval)
-
-**Lesson:** When patches conflict, extract the **intent** and apply logic manually. Don't force-apply corrupted patches.
-
-### 2025-12-26
-
-**Applied:** 3 tasks (mock-telemetry.service.ts, plate-heatmap component, DEMO_SCRIPT.md)
-**Skipped:** 6 tasks (conflicts with modified files)
-
-**Lesson:** Pull Jules tasks quickly. File modifications conflict if local development continues.
+See [INTEGRATION_LOG.md](INTEGRATION_LOG.md) for session-by-session records.

@@ -1,29 +1,29 @@
 
-import { Component, inject, signal, computed, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, Validators, FormControl } from '@angular/forms';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatStepper, MatStepperModule } from '@angular/material/stepper';
+import { Component, computed, inject, signal, ViewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormBuilder, FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatListModule, MatSelectionListChange } from '@angular/material/list';
 import { MatRadioModule } from '@angular/material/radio';
-import { MatDividerModule } from '@angular/material/divider';
+import { MatSelectModule } from '@angular/material/select';
+import { MatStepper, MatStepperModule } from '@angular/material/stepper';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { AssetService } from '../../../assets/services/asset.service';
-import { Machine, Resource } from '../../../assets/models/asset.models';
-import { getResourceCategoryIcon, getMachineCategoryIcon } from '@shared/constants/asset-icons';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
+import { getMachineCategoryIcon, getResourceCategoryIcon } from '@shared/constants/asset-icons';
 import { FilterHeaderComponent } from '../../../assets/components/filter-header/filter-header.component';
+import { Machine, Resource } from '../../../assets/models/asset.models';
+import { AssetService } from '../../../assets/services/asset.service';
 
 export interface InventoryItem {
   type: 'machine' | 'resource';
@@ -104,7 +104,7 @@ export interface InventoryItem {
                       <mat-icon matListItemIcon>{{ getAssetIcon(item) }}</mat-icon>
                       <div matListItemTitle class="flex items-center gap-2">
                         {{ item.name }}
-                        <span class="category-badge">{{ getCategory(item) }}</span>
+                        <span class="category-badge">{{ formatCategory(getCategory(item)) }}</span>
                       </div>
                       <div matListItemLine>{{ getAssetDescription(item) }}</div>
                       <button mat-stroked-button color="primary" matListItemMeta (click)="quickAdd(item)">
@@ -162,16 +162,23 @@ export interface InventoryItem {
               <mat-step [stepControl]="categoryForm" [completed]="categoryForm.valid">
                 <ng-template matStepLabel>Category</ng-template>
                 <div class="step-wrapper">
-                  <div class="chip-container">
-                    <mat-chip-listbox [formControl]="categoryControl">
-                      @for (cat of availableCategories(); track cat) {
-                        <mat-chip-option [value]="cat">
-                          <mat-icon matChipAvatar>{{ getCategoryIcon(cat) }}</mat-icon>
-                          {{ cat }}
-                        </mat-chip-option>
-                      }
-                    </mat-chip-listbox>
-                  </div>
+                  @if (availableCategories().length > 0) {
+                    <div class="chip-container">
+                      <mat-chip-listbox [formControl]="categoryControl">
+                        @for (cat of availableCategories(); track cat) {
+                          <mat-chip-option [value]="cat">
+                            <mat-icon matChipAvatar>{{ getCategoryIcon(cat) }}</mat-icon>
+                            {{ formatCategory(cat) }}
+                          </mat-chip-option>
+                        }
+                      </mat-chip-listbox>
+                    </div>
+                  } @else {
+                    <div class="empty-state">
+                      <mat-icon>category</mat-icon>
+                      <p>No categories available. Please select an asset type first.</p>
+                    </div>
+                  }
                   <div class="step-actions">
                     <button mat-button matStepperPrevious>Back</button>
                     <button mat-flat-button color="primary" matStepperNext [disabled]="categoryControl.invalid">Continue</button>
@@ -274,7 +281,7 @@ export interface InventoryItem {
                         </mat-form-field>
                       </div>
                       <div matListItemLine>
-                        {{ item.asset.name }} • <span class="category-badge">{{ item.category }}</span>
+                        {{ item.asset.name }} • <span class="category-badge">{{ formatCategory(item.category) }}</span>
                       </div>
                       <button mat-icon-button matListItemMeta (click)="removeItem($index)" color="warn">
                         <mat-icon>remove_circle_outline</mat-icon>
@@ -535,6 +542,11 @@ export class InventoryDialogComponent {
   quickFilterTypeValue = toSignal(this.quickFilterType.valueChanges, { initialValue: 'all' });
   quickFilterCategoryValue = toSignal(this.quickFilterCategory.valueChanges, { initialValue: 'all' });
 
+  // Browser Tab Signals
+  typeValue = toSignal(this.typeControl.valueChanges, { initialValue: '' });
+  categoryValue = toSignal(this.categoryControl.valueChanges, { initialValue: '' });
+  searchValue = toSignal(this.searchControl.valueChanges, { initialValue: '' });
+
   machineCategories = computed(() => {
     const cats = new Set<string>();
     this.machines()?.forEach(m => {
@@ -555,9 +567,9 @@ export class InventoryDialogComponent {
   categoryOptions = computed<SelectOption[]>(() => {
     const type = this.quickFilterTypeValue();
     const allLabel: SelectOption = { label: 'All Categories', value: 'all' };
-    
+
     // Helper to map string[] to SelectOption[]
-    const mapCats = (cats: string[]) => cats.map(c => ({ label: c, value: c }));
+    const mapCats = (cats: string[]) => cats.map(c => ({ label: this.formatCategory(c), value: c }));
 
     if (type === 'machine') {
       return [allLabel, ...mapCats(this.machineCategories())];
@@ -648,7 +660,7 @@ export class InventoryDialogComponent {
   });
 
   availableCategories = computed(() => {
-    const type = this.typeControl.value;
+    const type = this.typeValue();
     const cats = new Set<string>();
 
     if (type === 'machine') {
@@ -665,9 +677,9 @@ export class InventoryDialogComponent {
   });
 
   filteredAssets = computed(() => {
-    const type = this.typeControl.value;
-    const category = this.categoryControl.value;
-    const search = this.searchControl.value?.toLowerCase() || '';
+    const type = this.typeValue();
+    const category = this.categoryValue();
+    const search = this.searchValue()?.toLowerCase() || '';
 
     if (!type || !category) return [];
 
@@ -761,7 +773,7 @@ export class InventoryDialogComponent {
   }
 
   getCategoryIcon(cat: string): string {
-    const type = this.typeControl.value;
+    const type = this.typeValue();
     if (type === 'machine') return getMachineCategoryIcon(cat);
     return getResourceCategoryIcon(cat);
   }
@@ -827,5 +839,12 @@ export class InventoryDialogComponent {
       return item.plr_definition.description;
     }
     return 'No description';
+  }
+
+  formatCategory(cat: string): string {
+    if (!cat) return '';
+    return cat
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
   }
 }

@@ -1,140 +1,106 @@
-# Prompt Batch: 260109 - Alpha Priority Items
+# Agent Prompt Batch: 2026-01-09
 
-**Status:** 🟡 In Progress
 **Created:** 2026-01-09
-**Updated:** 2026-01-09
-**Total Prompts:** 27 (3 P1, 22 P2, 2 P3)
+**Focus Area:** Protocol Workflow & Playground Stabilization
+**Total Prompts:** 7 (+ remediation prompts TBD from P0_03)
 
 ---
 
-## Overview
+## Prompts
 
-This batch addresses all priority items from the fresh reset of `.agents/DEVELOPMENT_MATRIX.md`. Organized by priority and functional area:
-
-- **P1 Blockers (3)** - Critical for alpha release
-- **P2 High Priority (22)** - Required for alpha quality
-- **P3 Medium (2)** - Should have for alpha
-
----
-
-## P1: Critical Blockers
-
-| # | Prompt | Status | Difficulty |
-|---|--------|--------|------------|
-| 1 | [01_playground_initialization.md](./01_playground_initialization.md) | 🟢 Not Started | Medium |
-| 2 | [02_asset_filtering.md](./02_asset_filtering.md) | 🟢 Not Started | Medium |
-| 3 | [13_protocol_well_selection_fix.md](./13_protocol_well_selection_fix.md) | 🟢 Not Started | Medium |
+| # | Status | Priority | Filename | Description | Complexity | Key Files | Verification |
+|---|--------|----------|----------|-------------|------------|-----------|--------------|
+| 0.1 | ⚠️ Superseded | **P0** | [P0_01_plr_category_audit.md](P0_01_plr_category_audit.md) | Frontend-only cleanup (superseded by P0_02) | High | frontend | `npm run build` |
+| 0.2 | 🟢 Not Started | **P0** | [P0_02_separation_of_concerns_audit.md](P0_02_separation_of_concerns_audit.md) | **Audit**: Find all separation of concerns violations | High | backend + frontend | Document findings |
+| 0.3 | 🟢 Not Started | **P0** | [P0_03_audit_remediation_planning.md](P0_03_audit_remediation_planning.md) | **Plan**: Create backlog items & prompts from audit | Medium | `.agents/` | Prompts created |
+| 1 | 🟢 Not Started | P1 | [P1_01_playground_loading_removal.md](P1_01_playground_loading_removal.md) | Remove unnecessary loading overlay from Playground | Easy | `playground.component.ts` | `npm run build` |
+| 2 | ⚠️ Superseded | P1 | [P1_02_asset_filtering_bugfix.md](P1_02_asset_filtering_bugfix.md) | Tactical fix (superseded by P0_02) | Medium | `guided-setup.component.ts` | `npm run build` |
+| 3 | 🟢 Not Started | P1 | [P1_03_asset_selection_filters.md](P1_03_asset_selection_filters.md) | Add status filter chips to asset selection cards | Medium | `guided-setup.component.ts` | `npm run build` + manual test |
+| 4 | 🟢 Not Started | P1 | [P1_04_autoselect_buttons.md](P1_04_autoselect_buttons.md) | Add Auto-Select buttons to Machine & Asset steps | Easy-Medium | `run-protocol.component.ts`, `guided-setup.component.ts` | `npm run build` + manual test |
 
 ---
 
-## P2: High Priority (UI/UX, Docs, Assets, Playground, Protocols, Data Viz)
+## Execution Order
 
-### UI Polish & Docs (5 original + 4 new = 9)
+### Phase 1: Audit & Plan
 
-| # | Prompt | Status | Difficulty |
-|---|--------|--------|------------|
-| 4 | [01_ui_duplicate_clear_button.md](./01_ui_duplicate_clear_button.md) | 🟢 Completed | Easy |
-| 5 | [02_docs_keyboard_shortcut_formatting.md](./02_docs_keyboard_shortcut_formatting.md) | 🟢 Not Started | Easy |
-| 6 | [03_docs_fix_dead_links.md](./03_docs_fix_dead_links.md) | 🟢 Completed | Easy |
-| 7 | [04_docs_state_management_diagram.md](./04_docs_state_management_diagram.md) | 🟢 Not Started | Easy |
-| 8 | [05_docs_execution_flow_diagram.md](./05_docs_execution_flow_diagram.md) | 🟢 Completed | Easy |
-| 20 | [20_docs_api_not_working.md](./20_docs_api_not_working.md) | 🟢 Not Started | Medium |
-| 21 | [21_docs_mode_separation.md](./21_docs_mode_separation.md) | 🟢 Not Started | Medium |
-| 22 | [22_docs_tutorial_updates.md](./22_docs_tutorial_updates.md) | 🟢 Not Started | Medium |
+```
+P0_02 (Audit)
+  │
+  │  Findings: list of files, missing fields, violations
+  │
+  ▼
+P0_03 (Plan)
+  │
+  │  Output: new backlog items, P1_XX remediation prompts
+  │
+  ▼
+P1_XX... (Remediation prompts created by P0_03)
+```
 
-### Asset Management (3 original + 2 new = 5)
+1. **P0_02** - Audit: Find all separation of concerns violations
+   - Document files with frontend inference logic
+   - Document missing backend schema fields
+   - Document browser mode data gaps
 
-| # | Prompt | Status | Difficulty |
-|---|--------|--------|------------|
-| 9 | [06_assets_backend_name_truncation.md](./06_assets_backend_name_truncation.md) | 🟢 Completed | Easy |
-| 10 | [07_assets_backend_selector_ux.md](./07_assets_backend_selector_ux.md) | 🟢 Completed | Easy |
-| 11 | [08_assets_add_asset_prompt.md](./08_assets_add_asset_prompt.md) | 🟢 Completed | Easy |
-| 14 | [14_assets_machine_filter_backends.md](./14_assets_machine_filter_backends.md) | 🟢 Completed | Easy |
-| 23 | [23_assets_registry_ui.md](./23_assets_registry_ui.md) | 🟢 Not Started | Medium |
+2. **P0_03** - Plan: Create actionable work items from audit
+   - Update backlog with specific tasks
+   - Create focused remediation prompts (P1_10+)
+   - Establish execution order for fixes
 
-### Playground (2 original + 2 new = 4)
+### Phase 2: Execute Fixes
 
-| # | Prompt | Status | Difficulty |
-|---|--------|--------|------------|
-| 12 | [09_playground_inventory_filter_styling.md](./09_playground_inventory_filter_styling.md) | 🟢 Completed | Easy |
-| 13 | [10_playground_category_structure.md](./10_playground_category_structure.md) | 🟢 Not Started | Easy |
-| 18 | [18_playground_resource_filters.md](./18_playground_resource_filters.md) | 🟢 Not Started | Medium |
-| 19 | [19_playground_browser_tab_blank.md](./19_playground_browser_tab_blank.md) | 🟢 Not Started | Medium |
+3. **P1_10+** - Remediation prompts (created by P0_03)
+   - Likely order: Backend schema → Backend services → Frontend → Browser data → Cleanup
 
-### Protocol Workflow (2 new)
+4. **P1_01** - Standalone quick win (can run anytime)
 
-| # | Prompt | Status | Difficulty |
-|---|--------|--------|------------|
-| 15 | [15_protocol_dialog_asset_classification.md](./15_protocol_dialog_asset_classification.md) | 🟢 Completed | Easy |
-| 17 | [17_protocol_library_filters.md](./17_protocol_library_filters.md) | 🟢 Not Started | Medium |
+5. **P1_03, P1_04** - After filtering is fixed
 
-### Data Visualization (2 new)
+### Superseded Prompts
 
-| # | Prompt | Status | Difficulty |
-|---|--------|--------|------------|
-| 16 | [16_dataviz_axis_selectors.md](./16_dataviz_axis_selectors.md) | 🟢 Not Started | Medium |
-| 25 | [25_dataviz_sample_data.md](./25_dataviz_sample_data.md) | 🟢 Not Started | Medium |
-
-### Simulation (1 new)
-
-| # | Prompt | Status | Difficulty |
-|---|--------|--------|------------|
-| 24 | [24_simulation_backend_clarity.md](./24_simulation_backend_clarity.md) | 🟢 Not Started | Medium |
+- **P0_01**: Was frontend-only; P0_02 audit is more comprehensive
+- **P1_02**: Was tactical band-aid; remediation prompts will fix properly
 
 ---
 
-## P3: Medium Priority (Testing)
+## Architecture Decision
 
-| # | Prompt | Status | Difficulty |
-|---|--------|--------|------------|
-| 26 | [11_testing_consumables.md](./11_testing_consumables.md) | 🟢 Completed | Easy |
-| 27 | [12_testing_import_export.md](./12_testing_import_export.md) | 🟢 Completed | Easy |
+**Principle established in P0_02:**
+
+> The backend owns all PLR inspection and classification logic. The database is the single source of truth. The frontend consumes pre-computed data and performs only display/filtering operations using explicit fields—never inference.
+
+See [separation_of_concerns.md](../../backlog/separation_of_concerns.md) for full details.
+
+---
+
+## Status Legend
+
+| Status | Meaning |
+|--------|---------|
+| 🟢 Not Started | Ready for agent dispatch |
+| 🟡 In Progress | Currently being worked on |
+| 🔴 Blocked | Waiting on dependency or clarification |
+| ⚠️ Superseded | Replaced by another prompt |
+| ✅ Completed | Work done and verified |
+
+---
+
+## Notes
+
+- All prompts target the `angular_refactor` branch
+- Build verification: `cd praxis/web-client && npm run build`
+- Lint check: `cd praxis/web-client && npm run lint`
+- Backend tests: `cd praxis && uv run pytest`
 
 ---
 
 ## Completion Checklist
 
-### P1 Blockers
-
-- [ ] Prompt 1: Playground initialization - complete and tested
-- [ ] Prompt 2: Asset filtering - complete and tested
-- [ ] Prompt 3: Protocol well selection - complete and tested
-
-### P2 High Priority
-
-- [ ] UI/UX and docs items (prompts 4-8, 20-22) - complete and tested
-- [ ] Asset management items (prompts 9-11, 14, 23) - complete and tested
-- [ ] Playground items (prompts 12-13, 18-19) - complete and tested
-- [ ] Protocol workflow items (prompts 15, 17) - complete and tested
-- [ ] Data visualization items (prompts 16, 25) - complete and tested
-- [ ] Simulation items (prompt 24) - complete and tested
-
-### P3 Medium Priority
-
-- [ ] Testing items (prompts 26-27) - complete and tested
-
-### Final Steps
-
-- [ ] All tests passing
-- [ ] `DEVELOPMENT_MATRIX.md` updated with completions
-- [ ] Status updated to "✅ All Complete" when done
-
----
-
-## Summary Table
-
-| Category | Easy | Medium | Total |
-|----------|------|--------|-------|
-| P1 Blockers | 0 | 3 | 3 |
-| UI/Docs | 5 | 3 | 8 |
-| Assets | 4 | 1 | 5 |
-| Playground | 2 | 2 | 4 |
-| Protocols | 1 | 1 | 2 |
-| DataViz | 0 | 2 | 2 |
-| Simulation | 0 | 1 | 1 |
-| Testing (P3) | 2 | 0 | 2 |
-| **Total** | **14** | **13** | **27** |
-
----
-
-> **Archive Note:** When all items above are complete, update Status to "✅ All Complete" and this folder can be moved to `archive/`.
+- [ ] P0_02 executed (architectural foundation)
+- [ ] P1_01 executed
+- [ ] P1_03 executed
+- [ ] P1_04 executed
+- [ ] DEVELOPMENT_MATRIX.md updated
+- [ ] Relevant backlog items marked complete
+- [ ] Changes committed with descriptive messages

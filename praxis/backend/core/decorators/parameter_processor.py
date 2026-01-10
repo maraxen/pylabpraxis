@@ -1,6 +1,7 @@
 import inspect
 from typing import Any, Union, get_args, get_origin
 
+from praxis.backend.models.enums import get_category_from_class, infer_category_from_name
 from praxis.backend.models.pydantic_internals.protocol import (
   AssetRequirementModel,
   ParameterMetadataModel,
@@ -14,6 +15,38 @@ from praxis.backend.utils.type_inspection import (
 from praxis.backend.utils.uuid import uuid7
 
 from .models import CreateProtocolDefinitionData
+
+
+def _extract_plr_category(type_hint: type, fqn: str) -> str | None:
+  """Extract PLR category from a type hint.
+
+  Uses the canonical PLRCategory enum and proper category extraction from PLR classes.
+
+  Args:
+    type_hint: The type hint to extract category from
+    fqn: The fully qualified name of the type (used as fallback only)
+
+  Returns:
+    The PLR category string (e.g., 'Plate', 'TipRack') or None
+  """
+  # Primary method: Extract category attribute from the actual class
+  category_enum = get_category_from_class(type_hint)
+  if category_enum:
+    return category_enum.value
+
+  # Fallback: Infer from class name (less reliable, avoid when possible)
+  class_name = getattr(type_hint, "__name__", "")
+  if class_name:
+    category_enum = infer_category_from_name(class_name)
+    if category_enum:
+      return category_enum.value
+
+  # Last resort: Infer from FQN (least reliable)
+  category_enum = infer_category_from_name(fqn)
+  if category_enum:
+    return category_enum.value
+
+  return None
 
 
 def _process_parameter(
@@ -46,6 +79,9 @@ def _process_parameter(
       type_for_plr_check = non_none_args[0]
 
   if is_pylabrobot_resource(serialize_type_hint(type_for_plr_check)):
+    # Extract PLR category from the type hint
+    plr_category = _extract_plr_category(type_for_plr_check, fqn)
+
     asset_args = {
       "accession_id": uuid7(),
       "name": param_name_sig,
@@ -59,6 +95,7 @@ def _process_parameter(
       "description": p_description,
       "constraints_json": p_constraints if isinstance(p_constraints, dict) else {},
       "ui_hints": p_ui_hints,
+      "required_plr_category": plr_category,
     }
     assets_list.append(AssetRequirementModel(**asset_args))  # type: ignore
   else:

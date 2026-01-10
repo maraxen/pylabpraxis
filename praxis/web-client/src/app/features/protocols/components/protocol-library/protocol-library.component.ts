@@ -11,10 +11,11 @@ import { ProtocolService } from '../../services/protocol.service';
 import { ProtocolDefinition } from '../../models/protocol.models';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, startWith, finalize } from 'rxjs/operators';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FilterHeaderComponent } from '../../../assets/components/filter-header/filter-header.component';
+import { PraxisSelectComponent, SelectOption } from '../../../../shared/components/praxis-select/praxis-select.component';
 
 import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protocol-detail-dialog.component';
 
@@ -30,8 +31,10 @@ import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protoco
     MatFormFieldModule,
     MatDialogModule,
     ReactiveFormsModule,
+    FormsModule,
     MatProgressSpinnerModule,
-    FilterHeaderComponent
+    FilterHeaderComponent,
+    PraxisSelectComponent
   ],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col">
@@ -50,8 +53,45 @@ import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protoco
         <app-filter-header
           searchPlaceholder="Search protocols..."
           [searchValue]="searchQuery()"
-          (searchChange)="onSearchChange($event)">
-          <!-- No filters content yet -->
+          [filterCount]="filterCount()"
+          (searchChange)="onSearchChange($event)"
+          (clearFilters)="clearFilters()">
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4" filterContent>
+            <!-- Category Filter -->
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide px-1">Category</label>
+              <app-praxis-select
+                [options]="categoryOptions()"
+                [ngModel]="selectedCategory()"
+                (ngModelChange)="selectedCategory.set($event)"
+                placeholder="All Categories">
+              </app-praxis-select>
+            </div>
+
+            <!-- Type Filter -->
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide px-1">Type</label>
+              <app-praxis-select
+                [options]="typeOptions"
+                [ngModel]="selectedType()"
+                (ngModelChange)="selectedType.set($event)"
+                placeholder="All Types">
+              </app-praxis-select>
+            </div>
+
+            <!-- Status Filter -->
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide px-1">Status</label>
+              <app-praxis-select
+                [options]="statusOptions"
+                [ngModel]="selectedStatus()"
+                (ngModelChange)="selectedStatus.set($event)"
+                placeholder="All Statuses">
+              </app-praxis-select>
+            </div>
+          </div>
+
         </app-filter-header>
 
         <div class="flex-1 overflow-auto bg-[var(--mat-sys-surface-variant)] relative">
@@ -154,13 +194,77 @@ export class ProtocolLibraryComponent {
   searchQuery = signal('');
   isLoading = signal(false);
 
+  // Filter Signals
+  selectedCategory = signal<string | null>(null);
+  selectedType = signal<string>('all');
+  selectedStatus = signal<string>('all');
+
+  // Filter Options
+  categoryOptions = computed<SelectOption[]>(() => {
+    const cats = new Set<string>();
+    this.protocols().forEach(p => {
+      if (p.category) cats.add(p.category);
+    });
+    return [
+      { label: 'All Categories', value: null },
+      ...Array.from(cats).sort().map(c => ({ label: c, value: c }))
+    ];
+  });
+
+  typeOptions: SelectOption[] = [
+    { label: 'All Types', value: 'all' },
+    { label: 'Top Level', value: 'top_level' },
+    { label: 'Sub-Protocol', value: 'sub' }
+  ];
+
+  statusOptions: SelectOption[] = [
+    { label: 'All Statuses', value: 'all' },
+    { label: 'Passed', value: 'passed' },
+    { label: 'Failed', value: 'failed' },
+    { label: 'Not Simulated', value: 'none' }
+  ];
+
+  filterCount = computed(() => {
+    let count = 0;
+    if (this.selectedCategory() !== null) count++;
+    if (this.selectedType() !== 'all') count++;
+    if (this.selectedStatus() !== 'all') count++;
+    return count;
+  });
+
   filteredProtocols = computed(() => {
     const query = this.searchQuery().toLowerCase();
-    return this.protocols().filter(protocol =>
-      protocol.name.toLowerCase().includes(query) ||
-      protocol.description?.toLowerCase().includes(query) ||
-      protocol.category?.toLowerCase().includes(query)
-    );
+    const category = this.selectedCategory();
+    const type = this.selectedType();
+    const status = this.selectedStatus();
+
+    return this.protocols().filter(protocol => {
+      // Search filter
+      const matchesSearch = !query ||
+        protocol.name.toLowerCase().includes(query) ||
+        protocol.description?.toLowerCase().includes(query) ||
+        protocol.category?.toLowerCase().includes(query);
+
+      // Category filter
+      const matchesCategory = !category || protocol.category === category;
+
+      // Type filter
+      const matchesType = type === 'all' ||
+        (type === 'top_level' && protocol.is_top_level) ||
+        (type === 'sub' && !protocol.is_top_level);
+
+      // Status filter
+      let matchesStatus = true;
+      if (status === 'passed') {
+        matchesStatus = protocol.simulation_result?.passed === true;
+      } else if (status === 'failed') {
+        matchesStatus = !!protocol.simulation_result && protocol.simulation_result.passed === false;
+      } else if (status === 'none') {
+        matchesStatus = !protocol.simulation_result;
+      }
+
+      return matchesSearch && matchesCategory && matchesType && matchesStatus;
+    });
   });
 
   displayedColumns: string[] = ['name', 'version', 'description', 'category', 'actions'];
@@ -199,6 +303,12 @@ export class ProtocolLibraryComponent {
 
   onSearchChange(value: string) {
     this.searchQuery.set(value);
+  }
+
+  clearFilters() {
+    this.selectedCategory.set(null);
+    this.selectedType.set('all');
+    this.selectedStatus.set('all');
   }
 
   uploadProtocol() {
