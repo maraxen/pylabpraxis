@@ -139,12 +139,22 @@ A phased migration from 4 sources of truth (SQLAlchemy ORM + Pydantic + TypeScri
 
 ## Phase 7: Cleanup & Validation (2 prompts)
 
-### 7.1 — Remove legacy model files and update documentation
+### 7.1 — Unified Model Migration (Pivot: Table-Per-Class)
 
-- Delete deprecated files from `praxis/backend/models/orm/`, `praxis/backend/models/pydantic_internals/`
-- Update `CONTRIBUTING.md` with new model creation workflow
-- Update relevant docs in `docs/` folder
-- **Tests**: `pytest tests/` (full suite)
+- **Pivot Decision (2025-01-12)**: Joined Table Inheritance (JTI) in SQLModel is unstable for JSON fields. We are pivoting to **Table-Per-Class** (Abstract Base) inheritance.
+  - Parent `Asset` will be `table=False` (Abstract).
+  - Children `Machine`, `Resource` will be `table=True` (Concrete Tables).
+  - The shared `assets` table will be removed.
+- **Database Implication**: `AssetReservation` can no longer have a physical Foreign Key to `assets.id`.
+  - **Solution**: Use "Soft" Foreign Keys. Remove the SQL constraint but keep the indexed `asset_id` column. Rely on UUID7 global uniqueness for application-level integrity.
+- **Action Items**:
+  - [ ] Consolidate `orm/` and `domain/` into a single `models/` directory (renaming `domain/` to `models/` effectively).
+  - [ ] Refactor `Asset` to `table=False`.
+  - [ ] Refactor `Machine`, `Resource` to inherit from `Asset` with `table=True`.
+  - [ ] Update `AssetReservation` to remove FK constraint.
+  - [ ] Delete `praxis/backend/models/orm/` directory.
+  - [ ] Update all imports.
+- **Tests**: Full test suite validation.
 
 ### 7.2 — Final review: Alembic migration + full integration test
 
@@ -165,6 +175,35 @@ SQLModel has quirks with complex `sa_column=Column(JSON)` types. Create a reusab
 ### 2. Polymorphic inheritance
 
 `Asset` → `Machine`/`Resource` uses SQLAlchemy's `polymorphic_on`. Phase 2.1 is intentionally first to prototype this pattern.
+
+#### 2025-01-12 Discovery: Potential Fix for SQLModel Inheritance Bug
+
+**Problem:** SQLModel cannot inherit from parent classes with `dict` fields using `sa_column=Column(JSON)`. The `sa_column` config doesn't inherit, causing `ValueError: <class 'dict'> has no matching SQLAlchemy type`.
+
+**Root Cause:** SQLModel's metaclass re-resolves field types during inheritance. `sa_column` is class-specific and doesn't propagate to children.
+
+**Potential Fix:** Use `sa_type=JsonVariant` instead of `sa_column=Column(JsonVariant)`. The `sa_type` parameter is designed to be inheritable.
+
+```python
+# Instead of:
+properties_json: dict[str, Any] | None = Field(sa_column=Column(JsonVariant), default=None)
+
+# Use:
+properties_json: dict[str, Any] | None = Field(sa_type=JsonVariant, default=None)
+```
+
+**References:**
+- [GitHub Discussion #1346](https://github.com/fastapi/sqlmodel/discussions/1346)
+- [GitHub Discussion #1051](https://github.com/fastapi/sqlmodel/discussions/1051)
+- [GitHub Issue #469](https://github.com/fastapi/sqlmodel/issues/469)
+
+**Codebase Analysis (2025-01-12):**
+- Polymorphic queries (`select(AssetOrm)` returning mixed types) are NOT used
+- All queries target specific subtypes: `select(MachineOrm)`, `select(ResourceOrm)`
+- `AssetReservation.asset` relationship exists but is never navigated in code
+- Polymorphism may be unnecessary, but fixing the inheritance enables full SQLModel unification
+
+**Status:** Prototype needed to validate `sa_type` approach works with joined table inheritance.
 
 ### 3. Frontend codegen tool
 

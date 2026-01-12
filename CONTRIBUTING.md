@@ -58,6 +58,75 @@ It is important that you write documentation for your code. As a rule of thumb, 
 
 To build the documentation, run `make docs` in the root directory. The documentation will be built in `docs/_build/html`. Run `open docs/_build/html/index.html` to open the documentation in your browser.
 
+## Data Models
+
+### SQLModel Unified Architecture
+
+Praxis uses **SQLModel** for unified data modeling, combining ORM and Pydantic functionality:
+
+**Location:** `praxis/backend/models/domain/`
+
+SQLModel provides:
+- **ORM Models**: Database tables with SQLAlchemy relationships
+- **API Schemas**: Pydantic validation (Create/Read/Update variants)
+- **Polymorphic Inheritance**: Handled via SQLAlchemy's single-table inheritance
+
+**Example Structure:**
+```python
+# Domain model (both ORM + Pydantic)
+class Machine(Asset, table=True):
+    __tablename__ = "machines"
+    # ORM fields
+    status: MachineStatusEnum = Field(default=MachineStatusEnum.OFFLINE)
+
+# API schemas
+class MachineCreate(SQLModel):
+    name: str
+    status: MachineStatusEnum | None = None
+
+class MachineRead(SQLModel):
+    accession_id: UUID
+    name: str
+    status: MachineStatusEnum
+```
+
+### Legacy Aliases (Temporary)
+
+The `praxis/backend/models/orm/` directory contains **backward-compatibility aliases** only:
+```python
+# orm/__init__.py provides aliases for gradual migration
+from praxis.backend.models.domain.machine import Machine as MachineOrm
+```
+
+**Do not use these in new code.** Use the domain models directly.
+
+### Migration Toolkit
+
+If you encounter `XOrm` references in code, use the migration script:
+
+```bash
+# Dry run to preview changes
+uv run python scripts/fix_orm_references.py --dry-run
+
+# Apply fixes to backend code
+uv run python scripts/fix_orm_references.py --path praxis/backend
+
+# Apply fixes to test code
+uv run python scripts/fix_orm_references.py --path tests
+```
+
+The script automatically:
+- Replaces `XOrm` → `X` (e.g., `MachineOrm` → `Machine`)
+- Updates imports: `from praxis.backend.models.orm` → `from praxis.backend.models.domain`
+
+### When Adding New Models
+
+1. **Define in `models/domain/`** with SQLModel
+2. **Use single-table inheritance** for polymorphic models
+3. **Create schema variants**: `Create`, `Read`, `Update`
+4. **Export in `domain/__init__.py`**
+5. **Never add to `orm/`** - that's legacy only
+
 ## Common Tasks
 
 ### Fixing a bug

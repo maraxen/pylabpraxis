@@ -329,7 +329,7 @@ def generate_typescript_enums() -> str:
         SpatialContextEnum,
         WorkcellStatusEnum,
     )
-    from praxis.backend.models.orm import (
+    from praxis.backend.models.domain import (
         ResolutionActionEnum,
         ResolutionTypeEnum,
     )

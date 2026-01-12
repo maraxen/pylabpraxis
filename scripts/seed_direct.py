@@ -7,8 +7,8 @@ sys.path.append(".")
 from sqlalchemy import select
 
 from praxis.backend.models.enums import AssetType, MachineStatusEnum, ResourceStatusEnum
-from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
+from praxis.backend.models.domain.machine import Machine
+from praxis.backend.models.domain.resource import Resource, ResourceDefinition
 from praxis.backend.utils.db import get_async_db_session
 
 
@@ -16,7 +16,7 @@ async def seed_direct():
     async for db in get_async_db_session():
         try:
             # Find definitions
-            stmt = select(ResourceDefinitionOrm).limit(100)
+            stmt = select(ResourceDefinition).limit(100)
             result = await db.execute(stmt)
             defs = result.scalars().all()
 
@@ -29,14 +29,14 @@ async def seed_direct():
             if not plate_def:
                 return
 
-            async def create_res_orm(name, desc, def_id):
+            async def create_res_model(name, desc, def_id):
                 # Check if exists
-                stmt = select(ResourceOrm).filter_by(name=name)
+                stmt = select(Resource).filter_by(name=name)
                 res = await db.execute(stmt)
                 if res.scalar_one_or_none():
                     return
 
-                new_res = ResourceOrm(
+                new_res = Resource(
                     name=name,
                     asset_type=AssetType.RESOURCE,
                     resource_definition_accession_id=def_id,
@@ -52,20 +52,20 @@ async def seed_direct():
                     await db.rollback()
 
             # Create Plates
-            await create_res_orm("Source Plate 1", "Seeded source plate (96-well)", plate_def.accession_id)
-            await create_res_orm("Dest Plate 1", "Seeded destination plate (96-well)", plate_def.accession_id)
+            await create_res_model("Source Plate 1", "Seeded source plate (96-well)", plate_def.accession_id)
+            await create_res_model("Dest Plate 1", "Seeded destination plate (96-well)", plate_def.accession_id)
 
             # Create Tips
             if tip_def:
-               await create_res_orm("Tip Rack 300uL", "Seeded tip rack", tip_def.accession_id)
+               await create_res_model("Tip Rack 300uL", "Seeded tip rack", tip_def.accession_id)
 
             # Create Machine
-            stmt = select(MachineOrm).filter_by(name="Hamilton STARlet")
+            stmt = select(Machine).filter_by(name="Hamilton STARlet")
             res = await db.execute(stmt)
             if res.scalar_one_or_none():
                  pass
             else:
-                mach = MachineOrm(
+                mach = Machine(
                     name="Hamilton STARlet",
                     asset_type=AssetType.MACHINE,
                     status=MachineStatusEnum.AVAILABLE,

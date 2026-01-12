@@ -33,6 +33,7 @@ dependencies = [
     "jupyterlite-core>=0.7.1",
     "jupyterlite-pyodide-kernel>=0.7.0",
     "cloudpickle>=3.0.0", # Function serialization for caching/distributed execution
+    "celery>=5.5.3",
 ]
 
 [tool.uv.sources]
@@ -290,6 +291,8 @@ max-args = 8
 
 [dependency-groups]
 dev = [
+    "aiosqlite>=0.21.0",
+    "alembic>=1.17.0",
     "factory-boy>=3.3.3",
     "fakeredis>=2.32.0",
     "freezegun>=1.5.5",
@@ -301,6 +304,7 @@ dev = [
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
     "redis>=6.4.0",
+    "responses>=0.25.8",
 ]
 
 [tool.ty.src]
