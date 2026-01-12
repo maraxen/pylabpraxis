@@ -24,6 +24,7 @@ Replace manual HTTP calls in Angular services with the generated API client meth
 ### Current Architecture
 
 Manual HTTP services:
+
 ```typescript
 // src/app/features/assets/services/asset.service.ts
 @Injectable({ providedIn: 'root' })
@@ -43,6 +44,7 @@ export class AssetService {
 ### Target Architecture
 
 Using generated client:
+
 ```typescript
 // Option A: Use generated service directly
 import { DefaultService } from '@api/services/DefaultService';
@@ -61,6 +63,7 @@ export class AssetService {
 ### Generated Client Patterns
 
 The `openapi-typescript-codegen` generates Promise-based methods:
+
 ```typescript
 // api-generated/services/DefaultService.ts
 export class DefaultService {
@@ -70,6 +73,7 @@ export class DefaultService {
 ```
 
 For Angular's Observable pattern, wrap with `from()`:
+
 ```typescript
 import { from } from 'rxjs';
 
@@ -81,6 +85,7 @@ getAssets(): Observable<AssetRead[]> {
 ### Signal Store Updates
 
 Update stores to use generated types:
+
 ```typescript
 // Before
 interface AssetState {
@@ -139,18 +144,21 @@ interface AssetState {
 **Definition of Done:**
 
 1. Angular build succeeds:
+
    ```bash
    cd praxis/web-client
    npm run build
    ```
 
 2. All unit tests pass:
+
    ```bash
    cd praxis/web-client
    npm test
    ```
 
 3. E2E tests pass (if available):
+
    ```bash
    cd praxis/web-client
    npm run e2e
@@ -167,9 +175,11 @@ interface AssetState {
 ## 6. Implementation Steps
 
 1. **Audit current services**:
+
    ```bash
    find src/app/features -name "*.service.ts" -type f
    ```
+
    List all services that make HTTP calls.
 
 2. **Configure generated client base URL**:
@@ -178,6 +188,7 @@ interface AssetState {
    - Handle environment-specific URLs
 
 3. **Create service wrapper pattern**:
+
    ```typescript
    // src/app/core/services/api-wrapper.service.ts
    @Injectable({ providedIn: 'root' })
@@ -210,6 +221,7 @@ interface AssetState {
    - Template type bindings
 
 9. **Run full test suite**:
+
    ```bash
    npm run build && npm test
    ```

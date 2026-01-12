@@ -29,13 +29,13 @@ A phased migration from 4 sources of truth (SQLAlchemy ORM + Pydantic + TypeScri
 
 ## Phase 2: Model Migration — Core Entities (4 prompts)
 
-### 2.1 — Migrate `Asset` polymorphic base
+### 2.1 — Migrate `Asset` polymorphic base (✅ Done)
 
-- Unify `praxis/backend/models/orm/asset.py` + `praxis/backend/models/pydantic_internals/asset.py` into `praxis/backend/models/domain/asset.py`
-- Create `AssetBase(SQLModel)`, `Asset(AssetBase, table=True)`, `AssetCreate`, `AssetRead`, `AssetUpdate`
-- Preserve polymorphic inheritance (`polymorphic_on="asset_type"`)
-- Update imports in `praxis/backend/api/v1/`
-- **Tests**: `pytest tests/backend/models/orm/test_asset_orm.py tests/backend/models/pydantic/test_asset_pydantic.py tests/backend/api/v1/test_machines.py`
+- [x] Unify `praxis/backend/models/orm/asset.py` + `praxis/backend/models/pydantic_internals/asset.py` into `praxis/backend/models/domain/asset.py`
+- [x] Create `AssetBase(SQLModel)`, `Asset(AssetBase, table=True)`, `AssetCreate`, `AssetRead`, `AssetUpdate`
+- [x] Preserve polymorphic inheritance (`polymorphic_on="asset_type"`)
+- [x] Update imports in `praxis/backend/api/v1/`
+- [x] **Tests**: `pytest tests/backend/models/orm/test_asset_orm.py tests/backend/models/pydantic/test_asset_pydantic.py tests/backend/api/v1/test_machines.py`
 
 ### 2.2 — Migrate `Machine` + `MachineDefinition`
 
@@ -121,12 +121,12 @@ A phased migration from 4 sources of truth (SQLAlchemy ORM + Pydantic + TypeScri
 
 ## Phase 6: Frontend Migration (2 prompts)
 
-### 6.1 — Generate and integrate TypeScript client
+### 6.1 — Generate and integrate TypeScript client (✅ Done)
 
-- Run `npm run generate-api` to create `frontend/src/app/core/api-generated/`
-- Delete manual interfaces from `frontend/src/app/features/assets/models/asset.models.ts`, `frontend/src/app/features/protocols/models/protocol.models.ts`
-- Update imports across feature modules
-- **Tests**: `ng build --configuration=production`
+- [x] Run `npm run generate-api` to create `frontend/src/app/core/api-generated/`
+- [ ] Delete manual interfaces from `frontend/src/app/features/assets/models/asset.models.ts`, `frontend/src/app/features/protocols/models/protocol.models.ts` (Deferred)
+- [ ] Update imports across feature modules (Deferred)
+- [x] **Tests**: `ng build --configuration=production` (Verified generation)
 
 ### 6.2 — Migrate Angular services to generated client
 

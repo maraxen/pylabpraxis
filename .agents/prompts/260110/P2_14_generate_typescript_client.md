@@ -2,7 +2,7 @@
 
 Examine `.agents/README.md` for development context.
 
-**Status:** 🟢 Not Started
+**Status:** 🟡 Partially Completed (Generation Done, Migration Deferred)
 **Priority:** P2
 **Batch:** [260110](./README.md)
 **Backlog Reference:** [sqlmodel_codegen_refactor.md](../../backlog/sqlmodel_codegen_refactor.md)
@@ -93,6 +93,7 @@ Update `tsconfig.json` for clean imports:
 ```
 
 Usage:
+
 ```typescript
 import { AssetRead, MachineRead } from '@api';
 // or
@@ -156,12 +157,14 @@ import { AssetRead } from '@api/models/AssetRead';
 **Definition of Done:**
 
 1. OpenAPI schema is fresh:
+
    ```bash
    uv run python scripts/generate_openapi.py
    ls -la praxis/web-client/src/assets/api/openapi.json
    ```
 
 2. TypeScript client generates:
+
    ```bash
    cd praxis/web-client
    npm run generate-api
@@ -169,18 +172,21 @@ import { AssetRead } from '@api/models/AssetRead';
    ```
 
 3. Generated code compiles:
+
    ```bash
    cd praxis/web-client
    npx tsc --noEmit
    ```
 
 4. Angular build succeeds:
+
    ```bash
    cd praxis/web-client
    npm run build
    ```
 
 5. Manual interfaces deleted and imports updated:
+
    ```bash
    # After updating all imports
    npm run build
@@ -192,12 +198,14 @@ import { AssetRead } from '@api/models/AssetRead';
 ## 6. Implementation Steps
 
 1. **Generate fresh OpenAPI schema**:
+
    ```bash
    cd /Users/mar/Projects/pylabpraxis
    uv run python scripts/generate_openapi.py
    ```
 
 2. **Run TypeScript codegen**:
+
    ```bash
    cd praxis/web-client
    npm run generate-api
@@ -217,10 +225,12 @@ import { AssetRead } from '@api/models/AssetRead';
    - Plan import replacement
 
 6. **Update assets feature**:
+
    ```bash
    # Find files importing manual models
    grep -r "from.*asset.models" src/app/features/assets/
    ```
+
    - Update imports to `@api`
    - Verify types match
 
@@ -231,12 +241,14 @@ import { AssetRead } from '@api/models/AssetRead';
    - Similar process
 
 9. **Delete manual interface files**:
+
    ```bash
    rm src/app/features/assets/models/asset.models.ts
    # etc.
    ```
 
 10. **Final verification**:
+
     ```bash
     npm run build
     npm run lint
@@ -248,12 +260,14 @@ import { AssetRead } from '@api/models/AssetRead';
 ## 7. Import Migration Example
 
 **Before** (manual interface):
+
 ```typescript
 // src/app/features/assets/components/asset-list.component.ts
 import { Asset, Machine, Resource } from '../models/asset.models';
 ```
 
 **After** (generated):
+
 ```typescript
 // src/app/features/assets/components/asset-list.component.ts
 import { AssetRead, MachineRead, ResourceRead } from '@api';

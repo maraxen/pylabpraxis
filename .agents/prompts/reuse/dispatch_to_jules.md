@@ -9,56 +9,68 @@ Examine `.agents/README.md` and `.agents/skills/jules-remote/SKILL.md` for conte
 
 ## Prompt
 
-You are tasked with executing the prompt file located at `{PROMPT_FILE}` using the Jules agent.
+You are tasked with executing the prompt file(s) specified in `{PROMPT_TARGET}` (which can be a file path, a list of files, or a directory glob) using the Jules agent.
 
-### 1. Contextualize
+### 1. Analysis & Preparation
 
-Read the content of `{PROMPT_FILE}`. Identify the "Task" or "Goal" and the "Technical Implementation Strategy" sections. Construct a clear, self-contained description for Jules that includes:
+**For each prompt file identified in `{PROMPT_TARGET}`:**
 
-- The core objective.
-- Specific file paths to modify or create.
-- Any strict constraints (e.g., "Do not delete existing tests").
-- The content of the prompt file itself as context.
+1. **Read Content:** Read the full content of the prompt file verbatim.
+2. **Prepare Description:**
+    - Take the full file content.
+    - Append a footer to link back to the source file:
+
+      ```text
+      
+      ---
+      > **Meta:** This task is defined in `{ABSOLUTE_PATH_TO_PROMPT_FILE}`.
+      > **Instruction:** When the task is successfully completed, please edit `{ABSOLUTE_PATH_TO_PROMPT_FILE}` to change the `**Status:**` to `Complete`.
+      ```
 
 ### 2. Dispatch
 
-Run the following command to start a Jules session:
-`jules new --session "{TITLE}" "<Constructed Description>"`
+Iterate through the prepared tasks and dispatch them.
 
-*Note the Session ID returned by this command.*
+**Strategy:**
+
+- **Parallel:** If tasks touch *different, non-overlapping* files, dispatch them immediately.
+- **Sequential:** If tasks touch the *same* files or dependencies, dispatch one, wait for completion/application, then dispatch the next.
+
+**Command:**
+
+```bash
+# Recommendation: Use pipe to avoid shell escaping issues with complex prompts
+cat "{PREPARED_DESCRIPTION_FILE}" | jules remote new --session -
+# OR if passing directly (less safe for complex content):
+# jules remote new --session "Title: {TITLE} ({FILENAME})... {REST_OF_CONTENT}"
+```
+
+*Maintain a map of `[Prompt File] -> [Session ID]`.*
 
 ### 3. Monitor
 
-Enter a monitoring loop:
+Enter a monitoring loop for all active Session IDs:
 
-- Check status every 5 minutes using `jules remote list --session`.
-- Wait until the session status is `COMPLETED` (or similar success state).
-- If the session fails or requires input, report it and stop.
+- **Check status:** `jules remote list --session 2>&1 | grep <SESSION_ID>`
+- **Action:**
+  - If `COMPLETED`: Move to Review/Apply for that session immediately.
+  - If `IN_PROGRESS` (> 5 mins): Check for dry-run artifacts (`jules remote pull`).
+  - If `FAILED`: Report and stop that specific track.
 
-### 4. Review
+### 4. Review & Apply (Per Session)
 
-Once completed, pull the changes *without applying* to review them:
-`jules remote pull --session <SESSION_ID>`
+As each session completes, process it:
 
-*Review Guidelines:*
+1. **Pull (Review):** `jules remote pull --session <SESSION_ID>`
+2. **Review Guidelines:**
+    - **Sanity:** Does it match the prompt?
+    - **Conflicts:** If conflicts exist, **do not force apply**. Extract intent and apply manually.
+3. **Apply:**
+    - Clean: `jules remote pull --session <SESSION_ID> --apply`
+    - Manual: Apply logic by hand.
+4. **Verify:** Run the specific acceptance tests for this usage.
 
-- **Context:** Re-read `{PROMPT_FILE}` to ensure the solution matches the requirements.
-- **Read the patch/diff:** Check the downloaded artifacts (inspect the patch file or diff).
-- **Scope Check:** Ensure the changes are strictly related to the requested task.
-- **Safety Check:** Verify no unnecessary deletions of existing code, tests, or configuration.
-- **Quality Check:** Ensure the code looks syntactically correct and follows project patterns.
-
-### 5. Apply
-
-If the review passes:
-
-- Apply the changes: `jules remote pull --session <SESSION_ID> --apply`
-- Verify the application by running relevant tests (e.g., `npm test`, `uv run pytest`).
-
-If the review fails:
-
-- Do not apply.
-- Report the specific issues found in the review.
+- **Stop:** If the issue is severe (e.g., deleting core functionality), stop the process and report the issue to the user and ask for clarification.
 
 ---
 
@@ -66,15 +78,14 @@ If the review fails:
 
 | Placeholder | Description | Example |
 |:------------|:------------|:--------|
-| `{PROMPT_FILE}` | Path to the prompt file | `.agents/prompts/260109/14_assets_filter.md` |
-| `{TITLE}` | Short title for the Jules session | `Fix Asset Filters` |
+| `{PROMPT_TARGET}` | File, Glob, or Directory of prompts | `.agents/prompts/260109/*.md` |
+| `{TITLE}` | Derived from the prompt content | `Fix Asset Filters` |
 
 ---
 
 ## Example Usage
 
 ```
-Use the "Dispatch to Jules" prompt to execute the asset filter fix:
-PROMPT_FILE=".agents/prompts/260109/14_assets_filter.md"
-TITLE="Fix Asset Filters"
+PROMPT_TARGET=".agents/prompts/260110/*.md"
+# The agent will iterate through all matching files, dispatching them to Jules.
 ```

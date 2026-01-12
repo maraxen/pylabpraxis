@@ -95,7 +95,7 @@ We should have separate tabs for browser-lite and production mode in the backend
 
 ## P2: State Management Diagram
 
-**Status**: Open
+**Status**: COMPLETE
 **Difficulty**: Easy
 
 ### Problem
@@ -104,9 +104,9 @@ State management overview diagram is improperly formatted for theming.
 
 ### Tasks
 
-- [ ] Fix diagram CSS for dark/light mode
-- [ ] Verify colors are theme-aware
-- [ ] Test in both themes
+- [x] Fix diagram CSS for dark/light mode
+- [x] Verify colors are theme-aware
+- [x] Test in both themes
 
 ---
 

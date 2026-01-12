@@ -55,7 +55,6 @@
 | API Docs Broken | Medium | [docs.md](./backlog/docs.md) | API documentation not rendering |
 | Architecture View Expansion | Medium | [docs.md](./backlog/docs.md) | Shows text instead of visual diagrams |
 | Mode Separation in Docs | Medium | [docs.md](./backlog/docs.md) | Separate browser-lite vs production tabs |
-| State Management Diagram | Easy | [docs.md](./backlog/docs.md) | Improperly formatted for theming |
 | Tutorial Updates | Medium | [docs.md](./backlog/docs.md) | Bring tutorial up to date |
 | Docs Accuracy Audit | Medium | [docs.md](./backlog/docs.md) | Verify all docs are current |
 
@@ -124,6 +123,8 @@
 | OpenAPI Codegen Pipeline | P2 | 2026-01-10 | Automated TypeScript client generation from FastAPI |
 | SQLModel Foundation | P2 | 2026-01-10 | Established unified PraxisBase and SQLModel metadata integration |
 | Asset Base Migration | P2 | 2026-01-10 | Migrated Asset polymorphic base to SQLModel domain |
+| State Management Diagram | P2 | 2026-01-12 | Fixed CSS for dark/light mode theming |
+| Frontend TypeScript Generation | P2 | 2026-01-12 | Generated TypeScript client from OpenAPI schema |
 
 ---
 
