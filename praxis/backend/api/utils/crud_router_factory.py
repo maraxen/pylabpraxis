@@ -3,7 +3,7 @@
 from typing import Annotated, Any, TypeVar
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,11 +41,9 @@ def create_crud_router(
     tags=tags,
   )
   async def create(
-    request: Request,
+    obj_in: create_schema,  # type: ignore
     db: AsyncSession = Depends(get_db),
   ) -> ModelType:
-    obj_in_data = await request.json()
-    obj_in = create_schema.model_validate(obj_in_data)
     return await service.create(db=db, obj_in=obj_in)
 
   @router.get(prefix, response_model=list[read_schema], tags=tags)  # type: ignore[invalid-type-form]
@@ -68,14 +66,12 @@ def create_crud_router(
   @router.put(f"{prefix}{sep}{{accession_id}}", response_model=read_schema, tags=tags)
   async def update(
     accession_id: UUID,
-    request: Request,
+    obj_in: update_schema,  # type: ignore
     db: Annotated[AsyncSession, Depends(get_db)],
   ) -> ModelType:
     db_obj = await service.get(db, accession_id=accession_id)
     if db_obj is None:
       raise HTTPException(status_code=404, detail="Not found")
-    obj_in_data = await request.json()
-    obj_in = update_schema.model_validate(obj_in_data)
     return await service.update(db=db, db_obj=db_obj, obj_in=obj_in)
 
   @router.delete(
