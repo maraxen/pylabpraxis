@@ -1,8 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { map, catchError, switchMap } from 'rxjs/operators';
-import { environment } from '@env/environment';
+import { map, catchError } from 'rxjs/operators';
 import { ModeService } from '@core/services/mode.service';
 import { SqliteService } from '@core/services/sqlite.service';
 import {
@@ -11,18 +9,17 @@ import {
     RunHistoryParams,
     RunStatus,
 } from '../models/monitor.models';
+import { ProtocolsService } from '../../../core/api-generated/services/ProtocolsService';
+import { SchedulerService as SchedulerApiService } from '../../../core/api-generated/services/SchedulerService';
+import { ApiWrapperService } from '../../../core/services/api-wrapper.service';
 
-/**
- * Service for fetching protocol run history and details.
- */
 @Injectable({
     providedIn: 'root',
 })
 export class RunHistoryService {
-    private readonly http = inject(HttpClient);
     private readonly modeService = inject(ModeService);
     private readonly sqliteService = inject(SqliteService);
-    private readonly API_URL = environment.apiUrl;
+    private readonly apiWrapper = inject(ApiWrapperService);
 
     /**
      * Get paginated run history.
@@ -68,44 +65,24 @@ export class RunHistoryService {
             );
         }
 
-        // Backend mode: use HTTP API
-        let httpParams = new HttpParams();
-
-        if (params?.limit) {
-            httpParams = httpParams.set('limit', params.limit.toString());
-        }
-        if (params?.offset) {
-            httpParams = httpParams.set('offset', params.offset.toString());
-        }
-        if (params?.status) {
-            const statusStr = Array.isArray(params.status)
-                ? params.status.join(',')
-                : params.status;
-            httpParams = httpParams.set('status', statusStr);
-        }
-        if (params?.protocol_id) {
-            const protocolStr = Array.isArray(params.protocol_id)
-                ? params.protocol_id.join(',')
-                : params.protocol_id;
-            httpParams = httpParams.set('protocol_id', protocolStr);
-        }
-        if (params?.sort_by) {
-            httpParams = httpParams.set('sort_by', params.sort_by);
-        }
-        if (params?.sort_order) {
-            httpParams = httpParams.set('sort_order', params.sort_order);
-        }
-
-        return this.http
-            .get<RunSummary[]>(`${this.API_URL}/protocols/runs/records`, {
-                params: httpParams,
+        return this.apiWrapper.wrap(ProtocolsService.getMultiApiV1ProtocolsRunsGet(
+            params?.limit,
+            params?.offset,
+            params?.sort_by,
+            undefined, // date_range_start
+            undefined, // date_range_end
+            params?.protocol_id as string | undefined,
+            undefined, // machine_accession_id
+            undefined, // resource_accession_id
+            undefined, // parent_accession_id
+            undefined, // requestBody
+        )).pipe(
+            map(runs => runs as unknown as RunSummary[]),
+            catchError((err) => {
+                console.error('[RunHistoryService] Failed to fetch run history:', err);
+                return of([]);
             })
-            .pipe(
-                catchError((err) => {
-                    console.error('[RunHistoryService] Failed to fetch run history:', err);
-                    return of([]);
-                })
-            );
+        );
     }
 
     /**
@@ -125,7 +102,8 @@ export class RunHistoryService {
             );
         }
 
-        return this.http.get<RunSummary[]>(`${this.API_URL}/protocols/runs/queue`).pipe(
+        return this.apiWrapper.wrap(ProtocolsService.getProtocolQueueApiV1ProtocolsRunsQueueGet()).pipe(
+            map(runs => runs as unknown as RunSummary[]),
             catchError((err) => {
                 console.error('[RunHistoryService] Failed to fetch active runs:', err);
                 return of([]);
@@ -148,14 +126,13 @@ export class RunHistoryService {
             );
         }
 
-        return this.http
-            .get<RunDetail>(`${this.API_URL}/protocols/runs/records/${runId}`)
-            .pipe(
-                catchError((err) => {
-                    console.error('[RunHistoryService] Failed to fetch run detail:', err);
-                    return of(null);
-                })
-            );
+        return this.apiWrapper.wrap(ProtocolsService.getApiV1ProtocolsRunsAccessionIdGet(runId)).pipe(
+            map(run => run as unknown as RunDetail | null),
+            catchError((err) => {
+                console.error('[RunHistoryService] Failed to fetch run detail:', err);
+                return of(null);
+            })
+        );
     }
 
     /**
@@ -241,16 +218,13 @@ export class RunHistoryService {
             return of([]);
         }
 
-        return this.http
-            .get<import('../models/state-resolution.models').UncertainStateChange[]>(
-                `${this.API_URL}/scheduler/${runId}/uncertain-state`
-            )
-            .pipe(
-                catchError((err) => {
-                    console.error('[RunHistoryService] Failed to fetch uncertain states:', err);
-                    return of([]);
-                })
-            );
+        return this.apiWrapper.wrap(SchedulerApiService.getUncertainStatesApiV1SchedulerScheduleEntryAccessionIdUncertainStateGet(runId)).pipe(
+            map(states => states as unknown as import('../models/state-resolution.models').UncertainStateChange[]),
+            catchError((err) => {
+                console.error('[RunHistoryService] Failed to fetch uncertain states:', err);
+                return of([]);
+            })
+        );
     }
 
     /**
@@ -280,17 +254,13 @@ export class RunHistoryService {
             );
         }
 
-        return this.http
-            .post<import('../models/state-resolution.models').StateResolutionLogResponse>(
-                `${this.API_URL}/scheduler/${runId}/resolve-state`,
-                request
-            )
-            .pipe(
-                catchError((err) => {
-                    console.error('[RunHistoryService] Failed to submit resolution:', err);
-                    return of(null);
-                })
-            );
+        return this.apiWrapper.wrap(SchedulerApiService.resolveStateApiV1SchedulerScheduleEntryAccessionIdResolveStatePost(runId, request)).pipe(
+            map(res => res as unknown as import('../models/state-resolution.models').StateResolutionLogResponse),
+            catchError((err) => {
+                console.error('[RunHistoryService] Failed to submit resolution:', err);
+                return of(null);
+            })
+        );
     }
 
     /**
@@ -308,15 +278,13 @@ export class RunHistoryService {
             );
         }
 
-        return this.http
-            .post<{ status: string }>(`${this.API_URL}/scheduler/${runId}/resume`, {})
-            .pipe(
-                map(() => true),
-                catchError((err) => {
-                    console.error('[RunHistoryService] Failed to resume run:', err);
-                    return of(false);
-                })
-            );
+        return this.apiWrapper.wrap(SchedulerApiService.resumeRunApiV1SchedulerScheduleEntryAccessionIdResumePost(runId)).pipe(
+            map(() => true),
+            catchError((err) => {
+                console.error('[RunHistoryService] Failed to resume run:', err);
+                return of(false);
+            })
+        );
     }
 
     /**
@@ -334,19 +302,12 @@ export class RunHistoryService {
             );
         }
 
-        let params = new HttpParams();
-        if (reason) {
-            params = params.set('reason', reason);
-        }
-
-        return this.http
-            .post<{ status: string }>(`${this.API_URL}/scheduler/${runId}/abort`, {}, { params })
-            .pipe(
-                map(() => true),
-                catchError((err) => {
-                    console.error('[RunHistoryService] Failed to abort run:', err);
-                    return of(false);
-                })
-            );
+        return this.apiWrapper.wrap(SchedulerApiService.abortRunApiV1SchedulerScheduleEntryAccessionIdAbortPost(runId, reason)).pipe(
+            map(() => true),
+            catchError((err) => {
+                console.error('[RunHistoryService] Failed to abort run:', err);
+                return of(false);
+            })
+        );
     }
 }

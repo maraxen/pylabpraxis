@@ -1,24 +1,39 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { LoginRequest, LoginResponse, User } from '../models/auth.models';
+import { AuthenticationService } from '../../../core/api-generated/services/AuthenticationService';
+import { ApiWrapperService } from '../../../core/services/api-wrapper.service';
+import { ApiConfigService } from '../../../core/services/api-config.service';
+import { tap } from 'rxjs/operators';
+import { LoginRequest } from '../models/auth.models';
+import { LoginResponse } from '../../../core/api-generated/models/LoginResponse';
+import { UserResponse } from '../../../core/api-generated/models/UserResponse';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private http = inject(HttpClient);
-  private readonly API_URL = '/api/v1/auth';
+  private apiWrapper = inject(ApiWrapperService);
+  private apiConfigService = inject(ApiConfigService);
 
   login(credentials: LoginRequest): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.API_URL}/login`, credentials);
+    return this.apiWrapper.wrap(AuthenticationService.loginApiV1AuthLoginPost(credentials)).pipe(
+      tap((response: LoginResponse) => {
+        if (response.access_token) {
+          this.apiConfigService.setToken(response.access_token);
+        }
+      })
+    );
   }
 
-  logout(): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${this.API_URL}/logout`, {});
+  logout(): Observable<Record<string, string>> {
+    return this.apiWrapper.wrap(AuthenticationService.logoutApiV1AuthLogoutPost()).pipe(
+      tap(() => {
+        this.apiConfigService.setToken(undefined);
+      })
+    );
   }
 
-  getCurrentUser(): Observable<User> {
-    return this.http.get<User>(`${this.API_URL}/me`);
+  getCurrentUser(): Observable<UserResponse> {
+    return this.apiWrapper.wrap(AuthenticationService.getCurrentUserInfoApiV1AuthMeGet());
   }
 }

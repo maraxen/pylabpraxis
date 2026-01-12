@@ -1,5 +1,3 @@
-
-import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { MOCK_PROTOCOLS } from '@assets/browser-data/protocols';
 import { ModeService } from '@core/services/mode.service';
@@ -10,12 +8,13 @@ import { Observable, Subject, of } from 'rxjs';
 import { catchError, retry, tap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
 import { ExecutionMessage, ExecutionState, ExecutionStatus } from '../models/execution.models';
+import { ProtocolsService } from '../../../core/api-generated/services/ProtocolsService';
+import { ApiWrapperService } from '../../../core/services/api-wrapper.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ExecutionService {
-  private http = inject(HttpClient);
   private modeService = inject(ModeService);
   private pythonRuntime = inject(PythonRuntimeService);
   private sqliteService = inject(SqliteService);
@@ -37,23 +36,25 @@ export class ExecutionService {
 
   messages$ = this.messagesSubject.asObservable();
 
+  private apiWrapper = inject(ApiWrapperService);
+
   /**
    * Check protocol compatibility with available machines
    */
-  getCompatibility(protocolId: string): Observable<any[]> {
+  getCompatibility(protocolId: string): Observable<Record<string, unknown>[]> {
     // In browser mode, return mock compatibility data
     if (this.modeService.isBrowserMode()) {
       return of([{
         machine: {
           accession_id: 'sim-machine-1',
           name: 'Simulation Machine',
-          status: 'IDLE' as any,
+          status: 'IDLE' as unknown as string,
           machine_category: 'HamiltonSTAR'
         },
         compatibility: { is_compatible: true, missing_capabilities: [], matched_capabilities: [], warnings: [] }
       }]);
     }
-    return this.http.get<any[]>(`${this.API_URL}/protocols/${protocolId}/compatibility`);
+    return this.apiWrapper.wrap(ProtocolsService.getProtocolCompatibilityApiV1ProtocolsAccessionIdCompatibilityGet(protocolId)) as Observable<Record<string, unknown>[]>;
   }
 
   /**
@@ -62,22 +63,23 @@ export class ExecutionService {
   startRun(
     protocolId: string,
     runName: string,
-    parameters?: Record<string, any>,
+    parameters?: Record<string, unknown>,
     simulationMode: boolean = true,
-    notes?: string
+    _notes?: string
   ): Observable<{ run_id: string }> {
     // Browser mode: execute via Pyodide
     if (this.modeService.isBrowserMode()) {
-      return this.startBrowserRun(protocolId, runName, parameters, notes);
+      return this.startBrowserRun(protocolId, runName, parameters, _notes);
     }
 
     // Production mode: use HTTP API
-    return this.http.post<{ run_id: string }>(`${this.API_URL}/protocols/runs`, {
+    return this.apiWrapper.wrap(ProtocolsService.startProtocolRunApiV1ProtocolsRunsActionsStartPost({
       protocol_definition_accession_id: protocolId,
       name: runName,
-      parameters,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      parameters: parameters as Record<string, any>,
       simulation_mode: simulationMode
-    }).pipe(
+    })).pipe(
       tap(response => {
         this._currentRun.set({
           runId: response.run_id,
@@ -97,7 +99,7 @@ export class ExecutionService {
   private startBrowserRun(
     protocolId: string,
     runName: string,
-    parameters?: Record<string, any>,
+    parameters?: Record<string, unknown>,
     notes?: string
   ): Observable<{ run_id: string }> {
     const runId = crypto.randomUUID();
@@ -138,7 +140,7 @@ export class ExecutionService {
   private async executeBrowserProtocol(
     protocolId: string,
     runId: string,
-    parameters?: Record<string, any>
+    parameters?: Record<string, unknown>
   ): Promise<void> {
     try {
       // Update status to running
@@ -222,7 +224,7 @@ export class ExecutionService {
    */
   private buildProtocolExecutionCode(
     protocol: { fqn: string; function_name?: string | null; module_name?: string | null },
-    parameters?: Record<string, any>
+    parameters?: Record<string, unknown>
   ): string {
     const moduleName = protocol.module_name || protocol.fqn.split('.').slice(0, -1).join('.');
     const functionName = protocol.function_name || protocol.fqn.split('.').pop() || 'run';
@@ -401,11 +403,11 @@ print(f"[Browser] Protocol finished with result: {result}")
   /**
    * Stop the current run
    */
-  stopRun(): Observable<void> {
+  stopRun(): Observable<unknown> {
     const runId = this._currentRun()?.runId;
     if (!runId) return of(void 0);
 
-    return this.http.post<void>(`${this.API_URL}/protocols/runs/${runId}/cancel`, {}).pipe(
+    return this.apiWrapper.wrap(ProtocolsService.cancelProtocolRunApiV1ProtocolsRunsRunIdCancelPost(runId)).pipe(
       tap(() => {
         const current = this._currentRun();
         if (current) {

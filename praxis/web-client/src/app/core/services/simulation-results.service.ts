@@ -4,7 +4,6 @@
  */
 
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
 
@@ -19,12 +18,14 @@ import {
     StateSnapshot,
 } from '@core/models/simulation.models';
 
+import { ProtocolDefinitionsService } from '../api-generated/services/ProtocolDefinitionsService';
+import { ApiWrapperService } from './api-wrapper.service';
+
 @Injectable({ providedIn: 'root' })
 export class SimulationResultsService {
-    private readonly http = inject(HttpClient);
+    private readonly apiWrapper = inject(ApiWrapperService);
     private readonly modeService = inject(ModeService);
     private readonly sqliteService = inject(SqliteService);
-    private readonly API_URL = '/api/v1';
 
     /**
      * Get inferred requirements for a protocol.
@@ -35,10 +36,8 @@ export class SimulationResultsService {
             return this.getRequirementsFromBrowserMode(protocolId);
         }
 
-        return this.http.get<{ inferred_requirements: InferredRequirement[] }>(
-            `${this.API_URL}/protocols/definitions/${protocolId}`
-        ).pipe(
-            map(response => response.inferred_requirements || []),
+        return this.apiWrapper.wrap(ProtocolDefinitionsService.getApiV1ProtocolsDefinitionsAccessionIdGet(protocolId)).pipe(
+            map(response => (response.inferred_requirements as unknown as InferredRequirement[]) || []),
             catchError(err => {
                 console.error('[SimulationResults] Error fetching requirements:', err);
                 return of([]);
@@ -55,10 +54,8 @@ export class SimulationResultsService {
             return this.getFailureModesFromBrowserMode(protocolId);
         }
 
-        return this.http.get<{ failure_modes: FailureMode[] }>(
-            `${this.API_URL}/protocols/definitions/${protocolId}`
-        ).pipe(
-            map(response => response.failure_modes || []),
+        return this.apiWrapper.wrap(ProtocolDefinitionsService.getApiV1ProtocolsDefinitionsAccessionIdGet(protocolId)).pipe(
+            map(response => (response.failure_modes as unknown as FailureMode[]) || []),
             catchError(err => {
                 console.error('[SimulationResults] Error fetching failure modes:', err);
                 return of([]);
@@ -75,10 +72,8 @@ export class SimulationResultsService {
             return this.getSimulationResultFromBrowserMode(protocolId);
         }
 
-        return this.http.get<{ simulation_result: SimulationResult | null }>(
-            `${this.API_URL}/protocols/definitions/${protocolId}`
-        ).pipe(
-            map(response => response.simulation_result),
+        return this.apiWrapper.wrap(ProtocolDefinitionsService.getApiV1ProtocolsDefinitionsAccessionIdGet(protocolId)).pipe(
+            map(response => (response.simulation_result as unknown as SimulationResult) || null),
             catchError(err => {
                 console.error('[SimulationResults] Error fetching simulation result:', err);
                 return of(null);
@@ -95,14 +90,9 @@ export class SimulationResultsService {
             return this.getStateHistoryFromBrowserMode(runId);
         }
 
-        return this.http.get<StateHistory>(
-            `${this.API_URL}/runs/${runId}/state-history`
-        ).pipe(
-            catchError(err => {
-                console.error('[SimulationResults] Error fetching state history:', err);
-                return of(null);
-            })
-        );
+        // TODO: Implement state-history endpoint in backend/OpenAPI
+        console.warn('[SimulationResults] getStateHistory not yet implemented in API mode');
+        return of(null);
     }
 
     /**

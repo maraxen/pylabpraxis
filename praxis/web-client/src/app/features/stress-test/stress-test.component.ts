@@ -6,8 +6,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
-import { lastValueFrom } from 'rxjs';
+import { MachinesService } from '../../core/api-generated/services/MachinesService';
+import { ApiWrapperService } from '../../core/services/api-wrapper.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-stress-test',
@@ -66,7 +67,7 @@ import { lastValueFrom } from 'rxjs';
   `
 })
 export class StressTestComponent {
-  private http = inject(HttpClient);
+  private apiWrapper = inject(ApiWrapperService);
 
   concurrency = 10;
   totalRequests = 100;
@@ -74,7 +75,7 @@ export class StressTestComponent {
   isRunning = signal(false);
   progress = signal(0);
   completed = signal(0);
-  results = signal<{timeTaken: number, rps: number, errors: number, avgLatency: number} | null>(null);
+  results = signal<{ timeTaken: number, rps: number, errors: number, avgLatency: number } | null>(null);
 
   async startTest() {
     this.isRunning.set(true);
@@ -90,27 +91,27 @@ export class StressTestComponent {
     const batches = Math.ceil(this.totalRequests / batchSize);
 
     for (let i = 0; i < batches; i++) {
-        const promises = [];
-        const currentBatchSize = Math.min(batchSize, this.totalRequests - (i * batchSize));
+      const promises = [];
+      const currentBatchSize = Math.min(batchSize, this.totalRequests - (i * batchSize));
 
-        for (let j = 0; j < currentBatchSize; j++) {
-            const reqStart = Date.now();
-            // Hit the machines endpoint as it's a simple GET
-            promises.push(
-                lastValueFrom(this.http.get('/api/v1/machines'))
-                    .then(() => {
-                        latencies.push(Date.now() - reqStart);
-                    })
-                    .catch(() => {
-                        errors++;
-                    })
-            );
-        }
+      for (let j = 0; j < currentBatchSize; j++) {
+        const reqStart = Date.now();
+        // Hit the machines endpoint as it's a simple GET
+        promises.push(
+          firstValueFrom(this.apiWrapper.wrap(MachinesService.getMultiApiV1MachinesGet()))
+            .then(() => {
+              latencies.push(Date.now() - reqStart);
+            })
+            .catch(() => {
+              errors++;
+            })
+        );
+      }
 
-        await Promise.all(promises);
-        const currentCompleted = Math.min((i + 1) * batchSize, this.totalRequests);
-        this.completed.set(currentCompleted);
-        this.progress.set((currentCompleted / this.totalRequests) * 100);
+      await Promise.all(promises);
+      const currentCompleted = Math.min((i + 1) * batchSize, this.totalRequests);
+      this.completed.set(currentCompleted);
+      this.progress.set((currentCompleted / this.totalRequests) * 100);
     }
 
     const endTime = Date.now();
@@ -118,10 +119,10 @@ export class StressTestComponent {
     const avgLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length || 0;
 
     this.results.set({
-        timeTaken,
-        rps: (this.totalRequests / (timeTaken / 1000)),
-        errors,
-        avgLatency
+      timeTaken,
+      rps: (this.totalRequests / (timeTaken / 1000)),
+      errors,
+      avgLatency
     });
     this.isRunning.set(false);
   }

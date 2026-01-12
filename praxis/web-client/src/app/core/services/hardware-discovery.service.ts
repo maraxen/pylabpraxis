@@ -6,7 +6,6 @@
  */
 
 import { Injectable, inject, signal, computed } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { PLR_MACHINE_DEFINITIONS, PlrMachineDefinition } from '@assets/browser-data/plr-definitions';
 
@@ -130,11 +129,16 @@ const KNOWN_DEVICES: Record<string, { manufacturer: string; model: string; plrBa
     '0x067B:0x2303': { manufacturer: 'Prolific', model: 'USB-Serial (PL2303)', plrBackend: '' },
 };
 
+import { HardwareService } from '../api-generated/services/HardwareService';
+import { ApiWrapperService } from './api-wrapper.service';
+import { DiscoveredDeviceResponse } from '../api-generated/models/DiscoveredDeviceResponse';
+import { ConnectionStateResponse } from '../api-generated/models/ConnectionStateResponse';
+
 @Injectable({
     providedIn: 'root'
 })
 export class HardwareDiscoveryService {
-    private readonly http = inject(HttpClient);
+    private readonly apiWrapper = inject(ApiWrapperService);
 
     // Reactive state
     readonly discoveredDevices = signal<DiscoveredDevice[]>([]);
@@ -322,7 +326,7 @@ export class HardwareDiscoveryService {
     /**
      * Infer PLR machine definition from backend class or VID/PID
      */
-    private inferPlrDefinition(plrBackend?: string, vendorId?: number, productId?: number): PlrMachineDefinition | undefined {
+    private inferPlrDefinition(plrBackend?: string, _vendorID?: number, _productID?: number): PlrMachineDefinition | undefined {
         if (plrBackend) {
             return PLR_MACHINE_DEFINITIONS.find(m => m.fqn === plrBackend);
         }
@@ -414,12 +418,12 @@ export class HardwareDiscoveryService {
     private async fetchBackendDevices(): Promise<DiscoveredDevice[]> {
         try {
             const response = await firstValueFrom(
-                this.http.get<{ devices: BackendDevice[] }>('/api/v1/hardware/discover')
+                this.apiWrapper.wrap(HardwareService.discoverHardwareApiV1HardwareDiscoverGet())
             );
 
             if (!response?.devices) return [];
 
-            return response.devices.map(d => {
+            return (response.devices as Array<DiscoveredDeviceResponse>).map(d => {
                 const plrDef = d.plr_backend
                     ? PLR_MACHINE_DEFINITIONS.find(m => m.fqn === d.plr_backend)
                     : undefined;
@@ -429,10 +433,10 @@ export class HardwareDiscoveryService {
                     name: d.name,
                     connectionType: d.connection_type as ConnectionType,
                     status: d.status as DeviceStatus,
-                    manufacturer: d.manufacturer,
-                    productName: d.model,
-                    serialNumber: d.serial_number,
-                    plrBackend: d.plr_backend,
+                    manufacturer: d.manufacturer ?? undefined,
+                    productName: d.model ?? undefined,
+                    serialNumber: d.serial_number ?? undefined,
+                    plrBackend: d.plr_backend ?? undefined,
                     plrMachineDefinition: plrDef,
                 };
             });
@@ -461,7 +465,7 @@ export class HardwareDiscoveryService {
     /**
      * Register a discovered device as a machine in the backend
      */
-    async registerAsMachine(device: DiscoveredDevice, name?: string): Promise<RegisterMachineResponse | null> {
+    async registerAsMachine(device: DiscoveredDevice, name?: string): Promise<unknown | null> {
         if (!device.plrBackend) {
             console.error('Cannot register device without PLR backend');
             return null;
@@ -472,17 +476,15 @@ export class HardwareDiscoveryService {
             return null;
         }
 
-        const request: RegisterMachineRequest = {
-            device_id: device.id,
-            name: name || device.name,
-            plr_backend: device.plrBackend,
-            connection_type: device.connectionType,
-            configuration: device.configuration,
-        };
-
         try {
             const response = await firstValueFrom(
-                this.http.post<RegisterMachineResponse>('/api/v1/hardware/register', request)
+                this.apiWrapper.wrap(HardwareService.registerMachineApiV1HardwareRegisterPost({
+                    device_id: device.id,
+                    name: name || device.name,
+                    plr_backend: device.plrBackend,
+                    connection_type: device.connectionType,
+                    configuration: device.configuration as Record<string, unknown>,
+                }))
             );
             return response;
         } catch (error) {
@@ -583,15 +585,15 @@ export class HardwareDiscoveryService {
     async connectViaBackend(device: DiscoveredDevice): Promise<boolean> {
         try {
             const response = await firstValueFrom(
-                this.http.post<{ status: string; message: string }>('/api/v1/hardware/connect', {
+                this.apiWrapper.wrap(HardwareService.connectDeviceApiV1HardwareConnectPost({
                     device_id: device.id,
-                    backend_class: device.plrBackend,
+                    backend_class: device.plrBackend || '',
                     config: {
                         port: device.port ? 'webserial' : undefined,
                         ip_address: device.ipAddress,
                         ...device.configuration,
                     },
-                })
+                }))
             );
 
             if (response.status === 'connected') {
@@ -617,9 +619,9 @@ export class HardwareDiscoveryService {
     async disconnectViaBackend(device: DiscoveredDevice): Promise<boolean> {
         try {
             await firstValueFrom(
-                this.http.post('/api/v1/hardware/disconnect', {
+                this.apiWrapper.wrap(HardwareService.disconnectDeviceApiV1HardwareDisconnectPost({
                     device_id: device.id,
-                })
+                }))
             );
 
             this.discoveredDevices.update(devices =>
@@ -641,20 +643,13 @@ export class HardwareDiscoveryService {
     async fetchBackendConnections(): Promise<void> {
         try {
             const connections = await firstValueFrom(
-                this.http.get<Array<{
-                    device_id: string;
-                    status: string;
-                    connected_at: string | null;
-                    last_heartbeat: string;
-                    backend_class: string | null;
-                    error_message: string | null;
-                }>>('/api/v1/hardware/connections')
+                this.apiWrapper.wrap(HardwareService.listConnectionsApiV1HardwareConnectionsGet())
             );
 
             // Update device statuses based on backend state
             this.discoveredDevices.update(devices =>
                 devices.map(d => {
-                    const conn = connections.find(c => c.device_id === d.id);
+                    const conn = (connections as Array<ConnectionStateResponse>).find(c => c.device_id === d.id);
                     if (conn) {
                         return {
                             ...d,
@@ -677,11 +672,11 @@ export class HardwareDiscoveryService {
     async sendHeartbeat(deviceId: string): Promise<boolean> {
         try {
             const response = await firstValueFrom(
-                this.http.post<{ success: boolean }>('/api/v1/hardware/heartbeat', {
+                this.apiWrapper.wrap(HardwareService.sendHeartbeatApiV1HardwareHeartbeatPost({
                     device_id: deviceId,
-                })
+                }))
             );
-            return response.success;
+            return !!response.success;
         } catch (error) {
             console.debug('Heartbeat failed:', error);
             return false;
