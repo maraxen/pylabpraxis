@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from sqlalchemy.pool import NullPool, StaticPool
+from sqlmodel import SQLModel
 
 from praxis.backend.utils.db import Base
 from tests.factories import (
@@ -24,6 +25,7 @@ from tests.factories import (
     ResourceFactory,
     WellDataOutputFactory,
     WorkcellFactory,
+    MachineFactory,
 )
 
 # Dual Database Testing Support
@@ -210,6 +212,7 @@ async def db_engine() -> AsyncGenerator[AsyncEngine, None]:
         with contextlib.suppress(Exception):
             await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(SQLModel.metadata.create_all)
 
     yield engine
 
@@ -238,6 +241,7 @@ async def db_session(
 
         # Set up factories to use this session
         WorkcellFactory._meta.sqlalchemy_session = session
+        MachineFactory._meta.sqlalchemy_session = session
         ResourceDefinitionFactory._meta.sqlalchemy_session = session
         ResourceFactory._meta.sqlalchemy_session = session
         FunctionProtocolDefinitionFactory._meta.sqlalchemy_session = session
