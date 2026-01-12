@@ -125,6 +125,7 @@
 | Asset Base Migration | P2 | 2026-01-10 | Migrated Asset polymorphic base to SQLModel domain |
 | State Management Diagram | P2 | 2026-01-12 | Fixed CSS for dark/light mode theming |
 | Frontend TypeScript Generation | P2 | 2026-01-12 | Generated TypeScript client from OpenAPI schema |
+| Angular Service Migration | P2 | 2026-01-12 | Migrated frontend services to use new generated API client |
 
 ---
 

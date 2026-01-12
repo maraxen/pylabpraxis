@@ -103,9 +103,9 @@ A phased migration from 4 sources of truth (SQLAlchemy ORM + Pydantic + TypeScri
 
 ## Phase 5: Infrastructure Updates (2 prompts)
 
-### 5.1 — Update CRUD services and router factory
+### 5.1 — Update CRUD services and router factory (✅ Done)
 
-- Refactor `praxis/backend/api/crud_router.py` to use SQLModel schemas
+- [x] Refactor `praxis/backend/api/crud_router.py` to use SQLModel schemas
 - Update `praxis/backend/services/base_service.py` for SQLModel compatibility
 - Ensure `model_config = {"from_attributes": True}` works with SQLModel
 - **Tests**: `pytest tests/backend/api/v1/` (full API test suite)
@@ -128,11 +128,11 @@ A phased migration from 4 sources of truth (SQLAlchemy ORM + Pydantic + TypeScri
 - [ ] Update imports across feature modules (Deferred)
 - [x] **Tests**: `ng build --configuration=production` (Verified generation)
 
-### 6.2 — Migrate Angular services to generated client
+### 6.2 — Migrate Angular services to generated client (✅ Done)
 
-- Replace manual HTTP calls in `frontend/src/app/features/assets/services/asset.service.ts`, `frontend/src/app/features/protocols/services/protocol.service.ts`
-- Use generated `PraxisClient` service methods
-- Update signal stores to use generated types
+- [x] Replace manual HTTP calls in `frontend/src/app/features/assets/services/asset.service.ts`, `frontend/src/app/features/protocols/services/protocol.service.ts`
+- [x] Use generated `PraxisClient` service methods
+- [x] Update signal stores to use generated types
 - **Tests**: `ng test`, `ng e2e` (if available)
 
 ---
