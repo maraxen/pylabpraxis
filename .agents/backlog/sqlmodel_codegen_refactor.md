@@ -8,22 +8,12 @@ A phased migration from 4 sources of truth (SQLAlchemy ORM + Pydantic + TypeScri
 
 ---
 
-## Phase 1: Foundation Setup (2 prompts)
+## 📁 Archived Items
 
-### 1.1 — Add SQLModel dependency and base infrastructure (✅ Done)
+Phases 1, 2.1, 5.1, 6.1, and 6.2 have been archived.
+See: [sqlmodel_openapi_migration.md](../archive/sqlmodel_openapi_migration.md)
 
-- Add `sqlmodel>=0.0.22` to `pyproject.toml`
-- Create `praxis/backend/models/sqlmodel_base.py` with unified `PraxisBase(SQLModel)` that combines `BaseOrm` metadata (accession_id UUID7, timestamps) with Pydantic config
-- Update `alembic/env.py` to import SQLModel metadata alongside existing ORM metadata
-- **Tests**: `pytest tests/backend/models/orm/ -k "base"`
-
-### 1.2 — Setup frontend OpenAPI codegen pipeline (✅ Done)
-
-- Add `openapi-typescript-codegen` to `frontend/package.json` devDependencies
-- Create `npm run generate-api` script targeting `src/app/core/api-generated/`
-- Update `scripts/generate_openapi.py` to output to frontend assets
-- Create `.openapi-generator-ignore` for custom overrides
-- **Tests**: Run generation, verify TypeScript compiles
+---
 
 ---
 
@@ -31,11 +21,7 @@ A phased migration from 4 sources of truth (SQLAlchemy ORM + Pydantic + TypeScri
 
 ### 2.1 — Migrate `Asset` polymorphic base (✅ Done)
 
-- [x] Unify `praxis/backend/models/orm/asset.py` + `praxis/backend/models/pydantic_internals/asset.py` into `praxis/backend/models/domain/asset.py`
-- [x] Create `AssetBase(SQLModel)`, `Asset(AssetBase, table=True)`, `AssetCreate`, `AssetRead`, `AssetUpdate`
-- [x] Preserve polymorphic inheritance (`polymorphic_on="asset_type"`)
-- [x] Update imports in `praxis/backend/api/v1/`
-- [x] **Tests**: `pytest tests/backend/models/orm/test_asset_orm.py tests/backend/models/pydantic/test_asset_pydantic.py tests/backend/api/v1/test_machines.py`
+- [x] Archived. See above.
 
 ### 2.2 — Migrate `Machine` + `MachineDefinition`
 
@@ -105,10 +91,7 @@ A phased migration from 4 sources of truth (SQLAlchemy ORM + Pydantic + TypeScri
 
 ### 5.1 — Update CRUD services and router factory (✅ Done)
 
-- [x] Refactor `praxis/backend/api/crud_router.py` to use SQLModel schemas
-- Update `praxis/backend/services/base_service.py` for SQLModel compatibility
-- Ensure `model_config = {"from_attributes": True}` works with SQLModel
-- **Tests**: `pytest tests/backend/api/v1/` (full API test suite)
+- [x] Archived. See above.
 
 ### 5.2 — Update test factories and fixtures
 
@@ -123,17 +106,11 @@ A phased migration from 4 sources of truth (SQLAlchemy ORM + Pydantic + TypeScri
 
 ### 6.1 — Generate and integrate TypeScript client (✅ Done)
 
-- [x] Run `npm run generate-api` to create `frontend/src/app/core/api-generated/`
-- [ ] Delete manual interfaces from `frontend/src/app/features/assets/models/asset.models.ts`, `frontend/src/app/features/protocols/models/protocol.models.ts` (Deferred)
-- [ ] Update imports across feature modules (Deferred)
-- [x] **Tests**: `ng build --configuration=production` (Verified generation)
+- [x] Archived. See above.
 
 ### 6.2 — Migrate Angular services to generated client (✅ Done)
 
-- [x] Replace manual HTTP calls in `frontend/src/app/features/assets/services/asset.service.ts`, `frontend/src/app/features/protocols/services/protocol.service.ts`
-- [x] Use generated `PraxisClient` service methods
-- [x] Update signal stores to use generated types
-- **Tests**: `ng test`, `ng e2e` (if available)
+- [x] Archived. See above.
 
 ---
 
@@ -193,11 +170,13 @@ properties_json: dict[str, Any] | None = Field(sa_type=JsonVariant, default=None
 ```
 
 **References:**
+
 - [GitHub Discussion #1346](https://github.com/fastapi/sqlmodel/discussions/1346)
 - [GitHub Discussion #1051](https://github.com/fastapi/sqlmodel/discussions/1051)
 - [GitHub Issue #469](https://github.com/fastapi/sqlmodel/issues/469)
 
 **Codebase Analysis (2025-01-12):**
+
 - Polymorphic queries (`select(AssetOrm)` returning mixed types) are NOT used
 - All queries target specific subtypes: `select(MachineOrm)`, `select(ResourceOrm)`
 - `AssetReservation.asset` relationship exists but is never navigated in code

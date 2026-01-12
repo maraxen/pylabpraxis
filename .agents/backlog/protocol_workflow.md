@@ -1,30 +1,11 @@
 # Protocol Workflow Issues
 
-**Created**: 2026-01-09
-**Priority**: P1-P2
+## 📁 Archived Items
 
----
+See: [ui_ux_improvements_jan_2026.md](../archive/ui_ux_improvements_jan_2026.md)
 
-## P1: Well Selection Not Triggering
-
-**Status**: 🟢 Completed (Assigned: [Prompt 13](../archive/prompts/260109/13_protocol_well_selection_fix.md))
-**Difficulty**: Medium
-
-### Problem
-
-Protocol run well selection is not triggering when expected.
-
-### Context
-
-- User reports the well selection step doesn't activate
-- Possibly related to parameter type inference or form generation
-
-### Tasks
-
-- [ ] Investigate when well selection should trigger
-- [ ] Check `isWellSelectionParameter` heuristic
-- [ ] Verify form field generation for well-type parameters
-- [ ] Test with various protocol signatures
+- P1: Well Selection Not Triggering
+- P2: Protocol Dialog Asset Classification
 
 ---
 
@@ -81,20 +62,3 @@ No filters are implemented in the protocol library.
 - [ ] Implement filter chips for protocol library
 - [ ] Filter by: author, tags, resource requirements
 - [ ] Search functionality for protocol names
-
----
-
-## P2: Protocol Dialog Asset Classification
-
-**Status**: 🟢 Completed (Assigned: [Prompt 15](../archive/prompts/260109/15_protocol_dialog_asset_classification.md))
-**Difficulty**: Easy
-
-### Problem
-
-In the dialog triggered when opening something in the protocol library, machines should be included in asset requirements, not in parameters.
-
-### Tasks
-
-- [ ] Review protocol detail dialog structure
-- [ ] Move machine requirements to dedicated "Asset Requirements" section
-- [ ] Keep only runtime parameters in "Parameters" section

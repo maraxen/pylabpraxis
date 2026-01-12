@@ -1,6 +1,6 @@
 # Praxis Development Roadmap
 
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-12
 **Purpose**: High-level strategic phases and milestones for release planning.
 
 ---
@@ -29,10 +29,10 @@
   - Execute protocols on connected hardware from browser
   - State tracking during execution
   - Pause/resume/cancel flows
-- [ ] **Playground Fully Operational**
-  - Loads without manual intervention (no reload kernel / dismiss loading)
-  - Interactive hardware control working
-  - Asset inventory integration functional
+- [x] **Playground Fully Operational**
+  - [x] Loads without manual intervention (no reload kernel / dismiss loading)
+  - [ ] Interactive hardware control working (In Progress)
+  - [x] Asset inventory integration functional
 - [ ] **Protocol Workflow Complete**
   - [x] Well selection triggering correctly
   - Asset filtering to appropriate PLR classes
@@ -49,7 +49,7 @@ These issues from the development matrix must be resolved:
 - [x] Asset management UX issues (backend selector, filters, registry)
 - [ ] Data visualization axis selects responding
 - [x] Documentation accuracy (API docs, dead links, [x] Execution Flow Diagram)
-- [x] UI polish items ([x] Duplicate Clear Button, filter styling)
+- [x] UI polish items ([x] Duplicate Clear Button, [x] filter styling, [x] name truncation)
 
 #### Quality Gates
 

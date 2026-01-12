@@ -1,31 +1,12 @@
 # Playground Issues
 
-**Created**: 2026-01-09
-**Priority**: P1-P2
+## 📁 Archived Items
 
----
+See: [ui_ux_improvements_jan_2026.md](../archive/ui_ux_improvements_jan_2026.md)
 
-## P1: Initialization Flow Broken
-
-**Status**: Completed
-**Difficulty**: Medium
-
-### Problem
-
-User must click "reload kernel" and then click "dismiss loading button" to use playground. There's also a "WebSerial not defined" error in the Pyodide session.
-
-### Context
-
-- JupyterLite kernel initialization has issues
-- WebSerial polyfill may not be loaded correctly
-- Previous race condition fixes may have regressed
-
-### Tasks
-
-- [x] Investigate kernel auto-initialization
-- [x] Fix WebSerial polyfill loading order
-- [x] Remove need for manual dismiss/reload actions
-- [x] Test initialization in both browser and production modes
+- P1: Initialization Flow Broken
+- P2: Inventory Filter Styling
+- P2: Category Structure
 
 ---
 
@@ -52,36 +33,7 @@ Need to audit the polyfill/webusb based communication to ensure it works correct
 
 ---
 
-## P2: Inventory Filter Styling
-
-**Status**: Completed
-**Difficulty**: Easy
-
-### Problem
-
-Playground inventory filter menu should use our styled select components.
-
-### Tasks
-
-- [x] Replace current filter controls with shared styled components
-- [x] Ensure consistency with other asset filter UI
-
 ---
-
-## P2: Category Structure
-
-**Status:** Completed
-**Difficulty**: Easy
-
-### Problem
-
-Categories need to be properly structured in the quick add inventory category filter.
-
-### Tasks
-
-- [x] Review category hierarchy
-- [x] Implement proper nesting/grouping
-- [x] Test filter behavior
 
 ---
 

@@ -2,10 +2,7 @@
 
 ## ✅ Completed
 
-- [x] **Database Import/Export Tests** (Batch: 260109) - Implemented Backend API stubs. Validated existing Frontend tests.
-- [x] **Browser Mode Export** - Implemented and tested in `sqlite.service.ts`.
-- [ ] **Backend Export API** - Missing (Stubs created in `tests/backend/api/test_database_export.py`).
-- [x] **Infinite Consumables Tests** - Comprehensive tests for `ConsumableAssignmentService`.
+- Archived to [ui_ux_improvements_jan_2026.md](../archive/ui_ux_improvements_jan_2026.md) and [documentation_updates_jan_2026.md](../archive/documentation_updates_jan_2026.md) where applicable.
 
 ## 🏃 In Progress
 
