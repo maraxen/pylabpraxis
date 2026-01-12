@@ -1,6 +1,6 @@
 /**
  * Auto-generated TypeScript enums from Python enums
- * Generated at: 2026-01-09T18:10:10.479684
+ * Generated at: 2026-01-12T15:54:02.254969
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 
@@ -390,7 +390,8 @@ export type SpatialContext =
   | 'plate_level'
   | 'machine_level'
   | 'deck_position'
-  | 'global';
+  | 'global'
+  | 'unknown';
 
 export const SpatialContextValues = {
   WELL_SPECIFIC: 'well_specific' as const,
@@ -398,6 +399,7 @@ export const SpatialContextValues = {
   MACHINE_LEVEL: 'machine_level' as const,
   DECK_POSITION: 'deck_position' as const,
   GLOBAL: 'global' as const,
+  UNKNOWN: 'unknown' as const,
 } as const;
 
 /**

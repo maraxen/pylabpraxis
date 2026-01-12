@@ -7,12 +7,9 @@ import type { ProtocolRunStatusEnum } from './ProtocolRunStatusEnum';
  * Schema for updating a ProtocolRun (partial update).
  */
 export type ProtocolRunUpdate = {
-    name?: (string | null);
     status?: (ProtocolRunStatusEnum | null);
-    started_at?: (string | null);
-    completed_at?: (string | null);
-    error_message?: (string | null);
-    result_json?: (Record<string, any> | null);
+    start_time?: (string | null);
+    end_time?: (string | null);
     output_data_json?: (Record<string, any> | null);
     data_directory_path?: (string | null);
 };

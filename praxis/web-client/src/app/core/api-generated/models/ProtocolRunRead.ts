@@ -20,31 +20,25 @@ export type ProtocolRunRead = {
      * An optional name for the record.
      */
     name: string;
-    /**
-     * Name of the protocol function
-     */
-    function_name?: (string | null);
-    /**
-     * File containing the protocol function
-     */
-    function_file?: (string | null);
     status?: ProtocolRunStatusEnum;
     /**
      * When the protocol run started
      */
-    started_at?: (string | null);
+    start_time?: (string | null);
     /**
      * When the protocol run completed
      */
-    completed_at?: (string | null);
+    end_time?: (string | null);
     /**
-     * Error message if the run failed
+     * Path to data directory
      */
-    error_message?: (string | null);
     data_directory_path?: (string | null);
-    function_args_json?: (Record<string, any> | null);
-    function_kwargs_json?: (Record<string, any> | null);
-    result_json?: (Record<string, any> | null);
+    /**
+     * Duration in milliseconds
+     */
+    duration_ms?: (number | null);
+    input_parameters_json?: (Record<string, any> | null);
+    resolved_assets_json?: (Record<string, any> | null);
     output_data_json?: (Record<string, any> | null);
 };
 

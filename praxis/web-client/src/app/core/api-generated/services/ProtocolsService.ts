@@ -6,7 +6,7 @@ import type { Body_get_multi_api_v1_protocols_definitions_get } from '../models/
 import type { Body_get_multi_api_v1_protocols_runs_get } from '../models/Body_get_multi_api_v1_protocols_runs_get';
 import type { CancelRunResponse } from '../models/CancelRunResponse';
 import type { FunctionProtocolDefinitionCreate } from '../models/FunctionProtocolDefinitionCreate';
-import type { FunctionProtocolDefinitionResponse } from '../models/FunctionProtocolDefinitionResponse';
+import type { FunctionProtocolDefinitionRead } from '../models/FunctionProtocolDefinitionRead';
 import type { FunctionProtocolDefinitionUpdate } from '../models/FunctionProtocolDefinitionUpdate';
 import type { ProtocolRunCreate } from '../models/ProtocolRunCreate';
 import type { ProtocolRunRead } from '../models/ProtocolRunRead';
@@ -46,12 +46,12 @@ export class ProtocolsService {
     /**
      * Create
      * @param requestBody
-     * @returns FunctionProtocolDefinitionResponse Successful Response
+     * @returns FunctionProtocolDefinitionRead Successful Response
      * @throws ApiError
      */
     public static createApiV1ProtocolsDefinitionsPost(
         requestBody: FunctionProtocolDefinitionCreate,
-    ): CancelablePromise<FunctionProtocolDefinitionResponse> {
+    ): CancelablePromise<FunctionProtocolDefinitionRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/protocols/definitions',
@@ -74,7 +74,7 @@ export class ProtocolsService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns FunctionProtocolDefinitionResponse Successful Response
+     * @returns FunctionProtocolDefinitionRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1ProtocolsDefinitionsGet(
@@ -88,7 +88,7 @@ export class ProtocolsService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_protocols_definitions_get,
-    ): CancelablePromise<Array<FunctionProtocolDefinitionResponse>> {
+    ): CancelablePromise<Array<FunctionProtocolDefinitionRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/protocols/definitions',
@@ -113,12 +113,12 @@ export class ProtocolsService {
     /**
      * Get
      * @param accessionId
-     * @returns FunctionProtocolDefinitionResponse Successful Response
+     * @returns FunctionProtocolDefinitionRead Successful Response
      * @throws ApiError
      */
     public static getApiV1ProtocolsDefinitionsAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<FunctionProtocolDefinitionResponse> {
+    ): CancelablePromise<FunctionProtocolDefinitionRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/protocols/definitions/{accession_id}',
@@ -134,13 +134,13 @@ export class ProtocolsService {
      * Update
      * @param accessionId
      * @param requestBody
-     * @returns FunctionProtocolDefinitionResponse Successful Response
+     * @returns FunctionProtocolDefinitionRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1ProtocolsDefinitionsAccessionIdPut(
         accessionId: string,
         requestBody: FunctionProtocolDefinitionUpdate,
-    ): CancelablePromise<FunctionProtocolDefinitionResponse> {
+    ): CancelablePromise<FunctionProtocolDefinitionRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/protocols/definitions/{accession_id}',

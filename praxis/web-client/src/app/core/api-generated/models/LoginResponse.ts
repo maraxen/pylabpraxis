@@ -2,12 +2,12 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { UserResponse } from './UserResponse';
+import type { UserRead } from './UserRead';
 /**
  * Login response model with user data and token.
  */
 export type LoginResponse = {
-    user: UserResponse;
+    user: UserRead;
     access_token: string;
     token_type?: string;
 };

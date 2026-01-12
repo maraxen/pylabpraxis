@@ -25,5 +25,7 @@ export type ResourceDefinitionUpdate = {
     well_volume_ul?: (number | null);
     tip_volume_ul?: (number | null);
     vendor?: (string | null);
+    plr_definition_details_json?: (Record<string, any> | null);
+    rotation_json?: (Record<string, any> | null);
 };
 

@@ -10,6 +10,9 @@ export type ResourceUpdate = {
     name?: (string | null);
     fqn?: (string | null);
     location?: (string | null);
+    plr_state?: (Record<string, any> | null);
+    plr_definition?: (Record<string, any> | null);
+    properties_json?: (Record<string, any> | null);
     status?: (ResourceStatusEnum | null);
     status_details?: (string | null);
     location_label?: (string | null);

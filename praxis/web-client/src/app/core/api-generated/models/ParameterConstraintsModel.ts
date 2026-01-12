@@ -3,14 +3,12 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Defines validation constraints for a protocol parameter.
+ * Model for parameter constraints.
  */
 export type ParameterConstraintsModel = {
     min_value?: (number | null);
     max_value?: (number | null);
-    min_length?: (number | null);
-    max_length?: (number | null);
-    regex_pattern?: (string | null);
-    options?: null;
+    allowed_values?: null;
+    regex?: (string | null);
 };
 

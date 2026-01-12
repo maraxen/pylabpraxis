@@ -4,7 +4,7 @@
 /* eslint-disable */
 import type { LoginRequest } from '../models/LoginRequest';
 import type { LoginResponse } from '../models/LoginResponse';
-import type { UserResponse } from '../models/UserResponse';
+import type { UserRead } from '../models/UserRead';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -70,10 +70,10 @@ export class AuthenticationService {
      *
      * Returns:
      * UserResponse with current user's data
-     * @returns UserResponse Successful Response
+     * @returns UserRead Successful Response
      * @throws ApiError
      */
-    public static getCurrentUserInfoApiV1AuthMeGet(): CancelablePromise<UserResponse> {
+    public static getCurrentUserInfoApiV1AuthMeGet(): CancelablePromise<UserRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/auth/me',

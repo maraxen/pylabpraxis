@@ -9,7 +9,7 @@ import type { MachineStatusEnum } from './MachineStatusEnum';
  * Schema for reading a Machine (API response).
  */
 export type MachineRead = {
-    accession_id: string;
+    accession_id?: string;
     /**
      * The time the record was created.
      */
@@ -18,21 +18,9 @@ export type MachineRead = {
      * The time the record was last updated.
      */
     updated_at?: (string | null);
-    /**
-     * An optional name for the record.
-     */
     name: string;
-    /**
-     * Type of asset, e.g., machine, resource, etc.
-     */
-    asset_type?: AssetType;
-    /**
-     * Fully qualified name of the asset's class, if applicable.
-     */
-    fqn?: string;
-    /**
-     * Location of the asset in the lab.
-     */
+    asset_type: AssetType;
+    fqn?: (string | null);
     location?: (string | null);
     machine_category?: MachineCategoryEnum;
     description?: (string | null);
@@ -49,7 +37,24 @@ export type MachineRead = {
     is_simulation_override?: (boolean | null);
     last_seen_online?: (string | null);
     maintenance_enabled?: boolean;
+    /**
+     * Connection details (backend, address, etc.)
+     */
     connection_info?: (Record<string, any> | null);
+    /**
+     * User-specified capability overrides
+     */
     user_configured_capabilities?: (Record<string, any> | null);
+    /**
+     * Custom maintenance schedule
+     */
+    maintenance_schedule_json?: (Record<string, any> | null);
+    /**
+     * Record of last maintenance
+     */
+    last_maintenance_json?: (Record<string, any> | null);
+    plr_state?: (Record<string, any> | null);
+    plr_definition?: (Record<string, any> | null);
+    properties_json?: (Record<string, any> | null);
 };
 

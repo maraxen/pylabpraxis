@@ -3,13 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Represents a user for API responses.
+ * Schema for reading a User (API response) - excludes hashed_password.
  */
-export type UserResponse = {
-    /**
-     * The unique accession ID of the record.
-     */
-    accession_id?: string;
+export type UserRead = {
+    accession_id: string;
     /**
      * The time the record was created.
      */
@@ -17,30 +14,34 @@ export type UserResponse = {
     /**
      * The time the record was last updated.
      */
-    last_updated?: (string | null);
+    updated_at?: (string | null);
     /**
      * An optional name for the record.
      */
-    name?: string;
+    name: string;
     /**
-     * Arbitrary metadata associated with the record.
-     */
-    properties_json?: (Record<string, any> | null);
-    /**
-     * The unique name of the user.
+     * Unique username for login
      */
     username: string;
     /**
-     * The user's email address.
+     * User's email address
      */
     email: string;
     /**
-     * The user's full name.
+     * User's full name
      */
     full_name?: (string | null);
     /**
-     * Whether the user is active.
+     * Whether the user account is active
      */
     is_active?: boolean;
+    /**
+     * Phone number for SMS notifications
+     */
+    phone_number?: (string | null);
+    /**
+     * Phone carrier for SMS gateway
+     */
+    phone_carrier?: (string | null);
 };
 

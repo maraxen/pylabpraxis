@@ -88,7 +88,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
+                  "$ref": "#/components/schemas/UserRead"
                 }
               }
             }
@@ -886,7 +886,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionProtocolDefinitionResponse"
+                  "$ref": "#/components/schemas/FunctionProtocolDefinitionRead"
                 }
               }
             }
@@ -1070,7 +1070,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionProtocolDefinitionResponse"
+                    "$ref": "#/components/schemas/FunctionProtocolDefinitionRead"
                   },
                   "title": "Response Get Multi Api V1 Protocols Definitions Get"
                 }
@@ -1116,7 +1116,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionProtocolDefinitionResponse"
+                  "$ref": "#/components/schemas/FunctionProtocolDefinitionRead"
                 }
               }
             }
@@ -1168,7 +1168,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionProtocolDefinitionResponse"
+                  "$ref": "#/components/schemas/FunctionProtocolDefinitionRead"
                 }
               }
             }
@@ -5437,7 +5437,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AssetReservationListResponse"
+                  "$ref": "#/components/schemas/AssetReservationCreate"
                 }
               }
             }
@@ -5777,73 +5777,66 @@
   },
   "components": {
     "schemas": {
-      "AssetConstraintsModel": {
+      "AssetRequirementCreate": {
         "properties": {
-          "required_methods": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Required Methods"
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
           },
-          "required_attributes": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Required Attributes"
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
           },
-          "required_method_signatures": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "type": "object",
-            "title": "Required Method Signatures"
-          },
-          "required_method_args": {
-            "additionalProperties": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "type": "object",
-            "title": "Required Method Args"
-          },
-          "min_volume_ul": {
+          "updated_at": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "string",
+                "format": "date-time"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Min Volume Ul"
-          }
-        },
-        "type": "object",
-        "title": "AssetConstraintsModel",
-        "description": "Defines constraints for an asset required by a protocol."
-      },
-      "AssetRequirementModel-Input": {
-        "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id"
+            "title": "Updated At",
+            "description": "The time the record was last updated."
           },
           "name": {
             "type": "string",
-            "title": "Name"
-          },
-          "fqn": {
-            "type": "string",
-            "title": "Fqn"
+            "title": "Name",
+            "description": "The name of the asset requirement"
           },
           "type_hint_str": {
             "type": "string",
-            "title": "Type Hint Str"
+            "title": "Type Hint Str",
+            "description": "Type hint"
+          },
+          "fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn",
+            "description": "Fully qualified name"
+          },
+          "actual_type_str": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Type Str",
+            "description": "Actual type"
           },
           "optional": {
             "type": "boolean",
@@ -5872,12 +5865,6 @@
             ],
             "title": "Description"
           },
-          "constraints_json": {
-            "$ref": "#/components/schemas/AssetConstraintsModel"
-          },
-          "location_constraints_json": {
-            "$ref": "#/components/schemas/LocationConstraintsModel"
-          },
           "required_plr_category": {
             "anyOf": [
               {
@@ -5888,97 +5875,27 @@
               }
             ],
             "title": "Required Plr Category"
+          },
+          "protocol_definition_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Protocol Definition Accession Id"
           }
         },
         "type": "object",
         "required": [
-          "accession_id",
           "name",
-          "fqn",
-          "type_hint_str"
+          "type_hint_str",
+          "protocol_definition_accession_id"
         ],
-        "title": "AssetRequirementModel",
-        "description": "Describes a single asset required by a protocol.\n\nThis includes its name, type information, optionality, default value,\ndescription, and specific constraints."
+        "title": "AssetRequirementCreate",
+        "description": "Schema for creating an AssetRequirement."
       },
-      "AssetRequirementModel-Output": {
+      "AssetReservationCreate": {
         "properties": {
           "accession_id": {
             "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "fqn": {
-            "type": "string",
-            "title": "Fqn"
-          },
-          "type_hint_str": {
-            "type": "string",
-            "title": "Type Hint Str"
-          },
-          "optional": {
-            "type": "boolean",
-            "title": "Optional",
-            "default": false
-          },
-          "default_value_repr": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Default Value Repr"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "constraints": {
-            "$ref": "#/components/schemas/AssetConstraintsModel"
-          },
-          "location_constraints": {
-            "$ref": "#/components/schemas/LocationConstraintsModel"
-          },
-          "required_plr_category": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Required Plr Category"
-          }
-        },
-        "type": "object",
-        "required": [
-          "accession_id",
-          "name",
-          "fqn",
-          "type_hint_str"
-        ],
-        "title": "AssetRequirementModel",
-        "description": "Describes a single asset required by a protocol.\n\nThis includes its name, type information, optionality, default value,\ndescription, and specific constraints."
-      },
-      "AssetReservationListResponse": {
-        "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid7",
+            "format": "uuid",
             "title": "Accession Id",
             "description": "The unique accession ID of the record."
           },
@@ -5988,7 +5905,7 @@
             "title": "Created At",
             "description": "The time the record was created."
           },
-          "last_updated": {
+          "updated_at": {
             "anyOf": [
               {
                 "type": "string",
@@ -5998,133 +5915,13 @@
                 "type": "null"
               }
             ],
-            "title": "Last Updated",
+            "title": "Updated At",
             "description": "The time the record was last updated."
           },
           "name": {
             "type": "string",
             "title": "Name",
             "description": "An optional name for the record."
-          },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
-          },
-          "reservations": {
-            "items": {
-              "$ref": "#/components/schemas/AssetReservationResponse"
-            },
-            "type": "array",
-            "title": "Reservations"
-          },
-          "total_count": {
-            "type": "integer",
-            "title": "Total Count"
-          },
-          "active_count": {
-            "type": "integer",
-            "title": "Active Count"
-          }
-        },
-        "type": "object",
-        "required": [
-          "reservations",
-          "total_count",
-          "active_count"
-        ],
-        "title": "AssetReservationListResponse",
-        "description": "Response model for listing asset reservations."
-      },
-      "AssetReservationResponse": {
-        "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "The time the record was created."
-          },
-          "last_updated": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Updated",
-            "description": "The time the record was last updated."
-          },
-          "name": {
-            "type": "string",
-            "title": "Name",
-            "description": "An optional name for the record."
-          },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
-          },
-          "protocol_run_accession_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Protocol Run Accession Id"
-          },
-          "schedule_entry_accession_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Schedule Entry Accession Id"
-          },
-          "asset_type": {
-            "type": "string",
-            "title": "Asset Type"
-          },
-          "asset_name": {
-            "type": "string",
-            "title": "Asset Name"
-          },
-          "asset_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Asset Accession Id"
-          },
-          "status": {
-            "$ref": "#/components/schemas/ResourceReservationStatus"
-          },
-          "redis_lock_key": {
-            "type": "string",
-            "title": "Redis Lock Key"
           },
           "reserved_at": {
             "anyOf": [
@@ -6136,7 +5933,8 @@
                 "type": "null"
               }
             ],
-            "title": "Reserved At"
+            "title": "Reserved At",
+            "description": "When the asset was reserved"
           },
           "released_at": {
             "anyOf": [
@@ -6148,7 +5946,8 @@
                 "type": "null"
               }
             ],
-            "title": "Released At"
+            "title": "Released At",
+            "description": "When the asset was released"
           },
           "expires_at": {
             "anyOf": [
@@ -6161,6 +5960,44 @@
               }
             ],
             "title": "Expires At"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "Whether the reservation is currently active",
+            "default": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/AssetReservationStatusEnum",
+            "default": "pending"
+          },
+          "asset_type": {
+            "$ref": "#/components/schemas/AssetType",
+            "default": "GENERIC_ASSET"
+          },
+          "asset_name": {
+            "type": "string",
+            "title": "Asset Name"
+          },
+          "redis_lock_key": {
+            "type": "string",
+            "title": "Redis Lock Key"
+          },
+          "redis_lock_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redis Lock Value"
+          },
+          "lock_timeout_seconds": {
+            "type": "integer",
+            "title": "Lock Timeout Seconds",
+            "default": 3600
           },
           "required_capabilities_json": {
             "anyOf": [
@@ -6184,19 +6021,47 @@
               }
             ],
             "title": "Estimated Usage Duration Ms"
+          },
+          "asset_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Asset Accession Id"
+          },
+          "schedule_entry_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Schedule Entry Accession Id"
+          },
+          "protocol_run_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Protocol Run Accession Id"
           }
         },
         "type": "object",
         "required": [
-          "protocol_run_accession_id",
-          "schedule_entry_accession_id",
-          "asset_type",
+          "name",
           "asset_name",
-          "status",
-          "redis_lock_key"
+          "redis_lock_key",
+          "asset_accession_id",
+          "schedule_entry_accession_id",
+          "protocol_run_accession_id"
         ],
-        "title": "AssetReservationResponse",
-        "description": "Response model for asset reservations (from AssetReservationOrm)."
+        "title": "AssetReservationCreate",
+        "description": "Schema for creating an AssetReservation."
+      },
+      "AssetReservationStatusEnum": {
+        "type": "string",
+        "enum": [
+          "reserved",
+          "pending",
+          "active",
+          "released",
+          "expired",
+          "failed"
+        ],
+        "title": "AssetReservationStatusEnum",
+        "description": "Enumeration for the status of a asset reservation."
       },
       "AssetType": {
         "type": "string",
@@ -6737,6 +6602,33 @@
         "title": "ConnectionType",
         "description": "Type of hardware connection."
       },
+      "DataOutputTypeEnum": {
+        "type": "string",
+        "enum": [
+          "absorbance_reading",
+          "fluorescence_reading",
+          "luminescence_reading",
+          "optical_density",
+          "temperature_reading",
+          "volume_measurement",
+          "generic_measurement",
+          "plate_image",
+          "microscopy_image",
+          "camera_snapshot",
+          "raw_data_file",
+          "analysis_report",
+          "configuration_file",
+          "calculated_concentration",
+          "kinetic_analysis",
+          "statistical_summary",
+          "machine_status",
+          "liquid_level",
+          "error_log",
+          "unknown"
+        ],
+        "title": "DataOutputTypeEnum",
+        "description": "Enumeration for different types of data outputs."
+      },
       "DataViewMetadataModel": {
         "properties": {
           "name": {
@@ -6769,8 +6661,7 @@
                 "type": "null"
               }
             ],
-            "title": "Source Filter Json",
-            "description": "Filter criteria to select specific data. For 'plr_state': {'state_key': 'tracker.volumes', 'resource_pattern': '*plate*'}. For 'function_output': {'function_fqn': '...', 'output_type': 'absorbance'}."
+            "title": "Source Filter Json"
           },
           "data_schema_json": {
             "anyOf": [
@@ -6782,8 +6673,7 @@
                 "type": "null"
               }
             ],
-            "title": "Data Schema Json",
-            "description": "Expected data schema for validation (column names, types)."
+            "title": "Data Schema Json"
           },
           "required": {
             "type": "boolean",
@@ -6799,7 +6689,7 @@
           "name"
         ],
         "title": "DataViewMetadataModel",
-        "description": "Defines a data view required by a protocol for input data.\n\nData views allow protocols to declare what input data they need in a structured way.\nThey can reference:\n- PLR state data (e.g., liquid volume tracking, resource positions)\n- Function data outputs from previous protocol runs (e.g., plate reader reads)\n\nSchema validation errors during protocol setup generate warnings but do not\nblock protocol execution."
+        "description": "Model for data view metadata."
       },
       "DeckCreate": {
         "properties": {
@@ -6839,10 +6729,16 @@
             "default": "GENERIC_ASSET"
           },
           "fqn": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable.",
-            "default": ""
+            "description": "Fully qualified name of the asset's class, if applicable."
           },
           "location": {
             "anyOf": [
@@ -7290,10 +7186,16 @@
             "default": "GENERIC_ASSET"
           },
           "fqn": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable.",
-            "default": ""
+            "description": "Fully qualified name of the asset's class, if applicable."
           },
           "location": {
             "anyOf": [
@@ -7562,55 +7464,6 @@
         "title": "DiscoveryResponse",
         "description": "Response model for discovery results."
       },
-      "FailureModeModel": {
-        "properties": {
-          "initial_state": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Initial State",
-            "description": "State configuration that causes failure"
-          },
-          "failure_point": {
-            "type": "string",
-            "title": "Failure Point",
-            "description": "Operation ID where failure occurs",
-            "default": ""
-          },
-          "failure_type": {
-            "type": "string",
-            "title": "Failure Type",
-            "description": "Type of failure",
-            "default": ""
-          },
-          "message": {
-            "type": "string",
-            "title": "Message",
-            "description": "Human-readable failure description",
-            "default": ""
-          },
-          "suggested_fix": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Suggested Fix",
-            "description": "How to prevent this failure"
-          },
-          "severity": {
-            "type": "string",
-            "title": "Severity",
-            "description": "Severity: error, warning, info",
-            "default": "error"
-          }
-        },
-        "type": "object",
-        "title": "FailureModeModel",
-        "description": "A detected failure mode for a protocol."
-      },
       "FunctionDataOutputCreate": {
         "properties": {
           "accession_id": {
@@ -7644,16 +7497,84 @@
             "description": "An optional name for the record."
           },
           "data_type": {
+            "$ref": "#/components/schemas/DataOutputTypeEnum",
+            "description": "Type of data output"
+          },
+          "data_key": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Data Key",
+            "description": "Unique key within the function call"
+          },
+          "spatial_context": {
+            "$ref": "#/components/schemas/SpatialContextEnum",
+            "description": "Spatial context of the data",
+            "default": "unknown"
+          },
+          "spatial_coordinates_json": {
             "anyOf": [
               {
-                "type": "string"
+                "additionalProperties": true,
+                "type": "object"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Data Type",
-            "description": "Type of data output"
+            "title": "Spatial Coordinates Json",
+            "description": "Spatial coordinates within resource"
+          },
+          "data_units": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Units",
+            "description": "Units of measurement"
+          },
+          "data_quality_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Quality Score",
+            "description": "Quality score (0.0-1.0)"
+          },
+          "measurement_conditions_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measurement Conditions Json",
+            "description": "Measurement conditions"
+          },
+          "sequence_in_function": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence In Function",
+            "description": "Sequence number within the function call"
           },
           "file_path": {
             "anyOf": [
@@ -7665,7 +7586,19 @@
               }
             ],
             "title": "File Path",
-            "description": "File path for output data"
+            "description": "Path to external file"
+          },
+          "file_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Size Bytes",
+            "description": "File size in bytes"
           },
           "mime_type": {
             "anyOf": [
@@ -7678,11 +7611,120 @@
             ],
             "title": "Mime Type",
             "description": "MIME type of the output"
+          },
+          "measurement_timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measurement Timestamp",
+            "description": "When the measurement was captured"
+          },
+          "function_call_log_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Function Call Log Accession Id"
+          },
+          "protocol_run_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Protocol Run Accession Id"
+          },
+          "resource_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Accession Id"
+          },
+          "machine_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Machine Accession Id"
+          },
+          "deck_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Accession Id"
+          },
+          "data_value_numeric": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Value Numeric"
+          },
+          "data_value_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Value Json"
+          },
+          "data_value_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Value Text"
+          },
+          "derived_from_data_output_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derived From Data Output Accession Id"
           }
         },
         "type": "object",
         "required": [
-          "name"
+          "name",
+          "data_type",
+          "data_key",
+          "function_call_log_accession_id",
+          "protocol_run_accession_id"
         ],
         "title": "FunctionDataOutputCreate",
         "description": "Schema for creating a FunctionDataOutput."
@@ -7719,16 +7761,84 @@
             "description": "An optional name for the record."
           },
           "data_type": {
+            "$ref": "#/components/schemas/DataOutputTypeEnum",
+            "description": "Type of data output"
+          },
+          "data_key": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Data Key",
+            "description": "Unique key within the function call"
+          },
+          "spatial_context": {
+            "$ref": "#/components/schemas/SpatialContextEnum",
+            "description": "Spatial context of the data",
+            "default": "unknown"
+          },
+          "spatial_coordinates_json": {
             "anyOf": [
               {
-                "type": "string"
+                "additionalProperties": true,
+                "type": "object"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Data Type",
-            "description": "Type of data output"
+            "title": "Spatial Coordinates Json",
+            "description": "Spatial coordinates within resource"
+          },
+          "data_units": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Units",
+            "description": "Units of measurement"
+          },
+          "data_quality_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Quality Score",
+            "description": "Quality score (0.0-1.0)"
+          },
+          "measurement_conditions_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measurement Conditions Json",
+            "description": "Measurement conditions"
+          },
+          "sequence_in_function": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence In Function",
+            "description": "Sequence number within the function call"
           },
           "file_path": {
             "anyOf": [
@@ -7740,7 +7850,19 @@
               }
             ],
             "title": "File Path",
-            "description": "File path for output data"
+            "description": "Path to external file"
+          },
+          "file_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Size Bytes",
+            "description": "File size in bytes"
           },
           "mime_type": {
             "anyOf": [
@@ -7754,6 +7876,19 @@
             "title": "Mime Type",
             "description": "MIME type of the output"
           },
+          "measurement_timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measurement Timestamp",
+            "description": "When the measurement was captured"
+          },
           "data_json": {
             "anyOf": [
               {
@@ -7766,7 +7901,7 @@
             ],
             "title": "Data Json"
           },
-          "data_quality_score": {
+          "data_value_numeric": {
             "anyOf": [
               {
                 "type": "number"
@@ -7775,9 +7910,9 @@
                 "type": "null"
               }
             ],
-            "title": "Data Quality Score"
+            "title": "Data Value Numeric"
           },
-          "data_key": {
+          "data_value_text": {
             "anyOf": [
               {
                 "type": "string"
@@ -7786,40 +7921,90 @@
                 "type": "null"
               }
             ],
-            "title": "Data Key"
+            "title": "Data Value Text"
+          },
+          "function_call_log_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Function Call Log Accession Id"
+          },
+          "protocol_run_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Protocol Run Accession Id"
+          },
+          "resource_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Accession Id"
+          },
+          "machine_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Machine Accession Id"
+          },
+          "deck_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Accession Id"
+          },
+          "derived_from_data_output_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derived From Data Output Accession Id"
           }
         },
         "type": "object",
         "required": [
           "accession_id",
-          "name"
+          "name",
+          "data_type",
+          "data_key",
+          "function_call_log_accession_id",
+          "protocol_run_accession_id"
         ],
         "title": "FunctionDataOutputRead",
         "description": "Schema for reading a FunctionDataOutput (API response)."
       },
       "FunctionDataOutputUpdate": {
         "properties": {
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
           "data_type": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/DataOutputTypeEnum"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Data Type"
+            ]
           },
           "file_path": {
             "anyOf": [
@@ -7865,6 +8050,30 @@
               }
             ],
             "title": "Data Key"
+          },
+          "measurement_conditions_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measurement Conditions Json"
+          },
+          "processing_metadata_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processing Metadata Json"
           }
         },
         "type": "object",
@@ -7873,274 +8082,17 @@
       },
       "FunctionProtocolDefinitionCreate": {
         "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "fqn": {
-            "type": "string",
-            "title": "Fqn"
-          },
-          "version": {
-            "type": "string",
-            "title": "Version",
-            "default": "0.1.0"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "source_file_path": {
-            "type": "string",
-            "title": "Source File Path"
-          },
-          "module_name": {
-            "type": "string",
-            "title": "Module Name"
-          },
-          "function_name": {
-            "type": "string",
-            "title": "Function Name"
-          },
-          "source_repository_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Repository Name"
-          },
-          "commit_hash": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Commit Hash"
-          },
-          "file_system_source_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "File System Source Name"
-          },
-          "is_top_level": {
-            "type": "boolean",
-            "title": "Is Top Level",
-            "default": false
-          },
-          "solo_execution": {
-            "type": "boolean",
-            "title": "Solo Execution",
-            "default": false
-          },
-          "preconfigure_deck": {
-            "type": "boolean",
-            "title": "Preconfigure Deck",
-            "default": false
-          },
-          "requires_deck": {
-            "type": "boolean",
-            "title": "Requires Deck",
-            "default": true
-          },
-          "deck_param_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deck Param Name"
-          },
-          "deck_construction_function_fqn": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deck Construction Function Fqn"
-          },
-          "deck_layout_path": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deck Layout Path"
-          },
-          "state_param_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "State Param Name",
-            "default": "state"
-          },
-          "category": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category"
-          },
-          "tags": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Tags"
-          },
-          "deprecated": {
-            "type": "boolean",
-            "title": "Deprecated",
-            "default": false
-          },
-          "source_hash": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Hash"
-          },
-          "computation_graph": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Computation Graph"
-          },
-          "parameters": {
-            "items": {
-              "$ref": "#/components/schemas/ParameterMetadataModel-Input"
-            },
-            "type": "array",
-            "title": "Parameters"
-          },
-          "assets": {
-            "items": {
-              "$ref": "#/components/schemas/AssetRequirementModel-Input"
-            },
-            "type": "array",
-            "title": "Assets"
-          },
-          "data_views": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/DataViewMetadataModel"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data Views"
-          },
-          "hardware_requirements": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hardware Requirements"
-          },
-          "setup_instructions_json": {
-            "anyOf": [
-              {
-                "items": {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Setup Instructions Json",
-            "description": "Pre-run setup instructions to display in Deck Setup wizard"
-          },
           "accession_id": {
             "anyOf": [
               {
                 "type": "string",
-                "format": "uuid7"
+                "format": "uuid"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Accession Id",
-            "description": "Optional accession ID."
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "fqn",
-          "source_file_path",
-          "module_name",
-          "function_name"
-        ],
-        "title": "FunctionProtocolDefinitionCreate",
-        "description": "Represents a detailed definition of a function-based protocol.\n\nThis model encapsulates core definition details, source information,\nexecution behavior, categorization, and inferred parameters and assets."
-      },
-      "FunctionProtocolDefinitionResponse": {
-        "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
+            "title": "Accession Id"
           },
           "created_at": {
             "type": "string",
@@ -8148,7 +8100,7 @@
             "title": "Created At",
             "description": "The time the record was created."
           },
-          "last_updated": {
+          "updated_at": {
             "anyOf": [
               {
                 "type": "string",
@@ -8158,33 +8110,23 @@
                 "type": "null"
               }
             ],
-            "title": "Last Updated",
+            "title": "Updated At",
             "description": "The time the record was last updated."
           },
           "name": {
             "type": "string",
-            "title": "Name"
-          },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
+            "title": "Name",
+            "description": "An optional name for the record."
           },
           "fqn": {
             "type": "string",
-            "title": "Fqn"
+            "title": "Fqn",
+            "description": "Fully qualified name"
           },
           "version": {
             "type": "string",
             "title": "Version",
+            "description": "Semantic version",
             "default": "0.1.0"
           },
           "description": {
@@ -8210,39 +8152,6 @@
             "type": "string",
             "title": "Function Name"
           },
-          "source_repository_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Repository Name"
-          },
-          "commit_hash": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Commit Hash"
-          },
-          "file_system_source_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "File System Source Name"
-          },
           "is_top_level": {
             "type": "boolean",
             "title": "Is Top Level",
@@ -8262,372 +8171,6 @@
             "type": "boolean",
             "title": "Requires Deck",
             "default": true
-          },
-          "deck_param_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deck Param Name"
-          },
-          "deck_construction_function_fqn": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deck Construction Function Fqn"
-          },
-          "deck_layout_path": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deck Layout Path"
-          },
-          "state_param_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "State Param Name",
-            "default": "state"
-          },
-          "category": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category"
-          },
-          "tags": {
-            "title": "Tags"
-          },
-          "deprecated": {
-            "type": "boolean",
-            "title": "Deprecated",
-            "default": false
-          },
-          "source_hash": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Hash"
-          },
-          "computation_graph": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Computation Graph"
-          },
-          "parameters": {
-            "items": {
-              "$ref": "#/components/schemas/ParameterMetadataModel-Output"
-            },
-            "type": "array",
-            "title": "Parameters"
-          },
-          "assets": {
-            "items": {
-              "$ref": "#/components/schemas/AssetRequirementModel-Output"
-            },
-            "type": "array",
-            "title": "Assets"
-          },
-          "data_views": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/DataViewMetadataModel"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data Views"
-          },
-          "hardware_requirements": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hardware Requirements"
-          },
-          "setup_instructions_json": {
-            "anyOf": [
-              {
-                "items": {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Setup Instructions Json",
-            "description": "Pre-run setup instructions to display in Deck Setup wizard"
-          },
-          "simulation_result": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SimulationResultModel"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Cached simulation result"
-          },
-          "inferred_requirements": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/InferredRequirementModel"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Inferred Requirements",
-            "description": "Inferred state requirements"
-          },
-          "failure_modes": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/FailureModeModel"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Failure Modes",
-            "description": "Known failure modes"
-          },
-          "simulation_version": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Simulation Version",
-            "description": "Simulator version for cache validation"
-          },
-          "simulation_cached_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Simulation Cached At",
-            "description": "When simulation was last run"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "fqn",
-          "source_file_path",
-          "module_name",
-          "function_name"
-        ],
-        "title": "FunctionProtocolDefinitionResponse",
-        "description": "Model for API responses for a function protocol definition."
-      },
-      "FunctionProtocolDefinitionUpdate": {
-        "properties": {
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
-          "version": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Version"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "source_file_path": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source File Path"
-          },
-          "module_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Module Name"
-          },
-          "function_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Function Name"
-          },
-          "source_repository_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Repository Name"
-          },
-          "commit_hash": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Commit Hash"
-          },
-          "file_system_source_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "File System Source Name"
-          },
-          "is_top_level": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Top Level"
-          },
-          "solo_execution": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Solo Execution"
-          },
-          "preconfigure_deck": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Preconfigure Deck"
-          },
-          "requires_deck": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Requires Deck"
           },
           "deck_param_name": {
             "anyOf": [
@@ -8684,13 +8227,107 @@
             ],
             "title": "Category"
           },
+          "deprecated": {
+            "type": "boolean",
+            "title": "Deprecated",
+            "default": false
+          },
+          "source_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Hash"
+          },
+          "graph_cached_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph Cached At"
+          },
+          "simulation_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simulation Version"
+          },
+          "simulation_cached_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simulation Cached At"
+          },
+          "bytecode_python_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytecode Python Version"
+          },
+          "bytecode_cache_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytecode Cache Version"
+          },
+          "bytecode_cached_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytecode Cached At"
+          },
+          "commit_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Hash"
+          },
           "tags": {
             "anyOf": [
               {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
+                "additionalProperties": true,
+                "type": "object"
               },
               {
                 "type": "null"
@@ -8698,22 +8335,11 @@
             ],
             "title": "Tags"
           },
-          "deprecated": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deprecated"
-          },
           "parameters": {
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/components/schemas/ParameterMetadataModel-Input"
+                  "$ref": "#/components/schemas/ParameterMetadataModel"
                 },
                 "type": "array"
               },
@@ -8727,7 +8353,7 @@
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/components/schemas/AssetRequirementModel-Input"
+                  "$ref": "#/components/schemas/AssetRequirementCreate"
                 },
                 "type": "array"
               },
@@ -8751,18 +8377,6 @@
             ],
             "title": "Data Views"
           },
-          "hardware_requirements": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hardware Requirements"
-          },
           "setup_instructions_json": {
             "anyOf": [
               {
@@ -8777,6 +8391,163 @@
               }
             ],
             "title": "Setup Instructions Json"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "fqn",
+          "source_file_path",
+          "module_name",
+          "function_name"
+        ],
+        "title": "FunctionProtocolDefinitionCreate",
+        "description": "Schema for creating a FunctionProtocolDefinition."
+      },
+      "FunctionProtocolDefinitionRead": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "fqn": {
+            "type": "string",
+            "title": "Fqn",
+            "description": "Fully qualified name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "Semantic version",
+            "default": "0.1.0"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "source_file_path": {
+            "type": "string",
+            "title": "Source File Path"
+          },
+          "module_name": {
+            "type": "string",
+            "title": "Module Name"
+          },
+          "function_name": {
+            "type": "string",
+            "title": "Function Name"
+          },
+          "is_top_level": {
+            "type": "boolean",
+            "title": "Is Top Level",
+            "default": false
+          },
+          "solo_execution": {
+            "type": "boolean",
+            "title": "Solo Execution",
+            "default": false
+          },
+          "preconfigure_deck": {
+            "type": "boolean",
+            "title": "Preconfigure Deck",
+            "default": false
+          },
+          "requires_deck": {
+            "type": "boolean",
+            "title": "Requires Deck",
+            "default": true
+          },
+          "deck_param_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Param Name"
+          },
+          "deck_construction_function_fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Construction Function Fqn"
+          },
+          "deck_layout_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Layout Path"
+          },
+          "state_param_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Param Name"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "deprecated": {
+            "type": "boolean",
+            "title": "Deprecated",
+            "default": false
           },
           "source_hash": {
             "anyOf": [
@@ -8789,7 +8560,113 @@
             ],
             "title": "Source Hash"
           },
-          "computation_graph": {
+          "graph_cached_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph Cached At"
+          },
+          "simulation_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simulation Version"
+          },
+          "simulation_cached_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simulation Cached At"
+          },
+          "bytecode_python_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytecode Python Version"
+          },
+          "bytecode_cache_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytecode Cache Version"
+          },
+          "bytecode_cached_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytecode Cached At"
+          },
+          "commit_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accession_id",
+          "name",
+          "fqn",
+          "source_file_path",
+          "module_name",
+          "function_name"
+        ],
+        "title": "FunctionProtocolDefinitionRead",
+        "description": "Schema for reading a FunctionProtocolDefinition."
+      },
+      "FunctionProtocolDefinitionUpdate": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "tags": {
             "anyOf": [
               {
                 "additionalProperties": true,
@@ -8799,12 +8676,23 @@
                 "type": "null"
               }
             ],
-            "title": "Computation Graph"
+            "title": "Tags"
+          },
+          "deprecated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deprecated"
           }
         },
         "type": "object",
         "title": "FunctionProtocolDefinitionUpdate",
-        "description": "Model for updating a function protocol definition."
+        "description": "Schema for updating a FunctionProtocolDefinition."
       },
       "HTTPValidationError": {
         "properties": {
@@ -8869,120 +8757,6 @@
         "title": "HeartbeatResponse",
         "description": "Response after heartbeat."
       },
-      "InferredRequirementModel": {
-        "properties": {
-          "requirement_type": {
-            "type": "string",
-            "title": "Requirement Type",
-            "description": "Type: tips_required, resource_on_deck, liquid_present"
-          },
-          "resource": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource",
-            "description": "Resource involved"
-          },
-          "details": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Details"
-          },
-          "inferred_at_level": {
-            "type": "string",
-            "title": "Inferred At Level",
-            "description": "Level at which this was inferred",
-            "default": ""
-          }
-        },
-        "type": "object",
-        "required": [
-          "requirement_type"
-        ],
-        "title": "InferredRequirementModel",
-        "description": "A requirement inferred from protocol simulation."
-      },
-      "ItemizedSpecModel": {
-        "properties": {
-          "items_x": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Items X"
-          },
-          "items_y": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Items Y"
-          },
-          "label_format": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Label Format"
-          }
-        },
-        "type": "object",
-        "title": "ItemizedSpecModel",
-        "description": "Defines itemized specification for grid-based parameters (e.g., well selection)."
-      },
-      "LocationConstraintsModel": {
-        "properties": {
-          "location_requirements": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Location Requirements"
-          },
-          "on_resource_type": {
-            "type": "string",
-            "title": "On Resource Type",
-            "default": ""
-          },
-          "stack": {
-            "type": "boolean",
-            "title": "Stack",
-            "default": false
-          },
-          "directly_position": {
-            "type": "boolean",
-            "title": "Directly Position",
-            "default": false
-          },
-          "position_condition": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Position Condition"
-          }
-        },
-        "type": "object",
-        "title": "LocationConstraintsModel",
-        "description": "Defines constraints for the location of an asset in a protocol.\n\nThis includes required locations, optional locations, and any specific\nlocation-related constraints."
-      },
       "LoginRequest": {
         "properties": {
           "username": {
@@ -9005,7 +8779,7 @@
       "LoginResponse": {
         "properties": {
           "user": {
-            "$ref": "#/components/schemas/UserResponse"
+            "$ref": "#/components/schemas/UserRead"
           },
           "access_token": {
             "type": "string",
@@ -9088,10 +8862,16 @@
             "default": "GENERIC_ASSET"
           },
           "fqn": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable.",
-            "default": ""
+            "description": "Fully qualified name of the asset's class, if applicable."
           },
           "location": {
             "anyOf": [
@@ -9219,6 +8999,58 @@
             "type": "boolean",
             "title": "Maintenance Enabled",
             "default": true
+          },
+          "connection_info": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Info",
+            "description": "Connection details (backend, address, etc.)"
+          },
+          "user_configured_capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Configured Capabilities",
+            "description": "User-specified capability overrides"
+          },
+          "maintenance_schedule_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maintenance Schedule Json",
+            "description": "Custom maintenance schedule"
+          },
+          "last_maintenance_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Maintenance Json",
+            "description": "Record of last maintenance"
           }
         },
         "type": "object",
@@ -9801,19 +9633,21 @@
           },
           "name": {
             "type": "string",
-            "title": "Name",
-            "description": "An optional name for the record."
+            "title": "Name"
           },
           "asset_type": {
-            "$ref": "#/components/schemas/AssetType",
-            "description": "Type of asset, e.g., machine, resource, etc.",
-            "default": "GENERIC_ASSET"
+            "$ref": "#/components/schemas/AssetType"
           },
           "fqn": {
-            "type": "string",
-            "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable.",
-            "default": ""
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn"
           },
           "location": {
             "anyOf": [
@@ -9824,8 +9658,7 @@
                 "type": "null"
               }
             ],
-            "title": "Location",
-            "description": "Location of the asset in the lab."
+            "title": "Location"
           },
           "machine_category": {
             "$ref": "#/components/schemas/MachineCategoryEnum",
@@ -9952,7 +9785,8 @@
                 "type": "null"
               }
             ],
-            "title": "Connection Info"
+            "title": "Connection Info",
+            "description": "Connection details (backend, address, etc.)"
           },
           "user_configured_capabilities": {
             "anyOf": [
@@ -9964,13 +9798,76 @@
                 "type": "null"
               }
             ],
-            "title": "User Configured Capabilities"
+            "title": "User Configured Capabilities",
+            "description": "User-specified capability overrides"
+          },
+          "maintenance_schedule_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maintenance Schedule Json",
+            "description": "Custom maintenance schedule"
+          },
+          "last_maintenance_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Maintenance Json",
+            "description": "Record of last maintenance"
+          },
+          "plr_state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr State"
+          },
+          "plr_definition": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Definition"
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json"
           }
         },
         "type": "object",
         "required": [
-          "accession_id",
-          "name"
+          "name",
+          "asset_type"
         ],
         "title": "MachineRead",
         "description": "Schema for reading a Machine (API response)."
@@ -10023,15 +9920,108 @@
             ],
             "title": "Location"
           },
-          "machine_category": {
+          "plr_state": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/MachineCategoryEnum"
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr State"
+          },
+          "plr_definition": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Definition"
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MachineStatusEnum"
               },
               {
                 "type": "null"
               }
             ]
+          },
+          "status_details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Details"
+          },
+          "workcell_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workcell Accession Id"
+          },
+          "resource_counterpart_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Counterpart Accession Id"
+          },
+          "has_deck_child": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Deck Child"
+          },
+          "has_resource_child": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Resource Child"
           },
           "description": {
             "anyOf": [
@@ -10077,60 +10067,14 @@
             ],
             "title": "Serial Number"
           },
-          "location_label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Location Label"
-          },
           "installation_date": {
             "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
+              {},
               {
                 "type": "null"
               }
             ],
             "title": "Installation Date"
-          },
-          "status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MachineStatusEnum"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "status_details": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status Details"
-          },
-          "is_simulation_override": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Simulation Override"
           },
           "connection_info": {
             "anyOf": [
@@ -10144,6 +10088,17 @@
             ],
             "title": "Connection Info"
           },
+          "is_simulation_override": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Simulation Override"
+          },
           "user_configured_capabilities": {
             "anyOf": [
               {
@@ -10156,6 +10111,29 @@
             ],
             "title": "User Configured Capabilities"
           },
+          "current_protocol_run_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Protocol Run Accession Id"
+          },
+          "location_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Label"
+          },
           "maintenance_enabled": {
             "anyOf": [
               {
@@ -10166,6 +10144,64 @@
               }
             ],
             "title": "Maintenance Enabled"
+          },
+          "maintenance_schedule_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maintenance Schedule Json"
+          },
+          "last_maintenance_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Maintenance Json"
+          },
+          "resource_def_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Def Name"
+          },
+          "resource_properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Properties Json"
+          },
+          "resource_initial_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Initial Status"
           }
         },
         "type": "object",
@@ -10176,9 +10212,6 @@
         "properties": {
           "min_value": {
             "anyOf": [
-              {
-                "type": "integer"
-              },
               {
                 "type": "number"
               },
@@ -10191,9 +10224,6 @@
           "max_value": {
             "anyOf": [
               {
-                "type": "integer"
-              },
-              {
                 "type": "number"
               },
               {
@@ -10202,40 +10232,7 @@
             ],
             "title": "Max Value"
           },
-          "min_length": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Min Length"
-          },
-          "max_length": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Length"
-          },
-          "regex_pattern": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Regex Pattern"
-          },
-          "options": {
+          "allowed_values": {
             "anyOf": [
               {
                 "items": {},
@@ -10245,24 +10242,26 @@
                 "type": "null"
               }
             ],
-            "title": "Options"
+            "title": "Allowed Values"
+          },
+          "regex": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regex"
           }
         },
         "type": "object",
         "title": "ParameterConstraintsModel",
-        "description": "Defines validation constraints for a protocol parameter."
+        "description": "Model for parameter constraints."
       },
-      "ParameterMetadataModel-Input": {
+      "ParameterMetadataModel": {
         "properties": {
-          "accession_id": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Accession Id"
-          },
           "name": {
             "type": "string",
             "title": "Name"
@@ -10270,30 +10269,6 @@
           "type_hint": {
             "type": "string",
             "title": "Type Hint"
-          },
-          "fqn": {
-            "type": "string",
-            "title": "Fqn"
-          },
-          "is_deck_param": {
-            "type": "boolean",
-            "title": "Is Deck Param",
-            "default": false
-          },
-          "optional": {
-            "type": "boolean",
-            "title": "Optional"
-          },
-          "default_value_repr": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Default Value Repr"
           },
           "description": {
             "anyOf": [
@@ -10306,181 +10281,33 @@
             ],
             "title": "Description"
           },
-          "field_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Field Type"
-          },
-          "is_itemized": {
-            "type": "boolean",
-            "title": "Is Itemized",
-            "default": false
-          },
-          "constraints_json": {
-            "$ref": "#/components/schemas/ParameterConstraintsModel"
-          },
-          "ui_hint_json": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/UIHint"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "itemized_spec_json": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ItemizedSpecModel"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "linked_to": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Linked To"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "type_hint",
-          "fqn",
-          "optional"
-        ],
-        "title": "ParameterMetadataModel",
-        "description": "Provides comprehensive metadata for a protocol parameter.\n\nThis includes its name, type information, default value, description,\nconstraints, and UI rendering hints."
-      },
-      "ParameterMetadataModel-Output": {
-        "properties": {
-          "accession_id": {
+          "default_value": {
             "anyOf": [
               {},
               {
                 "type": "null"
               }
             ],
-            "title": "Accession Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "type_hint": {
-            "type": "string",
-            "title": "Type Hint"
-          },
-          "fqn": {
-            "type": "string",
-            "title": "Fqn"
-          },
-          "is_deck_param": {
-            "type": "boolean",
-            "title": "Is Deck Param",
-            "default": false
-          },
-          "optional": {
-            "type": "boolean",
-            "title": "Optional"
-          },
-          "default_value_repr": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Default Value Repr"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "field_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Field Type"
-          },
-          "is_itemized": {
-            "type": "boolean",
-            "title": "Is Itemized",
-            "default": false
+            "title": "Default Value"
           },
           "constraints": {
-            "$ref": "#/components/schemas/ParameterConstraintsModel"
-          },
-          "ui_hint": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/UIHint"
+                "$ref": "#/components/schemas/ParameterConstraintsModel"
               },
               {
                 "type": "null"
               }
             ]
-          },
-          "itemized_spec": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ItemizedSpecModel"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "linked_to": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Linked To"
           }
         },
         "type": "object",
         "required": [
           "name",
-          "type_hint",
-          "fqn",
-          "optional"
+          "type_hint"
         ],
         "title": "ParameterMetadataModel",
-        "description": "Provides comprehensive metadata for a protocol parameter.\n\nThis includes its name, type information, default value, description,\nconstraints, and UI rendering hints."
+        "description": "Model for parameter metadata."
       },
       "ProtocolRunCreate": {
         "properties": {
@@ -10510,45 +10337,15 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
-          "function_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Function Name",
-            "description": "Name of the protocol function"
-          },
-          "function_file": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Function File",
-            "description": "File containing the protocol function"
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
           },
           "status": {
             "$ref": "#/components/schemas/ProtocolRunStatusEnum",
-            "default": "queued"
+            "default": "pending"
           },
-          "started_at": {
+          "start_time": {
             "anyOf": [
               {
                 "type": "string",
@@ -10558,10 +10355,10 @@
                 "type": "null"
               }
             ],
-            "title": "Started At",
+            "title": "Start Time",
             "description": "When the protocol run started"
           },
-          "completed_at": {
+          "end_time": {
             "anyOf": [
               {
                 "type": "string",
@@ -10571,20 +10368,8 @@
                 "type": "null"
               }
             ],
-            "title": "Completed At",
+            "title": "End Time",
             "description": "When the protocol run completed"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message",
-            "description": "Error message if the run failed"
           },
           "data_directory_path": {
             "anyOf": [
@@ -10598,26 +10383,27 @@
             "title": "Data Directory Path",
             "description": "Path to data directory"
           },
-          "top_level_protocol_definition_accession_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Top Level Protocol Definition Accession Id"
-          },
-          "run_accession_id": {
+          "duration_ms": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "uuid"
+                "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Run Accession Id"
+            "title": "Duration Ms",
+            "description": "Duration in milliseconds"
+          },
+          "top_level_protocol_definition_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Top Level Protocol Definition Accession Id"
           }
         },
         "type": "object",
         "required": [
+          "name",
           "top_level_protocol_definition_accession_id"
         ],
         "title": "ProtocolRunCreate",
@@ -10654,35 +10440,11 @@
             "title": "Name",
             "description": "An optional name for the record."
           },
-          "function_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Function Name",
-            "description": "Name of the protocol function"
-          },
-          "function_file": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Function File",
-            "description": "File containing the protocol function"
-          },
           "status": {
             "$ref": "#/components/schemas/ProtocolRunStatusEnum",
-            "default": "queued"
+            "default": "pending"
           },
-          "started_at": {
+          "start_time": {
             "anyOf": [
               {
                 "type": "string",
@@ -10692,10 +10454,10 @@
                 "type": "null"
               }
             ],
-            "title": "Started At",
+            "title": "Start Time",
             "description": "When the protocol run started"
           },
-          "completed_at": {
+          "end_time": {
             "anyOf": [
               {
                 "type": "string",
@@ -10705,20 +10467,8 @@
                 "type": "null"
               }
             ],
-            "title": "Completed At",
+            "title": "End Time",
             "description": "When the protocol run completed"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message",
-            "description": "Error message if the run failed"
           },
           "data_directory_path": {
             "anyOf": [
@@ -10729,9 +10479,22 @@
                 "type": "null"
               }
             ],
-            "title": "Data Directory Path"
+            "title": "Data Directory Path",
+            "description": "Path to data directory"
           },
-          "function_args_json": {
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms",
+            "description": "Duration in milliseconds"
+          },
+          "input_parameters_json": {
             "anyOf": [
               {
                 "additionalProperties": true,
@@ -10741,9 +10504,9 @@
                 "type": "null"
               }
             ],
-            "title": "Function Args Json"
+            "title": "Input Parameters Json"
           },
-          "function_kwargs_json": {
+          "resolved_assets_json": {
             "anyOf": [
               {
                 "additionalProperties": true,
@@ -10753,19 +10516,7 @@
                 "type": "null"
               }
             ],
-            "title": "Function Kwargs Json"
-          },
-          "result_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Result Json"
+            "title": "Resolved Assets Json"
           },
           "output_data_json": {
             "anyOf": [
@@ -10810,17 +10561,6 @@
       },
       "ProtocolRunUpdate": {
         "properties": {
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
           "status": {
             "anyOf": [
               {
@@ -10831,7 +10571,7 @@
               }
             ]
           },
-          "started_at": {
+          "start_time": {
             "anyOf": [
               {
                 "type": "string",
@@ -10841,9 +10581,9 @@
                 "type": "null"
               }
             ],
-            "title": "Started At"
+            "title": "Start Time"
           },
-          "completed_at": {
+          "end_time": {
             "anyOf": [
               {
                 "type": "string",
@@ -10853,30 +10593,7 @@
                 "type": "null"
               }
             ],
-            "title": "Completed At"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message"
-          },
-          "result_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Result Json"
+            "title": "End Time"
           },
           "output_data_json": {
             "anyOf": [
@@ -11047,49 +10764,6 @@
       },
       "ReleaseReservationResponse": {
         "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "The time the record was created."
-          },
-          "last_updated": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Updated",
-            "description": "The time the record was last updated."
-          },
-          "name": {
-            "type": "string",
-            "title": "Name",
-            "description": "An optional name for the record."
-          },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
-          },
           "asset_key": {
             "type": "string",
             "title": "Asset Key"
@@ -11104,18 +10778,18 @@
           },
           "released_count": {
             "type": "integer",
-            "title": "Released Count",
-            "default": 0
+            "title": "Released Count"
           }
         },
         "type": "object",
         "required": [
           "asset_key",
           "released",
-          "message"
+          "message",
+          "released_count"
         ],
         "title": "ReleaseReservationResponse",
-        "description": "Response model for releasing an asset reservation."
+        "description": "Response model for releasing asset reservations."
       },
       "ReplCommand": {
         "properties": {
@@ -11214,10 +10888,16 @@
             "default": "GENERIC_ASSET"
           },
           "fqn": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable.",
-            "default": ""
+            "description": "Fully qualified name of the asset's class, if applicable."
           },
           "location": {
             "anyOf": [
@@ -11582,6 +11262,32 @@
             ],
             "title": "Vendor",
             "description": "Vendor from FQN"
+          },
+          "plr_definition_details_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Definition Details Json",
+            "description": "Additional PyLabRobot definition details"
+          },
+          "rotation_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotation Json",
+            "description": "PLR rotation object"
           }
         },
         "type": "object",
@@ -12067,6 +11773,30 @@
               }
             ],
             "title": "Vendor"
+          },
+          "plr_definition_details_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Definition Details Json"
+          },
+          "rotation_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotation Json"
           }
         },
         "type": "object",
@@ -12101,19 +11831,21 @@
           },
           "name": {
             "type": "string",
-            "title": "Name",
-            "description": "An optional name for the record."
+            "title": "Name"
           },
           "asset_type": {
-            "$ref": "#/components/schemas/AssetType",
-            "description": "Type of asset, e.g., machine, resource, etc.",
-            "default": "GENERIC_ASSET"
+            "$ref": "#/components/schemas/AssetType"
           },
           "fqn": {
-            "type": "string",
-            "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable.",
-            "default": ""
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn"
           },
           "location": {
             "anyOf": [
@@ -12124,8 +11856,7 @@
                 "type": "null"
               }
             ],
-            "title": "Location",
-            "description": "Location of the asset in the lab."
+            "title": "Location"
           },
           "status": {
             "$ref": "#/components/schemas/ResourceStatusEnum",
@@ -12166,28 +11897,51 @@
             ],
             "title": "Current Deck Position Name",
             "description": "Current deck position"
+          },
+          "plr_state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr State"
+          },
+          "plr_definition": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Definition"
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json"
           }
         },
         "type": "object",
         "required": [
-          "accession_id",
-          "name"
+          "name",
+          "asset_type"
         ],
         "title": "ResourceRead",
         "description": "Schema for reading a Resource (API response)."
-      },
-      "ResourceReservationStatus": {
-        "type": "string",
-        "enum": [
-          "PENDING",
-          "RESERVED",
-          "ACTIVE",
-          "RELEASED",
-          "EXPIRED",
-          "FAILED"
-        ],
-        "title": "ResourceReservationStatus",
-        "description": "Resource reservation status enum for API."
       },
       "ResourceStatusEnum": {
         "type": "string",
@@ -12243,6 +11997,42 @@
               }
             ],
             "title": "Location"
+          },
+          "plr_state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr State"
+          },
+          "plr_definition": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Definition"
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json"
           },
           "status": {
             "anyOf": [
@@ -12451,6 +12241,85 @@
             "title": "Asset Requirements Json",
             "description": "Asset requirements"
           },
+          "asset_analysis_completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Analysis Completed At"
+          },
+          "assets_reserved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assets Reserved At"
+          },
+          "celery_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celery Task Id"
+          },
+          "celery_queue_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celery Queue Name"
+          },
+          "retry_count": {
+            "type": "integer",
+            "title": "Retry Count",
+            "default": 0
+          },
+          "max_retries": {
+            "type": "integer",
+            "title": "Max Retries",
+            "default": 3
+          },
+          "last_error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Message"
+          },
+          "initial_state_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial State Json"
+          },
           "protocol_run_accession_id": {
             "type": "string",
             "format": "uuid",
@@ -12594,6 +12463,85 @@
             ],
             "title": "Asset Requirements Json",
             "description": "Asset requirements"
+          },
+          "asset_analysis_completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Analysis Completed At"
+          },
+          "assets_reserved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assets Reserved At"
+          },
+          "celery_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celery Task Id"
+          },
+          "celery_queue_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celery Queue Name"
+          },
+          "retry_count": {
+            "type": "integer",
+            "title": "Retry Count",
+            "default": 0
+          },
+          "max_retries": {
+            "type": "integer",
+            "title": "Max Retries",
+            "default": 3
+          },
+          "last_error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Message"
+          },
+          "initial_state_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial State Json"
           }
         },
         "type": "object",
@@ -12692,75 +12640,16 @@
       },
       "SchedulePriorityUpdateRequest": {
         "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "The time the record was created."
-          },
-          "last_updated": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Updated",
-            "description": "The time the record was last updated."
-          },
-          "name": {
-            "type": "string",
-            "title": "Name",
-            "description": "An optional name for the record."
-          },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
-          },
-          "new_priority": {
+          "priority": {
             "type": "integer",
-            "maximum": 100.0,
-            "minimum": 1.0,
-            "title": "New Priority",
-            "description": "New priority level"
-          },
-          "reason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reason",
-            "description": "Reason for priority change"
+            "title": "Priority"
           }
         },
         "type": "object",
         "required": [
-          "new_priority"
+          "priority"
         ],
-        "title": "SchedulePriorityUpdateRequest",
-        "description": "Request model for updating schedule priority."
+        "title": "SchedulePriorityUpdateRequest"
       },
       "ScheduleStatusEnum": {
         "type": "string",
@@ -12848,105 +12737,6 @@
         "title": "SimulationResponse",
         "description": "Response body for protocol simulation."
       },
-      "SimulationResultModel": {
-        "properties": {
-          "passed": {
-            "type": "boolean",
-            "title": "Passed",
-            "description": "Whether protocol passed all validation",
-            "default": false
-          },
-          "level_completed": {
-            "type": "string",
-            "title": "Level Completed",
-            "description": "Highest level completed",
-            "default": "none"
-          },
-          "level_failed": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Level Failed",
-            "description": "Level where failure occurred"
-          },
-          "structural_error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Structural Error",
-            "description": "Structural error if any"
-          },
-          "violations": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Violations",
-            "description": "All violations from simulation"
-          },
-          "inferred_requirements": {
-            "items": {
-              "$ref": "#/components/schemas/InferredRequirementModel"
-            },
-            "type": "array",
-            "title": "Inferred Requirements",
-            "description": "Requirements inferred from simulation"
-          },
-          "failure_modes": {
-            "items": {
-              "$ref": "#/components/schemas/FailureModeModel"
-            },
-            "type": "array",
-            "title": "Failure Modes",
-            "description": "Enumerated failure modes"
-          },
-          "failure_mode_stats": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Failure Mode Stats",
-            "description": "Failure detection statistics"
-          },
-          "simulation_version": {
-            "type": "string",
-            "title": "Simulation Version",
-            "description": "Simulator version",
-            "default": ""
-          },
-          "simulated_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Simulated At",
-            "description": "When simulation was run"
-          },
-          "execution_time_ms": {
-            "type": "number",
-            "title": "Execution Time Ms",
-            "description": "Simulation execution time",
-            "default": 0.0
-          }
-        },
-        "type": "object",
-        "title": "SimulationResultModel",
-        "description": "Cached simulation result for a protocol definition."
-      },
       "SimulationViolationResponse": {
         "properties": {
           "operation_id": {
@@ -13016,6 +12806,19 @@
         "title": "SimulationViolationResponse",
         "description": "A violation detected during simulation."
       },
+      "SpatialContextEnum": {
+        "type": "string",
+        "enum": [
+          "well_specific",
+          "plate_level",
+          "machine_level",
+          "deck_position",
+          "global",
+          "unknown"
+        ],
+        "title": "SpatialContextEnum",
+        "description": "Enumeration for spatial context types."
+      },
       "StartRunRequest": {
         "properties": {
           "protocol_definition_accession_id": {
@@ -13076,31 +12879,12 @@
         "title": "StartRunResponse",
         "description": "Response body for starting a protocol run."
       },
-      "UIHint": {
-        "properties": {
-          "widget_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Widget Type"
-          }
-        },
-        "type": "object",
-        "title": "UIHint",
-        "description": "Provides hints for parameter/asset rendering in a user interface."
-      },
-      "UserResponse": {
+      "UserRead": {
         "properties": {
           "accession_id": {
             "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
+            "format": "uuid",
+            "title": "Accession Id"
           },
           "created_at": {
             "type": "string",
@@ -13108,7 +12892,7 @@
             "title": "Created At",
             "description": "The time the record was created."
           },
-          "last_updated": {
+          "updated_at": {
             "anyOf": [
               {
                 "type": "string",
@@ -13118,7 +12902,7 @@
                 "type": "null"
               }
             ],
-            "title": "Last Updated",
+            "title": "Updated At",
             "description": "The time the record was last updated."
           },
           "name": {
@@ -13126,28 +12910,15 @@
             "title": "Name",
             "description": "An optional name for the record."
           },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
-          },
           "username": {
             "type": "string",
             "title": "Username",
-            "description": "The unique name of the user."
+            "description": "Unique username for login"
           },
           "email": {
             "type": "string",
             "title": "Email",
-            "description": "The user's email address."
+            "description": "User's email address"
           },
           "full_name": {
             "anyOf": [
@@ -13159,22 +12930,48 @@
               }
             ],
             "title": "Full Name",
-            "description": "The user's full name."
+            "description": "User's full name"
           },
           "is_active": {
             "type": "boolean",
             "title": "Is Active",
-            "description": "Whether the user is active.",
+            "description": "Whether the user account is active",
             "default": true
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number",
+            "description": "Phone number for SMS notifications"
+          },
+          "phone_carrier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Carrier",
+            "description": "Phone carrier for SMS gateway"
           }
         },
         "type": "object",
         "required": [
+          "accession_id",
+          "name",
           "username",
           "email"
         ],
-        "title": "UserResponse",
-        "description": "Represents a user for API responses."
+        "title": "UserRead",
+        "description": "Schema for reading a User (API response) - excludes hashed_password."
       },
       "ValidationError": {
         "properties": {
@@ -13311,11 +13108,50 @@
               }
             ],
             "title": "Data Value"
+          },
+          "well_row": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Well Row",
+            "description": "0-based row index",
+            "default": 0
+          },
+          "well_column": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Well Column",
+            "description": "0-based column index",
+            "default": 0
+          },
+          "well_index": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Well Index",
+            "description": "Linear well index"
+          },
+          "function_data_output_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Function Data Output Accession Id"
+          },
+          "plate_resource_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Plate Resource Accession Id"
           }
         },
         "type": "object",
         "required": [
-          "name"
+          "name",
+          "function_data_output_accession_id",
+          "plate_resource_accession_id"
         ],
         "title": "WellDataOutputCreate",
         "description": "Schema for creating a WellDataOutput."
@@ -13422,6 +13258,33 @@
             ],
             "title": "Data Value"
           },
+          "well_row": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Well Row",
+            "description": "0-based row index",
+            "default": 0
+          },
+          "well_column": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Well Column",
+            "description": "0-based column index",
+            "default": 0
+          },
+          "well_index": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Well Index",
+            "description": "Linear well index"
+          },
           "metadata_json": {
             "anyOf": [
               {
@@ -13433,29 +13296,30 @@
               }
             ],
             "title": "Metadata Json"
+          },
+          "function_data_output_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Function Data Output Accession Id"
+          },
+          "plate_resource_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Plate Resource Accession Id"
           }
         },
         "type": "object",
         "required": [
           "accession_id",
-          "name"
+          "name",
+          "function_data_output_accession_id",
+          "plate_resource_accession_id"
         ],
         "title": "WellDataOutputRead",
         "description": "Schema for reading a WellDataOutput (API response)."
       },
       "WellDataOutputUpdate": {
         "properties": {
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
           "well_position": {
             "anyOf": [
               {
@@ -13521,6 +13385,18 @@
               }
             ],
             "title": "Data Value"
+          },
+          "metadata_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata Json"
           }
         },
         "type": "object",

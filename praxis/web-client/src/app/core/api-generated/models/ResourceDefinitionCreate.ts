@@ -85,5 +85,13 @@ export type ResourceDefinitionCreate = {
      * Vendor from FQN
      */
     vendor?: (string | null);
+    /**
+     * Additional PyLabRobot definition details
+     */
+    plr_definition_details_json?: (Record<string, any> | null);
+    /**
+     * PLR rotation object
+     */
+    rotation_json?: (Record<string, any> | null);
 };
 

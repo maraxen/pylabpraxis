@@ -8,7 +8,7 @@ import type { ResourceStatusEnum } from './ResourceStatusEnum';
  * Schema for reading a Resource (API response).
  */
 export type ResourceRead = {
-    accession_id: string;
+    accession_id?: string;
     /**
      * The time the record was created.
      */
@@ -17,21 +17,9 @@ export type ResourceRead = {
      * The time the record was last updated.
      */
     updated_at?: (string | null);
-    /**
-     * An optional name for the record.
-     */
     name: string;
-    /**
-     * Type of asset, e.g., machine, resource, etc.
-     */
-    asset_type?: AssetType;
-    /**
-     * Fully qualified name of the asset's class, if applicable.
-     */
-    fqn?: string;
-    /**
-     * Location of the asset in the lab.
-     */
+    asset_type: AssetType;
+    fqn?: (string | null);
     location?: (string | null);
     status?: ResourceStatusEnum;
     /**
@@ -46,5 +34,8 @@ export type ResourceRead = {
      * Current deck position
      */
     current_deck_position_name?: (string | null);
+    plr_state?: (Record<string, any> | null);
+    plr_definition?: (Record<string, any> | null);
+    properties_json?: (Record<string, any> | null);
 };
 

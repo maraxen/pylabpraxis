@@ -53,5 +53,13 @@ export type ScheduleEntryRead = {
      * Asset requirements
      */
     asset_requirements_json?: (Record<string, any> | null);
+    asset_analysis_completed_at?: (string | null);
+    assets_reserved_at?: (string | null);
+    celery_task_id?: (string | null);
+    celery_queue_name?: (string | null);
+    retry_count?: number;
+    max_retries?: number;
+    last_error_message?: (string | null);
+    initial_state_json?: (Record<string, any> | null);
 };
 

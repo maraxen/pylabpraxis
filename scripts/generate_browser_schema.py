@@ -393,21 +393,21 @@ def generate_typescript_enums() -> str:
 
 def main() -> None:
     """Main entry point for schema generation."""
-    # Import all ORM models to populate metadata
-    # This import triggers registration of all tables with Base.metadata
-    from praxis.backend.utils.db import Base
-    import praxis.backend.models.orm  # noqa: F401 - registers all ORM models with Base.metadata
+    # Import all domain models to populate metadata
+    # This import triggers registration of all tables with PraxisBase.metadata
+    from praxis.backend.models.domain import PraxisBase
+    import praxis.backend.models.domain  # noqa: F401 - registers all domain models with PraxisBase.metadata
 
     # Ensure output directories exist
     ASSETS_DB_DIR.mkdir(parents=True, exist_ok=True)
     CORE_DB_DIR.mkdir(parents=True, exist_ok=True)
 
     # Generate SQLite DDL
-    sqlite_ddl = generate_sqlite_ddl(Base.metadata)
+    sqlite_ddl = generate_sqlite_ddl(PraxisBase.metadata)
     SCHEMA_SQL_PATH.write_text(sqlite_ddl)
 
     # Generate TypeScript interfaces
-    ts_interfaces = generate_typescript_interfaces(Base.metadata)
+    ts_interfaces = generate_typescript_interfaces(PraxisBase.metadata)
     SCHEMA_TS_PATH.write_text(ts_interfaces)
 
     # Generate TypeScript enums
@@ -416,7 +416,7 @@ def main() -> None:
 
     # Print summary
     included_tables = [
-        t.name for t in Base.metadata.tables.values() if t.name not in EXCLUDED_TABLES
+        t.name for t in PraxisBase.metadata.tables.values() if t.name not in EXCLUDED_TABLES
     ]
     for _table_name in sorted(included_tables):
         pass

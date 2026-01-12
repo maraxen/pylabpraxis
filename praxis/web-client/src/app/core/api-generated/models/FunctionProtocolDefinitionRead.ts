@@ -2,14 +2,11 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { AssetRequirementCreate } from './AssetRequirementCreate';
-import type { DataViewMetadataModel } from './DataViewMetadataModel';
-import type { ParameterMetadataModel } from './ParameterMetadataModel';
 /**
- * Schema for creating a FunctionProtocolDefinition.
+ * Schema for reading a FunctionProtocolDefinition.
  */
-export type FunctionProtocolDefinitionCreate = {
-    accession_id?: (string | null);
+export type FunctionProtocolDefinitionRead = {
+    accession_id: string;
     /**
      * The time the record was created.
      */
@@ -52,10 +49,5 @@ export type FunctionProtocolDefinitionCreate = {
     bytecode_cache_version?: (string | null);
     bytecode_cached_at?: (string | null);
     commit_hash?: (string | null);
-    tags?: (Record<string, any> | null);
-    parameters?: (Array<ParameterMetadataModel> | null);
-    assets?: (Array<AssetRequirementCreate> | null);
-    data_views?: (Array<DataViewMetadataModel> | null);
-    setup_instructions_json?: null;
 };
 

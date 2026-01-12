@@ -19,33 +19,27 @@ export type ProtocolRunCreate = {
      * The time the record was last updated.
      */
     updated_at?: (string | null);
-    name?: (string | null);
     /**
-     * Name of the protocol function
+     * An optional name for the record.
      */
-    function_name?: (string | null);
-    /**
-     * File containing the protocol function
-     */
-    function_file?: (string | null);
+    name: string;
     status?: ProtocolRunStatusEnum;
     /**
      * When the protocol run started
      */
-    started_at?: (string | null);
+    start_time?: (string | null);
     /**
      * When the protocol run completed
      */
-    completed_at?: (string | null);
-    /**
-     * Error message if the run failed
-     */
-    error_message?: (string | null);
+    end_time?: (string | null);
     /**
      * Path to data directory
      */
     data_directory_path?: (string | null);
+    /**
+     * Duration in milliseconds
+     */
+    duration_ms?: (number | null);
     top_level_protocol_definition_accession_id: string;
-    run_accession_id?: (string | null);
 };
 

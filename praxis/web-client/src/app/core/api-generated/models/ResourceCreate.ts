@@ -31,7 +31,7 @@ export type ResourceCreate = {
     /**
      * Fully qualified name of the asset's class, if applicable.
      */
-    fqn?: string;
+    fqn?: (string | null);
     /**
      * Location of the asset in the lab.
      */

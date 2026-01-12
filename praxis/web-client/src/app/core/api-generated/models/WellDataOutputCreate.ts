@@ -43,5 +43,19 @@ export type WellDataOutputCreate = {
      */
     well_name?: (string | null);
     data_value?: (number | null);
+    /**
+     * 0-based row index
+     */
+    well_row?: number;
+    /**
+     * 0-based column index
+     */
+    well_column?: number;
+    /**
+     * Linear well index
+     */
+    well_index?: (number | null);
+    function_data_output_accession_id: string;
+    plate_resource_accession_id: string;
 };
 

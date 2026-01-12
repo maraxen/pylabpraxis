@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { AssetReservationListResponse } from '../models/AssetReservationListResponse';
+import type { AssetReservationCreate } from '../models/AssetReservationCreate';
 import type { Body_get_multi_api_v1_scheduler_entries_get } from '../models/Body_get_multi_api_v1_scheduler_entries_get';
 import type { ReleaseReservationResponse } from '../models/ReleaseReservationResponse';
 import type { ScheduleEntryCreate } from '../models/ScheduleEntryCreate';
@@ -203,13 +203,13 @@ export class SchedulerService {
      * to see all reservations including released ones.
      * @param includeReleased Include released reservations in results
      * @param assetKey Filter by specific asset key (e.g., 'asset:my_plate')
-     * @returns AssetReservationListResponse Successful Response
+     * @returns AssetReservationCreate Successful Response
      * @throws ApiError
      */
     public static listReservationsApiV1SchedulerReservationsGet(
         includeReleased: boolean = false,
         assetKey?: (string | null),
-    ): CancelablePromise<AssetReservationListResponse> {
+    ): CancelablePromise<AssetReservationCreate> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/scheduler/reservations',

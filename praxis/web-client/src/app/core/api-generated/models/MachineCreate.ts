@@ -32,7 +32,7 @@ export type MachineCreate = {
     /**
      * Fully qualified name of the asset's class, if applicable.
      */
-    fqn?: string;
+    fqn?: (string | null);
     /**
      * Location of the asset in the lab.
      */
@@ -52,5 +52,21 @@ export type MachineCreate = {
     is_simulation_override?: (boolean | null);
     last_seen_online?: (string | null);
     maintenance_enabled?: boolean;
+    /**
+     * Connection details (backend, address, etc.)
+     */
+    connection_info?: (Record<string, any> | null);
+    /**
+     * User-specified capability overrides
+     */
+    user_configured_capabilities?: (Record<string, any> | null);
+    /**
+     * Custom maintenance schedule
+     */
+    maintenance_schedule_json?: (Record<string, any> | null);
+    /**
+     * Record of last maintenance
+     */
+    last_maintenance_json?: (Record<string, any> | null);
 };
 
