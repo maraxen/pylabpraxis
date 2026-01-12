@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.enums.outputs import DataOutputTypeEnum, SpatialContextEnum
-from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
+from praxis.backend.models.domain.outputs import FunctionDataOutput
 from praxis.backend.models.pydantic_internals.outputs import FunctionDataOutputCreate
 from praxis.backend.services.outputs import FunctionDataOutputCRUDService
 from praxis.backend.utils.uuid import uuid7
@@ -24,10 +24,10 @@ class TestFunctionDataOutputCRUDService:
     @pytest.fixture
     def service(self):
         """Fixture for the FunctionDataOutputCRUDService instance."""
-        return FunctionDataOutputCRUDService(FunctionDataOutputOrm)
+        return FunctionDataOutputCRUDService(FunctionDataOutput)
 
-    @patch("praxis.backend.services.outputs.FunctionDataOutputOrm", autospec=True)
-    async def test_create_output_success(self, mock_output_orm, service, mock_db_session):
+    @patch("praxis.backend.services.outputs.FunctionDataOutput", autospec=True)
+    async def test_create_output_success(self, mock_output_model, service, mock_db_session):
         """Test successful creation of a FunctionDataOutput."""
         output_create_data = FunctionDataOutputCreate(
             protocol_run_accession_id=uuid7(),
@@ -38,7 +38,7 @@ class TestFunctionDataOutputCRUDService:
             spatial_context=SpatialContextEnum.GLOBAL,
         )
 
-        mock_instance = mock_output_orm.return_value
+        mock_instance = mock_output_model.return_value
         mock_instance.accession_id = uuid7()
 
         mock_db_session.add.return_value = None
@@ -47,7 +47,7 @@ class TestFunctionDataOutputCRUDService:
 
         created_output = await service.create(db=mock_db_session, obj_in=output_create_data)
 
-        mock_output_orm.assert_called_once()
+        mock_output_model.assert_called_once()
         mock_db_session.add.assert_called_once_with(mock_instance)
         mock_db_session.flush.assert_awaited_once()
         mock_db_session.refresh.assert_awaited_once_with(mock_instance)
@@ -56,7 +56,7 @@ class TestFunctionDataOutputCRUDService:
     async def test_get_output_success(self, service, mock_db_session):
         """Test successfully retrieving an existing output by its ID."""
         output_id = uuid7()
-        expected_output = MagicMock(spec=FunctionDataOutputOrm)
+        expected_output = MagicMock(spec=FunctionDataOutput)
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = expected_output

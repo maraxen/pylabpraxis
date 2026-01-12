@@ -56,7 +56,7 @@ class CapabilityRequirement(BaseModel):
 class ProtocolRequirements(BaseModel):
   """Collection of hardware requirements for a protocol.
 
-  Extracted during protocol discovery and stored in FunctionProtocolDefinitionOrm.
+  Extracted during protocol discovery and stored in FunctionProtocolDefinition.
   """
 
   machine_type: str | None = None  # Primary machine type required (e.g., "liquid_handler")
@@ -374,7 +374,7 @@ class DiscoveredClass(BaseModel):
     return any(s in name_lower for s in ["simulat", "chatterbox", "mock", "virtual"])
 
   def to_capabilities_dict(self) -> dict[str, Any]:
-    """Convert capabilities to the format expected by MachineDefinitionOrm.
+    """Convert capabilities to the format expected by MachineDefinition.
 
     Merges legacy DiscoveredCapabilities with typed MachineCapabilities.
     """
