@@ -167,13 +167,18 @@ class DeckDefinition(DeckDefinitionBase, table=True):
   )
   # Relationships
   parent: Optional["DeckDefinition"] = Relationship(
-    back_populates="children",
-    sa_relationship_kwargs={
-      "remote_side": "DeckDefinition.accession_id",
-    },
+    sa_relationship=relationship(
+      "DeckDefinition",
+      back_populates="children",
+      remote_side="DeckDefinition.accession_id",
+    )
   )
-  children: List["DeckDefinition"] = Relationship(back_populates="parent")
-  decks: List["Deck"] = Relationship(back_populates="deck_type")
+  children: list["DeckDefinition"] = Relationship(
+    sa_relationship=relationship("DeckDefinition", back_populates="parent")
+  )
+  decks: list["Deck"] = Relationship(
+    sa_relationship=relationship("Deck", back_populates="deck_type")
+  )
 
 
 class DeckDefinitionCreate(DeckDefinitionBase):
@@ -225,7 +230,9 @@ class Deck(DeckBase, Asset, table=True):
   )
 
   # Relationships
-  deck_type: Optional[DeckDefinition] = Relationship(back_populates="decks")
+  deck_type: Optional["DeckDefinition"] = Relationship(
+    sa_relationship=relationship("DeckDefinition", back_populates="decks")
+  )
   # ResourceDefinition is imported from resource.py
   # We need to use string forward ref if circular, but ResourceDefinition is in resource.py?
   resource_definition_accession_id: uuid.UUID | None = Field(
@@ -233,15 +240,20 @@ class Deck(DeckBase, Asset, table=True):
     description="Reference to resource definition catalog",
     foreign_key="resource_definitions.accession_id",
   )
-  resource_definition: Optional["ResourceDefinition"] = Relationship()
+  resource_definition: Optional["ResourceDefinition"] = Relationship(
+    sa_relationship=relationship("ResourceDefinition")
+  )
 
   parent_machine: Optional["Machine"] = Relationship(
-    back_populates="decks",
-    sa_relationship_kwargs={
-      "primaryjoin": "Deck.parent_machine_accession_id == Machine.accession_id"
-    },
+    sa_relationship=relationship(
+      "Machine",
+      back_populates="decks",
+      primaryjoin="Deck.parent_machine_accession_id == Machine.accession_id",
+    )
   )
-  resources: List["Resource"] = Relationship(back_populates="deck")
+  resources: list["Resource"] = Relationship(
+    sa_relationship=relationship("Resource", back_populates="deck")
+  )
 
 
 class DeckCreate(DeckBase):

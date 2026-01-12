@@ -89,7 +89,8 @@ class PraxisBase(SQLModel):
     description="The time the record was last updated.",
   )
 
-  name: str = Field(
+  name: str | None = Field(
+    default=None,
     index=True,
     description="An optional name for the record.",
   )
