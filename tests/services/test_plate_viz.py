@@ -8,8 +8,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.enums.outputs import DataOutputTypeEnum, SpatialContextEnum
-from praxis.backend.models.orm.outputs import FunctionDataOutputOrm, WellDataOutputOrm
-from praxis.backend.models.pydantic_internals.outputs import PlateDataVisualization
+from praxis.backend.models.domain.outputs import FunctionDataOutput, WellDataOutput, PlateDataVisualization
 from praxis.backend.services.plate_viz import read_plate_data_visualization
 from praxis.backend.utils.uuid import uuid7
 
@@ -29,10 +28,10 @@ async def test_read_plate_data_visualization(mock_db_session: AsyncMock) -> None
 
     # Create mock ORM objects
     # Note: Using explicit args because MappedAsDataclass might require them or not depending on config
-    # Checking models: FunctionDataOutputOrm has defaults?
-    # FunctionDataOutputOrm: data_type, spatial_context are required args? Memory item says so.
+    # Checking models: FunctionDataOutput has defaults?
+    # FunctionDataOutput: data_type, spatial_context are required args? Memory item says so.
 
-    fdo = FunctionDataOutputOrm(
+    fdo = FunctionDataOutput(
         name="test_fdo",
         function_call_log_accession_id=uuid.uuid4(),
         protocol_run_accession_id=uuid.uuid4(),
@@ -41,10 +40,10 @@ async def test_read_plate_data_visualization(mock_db_session: AsyncMock) -> None
         spatial_context=SpatialContextEnum.PLATE_LEVEL,
     )
     # Since we can't easily instantiate ORM relationships in tests without full setup,
-    # we'll mock the relationship attribute on WellDataOutputOrm if needed.
+    # we'll mock the relationship attribute on WellDataOutput if needed.
     # But read_plate_data_visualization accesses well_data_list[0].function_data_output.measurement_timestamp
 
-    well_data_1 = WellDataOutputOrm(
+    well_data_1 = WellDataOutput(
         name="test_well_1",
         function_data_output_accession_id=fdo_id,
         plate_resource_accession_id=plate_id,
@@ -53,7 +52,7 @@ async def test_read_plate_data_visualization(mock_db_session: AsyncMock) -> None
     )
     well_data_1.function_data_output = fdo
 
-    well_data_2 = WellDataOutputOrm(
+    well_data_2 = WellDataOutput(
         name="test_well_2",
         function_data_output_accession_id=fdo_id,
         plate_resource_accession_id=plate_id,

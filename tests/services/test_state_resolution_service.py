@@ -23,7 +23,7 @@ from praxis.backend.core.simulation.state_resolution import (
 )
 from praxis.backend.core.simulation.state_models import SimulationState, StateLevel
 from praxis.backend.models.enums.schedule import ScheduleStatusEnum
-from praxis.backend.models.orm.resolution import ResolutionActionEnum, ResolutionTypeEnum
+from praxis.backend.models.enums.resolution import ResolutionActionEnum, ResolutionTypeEnum
 from praxis.backend.services.state_resolution_service import (
     StateResolutionService,
     StateResolutionRequest,

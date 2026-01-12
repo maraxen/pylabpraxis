@@ -284,7 +284,7 @@ async def test_user(db_session: AsyncSession):
     Email: testuser@example.com
     Active: True
     """
-    from praxis.backend.models.pydantic_internals.user import UserCreate
+    from praxis.backend.models.domain.user import UserCreate
     from praxis.backend.services.user import UserService
 
     user_service = UserService(db_session)
@@ -309,7 +309,7 @@ async def test_inactive_user(db_session: AsyncSession):
     Email: inactive@example.com
     Active: False
     """
-    from praxis.backend.models.pydantic_internals.user import UserCreate
+    from praxis.backend.models.domain.user import UserCreate
     from praxis.backend.services.user import UserService
 
     user_service = UserService(db_session)

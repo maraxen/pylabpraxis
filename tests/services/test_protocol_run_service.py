@@ -24,15 +24,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.enums import FunctionCallStatusEnum
-from praxis.backend.models.orm.protocol import (
-    FunctionCallLogOrm,
-    FunctionProtocolDefinitionOrm,
-)
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.protocol import (
+from praxis.backend.models.domain.protocol import (
+    FunctionCallLog,
+    ProtocolRun,
     ProtocolRunCreate,
     ProtocolRunStatusEnum,
+    FunctionProtocolDefinition,
 )
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.protocols import (
     log_function_call_end,
     log_function_call_start,
@@ -41,10 +40,10 @@ from praxis.backend.services.protocols import (
 
 
 @pytest_asyncio.fixture
-async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
+async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinition:
     """Create a protocol definition for testing."""
     # Create protocol definition without init=False relationship arguments
-    protocol = FunctionProtocolDefinitionOrm(
+    protocol = FunctionProtocolDefinition(
         name="test_protocol",
         fqn="test.protocols.test_protocol",
         version="1.0.0",
@@ -58,7 +57,7 @@ async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefin
 @pytest.mark.asyncio
 async def test_protocol_run_service_create_pending(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test creating a protocol run in PENDING status.
 
@@ -90,7 +89,7 @@ async def test_protocol_run_service_create_pending(
 @pytest.mark.asyncio
 async def test_protocol_run_service_create_running(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test creating a protocol run in RUNNING status.
 
@@ -120,7 +119,7 @@ async def test_protocol_run_service_create_running(
 @pytest.mark.asyncio
 async def test_protocol_run_service_create_with_complex_jsonb(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test creating protocol run with complex JSONB fields.
 
@@ -162,7 +161,7 @@ async def test_protocol_run_service_create_with_complex_jsonb(
 @pytest.mark.asyncio
 async def test_protocol_run_service_get_multi_basic(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test listing protocol runs with basic pagination.
 
@@ -199,7 +198,7 @@ async def test_protocol_run_service_get_multi_basic(
 @pytest.mark.asyncio
 async def test_protocol_run_service_get_multi_with_definition_filter(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test filtering protocol runs by definition ID.
 
@@ -210,7 +209,7 @@ async def test_protocol_run_service_get_multi_with_definition_filter(
     from praxis.backend.utils.uuid import uuid7
 
     # Create another protocol definition
-    other_protocol = FunctionProtocolDefinitionOrm(
+    other_protocol = FunctionProtocolDefinition(
         name="other_protocol",
         fqn="test.protocols.other_protocol",
         version="1.0.0",
@@ -254,7 +253,7 @@ async def test_protocol_run_service_get_multi_with_definition_filter(
 @pytest.mark.asyncio
 async def test_protocol_run_service_get_multi_with_status_filter(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test filtering protocol runs by status.
 
@@ -301,7 +300,7 @@ async def test_protocol_run_service_get_multi_with_status_filter(
 @pytest.mark.asyncio
 async def test_protocol_run_service_get_by_name(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test retrieving protocol run by protocol name.
 
@@ -331,7 +330,7 @@ async def test_protocol_run_service_get_by_name(
 @pytest.mark.asyncio
 async def test_protocol_run_service_update_status_to_running(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test updating protocol run status from PENDING to RUNNING.
 
@@ -370,7 +369,7 @@ async def test_protocol_run_service_update_status_to_running(
 @pytest.mark.asyncio
 async def test_protocol_run_service_update_status_to_completed(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test updating protocol run status to COMPLETED with output data.
 
@@ -421,7 +420,7 @@ async def test_protocol_run_service_update_status_to_completed(
 @pytest.mark.asyncio
 async def test_protocol_run_service_update_status_to_failed(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test updating protocol run status to FAILED with error info.
 
@@ -487,7 +486,7 @@ async def test_protocol_run_service_update_status_nonexistent(
 @pytest.mark.asyncio
 async def test_log_function_call_start(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test logging the start of a function call.
 
@@ -530,7 +529,7 @@ async def test_log_function_call_start(
 @pytest.mark.asyncio
 async def test_log_function_call_with_parent(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test logging nested function calls (parent-child relationship).
 
@@ -574,7 +573,7 @@ async def test_log_function_call_with_parent(
 @pytest.mark.asyncio
 async def test_log_function_call_end_success(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test logging successful function call completion.
 
@@ -623,7 +622,7 @@ async def test_log_function_call_end_success(
 @pytest.mark.asyncio
 async def test_log_function_call_end_failure(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test logging failed function call.
 
@@ -688,7 +687,7 @@ async def test_log_function_call_end_nonexistent(
 @pytest.mark.asyncio
 async def test_protocol_run_service_full_lifecycle(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test complete protocol run lifecycle from creation to completion.
 
@@ -779,9 +778,9 @@ async def test_protocol_run_service_full_lifecycle(
 
     # 6. Verify function calls were logged
     result = await db_session.execute(
-        select(FunctionCallLogOrm).where(
-            FunctionCallLogOrm.protocol_run_accession_id == run.accession_id,
-        ).order_by(FunctionCallLogOrm.sequence_in_run),
+        select(FunctionCallLog).where(
+            FunctionCallLog.protocol_run_accession_id == run.accession_id,
+        ).order_by(FunctionCallLog.sequence_in_run),
     )
     calls = result.scalars().all()
     assert len(calls) == 2
@@ -793,7 +792,7 @@ async def test_protocol_run_service_full_lifecycle(
 @pytest.mark.asyncio
 async def test_protocol_run_service_update_status_handles_core_exception(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test that Core exceptions during status update are caught and handled.
 

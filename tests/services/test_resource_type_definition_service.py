@@ -3,8 +3,8 @@ import pytest
 from pylabrobot.resources import Resource
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
-from praxis.backend.models.pydantic_internals.resource import (
+from praxis.backend.models.domain.resource import (
+    ResourceDefinition,
     ResourceDefinitionCreate,
     ResourceDefinitionUpdate,
 )
@@ -16,7 +16,7 @@ from praxis.backend.services.resource_type_definition import (
 
 @pytest.fixture
 def resource_type_definition_crud_service() -> ResourceTypeDefinitionCRUDService:
-    return ResourceTypeDefinitionCRUDService(ResourceDefinitionOrm)
+    return ResourceTypeDefinitionCRUDService(ResourceDefinition)
 
 @pytest.fixture
 def resource_type_definition_service(db_session: AsyncSession) -> ResourceTypeDefinitionService:

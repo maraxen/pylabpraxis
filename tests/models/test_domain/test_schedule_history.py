@@ -1,4 +1,4 @@
-"""Unit tests for ScheduleHistoryOrm model.
+"""Unit tests for ScheduleHistory model.
 
 Tests for the audit trail model tracking schedule status changes and events.
 """
@@ -15,23 +15,25 @@ from praxis.backend.models.enums import (
     ScheduleHistoryEventTriggerEnum,
     ScheduleStatusEnum,
 )
-from praxis.backend.models.orm.protocol import (
-    FileSystemProtocolSourceOrm,
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-    ProtocolSourceRepositoryOrm,
+from praxis.backend.models.domain.protocol import (
+    FunctionProtocolDefinition,
+    ProtocolRun,
 )
-from praxis.backend.models.orm.schedule import (
-    ScheduleEntryOrm,
-    ScheduleHistoryOrm,
+from praxis.backend.models.domain.protocol_source import (
+    FileSystemProtocolSource,
+    ProtocolSourceRepository,
+)
+from praxis.backend.models.domain.schedule import (
+    ScheduleEntry,
+    ScheduleHistory,
 )
 from praxis.backend.utils.uuid import uuid7
 
 
 @pytest_asyncio.fixture
-async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepositoryOrm:
-    """Create a ProtocolSourceRepositoryOrm for testing."""
-    repo = ProtocolSourceRepositoryOrm(
+async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepository:
+    """Create a ProtocolSourceRepository for testing."""
+    repo = ProtocolSourceRepository(
         name="test-repo",
         git_url="https://github.com/test/repo.git",
     )
@@ -41,9 +43,9 @@ async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepositor
 
 
 @pytest_asyncio.fixture
-async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSourceOrm:
-    """Create a FileSystemProtocolSourceOrm for testing."""
-    source = FileSystemProtocolSourceOrm(
+async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSource:
+    """Create a FileSystemProtocolSource for testing."""
+    source = FileSystemProtocolSource(
         name="test-fs-source",
         base_path="/tmp/protocols",
     )
@@ -55,11 +57,11 @@ async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSour
 @pytest_asyncio.fixture
 async def protocol_definition(
     db_session: AsyncSession,
-    source_repository: ProtocolSourceRepositoryOrm,
-    file_system_source: FileSystemProtocolSourceOrm,
-) -> FunctionProtocolDefinitionOrm:
-    """Create a FunctionProtocolDefinitionOrm for testing."""
-    protocol = FunctionProtocolDefinitionOrm(
+    source_repository: ProtocolSourceRepository,
+    file_system_source: FileSystemProtocolSource,
+) -> FunctionProtocolDefinition:
+    """Create a FunctionProtocolDefinition for testing."""
+    protocol = FunctionProtocolDefinition(
         name="test_protocol",
         fqn="test.protocols.test_protocol",
         version="1.0.0",
@@ -77,13 +79,13 @@ async def protocol_definition(
 @pytest_asyncio.fixture
 def schedule_entry_factory(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
-) -> Callable[[], ScheduleEntryOrm]:
-    """Create a ScheduleEntryOrm factory for testing."""
+    protocol_definition: FunctionProtocolDefinition,
+) -> Callable[[], ScheduleEntry]:
+    """Create a ScheduleEntry factory for testing."""
 
-    async def _factory() -> ScheduleEntryOrm:
+    async def _factory() -> ScheduleEntry:
         # Create protocol run first
-        run = ProtocolRunOrm(
+        run = ProtocolRun(
             name="test_protocol_run",
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         )
@@ -91,7 +93,7 @@ def schedule_entry_factory(
         await db_session.flush()
 
         # Create schedule entry
-        entry = ScheduleEntryOrm(
+        entry = ScheduleEntry(
             protocol_run=run,
             name="test_schedule_entry",
             scheduled_at=datetime.now(timezone.utc),
@@ -110,9 +112,9 @@ def schedule_entry_factory(
 @pytest.mark.asyncio
 async def test_schedule_history_orm_creation_minimal(
     db_session: AsyncSession,
-    schedule_entry_factory: Callable[[], ScheduleEntryOrm],
+    schedule_entry_factory: Callable[[], ScheduleEntry],
 ) -> None:
-    """Test creating ScheduleHistoryOrm with minimal required fields.
+    """Test creating ScheduleHistory with minimal required fields.
 
     The model should:
     - Require schedule_entry_accession_id and event_type (kw_only)
@@ -123,7 +125,7 @@ async def test_schedule_history_orm_creation_minimal(
     """
     schedule_entry = await schedule_entry_factory()
 
-    history = ScheduleHistoryOrm(
+    history = ScheduleHistory(
         name="test_history_minimal",
         schedule_entry_accession_id=schedule_entry.accession_id,
         event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
@@ -155,9 +157,9 @@ async def test_schedule_history_orm_creation_minimal(
 @pytest.mark.asyncio
 async def test_schedule_history_orm_creation_with_all_fields(
     db_session: AsyncSession,
-    schedule_entry_factory: Callable[[], ScheduleEntryOrm],
+    schedule_entry_factory: Callable[[], ScheduleEntry],
 ) -> None:
-    """Test creating ScheduleHistoryOrm with all fields populated.
+    """Test creating ScheduleHistory with all fields populated.
 
     Should handle:
     - Status transition (from_status → to_status)
@@ -170,7 +172,7 @@ async def test_schedule_history_orm_creation_with_all_fields(
     schedule_entry = await schedule_entry_factory()
     event_data = {"retry_count": 1, "reason": "Network timeout"}
 
-    history = ScheduleHistoryOrm(
+    history = ScheduleHistory(
         name="test_history_all_fields",
         schedule_entry_accession_id=schedule_entry.accession_id,
         event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
@@ -200,12 +202,12 @@ async def test_schedule_history_orm_creation_with_all_fields(
 @pytest.mark.asyncio
 async def test_schedule_history_orm_persist_to_database(
     db_session: AsyncSession,
-    schedule_entry_factory: Callable[[], ScheduleEntryOrm],
+    schedule_entry_factory: Callable[[], ScheduleEntry],
 ) -> None:
-    """Test full persistence cycle for ScheduleHistoryOrm."""
+    """Test full persistence cycle for ScheduleHistory."""
     schedule_entry = await schedule_entry_factory()
 
-    history = ScheduleHistoryOrm(
+    history = ScheduleHistory(
         name="test_history_persist",
         schedule_entry_accession_id=schedule_entry.accession_id,
         event_type=ScheduleHistoryEventEnum.SCHEDULED,
@@ -219,8 +221,8 @@ async def test_schedule_history_orm_persist_to_database(
 
     # Query back from database
     result = await db_session.execute(
-        select(ScheduleHistoryOrm).where(
-            ScheduleHistoryOrm.accession_id == history.accession_id,
+        select(ScheduleHistory).where(
+            ScheduleHistory.accession_id == history.accession_id,
         ),
     )
     retrieved_history = result.scalar_one()
@@ -235,7 +237,7 @@ async def test_schedule_history_orm_persist_to_database(
 @pytest.mark.asyncio
 async def test_schedule_history_orm_all_event_types(
     db_session: AsyncSession,
-    schedule_entry_factory: Callable[[], ScheduleEntryOrm],
+    schedule_entry_factory: Callable[[], ScheduleEntry],
 ) -> None:
     """Test creating history entries for all event types.
 
@@ -252,7 +254,7 @@ async def test_schedule_history_orm_all_event_types(
     schedule_entry = await schedule_entry_factory()
 
     for event_type in ScheduleHistoryEventEnum:
-        history = ScheduleHistoryOrm(
+        history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
             event_type=event_type,
@@ -266,8 +268,8 @@ async def test_schedule_history_orm_all_event_types(
     # Verify all event types were created
     for event_type in ScheduleHistoryEventEnum:
         result = await db_session.execute(
-            select(ScheduleHistoryOrm).where(
-                ScheduleHistoryOrm.event_type == event_type,
+            select(ScheduleHistory).where(
+                ScheduleHistory.event_type == event_type,
             ),
         )
         history = result.scalar_one_or_none()
@@ -278,7 +280,7 @@ async def test_schedule_history_orm_all_event_types(
 @pytest.mark.asyncio
 async def test_schedule_history_orm_status_transitions(
     db_session: AsyncSession,
-    schedule_entry_factory: Callable[[], ScheduleEntryOrm],
+    schedule_entry_factory: Callable[[], ScheduleEntry],
 ) -> None:
     """Test tracking status transitions through history.
 
@@ -297,7 +299,7 @@ async def test_schedule_history_orm_status_transitions(
     ]
 
     for from_status, to_status in transitions:
-        history = ScheduleHistoryOrm(
+        history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
             event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
@@ -312,9 +314,9 @@ async def test_schedule_history_orm_status_transitions(
 
     # Query history in order
     result = await db_session.execute(
-        select(ScheduleHistoryOrm)
-        .where(ScheduleHistoryOrm.schedule_entry_accession_id == schedule_entry.accession_id)
-        .order_by(ScheduleHistoryOrm.event_start),
+        select(ScheduleHistory)
+        .where(ScheduleHistory.schedule_entry_accession_id == schedule_entry.accession_id)
+        .order_by(ScheduleHistory.event_start),
     )
     history_entries = result.scalars().all()
 
@@ -327,7 +329,7 @@ async def test_schedule_history_orm_status_transitions(
 @pytest.mark.asyncio
 async def test_schedule_history_orm_event_timing(
     db_session: AsyncSession,
-    schedule_entry_factory: Callable[[], ScheduleEntryOrm],
+    schedule_entry_factory: Callable[[], ScheduleEntry],
 ) -> None:
     """Test event_start, event_end, and computed duration.
 
@@ -339,7 +341,7 @@ async def test_schedule_history_orm_event_timing(
     """
     schedule_entry = await schedule_entry_factory()
 
-    history = ScheduleHistoryOrm(
+    history = ScheduleHistory(
         name="test_history_timing",
         schedule_entry_accession_id=schedule_entry.accession_id,
         event_type=ScheduleHistoryEventEnum.COMPLETED,
@@ -369,7 +371,7 @@ async def test_schedule_history_orm_event_timing(
 @pytest.mark.asyncio
 async def test_schedule_history_orm_event_data_jsonb(
     db_session: AsyncSession,
-    schedule_entry_factory: Callable[[], ScheduleEntryOrm],
+    schedule_entry_factory: Callable[[], ScheduleEntry],
 ) -> None:
     """Test JSONB event_data_json field for storing arbitrary event data."""
     schedule_entry = await schedule_entry_factory()
@@ -384,7 +386,7 @@ async def test_schedule_history_orm_event_data_jsonb(
         },
     }
 
-    history = ScheduleHistoryOrm(
+    history = ScheduleHistory(
         name="test_history_jsonb",
         schedule_entry_accession_id=schedule_entry.accession_id,
         event_type=ScheduleHistoryEventEnum.SCHEDULED,
@@ -404,7 +406,7 @@ async def test_schedule_history_orm_event_data_jsonb(
 @pytest.mark.asyncio
 async def test_schedule_history_orm_error_tracking(
     db_session: AsyncSession,
-    schedule_entry_factory: Callable[[], ScheduleEntryOrm],
+    schedule_entry_factory: Callable[[], ScheduleEntry],
 ) -> None:
     """Test error_details field for tracking failures."""
     schedule_entry = await schedule_entry_factory()
@@ -417,7 +419,7 @@ async def test_schedule_history_orm_error_tracking(
     AssetUnavailableError: Pipette p1000 is currently in use
     """
 
-    history = ScheduleHistoryOrm(
+    history = ScheduleHistory(
         name="test_history_error",
         schedule_entry_accession_id=schedule_entry.accession_id,
         event_type=ScheduleHistoryEventEnum.FAILED,
@@ -436,7 +438,7 @@ async def test_schedule_history_orm_error_tracking(
 @pytest.mark.asyncio
 async def test_schedule_history_orm_all_trigger_types(
     db_session: AsyncSession,
-    schedule_entry_factory: Callable[[], ScheduleEntryOrm],
+    schedule_entry_factory: Callable[[], ScheduleEntry],
 ) -> None:
     """Test all trigger types (SYSTEM, USER, CELERY, SCHEDULER).
 
@@ -449,7 +451,7 @@ async def test_schedule_history_orm_all_trigger_types(
     schedule_entry = await schedule_entry_factory()
 
     for trigger in ScheduleHistoryEventTriggerEnum:
-        history = ScheduleHistoryOrm(
+        history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
             event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
@@ -464,8 +466,8 @@ async def test_schedule_history_orm_all_trigger_types(
     # Verify all trigger types
     for trigger in ScheduleHistoryEventTriggerEnum:
         result = await db_session.execute(
-            select(ScheduleHistoryOrm).where(
-                ScheduleHistoryOrm.triggered_by == trigger,
+            select(ScheduleHistory).where(
+                ScheduleHistory.triggered_by == trigger,
             ),
         )
         history = result.scalar_one_or_none()
@@ -476,14 +478,14 @@ async def test_schedule_history_orm_all_trigger_types(
 @pytest.mark.asyncio
 async def test_schedule_history_orm_asset_count_tracking(
     db_session: AsyncSession,
-    schedule_entry_factory: Callable[[], ScheduleEntryOrm],
+    schedule_entry_factory: Callable[[], ScheduleEntry],
 ) -> None:
     """Test asset_count field for tracking number of assets involved."""
     schedule_entry = await schedule_entry_factory()
 
     asset_counts = [0, 1, 5, 10]
     for count in asset_counts:
-        history = ScheduleHistoryOrm(
+        history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
             event_type=ScheduleHistoryEventEnum.SCHEDULED,
@@ -497,7 +499,7 @@ async def test_schedule_history_orm_asset_count_tracking(
 
     # Query by asset count
     result = await db_session.execute(
-        select(ScheduleHistoryOrm).where(ScheduleHistoryOrm.asset_count >= 5),
+        select(ScheduleHistory).where(ScheduleHistory.asset_count >= 5),
     )
     high_count_entries = result.scalars().all()
 
@@ -508,14 +510,14 @@ async def test_schedule_history_orm_asset_count_tracking(
 @pytest.mark.asyncio
 async def test_schedule_history_orm_relationship_to_schedule_entry(
     db_session: AsyncSession,
-    schedule_entry_factory: Callable[[], ScheduleEntryOrm],
+    schedule_entry_factory: Callable[[], ScheduleEntry],
 ) -> None:
-    """Test relationship between ScheduleHistoryOrm and ScheduleEntryOrm."""
+    """Test relationship between ScheduleHistory and ScheduleEntry."""
     schedule_entry = await schedule_entry_factory()
 
     # Create multiple history entries for same schedule entry
     for i in range(3):
-        history = ScheduleHistoryOrm(
+        history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
             event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
@@ -538,7 +540,7 @@ async def test_schedule_history_orm_relationship_to_schedule_entry(
 @pytest.mark.asyncio
 async def test_schedule_history_orm_query_by_event_type(
     db_session: AsyncSession,
-    schedule_entry_factory: Callable[[], ScheduleEntryOrm],
+    schedule_entry_factory: Callable[[], ScheduleEntry],
 ) -> None:
     """Test querying history entries by event type."""
     schedule_entry = await schedule_entry_factory()
@@ -552,7 +554,7 @@ async def test_schedule_history_orm_query_by_event_type(
     ]
 
     for event_type in event_types:
-        history = ScheduleHistoryOrm(
+        history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
             event_type=event_type,
@@ -564,8 +566,8 @@ async def test_schedule_history_orm_query_by_event_type(
 
     # Query STATUS_CHANGED events
     result = await db_session.execute(
-        select(ScheduleHistoryOrm).where(
-            ScheduleHistoryOrm.event_type == ScheduleHistoryEventEnum.STATUS_CHANGED,
+        select(ScheduleHistory).where(
+            ScheduleHistory.event_type == ScheduleHistoryEventEnum.STATUS_CHANGED,
         ),
     )
     status_changes = result.scalars().all()
@@ -576,14 +578,14 @@ async def test_schedule_history_orm_query_by_event_type(
 @pytest.mark.asyncio
 async def test_schedule_history_orm_query_by_time_range(
     db_session: AsyncSession,
-    schedule_entry_factory: Callable[[], ScheduleEntryOrm],
+    schedule_entry_factory: Callable[[], ScheduleEntry],
 ) -> None:
     """Test querying history entries within a time range."""
     schedule_entry = await schedule_entry_factory()
 
     # Create entries (event_start will be set automatically)
     for i in range(5):
-        history = ScheduleHistoryOrm(
+        history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
             event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
@@ -597,10 +599,10 @@ async def test_schedule_history_orm_query_by_time_range(
     # Query all events after a timestamp
     now = datetime.now(timezone.utc)
     result = await db_session.execute(
-        select(ScheduleHistoryOrm)
-        .where(ScheduleHistoryOrm.schedule_entry_accession_id == schedule_entry.accession_id)
-        .where(ScheduleHistoryOrm.event_start <= now)
-        .order_by(ScheduleHistoryOrm.event_start),
+        select(ScheduleHistory)
+        .where(ScheduleHistory.schedule_entry_accession_id == schedule_entry.accession_id)
+        .where(ScheduleHistory.event_start <= now)
+        .order_by(ScheduleHistory.event_start),
     )
     recent_events = result.scalars().all()
 
@@ -610,7 +612,7 @@ async def test_schedule_history_orm_query_by_time_range(
 @pytest.mark.asyncio
 async def test_schedule_history_orm_cascade_delete(
     db_session: AsyncSession,
-    schedule_entry_factory: Callable[[], ScheduleEntryOrm],
+    schedule_entry_factory: Callable[[], ScheduleEntry],
 ) -> None:
     """Test that deleting schedule entry cascades to delete history entries.
 
@@ -621,7 +623,7 @@ async def test_schedule_history_orm_cascade_delete(
 
     # Create history entries
     for _i in range(3):
-        history = ScheduleHistoryOrm(
+        history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
             event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
@@ -637,8 +639,8 @@ async def test_schedule_history_orm_cascade_delete(
 
     # Verify history entries were cascade deleted
     result = await db_session.execute(
-        select(ScheduleHistoryOrm).where(
-            ScheduleHistoryOrm.schedule_entry_accession_id == entry_id,
+        select(ScheduleHistory).where(
+            ScheduleHistory.schedule_entry_accession_id == entry_id,
         ),
     )
     remaining_history = result.scalars().all()

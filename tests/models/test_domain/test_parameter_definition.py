@@ -1,20 +1,20 @@
-"""Unit tests for ParameterDefinitionOrm model."""
+"""Unit tests for ParameterDefinitionmodel."""
 import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.protocol import (
-    FunctionProtocolDefinitionOrm,
-    ParameterDefinitionOrm,
+from praxis.backend.models.domain.protocol import (
+    FunctionProtocolDefinition,
+    ParameterDefinition,
 )
 
 
 @pytest_asyncio.fixture
-async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
-    """Create a FunctionProtocolDefinitionOrm for testing."""
-    protocol = FunctionProtocolDefinitionOrm(
+async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinition:
+    """Create a FunctionProtocolDefinitionfor testing."""
+    protocol = FunctionProtocolDefinition(
         name="test_protocol",
         fqn="test.protocols.test_protocol",
         version="1.0.0",
@@ -30,10 +30,10 @@ async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefin
 @pytest.mark.asyncio
 async def test_parameter_definition_orm_creation_minimal(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
-    """Test creating ParameterDefinitionOrm with minimal required fields."""
-    param = ParameterDefinitionOrm(
+    """Test creating ParameterDefinitionwith minimal required fields."""
+    param = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
     )
@@ -57,13 +57,13 @@ async def test_parameter_definition_orm_creation_minimal(
 @pytest.mark.asyncio
 async def test_parameter_definition_orm_creation_with_all_fields(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
-    """Test creating ParameterDefinitionOrm with all fields populated."""
+    """Test creating ParameterDefinitionwith all fields populated."""
     constraints = {"min_value": 0, "max_value": 100}
     ui_hint = {"widget_type": "slider"}
 
-    param = ParameterDefinitionOrm(
+    param = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="volume",
@@ -96,10 +96,10 @@ async def test_parameter_definition_orm_creation_with_all_fields(
 @pytest.mark.asyncio
 async def test_parameter_definition_orm_persist_to_database(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
-    """Test full persistence cycle for ParameterDefinitionOrm."""
-    param = ParameterDefinitionOrm(
+    """Test full persistence cycle for ParameterDefinition."""
+    param = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="temperature",
@@ -113,8 +113,8 @@ async def test_parameter_definition_orm_persist_to_database(
 
     # Query back
     result = await db_session.execute(
-        select(ParameterDefinitionOrm).where(
-            ParameterDefinitionOrm.accession_id == param.accession_id,
+        select(ParameterDefinition).where(
+            ParameterDefinition.accession_id == param.accession_id,
         ),
     )
     retrieved = result.scalars().first()
@@ -132,11 +132,11 @@ async def test_parameter_definition_orm_persist_to_database(
 @pytest.mark.asyncio
 async def test_parameter_definition_orm_unique_constraint(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test unique constraint on (protocol_definition_accession_id, name)."""
     # Create first parameter
-    param1 = ParameterDefinitionOrm(
+    param1 = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="unique_param",
@@ -147,7 +147,7 @@ async def test_parameter_definition_orm_unique_constraint(
     await db_session.flush()
 
     # Try to create another with same protocol and name
-    param2 = ParameterDefinitionOrm(
+    param2 = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="unique_param",  # Duplicate name for same protocol
@@ -164,11 +164,11 @@ async def test_parameter_definition_orm_unique_constraint(
 @pytest.mark.asyncio
 async def test_parameter_definition_orm_deck_param_flag(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test is_deck_param flag for deck parameters."""
     # Regular parameter (not deck)
-    regular_param = ParameterDefinitionOrm(
+    regular_param = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="regular_param",
@@ -180,8 +180,8 @@ async def test_parameter_definition_orm_deck_param_flag(
     await db_session.flush()
     assert regular_param.is_deck_param is False
 
-    # Deck parameter
-    deck_param = ParameterDefinitionOrm(
+    # Deckparameter
+    deck_param = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="deck",
@@ -197,11 +197,11 @@ async def test_parameter_definition_orm_deck_param_flag(
 @pytest.mark.asyncio
 async def test_parameter_definition_orm_optional_flag(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test optional flag for parameters."""
     # Required parameter
-    required_param = ParameterDefinitionOrm(
+    required_param = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="required_param",
@@ -214,7 +214,7 @@ async def test_parameter_definition_orm_optional_flag(
     assert required_param.optional is False
 
     # Optional parameter with default
-    optional_param = ParameterDefinitionOrm(
+    optional_param = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="optional_param",
@@ -232,7 +232,7 @@ async def test_parameter_definition_orm_optional_flag(
 @pytest.mark.asyncio
 async def test_parameter_definition_orm_jsonb_constraints(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test JSONB constraints field for parameter validation rules."""
     constraints = {
@@ -242,7 +242,7 @@ async def test_parameter_definition_orm_jsonb_constraints(
         "options": ["A", "B", "C"],
     }
 
-    param = ParameterDefinitionOrm(
+    param = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="constrained_param",
@@ -262,7 +262,7 @@ async def test_parameter_definition_orm_jsonb_constraints(
 @pytest.mark.asyncio
 async def test_parameter_definition_orm_jsonb_ui_hint(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test JSONB ui_hint field for UI rendering hints."""
     ui_hint = {
@@ -271,7 +271,7 @@ async def test_parameter_definition_orm_jsonb_ui_hint(
         "show_value": True,
     }
 
-    param = ParameterDefinitionOrm(
+    param = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="ui_param",
@@ -291,11 +291,11 @@ async def test_parameter_definition_orm_jsonb_ui_hint(
 @pytest.mark.asyncio
 async def test_parameter_definition_orm_relationship_to_protocol(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
-    """Test relationship between ParameterDefinitionOrm and FunctionProtocolDefinitionOrm."""
+    """Test relationship between ParameterDefinitionand FunctionProtocolDefinition."""
     # Create multiple parameters for the same protocol
-    param1 = ParameterDefinitionOrm(
+    param1 = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="param1",
@@ -303,7 +303,7 @@ async def test_parameter_definition_orm_relationship_to_protocol(
         fqn="test.protocols.test_protocol.param1",
     )
 
-    param2 = ParameterDefinitionOrm(
+    param2 = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="param2",
@@ -317,8 +317,8 @@ async def test_parameter_definition_orm_relationship_to_protocol(
 
     # Query protocol and check parameters relationship
     result = await db_session.execute(
-        select(FunctionProtocolDefinitionOrm).where(
-            FunctionProtocolDefinitionOrm.accession_id == protocol_definition.accession_id,
+        select(FunctionProtocolDefinition).where(
+            FunctionProtocolDefinition.accession_id == protocol_definition.accession_id,
         ),
     )
     protocol = result.scalars().first()
@@ -333,11 +333,11 @@ async def test_parameter_definition_orm_relationship_to_protocol(
 @pytest.mark.asyncio
 async def test_parameter_definition_orm_query_by_protocol(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test querying parameters by protocol definition."""
     # Create parameters for this protocol
-    param1 = ParameterDefinitionOrm(
+    param1 = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="query_param1",
@@ -345,7 +345,7 @@ async def test_parameter_definition_orm_query_by_protocol(
         fqn="test.protocols.test_protocol.query_param1",
     )
 
-    param2 = ParameterDefinitionOrm(
+    param2 = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="query_param2",
@@ -359,8 +359,8 @@ async def test_parameter_definition_orm_query_by_protocol(
 
     # Query all parameters for this protocol
     result = await db_session.execute(
-        select(ParameterDefinitionOrm).where(
-            ParameterDefinitionOrm.protocol_definition_accession_id
+        select(ParameterDefinition).where(
+            ParameterDefinition.protocol_definition_accession_id
             == protocol_definition.accession_id,
         ),
     )
@@ -376,10 +376,10 @@ async def test_parameter_definition_orm_query_by_protocol(
 @pytest.mark.asyncio
 async def test_parameter_definition_orm_repr(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
-    """Test string representation of ParameterDefinitionOrm."""
-    param = ParameterDefinitionOrm(
+    """Test string representation of ParameterDefinition."""
+    param = ParameterDefinition(
         protocol_definition_accession_id=protocol_definition.accession_id,
         protocol_definition=protocol_definition,
         name="repr_param",
@@ -388,6 +388,6 @@ async def test_parameter_definition_orm_repr(
     )
 
     repr_str = repr(param)
-    assert "ParameterDefinitionOrm" in repr_str
+    assert "ParameterDefinition" in repr_str
     assert "repr_param" in repr_str
     assert str(protocol_definition.accession_id) in repr_str

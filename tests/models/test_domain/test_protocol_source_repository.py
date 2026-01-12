@@ -1,18 +1,18 @@
-"""Unit tests for ProtocolSourceRepositoryOrm model."""
+"""Unit tests for ProtocolSourceRepositorymodel."""
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.enums import ProtocolSourceStatusEnum
-from praxis.backend.models.orm.protocol import ProtocolSourceRepositoryOrm
+from praxis.backend.models.domain.protocol_source import ProtocolSourceRepository
 
 
 @pytest.mark.asyncio
 async def test_protocol_source_repository_orm_creation_minimal(
     db_session: AsyncSession,
 ) -> None:
-    """Test creating ProtocolSourceRepositoryOrm with minimal required fields."""
-    repo = ProtocolSourceRepositoryOrm(
+    """Test creating ProtocolSourceRepositorywith minimal required fields."""
+    repo = ProtocolSourceRepository(
         name="test_repo",
     )
     db_session.add(repo)
@@ -33,8 +33,8 @@ async def test_protocol_source_repository_orm_creation_minimal(
 async def test_protocol_source_repository_orm_creation_with_all_fields(
     db_session: AsyncSession,
 ) -> None:
-    """Test creating ProtocolSourceRepositoryOrm with all fields populated."""
-    repo = ProtocolSourceRepositoryOrm(
+    """Test creating ProtocolSourceRepositorywith all fields populated."""
+    repo = ProtocolSourceRepository(
         name="full_repo",
         git_url="https://github.com/example/protocols.git",
         default_ref="develop",
@@ -61,8 +61,8 @@ async def test_protocol_source_repository_orm_creation_with_all_fields(
 async def test_protocol_source_repository_orm_persist_to_database(
     db_session: AsyncSession,
 ) -> None:
-    """Test full persistence cycle for ProtocolSourceRepositoryOrm."""
-    repo = ProtocolSourceRepositoryOrm(
+    """Test full persistence cycle for ProtocolSourceRepository."""
+    repo = ProtocolSourceRepository(
         name="persistence_test_repo",
         git_url="https://github.com/test/persistence.git",
         default_ref="main",
@@ -73,8 +73,8 @@ async def test_protocol_source_repository_orm_persist_to_database(
 
     # Query back
     result = await db_session.execute(
-        select(ProtocolSourceRepositoryOrm).where(
-            ProtocolSourceRepositoryOrm.accession_id == repo.accession_id,
+        select(ProtocolSourceRepository).where(
+            ProtocolSourceRepository.accession_id == repo.accession_id,
         ),
     )
     retrieved = result.scalars().first()
@@ -96,7 +96,7 @@ async def test_protocol_source_repository_orm_unique_name_constraint(
     from sqlalchemy.exc import IntegrityError
 
     # Create first repository
-    repo1 = ProtocolSourceRepositoryOrm(
+    repo1 = ProtocolSourceRepository(
         name="unique_repo_name",
         git_url="https://github.com/example/repo1.git",
     )
@@ -104,7 +104,7 @@ async def test_protocol_source_repository_orm_unique_name_constraint(
     await db_session.flush()
 
     # Try to create another with same name
-    repo2 = ProtocolSourceRepositoryOrm(
+    repo2 = ProtocolSourceRepository(
         name="unique_repo_name",  # Duplicate name
         git_url="https://github.com/example/repo2.git",
     )
@@ -128,7 +128,7 @@ async def test_protocol_source_repository_orm_status_transitions(
     ]
 
     for status, name in statuses:
-        repo = ProtocolSourceRepositoryOrm(
+        repo = ProtocolSourceRepository(
             name=name,
             git_url=f"https://github.com/example/{name}.git",
             status=status,
@@ -146,7 +146,7 @@ async def test_protocol_source_repository_orm_auto_sync_flag(
 ) -> None:
     """Test auto_sync_enabled flag."""
     # Repository with auto-sync enabled (default)
-    repo_enabled = ProtocolSourceRepositoryOrm(
+    repo_enabled = ProtocolSourceRepository(
         name="auto_sync_enabled_repo",
         git_url="https://github.com/example/enabled.git",
         auto_sync_enabled=True,
@@ -156,7 +156,7 @@ async def test_protocol_source_repository_orm_auto_sync_flag(
     assert repo_enabled.auto_sync_enabled is True
 
     # Repository with auto-sync disabled
-    repo_disabled = ProtocolSourceRepositoryOrm(
+    repo_disabled = ProtocolSourceRepository(
         name="auto_sync_disabled_repo",
         git_url="https://github.com/example/disabled.git",
         auto_sync_enabled=False,
@@ -171,7 +171,7 @@ async def test_protocol_source_repository_orm_query_by_name(
     db_session: AsyncSession,
 ) -> None:
     """Test querying repositories by name."""
-    repo = ProtocolSourceRepositoryOrm(
+    repo = ProtocolSourceRepository(
         name="queryable_repo",
         git_url="https://github.com/example/queryable.git",
     )
@@ -180,8 +180,8 @@ async def test_protocol_source_repository_orm_query_by_name(
 
     # Query by name
     result = await db_session.execute(
-        select(ProtocolSourceRepositoryOrm).where(
-            ProtocolSourceRepositoryOrm.name == "queryable_repo",
+        select(ProtocolSourceRepository).where(
+            ProtocolSourceRepository.name == "queryable_repo",
         ),
     )
     retrieved = result.scalars().first()
@@ -196,7 +196,7 @@ async def test_protocol_source_repository_orm_update_commit_hash(
     db_session: AsyncSession,
 ) -> None:
     """Test updating last_synced_commit field."""
-    repo = ProtocolSourceRepositoryOrm(
+    repo = ProtocolSourceRepository(
         name="sync_test_repo",
         git_url="https://github.com/example/sync.git",
         last_synced_commit=None,
@@ -213,8 +213,8 @@ async def test_protocol_source_repository_orm_update_commit_hash(
 
     # Query back and verify update
     result = await db_session.execute(
-        select(ProtocolSourceRepositoryOrm).where(
-            ProtocolSourceRepositoryOrm.accession_id == repo.accession_id,
+        select(ProtocolSourceRepository).where(
+            ProtocolSourceRepository.accession_id == repo.accession_id,
         ),
     )
     retrieved = result.scalars().first()
@@ -223,14 +223,14 @@ async def test_protocol_source_repository_orm_update_commit_hash(
 
 @pytest.mark.asyncio
 async def test_protocol_source_repository_orm_repr(db_session: AsyncSession) -> None:
-    """Test string representation of ProtocolSourceRepositoryOrm."""
-    repo = ProtocolSourceRepositoryOrm(
+    """Test string representation of ProtocolSourceRepository."""
+    repo = ProtocolSourceRepository(
         name="repr_repo",
         git_url="https://github.com/example/repr.git",
     )
 
     repr_str = repr(repo)
-    assert "ProtocolSourceRepositoryOrm" in repr_str
+    assert "ProtocolSourceRepository" in repr_str
     assert str(repo.accession_id) in repr_str
     assert "repr_repo" in repr_str
     assert "https://github.com/example/repr.git" in repr_str

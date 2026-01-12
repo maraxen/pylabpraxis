@@ -1,4 +1,4 @@
-"""Unit tests for FunctionCallLogOrm model."""
+"""Unit tests for FunctionCallLogmodel."""
 from datetime import datetime, timezone
 
 import pytest
@@ -7,17 +7,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.enums import FunctionCallStatusEnum
-from praxis.backend.models.orm.protocol import (
-    FunctionCallLogOrm,
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
+from praxis.backend.models.domain.protocol import (
+    FunctionCallLog,
+    FunctionProtocolDefinition,
+    ProtocolRun,
 )
 
 
 @pytest_asyncio.fixture
-async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
-    """Create a FunctionProtocolDefinitionOrm for testing."""
-    protocol = FunctionProtocolDefinitionOrm(
+async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinition:
+    """Create a FunctionProtocolDefinitionfor testing."""
+    protocol = FunctionProtocolDefinition(
         name="test_protocol",
         fqn="test.protocols.test_protocol",
         version="1.0.0",
@@ -31,10 +31,10 @@ async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefin
 @pytest_asyncio.fixture
 async def protocol_run(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
-) -> ProtocolRunOrm:
-    """Create a ProtocolRunOrm for testing."""
-    run = ProtocolRunOrm(
+    protocol_definition: FunctionProtocolDefinition,
+) -> ProtocolRun:
+    """Create a ProtocolRunfor testing."""
+    run = ProtocolRun(
         name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
     )
@@ -46,13 +46,13 @@ async def protocol_run(
 @pytest.mark.asyncio
 async def test_function_call_log_orm_creation_minimal(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_run: ProtocolRun,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
-    """Test creating FunctionCallLogOrm with minimal required fields."""
+    """Test creating FunctionCallLogwith minimal required fields."""
     now = datetime.now(timezone.utc)
 
-    call_log = FunctionCallLogOrm(
+    call_log = FunctionCallLog(
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -82,17 +82,17 @@ async def test_function_call_log_orm_creation_minimal(
 @pytest.mark.asyncio
 async def test_function_call_log_orm_creation_with_all_fields(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_run: ProtocolRun,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
-    """Test creating FunctionCallLogOrm with all fields populated."""
+    """Test creating FunctionCallLogwith all fields populated."""
     from datetime import timedelta
     start_time = datetime.now(timezone.utc)
     end_time = start_time + timedelta(seconds=5)
     input_args = {"volume": 100, "source": "A1", "dest": "B1"}
     return_value = {"success": True, "transferred_volume": 98.5}
 
-    call_log = FunctionCallLogOrm(
+    call_log = FunctionCallLog(
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -120,13 +120,13 @@ async def test_function_call_log_orm_creation_with_all_fields(
 @pytest.mark.asyncio
 async def test_function_call_log_orm_persist_to_database(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_run: ProtocolRun,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
-    """Test full persistence cycle for FunctionCallLogOrm."""
+    """Test full persistence cycle for FunctionCallLog."""
     now = datetime.now(timezone.utc)
 
-    call_log = FunctionCallLogOrm(
+    call_log = FunctionCallLog(
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=5,
@@ -141,7 +141,7 @@ async def test_function_call_log_orm_persist_to_database(
 
     # Query back
     result = await db_session.execute(
-        select(FunctionCallLogOrm).where(FunctionCallLogOrm.accession_id == call_log.accession_id),
+        select(FunctionCallLog).where(FunctionCallLog.accession_id == call_log.accession_id),
     )
     retrieved = result.scalars().first()
 
@@ -155,15 +155,15 @@ async def test_function_call_log_orm_persist_to_database(
 @pytest.mark.asyncio
 async def test_function_call_log_orm_sequence_ordering(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_run: ProtocolRun,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test sequence_in_run for ordering function calls."""
     now = datetime.now(timezone.utc)
 
     # Create multiple calls with different sequences
     for seq in [0, 1, 2, 3, 4]:
-        call_log = FunctionCallLogOrm(
+        call_log = FunctionCallLog(
             name="test_call",
             protocol_run_accession_id=protocol_run.accession_id,
             sequence_in_run=seq,
@@ -178,9 +178,9 @@ async def test_function_call_log_orm_sequence_ordering(
 
     # Query all calls for this run, ordered by sequence
     result = await db_session.execute(
-        select(FunctionCallLogOrm)
-        .where(FunctionCallLogOrm.protocol_run_accession_id == protocol_run.accession_id)
-        .order_by(FunctionCallLogOrm.sequence_in_run),
+        select(FunctionCallLog)
+        .where(FunctionCallLog.protocol_run_accession_id == protocol_run.accession_id)
+        .order_by(FunctionCallLog.sequence_in_run),
     )
     calls = result.scalars().all()
 
@@ -193,8 +193,8 @@ async def test_function_call_log_orm_sequence_ordering(
 @pytest.mark.asyncio
 async def test_function_call_log_orm_status_values(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_run: ProtocolRun,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test different status values for function calls."""
     now = datetime.now(timezone.utc)
@@ -209,7 +209,7 @@ async def test_function_call_log_orm_status_values(
     ]
 
     for idx, status in enumerate(statuses):
-        call_log = FunctionCallLogOrm(
+        call_log = FunctionCallLog(
             name="test_call",
             protocol_run_accession_id=protocol_run.accession_id,
             sequence_in_run=idx,
@@ -225,9 +225,9 @@ async def test_function_call_log_orm_status_values(
 
     # Verify statuses
     result = await db_session.execute(
-        select(FunctionCallLogOrm)
-        .where(FunctionCallLogOrm.protocol_run_accession_id == protocol_run.accession_id)
-        .order_by(FunctionCallLogOrm.sequence_in_run),
+        select(FunctionCallLog)
+        .where(FunctionCallLog.protocol_run_accession_id == protocol_run.accession_id)
+        .order_by(FunctionCallLog.sequence_in_run),
     )
     calls = result.scalars().all()
 
@@ -238,8 +238,8 @@ async def test_function_call_log_orm_status_values(
 @pytest.mark.asyncio
 async def test_function_call_log_orm_input_args_jsonb(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_run: ProtocolRun,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test JSONB input_args_json field."""
     now = datetime.now(timezone.utc)
@@ -254,7 +254,7 @@ async def test_function_call_log_orm_input_args_jsonb(
         "nested": {"key": "value", "items": [1, 2, 3]},
     }
 
-    call_log = FunctionCallLogOrm(
+    call_log = FunctionCallLog(
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -276,8 +276,8 @@ async def test_function_call_log_orm_input_args_jsonb(
 @pytest.mark.asyncio
 async def test_function_call_log_orm_return_value_jsonb(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_run: ProtocolRun,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test JSONB return_value_json field."""
     now = datetime.now(timezone.utc)
@@ -289,7 +289,7 @@ async def test_function_call_log_orm_return_value_jsonb(
         "measurements": [1.2, 3.4, 5.6],
     }
 
-    call_log = FunctionCallLogOrm(
+    call_log = FunctionCallLog(
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -311,8 +311,8 @@ async def test_function_call_log_orm_return_value_jsonb(
 @pytest.mark.asyncio
 async def test_function_call_log_orm_error_fields(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_run: ProtocolRun,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test error_message_text and error_traceback_text fields."""
     now = datetime.now(timezone.utc)
@@ -322,7 +322,7 @@ async def test_function_call_log_orm_error_fields(
     validate_volume(volume)
 ValueError: Invalid volume specified"""
 
-    call_log = FunctionCallLogOrm(
+    call_log = FunctionCallLog(
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -347,14 +347,14 @@ ValueError: Invalid volume specified"""
 @pytest.mark.asyncio
 async def test_function_call_log_orm_nested_calls(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_run: ProtocolRun,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test parent-child relationship for nested function calls."""
     now = datetime.now(timezone.utc)
 
     # Create parent call
-    parent_call = FunctionCallLogOrm(
+    parent_call = FunctionCallLog(
         name="parent_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -367,7 +367,7 @@ async def test_function_call_log_orm_nested_calls(
     await db_session.flush()
 
     # Create child call
-    child_call = FunctionCallLogOrm(
+    child_call = FunctionCallLog(
         name="child_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=1,
@@ -388,15 +388,15 @@ async def test_function_call_log_orm_nested_calls(
 @pytest.mark.asyncio
 async def test_function_call_log_orm_timing(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_run: ProtocolRun,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test start_time and end_time fields."""
     from datetime import timedelta
     start_time = datetime.now(timezone.utc)
     end_time = start_time + timedelta(seconds=10)
 
-    call_log = FunctionCallLogOrm(
+    call_log = FunctionCallLog(
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -420,15 +420,15 @@ async def test_function_call_log_orm_timing(
 @pytest.mark.asyncio
 async def test_function_call_log_orm_query_by_protocol_run(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_run: ProtocolRun,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test querying all function calls for a protocol run."""
     now = datetime.now(timezone.utc)
 
     # Create multiple calls for the same run
     for i in range(5):
-        call_log = FunctionCallLogOrm(
+        call_log = FunctionCallLog(
             name="test_call",
             protocol_run_accession_id=protocol_run.accession_id,
             sequence_in_run=i,
@@ -443,8 +443,8 @@ async def test_function_call_log_orm_query_by_protocol_run(
 
     # Query all calls for this run
     result = await db_session.execute(
-        select(FunctionCallLogOrm).where(
-            FunctionCallLogOrm.protocol_run_accession_id == protocol_run.accession_id,
+        select(FunctionCallLog).where(
+            FunctionCallLog.protocol_run_accession_id == protocol_run.accession_id,
         ),
     )
     calls = result.scalars().all()
@@ -456,14 +456,14 @@ async def test_function_call_log_orm_query_by_protocol_run(
 @pytest.mark.asyncio
 async def test_function_call_log_orm_query_by_status(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_run: ProtocolRun,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test querying function calls by status."""
     now = datetime.now(timezone.utc)
 
     # Create calls with different statuses
-    success_call = FunctionCallLogOrm(
+    success_call = FunctionCallLog(
         name="success_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -474,7 +474,7 @@ async def test_function_call_log_orm_query_by_status(
     success_call.protocol_run = protocol_run
     success_call.executed_function_definition = protocol_definition
 
-    failed_call = FunctionCallLogOrm(
+    failed_call = FunctionCallLog(
         name="failed_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=1,
@@ -491,8 +491,8 @@ async def test_function_call_log_orm_query_by_status(
 
     # Query only failed calls
     result = await db_session.execute(
-        select(FunctionCallLogOrm).where(
-            FunctionCallLogOrm.status == FunctionCallStatusEnum.ERROR,
+        select(FunctionCallLog).where(
+            FunctionCallLog.status == FunctionCallStatusEnum.ERROR,
         ),
     )
     failed_calls = result.scalars().all()
@@ -505,13 +505,13 @@ async def test_function_call_log_orm_query_by_status(
 @pytest.mark.asyncio
 async def test_function_call_log_orm_repr(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_run: ProtocolRun,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
-    """Test string representation of FunctionCallLogOrm."""
+    """Test string representation of FunctionCallLog."""
     now = datetime.now(timezone.utc)
 
-    call_log = FunctionCallLogOrm(
+    call_log = FunctionCallLog(
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=42,
@@ -521,7 +521,7 @@ async def test_function_call_log_orm_repr(
     call_log.start_time = now
 
     repr_str = repr(call_log)
-    assert "FunctionCallLogOrm" in repr_str
+    assert "FunctionCallLog" in repr_str
     assert str(call_log.accession_id) in repr_str
     assert str(protocol_run.accession_id) in repr_str
     assert "42" in repr_str

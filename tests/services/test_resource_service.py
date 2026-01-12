@@ -8,10 +8,28 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.enums import AssetType, ResourceStatusEnum
-from praxis.backend.models.orm.resource import ResourceOrm
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.resource import ResourceCreate, ResourceUpdate
+from praxis.backend.models.domain.filters import SearchFilters
+from praxis.backend.models.domain.resource import (
+    Resource,
+    ResourceCreate,
+    ResourceUpdate,
+    ResourceDefinition,
+    ResourceDefinitionCreate,
+)
 from praxis.backend.services.resource import resource_service
+
+
+async def create_resource_definition(
+    db: AsyncSession,
+    name: str = "Test Definition",
+) -> ResourceDefinition:
+    """Helper to create a resource definition."""
+    definition = ResourceDefinition(
+        name=name,
+        fqn=f"com.example.{name.replace(' ', '')}",
+        resource_type="Generic",
+    )
+    return await resource_service.create_definition(db, obj_in=definition)
 
 
 @pytest.mark.asyncio
@@ -243,10 +261,10 @@ async def test_resource_service_with_resource_definition(db_session: AsyncSessio
     Note: This test is simplified since ResourceDefinition creation
     is complex. We'll just test that the field can be set.
     """
-    from praxis.backend.models.orm.resource import ResourceDefinitionOrm
+    from praxis.backend.models.domain import ResourceDefinition
 
     # Create a real resource definition
-    res_def = ResourceDefinitionOrm(
+    res_def = ResourceDefinition(
         name="test_def",
         fqn="test.def",
     )
@@ -345,7 +363,7 @@ async def test_resource_service_singleton_instance(db_session: AsyncSession) -> 
     from praxis.backend.services.resource import ResourceService
 
     assert isinstance(resource_service, ResourceService)
-    assert resource_service.model == ResourceOrm
+    assert resource_service.model == Resource
 
 
 @pytest.mark.asyncio

@@ -8,7 +8,7 @@ from praxis.backend.core.decorators import (
     get_callable_fqn,
     praxis_run_context_cv,
 )
-from praxis.backend.models.pydantic_internals.protocol import (
+from praxis.backend.models.domain.protocol import (
     FunctionProtocolDefinitionCreate,
 )
 from praxis.backend.utils.uuid import uuid7

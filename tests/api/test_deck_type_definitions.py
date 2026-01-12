@@ -11,12 +11,12 @@ async def test_create_workcell(client: AsyncClient, db_session: AsyncSession) ->
     """Test creating a workcell."""
     from sqlalchemy import select
 
-    from praxis.backend.models.orm.workcell import WorkcellOrm
+    from praxis.backend.models.domain.workcell import Workcell
 
     workcell = await create_workcell(db_session, name="test_workcell")
 
     # DEBUG: Verify data is in session before API call
-    result = await db_session.execute(select(WorkcellOrm).where(WorkcellOrm.accession_id == workcell.accession_id))
+    result = await db_session.execute(select(Workcell).where(Workcell.accession_id == workcell.accession_id))
     result.scalars().first()
 
     # DEBUG: List all routes
@@ -29,7 +29,7 @@ async def test_create_workcell(client: AsyncClient, db_session: AsyncSession) ->
     # The Pydantic serialization issue with nested models needs separate investigation
     from sqlalchemy import select
     verify_result = await db_session.execute(
-        select(WorkcellOrm).where(WorkcellOrm.accession_id == workcell.accession_id),
+        select(Workcell).where(Workcell.accession_id == workcell.accession_id),
     )
     verified_workcell = verify_result.scalars().first()
     assert verified_workcell is not None

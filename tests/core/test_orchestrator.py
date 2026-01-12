@@ -6,7 +6,7 @@ import pytest
 
 from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.models import ProtocolRunStatusEnum
-from praxis.backend.models.orm.protocol import ProtocolRunOrm
+from praxis.backend.models.domain.protocol import ProtocolRun
 from praxis.backend.services.state import PraxisState
 from praxis.backend.utils.errors import AssetAcquisitionError, ProtocolCancelledError
 from praxis.backend.utils.uuid import uuid7
@@ -642,7 +642,7 @@ class TestInitializeRunContext:
             assert run_context.current_db_session == mock_db_session
 
 
-class TestGetProtocolDefinitionOrmFromDb:
+class TestGetProtocolDefinitionModelFromDb:
 
     """Tests for _get_protocol_definition_orm_from_db method."""
 
@@ -692,16 +692,16 @@ class TestPrepareProtocolCode:
             protocol_code_manager=mock_protocol_code_manager,
         )
 
-        mock_protocol_def_orm = Mock()
+        mock_protocol_def_model = Mock()
 
         func, pydantic_def = await orchestrator._prepare_protocol_code(
-            mock_protocol_def_orm
+            mock_protocol_def_model
         )
 
         assert func is not None
         assert pydantic_def is not None
         mock_protocol_code_manager.prepare_protocol_code.assert_called_once_with(
-            mock_protocol_def_orm,
+            mock_protocol_def_model,
         )
 
 
@@ -806,10 +806,10 @@ class TestOrchestratorExecutionFlow:
             return {"result": "success"}
 
         # Protocol Def ORM
-        mock_protocol_def_orm = Mock()
-        mock_protocol_def_orm.name = "test_protocol"
-        mock_protocol_def_orm.accession_id = uuid7()
-        mock_protocol_def_orm.version = "1.0.0"
+        mock_protocol_def_model = Mock()
+        mock_protocol_def_model.name = "test_protocol"
+        mock_protocol_def_model.accession_id = uuid7()
+        mock_protocol_def_model.version = "1.0.0"
 
         # Protocol Pydantic Def
         mock_pydantic_def = Mock()
@@ -837,23 +837,23 @@ class TestOrchestratorExecutionFlow:
         mock_asset_manager.acquire_asset = AsyncMock(return_value=(mock_lh, uuid7(), "liquid_handler"))
 
         # Mock Service calls
-        mock_run_orm = Mock()
-        mock_run_orm.accession_id = uuid7()
-        mock_run_orm.status = ProtocolRunStatusEnum.PREPARING
+        mock_run_model = Mock()
+        mock_run_model.accession_id = uuid7()
+        mock_run_model.status = ProtocolRunStatusEnum.PREPARING
 
         # We need to simulate the state updates for status assertions
         run_status = ProtocolRunStatusEnum.PREPARING
 
         # Setup service mocks (updated after refactoring - services are now instance attributes)
-        mock_protocol_definition_service.get_by_name = AsyncMock(return_value=mock_protocol_def_orm)
-        mock_protocol_run_service.create = AsyncMock(return_value=mock_run_orm)
+        mock_protocol_definition_service.get_by_name = AsyncMock(return_value=mock_protocol_def_model)
+        mock_protocol_run_service.create = AsyncMock(return_value=mock_run_model)
 
         # Mock run status updates
         async def side_effect_update(db, protocol_run_accession_id, new_status, **kwargs):
             nonlocal run_status
             run_status = new_status
-            mock_run_orm.status = new_status
-            return mock_run_orm
+            mock_run_model.status = new_status
+            return mock_run_model
 
         mock_protocol_run_service.update_run_status = AsyncMock(side_effect=side_effect_update)
 
@@ -1399,8 +1399,8 @@ class TestExecuteProtocolErrors:
         # Mock finalization
         finalization_called = []
 
-        async def mock_finalize(run_orm, state, assets, db):
-            finalization_called.append((run_orm, state, assets))
+        async def mock_finalize(run_model, state, assets, db):
+            finalization_called.append((run_model, state, assets))
 
         orchestrator._finalize_protocol_run = mock_finalize
 
@@ -1475,7 +1475,7 @@ class TestExecuteExistingProtocolRun:
 
         # Execute
         await orchestrator.execute_existing_protocol_run(
-            protocol_run_orm=mock_run,
+            protocol_run_model=mock_run,
             user_input_params={"param": "value"},
             initial_state_data={"state": "data"},
         )
@@ -1494,7 +1494,7 @@ class TestExecuteExistingProtocolRun:
         orchestrator._finalize_protocol_run.assert_called_once()
 
         # Verify ORM refreshed before finalization
-        mock_db_session.get.assert_called_with(ProtocolRunOrm, run_id)
+        mock_db_session.get.assert_called_with(ProtocolRun, run_id)
 
     @pytest.mark.asyncio
     async def test_execute_existing_protocol_run_no_definition(self) -> None:
@@ -1521,7 +1521,7 @@ class TestExecuteExistingProtocolRun:
 
         # Execute and verify error
         with pytest.raises(ValueError, match="Protocol definition not found"):
-            await orchestrator.execute_existing_protocol_run(protocol_run_orm=mock_run)
+            await orchestrator.execute_existing_protocol_run(protocol_run_model=mock_run)
 
         # Verify status updated to FAILED
         orchestrator.protocol_run_service.update_run_status.assert_called_once()
@@ -1569,7 +1569,7 @@ class TestExecuteExistingProtocolRun:
         orchestrator._finalize_protocol_run = AsyncMock()
 
         # Execute
-        await orchestrator.execute_existing_protocol_run(protocol_run_orm=mock_run)
+        await orchestrator.execute_existing_protocol_run(protocol_run_model=mock_run)
 
         # Verify status updated from QUEUED to RUNNING
         assert any(
@@ -1622,7 +1622,7 @@ class TestExecuteExistingProtocolRun:
         orchestrator._finalize_protocol_run = AsyncMock()
 
         # Execute - should not raise
-        await orchestrator.execute_existing_protocol_run(protocol_run_orm=mock_run)
+        await orchestrator.execute_existing_protocol_run(protocol_run_model=mock_run)
 
         # Verify finalization still called
         orchestrator._finalize_protocol_run.assert_called_once()
@@ -1673,7 +1673,7 @@ class TestExecuteExistingProtocolRun:
         orchestrator._finalize_protocol_run = AsyncMock()
 
         # Execute
-        await orchestrator.execute_existing_protocol_run(protocol_run_orm=mock_run)
+        await orchestrator.execute_existing_protocol_run(protocol_run_model=mock_run)
 
         # Verify error handler called
         orchestrator._handle_protocol_execution_error.assert_called_once()
@@ -1721,7 +1721,7 @@ class TestExecuteExistingProtocolRun:
         orchestrator._finalize_protocol_run = AsyncMock()
 
         # Execute - should not crash even if ORM not found
-        await orchestrator.execute_existing_protocol_run(protocol_run_orm=mock_run)
+        await orchestrator.execute_existing_protocol_run(protocol_run_model=mock_run)
 
         # Verify finalization NOT called (ORM was None)
         orchestrator._finalize_protocol_run.assert_not_called()
@@ -1778,7 +1778,7 @@ class TestExecuteExistingProtocolRun:
         orchestrator._finalize_protocol_run = AsyncMock()
 
         # Execute
-        await orchestrator.execute_existing_protocol_run(protocol_run_orm=mock_run)
+        await orchestrator.execute_existing_protocol_run(protocol_run_model=mock_run)
 
         # Verify rollback was called after commit failure
         mock_db_session.rollback.assert_called_once()

@@ -1,4 +1,4 @@
-"""Unit tests for AssetReservationOrm model."""
+"""Unit tests for AssetReservationmodel."""
 from collections.abc import Callable
 from datetime import datetime, timezone
 
@@ -11,20 +11,22 @@ from praxis.backend.models.enums import (
     AssetReservationStatusEnum,
     AssetType,
 )
-from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.orm.protocol import (
-    FileSystemProtocolSourceOrm,
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-    ProtocolSourceRepositoryOrm,
+from praxis.backend.models.domain.machine import Machine
+from praxis.backend.models.domain.protocol import (
+    FunctionProtocolDefinition,
+    ProtocolRun,
 )
-from praxis.backend.models.orm.schedule import AssetReservationOrm, ScheduleEntryOrm
+from praxis.backend.models.domain.protocol_source import (
+    FileSystemProtocolSource,
+    ProtocolSourceRepository,
+)
+from praxis.backend.models.domain.schedule import AssetReservation, ScheduleEntry
 
 
 @pytest_asyncio.fixture
-async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepositoryOrm:
-    """Create a ProtocolSourceRepositoryOrm for testing."""
-    repo = ProtocolSourceRepositoryOrm(
+async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepository:
+    """Create a ProtocolSourceRepositoryfor testing."""
+    repo = ProtocolSourceRepository(
         name="test-repo",
         git_url="https://github.com/test/repo.git",
     )
@@ -34,9 +36,9 @@ async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepositor
 
 
 @pytest_asyncio.fixture
-async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSourceOrm:
-    """Create a FileSystemProtocolSourceOrm for testing."""
-    source = FileSystemProtocolSourceOrm(
+async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSource:
+    """Create a FileSystemProtocolSourcefor testing."""
+    source = FileSystemProtocolSource(
         name="test-fs-source",
         base_path="/tmp/protocols",
     )
@@ -48,11 +50,11 @@ async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSour
 @pytest_asyncio.fixture
 async def protocol_definition(
     db_session: AsyncSession,
-    source_repository: ProtocolSourceRepositoryOrm,
-    file_system_source: FileSystemProtocolSourceOrm,
-) -> FunctionProtocolDefinitionOrm:
-    """Create a FunctionProtocolDefinitionOrm for testing."""
-    protocol = FunctionProtocolDefinitionOrm(
+    source_repository: ProtocolSourceRepository,
+    file_system_source: FileSystemProtocolSource,
+) -> FunctionProtocolDefinition:
+    """Create a FunctionProtocolDefinitionfor testing."""
+    protocol = FunctionProtocolDefinition(
         name="test_protocol",
         fqn="test.protocols.test_protocol",
         version="1.0.0",
@@ -68,12 +70,12 @@ async def protocol_definition(
 @pytest_asyncio.fixture
 def protocol_run_factory(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
-) -> Callable[[], ProtocolRunOrm]:
-    """Create a ProtocolRunOrm factory for testing."""
+    protocol_definition: FunctionProtocolDefinition,
+) -> Callable[[], ProtocolRun]:
+    """Create a ProtocolRunfactory for testing."""
 
-    async def _factory() -> ProtocolRunOrm:
-        run = ProtocolRunOrm(
+    async def _factory() -> ProtocolRun:
+        run = ProtocolRun(
             name="test_protocol_run",
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         )
@@ -87,11 +89,11 @@ def protocol_run_factory(
 @pytest_asyncio.fixture
 def schedule_entry_factory(
     db_session: AsyncSession,
-) -> Callable[[ProtocolRunOrm], ScheduleEntryOrm]:
-    """Create a ScheduleEntryOrm factory for testing."""
+) -> Callable[[ProtocolRun], ScheduleEntry]:
+    """Create a ScheduleEntryfactory for testing."""
 
-    async def _factory(protocol_run: ProtocolRunOrm) -> ScheduleEntryOrm:
-        entry = ScheduleEntryOrm(
+    async def _factory(protocol_run: ProtocolRun) -> ScheduleEntry:
+        entry = ScheduleEntry(
             protocol_run=protocol_run,
             name="test_schedule_entry",
             scheduled_at=datetime.now(timezone.utc),
@@ -108,9 +110,9 @@ def schedule_entry_factory(
 
 
 @pytest_asyncio.fixture
-async def machine_asset(db_session: AsyncSession) -> MachineOrm:
-    """Create a MachineOrm asset for reservation testing."""
-    machine = MachineOrm(
+async def machine_asset(db_session: AsyncSession) -> Machine:
+    """Create a Machineasset for reservation testing."""
+    machine = Machine(
         name="test_machine_reservation",
         fqn="test.machines.TestMachine",
         asset_type=AssetType.MACHINE,
@@ -123,14 +125,14 @@ async def machine_asset(db_session: AsyncSession) -> MachineOrm:
 @pytest.mark.asyncio
 async def test_asset_reservation_orm_creation_minimal(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    schedule_entry_factory: Callable[[ProtocolRunOrm], ScheduleEntryOrm],
-    machine_asset: MachineOrm,
+    protocol_run_factory: Callable[[], ProtocolRun],
+    schedule_entry_factory: Callable[[ProtocolRun], ScheduleEntry],
+    machine_asset: Machine,
 ) -> None:
-    """Test creating AssetReservationOrm with minimal required fields."""
+    """Test creating AssetReservationwith minimal required fields."""
     protocol_run = await protocol_run_factory()
     schedule_entry = await schedule_entry_factory(protocol_run)
-    reservation = AssetReservationOrm(
+    reservation = AssetReservation(
         name="test_reservation",
         protocol_run_accession_id=protocol_run.accession_id,
         schedule_entry_accession_id=schedule_entry.accession_id,
@@ -160,15 +162,15 @@ async def test_asset_reservation_orm_creation_minimal(
 @pytest.mark.asyncio
 async def test_asset_reservation_orm_creation_with_all_fields(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    schedule_entry_factory: Callable[[ProtocolRunOrm], ScheduleEntryOrm],
-    machine_asset: MachineOrm,
+    protocol_run_factory: Callable[[], ProtocolRun],
+    schedule_entry_factory: Callable[[ProtocolRun], ScheduleEntry],
+    machine_asset: Machine,
 ) -> None:
-    """Test creating AssetReservationOrm with all fields populated."""
+    """Test creating AssetReservationwith all fields populated."""
     protocol_run = await protocol_run_factory()
     schedule_entry = await schedule_entry_factory(protocol_run)
     now = datetime.now(timezone.utc)
-    reservation = AssetReservationOrm(
+    reservation = AssetReservation(
         name="test_reservation_all_fields",
         protocol_run_accession_id=protocol_run.accession_id,
         schedule_entry_accession_id=schedule_entry.accession_id,
@@ -192,14 +194,14 @@ async def test_asset_reservation_orm_creation_with_all_fields(
 @pytest.mark.asyncio
 async def test_asset_reservation_orm_persist_to_database(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    schedule_entry_factory: Callable[[ProtocolRunOrm], ScheduleEntryOrm],
-    machine_asset: MachineOrm,
+    protocol_run_factory: Callable[[], ProtocolRun],
+    schedule_entry_factory: Callable[[ProtocolRun], ScheduleEntry],
+    machine_asset: Machine,
 ) -> None:
-    """Test full persistence cycle for AssetReservationOrm."""
+    """Test full persistence cycle for AssetReservation."""
     protocol_run = await protocol_run_factory()
     schedule_entry = await schedule_entry_factory(protocol_run)
-    reservation = AssetReservationOrm(
+    reservation = AssetReservation(
         name="test_reservation_persist",
         protocol_run_accession_id=protocol_run.accession_id,
         schedule_entry_accession_id=schedule_entry.accession_id,
@@ -212,8 +214,8 @@ async def test_asset_reservation_orm_persist_to_database(
     await db_session.commit()
 
     result = await db_session.execute(
-        select(AssetReservationOrm).where(
-            AssetReservationOrm.accession_id == reservation.accession_id,
+        select(AssetReservation).where(
+            AssetReservation.accession_id == reservation.accession_id,
         ),
     )
     retrieved_reservation = result.scalar_one()
@@ -226,15 +228,15 @@ async def test_asset_reservation_orm_persist_to_database(
 @pytest.mark.asyncio
 async def test_asset_reservation_orm_status_transitions(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    schedule_entry_factory: Callable[[ProtocolRunOrm], ScheduleEntryOrm],
-    machine_asset: MachineOrm,
+    protocol_run_factory: Callable[[], ProtocolRun],
+    schedule_entry_factory: Callable[[ProtocolRun], ScheduleEntry],
+    machine_asset: Machine,
 ) -> None:
     """Test different status values for asset reservations."""
     for status in AssetReservationStatusEnum:
         protocol_run = await protocol_run_factory()
         schedule_entry = await schedule_entry_factory(protocol_run)
-        reservation = AssetReservationOrm(
+        reservation = AssetReservation(
             name=f"test_reservation_{status.value}",
             protocol_run_accession_id=protocol_run.accession_id,
             schedule_entry_accession_id=schedule_entry.accession_id,
@@ -250,7 +252,7 @@ async def test_asset_reservation_orm_status_transitions(
 
     for status in AssetReservationStatusEnum:
         result = await db_session.execute(
-            select(AssetReservationOrm).where(AssetReservationOrm.status == status),
+            select(AssetReservation).where(AssetReservation.status == status),
         )
         reservation = result.scalar_one_or_none()
         assert reservation is not None
@@ -260,14 +262,14 @@ async def test_asset_reservation_orm_status_transitions(
 @pytest.mark.asyncio
 async def test_asset_reservation_orm_redis_lock_fields(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    schedule_entry_factory: Callable[[ProtocolRunOrm], ScheduleEntryOrm],
-    machine_asset: MachineOrm,
+    protocol_run_factory: Callable[[], ProtocolRun],
+    schedule_entry_factory: Callable[[ProtocolRun], ScheduleEntry],
+    machine_asset: Machine,
 ) -> None:
     """Test Redis lock tracking fields."""
     protocol_run = await protocol_run_factory()
     schedule_entry = await schedule_entry_factory(protocol_run)
-    reservation = AssetReservationOrm(
+    reservation = AssetReservation(
         name="test_reservation_redis",
         protocol_run_accession_id=protocol_run.accession_id,
         schedule_entry_accession_id=schedule_entry.accession_id,
@@ -289,15 +291,15 @@ async def test_asset_reservation_orm_redis_lock_fields(
 @pytest.mark.asyncio
 async def test_asset_reservation_orm_timing_fields(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    schedule_entry_factory: Callable[[ProtocolRunOrm], ScheduleEntryOrm],
-    machine_asset: MachineOrm,
+    protocol_run_factory: Callable[[], ProtocolRun],
+    schedule_entry_factory: Callable[[ProtocolRun], ScheduleEntry],
+    machine_asset: Machine,
 ) -> None:
     """Test reservation timing fields."""
     protocol_run = await protocol_run_factory()
     schedule_entry = await schedule_entry_factory(protocol_run)
     now = datetime.now(timezone.utc)
-    reservation = AssetReservationOrm(
+    reservation = AssetReservation(
         name="test_reservation_timing",
         protocol_run_accession_id=protocol_run.accession_id,
         schedule_entry_accession_id=schedule_entry.accession_id,
@@ -316,15 +318,15 @@ async def test_asset_reservation_orm_timing_fields(
 @pytest.mark.asyncio
 async def test_asset_reservation_orm_asset_type_field(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    schedule_entry_factory: Callable[[ProtocolRunOrm], ScheduleEntryOrm],
-    machine_asset: MachineOrm,
+    protocol_run_factory: Callable[[], ProtocolRun],
+    schedule_entry_factory: Callable[[ProtocolRun], ScheduleEntry],
+    machine_asset: Machine,
 ) -> None:
     """Test asset_type field for different asset types."""
     for asset_type in list(AssetType):
         protocol_run = await protocol_run_factory()
         schedule_entry = await schedule_entry_factory(protocol_run)
-        reservation = AssetReservationOrm(
+        reservation = AssetReservation(
             name=f"test_reservation_{asset_type.value}",
             protocol_run_accession_id=protocol_run.accession_id,
             schedule_entry_accession_id=schedule_entry.accession_id,
@@ -340,8 +342,8 @@ async def test_asset_reservation_orm_asset_type_field(
 
     for asset_type in list(AssetType):
         result = await db_session.execute(
-            select(AssetReservationOrm).where(
-                AssetReservationOrm.asset_type == asset_type,
+            select(AssetReservation).where(
+                AssetReservation.asset_type == asset_type,
             ),
         )
         reservation = result.scalars().first()
@@ -352,14 +354,14 @@ async def test_asset_reservation_orm_asset_type_field(
 @pytest.mark.asyncio
 async def test_asset_reservation_orm_relationship_to_protocol_run(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    schedule_entry_factory: Callable[[ProtocolRunOrm], ScheduleEntryOrm],
-    machine_asset: MachineOrm,
+    protocol_run_factory: Callable[[], ProtocolRun],
+    schedule_entry_factory: Callable[[ProtocolRun], ScheduleEntry],
+    machine_asset: Machine,
 ) -> None:
-    """Test relationship between AssetReservationOrm and ProtocolRunOrm."""
+    """Test relationship between AssetReservationand ProtocolRun."""
     protocol_run = await protocol_run_factory()
     schedule_entry = await schedule_entry_factory(protocol_run)
-    reservation = AssetReservationOrm(
+    reservation = AssetReservation(
         name="test_reservation_relationship_run",
         protocol_run_accession_id=protocol_run.accession_id,
         schedule_entry_accession_id=schedule_entry.accession_id,
@@ -381,14 +383,14 @@ async def test_asset_reservation_orm_relationship_to_protocol_run(
 @pytest.mark.asyncio
 async def test_asset_reservation_orm_relationship_to_schedule_entry(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    schedule_entry_factory: Callable[[ProtocolRunOrm], ScheduleEntryOrm],
-    machine_asset: MachineOrm,
+    protocol_run_factory: Callable[[], ProtocolRun],
+    schedule_entry_factory: Callable[[ProtocolRun], ScheduleEntry],
+    machine_asset: Machine,
 ) -> None:
-    """Test relationship between AssetReservationOrm and ScheduleEntryOrm."""
+    """Test relationship between AssetReservationand ScheduleEntry."""
     protocol_run = await protocol_run_factory()
     schedule_entry = await schedule_entry_factory(protocol_run)
-    reservation = AssetReservationOrm(
+    reservation = AssetReservation(
         name="test_reservation_relationship_schedule",
         protocol_run_accession_id=protocol_run.accession_id,
         schedule_entry_accession_id=schedule_entry.accession_id,
@@ -410,14 +412,14 @@ async def test_asset_reservation_orm_relationship_to_schedule_entry(
 @pytest.mark.asyncio
 async def test_asset_reservation_orm_relationship_to_asset(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    schedule_entry_factory: Callable[[ProtocolRunOrm], ScheduleEntryOrm],
-    machine_asset: MachineOrm,
+    protocol_run_factory: Callable[[], ProtocolRun],
+    schedule_entry_factory: Callable[[ProtocolRun], ScheduleEntry],
+    machine_asset: Machine,
 ) -> None:
-    """Test relationship between AssetReservationOrm and AssetOrm."""
+    """Test relationship between AssetReservationand Asset."""
     protocol_run = await protocol_run_factory()
     schedule_entry = await schedule_entry_factory(protocol_run)
-    reservation = AssetReservationOrm(
+    reservation = AssetReservation(
         name="test_reservation_relationship_asset",
         protocol_run_accession_id=protocol_run.accession_id,
         schedule_entry_accession_id=schedule_entry.accession_id,
@@ -439,9 +441,9 @@ async def test_asset_reservation_orm_relationship_to_asset(
 @pytest.mark.asyncio
 async def test_asset_reservation_orm_query_by_status(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    schedule_entry_factory: Callable[[ProtocolRunOrm], ScheduleEntryOrm],
-    machine_asset: MachineOrm,
+    protocol_run_factory: Callable[[], ProtocolRun],
+    schedule_entry_factory: Callable[[ProtocolRun], ScheduleEntry],
+    machine_asset: Machine,
 ) -> None:
     """Test querying asset reservations by status."""
     statuses = [
@@ -452,7 +454,7 @@ async def test_asset_reservation_orm_query_by_status(
     for i, status in enumerate(statuses):
         run = await protocol_run_factory()
         entry = await schedule_entry_factory(run)
-        reservation = AssetReservationOrm(
+        reservation = AssetReservation(
             name=f"test_reservation_{i}",
             protocol_run_accession_id=run.accession_id,
             schedule_entry_accession_id=entry.accession_id,
@@ -466,16 +468,16 @@ async def test_asset_reservation_orm_query_by_status(
     await db_session.flush()
 
     result = await db_session.execute(
-        select(AssetReservationOrm).where(
-            AssetReservationOrm.status == AssetReservationStatusEnum.PENDING,
+        select(AssetReservation).where(
+            AssetReservation.status == AssetReservationStatusEnum.PENDING,
         ),
     )
     pending_reservations = result.scalars().all()
     assert len(pending_reservations) == 2
 
     result = await db_session.execute(
-        select(AssetReservationOrm).where(
-            AssetReservationOrm.status == AssetReservationStatusEnum.RESERVED,
+        select(AssetReservation).where(
+            AssetReservation.status == AssetReservationStatusEnum.RESERVED,
         ),
     )
     reserved_reservations = result.scalars().all()
@@ -485,9 +487,9 @@ async def test_asset_reservation_orm_query_by_status(
 @pytest.mark.asyncio
 async def test_asset_reservation_orm_query_active_reservations(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    schedule_entry_factory: Callable[[ProtocolRunOrm], ScheduleEntryOrm],
-    machine_asset: MachineOrm,
+    protocol_run_factory: Callable[[], ProtocolRun],
+    schedule_entry_factory: Callable[[ProtocolRun], ScheduleEntry],
+    machine_asset: Machine,
 ) -> None:
     """Test querying currently active asset reservations."""
     statuses = [
@@ -498,7 +500,7 @@ async def test_asset_reservation_orm_query_active_reservations(
     for i, status in enumerate(statuses):
         run = await protocol_run_factory()
         entry = await schedule_entry_factory(run)
-        reservation = AssetReservationOrm(
+        reservation = AssetReservation(
             name=f"test_reservation_{i}",
             protocol_run_accession_id=run.accession_id,
             schedule_entry_accession_id=entry.accession_id,
@@ -512,8 +514,8 @@ async def test_asset_reservation_orm_query_active_reservations(
     await db_session.flush()
 
     result = await db_session.execute(
-        select(AssetReservationOrm).where(
-            AssetReservationOrm.status.in_(
+        select(AssetReservation).where(
+            AssetReservation.status.in_(
                 [
                     AssetReservationStatusEnum.ACTIVE,
                     AssetReservationStatusEnum.RESERVED,
@@ -528,15 +530,15 @@ async def test_asset_reservation_orm_query_active_reservations(
 @pytest.mark.asyncio
 async def test_asset_reservation_orm_query_by_asset(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    schedule_entry_factory: Callable[[ProtocolRunOrm], ScheduleEntryOrm],
-    machine_asset: MachineOrm,
+    protocol_run_factory: Callable[[], ProtocolRun],
+    schedule_entry_factory: Callable[[ProtocolRun], ScheduleEntry],
+    machine_asset: Machine,
 ) -> None:
     """Test querying reservations for a specific asset."""
     for i in range(3):
         run = await protocol_run_factory()
         entry = await schedule_entry_factory(run)
-        reservation = AssetReservationOrm(
+        reservation = AssetReservation(
             name=f"test_reservation_{i}",
             protocol_run_accession_id=run.accession_id,
             schedule_entry_accession_id=entry.accession_id,
@@ -549,8 +551,8 @@ async def test_asset_reservation_orm_query_by_asset(
     await db_session.flush()
 
     result = await db_session.execute(
-        select(AssetReservationOrm).where(
-            AssetReservationOrm.asset_accession_id == machine_asset.accession_id,
+        select(AssetReservation).where(
+            AssetReservation.asset_accession_id == machine_asset.accession_id,
         ),
     )
     reservations = result.scalars().all()
@@ -560,15 +562,15 @@ async def test_asset_reservation_orm_query_by_asset(
 @pytest.mark.asyncio
 async def test_multiple_reservations_for_same_run(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    schedule_entry_factory: Callable[[ProtocolRunOrm], ScheduleEntryOrm],
-    machine_asset: MachineOrm,
+    protocol_run_factory: Callable[[], ProtocolRun],
+    schedule_entry_factory: Callable[[ProtocolRun], ScheduleEntry],
+    machine_asset: Machine,
 ) -> None:
     """Test that multiple asset reservations can be created for the same protocol run."""
     protocol_run = await protocol_run_factory()
     schedule_entry = await schedule_entry_factory(protocol_run)
 
-    reservation1 = AssetReservationOrm(
+    reservation1 = AssetReservation(
         name="test_reservation_1",
         protocol_run_accession_id=protocol_run.accession_id,
         schedule_entry_accession_id=schedule_entry.accession_id,
@@ -580,7 +582,7 @@ async def test_multiple_reservations_for_same_run(
     db_session.add(reservation1)
 
     # Create another asset to reserve
-    machine2 = MachineOrm(
+    machine2 = Machine(
         name="test_machine_reservation_2",
         fqn="test.machines.TestMachine2",
         asset_type=AssetType.MACHINE,
@@ -588,7 +590,7 @@ async def test_multiple_reservations_for_same_run(
     db_session.add(machine2)
     await db_session.flush()
 
-    reservation2 = AssetReservationOrm(
+    reservation2 = AssetReservation(
         name="test_reservation_2",
         protocol_run_accession_id=protocol_run.accession_id,
         schedule_entry_accession_id=schedule_entry.accession_id,
@@ -601,8 +603,8 @@ async def test_multiple_reservations_for_same_run(
     await db_session.flush()
 
     result = await db_session.execute(
-        select(AssetReservationOrm).where(
-            AssetReservationOrm.protocol_run_accession_id == protocol_run.accession_id,
+        select(AssetReservation).where(
+            AssetReservation.protocol_run_accession_id == protocol_run.accession_id,
         ),
     )
     reservations = result.scalars().all()

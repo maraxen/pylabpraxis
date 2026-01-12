@@ -9,13 +9,21 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.domain.deck import Deck, DeckDefinition
+from praxis.backend.models.domain.machine import Machine
+from praxis.backend.models.domain.outputs import FunctionDataOutput, WellDataOutput
+from praxis.backend.models.domain.protocol import (
+    FunctionCallLog,
+    FunctionProtocolDefinition,
+    ProtocolRun,
+)
+from praxis.backend.models.domain.protocol_source import (
+    FileSystemProtocolSource,
+    ProtocolSourceRepository,
+)
+from praxis.backend.models.domain.resource import Resource, ResourceDefinition
+from praxis.backend.models.domain.workcell import Workcell
 from praxis.backend.models.enums import AssetType, ProtocolRunStatusEnum, ResourceStatusEnum
-from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
-from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.orm.outputs import FunctionDataOutputOrm, WellDataOutputOrm
-from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm, ProtocolRunOrm
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
-from praxis.backend.models.orm.workcell import WorkcellOrm
 from praxis.backend.utils.uuid import uuid7
 
 
@@ -23,7 +31,7 @@ async def create_workcell(
     db_session: AsyncSession,
     name: str = "test_workcell",
     **kwargs: Any,
-) -> WorkcellOrm:
+) -> Workcell:
     """Create a workcell for testing.
 
     Args:
@@ -32,11 +40,11 @@ async def create_workcell(
         **kwargs: Additional attributes to set on the workcell
 
     Returns:
-        WorkcellOrm instance with generated accession_id
+        Workcell instance with generated accession_id
 
     """
     accession_id = kwargs.pop("accession_id", None)
-    workcell = WorkcellOrm(name=name, **kwargs)
+    workcell = Workcell(name=name, **kwargs)
     if accession_id:
         workcell.accession_id = accession_id
     db_session.add(workcell)
@@ -46,11 +54,11 @@ async def create_workcell(
 
 async def create_machine(
     db_session: AsyncSession,
-    workcell: WorkcellOrm | None = None,
+    workcell: Workcell | None = None,
     name: str | None = None,
     fqn: str = "test.machine",
     **kwargs: Any,
-) -> MachineOrm:
+) -> Machine:
     """Create a machine for testing.
 
     Args:
@@ -61,7 +69,7 @@ async def create_machine(
         **kwargs: Additional attributes to set on the machine
 
     Returns:
-        MachineOrm instance with generated accession_id
+        Machine instance with generated accession_id
 
     """
     if workcell is None:
@@ -79,7 +87,7 @@ async def create_machine(
     if "asset_type" not in kwargs:
         kwargs["asset_type"] = AssetType.MACHINE
 
-    machine = MachineOrm(
+    machine = Machine(
         name=name,
         fqn=fqn,
         **kwargs,
@@ -97,7 +105,7 @@ async def create_resource_definition(
     name: str = "test_resource_definition",
     fqn: str = "test.resource.definition",
     **kwargs: Any,
-) -> ResourceDefinitionOrm:
+) -> ResourceDefinition:
     """Create a resource definition for testing.
 
     Args:
@@ -107,10 +115,10 @@ async def create_resource_definition(
         **kwargs: Additional attributes to set on the resource definition
 
     Returns:
-        ResourceDefinitionOrm instance
+        ResourceDefinition instance
 
     """
-    resource_def = ResourceDefinitionOrm(
+    resource_def = ResourceDefinition(
         name=name,
         fqn=fqn,
         **kwargs,
@@ -123,9 +131,9 @@ async def create_resource_definition(
 async def create_resource(
     db_session: AsyncSession,
     name: str | None = None,
-    resource_definition: ResourceDefinitionOrm | None = None,
+    resource_definition: ResourceDefinition | None = None,
     **kwargs: Any,
-) -> ResourceOrm:
+) -> Resource:
     """Create a resource for testing.
 
     Args:
@@ -135,7 +143,7 @@ async def create_resource(
         **kwargs: Additional attributes to set on the resource
 
     Returns:
-        ResourceOrm instance
+        Resource instance
 
     """
     # Generate unique name if not provided
@@ -161,7 +169,7 @@ async def create_resource(
     defaults.update(kwargs)
 
     accession_id = defaults.pop("accession_id", None)
-    resource = ResourceOrm(**defaults)
+    resource = Resource(**defaults)
     if accession_id:
         resource.accession_id = accession_id
     db_session.add(resource)
@@ -171,11 +179,11 @@ async def create_resource(
 
 async def create_deck_definition(
     db_session: AsyncSession,
-    resource_definition: ResourceDefinitionOrm | None = None,
+    resource_definition: ResourceDefinition | None = None,
     name: str = "test_deck_definition",
     fqn: str = "test.deck.definition",
     **kwargs: Any,
-) -> DeckDefinitionOrm:
+) -> DeckDefinition:
     """Create a deck definition for testing.
 
     Args:
@@ -186,16 +194,17 @@ async def create_deck_definition(
         **kwargs: Additional attributes to set on the deck definition
 
     Returns:
-        DeckDefinitionOrm instance with generated accession_id
+        DeckDefinition instance with generated accession_id
 
     """
     if resource_definition is None:
         resource_definition = await create_resource_definition(db_session)
 
-    deck_def = DeckDefinitionOrm(
+    deck_def = DeckDefinition(
         name=name,
         fqn=fqn,
-        resource_definition=resource_definition,
+        # resource_definition=resource_definition, # Relationship deprecated/removed?
+        resource_definition_accession_id=resource_definition.accession_id,
         **kwargs,
     )
     db_session.add(deck_def)
@@ -205,11 +214,11 @@ async def create_deck_definition(
 
 async def create_deck(
     db_session: AsyncSession,
-    machine: MachineOrm | None = None,
-    deck_definition: DeckDefinitionOrm | None = None,
+    machine: Machine | None = None,
+    deck_definition: DeckDefinition | None = None,
     name: str = "test_deck",
     **kwargs: Any,
-) -> DeckOrm:
+) -> Deck:
     """Create a deck for testing.
 
     Args:
@@ -220,7 +229,7 @@ async def create_deck(
         **kwargs: Additional attributes to set on the deck
 
     Returns:
-        DeckOrm instance with generated accession_id
+        Deck instance with generated accession_id
 
     """
     if machine is None:
@@ -234,11 +243,11 @@ async def create_deck(
         kwargs["asset_type"] = AssetType.DECK
 
     accession_id = kwargs.pop("accession_id", None)
-    deck = DeckOrm(
+    deck = Deck(
         name=name,
         deck_type_id=deck_definition.accession_id,
         parent_machine_accession_id=machine.accession_id,
-        resource_definition_accession_id=deck_definition.resource_definition.accession_id,
+        resource_definition_accession_id=deck_definition.resource_definition_accession_id, # Updated field name logic
         **kwargs,
     )
     if accession_id:
@@ -254,7 +263,7 @@ async def create_protocol_definition(
     db_session: AsyncSession,
     name: str | None = None,
     **kwargs: Any,
-) -> FunctionProtocolDefinitionOrm:
+) -> FunctionProtocolDefinition:
     """Create a protocol definition for testing.
 
     Args:
@@ -263,12 +272,12 @@ async def create_protocol_definition(
         **kwargs: Additional attributes to set on the protocol definition
 
     Returns:
-        FunctionProtocolDefinitionOrm instance
+        FunctionProtocolDefinition instance
 
     """
-    from praxis.backend.models.orm.protocol import (
-        FileSystemProtocolSourceOrm,
-        ProtocolSourceRepositoryOrm,
+    from praxis.backend.models.domain.protocol_source import (
+        FileSystemProtocolSource,
+        ProtocolSourceRepository,
     )
 
     # Generate unique name if not provided
@@ -277,7 +286,7 @@ async def create_protocol_definition(
 
     # Create a file system source if not provided
     if "file_system_source" not in kwargs:
-        fs_source = FileSystemProtocolSourceOrm(
+        fs_source = FileSystemProtocolSource(
             name=f"test_fs_source_{uuid7()!s}",
             base_path="/test/protocols",
         )
@@ -287,7 +296,7 @@ async def create_protocol_definition(
 
     # Create source repository if not provided (required kw_only arg)
     if "source_repository" not in kwargs:
-        repo = ProtocolSourceRepositoryOrm(
+        repo = ProtocolSourceRepository(
             name=f"test_repo_{uuid7()!s}",
             git_url="https://github.com/test/test.git",
         )
@@ -316,13 +325,13 @@ async def create_protocol_definition(
     if source_repository:
         defaults["source_repository_accession_id"] = source_repository.accession_id
 
-    protocol_def = FunctionProtocolDefinitionOrm(**defaults)
+    protocol_def = FunctionProtocolDefinition(**defaults)
 
     # Manually assign relationships since init=False
-    if file_system_source:
-        protocol_def.file_system_source = file_system_source
-    if source_repository:
-        protocol_def.source_repository = source_repository
+    # if file_system_source:
+    #     protocol_def.file_system_source = file_system_source
+    # if source_repository:
+    #     protocol_def.source_repository = source_repository
     db_session.add(protocol_def)
     await db_session.flush()
     return protocol_def
@@ -330,9 +339,9 @@ async def create_protocol_definition(
 
 async def create_protocol_run(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm | None = None,
+    protocol_definition: FunctionProtocolDefinition | None = None,
     **kwargs: Any,
-) -> ProtocolRunOrm:
+) -> ProtocolRun:
     """Create a protocol run for testing.
 
     Args:
@@ -341,7 +350,7 @@ async def create_protocol_run(
         **kwargs: Additional attributes to set on the protocol run
 
     Returns:
-        ProtocolRunOrm instance
+        ProtocolRun instance
 
     """
     # Create protocol definition if not provided
@@ -362,7 +371,7 @@ async def create_protocol_run(
     # Extract accession_id before creating ORM (it's init=False)
     accession_id = defaults.pop("accession_id", uuid7())
 
-    protocol_run = ProtocolRunOrm(**defaults)
+    protocol_run = ProtocolRun(**defaults)
     # Set accession_id manually
     protocol_run.accession_id = accession_id
 
@@ -373,9 +382,9 @@ async def create_protocol_run(
 
 async def create_function_data_output(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm | None = None,
+    protocol_run: ProtocolRun | None = None,
     **kwargs: Any,
-) -> FunctionDataOutputOrm:
+) -> FunctionDataOutput:
     """Create a function data output for testing.
 
     Args:
@@ -384,11 +393,11 @@ async def create_function_data_output(
         **kwargs: Additional attributes to set on the data output
 
     Returns:
-        FunctionDataOutputOrm instance
+        FunctionDataOutput instance
 
     """
-    from praxis.backend.models.enums.outputs import DataOutputTypeEnum
-    from praxis.backend.models.orm.protocol import FunctionCallLogOrm
+    from praxis.backend.models.enums import DataOutputTypeEnum
+    from praxis.backend.models.domain.protocol import FunctionCallLog
 
     # Create protocol run if not provided
     if protocol_run is None:
@@ -400,7 +409,7 @@ async def create_function_data_output(
         name=f"test_protocol_for_fcl_{uuid7()!s}",
     )
 
-    function_call_log = FunctionCallLogOrm(
+    function_call_log = FunctionCallLog(
         name=f"test_function_call_log_{uuid7()!s}",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -414,19 +423,19 @@ async def create_function_data_output(
         "name": f"test_data_output_{uuid7()!s}",
         "data_key": f"test_output_{uuid7()!s}",
         "data_type": DataOutputTypeEnum.GENERIC_MEASUREMENT,
-        "data_value_json": {"value": 42},
+        "data_json": {"value": 42}, # Updated field name data_value_json -> data_json in Domain
     }
     defaults.update(kwargs)
 
     # Create ORM with FK IDs only (MappedAsDataclass pattern)
-    data_output = FunctionDataOutputOrm(
+    data_output = FunctionDataOutput(
         **defaults,
         protocol_run_accession_id=protocol_run.accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
     )
     # Assign relationships after construction (required for init=False fields)
-    data_output.protocol_run = protocol_run
-    data_output.function_call_log = function_call_log
+    # data_output.protocol_run = protocol_run
+    # data_output.function_call_log = function_call_log
 
     db_session.add(data_output)
     await db_session.flush()
@@ -435,10 +444,10 @@ async def create_function_data_output(
 
 async def create_well_data_output(
     db_session: AsyncSession,
-    plate_resource: ResourceOrm | None = None,
-    function_data_output: FunctionDataOutputOrm | None = None,
+    plate_resource: Resource | None = None,
+    function_data_output: FunctionDataOutput | None = None,
     **kwargs: Any,
-) -> WellDataOutputOrm:
+) -> WellDataOutput:
     """Create a well data output for testing.
 
     Args:
@@ -448,7 +457,7 @@ async def create_well_data_output(
         **kwargs: Additional attributes to set on the well data output
 
     Returns:
-        WellDataOutputOrm instance
+        WellDataOutput instance
 
     """
     # Create plate resource if not provided
@@ -469,14 +478,14 @@ async def create_well_data_output(
     defaults.update(kwargs)
 
     # Create ORM with FK IDs only (MappedAsDataclass pattern)
-    well_output = WellDataOutputOrm(
+    well_output = WellDataOutput(
         **defaults,
         function_data_output_accession_id=function_data_output.accession_id,
         plate_resource_accession_id=plate_resource.accession_id,
     )
     # Assign relationships after construction (required for init=False fields)
-    well_output.function_data_output = function_data_output
-    well_output.plate_resource = plate_resource
+    # well_output.function_data_output = function_data_output
+    # well_output.plate_resource = plate_resource
 
     db_session.add(well_output)
     await db_session.flush()

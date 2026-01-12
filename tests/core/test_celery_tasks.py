@@ -188,17 +188,17 @@ class TestExecuteProtocolAsyncInternal:
 
         mock_session_factory = Mock(return_value=mock_session_ctx)
 
-        mock_run_orm = Mock()
-        mock_run_orm.accession_id = protocol_run_id
-        mock_run_orm.status = ProtocolRunStatusEnum.COMPLETED
+        mock_run_model = Mock()
+        mock_run_model.accession_id = protocol_run_id
+        mock_run_model.status = ProtocolRunStatusEnum.COMPLETED
 
         mock_service = Mock()
-        mock_service.get = AsyncMock(return_value=mock_run_orm)
+        mock_service.get = AsyncMock(return_value=mock_run_model)
         mock_service.update_run_status = AsyncMock()
 
         mock_orchestrator = Mock()
         mock_orchestrator.execute_existing_protocol_run = AsyncMock(
-            return_value=mock_run_orm,
+            return_value=mock_run_model,
         )
 
         result = await _execute_protocol_async(

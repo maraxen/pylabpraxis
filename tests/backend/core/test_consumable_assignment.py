@@ -5,13 +5,13 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 from praxis.backend.core.consumable_assignment import ConsumableAssignmentService
 from praxis.backend.utils.uuid import uuid7
-from praxis.backend.models.pydantic_internals.protocol import (
-    AssetRequirementModel, 
+from praxis.backend.models.domain.protocol import (
+    AssetRequirementRead, 
     AssetConstraintsModel, 
     LocationConstraintsModel
 )
-from praxis.backend.models.orm.resource import ResourceOrm
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
+from praxis.backend.models.domain.resource import Resource
+from praxis.backend.models.domain.resource import ResourceDefinition
 
 # Helper to create mock resources
 def create_mock_resource(
@@ -21,12 +21,12 @@ def create_mock_resource(
     num_items=96,
     properties=None
 ):
-    resource = MagicMock(spec=ResourceOrm)
+    resource = MagicMock(spec=Resource)
     resource.accession_id = accession_id
     resource.name = name
     resource.fqn = fqn
     
-    definition = MagicMock(spec=ResourceDefinitionOrm)
+    definition = MagicMock(spec=ResourceDefinition)
     definition.fqn = fqn
     definition.nominal_volume_ul = nominal_volume_ul
     definition.plate_type = plate_type
@@ -58,7 +58,7 @@ def service(mock_db_session):
 @pytest.mark.asyncio
 async def test_find_compatible_consumable_match(service, mock_db_session):
     # Requirement: 96-well plate, >100ul
-    req = AssetRequirementModel(
+    req = AssetRequirementRead(
         accession_id=uuid7(),
         name="source_plate",
         fqn="pylabrobot.resources.Plate",
@@ -88,7 +88,7 @@ async def test_find_compatible_consumable_match(service, mock_db_session):
 @pytest.mark.asyncio
 async def test_find_compatible_consumable_no_match_volume(service, mock_db_session):
     # Requirement: High volume plate
-    req = AssetRequirementModel(
+    req = AssetRequirementRead(
         accession_id=uuid7(),
         name="deep_well",
         fqn="pylabrobot.resources.Plate",
@@ -115,7 +115,7 @@ async def test_find_compatible_consumable_no_match_volume(service, mock_db_sessi
 @pytest.mark.asyncio
 async def test_find_compatible_consumable_expired_warning(service, mock_db_session):
     # Requirement
-    req = AssetRequirementModel(
+    req = AssetRequirementRead(
         accession_id=uuid7(),
         name="reagent",
         fqn="pylabrobot.resources.Reservoir",
@@ -146,7 +146,7 @@ async def test_find_compatible_consumable_expired_warning(service, mock_db_sessi
 
 @pytest.mark.asyncio
 async def test_find_compatible_consumable_reserved_excluded(service, mock_db_session):
-    req = AssetRequirementModel(
+    req = AssetRequirementRead(
         accession_id=uuid7(),
         name="plate",
         fqn="pylabrobot.resources.Plate",
@@ -212,7 +212,7 @@ class TestIsConsumable:
     ])
     def test_is_consumable_type_detection(self, service, type_hint, expected):
         """Verify type hint detection for consumables."""
-        req = AssetRequirementModel(
+        req = AssetRequirementRead(
             accession_id=uuid7(),
             name="test",
             fqn=type_hint,
@@ -257,7 +257,7 @@ class TestCandidateScoring:
             nominal_volume_ul=200
         )
         
-        req = AssetRequirementModel(
+        req = AssetRequirementRead(
             accession_id=uuid7(),
             name="plate",
             fqn="pylabrobot.resources.Plate",

@@ -1,4 +1,4 @@
-"""Unit tests for FunctionDataOutputOrm model."""
+"""Unit tests for FunctionDataOutputmodel."""
 from collections.abc import Callable
 from datetime import datetime, timezone
 
@@ -12,22 +12,24 @@ from praxis.backend.models.enums import (
     DataOutputTypeEnum,
     SpatialContextEnum,
 )
-from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
-from praxis.backend.models.orm.protocol import (
-    FileSystemProtocolSourceOrm,
-    FunctionCallLogOrm,
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-    ProtocolSourceRepositoryOrm,
+from praxis.backend.models.domain.machine import Machine
+from praxis.backend.models.domain.outputs import FunctionDataOutput
+from praxis.backend.models.domain.protocol import (
+    FunctionCallLog,
+    FunctionProtocolDefinition,
+    ProtocolRun,
 )
-from praxis.backend.models.orm.resource import ResourceOrm
+from praxis.backend.models.domain.protocol_source import (
+    FileSystemProtocolSource,
+    ProtocolSourceRepository,
+)
+from praxis.backend.models.domain.resource import Resource
 
 
 @pytest_asyncio.fixture
-async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepositoryOrm:
-    """Create a ProtocolSourceRepositoryOrm for testing."""
-    repo = ProtocolSourceRepositoryOrm(
+async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepository:
+    """Create a ProtocolSourceRepositoryfor testing."""
+    repo = ProtocolSourceRepository(
         name="test-repo",
         git_url="https://github.com/test/repo.git",
     )
@@ -37,9 +39,9 @@ async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepositor
 
 
 @pytest_asyncio.fixture
-async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSourceOrm:
-    """Create a FileSystemProtocolSourceOrm for testing."""
-    source = FileSystemProtocolSourceOrm(
+async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSource:
+    """Create a FileSystemProtocolSourcefor testing."""
+    source = FileSystemProtocolSource(
         name="test-fs-source",
         base_path="/tmp/protocols",
     )
@@ -51,11 +53,11 @@ async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSour
 @pytest_asyncio.fixture
 async def protocol_definition(
     db_session: AsyncSession,
-    source_repository: ProtocolSourceRepositoryOrm,
-    file_system_source: FileSystemProtocolSourceOrm,
-) -> FunctionProtocolDefinitionOrm:
-    """Create a FunctionProtocolDefinitionOrm for testing."""
-    protocol = FunctionProtocolDefinitionOrm(
+    source_repository: ProtocolSourceRepository,
+    file_system_source: FileSystemProtocolSource,
+) -> FunctionProtocolDefinition:
+    """Create a FunctionProtocolDefinitionfor testing."""
+    protocol = FunctionProtocolDefinition(
         name="test_protocol",
         fqn="test.protocols.test_protocol",
         version="1.0.0",
@@ -73,12 +75,12 @@ async def protocol_definition(
 @pytest_asyncio.fixture
 def protocol_run_factory(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
-) -> Callable[[], ProtocolRunOrm]:
-    """Create a ProtocolRunOrm factory for testing."""
+    protocol_definition: FunctionProtocolDefinition,
+) -> Callable[[], ProtocolRun]:
+    """Create a ProtocolRunfactory for testing."""
 
-    async def _factory() -> ProtocolRunOrm:
-        run = ProtocolRunOrm(
+    async def _factory() -> ProtocolRun:
+        run = ProtocolRun(
             name="test_protocol_run",
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         )
@@ -92,12 +94,12 @@ def protocol_run_factory(
 @pytest_asyncio.fixture
 async def function_call_log(
     db_session: AsyncSession,
-    protocol_run_factory: Callable[[], ProtocolRunOrm],
-    protocol_definition: FunctionProtocolDefinitionOrm,
-) -> FunctionCallLogOrm:
-    """Create a FunctionCallLogOrm for testing."""
+    protocol_run_factory: Callable[[], ProtocolRun],
+    protocol_definition: FunctionProtocolDefinition,
+) -> FunctionCallLog:
+    """Create a FunctionCallLogfor testing."""
     protocol_run = await protocol_run_factory()
-    call_log = FunctionCallLogOrm(
+    call_log = FunctionCallLog(
         name="test_function_call_log",
         protocol_run_accession_id=protocol_run.accession_id,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
@@ -112,9 +114,9 @@ async def function_call_log(
 
 
 @pytest_asyncio.fixture
-async def resource_asset(db_session: AsyncSession) -> ResourceOrm:
-    """Create a ResourceOrm for data output association."""
-    resource = ResourceOrm(
+async def resource_asset(db_session: AsyncSession) -> Resource:
+    """Create a Resourcefor data output association."""
+    resource = Resource(
         name="test_resource_output",
         fqn="test.resources.TestResource",
         asset_type=AssetType.RESOURCE,
@@ -125,9 +127,9 @@ async def resource_asset(db_session: AsyncSession) -> ResourceOrm:
 
 
 @pytest_asyncio.fixture
-async def machine_asset(db_session: AsyncSession) -> MachineOrm:
-    """Create a MachineOrm for data output association."""
-    machine = MachineOrm(
+async def machine_asset(db_session: AsyncSession) -> Machine:
+    """Create a Machinefor data output association."""
+    machine = Machine(
         name="test_machine_output",
         fqn="test.machines.TestMachine",
         asset_type=AssetType.MACHINE,
@@ -140,10 +142,10 @@ async def machine_asset(db_session: AsyncSession) -> MachineOrm:
 @pytest.mark.asyncio
 async def test_function_data_output_orm_creation_minimal(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
-    """Test creating FunctionDataOutputOrm with minimal required fields."""
-    output = FunctionDataOutputOrm(
+    """Test creating FunctionDataOutputwith minimal required fields."""
+    output = FunctionDataOutput(
         name="test_output",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -175,12 +177,12 @@ async def test_function_data_output_orm_creation_minimal(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_creation_with_all_fields(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
-    resource_asset: ResourceOrm,
-    machine_asset: MachineOrm,
+    function_call_log: FunctionCallLog,
+    resource_asset: Resource,
+    machine_asset: Machine,
 ) -> None:
-    """Test creating FunctionDataOutputOrm with all fields populated."""
-    output = FunctionDataOutputOrm(
+    """Test creating FunctionDataOutputwith all fields populated."""
+    output = FunctionDataOutput(
         name="test_output_all_fields",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -221,10 +223,10 @@ async def test_function_data_output_orm_creation_with_all_fields(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_persist_to_database(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
-    """Test full persistence cycle for FunctionDataOutputOrm."""
-    output = FunctionDataOutputOrm(
+    """Test full persistence cycle for FunctionDataOutput."""
+    output = FunctionDataOutput(
         name="test_output_persist",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -235,8 +237,8 @@ async def test_function_data_output_orm_persist_to_database(
     await db_session.commit()
 
     result = await db_session.execute(
-        select(FunctionDataOutputOrm).where(
-            FunctionDataOutputOrm.accession_id == output.accession_id,
+        select(FunctionDataOutput).where(
+            FunctionDataOutput.accession_id == output.accession_id,
         ),
     )
     retrieved_output = result.scalar_one()
@@ -248,11 +250,11 @@ async def test_function_data_output_orm_persist_to_database(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_data_type_values(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
     """Test different data_type values."""
     for data_type in DataOutputTypeEnum:
-        output = FunctionDataOutputOrm(
+        output = FunctionDataOutput(
             name=f"test_output_{data_type.value}",
             protocol_run_accession_id=function_call_log.protocol_run_accession_id,
             function_call_log_accession_id=function_call_log.accession_id,
@@ -266,8 +268,8 @@ async def test_function_data_output_orm_data_type_values(
 
     for data_type in DataOutputTypeEnum:
         result = await db_session.execute(
-            select(FunctionDataOutputOrm).where(
-                FunctionDataOutputOrm.data_type == data_type,
+            select(FunctionDataOutput).where(
+                FunctionDataOutput.data_type == data_type,
             ),
         )
         output = result.scalars().first()
@@ -278,11 +280,11 @@ async def test_function_data_output_orm_data_type_values(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_spatial_context_values(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
     """Test different spatial_context values."""
     for spatial_context in SpatialContextEnum:
-        output = FunctionDataOutputOrm(
+        output = FunctionDataOutput(
             name=f"test_output_{spatial_context.value}",
             protocol_run_accession_id=function_call_log.protocol_run_accession_id,
             function_call_log_accession_id=function_call_log.accession_id,
@@ -296,8 +298,8 @@ async def test_function_data_output_orm_spatial_context_values(
 
     for spatial_context in SpatialContextEnum:
         result = await db_session.execute(
-            select(FunctionDataOutputOrm).where(
-                FunctionDataOutputOrm.spatial_context == spatial_context,
+            select(FunctionDataOutput).where(
+                FunctionDataOutput.spatial_context == spatial_context,
             ),
         )
         output = result.scalars().first()
@@ -308,10 +310,10 @@ async def test_function_data_output_orm_spatial_context_values(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_numeric_data(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
     """Test data_value_numeric field for measurements."""
-    output = FunctionDataOutputOrm(
+    output = FunctionDataOutput(
         name="test_output_numeric",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -330,11 +332,11 @@ async def test_function_data_output_orm_numeric_data(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_json_data(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
     """Test data_value_json field for structured data."""
     json_data = {"a": 1, "b": [1, 2, 3]}
-    output = FunctionDataOutputOrm(
+    output = FunctionDataOutput(
         name="test_output_json",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -351,10 +353,10 @@ async def test_function_data_output_orm_json_data(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_text_data(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
     """Test data_value_text field for text data."""
-    output = FunctionDataOutputOrm(
+    output = FunctionDataOutput(
         name="test_output_text",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -371,10 +373,10 @@ async def test_function_data_output_orm_text_data(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_binary_data(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
     """Test data_value_binary field for binary data."""
-    output = FunctionDataOutputOrm(
+    output = FunctionDataOutput(
         name="test_output_binary",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -391,11 +393,11 @@ async def test_function_data_output_orm_binary_data(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_spatial_coordinates_jsonb(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
     """Test spatial_coordinates_json field."""
     coordinates = {"well": "A1", "row": 0, "col": 0}
-    output = FunctionDataOutputOrm(
+    output = FunctionDataOutput(
         name="test_output_spatial",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -412,11 +414,11 @@ async def test_function_data_output_orm_spatial_coordinates_jsonb(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_metadata_jsonb(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
     """Test metadata_json field."""
     metadata = {"a": 1, "b": "test"}
-    output = FunctionDataOutputOrm(
+    output = FunctionDataOutput(
         name="test_output_metadata",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -433,10 +435,10 @@ async def test_function_data_output_orm_metadata_jsonb(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_file_path(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
     """Test file_path field for external file references."""
-    output = FunctionDataOutputOrm(
+    output = FunctionDataOutput(
         name="test_output_file_path",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -453,10 +455,10 @@ async def test_function_data_output_orm_file_path(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_relationship_to_protocol_run(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
-    """Test relationship to ProtocolRunOrm."""
-    output = FunctionDataOutputOrm(
+    """Test relationship to ProtocolRun."""
+    output = FunctionDataOutput(
         name="test_output_relationship_run",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -470,8 +472,8 @@ async def test_function_data_output_orm_relationship_to_protocol_run(
 
     # Verify via query to avoid lazy load issues
     result = await db_session.execute(
-        select(FunctionDataOutputOrm).where(
-            FunctionDataOutputOrm.protocol_run_accession_id
+        select(FunctionDataOutput).where(
+            FunctionDataOutput.protocol_run_accession_id
             == function_call_log.protocol_run.accession_id,
         ),
     )
@@ -482,10 +484,10 @@ async def test_function_data_output_orm_relationship_to_protocol_run(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_relationship_to_function_call_log(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
-    """Test relationship to FunctionCallLogOrm."""
-    output = FunctionDataOutputOrm(
+    """Test relationship to FunctionCallLog."""
+    output = FunctionDataOutput(
         name="test_output_relationship_log",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -499,8 +501,8 @@ async def test_function_data_output_orm_relationship_to_function_call_log(
 
     # Verify via query to avoid lazy load issues
     result = await db_session.execute(
-        select(FunctionDataOutputOrm).where(
-            FunctionDataOutputOrm.function_call_log_accession_id
+        select(FunctionDataOutput).where(
+            FunctionDataOutput.function_call_log_accession_id
             == function_call_log.accession_id,
         ),
     )
@@ -511,11 +513,11 @@ async def test_function_data_output_orm_relationship_to_function_call_log(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_relationship_to_resource(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
-    resource_asset: ResourceOrm,
+    function_call_log: FunctionCallLog,
+    resource_asset: Resource,
 ) -> None:
-    """Test relationship to ResourceOrm."""
-    output = FunctionDataOutputOrm(
+    """Test relationship to Resource."""
+    output = FunctionDataOutput(
         name="test_output_relationship_resource",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -531,8 +533,8 @@ async def test_function_data_output_orm_relationship_to_resource(
 
     # Verify via query to avoid lazy load issues
     result = await db_session.execute(
-        select(FunctionDataOutputOrm).where(
-            FunctionDataOutputOrm.resource_accession_id == resource_asset.accession_id,
+        select(FunctionDataOutput).where(
+            FunctionDataOutput.resource_accession_id == resource_asset.accession_id,
         ),
     )
     outputs = result.scalars().all()
@@ -542,11 +544,11 @@ async def test_function_data_output_orm_relationship_to_resource(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_relationship_to_machine(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
-    machine_asset: MachineOrm,
+    function_call_log: FunctionCallLog,
+    machine_asset: Machine,
 ) -> None:
-    """Test relationship to MachineOrm."""
-    output = FunctionDataOutputOrm(
+    """Test relationship to Machine."""
+    output = FunctionDataOutput(
         name="test_output_relationship_machine",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -562,8 +564,8 @@ async def test_function_data_output_orm_relationship_to_machine(
 
     # Verify via query to avoid lazy load issues
     result = await db_session.execute(
-        select(FunctionDataOutputOrm).where(
-            FunctionDataOutputOrm.machine_accession_id == machine_asset.accession_id,
+        select(FunctionDataOutput).where(
+            FunctionDataOutput.machine_accession_id == machine_asset.accession_id,
         ),
     )
     outputs = result.scalars().all()
@@ -573,11 +575,11 @@ async def test_function_data_output_orm_relationship_to_machine(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_query_by_data_type(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
     """Test querying outputs by data_type."""
     for data_type in DataOutputTypeEnum:
-        output = FunctionDataOutputOrm(
+        output = FunctionDataOutput(
             name=f"test_output_{data_type.value}",
             protocol_run_accession_id=function_call_log.protocol_run_accession_id,
             function_call_log_accession_id=function_call_log.accession_id,
@@ -589,8 +591,8 @@ async def test_function_data_output_orm_query_by_data_type(
     await db_session.flush()
 
     result = await db_session.execute(
-        select(FunctionDataOutputOrm).where(
-            FunctionDataOutputOrm.data_type == DataOutputTypeEnum.GENERIC_MEASUREMENT,
+        select(FunctionDataOutput).where(
+            FunctionDataOutput.data_type == DataOutputTypeEnum.GENERIC_MEASUREMENT,
         ),
     )
     outputs = result.scalars().all()
@@ -601,11 +603,11 @@ async def test_function_data_output_orm_query_by_data_type(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_query_by_protocol_run(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
+    function_call_log: FunctionCallLog,
 ) -> None:
     """Test querying all outputs for a protocol run."""
     for i in range(3):
-        output = FunctionDataOutputOrm(
+        output = FunctionDataOutput(
             name=f"test_output_{i}",
             protocol_run_accession_id=function_call_log.protocol_run_accession_id,
             function_call_log_accession_id=function_call_log.accession_id,
@@ -616,8 +618,8 @@ async def test_function_data_output_orm_query_by_protocol_run(
     await db_session.flush()
 
     result = await db_session.execute(
-        select(FunctionDataOutputOrm).where(
-            FunctionDataOutputOrm.protocol_run_accession_id
+        select(FunctionDataOutput).where(
+            FunctionDataOutput.protocol_run_accession_id
             == function_call_log.protocol_run_accession_id,
         ),
     )
@@ -628,12 +630,12 @@ async def test_function_data_output_orm_query_by_protocol_run(
 @pytest.mark.asyncio
 async def test_function_data_output_orm_query_by_resource(
     db_session: AsyncSession,
-    function_call_log: FunctionCallLogOrm,
-    resource_asset: ResourceOrm,
+    function_call_log: FunctionCallLog,
+    resource_asset: Resource,
 ) -> None:
     """Test querying outputs associated with a specific resource."""
     for i in range(2):
-        output = FunctionDataOutputOrm(
+        output = FunctionDataOutput(
             name=f"test_output_{i}",
             protocol_run_accession_id=function_call_log.protocol_run_accession_id,
             function_call_log_accession_id=function_call_log.accession_id,
@@ -646,8 +648,8 @@ async def test_function_data_output_orm_query_by_resource(
     await db_session.flush()
 
     result = await db_session.execute(
-        select(FunctionDataOutputOrm).where(
-            FunctionDataOutputOrm.resource_accession_id
+        select(FunctionDataOutput).where(
+            FunctionDataOutput.resource_accession_id
             == resource_asset.accession_id,
         ),
     )

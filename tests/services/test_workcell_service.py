@@ -5,8 +5,11 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.enums.workcell import WorkcellStatusEnum
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.workcell import WorkcellCreate, WorkcellUpdate
+from praxis.backend.models.domain.workcell import (
+    Workcell,
+    WorkcellCreate,
+    WorkcellUpdate,
+)
 from praxis.backend.services.workcell import workcell_service
 
 
@@ -136,7 +139,7 @@ async def test_workcell_state_operations(db_session: AsyncSession):
 async def test_update_workcell_state_not_found(db_session: AsyncSession):
     """Test updating state for non-existent workcell raises ValueError."""
     non_existent_id = uuid.uuid4()
-    with pytest.raises(ValueError, match=f"WorkcellOrm with ID {non_existent_id} not found"):
+    with pytest.raises(ValueError, match=f"Workcell with ID {non_existent_id} not found"):
         await workcell_service.update_workcell_state(
             db=db_session,
             workcell_accession_id=non_existent_id,

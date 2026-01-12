@@ -1,22 +1,23 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.protocol import (
-    FileSystemProtocolSourceOrm,
-    FunctionProtocolDefinitionOrm,
-    ProtocolSourceRepositoryOrm,
-)
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.protocol import (
+from praxis.backend.models.domain.protocol import (
+    FunctionProtocolDefinition,
+    ParameterDefinition,
     FunctionProtocolDefinitionCreate,
     FunctionProtocolDefinitionUpdate,
 )
+from praxis.backend.models.domain.protocol_source import (
+    FileSystemProtocolSource,
+    ProtocolSourceRepository,
+)
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 
 
 @pytest.fixture
 def protocol_definition_service() -> ProtocolDefinitionCRUDService:
-    return ProtocolDefinitionCRUDService(FunctionProtocolDefinitionOrm)
+    return ProtocolDefinitionCRUDService(FunctionProtocolDefinition)
 
 @pytest.mark.asyncio
 async def test_create_protocol_definition_defaults(
@@ -48,11 +49,11 @@ async def test_create_protocol_definition_with_existing_sources(
 ) -> None:
     """Test creating protocol definition with existing sources."""
     # Create sources first
-    repo = ProtocolSourceRepositoryOrm(
+    repo = ProtocolSourceRepository(
         name="existing_repo",
         git_url="https://github.com/existing.git",
     )
-    fs_source = FileSystemProtocolSourceOrm(
+    fs_source = FileSystemProtocolSource(
         name="existing_fs",
         base_path="/existing",
     )

@@ -8,18 +8,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.enums.asset import AssetType
 from praxis.backend.models.enums.machine import MachineStatusEnum
-from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
-from praxis.backend.models.pydantic_internals.deck import DeckCreate, DeckUpdate
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.machine import MachineCreate
+from praxis.backend.models.domain.deck import Deck, DeckDefinition, DeckCreate, DeckUpdate
+from praxis.backend.models.domain.resource import ResourceDefinition
+from praxis.backend.models.domain.filters import SearchFilters
+from praxis.backend.models.domain.machine import MachineCreate
 from praxis.backend.services.deck import deck_service
 from praxis.backend.services.machine import machine_service
 
 
-async def create_resource_definition(db: AsyncSession, name: str) -> ResourceDefinitionOrm:
+async def create_resource_definition(db: AsyncSession, name: str) -> ResourceDefinition:
     """Helper to create a resource definition."""
-    definition = ResourceDefinitionOrm(
+    definition = ResourceDefinition(
         name=name,
         fqn="com.example.Resource",
         resource_type="Generic",
@@ -30,9 +29,9 @@ async def create_resource_definition(db: AsyncSession, name: str) -> ResourceDef
     await db.refresh(definition)
     return definition
 
-async def create_deck_definition(db: AsyncSession, name: str) -> DeckDefinitionOrm:
+async def create_deck_definition(db: AsyncSession, name: str) -> DeckDefinition:
     """Helper to create a deck definition."""
-    definition = DeckDefinitionOrm(
+    definition = DeckDefinition(
         name=name,
         fqn="pylabrobot.decks.Deck",
         plr_category="Deck",
@@ -211,7 +210,7 @@ async def test_update_deck_plr_state(db_session: AsyncSession) -> None:
     assert updated.plr_state == {"new": "state"}
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="Circular dependency on cascade delete for DeckOrm")
+@pytest.mark.xfail(reason="Circular dependency on cascade delete for Deck")
 async def test_remove_deck(db_session: AsyncSession) -> None:
     """Test deleting a deck."""
     res_def = await create_resource_definition(db_session, "Remove Deck Res Def")
@@ -237,7 +236,7 @@ async def test_remove_deck_mocked() -> None:
     mock_db = AsyncMock(spec=AsyncSession)
 
     # Mock get result
-    mock_deck = MagicMock(spec=DeckOrm)
+    mock_deck = MagicMock(spec=Deck)
     mock_deck.accession_id = uuid.uuid4()
     mock_deck.name = "Mock Deck"
 

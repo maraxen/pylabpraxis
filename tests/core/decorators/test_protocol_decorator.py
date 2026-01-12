@@ -10,7 +10,7 @@ from praxis.backend.core.decorators import (
     protocol_function,
 )
 from praxis.backend.core.run_context import PraxisRunContext
-from praxis.backend.models.pydantic_internals.protocol import (
+from praxis.backend.models.domain.protocol import (
     FunctionProtocolDefinitionCreate,
 )
 from praxis.backend.utils.uuid import uuid7

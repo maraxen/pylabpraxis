@@ -3,9 +3,8 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.outputs import WellDataOutputOrm
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.outputs import (
+from praxis.backend.models.domain.outputs import (
+    WellDataOutput,
     WellDataOutputCreate,
     WellDataOutputUpdate,
 )
@@ -26,7 +25,7 @@ from tests.factories import (
 @pytest.fixture
 def well_data_output_service():
     """Return a WellDataOutputCRUDService."""
-    return WellDataOutputCRUDService(WellDataOutputOrm)
+    return WellDataOutputCRUDService(WellDataOutput)
 
 
 @pytest.mark.asyncio
@@ -43,7 +42,7 @@ async def test_create_well_data_output(
     function_call_log = FunctionCallLogFactory(protocol_run_obj=protocol_run)
     await db_session.flush()
     
-    from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
+    from praxis.backend.models.domain.outputs import FunctionDataOutput
     from praxis.backend.models.enums import DataOutputTypeEnum, SpatialContextEnum
 
     function_data_output = FunctionDataOutputFactory(

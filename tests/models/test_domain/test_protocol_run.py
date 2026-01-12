@@ -1,4 +1,4 @@
-"""Unit tests for ProtocolRunOrm model."""
+"""Unit tests for ProtocolRunmodel."""
 from datetime import datetime, timezone
 
 import pytest
@@ -7,16 +7,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.enums import ProtocolRunStatusEnum
-from praxis.backend.models.orm.protocol import (
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
+from praxis.backend.models.domain.protocol import (
+    FunctionProtocolDefinition,
+    ProtocolRun,
 )
 
 
 @pytest_asyncio.fixture
-async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
-    """Create a FunctionProtocolDefinitionOrm for testing."""
-    protocol = FunctionProtocolDefinitionOrm(
+async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinition:
+    """Create a FunctionProtocolDefinitionfor testing."""
+    protocol = FunctionProtocolDefinition(
         name="test_protocol",
         fqn="test.protocols.test_protocol",
         version="1.0.0",
@@ -28,12 +28,12 @@ async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefin
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_creation_minimal(
+async def test_protocol_run_creation_minimal(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
-    """Test creating ProtocolRunOrm with minimal required fields."""
-    run = ProtocolRunOrm(
+    """Test creating ProtocolRunwith minimal required fields."""
+    run = ProtocolRun(
         name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
     )
@@ -58,11 +58,11 @@ async def test_protocol_run_orm_creation_minimal(
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_creation_with_all_fields(
+async def test_protocol_run_creation_with_all_fields(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
-    """Test creating ProtocolRunOrm with all fields populated."""
+    """Test creating ProtocolRunwith all fields populated."""
     now = datetime.now(timezone.utc)
     input_params = {"volume": 50, "temperature": 37}
     resolved_assets = {"plate": "plate_123", "machine": "star_001"}
@@ -71,7 +71,7 @@ async def test_protocol_run_orm_creation_with_all_fields(
     final_state = {"deck_layout": "config_b", "tips_used": 96}
     user_info = {"user_id": "user123", "username": "testuser"}
 
-    run = ProtocolRunOrm(
+    run = ProtocolRun(
         name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.RUNNING,
@@ -103,12 +103,12 @@ async def test_protocol_run_orm_creation_with_all_fields(
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_persist_to_database(
+async def test_protocol_run_persist_to_database(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
-    """Test full persistence cycle for ProtocolRunOrm."""
-    run = ProtocolRunOrm(
+    """Test full persistence cycle for ProtocolRun."""
+    run = ProtocolRun(
         name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.COMPLETED,
@@ -121,7 +121,7 @@ async def test_protocol_run_orm_persist_to_database(
 
     # Query back
     result = await db_session.execute(
-        select(ProtocolRunOrm).where(ProtocolRunOrm.accession_id == run_id),
+        select(ProtocolRun).where(ProtocolRun.accession_id == run_id),
     )
     retrieved = result.scalars().first()
 
@@ -133,9 +133,9 @@ async def test_protocol_run_orm_persist_to_database(
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_status_transitions(
+async def test_protocol_run_status_transitions(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test different status values for protocol runs."""
     statuses = [
@@ -149,7 +149,7 @@ async def test_protocol_run_orm_status_transitions(
     ]
 
     for status, name in statuses:
-        run = ProtocolRunOrm(
+        run = ProtocolRun(
             name=name,
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
             status=status,
@@ -162,9 +162,9 @@ async def test_protocol_run_orm_status_transitions(
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_timing_fields(
+async def test_protocol_run_timing_fields(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test start_time, end_time, and duration_ms fields."""
     from datetime import timedelta
@@ -172,7 +172,7 @@ async def test_protocol_run_orm_timing_fields(
     # Simulate 30 second execution
     end = start + timedelta(seconds=30)
 
-    run = ProtocolRunOrm(
+    run = ProtocolRun(
         name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.COMPLETED,
@@ -189,9 +189,9 @@ async def test_protocol_run_orm_timing_fields(
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_input_parameters_jsonb(
+async def test_protocol_run_input_parameters_jsonb(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test JSONB input_parameters_json field."""
     input_params = {
@@ -203,7 +203,7 @@ async def test_protocol_run_orm_input_parameters_jsonb(
         "nested": {"key": "value", "count": 42},
     }
 
-    run = ProtocolRunOrm(
+    run = ProtocolRun(
         name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         input_parameters_json=input_params,
@@ -219,9 +219,9 @@ async def test_protocol_run_orm_input_parameters_jsonb(
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_resolved_assets_jsonb(
+async def test_protocol_run_resolved_assets_jsonb(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test JSONB resolved_assets_json field."""
     resolved_assets = {
@@ -230,7 +230,7 @@ async def test_protocol_run_orm_resolved_assets_jsonb(
         "tip_rack": {"id": "tips_001", "position": "A1"},
     }
 
-    run = ProtocolRunOrm(
+    run = ProtocolRun(
         name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         resolved_assets_json=resolved_assets,
@@ -244,9 +244,9 @@ async def test_protocol_run_orm_resolved_assets_jsonb(
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_output_data_jsonb(
+async def test_protocol_run_output_data_jsonb(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test JSONB output_data_json field."""
     output_data = {
@@ -255,7 +255,7 @@ async def test_protocol_run_orm_output_data_jsonb(
         "metadata": {"run_id": "abc123", "operator": "user123"},
     }
 
-    run = ProtocolRunOrm(
+    run = ProtocolRun(
         name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         output_data_json=output_data,
@@ -269,9 +269,9 @@ async def test_protocol_run_orm_output_data_jsonb(
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_state_jsonb(
+async def test_protocol_run_state_jsonb(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test JSONB initial_state_json and final_state_json fields."""
     initial_state = {
@@ -286,7 +286,7 @@ async def test_protocol_run_orm_state_jsonb(
         "waste_volume_ul": 1500,
     }
 
-    run = ProtocolRunOrm(
+    run = ProtocolRun(
         name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         initial_state_json=initial_state,
@@ -303,12 +303,12 @@ async def test_protocol_run_orm_state_jsonb(
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_data_directory_path(
+async def test_protocol_run_data_directory_path(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test data_directory_path field for output storage."""
-    run = ProtocolRunOrm(
+    run = ProtocolRun(
         name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         data_directory_path="/data/protocol_runs/2024/11/run_abc123",
@@ -320,9 +320,9 @@ async def test_protocol_run_orm_data_directory_path(
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_created_by_user_jsonb(
+async def test_protocol_run_created_by_user_jsonb(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test JSONB created_by_user field."""
     user_info = {
@@ -332,7 +332,7 @@ async def test_protocol_run_orm_created_by_user_jsonb(
         "role": "operator",
     }
 
-    run = ProtocolRunOrm(
+    run = ProtocolRun(
         name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         created_by_user=user_info,
@@ -346,13 +346,13 @@ async def test_protocol_run_orm_created_by_user_jsonb(
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_continuation_chain(
+async def test_protocol_run_continuation_chain(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test previous_accession_id for protocol run continuations."""
     # Create first run
-    run1 = ProtocolRunOrm(
+    run1 = ProtocolRun(
         name="run1",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.COMPLETED,
@@ -362,7 +362,7 @@ async def test_protocol_run_orm_continuation_chain(
     run1_id = run1.accession_id
 
     # Create continuation run
-    run2 = ProtocolRunOrm(
+    run2 = ProtocolRun(
         name="run2",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.RUNNING,
@@ -377,18 +377,18 @@ async def test_protocol_run_orm_continuation_chain(
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_query_by_status(
+async def test_protocol_run_query_by_status(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test querying protocol runs by status."""
     # Create runs with different statuses
-    running_run = ProtocolRunOrm(
+    running_run = ProtocolRun(
         name="running_query_test",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.RUNNING,
     )
-    completed_run = ProtocolRunOrm(
+    completed_run = ProtocolRun(
         name="completed_query_test",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.COMPLETED,
@@ -399,8 +399,8 @@ async def test_protocol_run_orm_query_by_status(
 
     # Query for running protocols
     result = await db_session.execute(
-        select(ProtocolRunOrm).where(
-            ProtocolRunOrm.status == ProtocolRunStatusEnum.RUNNING,
+        select(ProtocolRun).where(
+            ProtocolRun.status == ProtocolRunStatusEnum.RUNNING,
         ),
     )
     running_runs = result.scalars().all()
@@ -411,17 +411,17 @@ async def test_protocol_run_orm_query_by_status(
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_query_by_protocol(
+async def test_protocol_run_query_by_protocol(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
     """Test querying all runs for a specific protocol."""
     # Create multiple runs for the same protocol
-    run1 = ProtocolRunOrm(
+    run1 = ProtocolRun(
         name="protocol_query_run1",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
     )
-    run2 = ProtocolRunOrm(
+    run2 = ProtocolRun(
         name="protocol_query_run2",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
     )
@@ -431,8 +431,8 @@ async def test_protocol_run_orm_query_by_protocol(
 
     # Query all runs for this protocol
     result = await db_session.execute(
-        select(ProtocolRunOrm).where(
-            ProtocolRunOrm.top_level_protocol_definition_accession_id
+        select(ProtocolRun).where(
+            ProtocolRun.top_level_protocol_definition_accession_id
             == protocol_definition.accession_id,
         ),
     )
@@ -446,12 +446,12 @@ async def test_protocol_run_orm_query_by_protocol(
 
 
 @pytest.mark.asyncio
-async def test_protocol_run_orm_repr(
+async def test_protocol_run_repr(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
+    protocol_definition: FunctionProtocolDefinition,
 ) -> None:
-    """Test string representation of ProtocolRunOrm."""
-    run = ProtocolRunOrm(
+    """Test string representation of ProtocolRun."""
+    run = ProtocolRun(
         name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.RUNNING,
@@ -461,6 +461,6 @@ async def test_protocol_run_orm_repr(
     run_id = run.accession_id
 
     repr_str = repr(run)
-    assert "ProtocolRunOrm" in repr_str
+    assert "ProtocolRun" in repr_str
     assert str(run_id) in repr_str
     assert "RUNNING" in repr_str

@@ -4,7 +4,7 @@
 import pytest
 
 from praxis.backend.core.asset_lock_manager import AssetLockManager
-from praxis.backend.models.pydantic_internals.asset import AcquireAssetLock
+from praxis.backend.models.pydantic_internals.runtime import AcquireAssetLock
 from praxis.backend.utils.uuid import uuid7
 
 

@@ -5,9 +5,11 @@ Tests cover all CRUD operations, authentication, and user-specific functionality
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.user import UserOrm
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.user import UserCreate, UserUpdate
+from praxis.backend.models.domain.user import (
+    User,
+    UserCreate,
+    UserUpdate,
+)
 from praxis.backend.services.user import UserService, user_service
 
 
@@ -480,4 +482,4 @@ async def test_user_service_singleton_instance(db_session: AsyncSession) -> None
     """Test that user_service is a singleton instance."""
     # The imported user_service should be an instance of UserService
     assert isinstance(user_service, UserService)
-    assert user_service.model == UserOrm
+    assert user_service.model == User

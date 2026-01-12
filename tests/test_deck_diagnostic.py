@@ -3,7 +3,7 @@ import pytest
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models import DeckOrm
+from praxis.backend.models import Deck
 from praxis.backend.services.deck import DeckService, deck_service
 from tests.helpers import create_deck
 
@@ -22,12 +22,12 @@ async def test_deck_service_direct(db_session: AsyncSession):
     result.first()
 
     # Check with SQLAlchemy select
-    stmt = select(DeckOrm).filter(DeckOrm.accession_id == deck.accession_id)
+    stmt = select(Deck).filter(Deck.accession_id == deck.accession_id)
     result2 = await db_session.execute(stmt)
     result2.scalar_one_or_none()
 
     # Try with a NEW service instance (like the API does)
-    new_service = DeckService(DeckOrm)
+    new_service = DeckService(Deck)
     await new_service.get(db_session, deck.accession_id)
 
     # Try to retrieve it using the singleton service

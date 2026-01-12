@@ -12,13 +12,15 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.enums import ScheduleStatusEnum
-from praxis.backend.models.orm.protocol import (
-    FileSystemProtocolSourceOrm,
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-    ProtocolSourceRepositoryOrm,
+from praxis.backend.models.domain.protocol import (
+    FunctionProtocolDefinition,
+    ProtocolRun,
 )
-from praxis.backend.models.orm.schedule import ScheduleEntryOrm
+from praxis.backend.models.domain.protocol_source import (
+    FileSystemProtocolSource,
+    ProtocolSourceRepository,
+)
+from praxis.backend.models.domain.schedule import ScheduleEntry
 from praxis.backend.utils.uuid import uuid7
 
 # ============================================================================
@@ -27,9 +29,9 @@ from praxis.backend.utils.uuid import uuid7
 
 
 @pytest_asyncio.fixture
-async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepositoryOrm:
+async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepository:
     """Create a source repository for testing."""
-    repo = ProtocolSourceRepositoryOrm(
+    repo = ProtocolSourceRepository(
         accession_id=uuid7(),
         name=f"test_repo_{uuid4().hex[:8]}",
     )
@@ -40,9 +42,9 @@ async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepositor
 
 
 @pytest_asyncio.fixture
-async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSourceOrm:
+async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSource:
     """Create a file system source for testing."""
-    source = FileSystemProtocolSourceOrm(
+    source = FileSystemProtocolSource(
         accession_id=uuid7(),
         name=f"test_source_{uuid4().hex[:8]}",
         base_path="/test/path",
@@ -56,11 +58,11 @@ async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSour
 @pytest_asyncio.fixture
 async def protocol_definition(
     db_session: AsyncSession,
-    source_repository: ProtocolSourceRepositoryOrm,
-    file_system_source: FileSystemProtocolSourceOrm,
-) -> FunctionProtocolDefinitionOrm:
+    source_repository: ProtocolSourceRepository,
+    file_system_source: FileSystemProtocolSource,
+) -> FunctionProtocolDefinition:
     """Create a protocol definition for testing."""
-    definition = FunctionProtocolDefinitionOrm(
+    definition = FunctionProtocolDefinition(
         accession_id=uuid7(),
         name=f"test_protocol_{uuid4().hex[:8]}",
         source_repository_accession_id=source_repository.accession_id,
@@ -78,10 +80,10 @@ async def protocol_definition(
 @pytest_asyncio.fixture
 async def protocol_run(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
-) -> ProtocolRunOrm:
+    protocol_definition: FunctionProtocolDefinition,
+) -> ProtocolRun:
     """Create a protocol run for testing."""
-    run = ProtocolRunOrm(
+    run = ProtocolRun(
         accession_id=uuid7(),
         name=f"test_run_{uuid4().hex[:8]}",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
@@ -95,10 +97,10 @@ async def protocol_run(
 @pytest_asyncio.fixture
 async def schedule_entry(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-) -> ScheduleEntryOrm:
+    protocol_run: ProtocolRun,
+) -> ScheduleEntry:
     """Create a schedule entry for testing."""
-    entry = ScheduleEntryOrm(
+    entry = ScheduleEntry(
         accession_id=uuid7(),
         name=f"test_entry_{uuid4().hex[:8]}",
         protocol_run_accession_id=protocol_run.accession_id,
@@ -125,7 +127,7 @@ async def schedule_entry(
 @pytest.mark.asyncio
 async def test_list_schedule_entries(
     client: AsyncClient,
-    schedule_entry: ScheduleEntryOrm,
+    schedule_entry: ScheduleEntry,
 ):
     """Test listing schedule entries via GET /entries."""
     response = await client.get("/api/v1/scheduler/entries")
@@ -140,7 +142,7 @@ async def test_list_schedule_entries(
 @pytest.mark.asyncio
 async def test_get_schedule_entry_by_id(
     client: AsyncClient,
-    schedule_entry: ScheduleEntryOrm,
+    schedule_entry: ScheduleEntry,
 ):
     """Test getting a single schedule entry via GET /entries/{id}."""
     response = await client.get(
@@ -163,7 +165,7 @@ async def test_get_schedule_entry_not_found(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_create_schedule_entry(
     client: AsyncClient,
-    protocol_run: ProtocolRunOrm,
+    protocol_run: ProtocolRun,
 ):
     """Test creating a schedule entry via POST /entries."""
     payload = {
@@ -184,7 +186,7 @@ async def test_create_schedule_entry(
 @pytest.mark.asyncio
 async def test_update_schedule_entry_status(
     client: AsyncClient,
-    schedule_entry: ScheduleEntryOrm,
+    schedule_entry: ScheduleEntry,
 ):
     """Test updating schedule entry status via PUT /{id}/status."""
     # Ensure payload matches ScheduleEntryUpdate schema
@@ -202,7 +204,7 @@ async def test_update_schedule_entry_status(
 @pytest.mark.asyncio
 async def test_update_schedule_entry_status_missing_status(
     client: AsyncClient,
-    schedule_entry: ScheduleEntryOrm,
+    schedule_entry: ScheduleEntry,
 ):
     """Test that updating status without providing status returns 400."""
     payload = {}  # Missing status
@@ -231,7 +233,7 @@ async def test_update_schedule_entry_status_not_found(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_update_schedule_entry_priority(
     client: AsyncClient,
-    schedule_entry: ScheduleEntryOrm,
+    schedule_entry: ScheduleEntry,
 ):
     """Test updating schedule entry priority via PUT /{id}/priority."""
     payload = {"new_priority": 99, "reason": "Urgent request"}

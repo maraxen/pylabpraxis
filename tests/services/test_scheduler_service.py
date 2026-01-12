@@ -29,16 +29,22 @@ from praxis.backend.models.enums import (
     ScheduleHistoryEventEnum,
     ScheduleStatusEnum,
 )
-from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.orm.protocol import (
-    FileSystemProtocolSourceOrm,
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-    ProtocolSourceRepositoryOrm,
+from praxis.backend.models.domain.machine import Machine
+from praxis.backend.models.domain.protocol import (
+    FunctionProtocolDefinition,
+    ProtocolRun,
 )
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.scheduler import (
+from praxis.backend.models.domain.protocol_source import (
+    FileSystemProtocolSource,
+    ProtocolSourceRepository,
+)
+from praxis.backend.models.domain.filters import SearchFilters
+from praxis.backend.models.domain.schedule import (
+    CancelScheduleRequest,
+    ResourceReservationStatus,
     ScheduleEntryCreate,
+    ScheduleListFilters,
+    ScheduleProtocolRequest,
 )
 from praxis.backend.services.scheduler import (
     cleanup_expired_reservations,
@@ -59,9 +65,9 @@ from praxis.backend.utils.uuid import uuid7
 
 
 @pytest_asyncio.fixture
-async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepositoryOrm:
-    """Create a ProtocolSourceRepositoryOrm for testing."""
-    repo = ProtocolSourceRepositoryOrm(
+async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepository:
+    """Create a ProtocolSourceRepository for testing."""
+    repo = ProtocolSourceRepository(
         name="test-repo",
         git_url="https://github.com/test/repo.git",
     )
@@ -71,9 +77,9 @@ async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepositor
 
 
 @pytest_asyncio.fixture
-async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSourceOrm:
-    """Create a FileSystemProtocolSourceOrm for testing."""
-    source = FileSystemProtocolSourceOrm(
+async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSource:
+    """Create a FileSystemProtocolSource for testing."""
+    source = FileSystemProtocolSource(
         name="test-fs-source",
         base_path="/tmp/protocols",
     )
@@ -85,11 +91,11 @@ async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSour
 @pytest_asyncio.fixture
 async def protocol_definition(
     db_session: AsyncSession,
-    source_repository: ProtocolSourceRepositoryOrm,
-    file_system_source: FileSystemProtocolSourceOrm,
-) -> FunctionProtocolDefinitionOrm:
+    source_repository: ProtocolSourceRepository,
+    file_system_source: FileSystemProtocolSource,
+) -> FunctionProtocolDefinition:
     """Create a protocol definition for testing."""
-    protocol = FunctionProtocolDefinitionOrm(
+    protocol = FunctionProtocolDefinition(
         name="test_protocol",
         fqn="test.protocols.test_protocol",
         version="1.0.0",
@@ -106,10 +112,10 @@ async def protocol_definition(
 @pytest_asyncio.fixture
 async def protocol_run(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm,
-) -> ProtocolRunOrm:
+    protocol_definition: FunctionProtocolDefinition,
+) -> ProtocolRun:
     """Create a protocol run for testing."""
-    run = ProtocolRunOrm(
+    run = ProtocolRun(
         name="test_protocol_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
     )
@@ -120,9 +126,9 @@ async def protocol_run(
 
 
 @pytest_asyncio.fixture
-async def machine_asset(db_session: AsyncSession) -> MachineOrm:
+async def machine_asset(db_session: AsyncSession) -> Machine:
     """Create a machine asset for reservation testing."""
-    machine = MachineOrm(
+    machine = Machine(
         name="test_machine_scheduler",
         fqn="test.machines.SchedulerTestMachine",
         asset_type=AssetType.MACHINE,
@@ -141,7 +147,7 @@ async def machine_asset(db_session: AsyncSession) -> MachineOrm:
 @pytest.mark.asyncio
 async def test_schedule_entry_service_create(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
+    protocol_run: ProtocolRun,
 ) -> None:
     """Test creating a schedule entry.
 
@@ -173,7 +179,7 @@ async def test_schedule_entry_service_create(
 @pytest.mark.asyncio
 async def test_schedule_entry_service_create_duplicate_prevention(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
+    protocol_run: ProtocolRun,
 ) -> None:
     """Test that creating duplicate schedule entry for same protocol run fails.
 
@@ -265,7 +271,7 @@ async def test_schedule_entry_service_get_multi_with_sorting(
 @pytest.mark.asyncio
 async def test_schedule_entry_service_update_status(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
+    protocol_run: ProtocolRun,
 ) -> None:
     """Test updating schedule entry status.
 
@@ -310,7 +316,7 @@ async def test_schedule_entry_service_update_status(
 @pytest.mark.asyncio
 async def test_schedule_entry_service_update_status_with_error(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
+    protocol_run: ProtocolRun,
 ) -> None:
     """Test updating schedule entry to failed status with error details.
 
@@ -339,7 +345,7 @@ async def test_schedule_entry_service_update_status_with_error(
 @pytest.mark.asyncio
 async def test_schedule_entry_service_update_priority(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
+    protocol_run: ProtocolRun,
 ) -> None:
     """Test updating schedule entry priority.
 
@@ -381,8 +387,8 @@ async def test_schedule_entry_service_update_priority(
 @pytest.mark.asyncio
 async def test_create_asset_reservation(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    machine_asset: MachineOrm,
+    protocol_run: ProtocolRun,
+    machine_asset: Machine,
 ) -> None:
     """Test creating an asset reservation.
 
@@ -415,8 +421,8 @@ async def test_create_asset_reservation(
 @pytest.mark.asyncio
 async def test_create_asset_reservation_with_custom_lock(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    machine_asset: MachineOrm,
+    protocol_run: ProtocolRun,
+    machine_asset: Machine,
 ) -> None:
     """Test creating asset reservation with custom lock key/value.
 
@@ -462,8 +468,8 @@ async def test_create_asset_reservation_with_custom_lock(
 @pytest.mark.asyncio
 async def test_read_asset_reservation(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    machine_asset: MachineOrm,
+    protocol_run: ProtocolRun,
+    machine_asset: Machine,
 ) -> None:
     """Test reading an asset reservation by ID.
 
@@ -617,8 +623,8 @@ async def test_list_asset_reservations_active_only(
 @pytest.mark.asyncio
 async def test_update_asset_reservation_status(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    machine_asset: MachineOrm,
+    protocol_run: ProtocolRun,
+    machine_asset: Machine,
 ) -> None:
     """Test updating asset reservation status.
 
@@ -743,7 +749,7 @@ async def test_cleanup_expired_reservations(
 @pytest.mark.asyncio
 async def test_log_schedule_event(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
+    protocol_run: ProtocolRun,
 ) -> None:
     """Test manually logging a schedule event.
 
@@ -774,7 +780,7 @@ async def test_log_schedule_event(
 @pytest.mark.asyncio
 async def test_get_schedule_history(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
+    protocol_run: ProtocolRun,
 ) -> None:
     """Test retrieving schedule history.
 

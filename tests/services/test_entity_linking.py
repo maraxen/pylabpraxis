@@ -7,10 +7,10 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models import (
-    MachineOrm,
+    Machine,
     MachineStatusEnum,
-    ResourceDefinitionOrm,
-    ResourceOrm,
+    ResourceDefinition,
+    Resource,
     ResourceStatusEnum,
 )
 from praxis.backend.models.enums import AssetType
@@ -29,10 +29,10 @@ def mock_db_session() -> AsyncMock:
 
 
 @pytest.fixture
-def resource_definition() -> ResourceDefinitionOrm:
+def resource_definition() -> ResourceDefinition:
     """Create a resource definition for testing."""
     # Set ID manually for testing stability if needed, though usually auto-generated
-    return ResourceDefinitionOrm(
+    return ResourceDefinition(
         name="test_resource_def",
         fqn="test.fqn",
     )
@@ -41,7 +41,7 @@ def resource_definition() -> ResourceDefinitionOrm:
 @pytest.mark.asyncio
 async def test_read_resource_definition_for_linking(
     mock_db_session: AsyncMock,
-    resource_definition: ResourceDefinitionOrm,
+    resource_definition: ResourceDefinition,
 ) -> None:
     """Test reading a resource definition."""
     # Mock result
@@ -74,12 +74,12 @@ async def test_read_resource_definition_for_linking_not_found(
 async def test_create_or_link_resource_counterpart_new(
     mock_read_def: AsyncMock,
     mock_db_session: AsyncMock,
-    resource_definition: ResourceDefinitionOrm,
+    resource_definition: ResourceDefinition,
 ) -> None:
     """Test creating a new resource counterpart for a machine."""
     mock_read_def.return_value = resource_definition
 
-    machine = MachineOrm(
+    machine = Machine(
         name="test_machine",
         fqn="test.machine",
         asset_type=AssetType.MACHINE,
@@ -88,14 +88,14 @@ async def test_create_or_link_resource_counterpart_new(
 
     result = await _create_or_link_resource_counterpart_for_machine(
         db=mock_db_session,
-        machine_orm=machine,
+        machine_model=machine,
         resource_counterpart_accession_id=None,
         resource_definition_name="test_resource_def",
         resource_properties_json={},
     )
 
     assert result is not None
-    assert isinstance(result, ResourceOrm)
+    assert isinstance(result, Resource)
     assert result.name == "test_machine_resource"
     assert machine.resource_counterpart_accession_id == result.accession_id
     mock_db_session.add.assert_called()
@@ -107,7 +107,7 @@ async def test_create_or_link_resource_counterpart_existing_link(
     mock_db_session: AsyncMock,
 ) -> None:
     """Test linking to an existing resource counterpart via ID."""
-    machine = MachineOrm(
+    machine = Machine(
         name="test_machine",
         fqn="test.machine",
         asset_type=AssetType.MACHINE,
@@ -117,7 +117,7 @@ async def test_create_or_link_resource_counterpart_existing_link(
     # Need a definition ID to create resource
     def_id = uuid.uuid4()
 
-    existing_resource = ResourceOrm(
+    existing_resource = Resource(
         name="existing_resource",
         fqn="resource.fqn",
         asset_type=AssetType.RESOURCE,
@@ -129,7 +129,7 @@ async def test_create_or_link_resource_counterpart_existing_link(
 
     result = await _create_or_link_resource_counterpart_for_machine(
         db=mock_db_session,
-        machine_orm=machine,
+        machine_model=machine,
         resource_counterpart_accession_id=existing_resource.accession_id,
     )
 
@@ -145,7 +145,7 @@ async def test_create_or_link_machine_counterpart_new(
     mock_db_session: AsyncMock,
 ) -> None:
     """Test creating a new machine counterpart for a resource."""
-    resource = ResourceOrm(
+    resource = Resource(
         name="test_resource",
         fqn="resource.fqn",
         asset_type=AssetType.RESOURCE,
@@ -155,14 +155,14 @@ async def test_create_or_link_machine_counterpart_new(
 
     result = await _create_or_link_machine_counterpart_for_resource(
         db=mock_db_session,
-        resource_orm=resource,
+        resource_model=resource,
         machine_counterpart_accession_id=None,
         machine_name="new_machine",
         machine_fqn="new.machine.fqn",
     )
 
     assert result is not None
-    assert isinstance(result, MachineOrm)
+    assert isinstance(result, Machine)
     assert result.name == "test_resource_machine"
     assert resource.machine_counterpart == result
     mock_db_session.add.assert_called()
@@ -174,13 +174,13 @@ async def test_synchronize_machine_resource_names(
     mock_db_session: AsyncMock,
 ) -> None:
     """Test synchronizing names between machine and resource."""
-    machine = MachineOrm(
+    machine = Machine(
         name="machine",
         fqn="machine.fqn",
         asset_type=AssetType.MACHINE_RESOURCE,
         status=MachineStatusEnum.OFFLINE,
     )
-    resource = ResourceOrm(
+    resource = Resource(
         name="old_resource_name",
         fqn="resource.fqn",
         asset_type=AssetType.MACHINE_RESOURCE,
@@ -201,7 +201,7 @@ async def test_synchronize_machine_resource_names_no_counterpart(
     mock_db_session: AsyncMock,
 ) -> None:
     """Test synchronizing names when machine has no resource counterpart."""
-    machine = MachineOrm(
+    machine = Machine(
         name="machine",
         fqn="machine.fqn",
         asset_type=AssetType.MACHINE,
@@ -220,17 +220,17 @@ async def test_create_or_link_resource_counterpart_missing_definition_name(
     mock_db_session: AsyncMock,
 ) -> None:
     """Test error when creating resource counterpart without definition name."""
-    machine = MachineOrm(
+    machine = Machine(
         name="test_machine",
         fqn="test.machine",
         asset_type=AssetType.MACHINE,
         status=MachineStatusEnum.OFFLINE,
     )
 
-    with pytest.raises(ValueError, match="Cannot create new ResourceOrm"):
+    with pytest.raises(ValueError, match="Cannot create new Resource"):
         await _create_or_link_resource_counterpart_for_machine(
             db=mock_db_session,
-            machine_orm=machine,
+            machine_model=machine,
             resource_counterpart_accession_id=None,
             resource_definition_name=None,  # Missing required name
         )
@@ -241,7 +241,7 @@ async def test_create_or_link_machine_counterpart_missing_name(
     mock_db_session: AsyncMock,
 ) -> None:
     """Test error when creating machine counterpart without name/fqn."""
-    resource = ResourceOrm(
+    resource = Resource(
         name="test_resource",
         fqn="resource.fqn",
         asset_type=AssetType.RESOURCE,
@@ -249,10 +249,10 @@ async def test_create_or_link_machine_counterpart_missing_name(
         status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
     )
 
-    with pytest.raises(ValueError, match="Cannot create new MachineOrm"):
+    with pytest.raises(ValueError, match="Cannot create new Machine"):
         await _create_or_link_machine_counterpart_for_resource(
             db=mock_db_session,
-            resource_orm=resource,
+            resource_model=resource,
             machine_counterpart_accession_id=None,
             machine_name=None,  # Missing required name
             machine_fqn=None,
@@ -264,7 +264,7 @@ async def test_create_or_link_machine_counterpart_existing_link(
     mock_db_session: AsyncMock,
 ) -> None:
     """Test linking resource to an existing machine via ID."""
-    resource = ResourceOrm(
+    resource = Resource(
         name="test_resource",
         fqn="resource.fqn",
         asset_type=AssetType.RESOURCE,
@@ -272,7 +272,7 @@ async def test_create_or_link_machine_counterpart_existing_link(
         status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
     )
 
-    existing_machine = MachineOrm(
+    existing_machine = Machine(
         name="existing_machine",
         fqn="machine.fqn",
         asset_type=AssetType.MACHINE,
@@ -283,7 +283,7 @@ async def test_create_or_link_machine_counterpart_existing_link(
 
     result = await _create_or_link_machine_counterpart_for_resource(
         db=mock_db_session,
-        resource_orm=resource,
+        resource_model=resource,
         machine_counterpart_accession_id=existing_machine.accession_id,
     )
 

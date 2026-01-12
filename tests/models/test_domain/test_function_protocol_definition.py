@@ -1,21 +1,23 @@
-"""Unit tests for FunctionProtocolDefinitionOrm model."""
+"""Unit tests for FunctionProtocolDefinitionmodel."""
 import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.protocol import (
-    FileSystemProtocolSourceOrm,
-    FunctionProtocolDefinitionOrm,
-    ProtocolSourceRepositoryOrm,
+from praxis.backend.models.domain.protocol import (
+    FunctionProtocolDefinition,
+)
+from praxis.backend.models.domain.protocol_source import (
+    FileSystemProtocolSource,
+    ProtocolSourceRepository,
 )
 
 
 @pytest_asyncio.fixture
-async def git_source(db_session: AsyncSession) -> ProtocolSourceRepositoryOrm:
-    """Create a ProtocolSourceRepositoryOrm for testing."""
-    source = ProtocolSourceRepositoryOrm(
+async def git_source(db_session: AsyncSession) -> ProtocolSourceRepository:
+    """Create a ProtocolSourceRepositoryfor testing."""
+    source = ProtocolSourceRepository(
         name="test_git_source",
         git_url="https://github.com/example/protocols.git",
         default_ref="main",
@@ -26,9 +28,9 @@ async def git_source(db_session: AsyncSession) -> ProtocolSourceRepositoryOrm:
 
 
 @pytest_asyncio.fixture
-async def fs_source(db_session: AsyncSession) -> FileSystemProtocolSourceOrm:
-    """Create a FileSystemProtocolSourceOrm for testing."""
-    source = FileSystemProtocolSourceOrm(
+async def fs_source(db_session: AsyncSession) -> FileSystemProtocolSource:
+    """Create a FileSystemProtocolSourcefor testing."""
+    source = FileSystemProtocolSource(
         name="test_fs_source",
         base_path="/opt/protocols",
     )
@@ -41,11 +43,11 @@ async def fs_source(db_session: AsyncSession) -> FileSystemProtocolSourceOrm:
 async def test_function_protocol_definition_orm_creation_minimal(
     db_session: AsyncSession,
 ) -> None:
-    """Test creating FunctionProtocolDefinitionOrm with minimal required fields."""
+    """Test creating FunctionProtocolDefinitionwith minimal required fields."""
     from praxis.backend.utils.uuid import uuid7
 
     protocol_id = uuid7()
-    protocol = FunctionProtocolDefinitionOrm(
+    protocol = FunctionProtocolDefinition(
         name="test_protocol",
         fqn="test.protocols.test_protocol",
     )
@@ -71,13 +73,13 @@ async def test_function_protocol_definition_orm_creation_minimal(
 @pytest.mark.asyncio
 async def test_function_protocol_definition_orm_with_git_source(
     db_session: AsyncSession,
-    git_source: ProtocolSourceRepositoryOrm,
+    git_source: ProtocolSourceRepository,
 ) -> None:
     """Test creating protocol definition linked to Git repository source."""
     from praxis.backend.utils.uuid import uuid7
 
     protocol_id = uuid7()
-    protocol = FunctionProtocolDefinitionOrm(
+    protocol = FunctionProtocolDefinition(
         name="git_protocol",
         fqn="protocols.git_protocol",
         version="1.0.0",
@@ -101,13 +103,13 @@ async def test_function_protocol_definition_orm_with_git_source(
 @pytest.mark.asyncio
 async def test_function_protocol_definition_orm_with_fs_source(
     db_session: AsyncSession,
-    fs_source: FileSystemProtocolSourceOrm,
+    fs_source: FileSystemProtocolSource,
 ) -> None:
     """Test creating protocol definition linked to file system source."""
     from praxis.backend.utils.uuid import uuid7
 
     protocol_id = uuid7()
-    protocol = FunctionProtocolDefinitionOrm(
+    protocol = FunctionProtocolDefinition(
         name="fs_protocol",
         fqn="protocols.fs_protocol",
         version="2.0.0",
@@ -131,11 +133,11 @@ async def test_function_protocol_definition_orm_with_fs_source(
 async def test_function_protocol_definition_orm_persist_to_database(
     db_session: AsyncSession,
 ) -> None:
-    """Test full persistence cycle for FunctionProtocolDefinitionOrm."""
+    """Test full persistence cycle for FunctionProtocolDefinition."""
     from praxis.backend.utils.uuid import uuid7
 
     protocol_id = uuid7()
-    protocol = FunctionProtocolDefinitionOrm(
+    protocol = FunctionProtocolDefinition(
         name="persistence_protocol",
         fqn="test.protocols.persistence_protocol",
         version="1.0.0",
@@ -151,8 +153,8 @@ async def test_function_protocol_definition_orm_persist_to_database(
 
     # Query back
     result = await db_session.execute(
-        select(FunctionProtocolDefinitionOrm).where(
-            FunctionProtocolDefinitionOrm.accession_id == protocol_id,
+        select(FunctionProtocolDefinition).where(
+            FunctionProtocolDefinition.accession_id == protocol_id,
         ),
     )
     retrieved = result.scalars().first()
@@ -170,13 +172,13 @@ async def test_function_protocol_definition_orm_persist_to_database(
 @pytest.mark.asyncio
 async def test_function_protocol_definition_orm_unique_constraint_git(
     db_session: AsyncSession,
-    git_source: ProtocolSourceRepositoryOrm,
+    git_source: ProtocolSourceRepository,
 ) -> None:
     """Test unique constraint (name, version, source_repository, commit_hash)."""
     from praxis.backend.utils.uuid import uuid7
 
     # Create first protocol
-    protocol1 = FunctionProtocolDefinitionOrm(
+    protocol1 = FunctionProtocolDefinition(
         name="unique_protocol",
         fqn="protocols.unique_protocol",
         version="1.0.0",
@@ -189,7 +191,7 @@ async def test_function_protocol_definition_orm_unique_constraint_git(
     await db_session.flush()
 
     # Try to create another with same name, version, source, commit
-    protocol2 = FunctionProtocolDefinitionOrm(
+    protocol2 = FunctionProtocolDefinition(
         name="unique_protocol",  # Same name
         fqn="protocols.unique_protocol_2",
         version="1.0.0",  # Same version
@@ -208,13 +210,13 @@ async def test_function_protocol_definition_orm_unique_constraint_git(
 @pytest.mark.asyncio
 async def test_function_protocol_definition_orm_unique_constraint_fs(
     db_session: AsyncSession,
-    fs_source: FileSystemProtocolSourceOrm,
+    fs_source: FileSystemProtocolSource,
 ) -> None:
     """Test unique constraint (name, version, file_system_source, source_file_path)."""
     from praxis.backend.utils.uuid import uuid7
 
     # Create first protocol
-    protocol1 = FunctionProtocolDefinitionOrm(
+    protocol1 = FunctionProtocolDefinition(
         name="unique_fs_protocol",
         fqn="protocols.unique_fs_protocol",
         version="1.0.0",
@@ -227,7 +229,7 @@ async def test_function_protocol_definition_orm_unique_constraint_fs(
     await db_session.flush()
 
     # Try to create another with same name, version, source, file path
-    protocol2 = FunctionProtocolDefinitionOrm(
+    protocol2 = FunctionProtocolDefinition(
         name="unique_fs_protocol",  # Same name
         fqn="protocols.unique_fs_protocol_2",
         version="1.0.0",  # Same version
@@ -251,7 +253,7 @@ async def test_function_protocol_definition_orm_is_top_level_flag(
     from praxis.backend.utils.uuid import uuid7
 
     # Top-level protocol (can be executed directly)
-    top_level = FunctionProtocolDefinitionOrm(
+    top_level = FunctionProtocolDefinition(
         name="top_level_protocol",
         fqn="protocols.top_level_protocol",
         is_top_level=True,
@@ -262,7 +264,7 @@ async def test_function_protocol_definition_orm_is_top_level_flag(
     assert top_level.is_top_level is True
 
     # Helper protocol (not top-level)
-    helper = FunctionProtocolDefinitionOrm(
+    helper = FunctionProtocolDefinition(
         name="helper_protocol",
         fqn="protocols.helper_protocol",
         is_top_level=False,
@@ -281,7 +283,7 @@ async def test_function_protocol_definition_orm_solo_execution_flag(
     from praxis.backend.utils.uuid import uuid7
 
     # Protocol requiring solo execution
-    solo = FunctionProtocolDefinitionOrm(
+    solo = FunctionProtocolDefinition(
         name="solo_protocol",
         fqn="protocols.solo_protocol",
         solo_execution=True,
@@ -292,7 +294,7 @@ async def test_function_protocol_definition_orm_solo_execution_flag(
     assert solo.solo_execution is True
 
     # Protocol allowing concurrent execution
-    concurrent = FunctionProtocolDefinitionOrm(
+    concurrent = FunctionProtocolDefinition(
         name="concurrent_protocol",
         fqn="protocols.concurrent_protocol",
         solo_execution=False,
@@ -311,7 +313,7 @@ async def test_function_protocol_definition_orm_preconfigure_deck_flag(
     from praxis.backend.utils.uuid import uuid7
 
     # Protocol with deck preconfiguration
-    with_deck = FunctionProtocolDefinitionOrm(
+    with_deck = FunctionProtocolDefinition(
         name="deck_protocol",
         fqn="protocols.deck_protocol",
         preconfigure_deck=True,
@@ -334,7 +336,7 @@ async def test_function_protocol_definition_orm_deprecated_flag(
     from praxis.backend.utils.uuid import uuid7
 
     # Deprecated protocol
-    deprecated = FunctionProtocolDefinitionOrm(
+    deprecated = FunctionProtocolDefinition(
         name="old_protocol",
         fqn="protocols.old_protocol",
         version="0.9.0",
@@ -346,7 +348,7 @@ async def test_function_protocol_definition_orm_deprecated_flag(
     assert deprecated.deprecated is True
 
     # Active protocol
-    active = FunctionProtocolDefinitionOrm(
+    active = FunctionProtocolDefinition(
         name="new_protocol",
         fqn="protocols.new_protocol",
         version="2.0.0",
@@ -372,7 +374,7 @@ async def test_function_protocol_definition_orm_jsonb_tags(
         "hardware": ["pipette", "plate_reader"],
     }
 
-    protocol = FunctionProtocolDefinitionOrm(
+    protocol = FunctionProtocolDefinition(
         name="tagged_protocol",
         fqn="protocols.tagged_protocol",
         tags=tags,
@@ -396,7 +398,7 @@ async def test_function_protocol_definition_orm_state_param(
     """Test state_param_name for stateful protocols."""
     from praxis.backend.utils.uuid import uuid7
 
-    protocol = FunctionProtocolDefinitionOrm(
+    protocol = FunctionProtocolDefinition(
         name="stateful_protocol",
         fqn="protocols.stateful_protocol",
         state_param_name="state",
@@ -414,7 +416,7 @@ async def test_function_protocol_definition_orm_query_by_fqn(
     """Test querying protocols by fully qualified name."""
     from praxis.backend.utils.uuid import uuid7
 
-    protocol = FunctionProtocolDefinitionOrm(
+    protocol = FunctionProtocolDefinition(
         name="queryable_protocol",
         fqn="protocols.queryable.test_protocol",
     )
@@ -424,8 +426,8 @@ async def test_function_protocol_definition_orm_query_by_fqn(
 
     # Query by FQN
     result = await db_session.execute(
-        select(FunctionProtocolDefinitionOrm).where(
-            FunctionProtocolDefinitionOrm.fqn == "protocols.queryable.test_protocol",
+        select(FunctionProtocolDefinition).where(
+            FunctionProtocolDefinition.fqn == "protocols.queryable.test_protocol",
         ),
     )
     retrieved = result.scalars().first()
@@ -443,19 +445,19 @@ async def test_function_protocol_definition_orm_query_top_level(
     from praxis.backend.utils.uuid import uuid7
 
     # Create top-level and helper protocols
-    top_level1 = FunctionProtocolDefinitionOrm(
+    top_level1 = FunctionProtocolDefinition(
         name="top_level_1",
         fqn="protocols.top_level_1",
         is_top_level=True,
     )
     top_level1.accession_id = uuid7()
-    top_level2 = FunctionProtocolDefinitionOrm(
+    top_level2 = FunctionProtocolDefinition(
         name="top_level_2",
         fqn="protocols.top_level_2",
         is_top_level=True,
     )
     top_level2.accession_id = uuid7()
-    helper = FunctionProtocolDefinitionOrm(
+    helper = FunctionProtocolDefinition(
         name="helper",
         fqn="protocols.helper",
         is_top_level=False,
@@ -468,8 +470,8 @@ async def test_function_protocol_definition_orm_query_top_level(
 
     # Query only top-level protocols
     result = await db_session.execute(
-        select(FunctionProtocolDefinitionOrm).where(
-            FunctionProtocolDefinitionOrm.is_top_level == True,  # noqa: E712
+        select(FunctionProtocolDefinition).where(
+            FunctionProtocolDefinition.is_top_level == True,  # noqa: E712
         ),
     )
     top_level_protocols = result.scalars().all()
@@ -485,11 +487,11 @@ async def test_function_protocol_definition_orm_query_top_level(
 async def test_function_protocol_definition_orm_repr(
     db_session: AsyncSession,
 ) -> None:
-    """Test string representation of FunctionProtocolDefinitionOrm."""
+    """Test string representation of FunctionProtocolDefinition."""
     from praxis.backend.utils.uuid import uuid7
 
     protocol_id = uuid7()
-    protocol = FunctionProtocolDefinitionOrm(
+    protocol = FunctionProtocolDefinition(
         name="repr_protocol",
         fqn="protocols.repr_protocol",
         version="1.5.0",
@@ -497,7 +499,7 @@ async def test_function_protocol_definition_orm_repr(
     protocol.accession_id = protocol_id
 
     repr_str = repr(protocol)
-    assert "FunctionProtocolDefinitionOrm" in repr_str
+    assert "FunctionProtocolDefinition" in repr_str
     assert str(protocol_id) in repr_str
     assert "repr_protocol" in repr_str
     assert "1.5.0" in repr_str

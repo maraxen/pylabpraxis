@@ -1,4 +1,4 @@
-"""Unit tests for the WellDataOutputOrm model."""
+"""Unit tests for the WellDataOutputmodel."""
 
 import pytest
 import pytest_asyncio
@@ -6,22 +6,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from praxis.backend.models.enums import AssetType
-from praxis.backend.models.orm.outputs import FunctionDataOutputOrm, WellDataOutputOrm
-from praxis.backend.models.orm.protocol import (
-    FileSystemProtocolSourceOrm,
-    FunctionCallLogOrm,
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-    ProtocolSourceRepositoryOrm,
+from praxis.backend.models.domain.outputs import FunctionDataOutput, WellDataOutput
+from praxis.backend.models.domain.protocol import (
+    FunctionCallLog,
+    FunctionProtocolDefinition,
+    ProtocolRun,
 )
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
+from praxis.backend.models.domain.protocol_source import (
+    FileSystemProtocolSource,
+    ProtocolSourceRepository,
+)
+from praxis.backend.models.domain.resource import Resource, ResourceDefinition
 from praxis.backend.utils.uuid import uuid7
 
 
 @pytest_asyncio.fixture
-async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepositoryOrm:
+async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepository:
     """Fixture for a protocol source repository."""
-    repo = ProtocolSourceRepositoryOrm(
+    repo = ProtocolSourceRepository(
         name="test-repo", git_url="https://github.com/test/repo.git",
     )
     db_session.add(repo)
@@ -30,9 +32,9 @@ async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepositor
 
 
 @pytest_asyncio.fixture
-async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSourceOrm:
+async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSource:
     """Fixture for a file system protocol source."""
-    source = FileSystemProtocolSourceOrm(name="test-fs", base_path="/tmp")
+    source = FileSystemProtocolSource(name="test-fs", base_path="/tmp")
     db_session.add(source)
     await db_session.commit()
     return source
@@ -41,11 +43,11 @@ async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSour
 @pytest_asyncio.fixture
 async def protocol_definition(
     db_session: AsyncSession,
-    source_repository: ProtocolSourceRepositoryOrm,
-    file_system_source: FileSystemProtocolSourceOrm,
-) -> FunctionProtocolDefinitionOrm:
+    source_repository: ProtocolSourceRepository,
+    file_system_source: FileSystemProtocolSource,
+) -> FunctionProtocolDefinition:
     """Fixture for a function protocol definition."""
-    protocol_definition = FunctionProtocolDefinitionOrm(
+    protocol_definition = FunctionProtocolDefinition(
         name="test_protocol",
         fqn="test.protocol",
         source_repository_accession_id=source_repository.accession_id,
@@ -60,10 +62,10 @@ async def protocol_definition(
 
 @pytest_asyncio.fixture
 async def protocol_run(
-    db_session: AsyncSession, protocol_definition: FunctionProtocolDefinitionOrm,
-) -> ProtocolRunOrm:
+    db_session: AsyncSession, protocol_definition: FunctionProtocolDefinition,
+) -> ProtocolRun:
     """Fixture for a protocol run."""
-    protocol_run = ProtocolRunOrm(
+    protocol_run = ProtocolRun(
         name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
     )
@@ -75,11 +77,11 @@ async def protocol_run(
 @pytest_asyncio.fixture
 async def function_call_log(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm,
-    protocol_definition: FunctionProtocolDefinitionOrm,
-) -> FunctionCallLogOrm:
+    protocol_run: ProtocolRun,
+    protocol_definition: FunctionProtocolDefinition,
+) -> FunctionCallLog:
     """Fixture for a function call log."""
-    function_call_log = FunctionCallLogOrm(
+    function_call_log = FunctionCallLog(
         name="test_function_call",
         protocol_run_accession_id=protocol_run.accession_id,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
@@ -93,16 +95,16 @@ async def function_call_log(
 
 
 @pytest_asyncio.fixture
-async def plate_resource(db_session: AsyncSession) -> ResourceOrm:
+async def plate_resource(db_session: AsyncSession) -> Resource:
     """Fixture for a plate resource."""
-    resource_def = ResourceDefinitionOrm(
+    resource_def = ResourceDefinition(
         name="96-well-plate",
         fqn="pylabrobot.resources.corning_costar_96_wellplate_360ul",
     )
     db_session.add(resource_def)
     await db_session.commit()
 
-    plate_resource = ResourceOrm(
+    plate_resource = Resource(
         name="plate_1",
         fqn="pylabrobot.resources.corning_costar_96_wellplate_360ul",
         asset_type=AssetType.RESOURCE,
@@ -117,10 +119,10 @@ async def plate_resource(db_session: AsyncSession) -> ResourceOrm:
 
 @pytest_asyncio.fixture
 async def function_data_output(
-    db_session: AsyncSession, function_call_log: FunctionCallLogOrm, protocol_run: ProtocolRunOrm,
-) -> FunctionDataOutputOrm:
+    db_session: AsyncSession, function_call_log: FunctionCallLog, protocol_run: ProtocolRun,
+) -> FunctionDataOutput:
     """Fixture for a function data output."""
-    data_output = FunctionDataOutputOrm(
+    data_output = FunctionDataOutput(
         name="test_output",
         protocol_run_accession_id=protocol_run.accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
@@ -135,11 +137,11 @@ async def function_data_output(
 @pytest.mark.asyncio
 async def test_well_data_output_orm_creation_minimal(
     db_session: AsyncSession,
-    function_data_output: FunctionDataOutputOrm,
-    plate_resource: ResourceOrm,
+    function_data_output: FunctionDataOutput,
+    plate_resource: Resource,
 ):
-    """Test creating a WellDataOutputOrm with minimal fields."""
-    well_data = WellDataOutputOrm(
+    """Test creating a WellDataOutputwith minimal fields."""
+    well_data = WellDataOutput(
         name="test_well_data",
         function_data_output_accession_id=function_data_output.accession_id,
         plate_resource_accession_id=plate_resource.accession_id,
@@ -161,11 +163,11 @@ async def test_well_data_output_orm_creation_minimal(
 @pytest.mark.asyncio
 async def test_well_data_output_orm_creation_all_fields(
     db_session: AsyncSession,
-    function_data_output: FunctionDataOutputOrm,
-    plate_resource: ResourceOrm,
+    function_data_output: FunctionDataOutput,
+    plate_resource: Resource,
 ):
-    """Test creating a WellDataOutputOrm with all fields populated."""
-    well_data = WellDataOutputOrm(
+    """Test creating a WellDataOutputwith all fields populated."""
+    well_data = WellDataOutput(
         name="test_well_data_all",
         function_data_output_accession_id=function_data_output.accession_id,
         plate_resource_accession_id=plate_resource.accession_id,
@@ -190,11 +192,11 @@ async def test_well_data_output_orm_creation_all_fields(
 @pytest.mark.asyncio
 async def test_well_data_output_orm_persistence(
     db_session: AsyncSession,
-    function_data_output: FunctionDataOutputOrm,
-    plate_resource: ResourceOrm,
+    function_data_output: FunctionDataOutput,
+    plate_resource: Resource,
 ):
-    """Test that a WellDataOutputOrm can be persisted to the database."""
-    well_data = WellDataOutputOrm(
+    """Test that a WellDataOutputcan be persisted to the database."""
+    well_data = WellDataOutput(
         name="test_well_data_persistence",
         function_data_output_accession_id=function_data_output.accession_id,
         plate_resource_accession_id=plate_resource.accession_id,
@@ -207,8 +209,8 @@ async def test_well_data_output_orm_persistence(
     await db_session.commit()
 
     result = await db_session.execute(
-        select(WellDataOutputOrm).where(
-            WellDataOutputOrm.accession_id == well_data.accession_id,
+        select(WellDataOutput).where(
+            WellDataOutput.accession_id == well_data.accession_id,
         ),
     )
     retrieved_well_data = result.scalar_one()
@@ -221,11 +223,11 @@ async def test_well_data_output_orm_persistence(
 @pytest.mark.asyncio
 async def test_well_data_output_orm_relationships(
     db_session: AsyncSession,
-    function_data_output: FunctionDataOutputOrm,
-    plate_resource: ResourceOrm,
+    function_data_output: FunctionDataOutput,
+    plate_resource: Resource,
 ):
-    """Test the relationships to FunctionDataOutputOrm and ResourceOrm."""
-    well_data = WellDataOutputOrm(
+    """Test the relationships to FunctionDataOutputand Resource."""
+    well_data = WellDataOutput(
         name="test_well_data_relationships",
         function_data_output_accession_id=function_data_output.accession_id,
         plate_resource_accession_id=plate_resource.accession_id,

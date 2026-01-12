@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models import ResourceDefinitionOrm
+from praxis.backend.models import ResourceDefinition
 from praxis.backend.services.plate_parsing import (
     calculate_well_index,
     parse_well_name,
@@ -23,7 +23,7 @@ def mock_db_session() -> AsyncMock:
 @pytest.mark.asyncio
 async def test_read_plate_dimensions_from_num_items(mock_db_session: AsyncMock) -> None:
     """Test reading dimensions from num_items_x/y."""
-    resource_def = ResourceDefinitionOrm(
+    resource_def = ResourceDefinition(
         name="test_plate",
         fqn="test.plate",
         plr_definition_details_json={"num_items_x": 12, "num_items_y": 8},
@@ -39,7 +39,7 @@ async def test_read_plate_dimensions_from_num_items(mock_db_session: AsyncMock) 
 @pytest.mark.asyncio
 async def test_read_plate_dimensions_from_rows_cols(mock_db_session: AsyncMock) -> None:
     """Test reading dimensions from rows/columns in details."""
-    resource_def = ResourceDefinitionOrm(
+    resource_def = ResourceDefinition(
         name="test_plate",
         fqn="test.plate",
         plr_definition_details_json={"rows": 4, "columns": 6},
@@ -55,7 +55,7 @@ async def test_read_plate_dimensions_from_rows_cols(mock_db_session: AsyncMock) 
 @pytest.mark.asyncio
 async def test_read_plate_dimensions_from_wells(mock_db_session: AsyncMock) -> None:
     """Test reading dimensions from wells layout."""
-    resource_def = ResourceDefinitionOrm(
+    resource_def = ResourceDefinition(
         name="test_plate",
         fqn="test.plate",
         plr_definition_details_json={
@@ -80,7 +80,7 @@ async def test_read_plate_dimensions_from_wells(mock_db_session: AsyncMock) -> N
 @pytest.mark.asyncio
 async def test_read_plate_dimensions_fallback_name(mock_db_session: AsyncMock) -> None:
     """Test reading dimensions from name fallback."""
-    resource_def = ResourceDefinitionOrm(
+    resource_def = ResourceDefinition(
         name="Costar 96 Well Plate",
         fqn="test.plate",
         plr_definition_details_json={},

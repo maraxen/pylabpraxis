@@ -6,9 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 import pytest
 
 from praxis.backend.core.scheduler import ProtocolScheduler, ScheduleEntry
-from praxis.backend.models.pydantic_internals.protocol import (
-    AssetRequirementModel,
-)
+from praxis.backend.models.domain.protocol import AssetRequirement as AssetRequirementModel
 from praxis.backend.models.pydantic_internals.runtime import RuntimeAssetRequirement
 from praxis.backend.utils.errors import AssetAcquisitionError
 from praxis.backend.utils.uuid import uuid7
@@ -637,9 +635,9 @@ class TestScheduleProtocolExecution:
         """Test successful protocol scheduling workflow."""
         from unittest.mock import AsyncMock, MagicMock
 
-        from praxis.backend.models.orm.protocol import (
-            FunctionProtocolDefinitionOrm,
-            ProtocolRunOrm,
+        from praxis.backend.models.domain import (
+            FunctionProtocolDefinition,
+            ProtocolRun,
         )
 
         # Create mock task queue
@@ -651,14 +649,14 @@ class TestScheduleProtocolExecution:
         # Create mock protocol run and definition
         protocol_run_id = uuid7()
         protocol_def_id = uuid7()
-        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
+        mock_protocol_def = Mock(spec=FunctionProtocolDefinition)
         mock_protocol_def.name = "test_protocol"
         mock_protocol_def.version = "1.0.0"
         mock_protocol_def.assets = []
         mock_protocol_def.preconfigure_deck = False
         mock_protocol_def.deck_param_name = None
 
-        mock_protocol_run = Mock(spec=ProtocolRunOrm)
+        mock_protocol_run = Mock(spec=ProtocolRun)
         mock_protocol_run.accession_id = protocol_run_id
         mock_protocol_run.top_level_protocol_definition = mock_protocol_def
         mock_protocol_run.top_level_protocol_definition_accession_id = protocol_def_id
@@ -704,11 +702,11 @@ class TestScheduleProtocolExecution:
         """Test scheduling fails when protocol definition not found."""
         from unittest.mock import AsyncMock, MagicMock
 
-        from praxis.backend.models.orm.protocol import ProtocolRunOrm
+        from praxis.backend.models.domain import ProtocolRun
 
         # Create mock protocol run without attached definition
         protocol_run_id = uuid7()
-        mock_protocol_run = Mock(spec=ProtocolRunOrm)
+        mock_protocol_run = Mock(spec=ProtocolRun)
         mock_protocol_run.accession_id = protocol_run_id
         mock_protocol_run.top_level_protocol_definition = None
         mock_protocol_run.top_level_protocol_definition_accession_id = uuid7()
@@ -749,9 +747,9 @@ class TestScheduleProtocolExecution:
         """Test scheduling handles queue task failure."""
         from unittest.mock import AsyncMock, MagicMock
 
-        from praxis.backend.models.orm.protocol import (
-            FunctionProtocolDefinitionOrm,
-            ProtocolRunOrm,
+        from praxis.backend.models.domain import (
+            FunctionProtocolDefinition,
+            ProtocolRun,
         )
 
         # Mock task queue that fails
@@ -761,14 +759,14 @@ class TestScheduleProtocolExecution:
         # Create mock protocol run and definition
         protocol_run_id = uuid7()
         protocol_def_id = uuid7()
-        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
+        mock_protocol_def = Mock(spec=FunctionProtocolDefinition)
         mock_protocol_def.name = "test_protocol"
         mock_protocol_def.version = "1.0.0"
         mock_protocol_def.assets = []
         mock_protocol_def.preconfigure_deck = False
         mock_protocol_def.deck_param_name = None
 
-        mock_protocol_run = Mock(spec=ProtocolRunOrm)
+        mock_protocol_run = Mock(spec=ProtocolRun)
         mock_protocol_run.accession_id = protocol_run_id
         mock_protocol_run.top_level_protocol_definition = mock_protocol_def
         mock_protocol_run.top_level_protocol_definition_accession_id = protocol_def_id
@@ -809,9 +807,9 @@ class TestScheduleProtocolExecution:
         """Test scheduling with initial state parameter."""
         from unittest.mock import AsyncMock, MagicMock
 
-        from praxis.backend.models.orm.protocol import (
-            FunctionProtocolDefinitionOrm,
-            ProtocolRunOrm,
+        from praxis.backend.models.domain import (
+            FunctionProtocolDefinition,
+            ProtocolRun,
         )
 
         # Mock task queue
@@ -823,14 +821,14 @@ class TestScheduleProtocolExecution:
         # Create mock protocol run and definition
         protocol_run_id = uuid7()
         protocol_def_id = uuid7()
-        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
+        mock_protocol_def = Mock(spec=FunctionProtocolDefinition)
         mock_protocol_def.name = "test_protocol"
         mock_protocol_def.version = "1.0.0"
         mock_protocol_def.assets = []
         mock_protocol_def.preconfigure_deck = False
         mock_protocol_def.deck_param_name = None
 
-        mock_protocol_run = Mock(spec=ProtocolRunOrm)
+        mock_protocol_run = Mock(spec=ProtocolRun)
         mock_protocol_run.accession_id = protocol_run_id
         mock_protocol_run.top_level_protocol_definition = mock_protocol_def
         mock_protocol_run.top_level_protocol_definition_accession_id = protocol_def_id
@@ -878,7 +876,7 @@ class TestAnalyzeProtocolRequirementsWithDeck:
     @pytest.mark.asyncio
     async def test_analyze_protocol_requirements_with_deck(self) -> None:
         """Test protocol requirements analysis with deck configuration."""
-        from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm
+        from praxis.backend.models.domain import FunctionProtocolDefinition
 
         scheduler = ProtocolScheduler(
             db_session_factory=create_async_session_factory(),
@@ -888,7 +886,7 @@ class TestAnalyzeProtocolRequirementsWithDeck:
         )
 
         # Create mock protocol definition with deck configuration
-        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
+        mock_protocol_def = Mock(spec=FunctionProtocolDefinition)
         mock_protocol_def.name = "test_protocol_with_deck"
         mock_protocol_def.version = "1.0.0"
         mock_protocol_def.assets = []
@@ -912,7 +910,7 @@ class TestAnalyzeProtocolRequirementsWithDeck:
     @pytest.mark.asyncio
     async def test_analyze_protocol_requirements_deck_only_if_param_name(self) -> None:
         """Test that deck is only added if deck_param_name is provided."""
-        from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm
+        from praxis.backend.models.domain import FunctionProtocolDefinition
 
         scheduler = ProtocolScheduler(
             db_session_factory=create_async_session_factory(),
@@ -922,7 +920,7 @@ class TestAnalyzeProtocolRequirementsWithDeck:
         )
 
         # Create mock protocol definition with preconfigure_deck but no param name
-        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
+        mock_protocol_def = Mock(spec=FunctionProtocolDefinition)
         mock_protocol_def.name = "test_protocol"
         mock_protocol_def.version = "1.0.0"
         mock_protocol_def.assets = []
@@ -1095,9 +1093,9 @@ class TestScheduleProtocolExecutionEdgeCases:
         """Test scheduling with None user_params (converted to empty dict)."""
         from unittest.mock import AsyncMock, MagicMock
 
-        from praxis.backend.models.orm.protocol import (
-            FunctionProtocolDefinitionOrm,
-            ProtocolRunOrm,
+        from praxis.backend.models.domain import (
+            FunctionProtocolDefinition,
+            ProtocolRun,
         )
 
         # Create mock task queue
@@ -1109,14 +1107,14 @@ class TestScheduleProtocolExecutionEdgeCases:
         # Create mock protocol run and definition
         protocol_run_id = uuid7()
         protocol_def_id = uuid7()
-        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
+        mock_protocol_def = Mock(spec=FunctionProtocolDefinition)
         mock_protocol_def.name = "test"
         mock_protocol_def.version = "1.0.0"
         mock_protocol_def.assets = []
         mock_protocol_def.preconfigure_deck = False
         mock_protocol_def.deck_param_name = None
 
-        mock_protocol_run = Mock(spec=ProtocolRunOrm)
+        mock_protocol_run = Mock(spec=ProtocolRun)
         mock_protocol_run.accession_id = protocol_run_id
         mock_protocol_run.top_level_protocol_definition = mock_protocol_def
         mock_protocol_run.top_level_protocol_definition_accession_id = protocol_def_id
@@ -1323,9 +1321,9 @@ class TestScheduleProtocolExecutionWithFetch:
         """Test scheduling fetches protocol definition when not attached."""
         from unittest.mock import AsyncMock, MagicMock
 
-        from praxis.backend.models.orm.protocol import (
-            FunctionProtocolDefinitionOrm,
-            ProtocolRunOrm,
+        from praxis.backend.models.domain import (
+            FunctionProtocolDefinition,
+            ProtocolRun,
         )
 
         # Create mock task queue
@@ -1335,7 +1333,7 @@ class TestScheduleProtocolExecutionWithFetch:
         mock_task_queue.send_task = Mock(return_value=mock_task_result)
 
         # Mock protocol definition that will be fetched
-        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
+        mock_protocol_def = Mock(spec=FunctionProtocolDefinition)
         mock_protocol_def.name = "fetched_protocol"
         mock_protocol_def.version = "1.0.0"
         mock_protocol_def.assets = []
@@ -1345,7 +1343,7 @@ class TestScheduleProtocolExecutionWithFetch:
         # Create mock protocol run WITHOUT attached definition
         protocol_run_id = uuid7()
         protocol_def_id = uuid7()
-        mock_protocol_run = Mock(spec=ProtocolRunOrm)
+        mock_protocol_run = Mock(spec=ProtocolRun)
         mock_protocol_run.accession_id = protocol_run_id
         mock_protocol_run.top_level_protocol_definition = None  # Not attached
         mock_protocol_run.top_level_protocol_definition_accession_id = protocol_def_id

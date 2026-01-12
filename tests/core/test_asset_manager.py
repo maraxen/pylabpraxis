@@ -6,10 +6,10 @@ import pytest
 from pylabrobot.resources import Deck
 
 from praxis.backend.core.asset_manager import AssetManager
-from praxis.backend.models.orm.machine import MachineStatusEnum
-from praxis.backend.models.orm.resource import ResourceStatusEnum
-from praxis.backend.models.pydantic_internals.asset import AcquireAsset
-from praxis.backend.models.pydantic_internals.protocol import AssetRequirementModel
+from praxis.backend.models.enums import MachineStatusEnum
+from praxis.backend.models.enums import ResourceStatusEnum
+from praxis.backend.models.pydantic_internals.runtime import AcquireAsset
+from praxis.backend.models.domain.protocol import AssetRequirement as AssetRequirementModel
 from praxis.backend.utils.errors import AssetAcquisitionError, AssetReleaseError
 from praxis.backend.utils.uuid import uuid7
 
@@ -67,27 +67,27 @@ class TestGetAndValidateDeckOrms:
         deck_id = uuid7()
 
         # Mock deck ORM
-        mock_deck_orm = Mock()
-        mock_deck_orm.accession_id = deck_id
-        mock_deck_orm.name = "test_deck"
+        mock_deck_model = Mock()
+        mock_deck_model.accession_id = deck_id
+        mock_deck_model.name = "test_deck"
 
         # Mock resource ORM
-        mock_resource_orm = Mock()
-        mock_resource_orm.name = "test_resource"
+        mock_resource_model = Mock()
+        mock_resource_model.name = "test_resource"
 
         # Mock resource definition ORM
-        mock_def_orm = Mock()
-        mock_def_orm.fqn = "test.Deck"
+        mock_def_model = Mock()
+        mock_def_model.fqn = "test.Deck"
 
-        manager.deck_svc.get = AsyncMock(return_value=mock_deck_orm)
-        manager.resource_svc.get = AsyncMock(return_value=mock_resource_orm)
-        manager.resource_type_definition_svc.get_by_name = AsyncMock(return_value=mock_def_orm)
+        manager.deck_svc.get = AsyncMock(return_value=mock_deck_model)
+        manager.resource_svc.get = AsyncMock(return_value=mock_resource_model)
+        manager.resource_type_definition_svc.get_by_name = AsyncMock(return_value=mock_def_model)
 
-        deck_orm, resource_orm, def_orm = await manager._get_and_validate_deck_orms(deck_id)
+        deck_model, resource_model, def_model = await manager._get_and_validate_deck_orms(deck_id)
 
-        assert deck_orm == mock_deck_orm
-        assert resource_orm == mock_resource_orm
-        assert def_orm == mock_def_orm
+        assert deck_model == mock_deck_model
+        assert resource_model == mock_resource_model
+        assert def_model == mock_def_model
 
     @pytest.mark.asyncio
     async def test_get_and_validate_deck_orms_deck_not_found(self) -> None:
@@ -122,11 +122,11 @@ class TestGetAndValidateDeckOrms:
         )
 
         deck_id = uuid7()
-        mock_deck_orm = Mock()
-        mock_deck_orm.accession_id = deck_id
-        mock_deck_orm.name = "test_deck"
+        mock_deck_model = Mock()
+        mock_deck_model.accession_id = deck_id
+        mock_deck_model.name = "test_deck"
 
-        manager.deck_svc.get = AsyncMock(return_value=mock_deck_orm)
+        manager.deck_svc.get = AsyncMock(return_value=mock_deck_model)
         manager.resource_svc.get = AsyncMock(return_value=None)
 
         with pytest.raises(AssetAcquisitionError, match="Deck Resource ID"):

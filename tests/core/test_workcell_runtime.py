@@ -179,8 +179,8 @@ class TestLinkWorkcellToDb:
         mock_session_ctx.__aexit__.return_value = None
         mock_db_session_factory = Mock(return_value=mock_session_ctx)
 
-        mock_workcell_orm = Mock()
-        mock_workcell_orm.accession_id = uuid7()
+        mock_workcell_model = Mock()
+        mock_workcell_model.accession_id = uuid7()
 
         runtime = WorkcellRuntime(
             db_session_factory=mock_db_session_factory,
@@ -192,12 +192,12 @@ class TestLinkWorkcellToDb:
             workcell_service=Mock(),
         )
 
-        runtime.workcell_svc.create = AsyncMock(return_value=mock_workcell_orm)
+        runtime.workcell_svc.create = AsyncMock(return_value=mock_workcell_model)
         runtime.workcell_svc.read_workcell_state = AsyncMock(return_value={"db_state": "data"})
 
         await runtime._link_workcell_to_db()
 
-        assert runtime._workcell_db_accession_id == mock_workcell_orm.accession_id
+        assert runtime._workcell_db_accession_id == mock_workcell_model.accession_id
         runtime.workcell_svc.create.assert_called_once()
         mock_workcell.load_all_state.assert_called_once()
 
@@ -244,8 +244,8 @@ class TestStartStopWorkcellStateSync:
         mock_session_ctx.__aexit__.return_value = None
         mock_db_session_factory = Mock(return_value=mock_session_ctx)
 
-        mock_workcell_orm = Mock()
-        mock_workcell_orm.accession_id = uuid7()
+        mock_workcell_model = Mock()
+        mock_workcell_model.accession_id = uuid7()
 
         runtime = WorkcellRuntime(
             db_session_factory=mock_db_session_factory,
@@ -257,7 +257,7 @@ class TestStartStopWorkcellStateSync:
             workcell_service=Mock(),
         )
 
-        runtime.workcell_svc.create = AsyncMock(return_value=mock_workcell_orm)
+        runtime.workcell_svc.create = AsyncMock(return_value=mock_workcell_model)
         runtime.workcell_svc.read_workcell_state = AsyncMock(return_value=None)
 
         await runtime.start_workcell_state_sync()
@@ -500,10 +500,10 @@ class TestAssignResourceToDeck:
         mock_existing_resource.name = "existing_resource"
         runtime.resource_svc.get_multi = AsyncMock(return_value=[mock_existing_resource])
 
-        mock_deck_orm = Mock()
-        mock_deck_orm.accession_id = deck_id
-        mock_deck_orm.deck_type_id = uuid7()
-        runtime.deck_svc.get = AsyncMock(return_value=mock_deck_orm)
+        mock_deck_model = Mock()
+        mock_deck_model.accession_id = deck_id
+        mock_deck_model.deck_type_id = uuid7()
+        runtime.deck_svc.get = AsyncMock(return_value=mock_deck_model)
 
         mock_deck_def = Mock()
         mock_deck_def.positioning_config_json = {}

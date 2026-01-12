@@ -6,20 +6,18 @@ import uuid
 import factory
 from factory.alchemy import SQLAlchemyModelFactory
 
-from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
-from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.orm.outputs import FunctionDataOutputOrm, WellDataOutputOrm
-from praxis.backend.models.orm.protocol import (
-    FunctionCallLogOrm,
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-)
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
+from praxis.backend.models.domain.machine import Machine
+from praxis.backend.models.domain.resource import Resource, ResourceDefinition
 from praxis.backend.models.domain.workcell import Workcell
-from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
-from praxis.backend.models.orm.workcell import WorkcellOrm
 from praxis.backend.models.enums import AssetType
+from praxis.backend.models.domain.deck import Deck, DeckDefinition
+from praxis.backend.models.domain.outputs import FunctionDataOutput, WellDataOutput
+from praxis.backend.models.domain.protocol import (
+    FunctionCallLog,
+    FunctionProtocolDefinition,
+    ProtocolRun,
+)
+from praxis.backend.models.domain.workcell import Workcell
 
 _last_v7_timestamp = None
 
@@ -51,26 +49,26 @@ def uuid7():
 
 class WorkcellFactory(SQLAlchemyModelFactory):
 
-    """Factory for WorkcellOrm."""
+    """Factory for Workcell."""
 
     class Meta:
 
         """Meta class for WorkcellFactory."""
 
-        model = WorkcellOrm
+        model = Workcell
 
     name = factory.Faker("word")
 
 
 class MachineFactory(SQLAlchemyModelFactory):
 
-    """Factory for MachineOrm."""
+    """Factory for Machine."""
 
     class Meta:
 
         """Meta class for MachineFactory."""
 
-        model = MachineOrm
+        model = Machine
 
     @classmethod
     def _create(cls, model_class, *args, **kwargs):
@@ -108,13 +106,13 @@ class MachineFactory(SQLAlchemyModelFactory):
 
 class ResourceDefinitionFactory(SQLAlchemyModelFactory):
 
-    """Factory for ResourceDefinitionOrm."""
+    """Factory for ResourceDefinition."""
 
     class Meta:
 
-        """Meta class for ResourceDefinitionOrm."""
+        """Meta class for ResourceDefinitionFactory."""
 
-        model = ResourceDefinitionOrm
+        model = ResourceDefinition
 
     name = factory.Faker("word")
     fqn = factory.Faker("word")
@@ -123,13 +121,13 @@ class ResourceDefinitionFactory(SQLAlchemyModelFactory):
 
 class DeckDefinitionFactory(SQLAlchemyModelFactory):
 
-    """Factory for DeckDefinitionOrm."""
+    """Factory for DeckDefinition."""
 
     class Meta:
 
-        """Meta class for DeckDefinitionOrm."""
+        """Meta class for DeckDefinitionFactory."""
 
-        model = DeckDefinitionOrm
+        model = DeckDefinition
 
     name = factory.Faker("word")
     fqn = factory.Faker("word")
@@ -144,13 +142,13 @@ class DeckDefinitionFactory(SQLAlchemyModelFactory):
 
 class DeckFactory(SQLAlchemyModelFactory):
 
-    """Factory for DeckOrm."""
+    """Factory for Deck."""
 
     class Meta:
 
-        """Meta class for DeckOrm."""
+        """Meta class for DeckFactory."""
 
-        model = DeckOrm
+        model = Deck
 
     @classmethod
     def _create(cls, model_class, *args, **kwargs):
@@ -193,12 +191,12 @@ class DeckFactory(SQLAlchemyModelFactory):
 
 
 class ResourceFactory(SQLAlchemyModelFactory):
-    """Factory for ResourceOrm."""
+    """Factory for Resource."""
 
     class Meta:
         """Meta class for ResourceFactory."""
 
-        model = ResourceOrm
+        model = Resource
 
     @classmethod
     def _create(cls, model_class, *args, **kwargs):
@@ -209,8 +207,8 @@ class ResourceFactory(SQLAlchemyModelFactory):
         obj = super()._create(model_class, *args, **kwargs)
         
         if res_def:
-             # Relationship name in ResourceOrm? likely resource_definition
-             # But let's check ResourceOrm definition if logical.
+             # Relationship name in Resource? likely resource_definition
+             # But let's check Resource definition if logical.
              # Assuming standard name.
              pass 
         
@@ -231,24 +229,24 @@ class ResourceFactory(SQLAlchemyModelFactory):
 
 
 class FunctionProtocolDefinitionFactory(SQLAlchemyModelFactory):
-    """Factory for FunctionProtocolDefinitionOrm."""
+    """Factory for FunctionProtocolDefinition."""
 
     class Meta:
         """Meta class for FunctionProtocolDefinitionFactory."""
 
-        model = FunctionProtocolDefinitionOrm
+        model = FunctionProtocolDefinition
 
     name = "test_protocol"
     fqn = "test_protocol"
 
 
 class ProtocolRunFactory(SQLAlchemyModelFactory):
-    """Factory for ProtocolRunOrm."""
+    """Factory for ProtocolRun."""
 
     class Meta:
         """Meta class for ProtocolRunFactory."""
 
-        model = ProtocolRunOrm
+        model = ProtocolRun
 
     @classmethod
     def _create(cls, model_class, *args, **kwargs):
@@ -273,12 +271,12 @@ class ProtocolRunFactory(SQLAlchemyModelFactory):
 
 
 class FunctionCallLogFactory(SQLAlchemyModelFactory):
-    """Factory for FunctionCallLogOrm."""
+    """Factory for FunctionCallLog."""
 
     class Meta:
-        """Meta class for FunctionCallLogOrm."""
+        """Meta class for FunctionCallLogFactory."""
 
-        model = FunctionCallLogOrm
+        model = FunctionCallLog
 
     @classmethod
     def _create(cls, model_class, *args, **kwargs):
@@ -313,12 +311,12 @@ class FunctionCallLogFactory(SQLAlchemyModelFactory):
 
 
 class FunctionDataOutputFactory(SQLAlchemyModelFactory):
-    """Factory for FunctionDataOutputOrm."""
+    """Factory for FunctionDataOutput."""
 
     class Meta:
         """Meta class for FunctionDataOutputFactory."""
 
-        model = FunctionDataOutputOrm
+        model = FunctionDataOutput
 
     @classmethod
     def _create(cls, model_class, *args, **kwargs):
@@ -328,7 +326,7 @@ class FunctionDataOutputFactory(SQLAlchemyModelFactory):
         
         obj = super()._create(model_class, *args, **kwargs)
         
-        # Note: FunctionDataOutputOrm might not have a relationship for _function_call_log 
+        # Note: FunctionDataOutput might not have a relationship for _function_call_log 
         # or it might be named differently.
         # But if it was working before via SubFactory + exclude, then it was just used for ID generation
         # and not assigned.
@@ -354,12 +352,12 @@ class FunctionDataOutputFactory(SQLAlchemyModelFactory):
 
 
 class WellDataOutputFactory(SQLAlchemyModelFactory):
-    """Factory for WellDataOutputOrm."""
+    """Factory for WellDataOutput."""
 
     class Meta:
-        """Meta class for WellDataOutputOrm."""
+        """Meta class for WellDataOutputFactory."""
 
-        model = WellDataOutputOrm
+        model = WellDataOutput
 
     @classmethod
     def _create(cls, model_class, *args, **kwargs):

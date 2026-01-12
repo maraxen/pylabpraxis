@@ -1,11 +1,11 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.deck import DeckDefinitionOrm
-from praxis.backend.models.pydantic_internals.deck import (
+from praxis.backend.models.domain.deck import (
+    DeckDefinition,
     DeckPositionDefinitionCreate,
-    DeckTypeDefinitionCreate,
-    DeckTypeDefinitionUpdate,
+    DeckDefinitionCreate,
+    DeckDefinitionUpdate,
     PositioningConfig,
 )
 from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
@@ -13,7 +13,7 @@ from praxis.backend.services.deck_type_definition import DeckTypeDefinitionServi
 
 @pytest.fixture
 def deck_type_definition_service() -> DeckTypeDefinitionService:
-    return DeckTypeDefinitionService(DeckDefinitionOrm)
+    return DeckTypeDefinitionService(DeckDefinition)
 
 @pytest.mark.asyncio
 async def test_create_deck_type_definition_with_positions(
@@ -36,7 +36,7 @@ async def test_create_deck_type_definition_with_positions(
         # position_accession_id is missing here, checking if service handles mapping
     )
 
-    deck_def_create = DeckTypeDefinitionCreate(
+    deck_def_create = DeckDefinitionCreate(
         name="Hamilton STAR",
         fqn="pylabrobot.liquid_handling.backends.hamilton.STARDeck",
         version="1.0.0",
@@ -65,7 +65,7 @@ async def test_get_deck_type_definition(
     pos_config = PositioningConfig(
         method_name="test", arg_name="test", arg_type="str",
     )
-    deck_def_create = DeckTypeDefinitionCreate(
+    deck_def_create = DeckDefinitionCreate(
         name="Test Deck",
         fqn="test.deck",
         version="1.0.0",
@@ -88,7 +88,7 @@ async def test_update_deck_type_definition(
     pos_config = PositioningConfig(
         method_name="test", arg_name="test", arg_type="str",
     )
-    deck_def_create = DeckTypeDefinitionCreate(
+    deck_def_create = DeckDefinitionCreate(
         name="Update Deck",
         fqn="update.deck",
         version="1.0.0",
@@ -97,7 +97,7 @@ async def test_update_deck_type_definition(
     )
     created_def = await deck_type_definition_service.create(db_session, obj_in=deck_def_create)
 
-    update_data = DeckTypeDefinitionUpdate(
+    update_data = DeckDefinitionUpdate(
         description="Updated description",
     )
 
@@ -116,7 +116,7 @@ async def test_delete_deck_type_definition(
     pos_config = PositioningConfig(
         method_name="test", arg_name="test", arg_type="str",
     )
-    deck_def_create = DeckTypeDefinitionCreate(
+    deck_def_create = DeckDefinitionCreate(
         name="Delete Deck",
         fqn="delete.deck",
         version="1.0.0",

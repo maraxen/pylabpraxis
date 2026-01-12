@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.machine import MachineDefinitionOrm
+from praxis.backend.models.domain.machine import MachineDefinition
 from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
 
 
@@ -54,7 +54,7 @@ async def test_discover_and_synchronize_machine_types(
         assert synced[0].frontend_fqn == "pylabrobot.liquid_handling.LiquidHandler"
 
         # Verify in DB
-        result = await db_session.execute(select(MachineDefinitionOrm).filter_by(fqn="test.machine.MockMachine"))
+        result = await db_session.execute(select(MachineDefinition).filter_by(fqn="test.machine.MockMachine"))
         db_obj = result.scalar_one()
         assert db_obj is not None
         assert db_obj.frontend_fqn == "pylabrobot.liquid_handling.LiquidHandler"

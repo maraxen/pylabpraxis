@@ -6,15 +6,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.enums.asset import AssetType
 from praxis.backend.models.enums.machine import MachineStatusEnum
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.machine import MachineCreate, MachineUpdate
+from praxis.backend.models.domain.resource import (
+    ResourceDefinition,
+)
+from praxis.backend.models.domain.filters import SearchFilters
+from praxis.backend.models.domain.machine import (
+    Machine,
+    MachineCreate,
+    MachineUpdate,
+)
 from praxis.backend.services.machine import machine_service
 
 
-async def create_resource_definition(db: AsyncSession, name: str) -> ResourceDefinitionOrm:
+async def create_resource_definition(db: AsyncSession, name: str) -> ResourceDefinition:
     """Helper to create a resource definition."""
-    definition = ResourceDefinitionOrm(
+    definition = ResourceDefinition(
         name=name,
         fqn="com.example.Resource",
         resource_type="Generic",
@@ -38,7 +44,7 @@ async def test_machine_service_create_machine(db_session: AsyncSession) -> None:
 
     assert machine.name == "Test Machine"
     assert machine.accession_id is not None
-    # machine.status is an Enum object because MachineOrm uses SAEnum
+    # machine.status is an Enum object because Machine uses SAEnum
     assert machine.status == MachineStatusEnum.OFFLINE
     assert machine.fqn == "com.example.Machine"
 
@@ -115,7 +121,7 @@ async def test_machine_service_update_machine(db_session: AsyncSession) -> None:
     updated = await machine_service.update(db=db_session, db_obj=created, obj_in=update_data)
 
     assert updated.name == "Updated Name"
-    # MachineOrm uses SAEnum, so it returns the Enum member
+    # Machine uses SAEnum, so it returns the Enum member
     assert updated.status == MachineStatusEnum.AVAILABLE
 
     refetched = await machine_service.get(db=db_session, accession_id=created.accession_id)

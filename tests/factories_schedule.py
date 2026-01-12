@@ -21,30 +21,26 @@ from praxis.backend.models.enums import (
     ScheduleStatusEnum,
     SpatialContextEnum,
 )
-from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
-from praxis.backend.models.orm.protocol import (
-    FileSystemProtocolSourceOrm,
-    FunctionCallLogOrm,
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-    ProtocolSourceRepositoryOrm,
+from praxis.backend.models.domain.machine import Machine
+from praxis.backend.models.domain.outputs import FunctionDataOutput
+from praxis.backend.models.domain.protocol import (
+  ProtocolRun,
 )
-from praxis.backend.models.orm.resource import ResourceOrm
-from praxis.backend.models.orm.schedule import AssetReservationOrm, ScheduleEntryOrm
+from praxis.backend.models.domain.resource import Resource
+from praxis.backend.models.domain.schedule import AssetReservation, ScheduleEntry
 from praxis.backend.utils.uuid import uuid7
 
 
 async def create_protocol_definition(
     db_session: AsyncSession,
-    source_repository: ProtocolSourceRepositoryOrm | None = None,
-    file_system_source: FileSystemProtocolSourceOrm | None = None,
+    source_repository: ProtocolSourceRepository | None = None,
+    file_system_source: FileSystemProtocolSource | None = None,
     **kwargs,
-) -> FunctionProtocolDefinitionOrm:
-    """Factory for creating FunctionProtocolDefinitionOrm."""
+) -> FunctionProtocolDefinition:
+    """Factory for creating FunctionProtocolDefinition."""
     # Create source_repository if not provided
     if not source_repository:
-        source_repository = ProtocolSourceRepositoryOrm(
+        source_repository = ProtocolSourceRepository(
             name=f"test-repo-{uuid7()}",
             git_url="https://github.com/test/repo.git",
         )
@@ -53,7 +49,7 @@ async def create_protocol_definition(
 
     # Create file_system_source if not provided
     if not file_system_source:
-        file_system_source = FileSystemProtocolSourceOrm(
+        file_system_source = FileSystemProtocolSource(
             name=f"test-fs-source-{uuid7()}",
             base_path="/tmp/protocols",
         )
@@ -70,7 +66,7 @@ async def create_protocol_definition(
     }
     defaults.update(kwargs)
 
-    protocol = FunctionProtocolDefinitionOrm(**defaults)
+    protocol = FunctionProtocolDefinition(**defaults)
     if source_repository:
         protocol.source_repository = source_repository
     if file_system_source:
@@ -84,10 +80,10 @@ async def create_protocol_definition(
 
 async def create_protocol_run(
     db_session: AsyncSession,
-    protocol_definition: FunctionProtocolDefinitionOrm | None = None,
+    protocol_definition: FunctionProtocolDefinition | None = None,
     **kwargs,
-) -> ProtocolRunOrm:
-    """Factory for creating ProtocolRunOrm."""
+) -> ProtocolRun:
+    """Factory for creating ProtocolRun."""
     if not protocol_definition:
         protocol_definition = await create_protocol_definition(db_session)
 
@@ -97,7 +93,7 @@ async def create_protocol_run(
     }
     defaults.update(kwargs)
 
-    run = ProtocolRunOrm(**defaults)
+    run = ProtocolRun(**defaults)
     db_session.add(run)
     await db_session.flush()
     await db_session.refresh(run)
@@ -107,27 +103,27 @@ async def create_protocol_run(
 
 async def create_schedule_entry(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm | None = None,
+    protocol_run: ProtocolRun | None = None,
     **kwargs,
-) -> ScheduleEntryOrm:
-    """Factory for creating ScheduleEntryOrm.
+) -> ScheduleEntry:
+    """Factory for creating ScheduleEntry.
 
     Handles kw_only fields and relationship setup automatically.
 
     Args:
         db_session: AsyncSession for database operations
-        protocol_run: Optional ProtocolRunOrm to associate with
+        protocol_run: Optional ProtocolRun to associate with
         **kwargs: Override default values
 
     Returns:
-        Created and persisted ScheduleEntryOrm
+        Created and persisted ScheduleEntry
 
     """
     if not protocol_run:
         protocol_run = await create_protocol_run(db_session)
 
     # Build entry with all kw_only fields as keyword args
-    entry = ScheduleEntryOrm(
+    entry = ScheduleEntry(
         status=kwargs.get("status", ScheduleStatusEnum.QUEUED),
         priority=kwargs.get("priority", 1),
         name=kwargs.get("name", f"test_schedule_entry_{uuid7()}"),
@@ -157,8 +153,8 @@ async def create_schedule_entry(
 async def create_machine(
     db_session: AsyncSession,
     **kwargs,
-) -> MachineOrm:
-    """Factory for creating MachineOrm."""
+) -> Machine:
+    """Factory for creating Machine."""
     defaults = {
         "name": f"test_machine_{uuid7()}",
         "fqn": f"test.machines.TestMachine_{uuid7()}",
@@ -166,7 +162,7 @@ async def create_machine(
     }
     defaults.update(kwargs)
 
-    machine = MachineOrm(**defaults)
+    machine = Machine(**defaults)
     db_session.add(machine)
     await db_session.flush()
     await db_session.refresh(machine)
@@ -177,8 +173,8 @@ async def create_machine(
 async def create_resource(
     db_session: AsyncSession,
     **kwargs,
-) -> ResourceOrm:
-    """Factory for creating ResourceOrm."""
+) -> Resource:
+    """Factory for creating Resource."""
     defaults = {
         "name": f"test_resource_{uuid7()}",
         "fqn": f"test.resources.TestResource_{uuid7()}",
@@ -186,7 +182,7 @@ async def create_resource(
     }
     defaults.update(kwargs)
 
-    resource = ResourceOrm(**defaults)
+    resource = Resource(**defaults)
     db_session.add(resource)
     await db_session.flush()
     await db_session.refresh(resource)
@@ -196,12 +192,12 @@ async def create_resource(
 
 async def create_asset_reservation(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm | None = None,
-    schedule_entry: ScheduleEntryOrm | None = None,
-    asset: MachineOrm | None = None,
+    protocol_run: ProtocolRun | None = None,
+    schedule_entry: ScheduleEntry | None = None,
+    asset: Machine | None = None,
     **kwargs,
-) -> AssetReservationOrm:
-    """Factory for creating AssetReservationOrm.
+) -> AssetReservation:
+    """Factory for creating AssetReservation.
 
     NOTE: Due to unique constraint on protocol_run_accession_id, each protocol
     run can only have ONE reservation. This appears to be a schema limitation.
@@ -210,13 +206,13 @@ async def create_asset_reservation(
 
     Args:
         db_session: AsyncSession for database operations
-        protocol_run: Optional ProtocolRunOrm to associate with
-        schedule_entry: Optional ScheduleEntryOrm to associate with
+        protocol_run: Optional ProtocolRun to associate with
+        schedule_entry: Optional ScheduleEntry to associate with
         asset: Optional asset (Machine/Resource) to reserve
         **kwargs: Override default values
 
     Returns:
-        Created and persisted AssetReservationOrm
+        Created and persisted AssetReservation
 
     """
     # Create dependencies if not provided
@@ -228,7 +224,7 @@ async def create_asset_reservation(
         asset = await create_machine(db_session)
 
     # Build reservation with all kw_only fields as keyword args
-    reservation = AssetReservationOrm(
+    reservation = AssetReservation(
         protocol_run_accession_id=protocol_run.accession_id,
         schedule_entry_accession_id=schedule_entry.accession_id,
         asset_accession_id=asset.accession_id,
@@ -263,11 +259,11 @@ async def create_asset_reservation(
 
 async def create_function_call_log(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm | None = None,
-    protocol_definition: FunctionProtocolDefinitionOrm | None = None,
+    protocol_run: ProtocolRun | None = None,
+    protocol_definition: FunctionProtocolDefinition | None = None,
     **kwargs,
-) -> FunctionCallLogOrm:
-    """Factory for creating FunctionCallLogOrm."""
+) -> FunctionCallLog:
+    """Factory for creating FunctionCallLog."""
     if not protocol_run:
         protocol_run = await create_protocol_run(db_session)
     if not protocol_definition:
@@ -286,7 +282,7 @@ async def create_function_call_log(
         kwargs.pop(key, None)
     defaults.update(kwargs)
 
-    call_log = FunctionCallLogOrm(**defaults)
+    call_log = FunctionCallLog(**defaults)
 
     # Set relationships
     call_log.protocol_run = protocol_run
@@ -301,18 +297,18 @@ async def create_function_call_log(
 
 async def create_function_data_output(
     db_session: AsyncSession,
-    protocol_run: ProtocolRunOrm | None = None,
-    function_call_log: FunctionCallLogOrm | None = None,
+    protocol_run: ProtocolRun | None = None,
+    function_call_log: FunctionCallLog | None = None,
     **kwargs,
-) -> FunctionDataOutputOrm:
-    """Factory for creating FunctionDataOutputOrm.
+) -> FunctionDataOutput:
+    """Factory for creating FunctionDataOutput.
 
     Handles kw_only fields and optional relationships.
 
     Args:
         db_session: AsyncSession for database operations
-        protocol_run: Optional ProtocolRunOrm to associate with
-        function_call_log: Optional FunctionCallLogOrm to associate with
+        protocol_run: Optional ProtocolRun to associate with
+        function_call_log: Optional FunctionCallLog to associate with
         **kwargs: Override default values including:
             - data_type: DataOutputTypeEnum
             - data_key: str
@@ -328,7 +324,7 @@ async def create_function_data_output(
             - measurement_conditions_json: dict
 
     Returns:
-        Created and persisted FunctionDataOutputOrm
+        Created and persisted FunctionDataOutput
 
     """
     # Create dependencies if not provided
@@ -338,7 +334,7 @@ async def create_function_data_output(
         protocol_run = function_call_log.protocol_run
 
     # Build output with kw_only fields
-    output = FunctionDataOutputOrm(
+    output = FunctionDataOutput(
         protocol_run_accession_id=protocol_run.accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
         data_type=kwargs.get("data_type", DataOutputTypeEnum.UNKNOWN),

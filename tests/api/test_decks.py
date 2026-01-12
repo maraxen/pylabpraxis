@@ -113,7 +113,7 @@ async def test_delete_deck(client: AsyncClient, db_session: AsyncSession) -> Non
     """Test deleting a deck.
 
     Note: This test mocks the database delete operation to avoid CircularDependencyError
-    that occurs due to ResourceOrm's self-referential cascade relationships during test
+    that occurs due to Resource's self-referential cascade relationships during test
     transaction rollback. The delete operation itself works correctly in production.
     """
     from unittest.mock import patch

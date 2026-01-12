@@ -12,7 +12,7 @@ from praxis.backend.core.decorators.protocol_decorator import (
 )
 from praxis.backend.core.orchestrator import ProtocolCancelledError
 from praxis.backend.core.run_context import PraxisRunContext
-from praxis.backend.models.pydantic_internals.protocol import (
+from praxis.backend.models.domain.protocol import (
     FunctionCallStatusEnum,
     ProtocolRunStatusEnum,
 )
@@ -100,7 +100,7 @@ class TestProcessWrapperArguments:
     async def test_process_wrapper_arguments_basic(self, mock_run_context):
         """Test processing wrapper arguments."""
         from praxis.backend.core.decorators.models import ProtocolRuntimeInfo
-        from praxis.backend.models.pydantic_internals.protocol import (
+        from praxis.backend.models.domain.protocol import (
             FunctionProtocolDefinitionCreate,
         )
 
@@ -148,7 +148,7 @@ class TestProcessWrapperArguments:
     async def test_process_wrapper_arguments_missing_db_id(self, mock_run_context):
         """Test error when DB accession ID is missing."""
         from praxis.backend.core.decorators.models import ProtocolRuntimeInfo
-        from praxis.backend.models.pydantic_internals.protocol import (
+        from praxis.backend.models.domain.protocol import (
             FunctionProtocolDefinitionCreate,
         )
 
@@ -186,7 +186,7 @@ class TestProcessWrapperArguments:
     async def test_process_wrapper_arguments_with_state_param(self, mock_run_context):
         """Test processing with state parameter details."""
         from praxis.backend.core.decorators.models import ProtocolRuntimeInfo
-        from praxis.backend.models.pydantic_internals.protocol import (
+        from praxis.backend.models.domain.protocol import (
             FunctionProtocolDefinitionCreate,
         )
 

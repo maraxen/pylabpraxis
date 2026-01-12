@@ -531,16 +531,16 @@ class TestPrepareProtocolCode:
         mock_repo.git_url = "https://github.com/test/repo.git"
         mock_repo.local_checkout_path = "/tmp/test_repo"
 
-        mock_protocol_def_orm = Mock()
-        mock_protocol_def_orm.name = "test_protocol"
-        mock_protocol_def_orm.version = "1.0"
-        mock_protocol_def_orm.accession_id = shared_accession_id
-        mock_protocol_def_orm.module_name = "test_module"
-        mock_protocol_def_orm.function_name = "test_function"
-        mock_protocol_def_orm.commit_hash = "abc123"
-        mock_protocol_def_orm.source_repository_accession_id = uuid7()
-        mock_protocol_def_orm.source_repository = mock_repo
-        mock_protocol_def_orm.file_system_source_accession_id = None
+        mock_protocol_def_model = Mock()
+        mock_protocol_def_model.name = "test_protocol"
+        mock_protocol_def_model.version = "1.0"
+        mock_protocol_def_model.accession_id = shared_accession_id
+        mock_protocol_def_model.module_name = "test_module"
+        mock_protocol_def_model.function_name = "test_function"
+        mock_protocol_def_model.commit_hash = "abc123"
+        mock_protocol_def_model.source_repository_accession_id = uuid7()
+        mock_protocol_def_model.source_repository = mock_repo
+        mock_protocol_def_model.file_system_source_accession_id = None
 
         # Mock Git operations
         manager._ensure_git_repo_and_fetch = AsyncMock()
@@ -568,7 +568,7 @@ class TestPrepareProtocolCode:
 
         manager._load_protocol_function = mock_load_protocol_function
 
-        func, pydantic_def = await manager.prepare_protocol_code(mock_protocol_def_orm)
+        func, pydantic_def = await manager.prepare_protocol_code(mock_protocol_def_model)
 
         assert func == mock_function
         assert isinstance(pydantic_def, FunctionProtocolDefinitionCreate)
@@ -588,15 +588,15 @@ class TestPrepareProtocolCode:
         mock_fs_source.name = "test_fs_source"
         mock_fs_source.base_path = "/tmp/test_path"
 
-        mock_protocol_def_orm = Mock()
-        mock_protocol_def_orm.name = "test_protocol"
-        mock_protocol_def_orm.version = "1.0"
-        mock_protocol_def_orm.accession_id = shared_accession_id
-        mock_protocol_def_orm.module_name = "test_module"
-        mock_protocol_def_orm.function_name = "test_function"
-        mock_protocol_def_orm.source_repository_accession_id = None
-        mock_protocol_def_orm.file_system_source_accession_id = uuid7()
-        mock_protocol_def_orm.file_system_source = mock_fs_source
+        mock_protocol_def_model = Mock()
+        mock_protocol_def_model.name = "test_protocol"
+        mock_protocol_def_model.version = "1.0"
+        mock_protocol_def_model.accession_id = shared_accession_id
+        mock_protocol_def_model.module_name = "test_module"
+        mock_protocol_def_model.function_name = "test_function"
+        mock_protocol_def_model.source_repository_accession_id = None
+        mock_protocol_def_model.file_system_source_accession_id = uuid7()
+        mock_protocol_def_model.file_system_source = mock_fs_source
 
         # Mock function loading with same accession_id
         # Mock function loading with same accession_id
@@ -621,7 +621,7 @@ class TestPrepareProtocolCode:
         manager._load_protocol_function = mock_load_protocol_function
 
         with patch("os.path.isdir", return_value=True):
-            func, pydantic_def = await manager.prepare_protocol_code(mock_protocol_def_orm)
+            func, pydantic_def = await manager.prepare_protocol_code(mock_protocol_def_model)
 
         assert func == mock_function
         assert isinstance(pydantic_def, FunctionProtocolDefinitionCreate)
@@ -635,16 +635,16 @@ class TestPrepareProtocolCode:
         mock_repo.git_url = None  # Missing git_url
         mock_repo.local_checkout_path = None
 
-        mock_protocol_def_orm = Mock()
-        mock_protocol_def_orm.name = "test_protocol"
-        mock_protocol_def_orm.version = "1.0"
-        mock_protocol_def_orm.source_repository_accession_id = uuid7()
-        mock_protocol_def_orm.source_repository = mock_repo
-        mock_protocol_def_orm.commit_hash = None
-        mock_protocol_def_orm.file_system_source_accession_id = None
+        mock_protocol_def_model = Mock()
+        mock_protocol_def_model.name = "test_protocol"
+        mock_protocol_def_model.version = "1.0"
+        mock_protocol_def_model.source_repository_accession_id = uuid7()
+        mock_protocol_def_model.source_repository = mock_repo
+        mock_protocol_def_model.commit_hash = None
+        mock_protocol_def_model.file_system_source_accession_id = None
 
         with pytest.raises(ValueError, match="Incomplete Git source info"):
-            await manager.prepare_protocol_code(mock_protocol_def_orm)
+            await manager.prepare_protocol_code(mock_protocol_def_model)
 
     @pytest.mark.asyncio
     async def test_prepare_protocol_code_invalid_fs_source(self) -> None:
@@ -654,18 +654,18 @@ class TestPrepareProtocolCode:
         mock_fs_source = Mock()
         mock_fs_source.base_path = "/invalid/path"
 
-        mock_protocol_def_orm = Mock()
-        mock_protocol_def_orm.name = "test_protocol"
-        mock_protocol_def_orm.version = "1.0"
-        mock_protocol_def_orm.source_repository_accession_id = None
-        mock_protocol_def_orm.file_system_source_accession_id = uuid7()
-        mock_protocol_def_orm.file_system_source = mock_fs_source
-        mock_protocol_def_orm.module_name = "test_module"
-        mock_protocol_def_orm.function_name = "test_function"
+        mock_protocol_def_model = Mock()
+        mock_protocol_def_model.name = "test_protocol"
+        mock_protocol_def_model.version = "1.0"
+        mock_protocol_def_model.source_repository_accession_id = None
+        mock_protocol_def_model.file_system_source_accession_id = uuid7()
+        mock_protocol_def_model.file_system_source = mock_fs_source
+        mock_protocol_def_model.module_name = "test_module"
+        mock_protocol_def_model.function_name = "test_function"
 
         with patch("os.path.isdir", return_value=False):
             with pytest.raises(ValueError, match="Invalid base path"):
-                await manager.prepare_protocol_code(mock_protocol_def_orm)
+                await manager.prepare_protocol_code(mock_protocol_def_model)
 
     @pytest.mark.asyncio
     async def test_prepare_protocol_code_with_matching_accession_id(self) -> None:
@@ -674,14 +674,14 @@ class TestPrepareProtocolCode:
 
         shared_accession_id = uuid7()
 
-        mock_protocol_def_orm = Mock()
-        mock_protocol_def_orm.name = "test_protocol"
-        mock_protocol_def_orm.version = "1.0"
-        mock_protocol_def_orm.accession_id = shared_accession_id
-        mock_protocol_def_orm.module_name = "test_module"
-        mock_protocol_def_orm.function_name = "test_function"
-        mock_protocol_def_orm.source_repository_accession_id = None
-        mock_protocol_def_orm.file_system_source_accession_id = None
+        mock_protocol_def_model = Mock()
+        mock_protocol_def_model.name = "test_protocol"
+        mock_protocol_def_model.version = "1.0"
+        mock_protocol_def_model.accession_id = shared_accession_id
+        mock_protocol_def_model.module_name = "test_module"
+        mock_protocol_def_model.function_name = "test_function"
+        mock_protocol_def_model.source_repository_accession_id = None
+        mock_protocol_def_model.file_system_source_accession_id = None
 
         # Mock function loading with same accession_id
         # Mock function loading with same accession_id
@@ -705,7 +705,7 @@ class TestPrepareProtocolCode:
 
         manager._load_protocol_function = mock_load_protocol_function
 
-        func, pydantic_def = await manager.prepare_protocol_code(mock_protocol_def_orm)
+        func, pydantic_def = await manager.prepare_protocol_code(mock_protocol_def_model)
 
         # Should return with same accession_id
         assert pydantic_def.accession_id == shared_accession_id

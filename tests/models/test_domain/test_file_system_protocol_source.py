@@ -1,18 +1,18 @@
-"""Unit tests for FileSystemProtocolSourceOrm model."""
+"""Unit tests for FileSystemProtocolSourcemodel."""
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.enums import ProtocolSourceStatusEnum
-from praxis.backend.models.orm.protocol import FileSystemProtocolSourceOrm
+from praxis.backend.models.domain.protocol_source import FileSystemProtocolSource
 
 
 @pytest.mark.asyncio
 async def test_file_system_protocol_source_orm_creation_minimal(
     db_session: AsyncSession,
 ) -> None:
-    """Test creating FileSystemProtocolSourceOrm with minimal required fields."""
-    source = FileSystemProtocolSourceOrm(
+    """Test creating FileSystemProtocolSourcewith minimal required fields."""
+    source = FileSystemProtocolSource(
         name="test_fs_source",
     )
     db_session.add(source)
@@ -30,8 +30,8 @@ async def test_file_system_protocol_source_orm_creation_minimal(
 async def test_file_system_protocol_source_orm_creation_with_all_fields(
     db_session: AsyncSession,
 ) -> None:
-    """Test creating FileSystemProtocolSourceOrm with all fields populated."""
-    source = FileSystemProtocolSourceOrm(
+    """Test creating FileSystemProtocolSourcewith all fields populated."""
+    source = FileSystemProtocolSource(
         name="full_fs_source",
         base_path="/opt/protocols/library",
         is_recursive=False,
@@ -52,8 +52,8 @@ async def test_file_system_protocol_source_orm_creation_with_all_fields(
 async def test_file_system_protocol_source_orm_persist_to_database(
     db_session: AsyncSession,
 ) -> None:
-    """Test full persistence cycle for FileSystemProtocolSourceOrm."""
-    source = FileSystemProtocolSourceOrm(
+    """Test full persistence cycle for FileSystemProtocolSource."""
+    source = FileSystemProtocolSource(
         name="persistence_test_fs",
         base_path="/var/protocols/test",
         is_recursive=True,
@@ -63,8 +63,8 @@ async def test_file_system_protocol_source_orm_persist_to_database(
 
     # Query back
     result = await db_session.execute(
-        select(FileSystemProtocolSourceOrm).where(
-            FileSystemProtocolSourceOrm.accession_id == source.accession_id,
+        select(FileSystemProtocolSource).where(
+            FileSystemProtocolSource.accession_id == source.accession_id,
         ),
     )
     retrieved = result.scalars().first()
@@ -85,7 +85,7 @@ async def test_file_system_protocol_source_orm_unique_name_constraint(
     from sqlalchemy.exc import IntegrityError
 
     # Create first source
-    source1 = FileSystemProtocolSourceOrm(
+    source1 = FileSystemProtocolSource(
         name="unique_fs_name",
         base_path="/opt/protocols/source1",
     )
@@ -93,7 +93,7 @@ async def test_file_system_protocol_source_orm_unique_name_constraint(
     await db_session.flush()
 
     # Try to create another with same name
-    source2 = FileSystemProtocolSourceOrm(
+    source2 = FileSystemProtocolSource(
         name="unique_fs_name",  # Duplicate name
         base_path="/opt/protocols/source2",
     )
@@ -117,7 +117,7 @@ async def test_file_system_protocol_source_orm_status_transitions(
     ]
 
     for status, name in statuses:
-        source = FileSystemProtocolSourceOrm(
+        source = FileSystemProtocolSource(
             name=name,
             base_path=f"/opt/protocols/{name}",
             status=status,
@@ -135,7 +135,7 @@ async def test_file_system_protocol_source_orm_is_recursive_flag(
 ) -> None:
     """Test is_recursive flag for scanning subdirectories."""
     # Source with recursive scanning (default)
-    recursive_source = FileSystemProtocolSourceOrm(
+    recursive_source = FileSystemProtocolSource(
         name="recursive_fs",
         base_path="/opt/protocols/recursive",
         is_recursive=True,
@@ -145,7 +145,7 @@ async def test_file_system_protocol_source_orm_is_recursive_flag(
     assert recursive_source.is_recursive is True
 
     # Source without recursive scanning
-    non_recursive_source = FileSystemProtocolSourceOrm(
+    non_recursive_source = FileSystemProtocolSource(
         name="non_recursive_fs",
         base_path="/opt/protocols/non_recursive",
         is_recursive=False,
@@ -160,7 +160,7 @@ async def test_file_system_protocol_source_orm_query_by_name(
     db_session: AsyncSession,
 ) -> None:
     """Test querying sources by name."""
-    source = FileSystemProtocolSourceOrm(
+    source = FileSystemProtocolSource(
         name="queryable_fs",
         base_path="/opt/protocols/queryable",
     )
@@ -169,8 +169,8 @@ async def test_file_system_protocol_source_orm_query_by_name(
 
     # Query by name
     result = await db_session.execute(
-        select(FileSystemProtocolSourceOrm).where(
-            FileSystemProtocolSourceOrm.name == "queryable_fs",
+        select(FileSystemProtocolSource).where(
+            FileSystemProtocolSource.name == "queryable_fs",
         ),
     )
     retrieved = result.scalars().first()
@@ -185,7 +185,7 @@ async def test_file_system_protocol_source_orm_update_base_path(
     db_session: AsyncSession,
 ) -> None:
     """Test updating base_path field."""
-    source = FileSystemProtocolSourceOrm(
+    source = FileSystemProtocolSource(
         name="path_update_fs",
         base_path="/opt/protocols/old_path",
     )
@@ -201,8 +201,8 @@ async def test_file_system_protocol_source_orm_update_base_path(
 
     # Query back and verify update
     result = await db_session.execute(
-        select(FileSystemProtocolSourceOrm).where(
-            FileSystemProtocolSourceOrm.accession_id == source.accession_id,
+        select(FileSystemProtocolSource).where(
+            FileSystemProtocolSource.accession_id == source.accession_id,
         ),
     )
     retrieved = result.scalars().first()
@@ -211,14 +211,14 @@ async def test_file_system_protocol_source_orm_update_base_path(
 
 @pytest.mark.asyncio
 async def test_file_system_protocol_source_orm_repr(db_session: AsyncSession) -> None:
-    """Test string representation of FileSystemProtocolSourceOrm."""
-    source = FileSystemProtocolSourceOrm(
+    """Test string representation of FileSystemProtocolSource."""
+    source = FileSystemProtocolSource(
         name="repr_fs",
         base_path="/opt/protocols/repr",
     )
 
     repr_str = repr(source)
-    assert "FileSystemProtocolSourceOrm" in repr_str
+    assert "FileSystemProtocolSource" in repr_str
     assert str(source.accession_id) in repr_str
     assert "repr_fs" in repr_str
     assert "/opt/protocols/repr" in repr_str
@@ -230,12 +230,12 @@ async def test_file_system_protocol_source_orm_query_by_status(
 ) -> None:
     """Test querying sources by status."""
     # Create sources with different statuses
-    active_source = FileSystemProtocolSourceOrm(
+    active_source = FileSystemProtocolSource(
         name="active_status_fs",
         base_path="/opt/protocols/active",
         status=ProtocolSourceStatusEnum.ACTIVE,
     )
-    inactive_source = FileSystemProtocolSourceOrm(
+    inactive_source = FileSystemProtocolSource(
         name="inactive_status_fs",
         base_path="/opt/protocols/inactive",
         status=ProtocolSourceStatusEnum.INACTIVE,
@@ -246,8 +246,8 @@ async def test_file_system_protocol_source_orm_query_by_status(
 
     # Query for active sources
     result = await db_session.execute(
-        select(FileSystemProtocolSourceOrm).where(
-            FileSystemProtocolSourceOrm.status == ProtocolSourceStatusEnum.ACTIVE,
+        select(FileSystemProtocolSource).where(
+            FileSystemProtocolSource.status == ProtocolSourceStatusEnum.ACTIVE,
         ),
     )
     active_sources = result.scalars().all()
