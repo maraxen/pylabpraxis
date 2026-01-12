@@ -5,6 +5,7 @@
 import type { AssetReservationListResponse } from '../models/AssetReservationListResponse';
 import type { Body_get_multi_api_v1_scheduler_entries_get } from '../models/Body_get_multi_api_v1_scheduler_entries_get';
 import type { ReleaseReservationResponse } from '../models/ReleaseReservationResponse';
+import type { ScheduleEntryCreate } from '../models/ScheduleEntryCreate';
 import type { ScheduleEntryRead } from '../models/ScheduleEntryRead';
 import type { ScheduleEntryUpdate } from '../models/ScheduleEntryUpdate';
 import type { SchedulePriorityUpdateRequest } from '../models/SchedulePriorityUpdateRequest';
@@ -14,13 +15,21 @@ import { request as __request } from '../core/request';
 export class SchedulerService {
     /**
      * Create
+     * @param requestBody
      * @returns ScheduleEntryRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1SchedulerEntriesPost(): CancelablePromise<ScheduleEntryRead> {
+    public static createApiV1SchedulerEntriesPost(
+        requestBody: ScheduleEntryCreate,
+    ): CancelablePromise<ScheduleEntryRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/scheduler/entries',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
@@ -94,11 +103,13 @@ export class SchedulerService {
     /**
      * Update
      * @param accessionId
+     * @param requestBody
      * @returns ScheduleEntryRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1SchedulerEntriesAccessionIdPut(
         accessionId: string,
+        requestBody: ScheduleEntryUpdate,
     ): CancelablePromise<ScheduleEntryRead> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -106,6 +117,8 @@ export class SchedulerService {
             path: {
                 'accession_id': accessionId,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

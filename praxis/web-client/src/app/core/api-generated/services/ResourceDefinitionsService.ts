@@ -3,7 +3,9 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { Body_get_multi_api_v1_resources_definitions_get } from '../models/Body_get_multi_api_v1_resources_definitions_get';
+import type { ResourceDefinitionCreate } from '../models/ResourceDefinitionCreate';
 import type { ResourceDefinitionRead } from '../models/ResourceDefinitionRead';
+import type { ResourceDefinitionUpdate } from '../models/ResourceDefinitionUpdate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -46,13 +48,21 @@ export class ResourceDefinitionsService {
     }
     /**
      * Create
+     * @param requestBody
      * @returns ResourceDefinitionRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1ResourcesDefinitionsPost(): CancelablePromise<ResourceDefinitionRead> {
+    public static createApiV1ResourcesDefinitionsPost(
+        requestBody: ResourceDefinitionCreate,
+    ): CancelablePromise<ResourceDefinitionRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/resources/definitions',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
@@ -126,11 +136,13 @@ export class ResourceDefinitionsService {
     /**
      * Update
      * @param accessionId
+     * @param requestBody
      * @returns ResourceDefinitionRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1ResourcesDefinitionsAccessionIdPut(
         accessionId: string,
+        requestBody: ResourceDefinitionUpdate,
     ): CancelablePromise<ResourceDefinitionRead> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -138,6 +150,8 @@ export class ResourceDefinitionsService {
             path: {
                 'accession_id': accessionId,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

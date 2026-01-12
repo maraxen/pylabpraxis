@@ -3,20 +3,30 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { Body_get_multi_api_v1_data_outputs_outputs_get } from '../models/Body_get_multi_api_v1_data_outputs_outputs_get';
+import type { FunctionDataOutputCreate } from '../models/FunctionDataOutputCreate';
 import type { FunctionDataOutputRead } from '../models/FunctionDataOutputRead';
+import type { FunctionDataOutputUpdate } from '../models/FunctionDataOutputUpdate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class FunctionDataOutputsService {
     /**
      * Create
+     * @param requestBody
      * @returns FunctionDataOutputRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1DataOutputsOutputsPost(): CancelablePromise<FunctionDataOutputRead> {
+    public static createApiV1DataOutputsOutputsPost(
+        requestBody: FunctionDataOutputCreate,
+    ): CancelablePromise<FunctionDataOutputRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/data-outputs/outputs',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
@@ -90,11 +100,13 @@ export class FunctionDataOutputsService {
     /**
      * Update
      * @param accessionId
+     * @param requestBody
      * @returns FunctionDataOutputRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1DataOutputsOutputsAccessionIdPut(
         accessionId: string,
+        requestBody: FunctionDataOutputUpdate,
     ): CancelablePromise<FunctionDataOutputRead> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -102,6 +114,8 @@ export class FunctionDataOutputsService {
             path: {
                 'accession_id': accessionId,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

@@ -3,20 +3,30 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { Body_get_multi_api_v1_data_outputs_well_outputs_get } from '../models/Body_get_multi_api_v1_data_outputs_well_outputs_get';
+import type { WellDataOutputCreate } from '../models/WellDataOutputCreate';
 import type { WellDataOutputRead } from '../models/WellDataOutputRead';
+import type { WellDataOutputUpdate } from '../models/WellDataOutputUpdate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class WellDataOutputsService {
     /**
      * Create
+     * @param requestBody
      * @returns WellDataOutputRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1DataOutputsWellOutputsPost(): CancelablePromise<WellDataOutputRead> {
+    public static createApiV1DataOutputsWellOutputsPost(
+        requestBody: WellDataOutputCreate,
+    ): CancelablePromise<WellDataOutputRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/data-outputs/well-outputs',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
@@ -90,11 +100,13 @@ export class WellDataOutputsService {
     /**
      * Update
      * @param accessionId
+     * @param requestBody
      * @returns WellDataOutputRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1DataOutputsWellOutputsAccessionIdPut(
         accessionId: string,
+        requestBody: WellDataOutputUpdate,
     ): CancelablePromise<WellDataOutputRead> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -102,6 +114,8 @@ export class WellDataOutputsService {
             path: {
                 'accession_id': accessionId,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

@@ -3,20 +3,30 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { Body_get_multi_api_v1_workcell__get } from '../models/Body_get_multi_api_v1_workcell__get';
+import type { WorkcellCreate } from '../models/WorkcellCreate';
 import type { WorkcellRead } from '../models/WorkcellRead';
+import type { WorkcellUpdate } from '../models/WorkcellUpdate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class WorkcellService {
     /**
      * Create
+     * @param requestBody
      * @returns WorkcellRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1WorkcellPost(): CancelablePromise<WorkcellRead> {
+    public static createApiV1WorkcellPost(
+        requestBody: WorkcellCreate,
+    ): CancelablePromise<WorkcellRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/workcell/',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
@@ -90,11 +100,13 @@ export class WorkcellService {
     /**
      * Update
      * @param accessionId
+     * @param requestBody
      * @returns WorkcellRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1WorkcellAccessionIdPut(
         accessionId: string,
+        requestBody: WorkcellUpdate,
     ): CancelablePromise<WorkcellRead> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -102,6 +114,8 @@ export class WorkcellService {
             path: {
                 'accession_id': accessionId,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

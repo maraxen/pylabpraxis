@@ -3,20 +3,30 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { Body_get_multi_api_v1_decks_types_get } from '../models/Body_get_multi_api_v1_decks_types_get';
+import type { DeckDefinitionCreate } from '../models/DeckDefinitionCreate';
 import type { DeckDefinitionRead } from '../models/DeckDefinitionRead';
+import type { DeckDefinitionUpdate } from '../models/DeckDefinitionUpdate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class DeckTypeDefinitionsService {
     /**
      * Create
+     * @param requestBody
      * @returns DeckDefinitionRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1DecksTypesPost(): CancelablePromise<DeckDefinitionRead> {
+    public static createApiV1DecksTypesPost(
+        requestBody: DeckDefinitionCreate,
+    ): CancelablePromise<DeckDefinitionRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/decks/types',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
@@ -90,11 +100,13 @@ export class DeckTypeDefinitionsService {
     /**
      * Update
      * @param accessionId
+     * @param requestBody
      * @returns DeckDefinitionRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1DecksTypesAccessionIdPut(
         accessionId: string,
+        requestBody: DeckDefinitionUpdate,
     ): CancelablePromise<DeckDefinitionRead> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -102,6 +114,8 @@ export class DeckTypeDefinitionsService {
             path: {
                 'accession_id': accessionId,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

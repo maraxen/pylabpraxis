@@ -3,20 +3,30 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { Body_get_multi_api_v1_protocols_definitions_get } from '../models/Body_get_multi_api_v1_protocols_definitions_get';
+import type { FunctionProtocolDefinitionCreate } from '../models/FunctionProtocolDefinitionCreate';
 import type { FunctionProtocolDefinitionResponse } from '../models/FunctionProtocolDefinitionResponse';
+import type { FunctionProtocolDefinitionUpdate } from '../models/FunctionProtocolDefinitionUpdate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class ProtocolDefinitionsService {
     /**
      * Create
+     * @param requestBody
      * @returns FunctionProtocolDefinitionResponse Successful Response
      * @throws ApiError
      */
-    public static createApiV1ProtocolsDefinitionsPost(): CancelablePromise<FunctionProtocolDefinitionResponse> {
+    public static createApiV1ProtocolsDefinitionsPost(
+        requestBody: FunctionProtocolDefinitionCreate,
+    ): CancelablePromise<FunctionProtocolDefinitionResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/protocols/definitions',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
@@ -90,11 +100,13 @@ export class ProtocolDefinitionsService {
     /**
      * Update
      * @param accessionId
+     * @param requestBody
      * @returns FunctionProtocolDefinitionResponse Successful Response
      * @throws ApiError
      */
     public static updateApiV1ProtocolsDefinitionsAccessionIdPut(
         accessionId: string,
+        requestBody: FunctionProtocolDefinitionUpdate,
     ): CancelablePromise<FunctionProtocolDefinitionResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -102,6 +114,8 @@ export class ProtocolDefinitionsService {
             path: {
                 'accession_id': accessionId,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

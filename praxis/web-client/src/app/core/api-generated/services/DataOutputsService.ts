@@ -4,21 +4,33 @@
 /* eslint-disable */
 import type { Body_get_multi_api_v1_data_outputs_outputs_get } from '../models/Body_get_multi_api_v1_data_outputs_outputs_get';
 import type { Body_get_multi_api_v1_data_outputs_well_outputs_get } from '../models/Body_get_multi_api_v1_data_outputs_well_outputs_get';
+import type { FunctionDataOutputCreate } from '../models/FunctionDataOutputCreate';
 import type { FunctionDataOutputRead } from '../models/FunctionDataOutputRead';
+import type { FunctionDataOutputUpdate } from '../models/FunctionDataOutputUpdate';
+import type { WellDataOutputCreate } from '../models/WellDataOutputCreate';
 import type { WellDataOutputRead } from '../models/WellDataOutputRead';
+import type { WellDataOutputUpdate } from '../models/WellDataOutputUpdate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class DataOutputsService {
     /**
      * Create
+     * @param requestBody
      * @returns FunctionDataOutputRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1DataOutputsOutputsPost(): CancelablePromise<FunctionDataOutputRead> {
+    public static createApiV1DataOutputsOutputsPost(
+        requestBody: FunctionDataOutputCreate,
+    ): CancelablePromise<FunctionDataOutputRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/data-outputs/outputs',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
@@ -92,11 +104,13 @@ export class DataOutputsService {
     /**
      * Update
      * @param accessionId
+     * @param requestBody
      * @returns FunctionDataOutputRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1DataOutputsOutputsAccessionIdPut(
         accessionId: string,
+        requestBody: FunctionDataOutputUpdate,
     ): CancelablePromise<FunctionDataOutputRead> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -104,6 +118,8 @@ export class DataOutputsService {
             path: {
                 'accession_id': accessionId,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },
@@ -131,13 +147,21 @@ export class DataOutputsService {
     }
     /**
      * Create
+     * @param requestBody
      * @returns WellDataOutputRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1DataOutputsWellOutputsPost(): CancelablePromise<WellDataOutputRead> {
+    public static createApiV1DataOutputsWellOutputsPost(
+        requestBody: WellDataOutputCreate,
+    ): CancelablePromise<WellDataOutputRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/data-outputs/well-outputs',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
@@ -211,11 +235,13 @@ export class DataOutputsService {
     /**
      * Update
      * @param accessionId
+     * @param requestBody
      * @returns WellDataOutputRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1DataOutputsWellOutputsAccessionIdPut(
         accessionId: string,
+        requestBody: WellDataOutputUpdate,
     ): CancelablePromise<WellDataOutputRead> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -223,6 +249,8 @@ export class DataOutputsService {
             path: {
                 'accession_id': accessionId,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

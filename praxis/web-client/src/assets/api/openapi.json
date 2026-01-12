@@ -109,6 +109,16 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_data_outputs_outputs_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FunctionDataOutputCreate"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -116,6 +126,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FunctionDataOutputRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -371,6 +391,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FunctionDataOutputUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -438,6 +468,16 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_data_outputs_well_outputs_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WellDataOutputCreate"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -445,6 +485,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WellDataOutputRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -700,6 +750,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WellDataOutputUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -810,6 +870,16 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_protocols_definitions_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FunctionProtocolDefinitionCreate"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -817,6 +887,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FunctionProtocolDefinitionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1072,6 +1152,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FunctionProtocolDefinitionUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1211,6 +1301,16 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_protocols_runs_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProtocolRunCreate"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -1218,6 +1318,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProtocolRunRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1473,6 +1583,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProtocolRunUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1699,6 +1819,16 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_workcell__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkcellCreate"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -1706,6 +1836,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WorkcellRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1961,6 +2101,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkcellUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2135,6 +2285,16 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_resources_definitions_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceDefinitionCreate"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -2142,6 +2302,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ResourceDefinitionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -2397,6 +2567,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceDefinitionUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2464,6 +2644,16 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_resources__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceCreate"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -2471,6 +2661,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ResourceRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -2726,6 +2926,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2793,6 +3003,16 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_decks__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeckCreate"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -2800,6 +3020,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DeckRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -3055,6 +3285,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeckUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3122,6 +3362,16 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_decks_types_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeckDefinitionCreate"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -3129,6 +3379,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DeckDefinitionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -3384,6 +3644,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeckDefinitionUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3482,6 +3752,16 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_machines_definitions_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineDefinitionCreate"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -3489,6 +3769,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MachineDefinitionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -3744,6 +4034,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineDefinitionUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3811,6 +4111,16 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_machines__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineCreate"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -3818,6 +4128,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MachineRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -4073,6 +4393,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -4598,6 +4928,16 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_scheduler_entries_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleEntryCreate"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -4605,6 +4945,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ScheduleEntryRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -4860,6 +5210,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleEntryUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -6441,6 +6801,268 @@
         "title": "DataViewMetadataModel",
         "description": "Defines a data view required by a protocol for input data.\n\nData views allow protocols to declare what input data they need in a structured way.\nThey can reference:\n- PLR state data (e.g., liquid volume tracking, resource positions)\n- Function data outputs from previous protocol runs (e.g., plate reader reads)\n\nSchema validation errors during protocol setup generate warnings but do not\nblock protocol execution."
       },
+      "DeckCreate": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "asset_type": {
+            "$ref": "#/components/schemas/AssetType",
+            "description": "Type of asset, e.g., machine, resource, etc.",
+            "default": "GENERIC_ASSET"
+          },
+          "fqn": {
+            "type": "string",
+            "title": "Fqn",
+            "description": "Fully qualified name of the asset's class, if applicable.",
+            "default": ""
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location",
+            "description": "Location of the asset in the lab."
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResourceStatusEnum",
+            "default": "unknown"
+          },
+          "status_details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Details",
+            "description": "Additional status details"
+          },
+          "location_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Label",
+            "description": "Physical location label"
+          },
+          "current_deck_position_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Deck Position Name",
+            "description": "Current deck position"
+          },
+          "deck_type_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Deck Type Id"
+          },
+          "parent_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Accession Id"
+          },
+          "resource_definition_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Definition Accession Id"
+          },
+          "machine_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Machine Id"
+          },
+          "plr_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "deck_type_id"
+        ],
+        "title": "DeckCreate",
+        "description": "Schema for creating a Deck."
+      },
+      "DeckDefinitionCreate": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "fqn": {
+            "type": "string",
+            "title": "Fqn",
+            "description": "Fully qualified name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Description of the deck type"
+          },
+          "plr_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Category",
+            "description": "PyLabRobot category"
+          },
+          "default_size_x_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Size X Mm",
+            "description": "Default size in X dimension (mm)"
+          },
+          "default_size_y_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Size Y Mm",
+            "description": "Default size in Y dimension (mm)"
+          },
+          "default_size_z_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Size Z Mm",
+            "description": "Default size in Z dimension (mm)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "fqn"
+        ],
+        "title": "DeckDefinitionCreate",
+        "description": "Schema for creating a DeckDefinition."
+      },
       "DeckDefinitionRead": {
         "properties": {
           "accession_id": {
@@ -6547,6 +7169,90 @@
         "title": "DeckDefinitionRead",
         "description": "Schema for reading a DeckDefinition (API response)."
       },
+      "DeckDefinitionUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "plr_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Category"
+          },
+          "default_size_x_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Size X Mm"
+          },
+          "default_size_y_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Size Y Mm"
+          },
+          "default_size_z_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Size Z Mm"
+          }
+        },
+        "type": "object",
+        "title": "DeckDefinitionUpdate",
+        "description": "Schema for updating a DeckDefinition (partial update)."
+      },
       "DeckRead": {
         "properties": {
           "accession_id": {
@@ -6649,6 +7355,45 @@
         ],
         "title": "DeckRead",
         "description": "Schema for reading a Deck (API response)."
+      },
+      "DeckUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "status": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "parent_machine_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Machine Accession Id"
+          }
+        },
+        "type": "object",
+        "title": "DeckUpdate",
+        "description": "Schema for updating a Deck (partial update)."
       },
       "DeviceStatus": {
         "type": "string",
@@ -6866,6 +7611,82 @@
         "title": "FailureModeModel",
         "description": "A detected failure mode for a protocol."
       },
+      "FunctionDataOutputCreate": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "data_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Type",
+            "description": "Type of data output"
+          },
+          "file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Path",
+            "description": "File path for output data"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mime Type",
+            "description": "MIME type of the output"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "FunctionDataOutputCreate",
+        "description": "Schema for creating a FunctionDataOutput."
+      },
       "FunctionDataOutputRead": {
         "properties": {
           "accession_id": {
@@ -6975,6 +7796,343 @@
         ],
         "title": "FunctionDataOutputRead",
         "description": "Schema for reading a FunctionDataOutput (API response)."
+      },
+      "FunctionDataOutputUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "data_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Type"
+          },
+          "file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Path"
+          },
+          "data_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Json"
+          },
+          "data_quality_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Quality Score"
+          },
+          "data_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Key"
+          }
+        },
+        "type": "object",
+        "title": "FunctionDataOutputUpdate",
+        "description": "Schema for updating a FunctionDataOutput (partial update)."
+      },
+      "FunctionProtocolDefinitionCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "fqn": {
+            "type": "string",
+            "title": "Fqn"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "default": "0.1.0"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "source_file_path": {
+            "type": "string",
+            "title": "Source File Path"
+          },
+          "module_name": {
+            "type": "string",
+            "title": "Module Name"
+          },
+          "function_name": {
+            "type": "string",
+            "title": "Function Name"
+          },
+          "source_repository_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Repository Name"
+          },
+          "commit_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Hash"
+          },
+          "file_system_source_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File System Source Name"
+          },
+          "is_top_level": {
+            "type": "boolean",
+            "title": "Is Top Level",
+            "default": false
+          },
+          "solo_execution": {
+            "type": "boolean",
+            "title": "Solo Execution",
+            "default": false
+          },
+          "preconfigure_deck": {
+            "type": "boolean",
+            "title": "Preconfigure Deck",
+            "default": false
+          },
+          "requires_deck": {
+            "type": "boolean",
+            "title": "Requires Deck",
+            "default": true
+          },
+          "deck_param_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Param Name"
+          },
+          "deck_construction_function_fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Construction Function Fqn"
+          },
+          "deck_layout_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Layout Path"
+          },
+          "state_param_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Param Name",
+            "default": "state"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "deprecated": {
+            "type": "boolean",
+            "title": "Deprecated",
+            "default": false
+          },
+          "source_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Hash"
+          },
+          "computation_graph": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computation Graph"
+          },
+          "parameters": {
+            "items": {
+              "$ref": "#/components/schemas/ParameterMetadataModel-Input"
+            },
+            "type": "array",
+            "title": "Parameters"
+          },
+          "assets": {
+            "items": {
+              "$ref": "#/components/schemas/AssetRequirementModel-Input"
+            },
+            "type": "array",
+            "title": "Assets"
+          },
+          "data_views": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DataViewMetadataModel"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Views"
+          },
+          "hardware_requirements": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hardware Requirements"
+          },
+          "setup_instructions_json": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setup Instructions Json",
+            "description": "Pre-run setup instructions to display in Deck Setup wizard"
+          },
+          "accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid7"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accession Id",
+            "description": "Optional accession ID."
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "fqn",
+          "source_file_path",
+          "module_name",
+          "function_name"
+        ],
+        "title": "FunctionProtocolDefinitionCreate",
+        "description": "Represents a detailed definition of a function-based protocol.\n\nThis model encapsulates core definition details, source information,\nexecution behavior, categorization, and inferred parameters and assets."
       },
       "FunctionProtocolDefinitionResponse": {
         "properties": {
@@ -7326,6 +8484,328 @@
         "title": "FunctionProtocolDefinitionResponse",
         "description": "Model for API responses for a function protocol definition."
       },
+      "FunctionProtocolDefinitionUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "source_file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source File Path"
+          },
+          "module_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module Name"
+          },
+          "function_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Function Name"
+          },
+          "source_repository_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Repository Name"
+          },
+          "commit_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Hash"
+          },
+          "file_system_source_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File System Source Name"
+          },
+          "is_top_level": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Top Level"
+          },
+          "solo_execution": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Solo Execution"
+          },
+          "preconfigure_deck": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preconfigure Deck"
+          },
+          "requires_deck": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requires Deck"
+          },
+          "deck_param_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Param Name"
+          },
+          "deck_construction_function_fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Construction Function Fqn"
+          },
+          "deck_layout_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Layout Path"
+          },
+          "state_param_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Param Name"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "deprecated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deprecated"
+          },
+          "parameters": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ParameterMetadataModel-Input"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameters"
+          },
+          "assets": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AssetRequirementModel-Input"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assets"
+          },
+          "data_views": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DataViewMetadataModel"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Views"
+          },
+          "hardware_requirements": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hardware Requirements"
+          },
+          "setup_instructions_json": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setup Instructions Json"
+          },
+          "source_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Hash"
+          },
+          "computation_graph": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computation Graph"
+          }
+        },
+        "type": "object",
+        "title": "FunctionProtocolDefinitionUpdate",
+        "description": "Model for updating a function protocol definition."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -7570,6 +9050,346 @@
         "title": "MachineCategoryEnum",
         "description": "Enumeration for classifying machines into predefined categories.\n\nThese categories help in broad classification of machines based on their\nfunctionality, mapping to PyLabRobot's machine types."
       },
+      "MachineCreate": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "asset_type": {
+            "$ref": "#/components/schemas/AssetType",
+            "description": "Type of asset, e.g., machine, resource, etc.",
+            "default": "GENERIC_ASSET"
+          },
+          "fqn": {
+            "type": "string",
+            "title": "Fqn",
+            "description": "Fully qualified name of the asset's class, if applicable.",
+            "default": ""
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location",
+            "description": "Location of the asset in the lab."
+          },
+          "machine_category": {
+            "$ref": "#/components/schemas/MachineCategoryEnum",
+            "default": "Unknown"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "serial_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serial Number"
+          },
+          "location_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Label",
+            "description": "Physical location label"
+          },
+          "installation_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Installation Date"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MachineStatusEnum",
+            "default": "OFFLINE"
+          },
+          "status_details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Details"
+          },
+          "is_simulation_override": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Simulation Override"
+          },
+          "last_seen_online": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen Online"
+          },
+          "maintenance_enabled": {
+            "type": "boolean",
+            "title": "Maintenance Enabled",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "MachineCreate",
+        "description": "Schema for creating a Machine."
+      },
+      "MachineDefinitionCreate": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "fqn": {
+            "type": "string",
+            "title": "Fqn",
+            "description": "Fully qualified name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Description of the machine type"
+          },
+          "plr_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Category",
+            "description": "PyLabRobot category"
+          },
+          "machine_category": {
+            "$ref": "#/components/schemas/MachineCategoryEnum",
+            "description": "Category of the machine",
+            "default": "Unknown"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material"
+          },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "size_x_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size X Mm",
+            "description": "Size in X dimension (mm)"
+          },
+          "size_y_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Y Mm",
+            "description": "Size in Y dimension (mm)"
+          },
+          "size_z_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Z Mm",
+            "description": "Size in Z dimension (mm)"
+          },
+          "has_deck": {
+            "type": "boolean",
+            "title": "Has Deck",
+            "description": "Whether this machine has a deck",
+            "default": false
+          },
+          "frontend_fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frontend Fqn",
+            "description": "PLR frontend class FQN"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "fqn"
+        ],
+        "title": "MachineDefinitionCreate",
+        "description": "Schema for creating a MachineDefinition."
+      },
       "MachineDefinitionRead": {
         "properties": {
           "accession_id": {
@@ -7767,6 +9587,191 @@
         ],
         "title": "MachineDefinitionRead",
         "description": "Schema for reading a MachineDefinition (API response)."
+      },
+      "MachineDefinitionUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "plr_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Category"
+          },
+          "machine_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MachineCategoryEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "material": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material"
+          },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "size_x_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size X Mm"
+          },
+          "size_y_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Y Mm"
+          },
+          "size_z_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Z Mm"
+          },
+          "has_deck": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Deck"
+          },
+          "frontend_fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frontend Fqn"
+          },
+          "plr_definition_details_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Definition Details Json"
+          },
+          "rotation_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotation Json"
+          },
+          "setup_method_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setup Method Json"
+          }
+        },
+        "type": "object",
+        "title": "MachineDefinitionUpdate",
+        "description": "Schema for updating a MachineDefinition (partial update)."
       },
       "MachineRead": {
         "properties": {
@@ -7982,6 +9987,190 @@
         ],
         "title": "MachineStatusEnum",
         "description": "Enumeration for the possible operational statuses of a machine."
+      },
+      "MachineUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "machine_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MachineCategoryEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "serial_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serial Number"
+          },
+          "location_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Label"
+          },
+          "installation_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Installation Date"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MachineStatusEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status_details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Details"
+          },
+          "is_simulation_override": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Simulation Override"
+          },
+          "connection_info": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Info"
+          },
+          "user_configured_capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Configured Capabilities"
+          },
+          "maintenance_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maintenance Enabled"
+          }
+        },
+        "type": "object",
+        "title": "MachineUpdate",
+        "description": "Schema for updating a Machine (partial update)."
       },
       "ParameterConstraintsModel": {
         "properties": {
@@ -8293,6 +10482,147 @@
         "title": "ParameterMetadataModel",
         "description": "Provides comprehensive metadata for a protocol parameter.\n\nThis includes its name, type information, default value, description,\nconstraints, and UI rendering hints."
       },
+      "ProtocolRunCreate": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "function_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Function Name",
+            "description": "Name of the protocol function"
+          },
+          "function_file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Function File",
+            "description": "File containing the protocol function"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProtocolRunStatusEnum",
+            "default": "queued"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At",
+            "description": "When the protocol run started"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At",
+            "description": "When the protocol run completed"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message",
+            "description": "Error message if the run failed"
+          },
+          "data_directory_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Directory Path",
+            "description": "Path to data directory"
+          },
+          "top_level_protocol_definition_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Top Level Protocol Definition Accession Id"
+          },
+          "run_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Accession Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "top_level_protocol_definition_accession_id"
+        ],
+        "title": "ProtocolRunCreate",
+        "description": "Schema for creating a ProtocolRun."
+      },
       "ProtocolRunRead": {
         "properties": {
           "accession_id": {
@@ -8477,6 +10807,104 @@
         ],
         "title": "ProtocolRunStatusEnum",
         "description": "Enumeration for the operational status of a protocol run."
+      },
+      "ProtocolRunUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProtocolRunStatusEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "result_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Json"
+          },
+          "output_data_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Data Json"
+          },
+          "data_directory_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Directory Path"
+          }
+        },
+        "type": "object",
+        "title": "ProtocolRunUpdate",
+        "description": "Schema for updating a ProtocolRun (partial update)."
       },
       "QueuedRunResponse": {
         "properties": {
@@ -8748,6 +11176,422 @@
         "title": "ReplResponse",
         "description": "Response from REPL command execution."
       },
+      "ResourceCreate": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "asset_type": {
+            "$ref": "#/components/schemas/AssetType",
+            "description": "Type of asset, e.g., machine, resource, etc.",
+            "default": "GENERIC_ASSET"
+          },
+          "fqn": {
+            "type": "string",
+            "title": "Fqn",
+            "description": "Fully qualified name of the asset's class, if applicable.",
+            "default": ""
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location",
+            "description": "Location of the asset in the lab."
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResourceStatusEnum",
+            "default": "unknown"
+          },
+          "status_details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Details",
+            "description": "Additional status details"
+          },
+          "location_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Label",
+            "description": "Physical location label"
+          },
+          "current_deck_position_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Deck Position Name",
+            "description": "Current deck position"
+          },
+          "resource_definition_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Definition Accession Id"
+          },
+          "parent_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Accession Id"
+          },
+          "machine_location_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Machine Location Accession Id"
+          },
+          "deck_location_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Location Accession Id"
+          },
+          "workcell_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workcell Accession Id"
+          },
+          "plr_state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ResourceCreate",
+        "description": "Schema for creating a Resource."
+      },
+      "ResourceDefinitionCreate": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "fqn": {
+            "type": "string",
+            "title": "Fqn",
+            "description": "Fully qualified name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Description of the resource type"
+          },
+          "plr_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Category",
+            "description": "PyLabRobot category"
+          },
+          "resource_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Type",
+            "description": "Human-readable type of the resource"
+          },
+          "is_consumable": {
+            "type": "boolean",
+            "title": "Is Consumable",
+            "default": false
+          },
+          "nominal_volume_ul": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nominal Volume Ul",
+            "description": "Nominal volume in microliters"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material",
+            "description": "Material (polypropylene, glass, etc.)"
+          },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "ordering": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ordering",
+            "description": "Ordering information"
+          },
+          "size_x_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size X Mm",
+            "description": "Size in X dimension (mm)"
+          },
+          "size_y_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Y Mm",
+            "description": "Size in Y dimension (mm)"
+          },
+          "size_z_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Z Mm",
+            "description": "Size in Z dimension (mm)"
+          },
+          "num_items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Items",
+            "description": "Number of items (wells, tips)"
+          },
+          "plate_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plate Type",
+            "description": "Plate skirt type"
+          },
+          "well_volume_ul": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Well Volume Ul",
+            "description": "Well volume for plates"
+          },
+          "tip_volume_ul": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tip Volume Ul",
+            "description": "Tip volume for tip racks"
+          },
+          "vendor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor",
+            "description": "Vendor from FQN"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "fqn"
+        ],
+        "title": "ResourceDefinitionCreate",
+        "description": "Schema for creating a ResourceDefinition."
+      },
       "ResourceDefinitionRead": {
         "properties": {
           "accession_id": {
@@ -9013,6 +11857,222 @@
         "title": "ResourceDefinitionRead",
         "description": "Schema for reading a ResourceDefinition (API response)."
       },
+      "ResourceDefinitionUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "plr_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Category"
+          },
+          "resource_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Type"
+          },
+          "is_consumable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Consumable"
+          },
+          "nominal_volume_ul": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nominal Volume Ul"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material"
+          },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "ordering": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ordering"
+          },
+          "size_x_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size X Mm"
+          },
+          "size_y_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Y Mm"
+          },
+          "size_z_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Z Mm"
+          },
+          "num_items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Items"
+          },
+          "plate_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plate Type"
+          },
+          "well_volume_ul": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Well Volume Ul"
+          },
+          "tip_volume_ul": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tip Volume Ul"
+          },
+          "vendor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor"
+          }
+        },
+        "type": "object",
+        "title": "ResourceDefinitionUpdate",
+        "description": "Schema for updating a ResourceDefinition (partial update)."
+      },
       "ResourceRead": {
         "properties": {
           "accession_id": {
@@ -9149,6 +12209,101 @@
         "title": "ResourceStatusEnum",
         "description": "Enumeration for the possible operational statuses of a resource instance."
       },
+      "ResourceUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResourceStatusEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status_details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Details"
+          },
+          "location_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Label"
+          },
+          "current_deck_position_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Deck Position Name"
+          },
+          "resource_definition_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Definition Accession Id"
+          }
+        },
+        "type": "object",
+        "title": "ResourceUpdate",
+        "description": "Schema for updating a Resource (partial update)."
+      },
       "SaveSessionRequest": {
         "properties": {
           "history": {
@@ -9164,6 +12319,151 @@
           "history"
         ],
         "title": "SaveSessionRequest"
+      },
+      "ScheduleEntryCreate": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "status": {
+            "$ref": "#/components/schemas/ScheduleStatusEnum",
+            "default": "queued"
+          },
+          "scheduled_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled At",
+            "description": "Scheduled start time"
+          },
+          "execution_started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Started At",
+            "description": "Actual start time"
+          },
+          "execution_completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Completed At",
+            "description": "Actual end time"
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority",
+            "description": "Priority for scheduling",
+            "default": 0
+          },
+          "estimated_duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Duration Ms",
+            "description": "Estimated duration"
+          },
+          "required_asset_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Asset Count",
+            "description": "Required asset count"
+          },
+          "user_params_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Params Json",
+            "description": "User parameters"
+          },
+          "asset_requirements_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Requirements Json",
+            "description": "Asset requirements"
+          },
+          "protocol_run_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Protocol Run Accession Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "protocol_run_accession_id"
+        ],
+        "title": "ScheduleEntryCreate",
+        "description": "Schema for creating a ScheduleEntry."
       },
       "ScheduleEntryRead": {
         "properties": {
@@ -9909,6 +13209,117 @@
         ],
         "title": "ValidationError"
       },
+      "WellDataOutputCreate": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "well_position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Well Position",
+            "description": "Well position (e.g., 'A1')"
+          },
+          "measurement_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measurement Type",
+            "description": "Type of measurement"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value",
+            "description": "Measured value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit",
+            "description": "Unit of measurement"
+          },
+          "well_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Well Name",
+            "description": "Well name (e.g. A1)"
+          },
+          "data_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "WellDataOutputCreate",
+        "description": "Schema for creating a WellDataOutput."
+      },
       "WellDataOutputRead": {
         "properties": {
           "accession_id": {
@@ -10032,6 +13443,173 @@
         "title": "WellDataOutputRead",
         "description": "Schema for reading a WellDataOutput (API response)."
       },
+      "WellDataOutputUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "well_position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Well Position"
+          },
+          "measurement_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measurement Type"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "well_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Well Name"
+          },
+          "data_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Value"
+          }
+        },
+        "type": "object",
+        "title": "WellDataOutputUpdate",
+        "description": "Schema for updating a WellDataOutput (partial update)."
+      },
+      "WorkcellCreate": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Description of the workcell's purpose"
+          },
+          "physical_location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Physical Location",
+            "description": "Physical location (e.g., 'Lab 2, Room 301')"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Current status of the workcell",
+            "default": "available"
+          },
+          "last_state_update_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last State Update Time",
+            "description": "Timestamp of last state update"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "WorkcellCreate",
+        "description": "Schema for creating a Workcell."
+      },
       "WorkcellRead": {
         "properties": {
           "accession_id": {
@@ -10126,6 +13704,69 @@
         ],
         "title": "WorkcellRead",
         "description": "Schema for reading a Workcell (API response)."
+      },
+      "WorkcellUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "physical_location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Physical Location"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "latest_state_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest State Json"
+          }
+        },
+        "type": "object",
+        "title": "WorkcellUpdate",
+        "description": "Schema for updating a Workcell (partial update)."
       }
     },
     "securitySchemes": {

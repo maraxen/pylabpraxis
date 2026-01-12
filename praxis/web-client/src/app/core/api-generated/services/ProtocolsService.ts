@@ -5,8 +5,12 @@
 import type { Body_get_multi_api_v1_protocols_definitions_get } from '../models/Body_get_multi_api_v1_protocols_definitions_get';
 import type { Body_get_multi_api_v1_protocols_runs_get } from '../models/Body_get_multi_api_v1_protocols_runs_get';
 import type { CancelRunResponse } from '../models/CancelRunResponse';
+import type { FunctionProtocolDefinitionCreate } from '../models/FunctionProtocolDefinitionCreate';
 import type { FunctionProtocolDefinitionResponse } from '../models/FunctionProtocolDefinitionResponse';
+import type { FunctionProtocolDefinitionUpdate } from '../models/FunctionProtocolDefinitionUpdate';
+import type { ProtocolRunCreate } from '../models/ProtocolRunCreate';
 import type { ProtocolRunRead } from '../models/ProtocolRunRead';
+import type { ProtocolRunUpdate } from '../models/ProtocolRunUpdate';
 import type { QueuedRunResponse } from '../models/QueuedRunResponse';
 import type { SimulationRequest } from '../models/SimulationRequest';
 import type { SimulationResponse } from '../models/SimulationResponse';
@@ -41,13 +45,21 @@ export class ProtocolsService {
     }
     /**
      * Create
+     * @param requestBody
      * @returns FunctionProtocolDefinitionResponse Successful Response
      * @throws ApiError
      */
-    public static createApiV1ProtocolsDefinitionsPost(): CancelablePromise<FunctionProtocolDefinitionResponse> {
+    public static createApiV1ProtocolsDefinitionsPost(
+        requestBody: FunctionProtocolDefinitionCreate,
+    ): CancelablePromise<FunctionProtocolDefinitionResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/protocols/definitions',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
@@ -121,11 +133,13 @@ export class ProtocolsService {
     /**
      * Update
      * @param accessionId
+     * @param requestBody
      * @returns FunctionProtocolDefinitionResponse Successful Response
      * @throws ApiError
      */
     public static updateApiV1ProtocolsDefinitionsAccessionIdPut(
         accessionId: string,
+        requestBody: FunctionProtocolDefinitionUpdate,
     ): CancelablePromise<FunctionProtocolDefinitionResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -133,6 +147,8 @@ export class ProtocolsService {
             path: {
                 'accession_id': accessionId,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },
@@ -199,13 +215,21 @@ export class ProtocolsService {
     }
     /**
      * Create
+     * @param requestBody
      * @returns ProtocolRunRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1ProtocolsRunsPost(): CancelablePromise<ProtocolRunRead> {
+    public static createApiV1ProtocolsRunsPost(
+        requestBody: ProtocolRunCreate,
+    ): CancelablePromise<ProtocolRunRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/protocols/runs',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
@@ -279,11 +303,13 @@ export class ProtocolsService {
     /**
      * Update
      * @param accessionId
+     * @param requestBody
      * @returns ProtocolRunRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1ProtocolsRunsAccessionIdPut(
         accessionId: string,
+        requestBody: ProtocolRunUpdate,
     ): CancelablePromise<ProtocolRunRead> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -291,6 +317,8 @@ export class ProtocolsService {
             path: {
                 'accession_id': accessionId,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

@@ -4,9 +4,13 @@
 /* eslint-disable */
 import type { Body_get_multi_api_v1_machines__get } from '../models/Body_get_multi_api_v1_machines__get';
 import type { Body_get_multi_api_v1_machines_definitions_get } from '../models/Body_get_multi_api_v1_machines_definitions_get';
+import type { MachineCreate } from '../models/MachineCreate';
+import type { MachineDefinitionCreate } from '../models/MachineDefinitionCreate';
 import type { MachineDefinitionRead } from '../models/MachineDefinitionRead';
+import type { MachineDefinitionUpdate } from '../models/MachineDefinitionUpdate';
 import type { MachineRead } from '../models/MachineRead';
 import type { MachineStatusEnum } from '../models/MachineStatusEnum';
+import type { MachineUpdate } from '../models/MachineUpdate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -27,13 +31,21 @@ export class MachinesService {
     }
     /**
      * Create
+     * @param requestBody
      * @returns MachineDefinitionRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1MachinesDefinitionsPost(): CancelablePromise<MachineDefinitionRead> {
+    public static createApiV1MachinesDefinitionsPost(
+        requestBody: MachineDefinitionCreate,
+    ): CancelablePromise<MachineDefinitionRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/machines/definitions',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
@@ -107,11 +119,13 @@ export class MachinesService {
     /**
      * Update
      * @param accessionId
+     * @param requestBody
      * @returns MachineDefinitionRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1MachinesDefinitionsAccessionIdPut(
         accessionId: string,
+        requestBody: MachineDefinitionUpdate,
     ): CancelablePromise<MachineDefinitionRead> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -119,6 +133,8 @@ export class MachinesService {
             path: {
                 'accession_id': accessionId,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },
@@ -146,13 +162,21 @@ export class MachinesService {
     }
     /**
      * Create
+     * @param requestBody
      * @returns MachineRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1MachinesPost(): CancelablePromise<MachineRead> {
+    public static createApiV1MachinesPost(
+        requestBody: MachineCreate,
+    ): CancelablePromise<MachineRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/machines/',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
@@ -226,11 +250,13 @@ export class MachinesService {
     /**
      * Update
      * @param accessionId
+     * @param requestBody
      * @returns MachineRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1MachinesAccessionIdPut(
         accessionId: string,
+        requestBody: MachineUpdate,
     ): CancelablePromise<MachineRead> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -238,6 +264,8 @@ export class MachinesService {
             path: {
                 'accession_id': accessionId,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

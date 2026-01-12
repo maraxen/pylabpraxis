@@ -3,20 +3,30 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { Body_get_multi_api_v1_resources__get } from '../models/Body_get_multi_api_v1_resources__get';
+import type { ResourceCreate } from '../models/ResourceCreate';
 import type { ResourceRead } from '../models/ResourceRead';
+import type { ResourceUpdate } from '../models/ResourceUpdate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class ResourcesService {
     /**
      * Create
+     * @param requestBody
      * @returns ResourceRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1ResourcesPost(): CancelablePromise<ResourceRead> {
+    public static createApiV1ResourcesPost(
+        requestBody: ResourceCreate,
+    ): CancelablePromise<ResourceRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/resources/',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
@@ -90,11 +100,13 @@ export class ResourcesService {
     /**
      * Update
      * @param accessionId
+     * @param requestBody
      * @returns ResourceRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1ResourcesAccessionIdPut(
         accessionId: string,
+        requestBody: ResourceUpdate,
     ): CancelablePromise<ResourceRead> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -102,6 +114,8 @@ export class ResourcesService {
             path: {
                 'accession_id': accessionId,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },
