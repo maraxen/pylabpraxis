@@ -1,8 +1,10 @@
 # Prompt Batch: 260110 — SQLModel + OpenAPI Codegen Unification
 
-**Status:** 🟡 In Progress
+**Status:** 🟡 In Progress (Phases 1-4 Complete, 5-7 Remaining)
 **Created:** 2026-01-10
 **Backlog Reference:** [sqlmodel_codegen_refactor.md](../../backlog/sqlmodel_codegen_refactor.md)
+
+**Progress:** 11/17 prompts completed (65%)
 
 ---
 
@@ -60,20 +62,20 @@ Phase 7: Cleanup
 
 | # | Prompt | Phase | Status | Depends On | Parallelizable |
 |---|--------|-------|--------|------------|----------------|
-| 01 | [P2_01_sqlmodel_foundation_setup.md](./P2_01_sqlmodel_foundation_setup.md) | 1.1 | 🟢 Not Started | None | ✅ Yes (with 02) |
+| 01 | [P2_01_sqlmodel_foundation_setup.md](./P2_01_sqlmodel_foundation_setup.md) | 1.1 | ✅ Completed | None | ✅ Yes (with 02) |
 | 02 | [P2_02_openapi_codegen_pipeline.md](./P2_02_openapi_codegen_pipeline.md) | 1.2 | ✅ Completed | None | ✅ Yes (with 01) |
 | 03 | [P2_03_migrate_asset_base.md](./P2_03_migrate_asset_base.md) | 2.1 | ✅ Completed | 01 | ❌ Sequential |
-| 04 | [P2_04_migrate_machine.md](./P2_04_migrate_machine.md) | 2.2 | 🟢 Not Started | 03 | ⚠️ After 03 |
-| 05 | [P2_05_migrate_resource.md](./P2_05_migrate_resource.md) | 2.3 | 🟢 Not Started | 03 | ⚠️ Parallel with 04 |
-| 06 | [P2_06_migrate_deck.md](./P2_06_migrate_deck.md) | 2.4 | 🟢 Not Started | 03 | ⚠️ After 03 |
-| 07 | [P2_07_migrate_protocol_run.md](./P2_07_migrate_protocol_run.md) | 3.1 | 🟢 Not Started | Phase 2 | ⚠️ After Phase 2 |
-| 08 | [P2_08_migrate_schedule.md](./P2_08_migrate_schedule.md) | 3.2 | 🟢 Not Started | Phase 2 | ⚠️ Parallel with 07 |
-| 09 | [P2_09_migrate_protocol_source.md](./P2_09_migrate_protocol_source.md) | 3.3 | 🟢 Not Started | Phase 2 | ⚠️ Parallel with 07 |
-| 10 | [P2_10_migrate_data_outputs.md](./P2_10_migrate_data_outputs.md) | 4.1 | 🟢 Not Started | Phase 2, 3.1 | ⚠️ After 07 |
-| 11 | [P2_11_migrate_workcell_user.md](./P2_11_migrate_workcell_user.md) | 4.2 | 🟢 Not Started | Phase 2 | ⚠️ Parallel with 10 |
+| 04 | [P2_04_migrate_machine.md](./P2_04_migrate_machine.md) | 2.2 | ✅ Completed | 03 | ⚠️ After 03 |
+| 05 | [P2_05_migrate_resource.md](./P2_05_migrate_resource.md) | 2.3 | ✅ Completed | 03 | ⚠️ Parallel with 04 |
+| 06 | [P2_06_migrate_deck.md](./P2_06_migrate_deck.md) | 2.4 | ✅ Completed | 03 | ⚠️ After 03 |
+| 07 | [P2_07_migrate_protocol_run.md](./P2_07_migrate_protocol_run.md) | 3.1 | ✅ Completed | Phase 2 | ⚠️ After Phase 2 |
+| 08 | [P2_08_migrate_schedule.md](./P2_08_migrate_schedule.md) | 3.2 | ✅ Completed | Phase 2 | ⚠️ Parallel with 07 |
+| 09 | [P2_09_migrate_protocol_source.md](./P2_09_migrate_protocol_source.md) | 3.3 | ✅ Completed | Phase 2 | ⚠️ Parallel with 07 |
+| 10 | [P2_10_migrate_data_outputs.md](./P2_10_migrate_data_outputs.md) | 4.1 | ✅ Completed | Phase 2, 3.1 | ⚠️ After 07 |
+| 11 | [P2_11_migrate_workcell_user.md](./P2_11_migrate_workcell_user.md) | 4.2 | ✅ Completed | Phase 2 | ⚠️ Parallel with 10 |
 | 12 | [P2_12_update_crud_services.md](./P2_12_update_crud_services.md) | 5.1 | 🟢 Not Started | Phase 2-4 | ❌ Sequential |
 | 13 | [P2_13_update_test_fixtures.md](./P2_13_update_test_fixtures.md) | 5.2 | 🟢 Not Started | Phase 2-4 | ⚠️ Parallel with 12 |
-| 14 | [P2_14_generate_typescript_client.md](./P2_14_generate_typescript_client.md) | 6.1 | 🟢 Not Started | Phase 5 | ❌ Sequential |
+| 14 | [P2_14_generate_typescript_client.md](./P2_14_generate_typescript_client.md) | 6.1 | ✅ Completed | Phase 5 | ❌ Sequential |
 | 15 | [P2_15_migrate_angular_services.md](./P2_15_migrate_angular_services.md) | 6.2 | 🟢 Not Started | 14 | ❌ Sequential |
 | 16 | [P2_16_cleanup_legacy_files.md](./P2_16_cleanup_legacy_files.md) | 7.1 | 🟢 Not Started | Phase 6 | ❌ Sequential |
 | 17 | [P2_17_final_validation.md](./P2_17_final_validation.md) | 7.2 | 🟢 Not Started | 16 | ❌ Final |
@@ -127,10 +129,10 @@ Phase 7: Cleanup
 
 ## Key Technical Decisions
 
-1. **SQLModel for unified models**: Combines SQLAlchemy ORM + Pydantic in single classes
+1. **Hybrid Pattern (Phases 1-4)**: Due to SQLModel limitation with polymorphic inheritance + dict fields, using SQLAlchemy ORM for tables (`praxis/backend/models/orm/`) + SQLModel for API schemas (`praxis/backend/models/domain/`). See [Technical Debt #102](../../TECHNICAL_DEBT.md).
 2. **`openapi-typescript-codegen`**: Generates TypeScript client from OpenAPI schema
-3. **Incremental migration**: Legacy files kept until all imports updated
-4. **Single-table inheritance preserved**: Asset polymorphism maintained
+3. **Incremental migration**: Legacy Pydantic files kept until all imports updated
+4. **Joined-table inheritance preserved**: Asset polymorphism maintained via ORM layer
 
 ---
 
