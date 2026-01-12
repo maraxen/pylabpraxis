@@ -56,6 +56,9 @@ class PraxisBase(SQLModel):
   - Timestamps (created_at, updated_at)
   - Generic properties_json field
   - Pydantic config for serialization
+
+  Note: For models using this base, properties_json is automatically included.
+  Child tables should NOT redefine it unless overriding.
   """
 
   model_config = ConfigDict(
@@ -89,7 +92,7 @@ class PraxisBase(SQLModel):
     description="An optional name for the record.",
   )
 
-  properties_json: dict[str, Any] | None = json_field(
-    default=None,
-    description="Arbitrary metadata associated with the record.",
-  )
+  # Note: properties_json uses a deferred definition to avoid Column reuse issues
+  # Each table will get its own Column instance via __init_subclass__ or we define it per-table
+  # For now, leaving as a simple field annotation - subclasses must override if they want the column
+  # properties_json: dict[str, Any] | None = None

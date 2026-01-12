@@ -1,10 +1,11 @@
 """Unified Asset domain model using SQLModel."""
 
 from typing import TYPE_CHECKING, Any, ClassVar
+import uuid
 
 from sqlalchemy import Column
 from sqlalchemy import Enum as SAEnum
-from sqlmodel import Field, Relationship
+from sqlmodel import Field, Relationship, SQLModel
 
 from praxis.backend.models.domain.sqlmodel_base import PraxisBase, json_field
 from praxis.backend.models.enums import AssetType
@@ -38,6 +39,10 @@ class Asset(AssetBase, table=True):
 
   __tablename__ = "assets"
 
+  properties_json: dict[str, Any] | None = json_field(
+    default=None,
+    description="Arbitrary metadata associated with the record.",
+  )
   plr_state: dict[str, Any] | None = json_field(
     default=None,
     description="PLR state of the asset, if applicable.",
@@ -72,14 +77,20 @@ class AssetCreate(AssetBase):
   pass
 
 
-class AssetRead(AssetBase):
+class AssetRead(SQLModel):
   """Schema for reading an Asset (API response)."""
 
+  accession_id: uuid.UUID
+  name: str
+  asset_type: AssetType
+  fqn: str
+  location: str | None = None
   plr_state: dict[str, Any] | None = None
   plr_definition: dict[str, Any] | None = None
+  properties_json: dict[str, Any] | None = None
 
 
-class AssetUpdate(PraxisBase):
+class AssetUpdate(SQLModel):
   """Schema for updating an Asset (partial update)."""
 
   name: str | None = None
