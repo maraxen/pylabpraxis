@@ -29,7 +29,6 @@ CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
 
-
 logger = get_logger(__name__)
 
 
@@ -90,39 +89,49 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
   async def create(self, db: AsyncSession, *, obj_in: CreateSchemaType) -> ModelType:
     """Create a new object."""
-    obj_in_data = obj_in.model_dump()
+    # Check if the model supports SQLModel-style validation
+    if hasattr(self.model, "model_validate"):
+      # SQLModel / Pydantic v2 style
+      # We still dump to dict first because model_validate usually expects a dict or object,
+      # but for SQLModel table=True models, model_validate is the standard entry point.
+      # However, if obj_in is a schema and self.model is a TableModel, we can often just do:
+      db_obj = self.model.model_validate(obj_in)
+    else:
+      # Legacy SQLAlchemy ORM style
+      obj_in_data = obj_in.model_dump()
 
-    # Get the valid constructor parameters for the ORM model
-    init_signature = py_inspect.signature(self.model.__init__)
-    valid_params = {p.name for p in init_signature.parameters.values()}
+      # Get the valid constructor parameters for the ORM model
+      init_signature = py_inspect.signature(self.model.__init__)
+      valid_params = {p.name for p in init_signature.parameters.values()}
 
-    # Filter the input data to include only keys that are valid constructor parameters
-    filtered_data = {key: value for key, value in obj_in_data.items() if key in valid_params}
+      # Filter the input data to include only keys that are valid constructor parameters
+      filtered_data = {key: value for key, value in obj_in_data.items() if key in valid_params}
 
-    # Smart Enum conversion:
-    # 1. If value is Enum but column is NOT SAEnum (e.g. String), convert to value.
-    # 2. If value is NOT Enum (e.g. String) but column IS SAEnum, convert back to Enum object.
-    mapper = inspect(self.model)
-    for key, value in filtered_data.items():
-      col = mapper.columns.get(key)
-      if col is None:
-        continue
+      # Smart Enum conversion:
+      # 1. If value is Enum but column is NOT SAEnum (e.g. String), convert to value.
+      # 2. If value is NOT Enum (e.g. String) but column IS SAEnum, convert back to Enum object.
+      mapper = inspect(self.model)
+      for key, value in filtered_data.items():
+        col = mapper.columns.get(key)
+        if col is None:
+          continue
 
-      is_enum_col = isinstance(col.type, SAEnumType)
-      is_enum_val = isinstance(value, enum.Enum)
+        is_enum_col = isinstance(col.type, SAEnumType)
+        is_enum_val = isinstance(value, enum.Enum)
 
-      if is_enum_val and not is_enum_col:
-        # Convert Enum object to value (for String columns)
-        filtered_data[key] = value.value
-      elif not is_enum_val and is_enum_col:
-        # Convert value to Enum object (for SAEnum columns)
-        # Pydantic may have converted it to a string/int due to use_enum_values=True
-        enum_class = getattr(col.type, "enum_class", None)
-        if enum_class:
-          with contextlib.suppress(ValueError, TypeError):
-            filtered_data[key] = enum_class(value)
+        if is_enum_val and not is_enum_col:
+          # Convert Enum object to value (for String columns)
+          filtered_data[key] = value.value
+        elif not is_enum_val and is_enum_col:
+          # Convert value to Enum object (for SAEnum columns)
+          # Pydantic may have converted it to a string/int due to use_enum_values=True
+          enum_class = getattr(col.type, "enum_class", None)
+          if enum_class:
+            with contextlib.suppress(ValueError, TypeError):
+              filtered_data[key] = enum_class(value)
 
-    db_obj = self.model(**filtered_data)
+      db_obj = self.model(**filtered_data)
+
     db.add(db_obj)
     await db.flush()
     await db.refresh(db_obj)
@@ -138,34 +147,39 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     """Update an existing object."""
     update_data = obj_in.model_dump(exclude_unset=True)
 
-    # Smart Enum conversion for updates
-    mapper = inspect(self.model)
-    for key, value in update_data.items():
-      col = mapper.columns.get(key)
-      if col is None:
-        continue
+    if hasattr(db_obj, "sqlmodel_update"):
+      # SQLModel style update
+      db_obj.sqlmodel_update(update_data)
+    else:
+      # Legacy ORM style update
+      # Smart Enum conversion for updates
+      mapper = inspect(self.model)
+      for key, value in update_data.items():
+        col = mapper.columns.get(key)
+        if col is None:
+          continue
 
-      is_enum_col = isinstance(col.type, SAEnumType)
-      is_enum_val = isinstance(value, enum.Enum)
+        is_enum_col = isinstance(col.type, SAEnumType)
+        is_enum_val = isinstance(value, enum.Enum)
 
-      if is_enum_val and not is_enum_col:
-        update_data[key] = value.value
-      elif not is_enum_val and is_enum_col:
-        enum_class = getattr(col.type, "enum_class", None)
-        if enum_class:
-          with contextlib.suppress(ValueError, TypeError):
-            update_data[key] = enum_class(value)
+        if is_enum_val and not is_enum_col:
+          update_data[key] = value.value
+        elif not is_enum_val and is_enum_col:
+          enum_class = getattr(col.type, "enum_class", None)
+          if enum_class:
+            with contextlib.suppress(ValueError, TypeError):
+              update_data[key] = enum_class(value)
 
-    # Filter update_data to only include valid model attributes
-    # This prevents issues with relationships being set to None/invalid types
-    mapper = inspect(self.model)
-    valid_fields = set(mapper.columns.keys())
+      # Filter update_data to only include valid model attributes
+      # This prevents issues with relationships being set to None/invalid types
+      mapper = inspect(self.model)
+      valid_fields = set(mapper.columns.keys())
 
-    for field, value in update_data.items():
-      if field in valid_fields:
-        setattr(db_obj, field, value)
-      else:
-        logger.debug("Skipping update for non-column field: %s", field)
+      for field, value in update_data.items():
+        if field in valid_fields:
+          setattr(db_obj, field, value)
+        else:
+          logger.debug("Skipping update for non-column field: %s", field)
 
     db.add(db_obj)
     await db.flush()
