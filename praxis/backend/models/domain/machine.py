@@ -1,9 +1,9 @@
 # pylint: disable=too-few-public-methods,missing-class-docstring
 """Unified SQLModel definitions for Machine and MachineDefinition."""
 
+import uuid
 from datetime import datetime
 from typing import Any
-import uuid
 
 from sqlalchemy import Column
 from sqlalchemy import Enum as SAEnum
@@ -15,7 +15,6 @@ from praxis.backend.models.enums import (
     MachineCategoryEnum,
     MachineStatusEnum,
 )
-
 
 # =============================================================================
 # Machine Definition (Catalog)
@@ -88,11 +87,12 @@ class MachineDefinition(MachineDefinitionBase, table=True):
 
 class MachineDefinitionCreate(MachineDefinitionBase):
     """Schema for creating a MachineDefinition."""
-    pass
+
 
 
 class MachineDefinitionRead(MachineDefinitionBase):
     """Schema for reading a MachineDefinition (API response)."""
+
     accession_id: uuid.UUID
     plr_definition_details_json: dict[str, Any] | None = None
     rotation_json: dict[str, Any] | None = None
@@ -196,7 +196,7 @@ class Machine(MachineBase):
 
 class MachineCreate(MachineBase):
     """Schema for creating a Machine."""
-    pass
+
 
 
 class MachineRead(MachineBase):

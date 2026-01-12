@@ -1,17 +1,14 @@
 """Unified Asset domain model using SQLModel."""
 
-from typing import TYPE_CHECKING, Any, ClassVar
 import uuid
+from typing import Any, ClassVar
 
 from sqlalchemy import Column
 from sqlalchemy import Enum as SAEnum
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import Field, SQLModel
 
 from praxis.backend.models.domain.sqlmodel_base import PraxisBase, json_field
 from praxis.backend.models.enums import AssetType
-
-if TYPE_CHECKING:
-  from praxis.backend.models.orm.schedule import AssetReservationOrm
 
 
 class AssetBase(PraxisBase):
@@ -74,7 +71,6 @@ class Asset(AssetBase, table=True):
 class AssetCreate(AssetBase):
   """Schema for creating an Asset."""
 
-  pass
 
 
 class AssetRead(SQLModel):

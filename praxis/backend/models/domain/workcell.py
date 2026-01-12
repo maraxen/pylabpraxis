@@ -1,19 +1,14 @@
 # pylint: disable=too-few-public-methods,missing-class-docstring
 """Unified SQLModel definitions for Workcell."""
 
-from datetime import datetime
-from typing import TYPE_CHECKING, Any
 import uuid
+from datetime import datetime
+from typing import Any
 
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import Field, SQLModel
 
 from praxis.backend.models.domain.sqlmodel_base import PraxisBase, json_field
 from praxis.backend.models.enums.workcell import WorkcellStatusEnum
-
-if TYPE_CHECKING:
-    from praxis.backend.models.domain.deck import Deck
-    from praxis.backend.models.domain.machine import Machine
-    from praxis.backend.models.domain.resource import Resource
 
 
 class WorkcellBase(PraxisBase):
@@ -42,11 +37,12 @@ class Workcell(WorkcellBase, table=True):
 
 class WorkcellCreate(WorkcellBase):
     """Schema for creating a Workcell."""
-    pass
+
 
 
 class WorkcellRead(WorkcellBase):
     """Schema for reading a Workcell (API response)."""
+
     accession_id: uuid.UUID
     latest_state_json: dict[str, Any] | None = None
 

@@ -10,7 +10,6 @@ from sqlmodel import Field, SQLModel
 from praxis.backend.models.domain.sqlmodel_base import PraxisBase
 from praxis.backend.models.enums import ProtocolSourceStatusEnum
 
-
 # =============================================================================
 # Protocol Source Repository (Git)
 # =============================================================================
@@ -38,11 +37,12 @@ class ProtocolSourceRepository(ProtocolSourceRepositoryBase, table=True):
 
 class ProtocolSourceRepositoryCreate(ProtocolSourceRepositoryBase):
     """Schema for creating a ProtocolSourceRepository."""
-    pass
+
 
 
 class ProtocolSourceRepositoryRead(ProtocolSourceRepositoryBase):
     """Schema for reading a ProtocolSourceRepository (API response)."""
+
     accession_id: uuid.UUID
 
 
@@ -81,11 +81,12 @@ class FileSystemProtocolSource(FileSystemProtocolSourceBase, table=True):
 
 class FileSystemProtocolSourceCreate(FileSystemProtocolSourceBase):
     """Schema for creating a FileSystemProtocolSource."""
-    pass
+
 
 
 class FileSystemProtocolSourceRead(FileSystemProtocolSourceBase):
     """Schema for reading a FileSystemProtocolSource (API response)."""
+
     accession_id: uuid.UUID
 
 

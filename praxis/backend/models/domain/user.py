@@ -29,11 +29,13 @@ class User(UserBase, table=True):
 
 class UserCreate(UserBase):
     """Schema for creating a User."""
+
     password: str  # Plain password, will be hashed before storage
 
 
 class UserRead(UserBase):
     """Schema for reading a User (API response) - excludes hashed_password."""
+
     accession_id: uuid.UUID
 
 
