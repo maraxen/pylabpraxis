@@ -20,5 +20,6 @@ export type AssetRequirementModel_Output = {
     description?: (string | null);
     constraints?: AssetConstraintsModel;
     location_constraints?: LocationConstraintsModel;
+    required_plr_category?: (string | null);
 };
 

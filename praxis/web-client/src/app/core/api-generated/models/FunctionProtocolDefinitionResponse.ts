@@ -4,7 +4,10 @@
 /* eslint-disable */
 import type { AssetRequirementModel_Output } from './AssetRequirementModel_Output';
 import type { DataViewMetadataModel } from './DataViewMetadataModel';
-import type { ParameterMetadataModel } from './ParameterMetadataModel';
+import type { FailureModeModel } from './FailureModeModel';
+import type { InferredRequirementModel } from './InferredRequirementModel';
+import type { ParameterMetadataModel_Output } from './ParameterMetadataModel_Output';
+import type { SimulationResultModel } from './SimulationResultModel';
 /**
  * Model for API responses for a function protocol definition.
  */
@@ -38,6 +41,7 @@ export type FunctionProtocolDefinitionResponse = {
     is_top_level?: boolean;
     solo_execution?: boolean;
     preconfigure_deck?: boolean;
+    requires_deck?: boolean;
     deck_param_name?: (string | null);
     deck_construction_function_fqn?: (string | null);
     deck_layout_path?: (string | null);
@@ -45,9 +49,35 @@ export type FunctionProtocolDefinitionResponse = {
     category?: (string | null);
     tags?: any;
     deprecated?: boolean;
-    parameters?: Array<ParameterMetadataModel>;
+    source_hash?: (string | null);
+    computation_graph?: (Record<string, any> | null);
+    parameters?: Array<ParameterMetadataModel_Output>;
     assets?: Array<AssetRequirementModel_Output>;
-    data_views?: Array<DataViewMetadataModel>;
+    data_views?: (Array<DataViewMetadataModel> | null);
     hardware_requirements?: (Record<string, any> | null);
+    /**
+     * Pre-run setup instructions to display in Deck Setup wizard
+     */
+    setup_instructions_json?: null;
+    /**
+     * Cached simulation result
+     */
+    simulation_result?: (SimulationResultModel | null);
+    /**
+     * Inferred state requirements
+     */
+    inferred_requirements?: (Array<InferredRequirementModel> | null);
+    /**
+     * Known failure modes
+     */
+    failure_modes?: (Array<FailureModeModel> | null);
+    /**
+     * Simulator version for cache validation
+     */
+    simulation_version?: (string | null);
+    /**
+     * When simulation was last run
+     */
+    simulation_cached_at?: (string | null);
 };
 

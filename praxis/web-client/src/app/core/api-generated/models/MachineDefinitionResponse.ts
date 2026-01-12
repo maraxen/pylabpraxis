@@ -95,5 +95,13 @@ export type MachineDefinitionResponse = {
      * Schema for user-configurable capabilities.
      */
     capabilities_config?: (Record<string, any> | null);
+    /**
+     * Schema for connection parameters (host, port, etc).
+     */
+    connection_config?: (Record<string, any> | null);
+    /**
+     * FQN of the PLR frontend class (e.g., pylabrobot.liquid_handling.LiquidHandler).
+     */
+    frontend_fqn?: (string | null);
 };
 

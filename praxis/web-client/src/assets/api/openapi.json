@@ -759,7 +759,7 @@
         }
       }
     },
-    "/api/v1/protocols/runs": {
+    "/api/v1/protocols/runs/actions/start": {
       "post": {
         "tags": [
           "Protocols",
@@ -767,7 +767,7 @@
         ],
         "summary": "Start Protocol Run",
         "description": "Start a new protocol run.\n\nCreates a protocol run record and begins execution. If simulation_mode is True,\nthe protocol will run without triggering actual hardware actions.",
-        "operationId": "start_protocol_run_api_v1_protocols_runs_post",
+        "operationId": "start_protocol_run_api_v1_protocols_runs_actions_start_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -795,78 +795,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/protocols/runs/{run_id}/cancel": {
-      "post": {
-        "tags": [
-          "Protocols",
-          "Protocol Runs"
-        ],
-        "summary": "Cancel Protocol Run",
-        "description": "Cancel a running or queued protocol run.\n\nReleases reserved assets and updates the run status to CANCELLED.\n\nTODO: Add permission check - only admin or run owner can cancel.",
-        "operationId": "cancel_protocol_run_api_v1_protocols_runs__run_id__cancel_post",
-        "parameters": [
-          {
-            "name": "run_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Run Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CancelRunResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/protocols/runs/queue": {
-      "get": {
-        "tags": [
-          "Protocols",
-          "Protocol Runs"
-        ],
-        "summary": "Get Protocol Queue",
-        "description": "Get list of active/queued protocol runs.\n\nReturns runs with status: PENDING, PREPARING, QUEUED, RUNNING.",
-        "operationId": "get_protocol_queue_api_v1_protocols_runs_queue_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/QueuedRunResponse"
-                  },
-                  "type": "array",
-                  "title": "Response Get Protocol Queue Api V1 Protocols Runs Queue Get"
                 }
               }
             }
@@ -1203,14 +1131,86 @@
         }
       }
     },
-    "/api/v1/protocols/runs/records": {
+    "/api/v1/protocols/runs/{run_id}/cancel": {
+      "post": {
+        "tags": [
+          "Protocols",
+          "Protocol Runs"
+        ],
+        "summary": "Cancel Protocol Run",
+        "description": "Cancel a running or queued protocol run.\n\nReleases reserved assets and updates the run status to CANCELLED.\n\nTODO: Add permission check - only admin or run owner can cancel.",
+        "operationId": "cancel_protocol_run_api_v1_protocols_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelRunResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/protocols/runs/queue": {
+      "get": {
+        "tags": [
+          "Protocols",
+          "Protocol Runs"
+        ],
+        "summary": "Get Protocol Queue",
+        "description": "Get list of active/queued protocol runs.\n\nReturns runs with status: PENDING, PREPARING, QUEUED, RUNNING.",
+        "operationId": "get_protocol_queue_api_v1_protocols_runs_queue_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QueuedRunResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Get Protocol Queue Api V1 Protocols Runs Queue Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/protocols/runs": {
       "post": {
         "tags": [
           "Protocols",
           "Protocol Runs"
         ],
         "summary": "Create",
-        "operationId": "create_api_v1_protocols_runs_records_post",
+        "operationId": "create_api_v1_protocols_runs_post",
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -1230,7 +1230,7 @@
           "Protocol Runs"
         ],
         "summary": "Get Multi",
-        "operationId": "get_multi_api_v1_protocols_runs_records_get",
+        "operationId": "get_multi_api_v1_protocols_runs_get",
         "parameters": [
           {
             "name": "limit",
@@ -1378,7 +1378,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_get_multi_api_v1_protocols_runs_records_get"
+                "$ref": "#/components/schemas/Body_get_multi_api_v1_protocols_runs_get"
               }
             }
           }
@@ -1393,7 +1393,7 @@
                   "items": {
                     "$ref": "#/components/schemas/ProtocolRunResponse"
                   },
-                  "title": "Response Get Multi Api V1 Protocols Runs Records Get"
+                  "title": "Response Get Multi Api V1 Protocols Runs Get"
                 }
               }
             }
@@ -1411,14 +1411,14 @@
         }
       }
     },
-    "/api/v1/protocols/runs/records/{accession_id}": {
+    "/api/v1/protocols/runs/{accession_id}": {
       "get": {
         "tags": [
           "Protocols",
           "Protocol Runs"
         ],
         "summary": "Get",
-        "operationId": "get_api_v1_protocols_runs_records__accession_id__get",
+        "operationId": "get_api_v1_protocols_runs__accession_id__get",
         "parameters": [
           {
             "name": "accession_id",
@@ -1460,7 +1460,7 @@
           "Protocol Runs"
         ],
         "summary": "Update",
-        "operationId": "update_api_v1_protocols_runs_records__accession_id__put",
+        "operationId": "update_api_v1_protocols_runs__accession_id__put",
         "parameters": [
           {
             "name": "accession_id",
@@ -1502,7 +1502,7 @@
           "Protocol Runs"
         ],
         "summary": "Delete",
-        "operationId": "delete_api_v1_protocols_runs_records__accession_id__delete",
+        "operationId": "delete_api_v1_protocols_runs__accession_id__delete",
         "parameters": [
           {
             "name": "accession_id",
@@ -1565,6 +1565,115 @@
                     "additionalProperties": true
                   },
                   "title": "Response Get Protocol Compatibility Api V1 Protocols  Accession Id  Compatibility Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/protocols/definitions/{accession_id}/simulate": {
+      "post": {
+        "tags": [
+          "Protocols",
+          "Protocol Simulation"
+        ],
+        "summary": "Simulate Protocol",
+        "description": "Simulate a protocol using graph replay.\n\nThis endpoint provides backend simulation for browser-mode fallback.\nIt replays the computation graph with state tracking to detect violations\nlike missing tips, incorrect deck placement, or liquid handling errors.\n\nThe simulation uses boolean-level state tracking which catches:\n- Tips not loaded before aspiration\n- Resources not on deck\n- Liquid operations on empty wells\n\nThis is useful when the browser can't run Pyodide-based simulation\ndirectly, or when you want to use the backend's full simulation\ncapabilities.\n\nReturns clear error messages to help fix protocol issues.",
+        "operationId": "simulate_protocol_api_v1_protocols_definitions__accession_id__simulate_post",
+        "parameters": [
+          {
+            "name": "accession_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Accession Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/SimulationRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/protocols/definitions/{accession_id}/simulation-status": {
+      "get": {
+        "tags": [
+          "Protocols",
+          "Protocol Simulation"
+        ],
+        "summary": "Get Simulation Status",
+        "description": "Get simulation status and cached results for a protocol.\n\nReturns information about:\n- Whether simulation results are cached\n- Cache validity (version, timestamp)\n- Summary of cached results if available",
+        "operationId": "get_simulation_status_api_v1_protocols_definitions__accession_id__simulation_status_get",
+        "parameters": [
+          {
+            "name": "accession_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Accession Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Simulation Status Api V1 Protocols Definitions  Accession Id  Simulation Status Get"
                 }
               }
             }
@@ -5043,6 +5152,228 @@
         }
       }
     },
+    "/api/v1/scheduler/{schedule_entry_accession_id}/uncertain-state": {
+      "get": {
+        "tags": [
+          "Scheduler",
+          "Scheduler",
+          "State Resolution"
+        ],
+        "summary": "Get Uncertain States",
+        "description": "Get uncertain states for a failed/paused run.\n\nReturns the list of state changes that are uncertain due to a failed\noperation. This is used to build a state resolution UI.",
+        "operationId": "get_uncertain_states_api_v1_scheduler__schedule_entry_accession_id__uncertain_state_get",
+        "parameters": [
+          {
+            "name": "schedule_entry_accession_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Schedule Entry Accession Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {},
+                  "title": "Response Get Uncertain States Api V1 Scheduler  Schedule Entry Accession Id  Uncertain State Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scheduler/{schedule_entry_accession_id}/resolve-state": {
+      "post": {
+        "tags": [
+          "Scheduler",
+          "Scheduler",
+          "State Resolution"
+        ],
+        "summary": "Resolve State",
+        "description": "Submit a state resolution for a failed operation.\n\nThe user provides their determination of what actually happened during the\nfailed operation. This is logged for audit purposes and the simulation\nstate is updated accordingly.",
+        "operationId": "resolve_state_api_v1_scheduler__schedule_entry_accession_id__resolve_state_post",
+        "parameters": [
+          {
+            "name": "schedule_entry_accession_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Schedule Entry Accession Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Resolution Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Resolve State Api V1 Scheduler  Schedule Entry Accession Id  Resolve State Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scheduler/{schedule_entry_accession_id}/resume": {
+      "post": {
+        "tags": [
+          "Scheduler",
+          "Scheduler",
+          "State Resolution"
+        ],
+        "summary": "Resume Run",
+        "description": "Resume a paused/failed run after state resolution.\n\nThis transitions the run back to EXECUTING status so that it can continue.\nMust be called after resolve_state to ensure state is correct.",
+        "operationId": "resume_run_api_v1_scheduler__schedule_entry_accession_id__resume_post",
+        "parameters": [
+          {
+            "name": "schedule_entry_accession_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Schedule Entry Accession Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Resume Run Api V1 Scheduler  Schedule Entry Accession Id  Resume Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scheduler/{schedule_entry_accession_id}/abort": {
+      "post": {
+        "tags": [
+          "Scheduler",
+          "Scheduler",
+          "State Resolution"
+        ],
+        "summary": "Abort Run",
+        "description": "Abort a run after state resolution.\n\nThis cancels the run entirely. Use when the user determines the run\ncannot be safely continued.",
+        "operationId": "abort_run_api_v1_scheduler__schedule_entry_accession_id__abort_post",
+        "parameters": [
+          {
+            "name": "schedule_entry_accession_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Schedule Entry Accession Id"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Reason for aborting the run",
+              "title": "Reason"
+            },
+            "description": "Reason for aborting the run"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Abort Run Api V1 Scheduler  Schedule Entry Accession Id  Abort Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/repl/save_session": {
       "post": {
         "tags": [
@@ -5186,6 +5517,17 @@
           },
           "location_constraints_json": {
             "$ref": "#/components/schemas/LocationConstraintsModel"
+          },
+          "required_plr_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Plr Category"
           }
         },
         "type": "object",
@@ -5249,6 +5591,17 @@
           },
           "location_constraints": {
             "$ref": "#/components/schemas/LocationConstraintsModel"
+          },
+          "required_plr_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Plr Category"
           }
         },
         "type": "object",
@@ -5707,7 +6060,7 @@
         "type": "object",
         "title": "Body_get_multi_api_v1_protocols_definitions_get"
       },
-      "Body_get_multi_api_v1_protocols_runs_records_get": {
+      "Body_get_multi_api_v1_protocols_runs_get": {
         "properties": {
           "search_filters": {
             "anyOf": [
@@ -5735,7 +6088,7 @@
           }
         },
         "type": "object",
-        "title": "Body_get_multi_api_v1_protocols_runs_records_get"
+        "title": "Body_get_multi_api_v1_protocols_runs_get"
       },
       "Body_get_multi_api_v1_resources__get": {
         "properties": {
@@ -6683,6 +7036,55 @@
         "title": "DiscoveryResponse",
         "description": "Response model for discovery results."
       },
+      "FailureModeModel": {
+        "properties": {
+          "initial_state": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Initial State",
+            "description": "State configuration that causes failure"
+          },
+          "failure_point": {
+            "type": "string",
+            "title": "Failure Point",
+            "description": "Operation ID where failure occurs",
+            "default": ""
+          },
+          "failure_type": {
+            "type": "string",
+            "title": "Failure Type",
+            "description": "Type of failure",
+            "default": ""
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Human-readable failure description",
+            "default": ""
+          },
+          "suggested_fix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Fix",
+            "description": "How to prevent this failure"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity",
+            "description": "Severity: error, warning, info",
+            "default": "error"
+          }
+        },
+        "type": "object",
+        "title": "FailureModeModel",
+        "description": "A detected failure mode for a protocol."
+      },
       "FunctionDataOutputResponse": {
         "properties": {
           "accession_id": {
@@ -7075,6 +7477,11 @@
             "title": "Preconfigure Deck",
             "default": false
           },
+          "requires_deck": {
+            "type": "boolean",
+            "title": "Requires Deck",
+            "default": true
+          },
           "deck_param_name": {
             "anyOf": [
               {
@@ -7139,9 +7546,32 @@
             "title": "Deprecated",
             "default": false
           },
+          "source_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Hash"
+          },
+          "computation_graph": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computation Graph"
+          },
           "parameters": {
             "items": {
-              "$ref": "#/components/schemas/ParameterMetadataModel"
+              "$ref": "#/components/schemas/ParameterMetadataModel-Output"
             },
             "type": "array",
             "title": "Parameters"
@@ -7154,10 +7584,17 @@
             "title": "Assets"
           },
           "data_views": {
-            "items": {
-              "$ref": "#/components/schemas/DataViewMetadataModel"
-            },
-            "type": "array",
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DataViewMetadataModel"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Data Views"
           },
           "hardware_requirements": {
@@ -7171,6 +7608,88 @@
               }
             ],
             "title": "Hardware Requirements"
+          },
+          "setup_instructions_json": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setup Instructions Json",
+            "description": "Pre-run setup instructions to display in Deck Setup wizard"
+          },
+          "simulation_result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimulationResultModel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cached simulation result"
+          },
+          "inferred_requirements": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/InferredRequirementModel"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inferred Requirements",
+            "description": "Inferred state requirements"
+          },
+          "failure_modes": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FailureModeModel"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Modes",
+            "description": "Known failure modes"
+          },
+          "simulation_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simulation Version",
+            "description": "Simulator version for cache validation"
+          },
+          "simulation_cached_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simulation Cached At",
+            "description": "When simulation was last run"
           }
         },
         "type": "object",
@@ -7246,6 +7765,84 @@
         ],
         "title": "HeartbeatResponse",
         "description": "Response after heartbeat."
+      },
+      "InferredRequirementModel": {
+        "properties": {
+          "requirement_type": {
+            "type": "string",
+            "title": "Requirement Type",
+            "description": "Type: tips_required, resource_on_deck, liquid_present"
+          },
+          "resource": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource",
+            "description": "Resource involved"
+          },
+          "details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Details"
+          },
+          "inferred_at_level": {
+            "type": "string",
+            "title": "Inferred At Level",
+            "description": "Level at which this was inferred",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "requirement_type"
+        ],
+        "title": "InferredRequirementModel",
+        "description": "A requirement inferred from protocol simulation."
+      },
+      "ItemizedSpecModel": {
+        "properties": {
+          "items_x": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items X"
+          },
+          "items_y": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items Y"
+          },
+          "label_format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Format"
+          }
+        },
+        "type": "object",
+        "title": "ItemizedSpecModel",
+        "description": "Defines itemized specification for grid-based parameters (e.g., well selection)."
       },
       "LocationConstraintsModel": {
         "properties": {
@@ -7632,6 +8229,31 @@
             ],
             "title": "Capabilities Config",
             "description": "Schema for user-configurable capabilities."
+          },
+          "connection_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Config",
+            "description": "Schema for connection parameters (host, port, etc)."
+          },
+          "frontend_fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frontend Fqn",
+            "description": "FQN of the PLR frontend class (e.g., pylabrobot.liquid_handling.LiquidHandler)."
           }
         },
         "type": "object",
@@ -8052,8 +8674,17 @@
         "title": "ParameterConstraintsModel",
         "description": "Defines validation constraints for a protocol parameter."
       },
-      "ParameterMetadataModel": {
+      "ParameterMetadataModel-Input": {
         "properties": {
+          "accession_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accession Id"
+          },
           "name": {
             "type": "string",
             "title": "Name"
@@ -8097,6 +8728,137 @@
             ],
             "title": "Description"
           },
+          "field_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Type"
+          },
+          "is_itemized": {
+            "type": "boolean",
+            "title": "Is Itemized",
+            "default": false
+          },
+          "constraints_json": {
+            "$ref": "#/components/schemas/ParameterConstraintsModel"
+          },
+          "ui_hint_json": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UIHint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "itemized_spec_json": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ItemizedSpecModel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "linked_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type_hint",
+          "fqn",
+          "optional"
+        ],
+        "title": "ParameterMetadataModel",
+        "description": "Provides comprehensive metadata for a protocol parameter.\n\nThis includes its name, type information, default value, description,\nconstraints, and UI rendering hints."
+      },
+      "ParameterMetadataModel-Output": {
+        "properties": {
+          "accession_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accession Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type_hint": {
+            "type": "string",
+            "title": "Type Hint"
+          },
+          "fqn": {
+            "type": "string",
+            "title": "Fqn"
+          },
+          "is_deck_param": {
+            "type": "boolean",
+            "title": "Is Deck Param",
+            "default": false
+          },
+          "optional": {
+            "type": "boolean",
+            "title": "Optional"
+          },
+          "default_value_repr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Value Repr"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "field_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Type"
+          },
+          "is_itemized": {
+            "type": "boolean",
+            "title": "Is Itemized",
+            "default": false
+          },
           "constraints": {
             "$ref": "#/components/schemas/ParameterConstraintsModel"
           },
@@ -8109,6 +8871,27 @@
                 "type": "null"
               }
             ]
+          },
+          "itemized_spec": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ItemizedSpecModel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "linked_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked To"
           }
         },
         "type": "object",
@@ -10139,6 +10922,243 @@
         ],
         "title": "ScheduleStatusEnum",
         "description": "Enumeration for the status of a scheduled protocol run."
+      },
+      "SimulationRequest": {
+        "properties": {
+          "computation_graph": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computation Graph",
+            "description": "Pre-extracted computation graph. If not provided, will use the graph from the protocol definition."
+          }
+        },
+        "type": "object",
+        "title": "SimulationRequest",
+        "description": "Request body for protocol simulation.\n\nThis endpoint serves as a backend fallback for browser-mode simulation\nwhen the browser can't execute the graph replay directly."
+      },
+      "SimulationResponse": {
+        "properties": {
+          "passed": {
+            "type": "boolean",
+            "title": "Passed",
+            "description": "Whether simulation passed without violations"
+          },
+          "violations": {
+            "items": {
+              "$ref": "#/components/schemas/SimulationViolationResponse"
+            },
+            "type": "array",
+            "title": "Violations",
+            "description": "All violations found during simulation"
+          },
+          "operations_executed": {
+            "type": "integer",
+            "title": "Operations Executed",
+            "description": "Number of operations replayed",
+            "default": 0
+          },
+          "replay_mode": {
+            "type": "string",
+            "title": "Replay Mode",
+            "description": "Replay mode used",
+            "default": "graph"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors",
+            "description": "Non-violation errors (parse errors, etc.)"
+          },
+          "final_state_summary": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Final State Summary",
+            "description": "Summary of final state"
+          }
+        },
+        "type": "object",
+        "required": [
+          "passed"
+        ],
+        "title": "SimulationResponse",
+        "description": "Response body for protocol simulation."
+      },
+      "SimulationResultModel": {
+        "properties": {
+          "passed": {
+            "type": "boolean",
+            "title": "Passed",
+            "description": "Whether protocol passed all validation",
+            "default": false
+          },
+          "level_completed": {
+            "type": "string",
+            "title": "Level Completed",
+            "description": "Highest level completed",
+            "default": "none"
+          },
+          "level_failed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Failed",
+            "description": "Level where failure occurred"
+          },
+          "structural_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Structural Error",
+            "description": "Structural error if any"
+          },
+          "violations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Violations",
+            "description": "All violations from simulation"
+          },
+          "inferred_requirements": {
+            "items": {
+              "$ref": "#/components/schemas/InferredRequirementModel"
+            },
+            "type": "array",
+            "title": "Inferred Requirements",
+            "description": "Requirements inferred from simulation"
+          },
+          "failure_modes": {
+            "items": {
+              "$ref": "#/components/schemas/FailureModeModel"
+            },
+            "type": "array",
+            "title": "Failure Modes",
+            "description": "Enumerated failure modes"
+          },
+          "failure_mode_stats": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Failure Mode Stats",
+            "description": "Failure detection statistics"
+          },
+          "simulation_version": {
+            "type": "string",
+            "title": "Simulation Version",
+            "description": "Simulator version",
+            "default": ""
+          },
+          "simulated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simulated At",
+            "description": "When simulation was run"
+          },
+          "execution_time_ms": {
+            "type": "number",
+            "title": "Execution Time Ms",
+            "description": "Simulation execution time",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "title": "SimulationResultModel",
+        "description": "Cached simulation result for a protocol definition."
+      },
+      "SimulationViolationResponse": {
+        "properties": {
+          "operation_id": {
+            "type": "string",
+            "title": "Operation Id",
+            "description": "ID of the operation that caused violation"
+          },
+          "operation_index": {
+            "type": "integer",
+            "title": "Operation Index",
+            "description": "Index in execution order"
+          },
+          "method_name": {
+            "type": "string",
+            "title": "Method Name",
+            "description": "Method that failed"
+          },
+          "receiver": {
+            "type": "string",
+            "title": "Receiver",
+            "description": "Variable receiving the call"
+          },
+          "violation_type": {
+            "type": "string",
+            "title": "Violation Type",
+            "description": "Type of violation"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Human-readable error message"
+          },
+          "suggested_fix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Fix",
+            "description": "How to fix this"
+          },
+          "line_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Number",
+            "description": "Source line if available"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation_id",
+          "operation_index",
+          "method_name",
+          "receiver",
+          "violation_type",
+          "message"
+        ],
+        "title": "SimulationViolationResponse",
+        "description": "A violation detected during simulation."
       },
       "SpatialContextEnum": {
         "type": "string",

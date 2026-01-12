@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type Body_get_multi_api_v1_protocols_runs_records_get = {
+export type Body_get_multi_api_v1_protocols_runs_get = {
     search_filters?: (Record<string, any> | null);
     property_filters?: (Record<string, any> | null);
 };

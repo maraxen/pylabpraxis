@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { Body_get_multi_api_v1_protocols_runs_records_get } from '../models/Body_get_multi_api_v1_protocols_runs_records_get';
+import type { Body_get_multi_api_v1_protocols_runs_get } from '../models/Body_get_multi_api_v1_protocols_runs_get';
 import type { CancelRunResponse } from '../models/CancelRunResponse';
 import type { ProtocolRunResponse } from '../models/ProtocolRunResponse';
 import type { QueuedRunResponse } from '../models/QueuedRunResponse';
@@ -22,12 +22,12 @@ export class ProtocolRunsService {
      * @returns StartRunResponse Successful Response
      * @throws ApiError
      */
-    public static startProtocolRunApiV1ProtocolsRunsPost(
+    public static startProtocolRunApiV1ProtocolsRunsActionsStartPost(
         requestBody: StartRunRequest,
     ): CancelablePromise<StartRunResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/v1/protocols/runs',
+            url: '/api/v1/protocols/runs/actions/start',
             body: requestBody,
             mediaType: 'application/json',
             errors: {
@@ -79,10 +79,10 @@ export class ProtocolRunsService {
      * @returns ProtocolRunResponse Successful Response
      * @throws ApiError
      */
-    public static createApiV1ProtocolsRunsRecordsPost(): CancelablePromise<ProtocolRunResponse> {
+    public static createApiV1ProtocolsRunsPost(): CancelablePromise<ProtocolRunResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/v1/protocols/runs/records',
+            url: '/api/v1/protocols/runs',
         });
     }
     /**
@@ -100,7 +100,7 @@ export class ProtocolRunsService {
      * @returns ProtocolRunResponse Successful Response
      * @throws ApiError
      */
-    public static getMultiApiV1ProtocolsRunsRecordsGet(
+    public static getMultiApiV1ProtocolsRunsGet(
         limit: number = 100,
         offset?: number,
         sortBy?: (string | null),
@@ -110,11 +110,11 @@ export class ProtocolRunsService {
         machineAccessionId?: (string | null),
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
-        requestBody?: Body_get_multi_api_v1_protocols_runs_records_get,
+        requestBody?: Body_get_multi_api_v1_protocols_runs_get,
     ): CancelablePromise<Array<ProtocolRunResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/v1/protocols/runs/records',
+            url: '/api/v1/protocols/runs',
             query: {
                 'limit': limit,
                 'offset': offset,
@@ -139,12 +139,12 @@ export class ProtocolRunsService {
      * @returns ProtocolRunResponse Successful Response
      * @throws ApiError
      */
-    public static getApiV1ProtocolsRunsRecordsAccessionIdGet(
+    public static getApiV1ProtocolsRunsAccessionIdGet(
         accessionId: string,
     ): CancelablePromise<ProtocolRunResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/v1/protocols/runs/records/{accession_id}',
+            url: '/api/v1/protocols/runs/{accession_id}',
             path: {
                 'accession_id': accessionId,
             },
@@ -159,12 +159,12 @@ export class ProtocolRunsService {
      * @returns ProtocolRunResponse Successful Response
      * @throws ApiError
      */
-    public static updateApiV1ProtocolsRunsRecordsAccessionIdPut(
+    public static updateApiV1ProtocolsRunsAccessionIdPut(
         accessionId: string,
     ): CancelablePromise<ProtocolRunResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
-            url: '/api/v1/protocols/runs/records/{accession_id}',
+            url: '/api/v1/protocols/runs/{accession_id}',
             path: {
                 'accession_id': accessionId,
             },
@@ -179,12 +179,12 @@ export class ProtocolRunsService {
      * @returns void
      * @throws ApiError
      */
-    public static deleteApiV1ProtocolsRunsRecordsAccessionIdDelete(
+    public static deleteApiV1ProtocolsRunsAccessionIdDelete(
         accessionId: string,
     ): CancelablePromise<void> {
         return __request(OpenAPI, {
             method: 'DELETE',
-            url: '/api/v1/protocols/runs/records/{accession_id}',
+            url: '/api/v1/protocols/runs/{accession_id}',
             path: {
                 'accession_id': accessionId,
             },
