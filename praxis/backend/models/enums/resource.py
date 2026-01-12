@@ -15,7 +15,7 @@ Classes:
 import enum
 
 
-class ResourceStatusEnum(enum.Enum):
+class ResourceStatusEnum(str, enum.Enum):
   """Enumeration for the possible operational statuses of a resource instance."""
 
   AVAILABLE_IN_STORAGE = "available_in_storage"
@@ -33,7 +33,7 @@ class ResourceStatusEnum(enum.Enum):
   UNKNOWN = "unknown"
 
 
-class ResourceCategoryEnum(enum.Enum):
+class ResourceCategoryEnum(str, enum.Enum):
   """Enumeration for the categories of resources in the catalog.
 
   This enum defines the main categories of lab resources based on a hierarchical

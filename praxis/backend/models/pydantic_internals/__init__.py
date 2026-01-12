@@ -1,49 +1,53 @@
 """Pydantic models for the Praxis application."""
 
-from .asset import (
-  AcquireAsset,
-  AcquireAssetLock,
+from praxis.backend.models.domain.asset import (
   AssetBase,
-  AssetResponse,
-  AssetType,
+  AssetRead as AssetResponse,
   AssetUpdate,
-  ReleaseAsset,
 )
-from .deck import (
-  DeckBase,
+from praxis.backend.models.enums import AssetType
+
+from praxis.backend.models.domain.deck import (
+  Deck as DeckBase,
   DeckCreate,
-  DeckPositionDefinitionBase,
+  DeckDefinitionCreate as DeckTypeDefinitionCreate,
+  DeckDefinitionRead as DeckTypeDefinitionResponse,
+  DeckDefinitionUpdate as DeckTypeDefinitionUpdate,
+  DeckPositionDefinition as DeckPositionDefinitionBase,
   DeckPositionDefinitionCreate,
-  DeckPositionDefinitionResponse,
-  DeckResponse,
-  DeckTypeDefinitionCreate,
-  DeckTypeDefinitionResponse,
-  DeckTypeDefinitionUpdate,
+  DeckPositionDefinitionRead as DeckPositionDefinitionResponse,
+  DeckRead as DeckResponse,
   DeckUpdate,
   PositioningConfig,
 )
-from .filters import SearchFilters
-from .machine import MachineBase, MachineCreate, MachineResponse, MachineUpdate
-from .outputs import (
+from praxis.backend.models.domain.filters import SearchFilters
+from praxis.backend.models.domain.machine import (
+  MachineBase,
+  MachineCreate,
+  MachineRead as MachineResponse,
+  MachineUpdate,
+)
+from praxis.backend.models.domain.outputs import (
   DataExportRequest,
   FunctionDataOutputBase,
   FunctionDataOutputCreate,
   FunctionDataOutputFilters,
-  FunctionDataOutputResponse,
+  FunctionDataOutputRead as FunctionDataOutputResponse,
   FunctionDataOutputUpdate,
+  PlateDataVisualization,
   ProtocolRunDataSummary,
   WellDataOutputBase,
   WellDataOutputCreate,
   WellDataOutputFilters,
-  WellDataOutputResponse,
+  WellDataOutputRead as WellDataOutputResponse,
   WellDataOutputUpdate,
 )
-from .protocol import (
+from praxis.backend.models.domain.protocol import (
   AssetConstraintsModel,
-  AssetRequirementModel,
-  FunctionCallLogBase,
+  AssetRequirement as AssetRequirementModel,
+  FunctionCallLog as FunctionCallLogBase,
   FunctionCallLogCreate,
-  FunctionCallLogResponse,
+  FunctionCallLogRead as FunctionCallLogResponse,
   FunctionCallLogUpdate,
   FunctionProtocolDefinitionCreate,
   LocationConstraintsModel,
@@ -54,36 +58,41 @@ from .protocol import (
   ProtocolInfo,
   ProtocolParameters,
   ProtocolPrepareRequest,
-  ProtocolRunBase,
+  ProtocolRun as ProtocolRunBase,
   ProtocolRunCreate,
-  ProtocolRunResponse,
+  ProtocolRunRead as ProtocolRunResponse,
   ProtocolRunUpdate,
   ProtocolStartRequest,
   ProtocolStatus,
 )
-from .resource import (
-  ResourceBase,
+from praxis.backend.models.domain.resource import (
+  Resource as ResourceBase,
   ResourceCategoriesResponse,
   ResourceCreate,
-  ResourceDefinitionBase,
+  ResourceDefinition as ResourceDefinitionBase,
   ResourceDefinitionCreate,
-  ResourceDefinitionResponse,
+  ResourceDefinitionRead as ResourceDefinitionResponse,
   ResourceDefinitionUpdate,
   ResourceInventoryDataIn,
   ResourceInventoryDataOut,
   ResourceInventoryItemCount,
   ResourceInventoryReagentItem,
-  ResourceResponse,
+  ResourceRead as ResourceResponse,
   ResourceTypeInfo,
   ResourceUpdate,
 )
-from .runtime import RuntimeAssetRequirement
-from .scheduler import (
+from .runtime import (
+  AcquireAsset,
+  AcquireAssetLock,
+  ReleaseAsset,
+  RuntimeAssetRequirement,
+)
+from praxis.backend.models.domain.schedule import (
   CancelScheduleRequest,
   ResourceReservationStatus,
   ScheduleAnalysisResponse,
-  ScheduleEntryResponse,
-  ScheduleHistoryResponse,
+  ScheduleEntryRead as ScheduleEntryResponse,
+  ScheduleHistoryRead as ScheduleHistoryResponse,
   ScheduleListFilters,
   ScheduleListRequest,
   ScheduleListResponse,
@@ -93,10 +102,16 @@ from .scheduler import (
   SchedulerSystemStatusResponse,
   ScheduleStatusResponse,
 )
-from .workcell import (
+from praxis.backend.models.domain.user import (
+  UserBase,
+  UserCreate,
+  UserRead as UserResponse,
+  UserUpdate,
+)
+from praxis.backend.models.domain.workcell import (
   WorkcellBase,
   WorkcellCreate,
-  WorkcellResponse,
+  WorkcellRead as WorkcellResponse,
   WorkcellUpdate,
 )
 

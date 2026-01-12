@@ -1,13 +1,44 @@
-# pylint: disable=too-few-public-methods,missing-class-docstring
-"""Unified SQLModel definitions for Deck, DeckDefinition, and DeckPositionDefinition."""
+from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import TYPE_CHECKING, Any, Literal, Optional, List
 
-from sqlmodel import Field, SQLModel
+from pydantic import ConfigDict
+from sqlmodel import Field, Relationship, SQLModel
+from sqlalchemy.orm import relationship
 
+from praxis.backend.models.domain.asset import Asset, AssetBase, AssetRead, AssetUpdate
 from praxis.backend.models.domain.resource import ResourceBase
-from praxis.backend.models.domain.sqlmodel_base import PraxisBase, json_field
+
+if TYPE_CHECKING:
+  from praxis.backend.models.domain.resource import Resource
+from praxis.backend.models.domain.sqlmodel_base import PraxisBase
+from praxis.backend.utils.db import JsonVariant
+
+if TYPE_CHECKING:
+  from praxis.backend.models.domain.machine import Machine
+  from praxis.backend.models.domain.resource import Resource, ResourceDefinition
+
+
+class PositioningConfig(SQLModel):
+  """Configuration for how positions are calculated/managed for this deck type."""
+
+  method_name: str = Field(
+    description="Name of the PyLabRobot deck method to call (e.g., 'rail_to_location')."
+  )
+  arg_name: str = Field(
+    description="Name of the argument for the position in the method (e.g., 'rail', 'slot')."
+  )
+  arg_type: Literal["str", "int"] = Field(
+    default="str",
+    description="Expected type of the position argument ('str' or 'int').",
+  )
+  params: dict[str, Any] | None = Field(
+    default=None,
+    sa_type=JsonVariant,
+    description="Additional parameters for the positioning method.",
+  )
+
 
 # =============================================================================
 # Deck Position Definition
@@ -37,18 +68,15 @@ class DeckPositionDefinition(DeckPositionDefinitionBase, table=True):
 
   __tablename__ = "deck_position_definitions"
 
-  allowed_resource_definition_names: list[str] | None = json_field(
-    default=None, description="List of allowed resource definition names"
+  allowed_resource_definition_names: list[str] | None = Field(
+    default=None, sa_type=JsonVariant, description="List of allowed resource definition names"
   )
-  compatible_resource_fqns: dict[str, Any] | None = json_field(
-    default=None, description="Compatible resource FQNs"
+  compatible_resource_fqns: dict[str, Any] | None = Field(
+    default=None, sa_type=JsonVariant, description="Compatible resource FQNs"
   )
 
   # Foreign keys
   deck_type_id: uuid.UUID = Field(foreign_key="deck_definition_catalog.accession_id", index=True)
-
-  # Relationships (commented out to avoid circular imports during initial migration)
-  # deck_type: "DeckDefinition" = Relationship(back_populates="positions")
 
 
 class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
@@ -105,37 +133,51 @@ class DeckDefinition(DeckDefinitionBase, table=True):
 
   __tablename__ = "deck_definition_catalog"
 
-  serialized_constructor_args_json: dict[str, Any] | None = json_field(
-    default=None, description="Serialized constructor arguments"
+  serialized_constructor_args_json: dict[str, Any] | None = Field(
+    default=None, sa_type=JsonVariant, description="Serialized constructor arguments"
   )
-  serialized_assignment_methods_json: dict[str, Any] | None = json_field(
-    default=None, description="Serialized assignment methods"
+  serialized_assignment_methods_json: dict[str, Any] | None = Field(
+    default=None, sa_type=JsonVariant, description="Serialized assignment methods"
   )
-  serialized_constructor_hints_json: dict[str, Any] | None = json_field(
-    default=None, description="Serialized constructor hints"
+  serialized_constructor_hints_json: dict[str, Any] | None = Field(
+    default=None, sa_type=JsonVariant, description="Serialized constructor hints"
   )
-  additional_properties_json: dict[str, Any] | None = json_field(
-    default=None, description="Additional properties"
+  additional_properties_json: dict[str, Any] | None = Field(
+    default=None, sa_type=JsonVariant, description="Additional properties"
   )
-  positioning_config_json: dict[str, Any] | None = json_field(
-    default=None, description="Positioning configuration"
+  positioning_config_json: dict[str, Any] | None = Field(
+    default=None, sa_type=JsonVariant, description="Positioning configuration"
   )
 
   # Foreign keys
   asset_requirement_accession_id: uuid.UUID | None = Field(
-    default=None, foreign_key="protocol_asset_requirements.accession_id", index=True
+    default=None,
+    description="Asset requirement accession ID",
+    foreign_key="protocol_asset_requirements.accession_id",
   )
-
-  # Relationships (commented out to avoid circular imports during initial migration)
-  # positions: list["DeckPositionDefinition"] = Relationship(back_populates="deck_type")
-  # deck: list["Deck"] = Relationship(back_populates="deck_type")
-  # resource_definition: "ResourceDefinition | None" = Relationship(back_populates="deck_definition")
-  # machine_definition: "MachineDefinition | None" = Relationship(back_populates="deck_definition")
+  resource_definition_accession_id: uuid.UUID | None = Field(
+    default=None,
+    description="Resource definition accession ID",
+    foreign_key="resource_definitions.accession_id",
+  )
+  parent_accession_id: uuid.UUID | None = Field(
+    default=None,
+    description="Parent asset accession ID (e.g. for nested checks)",
+    foreign_key="deck_definition_catalog.accession_id",
+  )
+  # Relationships
+  parent: Optional["DeckDefinition"] = Relationship(
+    back_populates="children",
+    sa_relationship_kwargs={
+      "remote_side": "DeckDefinition.accession_id",
+    },
+  )
+  children: List["DeckDefinition"] = Relationship(back_populates="parent")
+  decks: List["Deck"] = Relationship(back_populates="deck_type")
 
 
 class DeckDefinitionCreate(DeckDefinitionBase):
   """Schema for creating a DeckDefinition."""
-
 
 
 class DeckDefinitionRead(DeckDefinitionBase):
@@ -165,25 +207,41 @@ class DeckBase(ResourceBase):
   """Base schema for Deck - shared fields for create/update/response."""
 
 
+class Deck(DeckBase, Asset, table=True):
+  """Deck table - represents a physical deck instance (extends Resource)."""
 
-class Deck(DeckBase):
-  """Deck schema - represents a physical deck instance (extends Resource).
+  __tablename__ = "decks"
 
-  Note: This is a schema class for API validation. The actual ORM table
-  is defined in praxis.backend.models.orm.deck.DeckOrm using
-  SQLAlchemy's polymorphic joined table inheritance.
-
-  SQLModel doesn't support multi-table inheritance with dict fields properly,
-  so we use schema-only classes here and keep the ORM separate.
-  """
-
-  # Foreign key references (for schema validation)
+  # Foreign key references
   parent_machine_accession_id: uuid.UUID | None = Field(
-    default=None, description="Parent machine this deck belongs to"
+    default=None,
+    description="Parent machine this deck belongs to",
+    foreign_key="machines.accession_id",
   )
   deck_type_id: uuid.UUID | None = Field(
-    default=None, description="Reference to deck definition catalog"
+    default=None,
+    description="Reference to deck definition catalog",
+    foreign_key="deck_definition_catalog.accession_id",
   )
+
+  # Relationships
+  deck_type: Optional[DeckDefinition] = Relationship(back_populates="decks")
+  # ResourceDefinition is imported from resource.py
+  # We need to use string forward ref if circular, but ResourceDefinition is in resource.py?
+  resource_definition_accession_id: uuid.UUID | None = Field(
+    default=None,
+    description="Reference to resource definition catalog",
+    foreign_key="resource_definitions.accession_id",
+  )
+  resource_definition: Optional["ResourceDefinition"] = Relationship()
+
+  parent_machine: Optional["Machine"] = Relationship(
+    back_populates="decks",
+    sa_relationship_kwargs={
+      "primaryjoin": "Deck.parent_machine_accession_id == Machine.accession_id"
+    },
+  )
+  resources: List["Resource"] = Relationship(back_populates="deck")
 
 
 class DeckCreate(DeckBase):

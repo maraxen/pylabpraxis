@@ -55,3 +55,4 @@ class SpatialContextEnum(enum.Enum):
   MACHINE_LEVEL = "machine_level"  # Data from machine/machine
   DECK_POSITION = "deck_position"  # Data tied to deck position
   GLOBAL = "global"  # Run-level data without specific location
+  UNKNOWN = "unknown"  # Fallback for unclassified spatial contexts

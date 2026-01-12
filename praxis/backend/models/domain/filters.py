@@ -1,12 +1,13 @@
-"""General-purpose Pydantic models for search and filtering criteria across service layers."""
+"""Unified SQLModel definitions for Search and Filter criteria."""
 
 from datetime import datetime
 from typing import Any
 
-from pydantic import UUID7, BaseModel, ConfigDict, Field
+from pydantic import UUID7, ConfigDict
+from sqlmodel import Field, SQLModel
 
 
-class SearchFilters(BaseModel):
+class SearchFilters(SQLModel):
   """A general-purpose model for search and filtering criteria across service layers."""
 
   limit: int = Field(default=100, ge=1, le=1000, description="Maximum number of results to return.")

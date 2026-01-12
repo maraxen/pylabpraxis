@@ -1,97 +1,163 @@
 """Unified Asset domain model using SQLModel."""
 
 import uuid
-from typing import Any, ClassVar
 
-from sqlalchemy import Column
-from sqlalchemy import Enum as SAEnum
+from typing import Any
+
+
+
+from pydantic import ConfigDict
+
 from sqlmodel import Field, SQLModel
 
-from praxis.backend.models.domain.sqlmodel_base import PraxisBase, json_field
+
+
+from praxis.backend.models.domain.sqlmodel_base import PraxisBase
+
 from praxis.backend.models.enums import AssetType
+
+from praxis.backend.utils.db import JsonVariant
+
+from praxis.backend.utils.uuid import uuid7
+
+
+
 
 
 class AssetBase(PraxisBase):
+
   """Base schema for Asset - shared fields for create/update/response."""
 
+
+
   asset_type: AssetType = Field(
+
     default=AssetType.ASSET,
-    sa_column=Column(SAEnum(AssetType), index=True, nullable=False),
+
     description="Type of asset, e.g., machine, resource, etc.",
+
   )
-  fqn: str = Field(
-    default="",
+
+  fqn: str | None = Field(
+
+    default=None,
+
     index=True,
+
     description="Fully qualified name of the asset's class, if applicable.",
+
   )
+
   location: str | None = Field(
+
     default=None,
+
     index=True,
+
     description="Location of the asset in the lab.",
+
   )
 
 
-class Asset(AssetBase, table=True):
-  """Asset ORM model with polymorphic inheritance."""
 
-  __tablename__ = "assets"
 
-  properties_json: dict[str, Any] | None = json_field(
+
+class Asset(AssetBase):
+
+  """Asset domain schema (abstract base for Table-Per-Class inheritance)."""
+
+
+
+  properties_json: dict[str, Any] | None = Field(
+
     default=None,
+
+    sa_type=JsonVariant,
+
     description="Arbitrary metadata associated with the record.",
+
   )
-  plr_state: dict[str, Any] | None = json_field(
+
+  plr_state: dict[str, Any] | None = Field(
+
     default=None,
+
+    sa_type=JsonVariant,
+
     description="PLR state of the asset, if applicable.",
+
   )
-  plr_definition: dict[str, Any] | None = json_field(
+
+  plr_definition: dict[str, Any] | None = Field(
+
     default=None,
+
+    sa_type=JsonVariant,
+
     description="PLR definition of the asset, if applicable.",
+
   )
 
-  # Relationships
-  # Note: Using string forward reference for AssetReservationOrm to avoid circular imports
-  # and sticking to the existing ORM class name as per requirements/existing code
-  # FIXME: This relationship causes conflict with AssetOrm and circular import issues
-  # during migration. Re-enable when AssetOrm is removed or deprecated.
-  # asset_reservations: list["AssetReservationOrm"] = Relationship(
-  #     back_populates="asset",
-  #     sa_relationship_kwargs={
-  #         "cascade": "all, delete-orphan",
-  #         "foreign_keys": "[AssetReservationOrm.asset_accession_id]",
-  #     },
-  # )
 
-  __mapper_args__: ClassVar[dict[str, Any]] = {
-    "polymorphic_on": "asset_type",
-    "polymorphic_identity": AssetType.ASSET,
-  }
+
 
 
 class AssetCreate(AssetBase):
+
   """Schema for creating an Asset."""
 
 
 
+
+
 class AssetRead(SQLModel):
+
   """Schema for reading an Asset (API response)."""
 
-  accession_id: uuid.UUID
+
+
+  model_config = ConfigDict(use_enum_values=True)
+
+
+
+  accession_id: uuid.UUID = Field(default_factory=uuid7)
+
   name: str
+
   asset_type: AssetType
-  fqn: str
+
+  fqn: str | None = None
+
   location: str | None = None
+
   plr_state: dict[str, Any] | None = None
+
   plr_definition: dict[str, Any] | None = None
+
   properties_json: dict[str, Any] | None = None
 
 
+
+
+
 class AssetUpdate(SQLModel):
+
   """Schema for updating an Asset (partial update)."""
 
+
+
+  model_config = ConfigDict(use_enum_values=True)
+
+
+
   name: str | None = None
+
   fqn: str | None = None
+
   location: str | None = None
+
   plr_state: dict[str, Any] | None = None
+
   plr_definition: dict[str, Any] | None = None
+
   properties_json: dict[str, Any] | None = None

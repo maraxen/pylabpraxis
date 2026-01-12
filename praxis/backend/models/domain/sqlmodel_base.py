@@ -13,7 +13,7 @@ from sqlalchemy import Column
 from sqlalchemy.sql import func
 from sqlmodel import Field, SQLModel
 
-from praxis.backend.utils.db import JsonVariant
+from praxis.backend.utils.db import Base, JsonVariant
 from praxis.backend.utils.uuid import uuid7
 
 
@@ -60,6 +60,8 @@ class PraxisBase(SQLModel):
   Note: For models using this base, properties_json is automatically included.
   Child tables should NOT redefine it unless overriding.
   """
+
+  metadata = Base.metadata
 
   model_config = ConfigDict(
     from_attributes=True,
