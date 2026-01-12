@@ -17,8 +17,8 @@ from praxis.backend.core.protocols.orchestrator import IOrchestrator
 from praxis.backend.core.protocols.protocol_execution_service import IProtocolExecutionService
 from praxis.backend.core.protocols.scheduler import IProtocolScheduler
 from praxis.backend.core.protocols.workcell_runtime import IWorkcellRuntime
-from praxis.backend.models import ProtocolRunOrm, ProtocolRunStatusEnum
-from praxis.backend.models.pydantic_internals.protocol import ProtocolRunCreate
+from praxis.backend.models import ProtocolRun, ProtocolRunStatusEnum
+from praxis.backend.models.domain.protocol import ProtocolRunCreate
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
 from praxis.backend.utils.logging import get_logger
@@ -59,7 +59,7 @@ class ProtocolExecutionService(IProtocolExecutionService):
     commit_hash: str | None = None,
     source_name: str | None = None,
     is_simulation: bool = False,
-  ) -> ProtocolRunOrm:
+  ) -> ProtocolRun:
     """Execute a protocol immediately (synchronously) without scheduling.
 
     Args:
@@ -72,7 +72,7 @@ class ProtocolExecutionService(IProtocolExecutionService):
         is_simulation: If True, run in simulation mode (no hardware interaction).
 
     Returns:
-        ProtocolRunOrm: The completed protocol run record.
+        ProtocolRun: The completed protocol run record.
 
     """
     logger.info(
@@ -100,7 +100,7 @@ class ProtocolExecutionService(IProtocolExecutionService):
     commit_hash: str | None = None,
     source_name: str | None = None,
     is_simulation: bool = False,
-  ) -> ProtocolRunOrm:
+  ) -> ProtocolRun:
     """Schedule a protocol for asynchronous execution via the scheduler.
 
     Args:
@@ -113,7 +113,7 @@ class ProtocolExecutionService(IProtocolExecutionService):
         is_simulation: If True, run in simulation mode (no hardware interaction).
 
     Returns:
-        ProtocolRunOrm: The protocol run record with QUEUED status.
+        ProtocolRun: The protocol run record with QUEUED status.
 
     """
     logger.info(
@@ -127,11 +127,11 @@ class ProtocolExecutionService(IProtocolExecutionService):
 
     async with self.db_session_factory() as db_session:
       # Get protocol definition - try by accession_id first (if it looks like a UUID)
-      protocol_def_orm = None
+      protocol_def_model = None
       try:
         # Check if protocol_name is a UUID (accession_id)
         protocol_uuid = uuid.UUID(protocol_name)
-        protocol_def_orm = await self.protocol_definition_service.get(
+        protocol_def_model = await self.protocol_definition_service.get(
           db=db_session,
           accession_id=protocol_uuid,
         )
@@ -140,15 +140,15 @@ class ProtocolExecutionService(IProtocolExecutionService):
         pass
 
       # Fall back to name lookup if not found by ID
-      if not protocol_def_orm:
-        protocol_def_orm = await self.protocol_definition_service.get_by_name(
+      if not protocol_def_model:
+        protocol_def_model = await self.protocol_definition_service.get_by_name(
           db=db_session,
           name=protocol_name,
           version=protocol_version,
           commit_hash=commit_hash,
         )
 
-      if not protocol_def_orm or not protocol_def_orm.accession_id:
+      if not protocol_def_model or not protocol_def_model.accession_id:
         error_msg = (
           f"Protocol '{protocol_name}' (v:{protocol_version}, "
           f"commit:{commit_hash}, src:{source_name}) not found or invalid DB ID."
@@ -157,23 +157,23 @@ class ProtocolExecutionService(IProtocolExecutionService):
         raise ValueError(error_msg)
 
       # Create protocol run record
-      protocol_run_orm = await self.protocol_run_service.create(
+      protocol_run_model = await self.protocol_run_service.create(
         db=db_session,
         obj_in=ProtocolRunCreate(
           run_accession_id=run_accession_id,
-          top_level_protocol_definition_accession_id=protocol_def_orm.accession_id,
+          top_level_protocol_definition_accession_id=protocol_def_model.accession_id,
           status=ProtocolRunStatusEnum.PREPARING,
           input_parameters_json=user_input_params,
           initial_state_json=initial_state_data,
         ),
       )
       await db_session.flush()
-      await db_session.refresh(protocol_run_orm)
+      await db_session.refresh(protocol_run_model)
       await db_session.commit()
 
       # Schedule the protocol run (pass ID to avoid session boundary issues)
       success = await self.scheduler.schedule_protocol_execution(
-        protocol_run_orm.accession_id,
+        protocol_run_model.accession_id,
         user_input_params,
         initial_state_data,
       )
@@ -187,7 +187,7 @@ class ProtocolExecutionService(IProtocolExecutionService):
         "Successfully scheduled protocol run %s for execution",
         run_accession_id,
       )
-      return protocol_run_orm
+      return protocol_run_model
 
   async def get_protocol_run_status(
     self,
@@ -199,39 +199,39 @@ class ProtocolExecutionService(IProtocolExecutionService):
 
     # Get database status
     async with self.db_session_factory() as db_session:
-      protocol_run_orm = await self.protocol_run_service.get(
+      protocol_run_model = await self.protocol_run_service.get(
         db_session,
         accession_id=protocol_run_id,
       )
 
-      if not protocol_run_orm:
+      if not protocol_run_model:
         return None
 
       status_info = {
         "protocol_run_id": str(protocol_run_id),
-        "status": protocol_run_orm.status.value if protocol_run_orm.status else "UNKNOWN",
-        "created_at": protocol_run_orm.created_at.isoformat()
-        if protocol_run_orm.created_at
+        "status": protocol_run_model.status.value if protocol_run_model.status else "UNKNOWN",
+        "created_at": protocol_run_model.created_at.isoformat()
+        if protocol_run_model.created_at
         else None,
-        "start_time": protocol_run_orm.start_time.isoformat()
-        if protocol_run_orm.start_time
+        "start_time": protocol_run_model.start_time.isoformat()
+        if protocol_run_model.start_time
         else None,
-        "end_time": protocol_run_orm.end_time.isoformat() if protocol_run_orm.end_time else None,
-        "duration_ms": protocol_run_orm.duration_ms,
+        "end_time": protocol_run_model.end_time.isoformat() if protocol_run_model.end_time else None,
+        "duration_ms": protocol_run_model.duration_ms,
         "protocol_name": (
-          protocol_run_orm.top_level_protocol_definition.name
-          if protocol_run_orm.top_level_protocol_definition
+          protocol_run_model.top_level_protocol_definition.name
+          if protocol_run_model.top_level_protocol_definition
           else "Unknown"
         ),
         "schedule_info": schedule_status,
       }
 
       # Add output data if available
-      if protocol_run_orm.output_data_json:
+      if protocol_run_model.output_data_json:
         try:
-          status_info["output_data"] = json.loads(protocol_run_orm.output_data_json)  # type: ignore[no-untyped-call]
+          status_info["output_data"] = json.loads(protocol_run_model.output_data_json)  # type: ignore[no-untyped-call]
         except json.JSONDecodeError:
-          status_info["output_data_raw"] = protocol_run_orm.output_data_json
+          status_info["output_data_raw"] = protocol_run_model.output_data_json
 
       return status_info
 

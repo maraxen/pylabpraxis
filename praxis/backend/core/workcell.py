@@ -54,7 +54,7 @@ class Workcell(IWorkcell):
     """Initialize the live Workcell container.
 
     Args:
-        name: The name of the workcell, corresponding to a WorkcellOrm entry.
+        name: The name of the workcell, corresponding to a Workcell entry.
         save_file: Path to the JSON file for saving runtime state.
         file_system: A file system object for file operations.
         backup_interval: Interval in seconds for continuous state backup.

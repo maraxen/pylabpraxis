@@ -40,23 +40,23 @@ class AssetAcquisitionMixin:
         )
         (
           live_obj,
-          orm_accession_id,
+          model_accession_id,
           asset_kind_str,
         ) = await self.asset_manager.acquire_asset(
           protocol_run_accession_id=protocol_run_accession_id,
           asset_requirement=asset_req_model,
         )
         final_args[asset_req_model.name] = live_obj
-        acquired_assets_details[orm_accession_id] = {
+        acquired_assets_details[model_accession_id] = {
           "type": asset_kind_str,
-          "orm_accession_id": orm_accession_id,
+          "model_accession_id": model_accession_id,
           "name_in_protocol": asset_req_model.name,
         }
         logger.info(
           "ORCH-ACQUIRE: Asset '%s' (Kind: %s, ORM ID: %s) acquired: %s",
           asset_req_model.name,
           asset_kind_str,
-          orm_accession_id,
+          model_accession_id,
           live_obj,
         )
       except AssetAcquisitionError as e:
@@ -120,16 +120,16 @@ class AssetAcquisitionMixin:
 
         deck_config_orm_accession_id_to_apply: uuid.UUID | None = None
         if isinstance(deck_accession_identifier_from_user, str):
-          deck_config_orm = await self.asset_manager.deck_svc.get_by_name(
+          deck_config_model = await self.asset_manager.deck_svc.get_by_name(
             db_session,
             deck_accession_identifier_from_user,
           )
-          if not deck_config_orm:
+          if not deck_config_model:
             error_msg = (
               f"Deck configuration named '{deck_accession_identifier_from_user}' not found."
             )
             raise ValueError(error_msg)
-          deck_config_orm_accession_id_to_apply = deck_config_orm.accession_id
+          deck_config_orm_accession_id_to_apply = deck_config_model.accession_id
         elif isinstance(deck_accession_identifier_from_user, uuid.UUID):
           deck_config_orm_accession_id_to_apply = deck_accession_identifier_from_user
 

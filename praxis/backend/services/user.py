@@ -15,9 +15,13 @@ from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.user import UserOrm
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.user import UserCreate, UserUpdate
+from praxis.backend.models.domain.user import User
+from praxis.backend.models.domain.user import (
+  User as User,
+  UserCreate,
+  UserUpdate,
+)
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import apply_pagination
 from praxis.backend.utils.db_decorator import handle_db_transaction
@@ -28,7 +32,7 @@ logger = logging.getLogger(__name__)
 password_hash = PasswordHash((BcryptHasher(),))
 
 
-class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
+class UserService(CRUDBase[User, UserCreate, UserUpdate]):
   """Service for user-related operations.
 
   Provides CRUD operations for users with additional functionality for:
@@ -63,7 +67,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
     return password_hash.verify(plain_password, hashed_password)
 
   @handle_db_transaction
-  async def create(self, db: AsyncSession, *, obj_in: UserCreate) -> UserOrm:
+  async def create(self, db: AsyncSession, *, obj_in: UserCreate) -> User:
     """Create a new user with hashed password.
 
     Args:
@@ -71,7 +75,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
         obj_in: User creation data including plain text password
 
     Returns:
-        Created UserOrm instance
+        Created User instance
 
     Raises:
         IntegrityError: If username or email already exists
@@ -84,23 +88,23 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
     user_data["hashed_password"] = self._hash_password(obj_in.password)
 
     # Filter to only valid constructor parameters
-    init_signature = inspect.signature(UserOrm.__init__)
+    init_signature = inspect.signature(User.__init__)
     valid_params = {p.name for p in init_signature.parameters.values()}
     filtered_data = {key: value for key, value in user_data.items() if key in valid_params}
 
-    user_orm = UserOrm(**filtered_data)
-    db.add(user_orm)
+    user_model = User(**filtered_data)
+    db.add(user_model)
     await db.flush()
-    await db.refresh(user_orm)
+    await db.refresh(user_model)
 
     logger.info(
       "Successfully created user '%s' with ID %s.",
       obj_in.username,
-      user_orm.accession_id,
+      user_model.accession_id,
     )
-    return user_orm
+    return user_model
 
-  async def get(self, db: AsyncSession, accession_id: uuid.UUID) -> UserOrm | None:
+  async def get(self, db: AsyncSession, accession_id: uuid.UUID) -> User | None:
     """Retrieve a specific user by ID.
 
     Args:
@@ -108,7 +112,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
         accession_id: User's UUID
 
     Returns:
-        UserOrm instance if found, None otherwise
+        User instance if found, None otherwise
 
     """
     logger.info("Attempting to retrieve user with ID: %s.", accession_id)
@@ -123,7 +127,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
       logger.info("User with ID %s not found.", accession_id)
     return user
 
-  async def get_by_username(self, db: AsyncSession, username: str) -> UserOrm | None:
+  async def get_by_username(self, db: AsyncSession, username: str) -> User | None:
     """Retrieve a user by username.
 
     Args:
@@ -131,7 +135,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
         username: Username to search for
 
     Returns:
-        UserOrm instance if found, None otherwise
+        User instance if found, None otherwise
 
     """
     logger.info("Attempting to retrieve user by username: %s.", username)
@@ -144,7 +148,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
       logger.info("User with username '%s' not found.", username)
     return user
 
-  async def get_by_email(self, db: AsyncSession, email: str) -> UserOrm | None:
+  async def get_by_email(self, db: AsyncSession, email: str) -> User | None:
     """Retrieve a user by email.
 
     Args:
@@ -152,7 +156,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
         email: Email address to search for
 
     Returns:
-        UserOrm instance if found, None otherwise
+        User instance if found, None otherwise
 
     """
     logger.info("Attempting to retrieve user by email: %s.", email)
@@ -170,7 +174,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
     db: AsyncSession,
     *,
     filters: SearchFilters,
-  ) -> list[UserOrm]:
+  ) -> list[User]:
     """List users with pagination.
 
     Args:
@@ -178,7 +182,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
         filters: Search filters including pagination parameters
 
     Returns:
-        List of UserOrm instances
+        List of User instances
 
     """
     logger.info("Listing users with filters: %s", filters.model_dump_json())
@@ -194,20 +198,20 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
     self,
     db: AsyncSession,
     *,
-    db_obj: UserOrm,
+    db_obj: User,
     obj_in: UserUpdate | dict[str, Any],
-  ) -> UserOrm:
+  ) -> User:
     """Update an existing user.
 
     If password is included in the update, it will be hashed before storage.
 
     Args:
         db: Database session
-        db_obj: Existing UserOrm instance
+        db_obj: Existing User instance
         obj_in: Update data (UserUpdate or dict)
 
     Returns:
-        Updated UserOrm instance
+        Updated User instance
 
     """
     logger.info("Attempting to update user with ID: %s.", db_obj.accession_id)
@@ -237,7 +241,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
     return db_obj
 
   @handle_db_transaction
-  async def remove(self, db: AsyncSession, *, accession_id: uuid.UUID) -> UserOrm | None:
+  async def remove(self, db: AsyncSession, *, accession_id: uuid.UUID) -> User | None:
     """Delete a specific user by ID.
 
     Args:
@@ -245,21 +249,21 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
         accession_id: User's UUID
 
     Returns:
-        Deleted UserOrm instance if found, None otherwise
+        Deleted User instance if found, None otherwise
 
     """
     logger.info("Attempting to delete user with ID: %s.", accession_id)
-    user_orm = await super().remove(db, accession_id=accession_id)
-    if not user_orm:
+    user_model = await super().remove(db, accession_id=accession_id)
+    if not user_model:
       logger.warning("User with ID %s not found for deletion.", accession_id)
       return None
 
     logger.info(
       "Successfully deleted user ID %s: '%s'.",
       accession_id,
-      user_orm.username,
+      user_model.username,
     )
-    return user_orm
+    return user_model
 
   async def authenticate(
     self,
@@ -267,7 +271,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
     *,
     username: str,
     password: str,
-  ) -> UserOrm | None:
+  ) -> User | None:
     """Authenticate a user by username and password.
 
     Args:
@@ -276,7 +280,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
         password: Plain text password to verify
 
     Returns:
-        UserOrm instance if authentication succeeds, None otherwise
+        User instance if authentication succeeds, None otherwise
 
     """
     logger.info("Attempting to authenticate user: %s.", username)
@@ -301,18 +305,18 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
     self,
     db: AsyncSession,
     *,
-    user: UserOrm,
+    user: User,
     is_active: bool,
-  ) -> UserOrm:
+  ) -> User:
     """Activate or deactivate a user.
 
     Args:
         db: Database session
-        user: UserOrm instance to update
+        user: User instance to update
         is_active: New active status
 
     Returns:
-        Updated UserOrm instance
+        Updated User instance
 
     """
     logger.info(
@@ -330,4 +334,4 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
 
 
 # Singleton instance
-user_service = UserService(UserOrm)
+user_service = UserService(User)

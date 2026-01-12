@@ -20,7 +20,7 @@ import libcst as cst
 from libcst.metadata import MetadataWrapper
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from praxis.backend.models.pydantic_internals.protocol import (
+from praxis.backend.models.domain.protocol import (
   FunctionProtocolDefinitionCreate,
   FunctionProtocolDefinitionUpdate,
 )
@@ -199,7 +199,7 @@ class DiscoveryService:
       "DiscoveryService: Found %d protocol functions. Upserting to DB...",
       len(extracted_definitions),
     )
-    upserted_definitions_orm: list[Any] = []
+    upserted_definitions_model: list[Any] = []
 
     if self.db_session_factory is None:
       logger.error(
@@ -223,18 +223,18 @@ class DiscoveryService:
             update_data = FunctionProtocolDefinitionUpdate(
               **protocol_pydantic_model.model_dump(),
             )
-            def_orm = await self.protocol_definition_service.update(
+            def_model = await self.protocol_definition_service.update(
               db=session,
               db_obj=existing_def,
               obj_in=update_data,
             )
           else:
-            def_orm = await self.protocol_definition_service.create(
+            def_model = await self.protocol_definition_service.create(
               db=session,
               obj_in=protocol_pydantic_model,
             )
 
-          upserted_definitions_orm.append(def_orm)
+          upserted_definitions_model.append(def_model)
 
         except (ValueError, RuntimeError):
           logger.exception(
@@ -243,7 +243,7 @@ class DiscoveryService:
             protocol_version_for_error,
           )
     num_successful_upserts = len(
-      [d for d in upserted_definitions_orm if hasattr(d, "id") and d.accession_id is not None],
+      [d for d in upserted_definitions_model if hasattr(d, "id") and d.accession_id is not None],
     )
     logger.info(
       "Successfully upserted %d protocol definition(s) to DB.",
@@ -251,16 +251,16 @@ class DiscoveryService:
     )
 
     # Run simulation on discovered protocols if enabled
-    if self._simulation_service and upserted_definitions_orm:
+    if self._simulation_service and upserted_definitions_model:
       logger.info(
         "Running simulation on %d discovered protocol(s)...",
-        len(upserted_definitions_orm),
+        len(upserted_definitions_model),
       )
       async with self.db_session_factory() as sim_session:
         try:
           sim_results = await self._simulation_service.simulate_pending_protocols(
             session=sim_session,
-            protocol_orms=upserted_definitions_orm,
+            protocol_orms=upserted_definitions_model,
           )
           simulated_count = sum(1 for r in sim_results.values() if r is not None)
           logger.info(
@@ -273,4 +273,4 @@ class DiscoveryService:
             e,
           )
 
-    return upserted_definitions_orm
+    return upserted_definitions_model

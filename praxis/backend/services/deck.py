@@ -15,9 +15,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
-from praxis.backend.models import DeckOrm, MachineOrm, ResourceDefinitionOrm
-from praxis.backend.models.domain.deck import DeckCreate, DeckUpdate
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models import Machine, ResourceDefinition
+from praxis.backend.models.domain.deck import (
+  Deck as Deck,
+  DeckCreate,
+  DeckUpdate,
+)
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
@@ -33,7 +37,7 @@ logger = get_logger(__name__)
 UUID = uuid.UUID
 
 
-class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
+class DeckService(CRUDBase[Deck, DeckCreate, DeckUpdate]):
   """Service for deck-related operations."""
 
   def _prepare_deck_data(self, obj_in: DeckCreate) -> dict:
@@ -65,43 +69,57 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     filtered_data = {key: value for key, value in deck_data.items() if key in valid_params}
 
     for attr_name, column in sa_inspect(self.model).columns.items():
-      if attr_name in filtered_data and hasattr(column.type, "enum_class"):
+      if attr_name in filtered_data:
+        value = filtered_data[attr_name]
+        if value is None:
+          continue
+
+        # Handle Enum conversion
         enum_class = getattr(column.type, "enum_class", None)
         if enum_class and issubclass(enum_class, enum.Enum):
-          value = filtered_data[attr_name]
           if isinstance(value, str):
+            # Try to match by value first
+            matched = False
             for member in enum_class:
-              if member.value == value:
+              if member.value.lower() == value.lower():
                 filtered_data[attr_name] = member
+                matched = True
                 break
+            # If not found by value, try by name
+            if not matched:
+              for name in enum_class.__members__:
+                if name.lower() == value.lower():
+                  filtered_data[attr_name] = enum_class[name]
+                  matched = True
+                  break
     return filtered_data
 
   async def _handle_relationships(
     self,
     db: AsyncSession,
-    deck_orm: DeckOrm,
+    deck_model: Deck,
     filtered_data: dict,
   ) -> None:
     """Handle relationships for the deck."""
     if "resource_definition_accession_id" in filtered_data:
       res_def = await db.get(
-        ResourceDefinitionOrm,
+        ResourceDefinition,
         filtered_data["resource_definition_accession_id"],
       )
       if res_def:
-        deck_orm.resource_definition = res_def
+        deck_model.resource_definition = res_def
       else:
-        deck_orm.resource_definition_accession_id = filtered_data[
+        deck_model.resource_definition_accession_id = filtered_data[
           "resource_definition_accession_id"
         ]
 
     if "parent_machine_accession_id" in filtered_data:
       machine = await db.get(
-        MachineOrm,
+        Machine,
         filtered_data["parent_machine_accession_id"],
       )
       if machine:
-        deck_orm.parent_machine = machine
+        deck_model.parent_machine = machine
 
   @handle_db_transaction
   async def create(
@@ -109,7 +127,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     db: AsyncSession,
     *,
     obj_in: DeckCreate,
-  ) -> DeckOrm:
+  ) -> Deck:
     """Create a new deck."""
     logger.info(
       "Attempting to create deck '%s' for parent ID %s.",
@@ -119,16 +137,16 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
 
     deck_data = self._prepare_deck_data(obj_in)
     filtered_data = self._filter_and_convert_enums(deck_data)
-    deck_orm = self.model(**filtered_data)
-    await self._handle_relationships(db, deck_orm, filtered_data)
+    deck_model = self.model(**filtered_data)
+    await self._handle_relationships(db, deck_model, filtered_data)
 
     if obj_in.plr_state:
-      deck_orm.plr_state = obj_in.plr_state
+      deck_model.plr_state = obj_in.plr_state
 
-    db.add(deck_orm)
+    db.add(deck_model)
     await db.flush()
     await db.refresh(
-      deck_orm,
+      deck_model,
       [
         "deck_type",
         "parent_machine",
@@ -139,16 +157,16 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     )
     logger.info(
       "Successfully created deck '%s' with ID %s.",
-      deck_orm.name,
-      deck_orm.accession_id,
+      deck_model.name,
+      deck_model.accession_id,
     )
-    return deck_orm
+    return deck_model
 
   async def get(
     self,
     db: AsyncSession,
     accession_id: str | UUID,
-  ) -> DeckOrm | None:
+  ) -> Deck | None:
     """Retrieve a specific deck by its ID."""
     logger.info("Attempting to retrieve deck with ID: %s.", accession_id)
     stmt = (
@@ -178,7 +196,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     db: AsyncSession,
     *,
     filters: SearchFilters,
-  ) -> list[DeckOrm]:
+  ) -> list[Deck]:
     """List all decks, with optional filtering by parent ID."""
     logger.info(
       "Listing decks with filters: %s",
@@ -205,7 +223,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       stmt = stmt.filter(and_(*conditions))
 
     stmt = apply_specific_id_filters(stmt, filters, self.model)
-    stmt = apply_date_range_filters(stmt, filters, DeckOrm.created_at)
+    stmt = apply_date_range_filters(stmt, filters, Deck.created_at)
     stmt = apply_property_filters(
       stmt,
       filters,
@@ -225,9 +243,9 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     self,
     db: AsyncSession,
     *,
-    db_obj: DeckOrm,
+    db_obj: Deck,
     obj_in: DeckUpdate,
-  ) -> DeckOrm:
+  ) -> Deck:
     """Update an existing deck."""
     logger.info(
       "Attempting to update deck with ID: %s.",
@@ -258,27 +276,27 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     db: AsyncSession,
     *,
     accession_id: str | UUID,
-  ) -> DeckOrm | None:
+  ) -> Deck | None:
     """Delete a specific deck by its ID."""
     logger.info("Attempting to delete deck with ID: %s.", accession_id)
-    deck_orm = await self.get(db, accession_id)
-    if not deck_orm:
+    deck_model = await self.get(db, accession_id)
+    if not deck_model:
       logger.warning(
         "Deck with ID %s not found for deletion.",
         accession_id,
       )
       return None
 
-    await db.delete(deck_orm)
+    await db.delete(deck_model)
     await db.flush()
     logger.info(
       "Successfully deleted deck ID %s: '%s'.",
       accession_id,
-      deck_orm.name,
+      deck_model.name,
     )
-    return deck_orm
+    return deck_model
 
-  async def get_all_decks(self, db: AsyncSession) -> list[DeckOrm]:
+  async def get_all_decks(self, db: AsyncSession) -> list[Deck]:
     """Retrieve all decks from the database."""
     logger.info("Retrieving all decks.")
     stmt = select(self.model).options(
@@ -295,7 +313,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     self,
     db: AsyncSession,
     machine_id: uuid.UUID,
-  ) -> DeckOrm | None:
+  ) -> Deck | None:
     """Read a deck for a given machine."""
     stmt = select(self.model).filter(
       self.model.parent_machine_accession_id == machine_id,
@@ -304,4 +322,4 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     return result.scalar_one_or_none()
 
 
-deck_service = DeckService(DeckOrm)
+deck_service = DeckService(Deck)

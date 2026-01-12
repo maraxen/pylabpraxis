@@ -21,7 +21,8 @@ from praxis.backend.models.domain.machine import (
   MachineRead,
   MachineUpdate,
 )
-from praxis.backend.models.orm.machine import MachineDefinitionOrm, MachineOrm, MachineStatusEnum
+from praxis.backend.models.domain.machine import Machine, MachineDefinition
+from praxis.backend.models.enums import MachineStatusEnum
 from praxis.backend.services.machine import MachineService
 from praxis.backend.services.machine_type_definition import MachineTypeDefinitionCRUDService
 from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
@@ -39,7 +40,7 @@ log_machine_api_errors = partial(
   raises_exception=PraxisAPIError,
 )
 
-machine_service = MachineService(MachineOrm)
+machine_service = MachineService(Machine)
 
 machine_accession_resolver = partial(
   get_accession_id_from_accession,
@@ -64,16 +65,16 @@ async def get_machine_definition_facets(
   """
   from sqlalchemy import func, select
 
-  # machine_definition_orm is imported above, but we keep local import if needed or use top-level
+  # machine_definition_model is imported above, but we keep local import if needed or use top-level
   # We'll use the top-level import now.
 
   facets: dict[str, list[dict[str, Any]]] = {}
 
   # Machine category facet (enum values)
   stmt = (
-    select(MachineDefinitionOrm.machine_category, func.count().label("count"))
-    .where(MachineDefinitionOrm.machine_category.isnot(None))
-    .group_by(MachineDefinitionOrm.machine_category)
+    select(MachineDefinition.machine_category, func.count().label("count"))
+    .where(MachineDefinition.machine_category.isnot(None))
+    .group_by(MachineDefinition.machine_category)
     .order_by(func.count().desc())
   )
   result = await db.execute(stmt)
@@ -82,9 +83,9 @@ async def get_machine_definition_facets(
 
   # Manufacturer facet
   stmt = (
-    select(MachineDefinitionOrm.manufacturer, func.count().label("count"))
-    .where(MachineDefinitionOrm.manufacturer.isnot(None))
-    .group_by(MachineDefinitionOrm.manufacturer)
+    select(MachineDefinition.manufacturer, func.count().label("count"))
+    .where(MachineDefinition.manufacturer.isnot(None))
+    .group_by(MachineDefinition.manufacturer)
     .order_by(func.count().desc())
   )
   result = await db.execute(stmt)
@@ -98,7 +99,7 @@ async def get_machine_definition_facets(
 # MUST be included after specific /definitions endpoints (like /facets)
 router.include_router(
   create_crud_router(
-    service=MachineTypeDefinitionCRUDService(MachineDefinitionOrm),
+    service=MachineTypeDefinitionCRUDService(MachineDefinition),
     prefix="/definitions",
     tags=["Machine Definitions"],
     create_schema=MachineDefinitionCreate,

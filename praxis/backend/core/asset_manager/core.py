@@ -5,16 +5,17 @@ import importlib
 import uuid
 from typing import Any
 
-from pylabrobot.resources import Deck
+from pylabrobot.resources import Deck as PLRDeck
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.core.protocols.asset_lock_manager import IAssetLockManager
 from praxis.backend.core.protocols.workcell_runtime import IWorkcellRuntime
-from praxis.backend.models.pydantic_internals.asset import (
+from praxis.backend.models.pydantic_internals.runtime import (
   AcquireAsset,
   AcquireAssetLock,
+  ReleaseAsset,
 )
-from praxis.backend.models.pydantic_internals.protocol import AssetRequirementModel
+from praxis.backend.models.domain.protocol import AssetRequirement as AssetRequirementModel
 from praxis.backend.services.deck import DeckService
 from praxis.backend.services.machine import MachineService
 from praxis.backend.services.resource import ResourceService
@@ -107,7 +108,7 @@ class AssetManager(
       try:
         module_path, class_name = asset_fqn.rsplit(".", 1)
         cls_obj = getattr(importlib.import_module(module_path), class_name)
-        if issubclass(cls_obj, Deck):
+        if issubclass(cls_obj, PLRDeck):
           msg = f"Asset type '{asset_fqn}' appears to be a Deck but not found in ResourceCatalog. Ensure it's synced."
           raise AssetAcquisitionError(
             msg,

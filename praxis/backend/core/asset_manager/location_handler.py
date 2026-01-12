@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from pylabrobot.resources import Deck
 
-from praxis.backend.models.orm.resource import ResourceOrm
+from praxis.backend.models.domain.resource import Resource
 from praxis.backend.utils.errors import AssetAcquisitionError
 from praxis.backend.utils.logging import get_logger
 
@@ -36,7 +36,7 @@ class LocationHandlerMixin:
     self,
     is_acquiring_a_deck_resource: bool,
     location_constraints: dict[str, Any] | None,
-    resource_to_acquire: ResourceOrm,
+    resource_to_acquire: Resource,
     protocol_run_accession_id: uuid.UUID,
   ) -> tuple[uuid.UUID | None, str | None, str]:
     target_deck_resource_accession_id: uuid.UUID | None = None

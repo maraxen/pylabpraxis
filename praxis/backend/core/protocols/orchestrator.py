@@ -2,7 +2,7 @@
 
 from typing import Any, Protocol, runtime_checkable
 
-from praxis.backend.models.orm.protocol import ProtocolRunOrm
+from praxis.backend.models.domain.protocol import ProtocolRun
 
 
 @runtime_checkable
@@ -18,12 +18,12 @@ class IOrchestrator(Protocol):
     commit_hash: str | None = None,
     source_name: str | None = None,
     is_simulation: bool = False,
-  ) -> ProtocolRunOrm: ...
+  ) -> ProtocolRun: ...
 
   async def execute_existing_protocol_run(
     self,
-    protocol_run_orm: ProtocolRunOrm,
+    protocol_run_model: ProtocolRun,
     user_input_params: dict[str, Any] | None = None,
     initial_state_data: dict[str, Any] | None = None,
     is_simulation: bool = False,
-  ) -> ProtocolRunOrm: ...
+  ) -> ProtocolRun: ...

@@ -5,7 +5,7 @@ from typing import Protocol, runtime_checkable
 
 from praxis.backend.models import (
   FunctionProtocolDefinitionCreate,
-  FunctionProtocolDefinitionOrm,
+  FunctionProtocolDefinition,
 )
 
 
@@ -15,5 +15,5 @@ class IProtocolCodeManager(Protocol):
 
   async def prepare_protocol_code(
     self,
-    protocol_def_orm: FunctionProtocolDefinitionOrm,
+    protocol_def_model: FunctionProtocolDefinition,
   ) -> tuple[Callable, FunctionProtocolDefinitionCreate]: ...

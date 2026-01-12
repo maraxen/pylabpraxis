@@ -3,12 +3,12 @@
 import uuid
 from typing import Any, Protocol, runtime_checkable
 
-from pylabrobot.machines import Machine
-from pylabrobot.resources import Coordinate, Deck, Resource
+from pylabrobot.machines import Machine as PLRMachine
+from pylabrobot.resources import Coordinate, Deck as PLRDeck, Resource as PLRResource
 
 from praxis.backend.core.protocols.workcell import IWorkcell
-from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.orm.resource import ResourceOrm
+from praxis.backend.models.domain.machine import Machine
+from praxis.backend.models.domain.resource import Resource
 
 
 @runtime_checkable
@@ -25,34 +25,34 @@ class IWorkcellRuntime(Protocol):
 
   def apply_state_snapshot(self, snapshot_json: dict[str, Any]) -> None: ...
 
-  async def initialize_machine(self, machine_orm: MachineOrm) -> Machine: ...
+  async def initialize_machine(self, machine: Machine) -> PLRMachine: ...
 
   async def create_or_get_resource(
     self,
-    resource_orm: ResourceOrm,
+    resource: Resource,
     resource_definition_fqn: str,
-  ) -> Resource: ...
+  ) -> PLRResource: ...
 
-  def get_active_machine(self, machine_orm_accession_id: uuid.UUID) -> Machine: ...
+  def get_active_machine(self, machine_accession_id: uuid.UUID) -> PLRMachine: ...
 
-  def get_active_machine_accession_id(self, machine: Machine) -> uuid.UUID: ...
+  def get_active_machine_accession_id(self, machine: PLRMachine) -> uuid.UUID: ...
 
-  def get_active_deck_accession_id(self, deck: Deck) -> uuid.UUID: ...
+  def get_active_deck_accession_id(self, deck: PLRDeck) -> uuid.UUID: ...
 
   def get_active_resource(
     self,
-    resource_orm_accession_id: uuid.UUID,
-  ) -> Resource: ...
+    resource_accession_id: uuid.UUID,
+  ) -> PLRResource: ...
 
-  def get_active_resource_accession_id(self, resource: Resource) -> uuid.UUID: ...
+  def get_active_resource_accession_id(self, resource: PLRResource) -> uuid.UUID: ...
 
-  def get_active_deck(self, deck_orm_accession_id: uuid.UUID) -> Deck: ...
+  def get_active_deck(self, deck_accession_id: uuid.UUID) -> PLRDeck: ...
 
-  async def shutdown_machine(self, machine_orm_accession_id: uuid.UUID) -> None: ...
+  async def shutdown_machine(self, machine_accession_id: uuid.UUID) -> None: ...
 
   async def assign_resource_to_deck(
     self,
-    resource_orm_accession_id: uuid.UUID,
+    resource_accession_id: uuid.UUID,
     target: uuid.UUID,
     location: Coordinate | tuple[float, float, float] | None = None,
     position_accession_id: str | int | uuid.UUID | None = None,
@@ -60,14 +60,14 @@ class IWorkcellRuntime(Protocol):
 
   async def clear_deck_position(
     self,
-    deck_orm_accession_id: uuid.UUID,
+    deck_accession_id: uuid.UUID,
     position_name: str,
-    resource_orm_accession_id: uuid.UUID | None = None,
+    resource_accession_id: uuid.UUID | None = None,
   ) -> None: ...
 
   async def execute_machine_action(
     self,
-    machine_orm_accession_id: uuid.UUID,
+    machine_accession_id: uuid.UUID,
     action_name: str,
     params: dict[str, Any] | None = None,
   ) -> Any: ...
@@ -76,9 +76,9 @@ class IWorkcellRuntime(Protocol):
 
   async def get_deck_state_representation(
     self,
-    deck_orm_accession_id: uuid.UUID,
+    deck_accession_id: uuid.UUID,
   ) -> dict[str, Any]: ...
 
-  async def get_last_initialized_deck_object(self) -> Deck | None: ...
+  async def get_last_initialized_deck_object(self) -> PLRDeck | None: ...
 
-  async def clear_resource(self, resource_orm_accession_id: uuid.UUID) -> None: ...
+  async def clear_resource(self, resource_accession_id: uuid.UUID) -> None: ...

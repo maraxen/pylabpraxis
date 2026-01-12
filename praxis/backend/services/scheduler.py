@@ -23,19 +23,21 @@ from praxis.backend.models.domain.schedule import (
   ScheduleEntryUpdate,
 )
 from praxis.backend.models.enums import (
+  AssetReservationStatusEnum,
   AssetType,
   ScheduleHistoryEventEnum,
   ScheduleHistoryEventTriggerEnum,
   ScheduleStatusEnum,
 )
-from praxis.backend.models.orm.protocol import ProtocolRunOrm
-from praxis.backend.models.orm.schedule import (
-  AssetReservationOrm,
-  AssetReservationStatusEnum,
-  ScheduleEntryOrm,
-  ScheduleHistoryOrm,
+from praxis.backend.models.domain.protocol import ProtocolRun as ProtocolRun
+from praxis.backend.models.domain.schedule import (
+  ScheduleEntry as ScheduleEntry,
+  ScheduleHistory as ScheduleHistory,
+  ScheduleHistoryCreate,
+  AssetReservation as AssetReservation,
+  AssetReservationCreate,
 )
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
@@ -61,7 +63,7 @@ scheduler_service_log = partial(
 
 
 class ScheduleEntryCRUDService(
-  CRUDBase[ScheduleEntryOrm, ScheduleEntryCreate, ScheduleEntryUpdate],
+  CRUDBase[ScheduleEntry, ScheduleEntryCreate, ScheduleEntryUpdate],
 ):
   """CRUD service for schedule entries."""
 
@@ -71,7 +73,7 @@ class ScheduleEntryCRUDService(
     db: AsyncSession,
     *,
     obj_in: ScheduleEntryCreate,
-  ) -> ScheduleEntryOrm:
+  ) -> ScheduleEntry:
     """Create a new schedule entry for a protocol run."""
     log_prefix = (
       f"Schedule Entry (Protocol Run: '{obj_in.protocol_run_accession_id}', creating new):"
@@ -80,8 +82,8 @@ class ScheduleEntryCRUDService(
 
     # Fetch the protocol run
     protocol_run_result = await db.execute(
-      select(ProtocolRunOrm).filter(
-        ProtocolRunOrm.accession_id == obj_in.protocol_run_accession_id,
+      select(ProtocolRun).filter(
+        ProtocolRun.accession_id == obj_in.protocol_run_accession_id,
       ),
     )
     protocol_run = protocol_run_result.scalar_one_or_none()
@@ -105,7 +107,7 @@ class ScheduleEntryCRUDService(
       logger.error(error_message)
       raise ValueError(error_message)
 
-    # Create a new ScheduleEntryOrm
+    # Create a new ScheduleEntry
     schedule_entry = self.model(
       **obj_in.model_dump(
         exclude={
@@ -158,7 +160,7 @@ class ScheduleEntryCRUDService(
     db: AsyncSession,
     *,
     filters: SearchFilters,
-  ) -> list[ScheduleEntryOrm]:
+  ) -> list[ScheduleEntry]:
     """List schedule entries with optional filters."""
     stmt = select(self.model)
 
@@ -210,7 +212,7 @@ class ScheduleEntryCRUDService(
     error_details: str | None = None,
     started_at: datetime | None = None,
     completed_at: datetime | None = None,
-  ) -> ScheduleEntryOrm | None:
+  ) -> ScheduleEntry | None:
     """Update the status of a schedule entry."""
     schedule_entry = await self.get(db, schedule_entry_accession_id)
     if not schedule_entry:
@@ -250,7 +252,7 @@ class ScheduleEntryCRUDService(
     schedule_entry_accession_id: uuid.UUID,
     new_priority: int,
     reason: str | None = None,
-  ) -> ScheduleEntryOrm | None:
+  ) -> ScheduleEntry | None:
     """Update the priority of a schedule entry."""
     schedule_entry = await self.get(db, schedule_entry_accession_id)
     if not schedule_entry:
@@ -282,7 +284,7 @@ class ScheduleEntryCRUDService(
     return updated_entry
 
 
-schedule_entry_service = ScheduleEntryCRUDService(ScheduleEntryOrm)
+schedule_entry_service = ScheduleEntryCRUDService(ScheduleEntry)
 
 
 @handle_db_transaction
@@ -298,12 +300,12 @@ async def create_asset_reservation(
   required_capabilities_json: dict[str, Any] | None = None,
   estimated_duration_ms: int | None = None,
   expires_at: datetime | None = None,
-) -> AssetReservationOrm:
+) -> AssetReservation:
   """Create a new asset reservation."""
   log_prefix = f"Asset Reservation (Asset: '{asset_type}:{asset_name}', creating new):"
   logger.info("%s Attempting to create new asset reservation.", log_prefix)
 
-  reservation = AssetReservationOrm(
+  reservation = AssetReservation(
     name=asset_name,
     asset_type=asset_type,
     asset_name=asset_name,
@@ -338,10 +340,10 @@ async def create_asset_reservation(
 async def read_asset_reservation(
   db: AsyncSession,
   reservation_accession_id: uuid.UUID,
-) -> AssetReservationOrm | None:
+) -> AssetReservation | None:
   """Read an asset reservation by ID."""
-  stmt = select(AssetReservationOrm).filter(
-    AssetReservationOrm.accession_id == reservation_accession_id,
+  stmt = select(AssetReservation).filter(
+    AssetReservation.accession_id == reservation_accession_id,
   )
 
   result = await db.execute(stmt)
@@ -355,26 +357,26 @@ async def list_asset_reservations(
   asset_name: str | None = None,
   status_filter: list[AssetReservationStatusEnum] | None = None,
   active_only: bool = False,
-) -> list[AssetReservationOrm]:
+) -> list[AssetReservation]:
   """List asset reservations with optional filters."""
-  stmt = select(AssetReservationOrm)
+  stmt = select(AssetReservation)
 
   if schedule_entry_accession_id:
     stmt = stmt.filter(
-      AssetReservationOrm.schedule_entry_accession_id == schedule_entry_accession_id,
+      AssetReservation.schedule_entry_accession_id == schedule_entry_accession_id,
     )
 
   if asset_type:
-    stmt = stmt.filter(AssetReservationOrm.asset_type == asset_type)
+    stmt = stmt.filter(AssetReservation.asset_type == asset_type)
 
   if asset_name:
-    stmt = stmt.filter(AssetReservationOrm.asset_name == asset_name)
+    stmt = stmt.filter(AssetReservation.asset_name == asset_name)
 
   if status_filter:
-    stmt = stmt.filter(AssetReservationOrm.status.in_(status_filter))
+    stmt = stmt.filter(AssetReservation.status.in_(status_filter))
   elif active_only:
     stmt = stmt.filter(
-      AssetReservationOrm.status.in_(
+      AssetReservation.status.in_(
         [
           AssetReservationStatusEnum.PENDING,
           AssetReservationStatusEnum.RESERVED,
@@ -383,7 +385,7 @@ async def list_asset_reservations(
       ),
     )
 
-  stmt = stmt.order_by(AssetReservationOrm.created_at)
+  stmt = stmt.order_by(AssetReservation.created_at)
 
   result = await db.execute(stmt)
   return list(result.scalars().all())
@@ -396,7 +398,7 @@ async def update_asset_reservation_status(
   new_status: AssetReservationStatusEnum,
   reserved_at: datetime | None = None,
   released_at: datetime | None = None,
-) -> AssetReservationOrm | None:
+) -> AssetReservation | None:
   """Update the status of an asset reservation."""
   reservation = await read_asset_reservation(db, reservation_accession_id)
   if not reservation:
@@ -431,10 +433,10 @@ async def cleanup_expired_reservations(
   if current_time is None:
     current_time = datetime.now(timezone.utc)
 
-  stmt = select(AssetReservationOrm).filter(
+  stmt = select(AssetReservation).filter(
     and_(
-      AssetReservationOrm.expires_at < current_time,
-      AssetReservationOrm.status.in_(
+      AssetReservation.expires_at < current_time,
+      AssetReservation.status.in_(
         [
           AssetReservationStatusEnum.PENDING,
           AssetReservationStatusEnum.RESERVED,
@@ -477,11 +479,11 @@ async def log_schedule_event(
   name: str | None = None,
   duration_ms: int | None = None,
   triggered_by: ScheduleHistoryEventTriggerEnum | None = None,
-) -> ScheduleHistoryOrm:
+) -> ScheduleHistory:
   """Log a scheduling event for history and analytics."""
   if name is None:
     name = "Unnamed Event"
-  history_entry = ScheduleHistoryOrm(
+  history_entry = ScheduleHistory(
     name=name,
     schedule_entry_accession_id=schedule_entry_accession_id,
     event_type=event_type,
@@ -507,14 +509,14 @@ async def get_schedule_history(
   schedule_entry_accession_id: uuid.UUID,
   limit: int = 100,
   offset: int = 0,
-) -> list[ScheduleHistoryOrm]:
+) -> list[ScheduleHistory]:
   """Get scheduling history for a specific schedule entry."""
   stmt = (
-    select(ScheduleHistoryOrm)
+    select(ScheduleHistory)
     .filter(
-      ScheduleHistoryOrm.schedule_entry_accession_id == schedule_entry_accession_id,
+      ScheduleHistory.schedule_entry_accession_id == schedule_entry_accession_id,
     )
-    .order_by(desc(ScheduleHistoryOrm.created_at))
+    .order_by(desc(ScheduleHistory.created_at))
     .offset(offset)
     .limit(limit)
   )
@@ -531,14 +533,14 @@ async def get_scheduling_metrics(
   """Get scheduling metrics for a time period."""
   # Get status counts
   status_count_stmt = (
-    select(ScheduleHistoryOrm.to_status, func.count().label("count"))
+    select(ScheduleHistory.to_status, func.count().label("count"))
     .filter(
       and_(
-        ScheduleHistoryOrm.created_at >= start_time,
-        ScheduleHistoryOrm.created_at <= end_time,
+        ScheduleHistory.created_at >= start_time,
+        ScheduleHistory.created_at <= end_time,
       ),
     )
-    .group_by(ScheduleHistoryOrm.to_status)
+    .group_by(ScheduleHistory.to_status)
   )
 
   status_result = await db.execute(status_count_stmt)
@@ -546,11 +548,11 @@ async def get_scheduling_metrics(
 
   # Get average timing metrics
   avg_stmt = select(
-    func.avg(ScheduleHistoryOrm.completed_duration_ms).label("avg_duration"),
+    func.avg(ScheduleHistory.completed_duration_ms).label("avg_duration"),
   ).filter(
     and_(
-      ScheduleHistoryOrm.created_at >= start_time,
-      ScheduleHistoryOrm.created_at <= end_time,
+      ScheduleHistory.created_at >= start_time,
+      ScheduleHistory.created_at <= end_time,
     ),
   )
 
@@ -560,9 +562,9 @@ async def get_scheduling_metrics(
   # Get error count
   error_count_stmt = select(func.count()).filter(
     and_(
-      ScheduleHistoryOrm.created_at >= start_time,
-      ScheduleHistoryOrm.created_at <= end_time,
-      ScheduleHistoryOrm.error_details.isnot(None),
+      ScheduleHistory.created_at >= start_time,
+      ScheduleHistory.created_at <= end_time,
+      ScheduleHistory.error_details.isnot(None),
     ),
   )
 

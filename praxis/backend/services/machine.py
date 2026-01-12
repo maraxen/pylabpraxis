@@ -15,9 +15,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from praxis.backend.models.orm.machine import MachineOrm, MachineStatusEnum
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.machine import MachineCreate, MachineUpdate
+from praxis.backend.models.domain.machine import Machine
+from praxis.backend.models.enums import MachineStatusEnum
+from praxis.backend.models.domain.filters import SearchFilters
+from praxis.backend.models.domain.machine import (
+  Machine as Machine,
+  MachineCreate,
+  MachineUpdate,
+)
 from praxis.backend.services.entity_linking import (
   _create_or_link_resource_counterpart_for_machine,
   synchronize_machine_resource_names,
@@ -34,7 +39,7 @@ from praxis.backend.utils.logging import get_logger
 logger = get_logger(__name__)
 
 
-class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
+class MachineService(CRUDBase[Machine, MachineCreate, MachineUpdate]):
   """Service for machine-related operations."""
 
   @handle_db_transaction
@@ -43,12 +48,12 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
     db: AsyncSession,
     *,
     obj_in: MachineCreate,
-  ) -> MachineOrm:
+  ) -> Machine:
     """Create a new machine in the database."""
     log_prefix = f"Machine (Name: '{obj_in.name}', creating new):"
     logger.info("%s Attempting to create new machine.", log_prefix)
 
-    result = await db.execute(select(MachineOrm).filter(MachineOrm.name == obj_in.name))
+    result = await db.execute(select(Machine).filter(Machine.name == obj_in.name))
     if result.scalar_one_or_none():
       error_message = (
         f"{log_prefix} A machine with name '{obj_in.name}' already exists. Use the update "
@@ -57,13 +62,13 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
       logger.error(error_message)
       raise ValueError(error_message)
 
-    machine_orm = await super().create(db=db, obj_in=obj_in)
+    machine_model = await super().create(db=db, obj_in=obj_in)
     logger.info("%s Initialized new machine for creation.", log_prefix)
 
     if obj_in.resource_counterpart_accession_id or obj_in.resource_def_name:
       await _create_or_link_resource_counterpart_for_machine(
         db=db,
-        machine_orm=machine_orm,
+        machine_model=machine_model,
         resource_counterpart_accession_id=obj_in.resource_counterpart_accession_id,
         resource_definition_name=obj_in.resource_def_name,
         resource_properties_json=obj_in.resource_properties_json,
@@ -71,20 +76,20 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
       )
 
     await db.flush()
-    await db.refresh(machine_orm, attribute_names=["resource_counterpart"])
-    if machine_orm.resource_counterpart:
-      await db.refresh(machine_orm.resource_counterpart)
+    await db.refresh(machine_model, attribute_names=["resource_counterpart"])
+    if machine_model.resource_counterpart:
+      await db.refresh(machine_model.resource_counterpart)
     logger.info("%s Successfully committed new machine.", log_prefix)
-    return machine_orm
+    return machine_model
 
   @handle_db_transaction
   async def update(
     self,
     db: AsyncSession,
     *,
-    db_obj: MachineOrm,
+    db_obj: Machine,
     obj_in: MachineUpdate,
-  ) -> MachineOrm:
+  ) -> Machine:
     """Update an existing machine with the provided data."""
     update_data = obj_in if isinstance(obj_in, dict) else obj_in.model_dump(exclude_unset=True)
     log_prefix = f"Machine (ID: {db_obj.accession_id}, updating):"
@@ -93,9 +98,9 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
     name = update_data.get("name")
     if name is not None and db_obj.name != name:
       existing_name_check = await db.execute(
-        select(MachineOrm)
-        .filter(MachineOrm.name == name)
-        .filter(MachineOrm.accession_id != db_obj.accession_id),
+        select(Machine)
+        .filter(Machine.name == name)
+        .filter(Machine.accession_id != db_obj.accession_id),
       )
       if existing_name_check.scalar_one_or_none():
         error_message = (
@@ -117,7 +122,7 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
     ):
       await _create_or_link_resource_counterpart_for_machine(
         db=db,
-        machine_orm=updated_machine,
+        machine_model=updated_machine,
         resource_counterpart_accession_id=update_data.get(
           "resource_counterpart_accession_id",
         ),
@@ -141,7 +146,7 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
     status: MachineStatusEnum | None = None,
     pylabrobot_class_filter: str | None = None,
     name_filter: str | None = None,
-  ) -> list[MachineOrm]:
+  ) -> list[Machine]:
     """List all machines with optional filtering and pagination."""
     logger.info(
       "Listing machines with filters: %s",
@@ -172,15 +177,15 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
     new_status: MachineStatusEnum,
     status_details: str | None = None,
     current_protocol_run_accession_id: uuid.UUID | None = None,
-  ) -> MachineOrm | None:
+  ) -> Machine | None:
     """Update the status of a specific machine."""
     logger.info(
       "Attempting to update status for machine ID %s to '%s'.",
       machine_accession_id,
       new_status.value,
     )
-    machine_orm = await self.get(db, accession_id=machine_accession_id)
-    if not machine_orm:
+    machine_model = await self.get(db, accession_id=machine_accession_id)
+    if not machine_model:
       logger.warning(
         "Machine with ID %s not found for status update.",
         machine_accession_id,
@@ -189,62 +194,62 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
 
     logger.debug(
       "Machine '%s' (ID: %s) status changing from '%s' to '%s'.",
-      machine_orm.name,
+      machine_model.name,
       machine_accession_id,
-      machine_orm.status.value,
+      machine_model.status.value,
       new_status.value,
     )
-    machine_orm.status = new_status
-    machine_orm.status_details = status_details
+    machine_model.status = new_status
+    machine_model.status_details = status_details
 
     if new_status == MachineStatusEnum.IN_USE:
-      machine_orm.current_protocol_run_accession_id = current_protocol_run_accession_id
+      machine_model.current_protocol_run_accession_id = current_protocol_run_accession_id
       logger.debug(
         "Machine '%s' (ID: %s) set to IN_USE with protocol run GUID: %s.",
-        machine_orm.name,
+        machine_model.name,
         machine_accession_id,
         current_protocol_run_accession_id,
       )
-    elif machine_orm.current_protocol_run_accession_id == current_protocol_run_accession_id:
-      machine_orm.current_protocol_run_accession_id = None
+    elif machine_model.current_protocol_run_accession_id == current_protocol_run_accession_id:
+      machine_model.current_protocol_run_accession_id = None
       logger.debug(
         "Machine '%s' (ID: %s) protocol run GUID cleared as it matches the "
         "current one and status is no longer IN_USE.",
-        machine_orm.name,
+        machine_model.name,
         machine_accession_id,
       )
 
     if new_status != MachineStatusEnum.OFFLINE:
-      machine_orm.last_seen_online = datetime.datetime.now(datetime.timezone.utc)
+      machine_model.last_seen_online = datetime.datetime.now(datetime.timezone.utc)
       logger.debug(
         "Machine '%s' (ID: %s) last seen online updated.",
-        machine_orm.name,
+        machine_model.name,
         machine_accession_id,
       )
 
     await db.flush()
-    await db.refresh(machine_orm)
+    await db.refresh(machine_model)
     logger.info(
       "Successfully updated status for machine ID %s to '%s'.",
       machine_accession_id,
       new_status.value,
     )
-    return machine_orm
+    return machine_model
 
   @handle_db_transaction
-  async def remove(self, db: AsyncSession, *, accession_id: UUID) -> MachineOrm | None:
+  async def remove(self, db: AsyncSession, *, accession_id: UUID) -> Machine | None:
     """Delete a specific machine by its ID."""
     logger.info("Attempting to delete machine with ID: %s.", accession_id)
-    machine_orm = await super().remove(db, accession_id=accession_id)
-    if not machine_orm:
+    machine_model = await super().remove(db, accession_id=accession_id)
+    if not machine_model:
       logger.warning("Machine with ID %s not found for deletion.", accession_id)
       return None
     logger.info(
       "Successfully deleted machine ID %s: '%s'.",
       accession_id,
-      machine_orm.name,
+      machine_model.name,
     )
-    return machine_orm
+    return machine_model
 
 
-machine_service = MachineService(MachineOrm)
+machine_service = MachineService(Machine)

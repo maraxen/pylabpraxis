@@ -30,10 +30,10 @@ from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.core.storage import StorageBackend, StorageFactory
 from praxis.backend.core.workcell import Workcell
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
-from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
-from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.orm.resource import ResourceOrm
-from praxis.backend.models.orm.workcell import WorkcellOrm
+from praxis.backend.models.domain.deck import Deck, DeckDefinition
+from praxis.backend.models.domain.machine import Machine
+from praxis.backend.models.domain.resource import Resource
+from praxis.backend.models.domain.workcell import Workcell
 from praxis.backend.services.deck import DeckService
 from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
 from praxis.backend.services.discovery_service import DiscoveryService
@@ -138,11 +138,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       file_system=FileSystem(),
     )
     async with AsyncSessionLocal() as db_session:
-      deck_service = DeckService(DeckOrm)
-      machine_service = MachineService(MachineOrm)
-      resource_service = ResourceService(ResourceOrm)
-      deck_type_definition_service = DeckTypeDefinitionService(DeckDefinitionOrm)
-      workcell_service = WorkcellService(WorkcellOrm)
+      deck_service = DeckService(Deck)
+      machine_service = MachineService(Machine)
+      resource_service = ResourceService(Resource)
+      deck_type_definition_service = DeckTypeDefinitionService(DeckDefinition)
+      workcell_service = WorkcellService(Workcell)
       workcell_runtime = WorkcellRuntime(
         db_session_factory=AsyncSessionLocal,
         workcell=workcell,
@@ -173,9 +173,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
       # Initialize DiscoveryService with all type definition services
       logger.info("Initializing DiscoveryService...")
-      from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm
+      from praxis.backend.models.domain.protocol import FunctionProtocolDefinition, ProtocolRun
 
-      protocol_definition_service = ProtocolDefinitionCRUDService(FunctionProtocolDefinitionOrm)
+      protocol_definition_service = ProtocolDefinitionCRUDService(FunctionProtocolDefinition)
       discovery_service = DiscoveryService(
         db_session_factory=AsyncSessionLocal,
         resource_type_definition_service=resource_type_definition_service,
@@ -211,11 +211,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       logger.info("Initializing ProtocolExecutionService...")
       from praxis.backend.core.protocol_execution_service import ProtocolExecutionService
       from praxis.backend.core.scheduler import ProtocolScheduler
-      from praxis.backend.models.orm.protocol import ProtocolRunOrm
+      from praxis.backend.models.domain.protocol import ProtocolRun
       from praxis.backend.services.mock_data_generator import MockTelemetryService
       from praxis.backend.services.protocols import ProtocolRunService
 
-      protocol_run_service = ProtocolRunService(ProtocolRunOrm)
+      protocol_run_service = ProtocolRunService(ProtocolRun)
       protocol_scheduler = ProtocolScheduler(
         db_session_factory=AsyncSessionLocal,
         task_queue=scheduler_task_queue,

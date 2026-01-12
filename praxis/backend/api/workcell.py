@@ -12,14 +12,14 @@ from praxis.backend.models.domain.workcell import (
   WorkcellRead,
   WorkcellUpdate,
 )
-from praxis.backend.models.orm.workcell import WorkcellOrm
+from praxis.backend.models.domain.workcell import Workcell
 from praxis.backend.services.workcell import WorkcellService
 
 router = APIRouter()
 
 router.include_router(
   create_crud_router(
-    service=WorkcellService(WorkcellOrm),
+    service=WorkcellService(Workcell),
     prefix="/",
     tags=["Workcells"],
     create_schema=WorkcellCreate,

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from praxis.backend.models.pydantic_internals.workcell import WorkcellCreate
+from praxis.backend.models.domain.workcell import WorkcellCreate
 from praxis.backend.services.workcell import WorkcellService
 from praxis.backend.utils.errors import WorkcellRuntimeError
 from praxis.backend.utils.logging import get_logger
@@ -32,7 +32,7 @@ class StateSyncMixin:
     """Links the in-memory Workcell to its persistent DB entry."""
     if self._workcell_db_accession_id is None:
       async with self.db_session_factory() as db_session:
-        workcell_orm = await self.workcell_svc.create(
+        workcell_model = await self.workcell_svc.create(
           db=db_session,
           obj_in=WorkcellCreate(
             name=self._main_workcell.name,
@@ -40,7 +40,7 @@ class StateSyncMixin:
           ),
         )
         await db_session.commit()
-        self._workcell_db_accession_id = workcell_orm.accession_id
+        self._workcell_db_accession_id = workcell_model.accession_id
         logger.info(
           "Workcell '%s' linked to DB ID: %s",
           self._main_workcell.name,

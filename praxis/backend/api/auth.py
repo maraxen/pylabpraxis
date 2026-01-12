@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.api.dependencies import get_db
-from praxis.backend.models.pydantic_internals.user import UserResponse
+from praxis.backend.models.domain.user import UserRead as UserResponse
 from praxis.backend.services.user import user_service
 from praxis.backend.utils.auth import (
   ACCESS_TOKEN_EXPIRE_MINUTES,

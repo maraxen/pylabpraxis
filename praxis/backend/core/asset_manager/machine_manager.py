@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING, Any
 
 from pylabrobot.resources import Deck
 
-from praxis.backend.models.orm.machine import MachineOrm, MachineStatusEnum
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.domain.machine import Machine
+from praxis.backend.models.enums import MachineStatusEnum
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.utils.errors import AssetAcquisitionError, AssetReleaseError
 from praxis.backend.utils.logging import get_logger
 
@@ -73,7 +74,7 @@ class MachineManagerMixin:
         msg,
       )
 
-    selected_machine_orm: MachineOrm | None = None
+    selected_machine_model: Machine | None = None
     filters = SearchFilters(
       search_filters={
         "pylabrobot_class_filter": fqn_constraint,
@@ -86,7 +87,7 @@ class MachineManagerMixin:
       filters=filters,
     )
     if in_use_by_this_run_list:
-      selected_machine_orm = in_use_by_this_run_list[0]
+      selected_machine_model = in_use_by_this_run_list[0]
     else:
       filters = SearchFilters(
         search_filters={
@@ -99,12 +100,12 @@ class MachineManagerMixin:
         filters=filters,
       )
       if available_machines_list:
-        selected_machine_orm = available_machines_list[0]
-        if selected_machine_orm:
+        selected_machine_model = available_machines_list[0]
+        if selected_machine_model:
           logger.info(
             "AM_ACQUIRE_DEVICE: Found available machine '%s' (ID: %s).",
-            selected_machine_orm.name,
-            selected_machine_orm.accession_id,
+            selected_machine_model.name,
+            selected_machine_model.accession_id,
           )
       else:
         msg = (
@@ -114,52 +115,52 @@ class MachineManagerMixin:
           msg,
         )
 
-    if not selected_machine_orm:
+    if not selected_machine_model:
       msg = f"Machine selection failed for '{requested_asset_name_in_protocol}'."
       raise AssetAcquisitionError(
         msg,
       )
 
     live_plr_machine = await self.workcell_runtime.initialize_machine(
-      selected_machine_orm,
+      selected_machine_model,
     )
     if not live_plr_machine:
       await self.machine_svc.update_machine_status(
         self.db,
-        selected_machine_orm.accession_id,
+        selected_machine_model.accession_id,
         MachineStatusEnum.ERROR,
         status_details=f"Backend init failed for run {protocol_run_accession_id}.",
       )
-      msg = f"Failed to initialize backend for machine '{selected_machine_orm.name}'."
+      msg = f"Failed to initialize backend for machine '{selected_machine_model.name}'."
       raise AssetAcquisitionError(
         msg,
       )
 
     if (
-      selected_machine_orm.status != MachineStatusEnum.IN_USE
-      or selected_machine_orm.current_protocol_run_accession_id
+      selected_machine_model.status != MachineStatusEnum.IN_USE
+      or selected_machine_model.current_protocol_run_accession_id
       != uuid.UUID(str(protocol_run_accession_id))
     ):
-      updated_machine_orm = await self.machine_svc.update_machine_status(
+      updated_machine_model = await self.machine_svc.update_machine_status(
         self.db,
-        selected_machine_orm.accession_id,
+        selected_machine_model.accession_id,
         MachineStatusEnum.IN_USE,
         current_protocol_run_accession_id=uuid.UUID(str(protocol_run_accession_id)),
         status_details=f"In use by run {protocol_run_accession_id}",
       )
-      if not updated_machine_orm:
-        msg = f"CRITICAL: Failed to update DB status for machine '{selected_machine_orm.name}'."
+      if not updated_machine_model:
+        msg = f"CRITICAL: Failed to update DB status for machine '{selected_machine_model.name}'."
         raise AssetAcquisitionError(
           msg,
         )
-      selected_machine_orm = updated_machine_orm
+      selected_machine_model = updated_machine_model
 
     logger.info(
       "AM_ACQUIRE_MACHINE: Machine '%s' acquired for run '%s'.",
-      selected_machine_orm.name,
+      selected_machine_model.name,
       protocol_run_accession_id,
     )
-    return live_plr_machine, selected_machine_orm.accession_id, "machine"
+    return live_plr_machine, selected_machine_model.accession_id, "machine"
 
   async def release_machine(
     self,

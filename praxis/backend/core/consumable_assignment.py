@@ -20,11 +20,11 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.schedule import (
-  AssetReservationOrm,
-  AssetReservationStatusEnum,
+from praxis.backend.models.domain.schedule import (
+  AssetReservation,
 )
-from praxis.backend.models.pydantic_internals.protocol import AssetRequirementModel
+from praxis.backend.models.domain.protocol import AssetRequirementRead
+from praxis.backend.models.enums import AssetReservationStatusEnum
 from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -86,7 +86,7 @@ class ConsumableAssignmentService:
 
   async def find_compatible_consumable(
     self,
-    requirement: AssetRequirementModel,
+    requirement: AssetRequirementRead,
     workcell_id: str | None = None,
     current_time: datetime | None = None,
   ) -> str | None:
@@ -163,7 +163,7 @@ class ConsumableAssignmentService:
 
   async def auto_assign_consumables(
     self,
-    requirements: list[AssetRequirementModel],
+    requirements: list[AssetRequirementRead],
     existing_assignments: dict[str, str],
     workcell_id: str | None = None,
   ) -> dict[str, str]:
@@ -198,7 +198,7 @@ class ConsumableAssignmentService:
 
     return assignments
 
-  def _is_consumable(self, requirement: AssetRequirementModel) -> bool:
+  def _is_consumable(self, requirement: AssetRequirementRead) -> bool:
     """Check if the requirement is for a consumable resource."""
     type_hint = requirement.type_hint_str.lower()
     consumable_keywords = [
@@ -214,7 +214,7 @@ class ConsumableAssignmentService:
 
   async def _get_candidate_resources(
     self,
-    requirement: AssetRequirementModel,
+    requirement: AssetRequirementRead,
     workcell_id: str | None = None,
   ) -> list[dict[str, Any]]:
     """Get candidate resources that might match the requirement.
@@ -232,13 +232,13 @@ class ConsumableAssignmentService:
 
     # Query resources matching the type
     # This is a simplified query - in production, filter by type columns
-    from praxis.backend.models.orm.resource import ResourceOrm
+    from praxis.backend.models.domain.resource import Resource
 
     type_hint = requirement.type_hint_str.lower()
 
-    stmt = select(ResourceOrm)
+    stmt = select(Resource)
     if workcell_id:
-      stmt = stmt.filter(ResourceOrm.workcell_accession_id == workcell_id)
+      stmt = stmt.filter(Resource.workcell_accession_id == workcell_id)
 
     result = await self.db.execute(stmt)
     all_resources = result.scalars().all()
@@ -270,8 +270,10 @@ class ConsumableAssignmentService:
 
   async def _get_reserved_asset_ids(self) -> set[str]:
     """Get IDs of assets currently reserved."""
-    stmt = select(AssetReservationOrm.asset_accession_id).filter(
-      AssetReservationOrm.status.in_(
+    from praxis.backend.models.domain.schedule import AssetReservation
+
+    stmt = select(AssetReservation.asset_accession_id).filter(
+      AssetReservation.status.in_(
         [
           AssetReservationStatusEnum.PENDING,
           AssetReservationStatusEnum.RESERVED,
@@ -301,7 +303,7 @@ class ConsumableAssignmentService:
   async def _score_candidate(
     self,
     candidate: dict[str, Any],
-    requirement: AssetRequirementModel,
+    requirement: AssetRequirementRead,
     current_time: datetime,
   ) -> CompatibilityScore:
     """Score a candidate resource for compatibility.
@@ -347,7 +349,7 @@ class ConsumableAssignmentService:
   def _score_capacity(
     self,
     candidate: dict[str, Any],
-    requirement: AssetRequirementModel,
+    requirement: AssetRequirementRead,
   ) -> float:
     """Score based on volume capacity matching."""
     props = candidate.get("properties", {})
@@ -381,7 +383,7 @@ class ConsumableAssignmentService:
   def _score_type_match(
     self,
     candidate: dict[str, Any],
-    requirement: AssetRequirementModel,
+    requirement: AssetRequirementRead,
   ) -> float:
     """Score based on how closely the type matches."""
     candidate_fqn = (candidate.get("fqn") or "").lower()

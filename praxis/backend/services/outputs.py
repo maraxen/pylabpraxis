@@ -15,12 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from praxis.backend.models.domain.outputs import (
+  FunctionDataOutput as FunctionDataOutput,
   FunctionDataOutputCreate,
   FunctionDataOutputUpdate,
 )
-from praxis.backend.models.enums.outputs import DataOutputTypeEnum
-from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.enums import DataOutputTypeEnum
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
@@ -43,7 +43,7 @@ log_data_output_errors = partial(
 
 class FunctionDataOutputCRUDService(
   CRUDBase[
-    FunctionDataOutputOrm,
+    FunctionDataOutput,
     FunctionDataOutputCreate,
     FunctionDataOutputUpdate,
   ],
@@ -56,7 +56,7 @@ class FunctionDataOutputCRUDService(
     db: AsyncSession,
     *,
     obj_in: FunctionDataOutputCreate,
-  ) -> FunctionDataOutputOrm:
+  ) -> FunctionDataOutput:
     """Create a new function data output record."""
     data_type_enum = DataOutputTypeEnum(obj_in.data_type)
     log_prefix = f"Data Output (Type: {data_type_enum.value}, Key: '{obj_in.data_key}'):"
@@ -66,27 +66,27 @@ class FunctionDataOutputCRUDService(
     dumped_obj = obj_in.model_dump(
       exclude={"measurement_timestamp", "accession_id", "created_at", "updated_at"},
     )
-    data_output_orm = FunctionDataOutputOrm(
+    data_output_model = FunctionDataOutput(
       **dumped_obj,
       measurement_timestamp=obj_in.measurement_timestamp
       or datetime.datetime.now(datetime.timezone.utc),
     )
 
-    db.add(data_output_orm)
+    db.add(data_output_model)
     await db.flush()
-    await db.refresh(data_output_orm)
+    await db.refresh(data_output_model)
     logger.info(
       "%s Successfully created function data output (ID: %s).",
       log_prefix,
-      data_output_orm.accession_id,
+      data_output_model.accession_id,
     )
-    return data_output_orm
+    return data_output_model
 
   async def get(
     self,
     db: AsyncSession,
     accession_id: UUID,
-  ) -> FunctionDataOutputOrm | None:
+  ) -> FunctionDataOutput | None:
     """Read a function data output by ID."""
     result = await db.execute(select(self.model).filter(self.model.accession_id == accession_id))
 
@@ -97,7 +97,7 @@ class FunctionDataOutputCRUDService(
     db: AsyncSession,
     *,
     filters: SearchFilters,
-  ) -> list[FunctionDataOutputOrm]:
+  ) -> list[FunctionDataOutput]:
     """List function data outputs with filtering."""
     query = select(self.model).options(
       joinedload(self.model.function_call_log),
@@ -127,9 +127,9 @@ class FunctionDataOutputCRUDService(
     self,
     db: AsyncSession,
     *,
-    db_obj: FunctionDataOutputOrm,
+    db_obj: FunctionDataOutput,
     obj_in: FunctionDataOutputUpdate | dict[str, Any],
-  ) -> FunctionDataOutputOrm:
+  ) -> FunctionDataOutput:
     """Update a function data output record."""
     log_prefix = f"Data Output (ID: {db_obj.accession_id}):"
     logger.info("%s Updating function data output.", log_prefix)
@@ -146,14 +146,14 @@ class FunctionDataOutputCRUDService(
     return db_obj
 
   @handle_db_transaction
-  async def remove(self, db: AsyncSession, *, accession_id: UUID) -> FunctionDataOutputOrm | None:
+  async def remove(self, db: AsyncSession, *, accession_id: UUID) -> FunctionDataOutput | None:
     """Delete a function data output record by ID."""
     log_prefix = f"Data Output (ID: {accession_id}):"
     logger.info("%s Deleting function data output.", log_prefix)
 
-    data_output_orm = await super().remove(db, accession_id=accession_id)
-    if not data_output_orm:
+    data_output_model = await super().remove(db, accession_id=accession_id)
+    if not data_output_model:
       logger.warning("%s Data output not found for deletion.", log_prefix)
       return None
     logger.info("%s Successfully deleted data output.", log_prefix)
-    return data_output_orm
+    return data_output_model

@@ -4,7 +4,7 @@ import uuid
 from typing import Any
 
 from praxis.backend.core.protocols.asset_lock_manager import IAssetLockManager
-from praxis.backend.models.pydantic_internals.asset import AcquireAssetLock
+from praxis.backend.models.pydantic_internals.runtime import AcquireAssetLock
 
 
 class AssetLockManager(IAssetLockManager):

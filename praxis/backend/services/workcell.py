@@ -18,9 +18,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from praxis.backend.models.orm.workcell import WorkcellOrm
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.workcell import WorkcellCreate, WorkcellUpdate
+from praxis.backend.models.domain.workcell import (
+  Workcell as Workcell,
+  WorkcellCreate,
+  WorkcellUpdate,
+)
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
@@ -31,27 +34,27 @@ from praxis.backend.utils.db_decorator import handle_db_transaction
 logger = logging.getLogger(__name__)
 
 
-class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
+class WorkcellService(CRUDBase[Workcell, WorkcellCreate, WorkcellUpdate]):
   """Service for workcell-related operations."""
 
   @handle_db_transaction
-  async def create(self, db: AsyncSession, *, obj_in: WorkcellCreate) -> WorkcellOrm:
+  async def create(self, db: AsyncSession, *, obj_in: WorkcellCreate) -> Workcell:
     """Create a new workcell."""
     logger.info("Attempting to create workcell '%s'.", obj_in.name)
 
-    workcell_orm = await super().create(db=db, obj_in=obj_in)
+    workcell_model = await super().create(db=db, obj_in=obj_in)
 
     await db.flush()
     # Refresh with relationships loaded for serialization
-    await db.refresh(workcell_orm, ["machines", "resources", "decks"])
+    await db.refresh(workcell_model, ["machines", "resources", "decks"])
     logger.info(
       "Successfully created workcell '%s' with ID %s.",
       obj_in.name,
-      workcell_orm.accession_id,
+      workcell_model.accession_id,
     )
-    return workcell_orm
+    return workcell_model
 
-  async def get(self, db: AsyncSession, accession_id: uuid.UUID) -> WorkcellOrm | None:
+  async def get(self, db: AsyncSession, accession_id: uuid.UUID) -> Workcell | None:
     """Retrieve a specific workcell by its ID."""
     logger.info("Attempting to retrieve workcell with ID: %s.", accession_id)
     stmt = (
@@ -80,7 +83,7 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
     db: AsyncSession,
     *,
     filters: SearchFilters,
-  ) -> list[WorkcellOrm]:
+  ) -> list[Workcell]:
     """List all workcells with pagination."""
     logger.info("Listing workcells with filters: %s", filters.model_dump_json())
     stmt = (
@@ -105,9 +108,9 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
     self,
     db: AsyncSession,
     *,
-    db_obj: WorkcellOrm,
+    db_obj: Workcell,
     obj_in: WorkcellUpdate | dict[str, Any],
-  ) -> WorkcellOrm:
+  ) -> Workcell:
     """Update an existing workcell."""
     logger.info("Attempting to update workcell with ID: %s.", db_obj.accession_id)
 
@@ -126,20 +129,20 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
     return updated_workcell
 
   @handle_db_transaction
-  async def remove(self, db: AsyncSession, *, accession_id: uuid.UUID) -> WorkcellOrm | None:
+  async def remove(self, db: AsyncSession, *, accession_id: uuid.UUID) -> Workcell | None:
     """Delete a specific workcell by its ID."""
     logger.info("Attempting to delete workcell with ID: %s.", accession_id)
-    workcell_orm = await super().remove(db, accession_id=accession_id)
-    if not workcell_orm:
+    workcell_model = await super().remove(db, accession_id=accession_id)
+    if not workcell_model:
       logger.warning("Workcell with ID %s not found for deletion.", accession_id)
       return None
 
     logger.info(
       "Successfully deleted workcell ID %s: '%s'.",
       accession_id,
-      workcell_orm.name,
+      workcell_model.name,
     )
-    return workcell_orm
+    return workcell_model
 
   async def read_workcell_state(
     self,
@@ -148,13 +151,13 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
   ) -> dict[str, Any] | None:
     """Retrieve the latest JSON-serialized state of a workcell from the database."""
     try:
-      workcell_orm = await db.get(self.model, workcell_accession_id)
-      if workcell_orm and workcell_orm.latest_state_json:
+      workcell_model = await db.get(self.model, workcell_accession_id)
+      if workcell_model and workcell_model.latest_state_json:
         logger.debug(
           "Retrieved workcell state from DB for ID %s.",
           workcell_accession_id,
         )
-        return workcell_orm.latest_state_json
+        return workcell_model.latest_state_json
       logger.info(
         "No state found for workcell ID %s in DB.",
         workcell_accession_id,
@@ -174,26 +177,26 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
     db: AsyncSession,
     workcell_accession_id: uuid.UUID,
     state_json: dict[str, Any],
-  ) -> WorkcellOrm:
-    """Update the latest_state_json for a specific WorkcellOrm entry."""
-    workcell_orm = await db.get(self.model, workcell_accession_id)
-    if not workcell_orm:
-      msg = f"WorkcellOrm with ID {workcell_accession_id} not found for state update."
+  ) -> Workcell:
+    """Update the latest_state_json for a specific Workcell entry."""
+    workcell_model = await db.get(self.model, workcell_accession_id)
+    if not workcell_model:
+      msg = f"Workcell with ID {workcell_accession_id} not found for state update."
       raise ValueError(
         msg,
       )
 
-    workcell_orm.latest_state_json = state_json
-    workcell_orm.last_state_update_time = datetime.datetime.now(
+    workcell_model.latest_state_json = state_json
+    workcell_model.last_state_update_time = datetime.datetime.now(
       datetime.timezone.utc,
     )
-    await db.merge(workcell_orm)
+    await db.merge(workcell_model)
     await db.flush()
     logger.debug(
       "Workcell state for ID %s updated in DB.",
       workcell_accession_id,
     )
-    return workcell_orm
+    return workcell_model
 
 
-workcell_service = WorkcellService(WorkcellOrm)
+workcell_service = WorkcellService(Workcell)

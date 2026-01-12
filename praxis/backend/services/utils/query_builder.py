@@ -11,7 +11,7 @@ from typing import Any, TypeVar
 from sqlalchemy import Select, and_
 from sqlalchemy.orm import InstrumentedAttribute
 
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.utils.db import Base
 
 BaseModel = TypeVar("BaseModel", bound=Base)
@@ -38,14 +38,14 @@ def apply_pagination(query: Select, filters: SearchFilters) -> Select:
 def apply_date_range_filters(
   query: Select,
   filters: SearchFilters,
-  orm_model_timestamp_field: InstrumentedAttribute[datetime] | datetime,
+  model_model_timestamp_field: InstrumentedAttribute[datetime] | datetime,
 ) -> Select:
   """Apply date range filters to a SQLAlchemy query.
 
   Args:
       query: The SQLAlchemy Select statement.
       filters: The SearchFilters object containing date range parameters.
-      orm_model_timestamp_field: The timestamp column of the ORM model to filter on
+      model_model_timestamp_field: The timestamp column of the ORM model to filter on
                                   (e.g., MyModel.created_at).
 
   Returns:
@@ -54,9 +54,9 @@ def apply_date_range_filters(
   """
   conditions = []
   if filters.date_range_start:
-    conditions.append(orm_model_timestamp_field >= filters.date_range_start)
+    conditions.append(model_model_timestamp_field >= filters.date_range_start)
   if filters.date_range_end:
-    conditions.append(orm_model_timestamp_field <= filters.date_range_end)
+    conditions.append(model_model_timestamp_field <= filters.date_range_end)
 
   if conditions:
     query = query.filter(and_(*conditions))
@@ -67,7 +67,7 @@ def apply_date_range_filters(
 def apply_property_filters(
   query: Select,
   filters: SearchFilters,
-  orm_model_properties_field: InstrumentedAttribute[dict[str, Any]] | dict[str, Any] | None,
+  model_model_properties_field: InstrumentedAttribute[dict[str, Any]] | dict[str, Any] | None,
 ) -> Select:
   """Apply key-value property filters to a JSONB column in a SQLAlchemy query.
 
@@ -85,22 +85,22 @@ def apply_property_filters(
   Args:
       query: The SQLAlchemy Select statement.
       filters: The SearchFilters object containing property filters.
-      orm_model_properties_field: The JSONB column of the ORM model
+      model_model_properties_field: The JSONB column of the ORM model
                                   (e.g., MyModel.properties_json).
 
   Returns:
       The modified Select statement with property filters applied.
 
   """
-  if not filters.property_filters or not orm_model_properties_field:
+  if not filters.property_filters or not model_model_properties_field:
     return query
 
   conditions = []
   for key, value in filters.property_filters.items():
     if isinstance(value, dict):
-      conditions.append((key, value) in orm_model_properties_field.items())
+      conditions.append((key, value) in model_model_properties_field.items())
     else:
-      conditions.append(orm_model_properties_field[key].astext == str(value))
+      conditions.append(model_model_properties_field[key].astext == str(value))
 
   if conditions:
     query = query.filter(and_(*conditions))
@@ -111,7 +111,7 @@ def apply_property_filters(
 def apply_specific_id_filters(
   query: Select,
   filters: SearchFilters,
-  orm_model: type[BaseModel],
+  model_model: type[BaseModel],
 ) -> Select:
   """Apply filters for common relationship IDs to a SQLAlchemy query.
 
@@ -121,7 +121,7 @@ def apply_specific_id_filters(
   Args:
       query: The SQLAlchemy Select statement.
       filters: The SearchFilters object containing specific ID filters.
-      orm_model: The ORM model class to which the query applies.
+      model_model: The ORM model class to which the query applies.
 
   Returns:
       The modified Select statement with specific ID filters applied.
@@ -135,8 +135,8 @@ def apply_specific_id_filters(
 
   conditions = []
   for filter_key, filter_value in id_filters.items():
-    if filter_value and hasattr(orm_model, filter_key):
-      conditions.append(getattr(orm_model, filter_key) == filter_value)
+    if filter_value and hasattr(model_model, filter_key):
+      conditions.append(getattr(model_model, filter_key) == filter_value)
 
   if conditions:
     query = query.filter(and_(*conditions))
@@ -146,7 +146,7 @@ def apply_specific_id_filters(
 
 def apply_search_filters(
   query: Select,
-  orm_model: type[BaseModel],
+  model_model: type[BaseModel],
   filters: SearchFilters,
   properties_field: str = "properties_json",
   timestamp_field: str = "timestamp_field",
@@ -158,7 +158,7 @@ def apply_search_filters(
 
   Args:
       query: The SQLAlchemy Select statement.
-      orm_model: The ORM model class to which the query applies.
+      model_model: The ORM model class to which the query applies.
       filters: The SearchFilters object containing various filter parameters.
       properties_field: The name of the JSONB properties field on the ORM model.
       timestamp_field: The name of the timestamp field on the ORM model.
@@ -167,10 +167,10 @@ def apply_search_filters(
       The modified Select statement with all applicable filters applied.
 
   """
-  properties_col = getattr(orm_model, properties_field, None)
-  timestamp_col = getattr(orm_model, timestamp_field, None)
+  properties_col = getattr(model_model, properties_field, None)
+  timestamp_col = getattr(model_model, timestamp_field, None)
 
-  q = apply_specific_id_filters(query, filters, orm_model)
+  q = apply_specific_id_filters(query, filters, model_model)
   if properties_col is not None:
     q = apply_property_filters(q, filters, properties_col)
   if timestamp_col is not None:
@@ -178,12 +178,12 @@ def apply_search_filters(
   return apply_pagination(q, filters)
 
 
-def apply_sorting(query: Select, orm_model: type[BaseModel], sort_by: str | None) -> Select:
+def apply_sorting(query: Select, model_model: type[BaseModel], sort_by: str | None) -> Select:
   """Apply sorting to a SQLAlchemy query based on the sort_by parameter.
 
   Args:
       query: The SQLAlchemy Select statement.
-      orm_model: The ORM model class to which the query applies.
+      model_model: The ORM model class to which the query applies.
       sort_by: The field name to sort by, prefixed with '-' for descending order.
 
   Returns:
@@ -194,13 +194,13 @@ def apply_sorting(query: Select, orm_model: type[BaseModel], sort_by: str | None
     return query
 
   if sort_by.startswith("-"):
-    column = getattr(orm_model, sort_by[1:], None)
+    column = getattr(model_model, sort_by[1:], None)
     if column is None:
       msg = f"Invalid sort field: {sort_by[1:]}"
       raise ValueError(msg)
     query = query.order_by(column.desc())
   else:
-    column = getattr(orm_model, sort_by, None)
+    column = getattr(model_model, sort_by, None)
     if column is None:
       msg = f"Invalid sort field: {sort_by}"
       raise ValueError(msg)

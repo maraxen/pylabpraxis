@@ -12,12 +12,12 @@ from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models.domain.resource import (
+  Resource as Resource,
   ResourceCreate,
   ResourceUpdate,
 )
 from praxis.backend.models.enums.resource import ResourceStatusEnum
-from praxis.backend.models.orm.resource import ResourceOrm
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
@@ -34,7 +34,7 @@ logger = get_logger(__name__)
 UUID = uuid.UUID
 
 
-class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
+class ResourceService(CRUDBase[Resource, ResourceCreate, ResourceUpdate]):
   """Service for resource-related operations."""
 
   @handle_db_transaction
@@ -43,7 +43,7 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
     db: AsyncSession,
     *,
     obj_in: ResourceCreate,
-  ) -> ResourceOrm:
+  ) -> Resource:
     """Create a new resource."""
     logger.info(
       "Attempting to create resource '%s' for parent ID %s.",
@@ -51,30 +51,30 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
       obj_in.parent_accession_id,
     )
 
-    resource_orm = await super().create(db=db, obj_in=obj_in)
+    resource_model = await super().create(db=db, obj_in=obj_in)
 
     if obj_in.plr_state:
-      resource_orm.plr_state = obj_in.plr_state
-      flag_modified(resource_orm, "plr_state")
+      resource_model.plr_state = obj_in.plr_state
+      flag_modified(resource_model, "plr_state")
 
     await db.flush()
     # Refresh with relationships loaded for serialization
     await db.refresh(
-      resource_orm,
+      resource_model,
       ["children", "parent", "resource_definition"],
     )
     logger.info(
       "Successfully created resource '%s' with ID %s.",
-      resource_orm.name,
-      resource_orm.accession_id,
+      resource_model.name,
+      resource_model.accession_id,
     )
-    return resource_orm
+    return resource_model
 
   async def get(
     self,
     db: AsyncSession,
     accession_id: UUID,
-  ) -> ResourceOrm | None:
+  ) -> Resource | None:
     """Retrieve a specific resource by its ID."""
     logger.info("Attempting to retrieve resource with ID: %s.", accession_id)
     stmt = (
@@ -105,7 +105,7 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
     filters: SearchFilters,
     fqn: str | None = None,
     status: str | None = None,
-  ) -> list[ResourceOrm]:
+  ) -> list[Resource]:
     """List all resources, with optional filtering by parent ID."""
     logger.info(
       "Listing resources with filters: %s",
@@ -174,9 +174,9 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
     self,
     db: AsyncSession,
     *,
-    db_obj: ResourceOrm,
+    db_obj: Resource,
     obj_in: ResourceUpdate | dict,
-  ) -> ResourceOrm:
+  ) -> Resource:
     """Update an existing resource."""
     logger.info(
       "Attempting to update resource with ID: %s.",
@@ -222,11 +222,11 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
     db: AsyncSession,
     *,
     accession_id: UUID,
-  ) -> ResourceOrm | None:
+  ) -> Resource | None:
     """Delete a specific resource by its ID."""
     logger.info("Attempting to delete resource with ID: %s.", accession_id)
-    resource_orm = await super().remove(db, accession_id=accession_id)
-    if not resource_orm:
+    resource_model = await super().remove(db, accession_id=accession_id)
+    if not resource_model:
       logger.warning(
         "Resource with ID %s not found for deletion.",
         accession_id,
@@ -236,9 +236,9 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
     logger.info(
       "Successfully deleted resource ID %s: '%s'.",
       accession_id,
-      resource_orm.name,
+      resource_model.name,
     )
-    return resource_orm
+    return resource_model
 
   @handle_db_transaction
   async def update_resource_location_and_status(
@@ -250,7 +250,7 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
     status_details: str | None = None,
     location_machine_accession_id: uuid.UUID | None = None,
     current_deck_position_name: str | None = None,
-  ) -> ResourceOrm | None:
+  ) -> Resource | None:
     """Update the location and status of a resource."""
     resource = await self.get(db, resource_accession_id)
     if not resource:
@@ -271,4 +271,4 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
     )
 
 
-resource_service = ResourceService(ResourceOrm)
+resource_service = ResourceService(Resource)

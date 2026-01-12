@@ -111,17 +111,17 @@ async def _execute_protocol_async(
 
   async with db_session_factory() as db_session:
     try:
-      protocol_run_orm = await protocol_run_service.get(
+      protocol_run_model = await protocol_run_service.get(
         db_session,
         accession_id=protocol_run_id,
       )
-      if not protocol_run_orm:
+      if not protocol_run_model:
         msg = f"Protocol run {protocol_run_id} not found."
         raise ValueError(msg)
 
       await protocol_run_service.update_run_status(
         db=db_session,
-        protocol_run_accession_id=protocol_run_orm.accession_id,
+        protocol_run_accession_id=protocol_run_model.accession_id,
         new_status=ProtocolRunStatusEnum.RUNNING,
         output_data_json=json.dumps(
           {
@@ -132,8 +132,8 @@ async def _execute_protocol_async(
       )
       await db_session.commit()
 
-      result_run_orm = await orchestrator.execute_existing_protocol_run(
-        protocol_run_orm,
+      result_run_model = await orchestrator.execute_existing_protocol_run(
+        protocol_run_model,
         input_parameters,
         validated_initial_state.to_dict() if validated_initial_state else None,
       )
@@ -141,7 +141,7 @@ async def _execute_protocol_async(
       return {
         "success": True,
         "protocol_run_id": str(protocol_run_id),
-        "final_status": result_run_orm.status.value,
+        "final_status": result_run_model.status.value,
         "message": "Protocol executed successfully via Orchestrator.",
       }
     except Exception:

@@ -14,13 +14,24 @@ from praxis.backend.models.domain.schedule import (
   ScheduleEntryUpdate,
 )
 from praxis.backend.models.enums import AssetReservationStatusEnum, ScheduleStatusEnum
-from praxis.backend.models.orm.schedule import AssetReservationOrm, ScheduleEntryOrm
-from praxis.backend.models.pydantic_internals.scheduler import (
-  AssetReservationListResponse,
-  AssetReservationResponse,
+from praxis.backend.models.domain.schedule import AssetReservation, ScheduleEntry
+from praxis.backend.models.domain.schedule import (
+  CancelScheduleRequest,
   ReleaseReservationResponse,
   ResourceReservationStatus,
+  ScheduleAnalysisResponse,
+  ScheduleEntryRead as ScheduleEntryResponse,
+  ScheduleHistoryRead as ScheduleHistoryResponse,
+  ScheduleListFilters,
+  ScheduleListRequest,
+  ScheduleListResponse,
   SchedulePriorityUpdateRequest,
+  ScheduleProtocolRequest,
+  SchedulerMetricsResponse,
+  SchedulerSystemStatusResponse,
+  ScheduleStatusResponse,
+  AssetReservationRead as AssetReservationResponse,
+  AssetReservationCreate as AssetReservationListResponse, # Wait, ListResponse is likely a list container or alias
 )
 from praxis.backend.services.scheduler import schedule_entry_service
 
@@ -48,7 +59,7 @@ async def update_status(
   schedule_entry_accession_id: UUID,
   status_update: ScheduleEntryUpdate,
   db: Annotated[AsyncSession, Depends(get_db)],
-) -> ScheduleEntryOrm:
+) -> ScheduleEntry:
   """Update the status of a schedule entry."""
   if status_update.status is None:
     raise HTTPException(
@@ -81,7 +92,7 @@ async def update_priority(
   schedule_entry_accession_id: UUID,
   priority_update: SchedulePriorityUpdateRequest,
   db: Annotated[AsyncSession, Depends(get_db)],
-) -> ScheduleEntryOrm:
+) -> ScheduleEntry:
   """Update the priority of a schedule entry."""
   updated_entry = await schedule_entry_service.update_priority(
     db=db,
@@ -94,7 +105,7 @@ async def update_priority(
   return updated_entry
 
 
-def _orm_status_to_api_status(orm_status: AssetReservationStatusEnum) -> ResourceReservationStatus:
+def _orm_status_to_api_status(model_status: AssetReservationStatusEnum) -> ResourceReservationStatus:
   """Convert ORM enum to API enum."""
   mapping = {
     AssetReservationStatusEnum.PENDING: ResourceReservationStatus.PENDING,
@@ -104,7 +115,7 @@ def _orm_status_to_api_status(orm_status: AssetReservationStatusEnum) -> Resourc
     AssetReservationStatusEnum.EXPIRED: ResourceReservationStatus.EXPIRED,
     AssetReservationStatusEnum.FAILED: ResourceReservationStatus.FAILED,
   }
-  return mapping.get(orm_status, ResourceReservationStatus.PENDING)
+  return mapping.get(model_status, ResourceReservationStatus.PENDING)
 
 
 @router.get(
@@ -131,12 +142,12 @@ async def list_reservations(
   to see all reservations including released ones.
   """
   # Build query
-  query = select(AssetReservationOrm)
+  query = select(AssetReservation)
 
   # Filter by status unless include_released
   if not include_released:
     query = query.where(
-      AssetReservationOrm.status.in_(
+      AssetReservation.status.in_(
         [
           AssetReservationStatusEnum.PENDING,
           AssetReservationStatusEnum.RESERVED,
@@ -147,10 +158,10 @@ async def list_reservations(
 
   # Filter by asset key if provided
   if asset_key:
-    query = query.where(AssetReservationOrm.redis_lock_key == asset_key)
+    query = query.where(AssetReservation.redis_lock_key == asset_key)
 
   # Order by most recent first
-  query = query.order_by(AssetReservationOrm.created_at.desc())
+  query = query.order_by(AssetReservation.created_at.desc())
 
   result = await db.execute(query)
   reservations = result.scalars().all()
@@ -227,9 +238,9 @@ async def release_reservation(
   if force:
     statuses_to_release.append(AssetReservationStatusEnum.ACTIVE)
 
-  query = select(AssetReservationOrm).where(
-    AssetReservationOrm.redis_lock_key == asset_key,
-    AssetReservationOrm.status.in_(statuses_to_release),
+  query = select(AssetReservation).where(
+    AssetReservation.redis_lock_key == asset_key,
+    AssetReservation.status.in_(statuses_to_release),
   )
 
   result = await db.execute(query)

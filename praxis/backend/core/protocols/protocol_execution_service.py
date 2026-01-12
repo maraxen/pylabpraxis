@@ -3,7 +3,7 @@
 import uuid
 from typing import Any, Protocol, runtime_checkable
 
-from praxis.backend.models.orm.protocol import ProtocolRunOrm
+from praxis.backend.models.domain.protocol import ProtocolRun
 
 
 @runtime_checkable
@@ -18,7 +18,7 @@ class IProtocolExecutionService(Protocol):
     protocol_version: str | None = None,
     commit_hash: str | None = None,
     source_name: str | None = None,
-  ) -> ProtocolRunOrm: ...
+  ) -> ProtocolRun: ...
 
   async def schedule_protocol_execution(
     self,
@@ -28,7 +28,7 @@ class IProtocolExecutionService(Protocol):
     protocol_version: str | None = None,
     commit_hash: str | None = None,
     source_name: str | None = None,
-  ) -> ProtocolRunOrm: ...
+  ) -> ProtocolRun: ...
 
   async def get_protocol_run_status(
     self,

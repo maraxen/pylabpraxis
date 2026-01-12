@@ -5,9 +5,10 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.machine import MachineDefinitionOrm
-from praxis.backend.models.pydantic_internals.machine import (
+from praxis.backend.models.domain.machine import (
+  MachineDefinition as MachineDefinition,
   MachineDefinitionCreate,
+  MachineDefinitionRead as MachineDefinitionResponse,
   MachineDefinitionUpdate,
 )
 from praxis.backend.services.plr_type_base import DiscoverableTypeServiceBase
@@ -25,7 +26,7 @@ logger = get_logger(__name__)
 
 class MachineTypeDefinitionService(
   DiscoverableTypeServiceBase[
-    MachineDefinitionOrm,
+    MachineDefinition,
     MachineDefinitionCreate,
     MachineDefinitionUpdate,
   ],
@@ -58,11 +59,11 @@ class MachineTypeDefinitionService(
     return self._parser
 
   @property
-  def _orm_model(self) -> type[MachineDefinitionOrm]:
+  def _orm_model(self) -> type[MachineDefinition]:
     """The SQLAlchemy ORM model for the type definition."""
-    return MachineDefinitionOrm
+    return MachineDefinition
 
-  async def discover_and_synchronize_type_definitions(self) -> list[MachineDefinitionOrm]:
+  async def discover_and_synchronize_type_definitions(self) -> list[MachineDefinition]:
     """Discover all machine type definitions from pylabrobot and synchronizes with the database.
 
     Uses LibCST-based static analysis for safe, import-free discovery.
@@ -99,7 +100,7 @@ class MachineTypeDefinitionService(
     logger.info("Synchronized %d machine definitions.", len(synced_definitions))
     return synced_definitions
 
-  async def _upsert_definition(self, cls: DiscoveredClass) -> MachineDefinitionOrm:
+  async def _upsert_definition(self, cls: DiscoveredClass) -> MachineDefinition:
     """Create or update a machine definition from discovered class.
 
     Args:
@@ -110,7 +111,7 @@ class MachineTypeDefinitionService(
 
     """
     existing_result = await self.db.execute(
-      select(MachineDefinitionOrm).filter(MachineDefinitionOrm.fqn == cls.fqn),
+      select(MachineDefinition).filter(MachineDefinition.fqn == cls.fqn),
     )
     existing_def = existing_result.scalar_one_or_none()
 
@@ -163,7 +164,7 @@ class MachineTypeDefinitionService(
     ):
       obj_in_data.pop(field, None)
 
-    new_def = MachineDefinitionOrm(**obj_in_data)
+    new_def = MachineDefinition(**obj_in_data)
     self.db.add(new_def)
     logger.debug("Added new machine definition: %s", cls.fqn)
     return new_def
@@ -171,7 +172,7 @@ class MachineTypeDefinitionService(
 
 class MachineTypeDefinitionCRUDService(
   CRUDBase[
-    MachineDefinitionOrm,
+    MachineDefinition,
     MachineDefinitionCreate,
     MachineDefinitionUpdate,
   ],

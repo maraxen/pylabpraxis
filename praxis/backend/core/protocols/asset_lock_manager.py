@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 if TYPE_CHECKING:
   from pydantic import UUID7
 
-  from praxis.backend.models.pydantic_internals.asset import AcquireAssetLock
+  from praxis.backend.models.pydantic_internals.runtime import AcquireAssetLock
 
 
 class IAssetLockManager(Protocol):

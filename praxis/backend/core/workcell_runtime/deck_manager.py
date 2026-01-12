@@ -13,10 +13,10 @@ if TYPE_CHECKING:
 from praxis.backend.core.workcell_runtime.utils import log_workcell_runtime_errors
 from praxis.backend.models import (
   PositioningConfig,
-  ResourceOrm,
+  Resource,
   ResourceStatusEnum,
 )
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.utils.errors import WorkcellRuntimeError
 from praxis.backend.utils.logging import get_logger
 
@@ -31,9 +31,9 @@ class DeckManagerMixin:
   def get_active_deck_accession_id(self, deck: Deck) -> uuid.UUID:
     """Retrieve the ORM ID of an active PyLabRobot Deck instance."""
     runtime = cast("WorkcellRuntime", self)
-    for orm_accession_id, active_deck in runtime._active_decks.items():
+    for model_accession_id, active_deck in runtime._active_decks.items():
       if active_deck is deck:
-        return orm_accession_id
+        return model_accession_id
     msg = f"Deck instance {deck} not found in active decks."
     raise WorkcellRuntimeError(msg)
 
@@ -108,8 +108,8 @@ class DeckManagerMixin:
         )
 
     async with runtime.db_session_factory() as db_session:
-      deck_orm = await runtime.deck_svc.get(db=db_session, accession_id=deck_orm_accession_id)
-      if deck_orm is None:
+      deck_model = await runtime.deck_svc.get(db=db_session, accession_id=deck_orm_accession_id)
+      if deck_model is None:
         msg = f"Deck ORM ID {deck_orm_accession_id} not found in database."
         raise WorkcellRuntimeError(msg)
 
@@ -119,7 +119,7 @@ class DeckManagerMixin:
           db=db_session,
           filters=SearchFilters(
             search_filters={
-              "location_machine_accession_id": deck_orm.accession_id,
+              "location_machine_accession_id": deck_model.accession_id,
               "current_deck_position_name": str(position_accession_id),
             },
           ),
@@ -127,28 +127,28 @@ class DeckManagerMixin:
         for res in existing_resources:
           if res.accession_id != resource_orm_accession_id:
             msg = (
-              f"Position '{position_accession_id}' on deck ID {deck_orm.accession_id} "
+              f"Position '{position_accession_id}' on deck ID {deck_model.accession_id} "
               f"is already occupied by resource '{res.name}' (ID: {res.accession_id})."
             )
             raise WorkcellRuntimeError(msg)
 
-      deck_orm_type_definition_accession_id = deck_orm.deck_type_id
+      deck_orm_type_definition_accession_id = deck_model.deck_type_id
 
       if deck_orm_type_definition_accession_id is None:
         msg = f"Deck ORM ID {deck_orm_accession_id} does not have a valid deck type definition."
         raise WorkcellRuntimeError(msg)
 
-      deck_type_definition_orm = await runtime.deck_type_definition_svc.get(
+      deck_type_definition_model = await runtime.deck_type_definition_svc.get(
         db=db_session,
         accession_id=deck_orm_type_definition_accession_id,
       )
 
-      if deck_type_definition_orm is None:
+      if deck_type_definition_model is None:
         msg = f"Deck type definition for deck ORM ID {deck_orm_accession_id} not found in database."
         raise WorkcellRuntimeError(msg)
 
       positioning_config = PositioningConfig.model_validate(
-        deck_type_definition_orm.positioning_config_json,
+        deck_type_definition_model.positioning_config_json,
       )
 
       final_location_for_plr: Coordinate
@@ -164,7 +164,7 @@ class DeckManagerMixin:
       elif position_accession_id is not None:
         final_location_for_plr = await runtime._get_calculated_location(
           target_deck=target_deck,
-          deck_type_id=deck_type_definition_orm.accession_id,
+          deck_type_id=deck_type_definition_model.accession_id,
           position_accession_id=position_accession_id,
           positioning_config=positioning_config,
         )
@@ -183,14 +183,14 @@ class DeckManagerMixin:
           db=db_session,
           resource_accession_id=resource_orm_accession_id,
           new_status=ResourceStatusEnum.AVAILABLE_ON_DECK,
-          location_machine_accession_id=deck_orm.accession_id,
+          location_machine_accession_id=deck_model.accession_id,
           current_deck_position_name=str(position_accession_id),
         )
         await db_session.commit()
       except Exception as e:  # pylint: disable=broad-except
         msg = (
           f"Error assigning resource '{resource.name}' to  "
-          f"location {final_location_for_plr} on deck ID {deck_orm.accession_id}: {str(e)[:250]}"
+          f"location {final_location_for_plr} on deck ID {deck_model.accession_id}: {str(e)[:250]}"
         )
         raise WorkcellRuntimeError(
           msg,
@@ -258,18 +258,18 @@ class DeckManagerMixin:
     """Construct a dictionary representing the state of a specific deck."""
     runtime = cast("WorkcellRuntime", self)
     async with runtime.db_session_factory() as db_session:
-      deck_orm = await runtime.deck_svc.get(db=db_session, accession_id=deck_orm_accession_id)
+      deck_model = await runtime.deck_svc.get(db=db_session, accession_id=deck_orm_accession_id)
 
-      if deck_orm is None or not hasattr(deck_orm, "id") or deck_orm.accession_id is None:
+      if deck_model is None or not hasattr(deck_model, "id") or deck_model.accession_id is None:
         msg = f"Deck ORM ID {deck_orm_accession_id} not found in database."
         raise WorkcellRuntimeError(msg)
 
       response_positions: list[dict[str, Any]] = []
 
-      resources_on_deck: list[ResourceOrm] = await runtime.resource_svc.get_multi(
+      resources_on_deck: list[Resource] = await runtime.resource_svc.get_multi(
         db=db_session,
         filters=SearchFilters(
-          search_filters={"location_machine_accession_id": deck_orm.accession_id},
+          search_filters={"location_machine_accession_id": deck_model.accession_id},
         ),
       )
 
@@ -334,9 +334,9 @@ class DeckManagerMixin:
           )
 
       return {
-        "deck_accession_id": deck_orm.accession_id,
-        "name": deck_orm.name or f"Deck_{deck_orm.accession_id}",
-        "fqn": deck_orm.fqn,
+        "deck_accession_id": deck_model.accession_id,
+        "name": deck_model.name or f"Deck_{deck_model.accession_id}",
+        "fqn": deck_model.fqn,
         "size_x_mm": deck_size_x,
         "size_y_mm": deck_size_y,
         "size_z_mm": deck_size_z,
@@ -366,7 +366,7 @@ class DeckManagerMixin:
     if positioning_config is None:
       logger.info(
         "No general positioning config for deck type ID %s, "
-        "attempting to find position in DeckPositionDefinitionOrm.",
+        "attempting to find position in DeckPositionDefinition.",
         deck_type_id,
       )
       if isinstance(position_accession_id, str | int | uuid.UUID):

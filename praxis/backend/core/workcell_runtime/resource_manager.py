@@ -14,7 +14,7 @@ from praxis.backend.core.workcell_runtime.utils import (
   get_class_from_fqn,
   log_workcell_runtime_errors,
 )
-from praxis.backend.models import ResourceOrm, ResourceStatusEnum
+from praxis.backend.models import Resource, ResourceStatusEnum
 from praxis.backend.utils.errors import WorkcellRuntimeError
 from praxis.backend.utils.logging import get_logger
 
@@ -30,48 +30,48 @@ class ResourceManagerMixin:
   )
   async def create_or_get_resource(
     self,
-    resource_orm: ResourceOrm,
+    resource_model: Resource,
     resource_definition_fqn: str,
   ) -> Resource:
     """Create or retrieve a live PyLabRobot resource object."""
     runtime = cast("WorkcellRuntime", self)
-    if not hasattr(resource_orm, "id") or resource_orm.accession_id is None:
-      msg = "Invalid resource_orm object passed to create_or_get_resource (no id)."
+    if not hasattr(resource_model, "id") or resource_model.accession_id is None:
+      msg = "Invalid resource_model object passed to create_or_get_resource (no id)."
       raise ValueError(
         msg,
       )
 
-    if resource_orm.accession_id in runtime._active_resources:
+    if resource_model.accession_id in runtime._active_resources:
       logger.info(
         "WorkcellRuntime: Resource '%s' (ID: %s) already active. Returning existing instance.",
-        resource_orm.name,
-        resource_orm.accession_id,
+        resource_model.name,
+        resource_model.accession_id,
       )
-      return runtime._active_resources[resource_orm.accession_id]
+      return runtime._active_resources[resource_model.accession_id]
 
     shared_plr_instance: Machine | Resource | None = None
     if (
-      resource_orm.is_machine
-      and resource_orm.machine_counterpart
-      and resource_orm.machine_counterpart.is_resource
-      and resource_orm.machine_counterpart.resource_counterpart
-      and resource_orm.machine_counterpart.resource_counterpart.accession_id
-      == resource_orm.accession_id
+      resource_model.is_machine
+      and resource_model.machine_counterpart
+      and resource_model.machine_counterpart.is_resource
+      and resource_model.machine_counterpart.resource_counterpart
+      and resource_model.machine_counterpart.resource_counterpart.accession_id
+      == resource_model.accession_id
     ):
-      machine_orm = resource_orm.machine_counterpart
-      if machine_orm.accession_id in runtime._active_machines:
-        shared_plr_instance = runtime._active_machines[machine_orm.accession_id]
+      machine_model = resource_model.machine_counterpart
+      if machine_model.accession_id in runtime._active_machines:
+        shared_plr_instance = runtime._active_machines[machine_model.accession_id]
         logger.info(
           "WorkcellRuntime: Resource '%s' (ID: %s) is linked to active Machine "
           "'%s' (ID: %s). Reusing existing PLR object as the resource instance.",
-          resource_orm.name,
-          resource_orm.accession_id,
-          machine_orm.name,
-          machine_orm.accession_id,
+          resource_model.name,
+          resource_model.accession_id,
+          machine_model.name,
+          machine_model.accession_id,
         )
         if not isinstance(shared_plr_instance, Resource):
           msg = (
-            f"Linked Machine ID {machine_orm.accession_id} is active but its PLR object "
+            f"Linked Machine ID {machine_model.accession_id} is active but its PLR object "
             f"'{type(shared_plr_instance).__name__}' is not a PyLabRobot Resource. "
             f"Cannot use as resource."
           )
@@ -85,73 +85,73 @@ class ResourceManagerMixin:
     else:
       logger.info(
         "Creating new PLR resource '%s' (ID: %s) using definition FQN '%s'.",
-        resource_orm.name,
-        resource_orm.accession_id,
+        resource_model.name,
+        resource_model.accession_id,
         resource_definition_fqn,
       )
 
       try:
         resource_class = get_class_from_fqn(resource_definition_fqn)
-        resource = resource_class(name=resource_orm.name)
+        resource = resource_class(name=resource_model.name)
       except Exception as e:  # pylint: disable=broad-except
         error_message = (
           f"Failed to create PLR resource for "
-          f"'{resource_orm.name}' using FQN '"
+          f"'{resource_model.name}' using FQN '"
           f"{resource_definition_fqn}': {str(e)[:250]}"
         )
-        if hasattr(resource_orm, "id") and resource_orm.accession_id is not None:
+        if hasattr(resource_model, "id") and resource_model.accession_id is not None:
           try:
             async with runtime.db_session_factory() as db_session:
               await runtime.resource_svc.update_resource_location_and_status(
                 db=db_session,
-                resource_accession_id=resource_orm.accession_id,
+                resource_accession_id=resource_model.accession_id,
                 new_status=ResourceStatusEnum.ERROR,
                 status_details=error_message,
               )
               await db_session.commit()
           except Exception as db_error:  # pylint: disable=broad-except
             error_message += (
-              f" Failed to update resource instance ID {resource_orm.accession_id} "
+              f" Failed to update resource instance ID {resource_model.accession_id} "
               f"status to ERROR in DB: {str(db_error)[:250]}"
             )
             raise WorkcellRuntimeError(error_message) from db_error
         raise WorkcellRuntimeError(error_message) from e
 
-    runtime._active_resources[resource_orm.accession_id] = resource
+    runtime._active_resources[resource_model.accession_id] = resource
     runtime._main_workcell.add_asset(resource)
     logger.info(
       "WorkcellRuntime: Resource '%s' (ID: %s) stored in _active_resources and added to main "
       "Workcell.",
-      resource_orm.name,
-      resource_orm.accession_id,
+      resource_model.name,
+      resource_model.accession_id,
     )
 
     if (
-      resource_orm.is_machine
-      and resource_orm.machine_counterpart
-      and resource_orm.machine_counterpart.is_resource
-      and resource_orm.machine_counterpart.resource_counterpart
-      and resource_orm.machine_counterpart.resource_counterpart.accession_id
-      == resource_orm.accession_id
+      resource_model.is_machine
+      and resource_model.machine_counterpart
+      and resource_model.machine_counterpart.is_resource
+      and resource_model.machine_counterpart.resource_counterpart
+      and resource_model.machine_counterpart.resource_counterpart.accession_id
+      == resource_model.accession_id
     ):
-      machine_orm = resource_orm.machine_counterpart
+      machine_model = resource_model.machine_counterpart
       if isinstance(resource, Machine):
-        runtime._active_machines[machine_orm.accession_id] = cast("Machine", resource)
+        runtime._active_machines[machine_model.accession_id] = cast("Machine", resource)
         logger.info(
           "WorkcellRuntime: Resource '%s' (ID: %s) also registered as Machine "
           "'%s' (ID: %s) in _active_machines, sharing the same PLR object.",
-          resource_orm.name,
-          resource_orm.accession_id,
-          machine_orm.name,
-          machine_orm.accession_id,
+          resource_model.name,
+          resource_model.accession_id,
+          machine_model.name,
+          machine_model.accession_id,
         )
       else:
         logger.warning(
           "WorkcellRuntime: Resource '%s' (ID: %s) is flagged as a machine "
           "counterpart, but its PLR object type '%s' is not a PyLabRobot Machine "
           "subclass. It will not be registered in _active_machines.",
-          resource_orm.name,
-          resource_orm.accession_id,
+          resource_model.name,
+          resource_model.accession_id,
           type(resource).__name__,
         )
     return resource
@@ -180,9 +180,9 @@ class ResourceManagerMixin:
   def get_active_resource_accession_id(self, resource: Resource) -> uuid.UUID:
     """Retrieve the ORM ID of an active PyLabRobot resource object."""
     runtime = cast("WorkcellRuntime", self)
-    for orm_accession_id, active_resource in runtime._active_resources.items():
+    for model_accession_id, active_resource in runtime._active_resources.items():
       if active_resource is resource:
-        return orm_accession_id
+        return model_accession_id
     msg = f"Resource instance {resource}"
     raise WorkcellRuntimeError(msg)
 

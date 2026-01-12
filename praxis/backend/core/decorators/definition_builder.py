@@ -2,8 +2,8 @@ import inspect
 import re
 from typing import Any, cast
 
-from praxis.backend.models.pydantic_internals.protocol import (
-  AssetRequirementModel,
+from praxis.backend.models.domain.protocol import (
+  AssetRequirement as AssetRequirementModel,
   DataViewMetadataModel,
   FunctionProtocolDefinitionCreate,
   ParameterMetadataModel,

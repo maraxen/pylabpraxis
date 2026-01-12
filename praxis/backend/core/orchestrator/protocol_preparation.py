@@ -11,8 +11,8 @@ from praxis.backend.core.run_context import PraxisRunContext
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models import (
   FunctionProtocolDefinitionCreate,
-  FunctionProtocolDefinitionOrm,
-  ProtocolRunOrm,
+  FunctionProtocolDefinition,
+  ProtocolRun,
 )
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.state import PraxisState
@@ -36,7 +36,7 @@ class ProtocolPreparationMixin:
     version: str | None = None,
     commit_hash: str | None = None,
     source_name: str | None = None,
-  ) -> FunctionProtocolDefinitionOrm | None:
+  ) -> FunctionProtocolDefinition | None:
     """Retrieve a protocol definition ORM from the database."""
     logger.debug(
       "Fetching protocol ORM: Name='%s', Version='%s', Commit='%s', Source='%s'",
@@ -54,25 +54,25 @@ class ProtocolPreparationMixin:
 
   async def _prepare_protocol_code(
     self,
-    protocol_def_orm: FunctionProtocolDefinitionOrm,
+    protocol_def_model: FunctionProtocolDefinition,
   ) -> tuple[Callable, FunctionProtocolDefinitionCreate]:
     """Load the protocol code from its source using the ProtocolCodeManager."""
-    return await self.protocol_code_manager.prepare_protocol_code(protocol_def_orm)
+    return await self.protocol_code_manager.prepare_protocol_code(protocol_def_model)
 
   async def _initialize_run_context(
     self,
-    protocol_run_orm: ProtocolRunOrm,
+    protocol_run_model: ProtocolRun,
     initial_state_data: dict[str, Any],
     db_session: AsyncSession,
   ) -> PraxisRunContext:
     """Initialize PraxisState and PraxisRunContext for a protocol run."""
-    praxis_state = PraxisState(run_accession_id=protocol_run_orm.accession_id)
+    praxis_state = PraxisState(run_accession_id=protocol_run_model.accession_id)
     if initial_state_data:
       praxis_state.update(initial_state_data)
 
     logger.debug(
       "Initializing PraxisState for run %s with initial data: %s",
-      protocol_run_orm.accession_id,
+      protocol_run_model.accession_id,
       initial_state_data,
     )
 
@@ -88,11 +88,11 @@ class ProtocolPreparationMixin:
     )
     logger.debug(
       "Workcell state snapshot captured and stored in PraxisState for run %s.",
-      protocol_run_orm.accession_id,
+      protocol_run_model.accession_id,
     )
 
     return PraxisRunContext(
-      run_accession_id=protocol_run_orm.accession_id,
+      run_accession_id=protocol_run_model.accession_id,
       canonical_state=praxis_state,
       current_db_session=db_session,
       current_call_log_db_accession_id=None,

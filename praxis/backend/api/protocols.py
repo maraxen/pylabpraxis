@@ -22,11 +22,12 @@ from praxis.backend.models.domain.protocol import (
   ProtocolRunRead,
   ProtocolRunUpdate,
 )
-from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm, ProtocolRunOrm
-from praxis.backend.models.pydantic_internals.protocol import (
+from praxis.backend.models.domain.protocol import (
+  FunctionProtocolDefinition,
   FunctionProtocolDefinitionCreate,
-  FunctionProtocolDefinitionResponse,
+  FunctionProtocolDefinitionRead as FunctionProtocolDefinitionResponse,
   FunctionProtocolDefinitionUpdate,
+  ProtocolRun,
 )
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
@@ -99,7 +100,7 @@ class QueuedRunResponse(BaseModel):
 
 router.include_router(
   create_crud_router(
-    service=ProtocolDefinitionCRUDService(FunctionProtocolDefinitionOrm),
+    service=ProtocolDefinitionCRUDService(FunctionProtocolDefinition),
     prefix="/definitions",
     tags=["Protocol Definitions"],
     create_schema=FunctionProtocolDefinitionCreate,
@@ -165,10 +166,10 @@ async def get_protocol_queue(
     ]
 
     stmt = (
-      select(ProtocolRunOrm)
-      .options(selectinload(ProtocolRunOrm.top_level_protocol_definition))
-      .where(ProtocolRunOrm.status.in_(active_statuses))
-      .order_by(ProtocolRunOrm.created_at.desc())
+      select(ProtocolRun)
+      .options(selectinload(ProtocolRun.top_level_protocol_definition))
+      .where(ProtocolRun.status.in_(active_statuses))
+      .order_by(ProtocolRun.created_at.desc())
     )
     result = await db_session.execute(stmt)
     runs = result.scalars().all()
@@ -189,7 +190,7 @@ async def get_protocol_queue(
 
 router.include_router(
   create_crud_router(
-    service=ProtocolRunService(ProtocolRunOrm),
+    service=ProtocolRunService(ProtocolRun),
     prefix="/runs",
     tags=["Protocol Runs"],
     create_schema=ProtocolRunCreate,
@@ -221,11 +222,11 @@ async def get_protocol_compatibility(
   from sqlalchemy import select
   from sqlalchemy.orm import selectinload
 
-  from praxis.backend.models.orm.machine import MachineOrm
+  from praxis.backend.models.domain.machine import Machine
   from praxis.backend.services.capability_matcher import capability_matcher
 
   # 1. Fetch protocol
-  protocol = await db.get(FunctionProtocolDefinitionOrm, accession_id)
+  protocol = await db.get(FunctionProtocolDefinition, accession_id)
   if not protocol:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
@@ -233,7 +234,7 @@ async def get_protocol_compatibility(
     )
 
   # 2. Fetch all machines with definitions
-  stmt = select(MachineOrm).options(selectinload(MachineOrm.definition))
+  stmt = select(Machine).options(selectinload(Machine.definition))
   result = await db.execute(stmt)
   machines = result.scalars().all()
 
@@ -340,7 +341,7 @@ async def simulate_protocol(
   Returns clear error messages to help fix protocol issues.
   """
   # Fetch protocol definition
-  protocol = await db.get(FunctionProtocolDefinitionOrm, accession_id)
+  protocol = await db.get(FunctionProtocolDefinition, accession_id)
   if not protocol:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
@@ -422,7 +423,7 @@ async def get_simulation_status(
   - Cache validity (version, timestamp)
   - Summary of cached results if available
   """
-  protocol = await db.get(FunctionProtocolDefinitionOrm, accession_id)
+  protocol = await db.get(FunctionProtocolDefinition, accession_id)
   if not protocol:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,

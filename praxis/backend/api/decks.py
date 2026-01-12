@@ -11,7 +11,7 @@ from praxis.backend.models.domain.deck import (
   DeckRead,
   DeckUpdate,
 )
-from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
+from praxis.backend.models.domain.deck import Deck, DeckDefinition
 from praxis.backend.services.deck import DeckService
 from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
 
@@ -19,7 +19,7 @@ router = APIRouter()
 
 router.include_router(
   create_crud_router(
-    service=DeckService(DeckOrm),
+    service=DeckService(Deck),
     prefix="/",
     tags=["Decks"],
     create_schema=DeckCreate,
@@ -30,7 +30,7 @@ router.include_router(
 
 router.include_router(
   create_crud_router(
-    service=DeckTypeDefinitionService(DeckDefinitionOrm),
+    service=DeckTypeDefinitionService(DeckDefinition),
     prefix="/types",
     tags=["Deck Type Definitions"],
     create_schema=DeckDefinitionCreate,

@@ -5,16 +5,16 @@ import importlib
 import uuid
 from typing import TYPE_CHECKING, Any, cast
 
-from pylabrobot.resources import Deck
+from pylabrobot.resources import Deck as PLRDeck
 
-from praxis.backend.models.orm.resource import (
-  ResourceDefinitionOrm,
-  ResourceOrm,
+from praxis.backend.models.domain.resource import (
+  Resource,
+  ResourceDefinition,
   ResourceStatusEnum,
+  ResourceUpdate,
 )
-from praxis.backend.models.pydantic_internals.asset import AcquireAsset
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.resource import ResourceUpdate
+from praxis.backend.models.pydantic_internals.runtime import AcquireAsset
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.utils.errors import AssetAcquisitionError, AssetReleaseError
 from praxis.backend.utils.logging import get_logger
 
@@ -46,45 +46,45 @@ class ResourceManagerMixin:
     fqn: str,
     user_choice_instance_accession_id: uuid.UUID | None,
     property_constraints: dict[str, Any] | None,
-  ) -> ResourceOrm | None:
+  ) -> Resource | None:
     if user_choice_instance_accession_id:
-      instance_orm = await self.resource_svc.get(
+      instance_model = await self.resource_svc.get(
         self.db,
         user_choice_instance_accession_id,
       )
-      if not instance_orm:
+      if not instance_model:
         msg = f"Specified resource ID {user_choice_instance_accession_id} not found."
         raise AssetAcquisitionError(
           msg,
         )
-      if instance_orm.fqn != fqn:
+      if instance_model.fqn != fqn:
         msg = (
-          f"Chosen instance {user_choice_instance_accession_id} (Def: {instance_orm.fqn}) "
+          f"Chosen instance {user_choice_instance_accession_id} (Def: {instance_model.fqn}) "
           f"mismatches constraint {fqn}."
         )
         raise AssetAcquisitionError(
           msg,
         )
-      if instance_orm.status == ResourceStatusEnum.IN_USE:
-        if instance_orm.current_protocol_run_accession_id != uuid.UUID(
+      if instance_model.status == ResourceStatusEnum.IN_USE:
+        if instance_model.current_protocol_run_accession_id != uuid.UUID(
           str(protocol_run_accession_id),
         ):
           msg = f" {user_choice_instance_accession_id} IN_USE by another run."
           raise AssetAcquisitionError(
             msg,
           )
-      elif instance_orm.status not in [
+      elif instance_model.status not in [
         ResourceStatusEnum.AVAILABLE_IN_STORAGE,
         ResourceStatusEnum.AVAILABLE_ON_DECK,
       ]:
         msg = (
           f"Chosen instance {user_choice_instance_accession_id} not available (Status: "
-          f"{instance_orm.status.name})."
+          f"{instance_model.status.name})."
         )
         raise AssetAcquisitionError(
           msg,
         )
-      return instance_orm
+      return instance_model
     filters = SearchFilters(
       search_filters={
         "fqn": fqn,
@@ -126,12 +126,12 @@ class ResourceManagerMixin:
 
   async def _update_resource_acquisition_status(
     self,
-    resource_to_acquire: ResourceOrm,
+    resource_to_acquire: Resource,
     protocol_run_accession_id: uuid.UUID,
     target_deck_resource_accession_id: uuid.UUID | None,
     target_position_name: str | None,
     final_status_details: str,
-  ) -> ResourceOrm:
+  ) -> Resource:
     update_data = ResourceUpdate(
       status=ResourceStatusEnum.IN_USE,
       current_protocol_run_accession_id=protocol_run_accession_id,
@@ -177,11 +177,11 @@ class ResourceManagerMixin:
         msg,
       )
 
-    resource_def_orm = await self.resource_type_definition_svc.get_by_name(
+    resource_def_model = await self.resource_type_definition_svc.get_by_name(
       self.db,
       name=resource_to_acquire.fqn,
     )
-    if not resource_def_orm or not resource_def_orm.fqn:
+    if not resource_def_model or not resource_def_model.fqn:
       update_data = ResourceUpdate(
         status=ResourceStatusEnum.ERROR,
         status_details=f"FQN missing for def {resource_to_acquire.fqn}",
@@ -197,8 +197,8 @@ class ResourceManagerMixin:
       )
 
     live_plr_resource = await self.workcell_runtime.create_or_get_resource(
-      resource_orm=resource_to_acquire,
-      resource_definition_fqn=resource_def_orm.fqn,
+      resource_model=resource_to_acquire,
+      resource_definition_fqn=resource_def_model.fqn,
     )
     if not live_plr_resource:
       update_data = ResourceUpdate(
@@ -218,7 +218,7 @@ class ResourceManagerMixin:
     target_deck_resource_accession_id: uuid.UUID | None = None
     target_position_name: str | None = None
     final_status_details = f"In use by run {resource_data.protocol_run_accession_id}"
-    is_acquiring_a_deck_resource = isinstance(live_plr_resource, Deck)
+    is_acquiring_a_deck_resource = isinstance(live_plr_resource, PLRDeck)
 
     (
       target_deck_resource_accession_id,
@@ -260,20 +260,20 @@ class ResourceManagerMixin:
     )
     return live_plr_resource, resource_to_acquire.accession_id, "resource"
 
-  def _is_deck_resource(self, resource_def_orm: ResourceDefinitionOrm | None) -> bool:
-    if not resource_def_orm or not resource_def_orm.fqn:
+  def _is_deck_resource(self, resource_def_model: ResourceDefinition | None) -> bool:
+    if not resource_def_model or not resource_def_model.fqn:
       return False
     try:
-      module_path, class_name = resource_def_orm.fqn.rsplit(".", 1)
+      module_path, class_name = resource_def_model.fqn.rsplit(".", 1)
       plr_class = getattr(importlib.import_module(module_path), class_name)
-      return issubclass(plr_class, Deck)
+      return issubclass(plr_class, PLRDeck)
     except (ImportError, AttributeError):
       return False
 
   async def _handle_resource_release_location(
     self,
     is_releasing_a_deck_resource: bool,
-    resource_to_release: ResourceOrm,
+    resource_to_release: Resource,
     resource_orm_accession_id: uuid.UUID,
     clear_from_accession_id: uuid.UUID | None,
     clear_from_position_name: str | None,
@@ -333,11 +333,11 @@ class ResourceManagerMixin:
       final_status.name,
     )
 
-    resource_def_orm = await self.resource_type_definition_svc.get_by_name(
+    resource_def_model = await self.resource_type_definition_svc.get_by_name(
       self.db,
       name=resource_to_release.fqn,
     )
-    is_releasing_a_deck_resource = self._is_deck_resource(resource_def_orm)
+    is_releasing_a_deck_resource = self._is_deck_resource(resource_def_model)
 
     (
       clear_from_accession_id,

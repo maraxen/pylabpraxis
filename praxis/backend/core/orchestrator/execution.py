@@ -13,11 +13,11 @@ from praxis.backend.core.protocol_code_manager import ProtocolCodeManager
 from praxis.backend.core.run_context import PraxisRunContext
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models import (
-  FunctionProtocolDefinitionOrm,
-  ProtocolRunOrm,
+  FunctionProtocolDefinition,
+  ProtocolRun,
   ProtocolRunStatusEnum,
 )
-from praxis.backend.models.pydantic_internals.protocol import ProtocolRunCreate
+from praxis.backend.models.domain.protocol import ProtocolRunCreate
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
 from praxis.backend.services.state import PraxisState
@@ -49,11 +49,11 @@ class ExecutionMixin:
 
   async def _handle_pre_execution_checks(
     self,
-    protocol_run_orm: ProtocolRunOrm,
+    protocol_run_model: ProtocolRun,
     db_session: AsyncSession,
   ) -> None:
     """Handle pause/cancel commands before main execution starts."""
-    run_accession_id = protocol_run_orm.accession_id
+    run_accession_id = protocol_run_model.accession_id
     command = await get_control_command(run_accession_id)
 
     if command == "PAUSE":
@@ -62,7 +62,7 @@ class ExecutionMixin:
       if self.protocol_run_service:
         await self.protocol_run_service.update_run_status(
           db_session,
-          protocol_run_orm.accession_id,
+          protocol_run_model.accession_id,
           ProtocolRunStatusEnum.PAUSED,
         )
       await db_session.commit()
@@ -75,7 +75,7 @@ class ExecutionMixin:
           if self.protocol_run_service:
             await self.protocol_run_service.update_run_status(
               db_session,
-              protocol_run_orm.accession_id,
+              protocol_run_model.accession_id,
               ProtocolRunStatusEnum.RUNNING,
             )
           await db_session.commit()
@@ -86,7 +86,7 @@ class ExecutionMixin:
           if self.protocol_run_service:
             await self.protocol_run_service.update_run_status(
               db_session,
-              protocol_run_orm.accession_id,
+              protocol_run_model.accession_id,
               ProtocolRunStatusEnum.CANCELLED,
               output_data_json=json.dumps({"status": "Cancelled by user during pause."}),
             )
@@ -99,7 +99,7 @@ class ExecutionMixin:
       if self.protocol_run_service:
         await self.protocol_run_service.update_run_status(
           db_session,
-          protocol_run_orm.accession_id,
+          protocol_run_model.accession_id,
           ProtocolRunStatusEnum.CANCELLED,
           output_data_json=json.dumps({"status": "Cancelled by user before execution."}),
         )
@@ -109,18 +109,18 @@ class ExecutionMixin:
 
   async def _execute_protocol_main_logic(
     self,
-    protocol_run_orm: ProtocolRunOrm,
-    protocol_def_orm: FunctionProtocolDefinitionOrm,
+    protocol_run_model: ProtocolRun,
+    protocol_def_model: FunctionProtocolDefinition,
     input_parameters: dict[str, Any],
     praxis_state: PraxisState,
     run_context: PraxisRunContext,
     db_session: AsyncSession,
   ) -> tuple[Any, dict[uuid.UUID, Any]]:  # Return result and acquired_assets_info
     """Execute the core protocol logic, including asset acquisition and function call."""
-    run_accession_id = protocol_run_orm.accession_id
+    run_accession_id = protocol_run_model.accession_id
 
     callable_protocol_func, protocol_pydantic_def = await self._prepare_protocol_code(
-      protocol_def_orm,
+      protocol_def_model,
     )
 
     main_workcell_container = self.workcell_runtime.get_main_workcell()
@@ -140,8 +140,8 @@ class ExecutionMixin:
       protocol_run_accession_id=run_accession_id,
     )
 
-    protocol_run_orm.resolved_assets_json = acquired_assets_info
-    await db_session.merge(protocol_run_orm)
+    protocol_run_model.resolved_assets_json = acquired_assets_info
+    await db_session.merge(protocol_run_model)
     await db_session.flush()
 
     # Load deck construction function if specified
@@ -176,7 +176,7 @@ class ExecutionMixin:
     result = await callable_protocol_func(
       **prepared_args,
       __praxis_run_context__=run_context,
-      __function_db_accession_id__=protocol_def_orm.accession_id,
+      __function_db_accession_id__=protocol_def_model.accession_id,
     )
     logger.info(
       "ORCH: Protocol '%s' run %s completed successfully.",
@@ -194,7 +194,7 @@ class ExecutionMixin:
     commit_hash: str | None = None,
     source_name: str | None = None,
     is_simulation: bool = False,
-  ) -> ProtocolRunOrm:
+  ) -> ProtocolRun:
     """Execute a specified protocol.
 
     Args:
@@ -207,7 +207,7 @@ class ExecutionMixin:
         is_simulation: If True, run in simulation mode (no hardware interaction).
 
     Returns:
-        ProtocolRunOrm: The completed protocol run record.
+        ProtocolRun: The completed protocol run record.
 
     """
     input_parameters = input_parameters or {}
@@ -224,7 +224,7 @@ class ExecutionMixin:
     )
 
     async with self.db_session_factory() as db_session:
-      protocol_def_orm = await self._get_protocol_definition_orm_from_db(
+      protocol_def_model = await self._get_protocol_definition_orm_from_db(
         db_session,
         protocol_name,
         protocol_version,
@@ -232,7 +232,7 @@ class ExecutionMixin:
         source_name,
       )
 
-      if not protocol_def_orm or not protocol_def_orm.accession_id:
+      if not protocol_def_model or not protocol_def_model.accession_id:
         error_msg = (
           f"Protocol '{protocol_name}' (v:{protocol_version}, commit:{commit_hash}, "
           f"src:{source_name}) not found or invalid DB ID."
@@ -243,7 +243,7 @@ class ExecutionMixin:
       # Create protocol run record
       run_create = ProtocolRunCreate(
         run_accession_id=run_accession_id,
-        top_level_protocol_definition_accession_id=protocol_def_orm.accession_id,
+        top_level_protocol_definition_accession_id=protocol_def_model.accession_id,
         status=ProtocolRunStatusEnum.PREPARING,
         input_parameters_json=input_parameters,
         initial_state_json=initial_state_data,
@@ -282,7 +282,7 @@ class ExecutionMixin:
       try:
         result, acquired_assets_info = await self._execute_protocol_main_logic(
           protocol_run_db_obj,
-          protocol_def_orm,
+          protocol_def_model,
           input_parameters,
           praxis_state,
           run_context,
@@ -299,7 +299,7 @@ class ExecutionMixin:
       except Exception as e:  # pylint: disable=broad-except
         await self._handle_protocol_execution_error(
           run_accession_id,
-          protocol_def_orm.name,
+          protocol_def_model.name,
           e,
           praxis_state,
           db_session,
@@ -326,30 +326,30 @@ class ExecutionMixin:
 
   async def execute_existing_protocol_run(
     self,
-    protocol_run_orm: ProtocolRunOrm,
+    protocol_run_model: ProtocolRun,
     user_input_params: dict[str, Any] | None = None,
     initial_state_data: dict[str, Any] | None = None,
     is_simulation: bool = False,
-  ) -> ProtocolRunOrm:
+  ) -> ProtocolRun:
     """Execute an existing protocol run (typically called from Celery workers).
 
     Args:
-        protocol_run_orm: Existing protocol run ORM object.
+        protocol_run_model: Existing protocol run ORM object.
         user_input_params: User-provided input parameters.
         initial_state_data: Initial state data for the run.
         is_simulation: If True, run in simulation mode (no hardware interaction).
 
     Returns:
-        ProtocolRunOrm: The completed protocol run record.
+        ProtocolRun: The completed protocol run record.
 
     """
     user_input_params = user_input_params or {}
     initial_state_data = initial_state_data or {}
-    run_accession_id = protocol_run_orm.accession_id
+    run_accession_id = protocol_run_model.accession_id
 
     protocol_name = (
-      protocol_run_orm.top_level_protocol_definition.name
-      if protocol_run_orm.top_level_protocol_definition
+      protocol_run_model.top_level_protocol_definition.name
+      if protocol_run_model.top_level_protocol_definition
       else "Unknown"
     )
     logger.info(
@@ -361,9 +361,9 @@ class ExecutionMixin:
 
     async with self.db_session_factory() as db_session:
       # Refresh the protocol run object and load relationships
-      await db_session.refresh(protocol_run_orm)
+      await db_session.refresh(protocol_run_model)
 
-      if not protocol_run_orm.top_level_protocol_definition:
+      if not protocol_run_model.top_level_protocol_definition:
         error_msg = f"Protocol definition not found for run {run_accession_id}"
         logger.error(error_msg)
         await self.protocol_run_service.update_run_status(
@@ -380,28 +380,28 @@ class ExecutionMixin:
         await db_session.commit()
         raise ValueError(error_msg)
 
-      protocol_def_orm = protocol_run_orm.top_level_protocol_definition
+      protocol_def_model = protocol_run_model.top_level_protocol_definition
 
       # Initialize state and context
       run_context = await self._initialize_run_context(
-        protocol_run_orm,
+        protocol_run_model,
         initial_state_data,
         db_session,
       )
       praxis_state = run_context.canonical_state
 
       # Handle pre-execution commands (PAUSE/CANCEL)
-      await self._handle_pre_execution_checks(protocol_run_orm, db_session)
+      await self._handle_pre_execution_checks(protocol_run_model, db_session)
 
       # Update status to RUNNING if not already cancelled/paused
-      await db_session.refresh(protocol_run_orm)
-      if protocol_run_orm.status in [
+      await db_session.refresh(protocol_run_model)
+      if protocol_run_model.status in [
         ProtocolRunStatusEnum.PREPARING,
         ProtocolRunStatusEnum.QUEUED,
       ]:
         await self.protocol_run_service.update_run_status(
           db_session,
-          protocol_run_orm.accession_id,
+          protocol_run_model.accession_id,
           ProtocolRunStatusEnum.RUNNING,
         )
         await db_session.commit()
@@ -411,8 +411,8 @@ class ExecutionMixin:
 
       try:
         result, acquired_assets_info = await self._execute_protocol_main_logic(
-          protocol_run_orm,
-          protocol_def_orm,
+          protocol_run_model,
+          protocol_def_model,
           user_input_params,
           praxis_state,
           run_context,
@@ -420,7 +420,7 @@ class ExecutionMixin:
         )
         await self.protocol_run_service.update_run_status(
           db_session,
-          protocol_run_orm.accession_id,
+          protocol_run_model.accession_id,
           ProtocolRunStatusEnum.COMPLETED,
           output_data_json=json.dumps(result, default=str),
         )
@@ -429,7 +429,7 @@ class ExecutionMixin:
       except Exception as e:  # pylint: disable=broad-except
         await self._handle_protocol_execution_error(
           run_accession_id,
-          protocol_def_orm.name,
+          protocol_def_model.name,
           e,
           praxis_state,
           db_session,
@@ -437,17 +437,17 @@ class ExecutionMixin:
       finally:
         # The ORM object might be stale after the try/except block, especially
         # if status was updated. We get the latest version before finalizing.
-        final_run_orm = await db_session.get(ProtocolRunOrm, run_accession_id)
-        if final_run_orm:
+        final_run_model = await db_session.get(ProtocolRun, run_accession_id)
+        if final_run_model:
           await self._finalize_protocol_run(
-            final_run_orm,
+            final_run_model,
             praxis_state,
             acquired_assets_info,
             db_session,
           )
         else:  # Should not happen in normal operation
           logger.error(
-            "Could not retrieve ProtocolRunOrm with ID %s for finalization.",
+            "Could not retrieve ProtocolRun with ID %s for finalization.",
             run_accession_id,
           )
 
@@ -461,5 +461,5 @@ class ExecutionMixin:
           )
           await db_session.rollback()
 
-      await db_session.refresh(protocol_run_orm)
-      return protocol_run_orm
+      await db_session.refresh(protocol_run_model)
+      return protocol_run_model

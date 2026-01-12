@@ -14,13 +14,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from praxis.backend.models.domain.outputs import (
+  WellDataOutput as WellDataOutput,
   WellDataOutputCreate,
   WellDataOutputUpdate,
+  FunctionDataOutput as FunctionDataOutput,
 )
-from praxis.backend.models.orm.outputs import (
-  WellDataOutputOrm,
-)
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import apply_search_filters
 from praxis.backend.utils.db_decorator import handle_db_transaction
@@ -47,7 +46,7 @@ log_well_data_errors = partial(
 
 
 class WellDataOutputCRUDService(
-  CRUDBase[WellDataOutputOrm, WellDataOutputCreate, WellDataOutputUpdate],
+  CRUDBase[WellDataOutput, WellDataOutputCreate, WellDataOutputUpdate],
 ):
   """CRUD service for well data outputs."""
 
@@ -57,7 +56,7 @@ class WellDataOutputCRUDService(
     db: AsyncSession,
     *,
     obj_in: WellDataOutputCreate,
-  ) -> WellDataOutputOrm:
+  ) -> WellDataOutput:
     """Create a single well data output."""
     log_prefix = (
       f"Well Data (Plate: {obj_in.plate_resource_accession_id}, Well: {obj_in.well_name}):"
@@ -77,7 +76,7 @@ class WellDataOutputCRUDService(
     )
     num_cols = plate_dimensions["columns"] if plate_dimensions else 12
 
-    well_output = WellDataOutputOrm(
+    well_output = WellDataOutput(
       name=obj_in.well_name + str(obj_in.function_data_output_accession_id),
       function_data_output_accession_id=obj_in.function_data_output_accession_id,
       plate_resource_accession_id=obj_in.plate_resource_accession_id,
@@ -102,7 +101,7 @@ class WellDataOutputCRUDService(
     self,
     db: AsyncSession,
     accession_id: UUID,
-  ) -> WellDataOutputOrm | None:
+  ) -> WellDataOutput | None:
     """Read a well data output by ID."""
     log_prefix = f"Well Data (ID: {accession_id}):"
     logger.info("%s Reading well data output.", log_prefix)
@@ -124,7 +123,7 @@ class WellDataOutputCRUDService(
     db: AsyncSession,
     *,
     filters: SearchFilters,
-  ) -> list[WellDataOutputOrm]:
+  ) -> list[WellDataOutput]:
     """List well data outputs with filtering."""
     log_prefix = "Well Data Outputs:"
     logger.info("%s Listing well data outputs with filters.", log_prefix)
@@ -156,9 +155,9 @@ class WellDataOutputCRUDService(
     self,
     db: AsyncSession,
     *,
-    db_obj: WellDataOutputOrm,
+    db_obj: WellDataOutput,
     obj_in: WellDataOutputUpdate,
-  ) -> WellDataOutputOrm:
+  ) -> WellDataOutput:
     """Update a well data output."""
     log_prefix = f"Well Data (ID: {db_obj.accession_id}):"
     logger.info("%s Updating well data output.", log_prefix)
@@ -175,7 +174,7 @@ class WellDataOutputCRUDService(
     return db_obj
 
   @handle_db_transaction
-  async def remove(self, db: AsyncSession, *, accession_id: UUID) -> WellDataOutputOrm | None:
+  async def remove(self, db: AsyncSession, *, accession_id: UUID) -> WellDataOutput | None:
     """Delete a well data output by ID."""
     log_prefix = f"Well Data (ID: {accession_id}):"
     logger.info("%s Deleting well data output.", log_prefix)
@@ -206,7 +205,7 @@ async def create_well_data_outputs(
   function_data_output_accession_id: UUID,
   plate_resource_accession_id: UUID,
   well_data: dict[str, float],
-) -> list[WellDataOutputOrm]:
+) -> list[WellDataOutput]:
   """Create well-specific data outputs for a plate."""
   log_prefix = f"Well Data Outputs (Plate: {plate_resource_accession_id}):"
   logger.info("%s Creating %d well data outputs.", log_prefix, len(well_data))
@@ -231,7 +230,7 @@ async def create_well_data_outputs(
     # Parse well name to get row/column indices
     row_idx, col_idx = parse_well_name(well_name)
 
-    well_output = WellDataOutputOrm(
+    well_output = WellDataOutput(
       name=well_name + str(function_data_output_accession_id),
       function_data_output_accession_id=function_data_output_accession_id,
       plate_resource_accession_id=plate_resource_accession_id,
@@ -264,7 +263,7 @@ async def create_well_data_outputs_from_flat_array(
   function_data_output_accession_id: UUID,
   plate_resource_accession_id: UUID,
   data_array: list[float],
-) -> list[WellDataOutputOrm]:
+) -> list[WellDataOutput]:
   """Create well-specific data outputs from a flat array of data."""
   log_prefix = f"Well Data Outputs (Plate: {plate_resource_accession_id}):"
   logger.info(
@@ -302,7 +301,7 @@ async def create_well_data_outputs_from_flat_array(
 
     well_name = f"{chr(ord('A') + row_idx)}{col_idx + 1}"
 
-    well_output = WellDataOutputOrm(
+    well_output = WellDataOutput(
       name=well_name + str(function_data_output_accession_id),
       function_data_output_accession_id=function_data_output_accession_id,
       plate_resource_accession_id=plate_resource_accession_id,

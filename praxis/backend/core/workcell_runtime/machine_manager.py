@@ -18,7 +18,7 @@ from praxis.backend.core.workcell_runtime.utils import (
   get_class_from_fqn,
   log_workcell_runtime_errors,
 )
-from praxis.backend.models import MachineOrm, MachineStatusEnum
+from praxis.backend.models import Machine, MachineStatusEnum
 from praxis.backend.utils.errors import WorkcellRuntimeError
 from praxis.backend.utils.logging import get_logger
 
@@ -32,48 +32,48 @@ class MachineManagerMixin:
     prefix="WorkcellRuntime: Error initializing machine",
     suffix=" - Ensure the machine ORM is valid, the class, and machine is connected.",
   )
-  async def initialize_machine(self, machine_orm: MachineOrm) -> Machine:
+  async def initialize_machine(self, machine_model: Machine) -> Machine:
     """Initialize and connects to a machine's PyLabRobot machine/resource."""
     # We assume self is WorkcellRuntime
     runtime = cast("WorkcellRuntime", self)
 
-    if not hasattr(machine_orm, "id") or machine_orm.accession_id is None:
-      msg = "Invalid machine_orm object passed to initialize_machine (no id)."
+    if not hasattr(machine_model, "id") or machine_model.accession_id is None:
+      msg = "Invalid machine_model object passed to initialize_machine (no id)."
       raise WorkcellRuntimeError(
         msg,
       )
 
-    if machine_orm.accession_id in runtime._active_machines:
+    if machine_model.accession_id in runtime._active_machines:
       logger.info(
         "WorkcellRuntime: Machine '%s' (ID: %s) already active. Returning existing instance.",
-        machine_orm.name,
-        machine_orm.accession_id,
+        machine_model.name,
+        machine_model.accession_id,
       )
-      return runtime._active_machines[machine_orm.accession_id]
+      return runtime._active_machines[machine_model.accession_id]
 
     shared_plr_instance: Machine | Resource | None = None
     if (
-      machine_orm.is_resource
-      and machine_orm.resource_counterpart
-      and machine_orm.resource_counterpart.is_machine
-      and machine_orm.resource_counterpart.machine_counterpart
-      and machine_orm.resource_counterpart.machine_counterpart.accession_id
-      == machine_orm.accession_id
+      machine_model.is_resource
+      and machine_model.resource_counterpart
+      and machine_model.resource_counterpart.is_machine
+      and machine_model.resource_counterpart.machine_counterpart
+      and machine_model.resource_counterpart.machine_counterpart.accession_id
+      == machine_model.accession_id
     ):
-      resource_orm = machine_orm.resource_counterpart
-      if resource_orm.accession_id in runtime._active_resources:
-        shared_plr_instance = runtime._active_resources[resource_orm.accession_id]
+      resource_model = machine_model.resource_counterpart
+      if resource_model.accession_id in runtime._active_resources:
+        shared_plr_instance = runtime._active_resources[resource_model.accession_id]
         logger.info(
           "WorkcellRuntime: Machine '%s' (ID: %s) is linked to active Resource "
           " '%s' (ID: %s). Reusing existing PLR object as the machine instance.",
-          machine_orm.name,
-          machine_orm.accession_id,
-          resource_orm.name,
-          resource_orm.accession_id,
+          machine_model.name,
+          machine_model.accession_id,
+          resource_model.name,
+          resource_model.accession_id,
         )
         if not isinstance(shared_plr_instance, Machine):
           msg = (
-            f"Linked Resource ID {resource_orm.accession_id} is active "
+            f"Linked Resource ID {resource_model.accession_id} is active "
             f"but its PLR object  '{type(shared_plr_instance).__name__}' is "
             f"not a valid Machine instance."
           )
@@ -87,14 +87,14 @@ class MachineManagerMixin:
     else:
       logger.info(
         "WorkcellRuntime: Initializing new machine '%s' (ID: %s) using class '%s'.",
-        machine_orm.name,
-        machine_orm.accession_id,
-        machine_orm.fqn,
+        machine_model.name,
+        machine_model.accession_id,
+        machine_model.fqn,
       )
       try:
-        target_class = get_class_from_fqn(machine_orm.fqn)
-        machine_config = machine_orm.properties_json or {}
-        instance_name = machine_orm.name
+        target_class = get_class_from_fqn(machine_model.fqn)
+        machine_config = machine_model.properties_json or {}
+        instance_name = machine_model.name
 
         init_params = machine_config.copy()
         sig = inspect.signature(target_class.__init__)
@@ -131,7 +131,7 @@ class MachineManagerMixin:
 
         if not isinstance(machine_instance, Machine):
           msg = (
-            f"Machine '{machine_orm.name}' initialized, but it is not a valid PyLabRobot Machine "
+            f"Machine '{machine_model.name}' initialized, but it is not a valid PyLabRobot Machine "
             f"instance. Type is {type(machine_instance).__name__}."
           )
           raise TypeError(msg)
@@ -143,70 +143,70 @@ class MachineManagerMixin:
         ):
           logger.info(
             "WorkcellRuntime: Calling setup() for '%s'...",
-            machine_orm.name,
+            machine_model.name,
           )
           try:
             await machine_instance.setup()
           except Exception as e:
             error_message = (
-              f"Failed to call setup() for machine '{machine_orm.name}': {str(e)[:250]}"
+              f"Failed to call setup() for machine '{machine_model.name}': {str(e)[:250]}"
             )
             raise WorkcellRuntimeError(error_message) from e
         else:
           msg = (
-            f"Machine '{machine_orm.name}' does not have a valid setup() method that is callable "
+            f"Machine '{machine_model.name}' does not have a valid setup() method that is callable "
             "and awaitable."
           )
           raise WorkcellRuntimeError(msg)
       except Exception as e:  # pylint: disable=broad-except
         error_message = f"Failed to instantiate or setup machine \
-                '{machine_orm.name}'\
-                (ID: {machine_orm.accession_id}) using class '{machine_orm.fqn}': \
+                '{machine_model.name}'\
+                (ID: {machine_model.accession_id}) using class '{machine_model.fqn}': \
                 {str(e)[:250]}"
         async with runtime.db_session_factory() as db_session:
           await runtime.machine_svc.update_machine_status(
             db_session,
-            machine_orm.accession_id,
+            machine_model.accession_id,
             MachineStatusEnum.ERROR,
             f"Machine init failed: {str(e)[:250]}",
           )
           await db_session.commit()
         raise WorkcellRuntimeError(error_message) from e
 
-    runtime._active_machines[machine_orm.accession_id] = machine_instance
+    runtime._active_machines[machine_model.accession_id] = machine_instance
     runtime._main_workcell.add_asset(machine_instance)
     logger.info(
       "WorkcellRuntime: Machine '%s' (ID: %s) added to main Workcell container.",
-      machine_orm.name,
-      machine_orm.accession_id,
+      machine_model.name,
+      machine_model.accession_id,
     )
 
     if (
-      machine_orm.is_resource
-      and machine_orm.resource_counterpart
-      and machine_orm.resource_counterpart.is_machine
-      and machine_orm.resource_counterpart.machine_counterpart
-      and machine_orm.resource_counterpart.machine_counterpart.accession_id
-      == machine_orm.accession_id
+      machine_model.is_resource
+      and machine_model.resource_counterpart
+      and machine_model.resource_counterpart.is_machine
+      and machine_model.resource_counterpart.machine_counterpart
+      and machine_model.resource_counterpart.machine_counterpart.accession_id
+      == machine_model.accession_id
     ):
-      resource_orm = machine_orm.resource_counterpart
+      resource_model = machine_model.resource_counterpart
       if isinstance(machine_instance, Resource):
-        runtime._active_resources[resource_orm.accession_id] = cast("Resource", machine_instance)
+        runtime._active_resources[resource_model.accession_id] = cast("Resource", machine_instance)
         logger.info(
           "WorkcellRuntime: Machine '%s' (ID: %s) also registered as Resource "
           "'%s' (ID: %s) in _active_resources, sharing the same PLR object.",
-          machine_orm.name,
-          machine_orm.accession_id,
-          resource_orm.name,
-          resource_orm.accession_id,
+          machine_model.name,
+          machine_model.accession_id,
+          resource_model.name,
+          resource_model.accession_id,
         )
       else:
         logger.warning(
           "WorkcellRuntime: Machine '%s' (ID: %s) is flagged as a resource "
           "counterpart, but its PLR object type '%s' is not a PyLabRobot Resource"
           " subclass. It will not be registered in _active_resources.",
-          machine_orm.name,
-          machine_orm.accession_id,
+          machine_model.name,
+          machine_model.accession_id,
           type(machine_instance).__name__,
         )
 
@@ -214,7 +214,7 @@ class MachineManagerMixin:
       machine_deck: Deck = cast("LiquidHandler", machine_instance).deck  # type: ignore
       if not isinstance(machine_deck, Deck):
         msg = (
-          f"Machine '{machine_orm.name}' has a 'deck' attribute, "
+          f"Machine '{machine_model.name}' has a 'deck' attribute, "
           f"but it is not a Deck instance. Type is {type(machine_deck)}."
         )
         raise TypeError(
@@ -224,7 +224,7 @@ class MachineManagerMixin:
       async with runtime.db_session_factory() as db_session:
         deck_orm_entry = await runtime.deck_svc.read_decks_by_machine_id(
           db_session,
-          machine_orm.accession_id,
+          machine_model.accession_id,
         )
 
         if deck_orm_entry and deck_orm_entry.accession_id is not None:
@@ -232,27 +232,27 @@ class MachineManagerMixin:
           runtime._last_initialized_deck_object = machine_deck
           runtime._last_initialized_deck_orm_accession_id = deck_orm_entry.accession_id
           logger.info(
-            "Registered deck (DeckOrm ID: %s, PLR name: '%s') from machine '%s' \
+            "Registered deck (Deck ID: %s, PLR name: '%s') from machine '%s' \
             (ID: %s) to active decks.",
             deck_orm_entry.accession_id,
             machine_deck.name,
-            machine_orm.name,
-            machine_orm.accession_id,
+            machine_model.name,
+            machine_model.accession_id,
           )
         else:
           logger.warning(
-            "Machine '%s' (ID: %s) has a .deck attribute, but no corresponding DeckOrm \
+            "Machine '%s' (ID: %s) has a .deck attribute, but no corresponding Deck \
             entry found with parent_machine_accession_id=%s. Deck not registered in \
               _active_decks.",
-            machine_orm.name,
-            machine_orm.accession_id,
-            machine_orm.accession_id,
+            machine_model.name,
+            machine_model.accession_id,
+            machine_model.accession_id,
           )
 
     async with runtime.db_session_factory() as db_session:
       await runtime.machine_svc.update_machine_status(
         db_session,
-        machine_orm.accession_id,
+        machine_model.accession_id,
         MachineStatusEnum.AVAILABLE,
         "Machine initialized successfully.",
       )
@@ -279,9 +279,9 @@ class MachineManagerMixin:
   def get_active_machine_accession_id(self, machine: Machine) -> uuid.UUID:
     """Retrieve the ORM ID of an active PyLabRobot machine instance."""
     runtime = cast("WorkcellRuntime", self)
-    for orm_accession_id, active_machine in runtime._active_machines.items():
+    for model_accession_id, active_machine in runtime._active_machines.items():
       if active_machine is machine:
-        return orm_accession_id
+        return model_accession_id
     msg = f"Machine instance {machine} not found in active machines."
     raise WorkcellRuntimeError(
       msg,

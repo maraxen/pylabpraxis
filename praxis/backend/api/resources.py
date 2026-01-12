@@ -21,7 +21,7 @@ from praxis.backend.models.domain.resource import (
   ResourceRead,
   ResourceUpdate,
 )
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
+from praxis.backend.models.domain.resource import ResourceDefinition
 from praxis.backend.services.resource import resource_service
 from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionCRUDService
 
@@ -53,15 +53,15 @@ async def get_resource_definition_facets(
 
   # Define facet fields to query
   facet_fields = {
-    "plr_category": ResourceDefinitionOrm.plr_category,
-    "vendor": ResourceDefinitionOrm.vendor,
-    "num_items": ResourceDefinitionOrm.num_items,
-    "plate_type": ResourceDefinitionOrm.plate_type,
-    "well_volume_ul": ResourceDefinitionOrm.well_volume_ul,
-    "tip_volume_ul": ResourceDefinitionOrm.tip_volume_ul,
+    "plr_category": ResourceDefinition.plr_category,
+    "vendor": ResourceDefinition.vendor,
+    "num_items": ResourceDefinition.num_items,
+    "plate_type": ResourceDefinition.plate_type,
+    "well_volume_ul": ResourceDefinition.well_volume_ul,
+    "tip_volume_ul": ResourceDefinition.tip_volume_ul,
   }
 
-  model = ResourceDefinitionOrm
+  model = ResourceDefinition
 
   # Helper to build base query with filters applied
   def build_query(exclude_field: str | None = None):
@@ -112,7 +112,7 @@ async def get_resource_definition_facets(
 # more specific routes are matched first
 router.include_router(
   create_crud_router(
-    service=ResourceTypeDefinitionCRUDService(ResourceDefinitionOrm),
+    service=ResourceTypeDefinitionCRUDService(ResourceDefinition),
     prefix="/definitions",
     tags=["Resource Definitions"],
     create_schema=ResourceDefinitionCreate,

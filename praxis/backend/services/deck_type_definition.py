@@ -2,17 +2,18 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckPositionDefinitionOrm
-from praxis.backend.models.pydantic_internals.deck import (
-  DeckTypeDefinitionCreate,
-  DeckTypeDefinitionUpdate,
+from praxis.backend.models.domain.deck import (
+  DeckDefinition as DeckDefinition,
+  DeckPositionDefinition as DeckPositionDefinition,
+  DeckDefinitionCreate as DeckTypeDefinitionCreate,
+  DeckDefinitionUpdate as DeckTypeDefinitionUpdate,
 )
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.utils.uuid import uuid7
 
 
 class DeckTypeDefinitionService(
-  CRUDBase[DeckDefinitionOrm, DeckTypeDefinitionCreate, DeckTypeDefinitionUpdate],
+  CRUDBase[DeckDefinition, DeckTypeDefinitionCreate, DeckTypeDefinitionUpdate],
 ):
   """Service for managing deck type definitions."""
 
@@ -21,7 +22,7 @@ class DeckTypeDefinitionService(
     db: AsyncSession,
     *,
     obj_in: DeckTypeDefinitionCreate,
-  ) -> DeckDefinitionOrm:
+  ) -> DeckDefinition:
     """Create a new deck type definition."""
     obj_in_data = obj_in.model_dump()
     obj_in_data.pop("accession_id", None)
@@ -45,7 +46,7 @@ class DeckTypeDefinitionService(
         position_definition.pop("updated_at", None)
 
         db_obj.positions.append(
-          DeckPositionDefinitionOrm(
+          DeckPositionDefinition(
             **position_definition,
             deck_type=db_obj,
             deck_type_id=db_obj.accession_id,

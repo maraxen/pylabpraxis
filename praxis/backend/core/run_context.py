@@ -52,7 +52,7 @@ class PraxisRunContext:
   """Current database session for the run, shared across all calls."""
   current_call_log_db_accession_id: uuid.UUID | None = None
   """ID of the current function call log entry, if any.
-  This is set to the ID of the FunctionCallLogOrm entry for the currently executing function
+  This is set to the ID of the FunctionCallLog entry for the currently executing function
   call, or None if not set.
   This is used to track the current call in the run context.
   If this is None, it indicates that the context is not currently associated with a specific
@@ -84,7 +84,7 @@ class PraxisRunContext:
     The sequence counter continues from the current context.
 
     Args:
-      new_parent_call_log_db_accession_id: The ID of the FunctionCallLogOrm entry for the calling
+      new_parent_call_log_db_accession_id: The ID of the FunctionCallLog entry for the calling
       function.
 
     Returns:

@@ -3,13 +3,15 @@
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
-from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
-from praxis.backend.models.pydantic_internals.plr_sync import (
-  PLRTypeDefinitionCreate,
-  PLRTypeDefinitionUpdate,
+from praxis.backend.models.domain.plr_sync import (
+  PLRTypeDefinitionBase as PLRTypeDefinitionModel,
+)
+from praxis.backend.models.domain.machine import (
+  MachineDefinitionCreate as PLRTypeDefinitionCreate,
+  MachineDefinitionUpdate as PLRTypeDefinitionUpdate,
 )
 
-ModelType = TypeVar("ModelType", bound=PLRTypeDefinitionOrm)
+ModelType = TypeVar("ModelType", bound=PLRTypeDefinitionModel)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=PLRTypeDefinitionCreate)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=PLRTypeDefinitionUpdate)
 

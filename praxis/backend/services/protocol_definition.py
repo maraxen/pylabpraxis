@@ -6,20 +6,20 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.protocol import (
-  AssetRequirementOrm,
-  FileSystemProtocolSourceOrm,
-  FunctionProtocolDefinitionOrm,
-  ParameterDefinitionOrm,
-  ProtocolSourceRepositoryOrm,
-)
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.protocol import (
-  AssetRequirementModel,
+from praxis.backend.models.domain.protocol import (
+  AssetRequirement as AssetRequirement,
+  AssetRequirement as AssetRequirementModel,
+  FunctionProtocolDefinition as FunctionProtocolDefinition,
+  ParameterDefinition as ParameterDefinition,
+  ParameterMetadataModel,
   FunctionProtocolDefinitionCreate,
   FunctionProtocolDefinitionUpdate,
-  ParameterMetadataModel,
 )
+from praxis.backend.models.domain.protocol_source import (
+  FileSystemProtocolSource as FileSystemProtocolSource,
+  ProtocolSourceRepository as ProtocolSourceRepository,
+)
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.utils.db_decorator import handle_db_transaction
 from praxis.backend.utils.logging import get_logger
@@ -29,7 +29,7 @@ logger = get_logger(__name__)
 
 class ProtocolDefinitionCRUDService(
   CRUDBase[
-    FunctionProtocolDefinitionOrm,
+    FunctionProtocolDefinition,
     FunctionProtocolDefinitionCreate,
     FunctionProtocolDefinitionUpdate,
   ],
@@ -40,7 +40,7 @@ class ProtocolDefinitionCRUDService(
     self,
     db: AsyncSession,
     accession_id: Any,
-  ) -> FunctionProtocolDefinitionOrm | None:
+  ) -> FunctionProtocolDefinition | None:
     """Get a single protocol definition with eager loaded relationships.
 
     Overrides base class to ensure parameters and assets are loaded.
@@ -62,7 +62,7 @@ class ProtocolDefinitionCRUDService(
 
   def _update_parameters(
     self,
-    protocol_def: FunctionProtocolDefinitionOrm,
+    protocol_def: FunctionProtocolDefinition,
     parameters: list[ParameterMetadataModel] | list[dict[str, Any]],
   ) -> None:
     """Update parameters for a protocol definition (replace all)."""
@@ -84,19 +84,19 @@ class ProtocolDefinitionCRUDService(
       if "itemized_spec" in param_dict:
         param_dict["itemized_spec_json"] = param_dict.pop("itemized_spec")
 
-      param_orm = ParameterDefinitionOrm(
+      param_model = ParameterDefinition(
         protocol_definition_accession_id=protocol_def.accession_id,
         protocol_definition=protocol_def,
         **param_dict,
       )
-      new_params.append(param_orm)
+      new_params.append(param_model)
 
     # Replace existing collection
     protocol_def.parameters = new_params
 
   def _update_assets(
     self,
-    protocol_def: FunctionProtocolDefinitionOrm,
+    protocol_def: FunctionProtocolDefinition,
     assets: list[AssetRequirementModel] | list[dict[str, Any]],
   ) -> None:
     """Update assets for a protocol definition (replace all)."""
@@ -116,12 +116,12 @@ class ProtocolDefinitionCRUDService(
       # Remove any pydantic-only fields not in ORM
       asset_dict.pop("ui_hints", None)
 
-      asset_orm = AssetRequirementOrm(
+      asset_model = AssetRequirement(
         protocol_definition_accession_id=protocol_def.accession_id,
         protocol_definition=protocol_def,
         **asset_dict,
       )
-      new_assets.append(asset_orm)
+      new_assets.append(asset_model)
 
     # Replace existing collection
     protocol_def.assets = new_assets
@@ -132,7 +132,7 @@ class ProtocolDefinitionCRUDService(
     db: AsyncSession,
     *,
     obj_in: FunctionProtocolDefinitionCreate,
-  ) -> FunctionProtocolDefinitionOrm:
+  ) -> FunctionProtocolDefinition:
     """Create a new protocol definition.
 
     Handles relationship lookups for source_repository and file_system_source.
@@ -143,8 +143,8 @@ class ProtocolDefinitionCRUDService(
     # Look up or create source repository
     source_repository = None
     if obj_in.source_repository_name:
-      stmt = select(ProtocolSourceRepositoryOrm).filter(
-        ProtocolSourceRepositoryOrm.name == obj_in.source_repository_name,
+      stmt = select(ProtocolSourceRepository).filter(
+        ProtocolSourceRepository.name == obj_in.source_repository_name,
       )
       result = await db.execute(stmt)
       source_repository = result.scalar_one_or_none()
@@ -154,7 +154,7 @@ class ProtocolDefinitionCRUDService(
           "Source repository '%s' not found, creating default",
           obj_in.source_repository_name,
         )
-        source_repository = ProtocolSourceRepositoryOrm(
+        source_repository = ProtocolSourceRepository(
           name=obj_in.source_repository_name,
           git_url=f"https://github.com/default/{obj_in.source_repository_name}.git",
         )
@@ -164,8 +164,8 @@ class ProtocolDefinitionCRUDService(
     # Look up or create file system source
     file_system_source = None
     if obj_in.file_system_source_name:
-      stmt = select(FileSystemProtocolSourceOrm).filter(
-        FileSystemProtocolSourceOrm.name == obj_in.file_system_source_name,
+      stmt = select(FileSystemProtocolSource).filter(
+        FileSystemProtocolSource.name == obj_in.file_system_source_name,
       )
       result = await db.execute(stmt)
       file_system_source = result.scalar_one_or_none()
@@ -175,7 +175,7 @@ class ProtocolDefinitionCRUDService(
           "File system source '%s' not found, creating default",
           obj_in.file_system_source_name,
         )
-        file_system_source = FileSystemProtocolSourceOrm(
+        file_system_source = FileSystemProtocolSource(
           name=obj_in.file_system_source_name,
           base_path="/default/protocols",
         )
@@ -187,28 +187,28 @@ class ProtocolDefinitionCRUDService(
       logger.info("No sources provided, checking/creating defaults for testing")
 
       # Check if default repo exists
-      repo_stmt = select(ProtocolSourceRepositoryOrm).filter(
-        ProtocolSourceRepositoryOrm.name == "default_test_repo",
+      repo_stmt = select(ProtocolSourceRepository).filter(
+        ProtocolSourceRepository.name == "default_test_repo",
       )
       repo_result = await db.execute(repo_stmt)
       source_repository = repo_result.scalar_one_or_none()
 
       if not source_repository:
-        source_repository = ProtocolSourceRepositoryOrm(
+        source_repository = ProtocolSourceRepository(
           name="default_test_repo",
           git_url="https://github.com/test/default.git",
         )
         db.add(source_repository)
 
       # Check if default fs source exists
-      fs_stmt = select(FileSystemProtocolSourceOrm).filter(
-        FileSystemProtocolSourceOrm.name == "default_test_fs",
+      fs_stmt = select(FileSystemProtocolSource).filter(
+        FileSystemProtocolSource.name == "default_test_fs",
       )
       fs_result = await db.execute(fs_stmt)
       file_system_source = fs_result.scalar_one_or_none()
 
       if not file_system_source:
-        file_system_source = FileSystemProtocolSourceOrm(
+        file_system_source = FileSystemProtocolSource(
           name="default_test_fs",
           base_path="/test/protocols",
         )
@@ -234,7 +234,7 @@ class ProtocolDefinitionCRUDService(
     # so we don't need manual mapping for hardware_requirements_json or data_views_json
     # if they are already correctly named in the dict.
 
-    protocol_def = FunctionProtocolDefinitionOrm(
+    protocol_def = FunctionProtocolDefinition(
       **protocol_def_data,
       source_repository_accession_id=source_repository.accession_id if source_repository else None,
       file_system_source_accession_id=file_system_source.accession_id
@@ -281,9 +281,9 @@ class ProtocolDefinitionCRUDService(
     self,
     db: AsyncSession,
     *,
-    db_obj: FunctionProtocolDefinitionOrm,
+    db_obj: FunctionProtocolDefinition,
     obj_in: FunctionProtocolDefinitionUpdate,
-  ) -> FunctionProtocolDefinitionOrm:
+  ) -> FunctionProtocolDefinition:
     """Update a protocol definition with eager loaded relationships."""
     # 1. Separate relationship data from scalar data
     update_data = obj_in.model_dump(exclude_unset=True)
@@ -341,7 +341,7 @@ class ProtocolDefinitionCRUDService(
     name: str,
     version: str | None = None,
     commit_hash: str | None = None,
-  ) -> FunctionProtocolDefinitionOrm | None:
+  ) -> FunctionProtocolDefinition | None:
     """Retrieve a protocol definition by name and other optional criteria."""
     stmt = select(self.model).filter(self.model.name == name)
     if version:
@@ -355,7 +355,7 @@ class ProtocolDefinitionCRUDService(
     self,
     db: AsyncSession,
     fqn: str,
-  ) -> FunctionProtocolDefinitionOrm | None:
+  ) -> FunctionProtocolDefinition | None:
     """Retrieve a protocol definition by its fully qualified name."""
     stmt = select(self.model).filter(self.model.fqn == fqn)
     result = await db.execute(stmt)
@@ -366,7 +366,7 @@ class ProtocolDefinitionCRUDService(
     db: AsyncSession,
     *,
     filters: SearchFilters,
-  ) -> list[FunctionProtocolDefinitionOrm]:
+  ) -> list[FunctionProtocolDefinition]:
     """List protocol definitions with eager loaded relationships."""
     from sqlalchemy.orm import selectinload
 

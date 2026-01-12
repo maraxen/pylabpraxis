@@ -1,4 +1,4 @@
-"""Make ResourceOrm.resource_definition_accession_id nullable.
+"""Make Resource.resource_definition_accession_id nullable.
 
 Revision ID: 3a1fe0851e06
 Revises:

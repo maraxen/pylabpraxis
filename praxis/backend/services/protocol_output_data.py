@@ -11,10 +11,11 @@ from uuid import UUID
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.outputs import (
-  FunctionDataOutputOrm,
+from praxis.backend.models.domain.outputs import (
+  FunctionDataOutput as FunctionDataOutput,
+  WellDataOutput as WellDataOutput,
+  ProtocolRunDataSummary,
 )
-from praxis.backend.models.pydantic_internals.outputs import ProtocolRunDataSummary
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
 logger = get_logger(__name__)
@@ -43,24 +44,24 @@ async def read_protocol_run_data_summary(
 
   """
   total_count_result = await db.execute(
-    select(func.count(FunctionDataOutputOrm.accession_id)).filter(
-      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
+    select(func.count(FunctionDataOutput.accession_id)).filter(
+      FunctionDataOutput.protocol_run_accession_id == protocol_run_accession_id,
     ),
   )
   total_data_outputs = total_count_result.scalar()
 
   data_types_result = await db.execute(
-    select(FunctionDataOutputOrm.data_type.distinct()).filter(
-      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
+    select(FunctionDataOutput.data_type.distinct()).filter(
+      FunctionDataOutput.protocol_run_accession_id == protocol_run_accession_id,
     ),
   )
   data_types = [dt.value for dt in data_types_result.scalars().all()]
 
   machines_result = await db.execute(
-    select(FunctionDataOutputOrm.machine_accession_id.distinct()).filter(
+    select(FunctionDataOutput.machine_accession_id.distinct()).filter(
       and_(
-        FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
-        FunctionDataOutputOrm.machine_accession_id.is_not(None),
+        FunctionDataOutput.protocol_run_accession_id == protocol_run_accession_id,
+        FunctionDataOutput.machine_accession_id.is_not(None),
       ),
     ),
   )
@@ -68,10 +69,10 @@ async def read_protocol_run_data_summary(
 
   # Get unique resource
   resource_result = await db.execute(
-    select(FunctionDataOutputOrm.resource_accession_id.distinct()).filter(
+    select(FunctionDataOutput.resource_accession_id.distinct()).filter(
       and_(
-        FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
-        FunctionDataOutputOrm.resource_accession_id.is_not(None),
+        FunctionDataOutput.protocol_run_accession_id == protocol_run_accession_id,
+        FunctionDataOutput.resource_accession_id.is_not(None),
       ),
     ),
   )
@@ -80,18 +81,18 @@ async def read_protocol_run_data_summary(
   # Get timeline of data capture (simplified)
   timeline_result = await db.execute(
     select(
-      FunctionDataOutputOrm.measurement_timestamp,
-      FunctionDataOutputOrm.data_type,
-      func.count(FunctionDataOutputOrm.accession_id),
+      FunctionDataOutput.measurement_timestamp,
+      FunctionDataOutput.data_type,
+      func.count(FunctionDataOutput.accession_id),
     )
     .filter(
-      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
+      FunctionDataOutput.protocol_run_accession_id == protocol_run_accession_id,
     )
     .group_by(
-      FunctionDataOutputOrm.measurement_timestamp,
-      FunctionDataOutputOrm.data_type,
+      FunctionDataOutput.measurement_timestamp,
+      FunctionDataOutput.data_type,
     )
-    .order_by(FunctionDataOutputOrm.measurement_timestamp),
+    .order_by(FunctionDataOutput.measurement_timestamp),
   )
 
   data_timeline = [
@@ -102,13 +103,13 @@ async def read_protocol_run_data_summary(
   # Get file attachments
   files_result = await db.execute(
     select(
-      FunctionDataOutputOrm.file_path,
-      FunctionDataOutputOrm.file_size_bytes,
-      FunctionDataOutputOrm.data_type,
+      FunctionDataOutput.file_path,
+      FunctionDataOutput.file_size_bytes,
+      FunctionDataOutput.data_type,
     ).filter(
       and_(
-        FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
-        FunctionDataOutputOrm.file_path.is_not(None),
+        FunctionDataOutput.protocol_run_accession_id == protocol_run_accession_id,
+        FunctionDataOutput.file_path.is_not(None),
       ),
     ),
   )

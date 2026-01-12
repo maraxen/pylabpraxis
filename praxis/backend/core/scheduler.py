@@ -8,15 +8,15 @@ from typing import Any, Protocol
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from praxis.backend.models.enums.asset import AssetReservationStatusEnum, AssetType
-from praxis.backend.models.orm.protocol import (
-  FunctionProtocolDefinitionOrm,
-  ProtocolRunStatusEnum,
+from praxis.backend.models.enums import AssetReservationStatusEnum, AssetType, ProtocolRunStatusEnum
+from praxis.backend.models.domain.protocol import (
+  FunctionProtocolDefinition,
+  ProtocolRun,
 )
-from praxis.backend.models.orm.schedule import AssetReservationOrm
-from praxis.backend.models.pydantic_internals.protocol import (
+from praxis.backend.models.domain.schedule import AssetReservation
+from praxis.backend.models.domain.protocol import (
   AssetConstraintsModel,
-  AssetRequirementModel,
+  AssetRequirement as AssetRequirementModel,
   LocationConstraintsModel,
   ProtocolRunUpdate,
 )
@@ -82,16 +82,16 @@ class ProtocolScheduler:
     self.protocol_run_service = protocol_run_service
     self.protocol_definition_service = protocol_definition_service
 
-    # In-memory cache for active schedules (also persisted via ScheduleEntryOrm)
+    # In-memory cache for active schedules (also persisted via ScheduleEntry)
     self._active_schedules: dict[uuid.UUID, ScheduleEntry] = {}
-    # Asset reservations are now persisted in the database via AssetReservationOrm
+    # Asset reservations are now persisted in the database via AssetReservation
     # The in-memory dict is kept as a cache for performance but is no longer the source of truth
     self._asset_reservations_cache: dict[str, set[uuid.UUID]] = {}
     logger.info("ProtocolScheduler initialized with database-backed reservations.")
 
   async def analyze_protocol_requirements(
     self,
-    protocol_def_orm: FunctionProtocolDefinitionOrm,
+    protocol_def_model: FunctionProtocolDefinition,
     _user_params: dict[str, Any],
     workcell_id: str | None = None,
   ) -> list[RuntimeAssetRequirement]:
@@ -101,7 +101,7 @@ class ProtocolScheduler:
     the ConsumableAssignmentService when available.
 
     Args:
-        protocol_def_orm: The protocol definition ORM object.
+        protocol_def_model: The protocol definition ORM object.
         _user_params: User-provided parameters (reserved for future use).
         workcell_id: Optional workcell to constrain asset search.
 
@@ -113,13 +113,13 @@ class ProtocolScheduler:
 
     logger.info(
       "Analyzing asset requirements for protocol: %s v%s",
-      protocol_def_orm.name,
-      protocol_def_orm.version,
+      protocol_def_model.name,
+      protocol_def_model.version,
     )
 
     requirements: list[RuntimeAssetRequirement] = []
 
-    for asset_def in protocol_def_orm.assets:
+    for asset_def in protocol_def_model.assets:
       asset_requirement_model = AssetRequirementModel.model_validate(asset_def)
       requirement = RuntimeAssetRequirement(
         asset_definition=asset_requirement_model,
@@ -134,10 +134,10 @@ class ProtocolScheduler:
         asset_def.actual_type_str,
       )
 
-    if protocol_def_orm.preconfigure_deck and protocol_def_orm.deck_param_name:
+    if protocol_def_model.preconfigure_deck and protocol_def_model.deck_param_name:
       deck_asset_requirement = AssetRequirementModel(
         accession_id=uuid7(),
-        name=protocol_def_orm.deck_param_name,
+        name=protocol_def_model.deck_param_name,
         fqn="pylabrobot.resources.Deck",
         type_hint_str="pylabrobot.resources.Deck",
         optional=False,
@@ -151,7 +151,7 @@ class ProtocolScheduler:
         priority=1,
       )
       requirements.append(deck_requirement)
-      logger.debug("Added deck requirement: %s", protocol_def_orm.deck_param_name)
+      logger.debug("Added deck requirement: %s", protocol_def_model.deck_param_name)
 
     # Attempt to auto-assign consumables
     async with self.db_session_factory() as db_session:
@@ -189,7 +189,7 @@ class ProtocolScheduler:
     """Reserve assets for a protocol run.
 
     This method checks the database for existing active reservations and creates
-    new AssetReservationOrm records for each required asset. Reservations are
+    new AssetReservation records for each required asset. Reservations are
     persisted to survive server restarts.
 
     Args:
@@ -211,7 +211,7 @@ class ProtocolScheduler:
       protocol_run_id,
     )
 
-    created_reservations: list[AssetReservationOrm] = []
+    created_reservations: list[AssetReservation] = []
 
     async def _do_reserve(session: AsyncSession) -> bool:
       nonlocal created_reservations
@@ -239,9 +239,9 @@ class ProtocolScheduler:
             raise AssetAcquisitionError(error_msg)
 
         # Also check database for existing active reservations (in case cache is stale)
-        existing_query = select(AssetReservationOrm).where(
-          AssetReservationOrm.redis_lock_key == asset_key,
-          AssetReservationOrm.status.in_(
+        existing_query = select(AssetReservation).where(
+          AssetReservation.redis_lock_key == asset_key,
+          AssetReservation.status.in_(
             [
               AssetReservationStatusEnum.PENDING,
               AssetReservationStatusEnum.ACTIVE,
@@ -274,7 +274,7 @@ class ProtocolScheduler:
 
         # Create new reservation
         reservation_id = uuid7()
-        reservation = AssetReservationOrm(
+        reservation = AssetReservation(
           name=f"reservation_{requirement.asset_definition.name}_{reservation_id.hex[:8]}",
           protocol_run_accession_id=protocol_run_id,
           schedule_entry_accession_id=schedule_entry_id or protocol_run_id,
@@ -344,10 +344,10 @@ class ProtocolScheduler:
     async def _do_release(session: AsyncSession) -> None:
       for asset_key in asset_keys:
         # Find and update the reservation in the database
-        query = select(AssetReservationOrm).where(
-          AssetReservationOrm.redis_lock_key == asset_key,
-          AssetReservationOrm.protocol_run_accession_id == protocol_run_id,
-          AssetReservationOrm.status.in_(
+        query = select(AssetReservation).where(
+          AssetReservation.redis_lock_key == asset_key,
+          AssetReservation.protocol_run_accession_id == protocol_run_id,
+          AssetReservation.status.in_(
             [
               AssetReservationStatusEnum.PENDING,
               AssetReservationStatusEnum.ACTIVE,
@@ -401,24 +401,24 @@ class ProtocolScheduler:
     try:
       async with self.db_session_factory() as db_session:
         # Fetch protocol run within this session
-        protocol_run_orm = await self.protocol_run_service.get(
+        protocol_run_model = await self.protocol_run_service.get(
           db_session,
           accession_id=protocol_run_id,
         )
 
-        if not protocol_run_orm:
+        if not protocol_run_model:
           logger.error("Protocol run %s not found", protocol_run_id)
           return False
 
         protocol_def = await self.protocol_definition_service.get(
           db=db_session,
-          accession_id=protocol_run_orm.top_level_protocol_definition_accession_id,
+          accession_id=protocol_run_model.top_level_protocol_definition_accession_id,
         )
 
         if not protocol_def:
           logger.error(
             "Protocol definition not found for run %s",
-            protocol_run_orm.accession_id,
+            protocol_run_model.accession_id,
           )
           return False
 
@@ -428,16 +428,16 @@ class ProtocolScheduler:
         )
 
         try:
-          await self.reserve_assets(requirements, protocol_run_orm.accession_id)
+          await self.reserve_assets(requirements, protocol_run_model.accession_id)
         except AssetAcquisitionError as e:
           logger.error(
             "Failed to reserve assets for run %s: %s",
-            protocol_run_orm.accession_id,
+            protocol_run_model.accession_id,
             e,
           )
           await self.protocol_run_service.update(
             db=db_session,
-            db_obj=protocol_run_orm,
+            db_obj=protocol_run_model,
             obj_in=ProtocolRunUpdate(
               status=ProtocolRunStatusEnum.FAILED,
               output_data_json={
@@ -450,16 +450,16 @@ class ProtocolScheduler:
           raise
 
         schedule_entry = ScheduleEntry(
-          protocol_run_id=protocol_run_orm.accession_id,
+          protocol_run_id=protocol_run_model.accession_id,
           protocol_name=protocol_def.name,
           required_assets=requirements,
           estimated_duration_ms=None,
         )
-        self._active_schedules[protocol_run_orm.accession_id] = schedule_entry
+        self._active_schedules[protocol_run_model.accession_id] = schedule_entry
 
         await self.protocol_run_service.update(
           db=db_session,
-          db_obj=protocol_run_orm,
+          db_obj=protocol_run_model,
           obj_in=ProtocolRunUpdate(
             status=ProtocolRunStatusEnum.QUEUED,
             output_data_json={
@@ -471,7 +471,7 @@ class ProtocolScheduler:
         await db_session.commit()
 
         success = await self._queue_execution_task(
-          protocol_run_orm.accession_id,
+          protocol_run_model.accession_id,
           user_params,
           initial_state,
         )
@@ -479,10 +479,10 @@ class ProtocolScheduler:
         if success:
           logger.info(
             "Successfully scheduled protocol run %s for execution",
-            protocol_run_orm.accession_id,
+            protocol_run_model.accession_id,
           )
           return True
-        await self.cancel_scheduled_run(protocol_run_orm.accession_id)
+        await self.cancel_scheduled_run(protocol_run_model.accession_id)
         return False
 
     except Exception as e:
@@ -679,7 +679,7 @@ class ProtocolScheduler:
     (which can happen if the server restarted mid-execution) and
     marks them as FAILED with an appropriate message.
     """
-    from praxis.backend.models.pydantic_internals.filters import SearchFilters
+    from praxis.backend.models.domain.filters import SearchFilters
 
     logger.info("Starting recovery of stale protocol runs...")
     recovered_runs_count = 0

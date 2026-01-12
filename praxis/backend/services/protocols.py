@@ -21,17 +21,15 @@ from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from praxis.backend.models.enums import FunctionCallStatusEnum, ProtocolRunStatusEnum
 from praxis.backend.models.domain.protocol import (
+  ProtocolRun as ProtocolRun,
   ProtocolRunCreate,
   ProtocolRunUpdate,
+  FunctionCallLog as FunctionCallLog,
+  FunctionProtocolDefinition as FunctionProtocolDefinition,
 )
-from praxis.backend.models.enums import FunctionCallStatusEnum, ProtocolRunStatusEnum
-from praxis.backend.models.orm.protocol import (
-  FunctionCallLogOrm,
-  FunctionProtocolDefinitionOrm,
-  ProtocolRunOrm,
-)
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
@@ -44,11 +42,11 @@ from praxis.backend.utils.uuid import uuid7
 logger = logging.getLogger(__name__)
 
 
-class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRunUpdate]):
+class ProtocolRunService(CRUDBase[ProtocolRun, ProtocolRunCreate, ProtocolRunUpdate]):
   """Service for protocol run operations."""
 
   @handle_db_transaction
-  async def create(self, db: AsyncSession, *, obj_in: ProtocolRunCreate) -> ProtocolRunOrm:
+  async def create(self, db: AsyncSession, *, obj_in: ProtocolRunCreate) -> ProtocolRun:
     """Create a new protocol run instance."""
     logger.info(
       "Creating new protocol run with GUID '%s' for definition ID %s.",
@@ -121,7 +119,7 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
     protocol_name: str | None = None,
     status: ProtocolRunStatusEnum | None = None,
     statuses: list[ProtocolRunStatusEnum] | None = None,
-  ) -> list[ProtocolRunOrm]:
+  ) -> list[ProtocolRun]:
     """List protocol runs with optional filtering and pagination."""
     logger.info(
       "Listing protocol runs with filters: def_accession_id=%s, name='%s', status=%s, statuses=%s",
@@ -132,16 +130,16 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
     )
     stmt = select(self.model).options(
       joinedload(self.model.top_level_protocol_definition).selectinload(
-        FunctionProtocolDefinitionOrm.assets
+        FunctionProtocolDefinition.assets
       ),
       joinedload(self.model.top_level_protocol_definition).selectinload(
-        FunctionProtocolDefinitionOrm.parameters
+        FunctionProtocolDefinition.parameters
       ),
       joinedload(self.model.top_level_protocol_definition).joinedload(
-        FunctionProtocolDefinitionOrm.source_repository
+        FunctionProtocolDefinition.source_repository
       ),
       joinedload(self.model.top_level_protocol_definition).joinedload(
-        FunctionProtocolDefinitionOrm.file_system_source
+        FunctionProtocolDefinition.file_system_source
       ),
     )
 
@@ -155,10 +153,10 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
       )
     if protocol_name is not None:
       stmt = stmt.join(
-        FunctionProtocolDefinitionOrm,
+        FunctionProtocolDefinition,
         self.model.top_level_protocol_definition_accession_id
-        == FunctionProtocolDefinitionOrm.accession_id,
-      ).filter(FunctionProtocolDefinitionOrm.name == protocol_name)
+        == FunctionProtocolDefinition.accession_id,
+      ).filter(FunctionProtocolDefinition.name == protocol_name)
       logger.debug("Filtering by protocol name: '%s'.", protocol_name)
     if statuses:
       stmt = stmt.filter(self.model.status.in_(statuses))
@@ -179,26 +177,26 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
     logger.info("Found %d protocol runs.", len(protocol_runs))
     return protocol_runs
 
-  async def get_by_name(self, db: AsyncSession, name: str) -> ProtocolRunOrm | None:
+  async def get_by_name(self, db: AsyncSession, name: str) -> ProtocolRun | None:
     """Retrieve a protocol run by its name."""
     logger.info("Retrieving protocol run with name: '%s'.", name)
     stmt = (
       select(self.model)
       .options(
         selectinload(self.model.function_calls)
-        .selectinload(FunctionCallLogOrm.executed_function_definition)
-        .selectinload(FunctionProtocolDefinitionOrm.source_repository),
+        .selectinload(FunctionCallLog.executed_function_definition)
+        .selectinload(FunctionProtocolDefinition.source_repository),
         selectinload(self.model.function_calls)
-        .selectinload(FunctionCallLogOrm.executed_function_definition)
-        .selectinload(FunctionProtocolDefinitionOrm.file_system_source),
+        .selectinload(FunctionCallLog.executed_function_definition)
+        .selectinload(FunctionProtocolDefinition.file_system_source),
         joinedload(self.model.top_level_protocol_definition),
       )
       .join(
-        FunctionProtocolDefinitionOrm,
+        FunctionProtocolDefinition,
         self.model.top_level_protocol_definition_accession_id
-        == FunctionProtocolDefinitionOrm.accession_id,
+        == FunctionProtocolDefinition.accession_id,
       )
-      .filter(FunctionProtocolDefinitionOrm.name == name)
+      .filter(FunctionProtocolDefinition.name == name)
     )
     result = await db.execute(stmt)
     protocol_run = result.scalar_one_or_none()
@@ -217,7 +215,7 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
     output_data_json: str | None = None,
     final_state_json: str | None = None,
     error_info: dict[str, str] | None = None,
-  ) -> ProtocolRunOrm | None:
+  ) -> ProtocolRun | None:
     """Update the status and details of a protocol run."""
     logger.info(
       "Updating status for protocol run ID %s to '%s'.",
@@ -363,7 +361,7 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
     return None
 
 
-protocol_run_service = ProtocolRunService(ProtocolRunOrm)
+protocol_run_service = ProtocolRunService(ProtocolRun)
 
 
 @handle_db_transaction
@@ -374,10 +372,10 @@ async def log_function_call_start(
   sequence_in_run: int,
   input_args_json: str,
   parent_function_call_log_accession_id: uuid.UUID | None = None,
-) -> FunctionCallLogOrm:
+) -> FunctionCallLog:
   """Log the start of a function call."""
   call_id = uuid7()
-  db_obj = FunctionCallLogOrm(
+  db_obj = FunctionCallLog(
     name=f"call_{call_id}",  # kw_only from Base
     protocol_run_accession_id=protocol_run_orm_accession_id,
     function_protocol_definition_accession_id=function_definition_accession_id,
@@ -402,10 +400,10 @@ async def log_function_call_end(
   error_message: str | None = None,
   error_traceback: str | None = None,
   duration_ms: float | None = None,
-) -> FunctionCallLogOrm | None:
+) -> FunctionCallLog | None:
   """Log the end of a function call."""
-  stmt = select(FunctionCallLogOrm).filter(
-    FunctionCallLogOrm.accession_id == function_call_log_accession_id,
+  stmt = select(FunctionCallLog).filter(
+    FunctionCallLog.accession_id == function_call_log_accession_id,
   )
   result = await db.execute(stmt)
   db_obj = result.scalar_one_or_none()

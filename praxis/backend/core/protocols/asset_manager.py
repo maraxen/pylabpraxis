@@ -5,10 +5,10 @@ from typing import Any, Protocol, runtime_checkable
 
 from pylabrobot.resources import Deck
 
-from praxis.backend.models.orm.machine import MachineStatusEnum
-from praxis.backend.models.orm.resource import ResourceStatusEnum
-from praxis.backend.models.pydantic_internals.asset import AcquireAsset
-from praxis.backend.models.pydantic_internals.protocol import AssetRequirementModel
+from praxis.backend.models.enums import MachineStatusEnum
+from praxis.backend.models.enums import ResourceStatusEnum
+from praxis.backend.models.pydantic_internals.runtime import AcquireAsset
+from praxis.backend.models.domain.protocol import AssetRequirement as AssetRequirementModel
 
 
 @runtime_checkable

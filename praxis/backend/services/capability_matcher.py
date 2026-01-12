@@ -6,8 +6,13 @@ to determine if a machine can execute a specific protocol.
 
 from typing import Any
 
-from praxis.backend.models.orm.machine import MachineDefinitionOrm, MachineOrm
-from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm
+from praxis.backend.models.domain.machine import (
+  Machine as Machine,
+  MachineDefinition as MachineDefinition,
+)
+from praxis.backend.models.domain.protocol import (
+  FunctionProtocolDefinition as FunctionProtocolDefinition,
+)
 from praxis.backend.utils.plr_static_analysis.models import (
   CapabilityMatchResult,
   CapabilityRequirement,
@@ -25,9 +30,9 @@ class CapabilityMatcherService:
 
   def match_protocol_to_machine(
     self,
-    protocol: FunctionProtocolDefinitionOrm,
-    machine: MachineOrm,
-    machine_definition: MachineDefinitionOrm | None = None,
+    protocol: FunctionProtocolDefinition,
+    machine: Machine,
+    machine_definition: MachineDefinition | None = None,
   ) -> CapabilityMatchResult:
     """Check if a machine satisfies protocol requirements.
 
@@ -75,9 +80,9 @@ class CapabilityMatcherService:
 
   def find_compatible_machines(
     self,
-    protocol: FunctionProtocolDefinitionOrm,
-    machines: list[tuple[MachineOrm, MachineDefinitionOrm | None]],
-  ) -> list[tuple[MachineOrm, CapabilityMatchResult]]:
+    protocol: FunctionProtocolDefinition,
+    machines: list[tuple[Machine, MachineDefinition | None]],
+  ) -> list[tuple[Machine, CapabilityMatchResult]]:
     """Find all machines compatible with a protocol.
 
     Args:
@@ -88,7 +93,7 @@ class CapabilityMatcherService:
       List of (machine, match_result) tuples for all checked machines.
 
     """
-    results: list[tuple[MachineOrm, CapabilityMatchResult]] = []
+    results: list[tuple[Machine, CapabilityMatchResult]] = []
 
     for machine, definition in machines:
       result = self.match_protocol_to_machine(protocol, machine, definition)
@@ -98,9 +103,9 @@ class CapabilityMatcherService:
 
   def get_compatible_machines(
     self,
-    protocol: FunctionProtocolDefinitionOrm,
-    machines: list[tuple[MachineOrm, MachineDefinitionOrm | None]],
-  ) -> list[MachineOrm]:
+    protocol: FunctionProtocolDefinition,
+    machines: list[tuple[Machine, MachineDefinition | None]],
+  ) -> list[Machine]:
     """Get only the machines that are compatible with a protocol.
 
     Args:
@@ -134,8 +139,8 @@ class CapabilityMatcherService:
 
   def _merge_machine_capabilities(
     self,
-    machine: MachineOrm,
-    machine_definition: MachineDefinitionOrm | None = None,
+    machine: Machine,
+    machine_definition: MachineDefinition | None = None,
   ) -> dict[str, Any]:
     """Merge discovered and user-configured capabilities.
 

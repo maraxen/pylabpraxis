@@ -13,12 +13,12 @@ from uuid import UUID
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.outputs import (
-  DataOutputTypeEnum,
-  FunctionDataOutputOrm,
-  WellDataOutputOrm,
+from praxis.backend.models.domain.outputs import (
+  FunctionDataOutput as FunctionDataOutput,
+  WellDataOutput as WellDataOutput,
+  PlateDataVisualization,
 )
-from praxis.backend.models.pydantic_internals.outputs import PlateDataVisualization
+from praxis.backend.models.enums import DataOutputTypeEnum
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
 logger = get_logger(__name__)
@@ -54,27 +54,27 @@ async def read_plate_data_visualization(
   """
   # Build query for well data
   query = (
-    select(WellDataOutputOrm)
-    .join(FunctionDataOutputOrm)
+    select(WellDataOutput)
+    .join(FunctionDataOutput)
     .filter(
       and_(
-        WellDataOutputOrm.plate_resource_accession_id == plate_resource_accession_id,
-        FunctionDataOutputOrm.data_type == data_type,
+        WellDataOutput.plate_resource_accession_id == plate_resource_accession_id,
+        FunctionDataOutput.data_type == data_type,
       ),
     )
   )
 
   if protocol_run_accession_id:
     query = query.filter(
-      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
+      FunctionDataOutput.protocol_run_accession_id == protocol_run_accession_id,
     )
 
   if function_call_log_accession_id:
     query = query.filter(
-      FunctionDataOutputOrm.function_call_log_accession_id == function_call_log_accession_id,
+      FunctionDataOutput.function_call_log_accession_id == function_call_log_accession_id,
     )
 
-  query = query.order_by(FunctionDataOutputOrm.measurement_timestamp.desc())
+  query = query.order_by(FunctionDataOutput.measurement_timestamp.desc())
 
   result = await db.execute(query)
   well_data_list = list(result.scalars().all())

@@ -22,7 +22,7 @@ from pathlib import Path
 
 from praxis.backend.models import (
   FunctionProtocolDefinitionCreate,
-  FunctionProtocolDefinitionOrm,
+  FunctionProtocolDefinition,
 )
 from praxis.backend.utils.logging import get_logger
 
@@ -426,7 +426,7 @@ class ProtocolCodeManager:
 
   async def prepare_protocol_code(
     self,
-    protocol_def_orm: FunctionProtocolDefinitionOrm,
+    protocol_def_model: FunctionProtocolDefinition,
   ) -> tuple[Callable, FunctionProtocolDefinitionCreate]:
     """Prepare protocol code for execution from its ORM definition.
 
@@ -436,7 +436,7 @@ class ProtocolCodeManager:
     - Direct Python imports
 
     Args:
-        protocol_def_orm: The ORM object representing the protocol definition.
+        protocol_def_model: The ORM object representing the protocol definition.
 
     Returns:
         A tuple containing the callable function and its Pydantic definition model.
@@ -449,19 +449,19 @@ class ProtocolCodeManager:
     """
     logger.info(
       "Preparing code for protocol: %s v%s",
-      protocol_def_orm.name,
-      protocol_def_orm.version,
+      protocol_def_model.name,
+      protocol_def_model.version,
     )
     module_path_to_add_for_sys_path: str | None = None
 
     # Handle Git repository sources
-    if protocol_def_orm.source_repository_accession_id and protocol_def_orm.source_repository:
-      repo = protocol_def_orm.source_repository
+    if protocol_def_model.source_repository_accession_id and protocol_def_model.source_repository:
+      repo = protocol_def_model.source_repository
       checkout_path = repo.local_checkout_path
-      commit_hash_to_checkout = protocol_def_orm.commit_hash
+      commit_hash_to_checkout = protocol_def_model.commit_hash
 
       if not checkout_path or not commit_hash_to_checkout or not repo.git_url:
-        msg = f"Incomplete Git source info for protocol '{protocol_def_orm.name}'."
+        msg = f"Incomplete Git source info for protocol '{protocol_def_model.name}'."
         raise ValueError(
           msg,
         )
@@ -475,8 +475,8 @@ class ProtocolCodeManager:
       module_path_to_add_for_sys_path = checkout_path
 
     # Handle file system sources
-    elif protocol_def_orm.file_system_source_accession_id and protocol_def_orm.file_system_source:
-      fs_source = protocol_def_orm.file_system_source
+    elif protocol_def_model.file_system_source_accession_id and protocol_def_model.file_system_source:
+      fs_source = protocol_def_model.file_system_source
       if not os.path.isdir(fs_source.base_path):
         msg = f"Invalid base path '{fs_source.base_path}' for FS source '{fs_source.name}'."
         raise ValueError(
@@ -488,25 +488,25 @@ class ProtocolCodeManager:
     else:
       logger.warning(
         "Protocol '%s' has no linked source. Attempting direct import.",
-        protocol_def_orm.name,
+        protocol_def_model.name,
       )
 
     # Load the actual function
     try:
       func_wrapper, pydantic_def = self._load_protocol_function(
-        protocol_def_orm.module_name,
-        protocol_def_orm.function_name,
+        protocol_def_model.module_name,
+        protocol_def_model.function_name,
         module_path_to_add_for_sys_path,
       )
 
-      if protocol_def_orm.accession_id and (
-        not pydantic_def.accession_id or pydantic_def.accession_id != protocol_def_orm.accession_id
+      if protocol_def_model.accession_id and (
+        not pydantic_def.accession_id or pydantic_def.accession_id != protocol_def_model.accession_id
       ):
-        pydantic_def.accession_id = protocol_def_orm.accession_id
+        pydantic_def.accession_id = protocol_def_model.accession_id
         logger.debug(
           "Updated Pydantic definition DB ID for '%s' to %s",
           pydantic_def.name,
-          protocol_def_orm.accession_id,
+          protocol_def_model.accession_id,
         )
 
       return func_wrapper, pydantic_def
@@ -514,7 +514,7 @@ class ProtocolCodeManager:
     except Exception:
       logger.exception(
         "Failed to load protocol function '%s' from module '%s'",
-        protocol_def_orm.function_name,
-        protocol_def_orm.module_name,
+        protocol_def_model.function_name,
+        protocol_def_model.module_name,
       )
       raise

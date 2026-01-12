@@ -30,12 +30,12 @@ from praxis.backend.core.simulation.state_resolution import (
   identify_uncertain_states,
 )
 from praxis.backend.models.enums.schedule import ScheduleStatusEnum
-from praxis.backend.models.orm.resolution import (
+from praxis.backend.models.enums.resolution import (
   ResolutionActionEnum,
   ResolutionTypeEnum,
-  StateResolutionLogOrm,
 )
-from praxis.backend.models.orm.schedule import ScheduleEntryOrm
+from praxis.backend.models.domain.resolution import StateResolutionLog as StateResolutionLog
+from praxis.backend.models.domain.schedule import ScheduleEntry as ScheduleEntry
 from praxis.backend.utils.db_decorator import handle_db_transaction
 
 if TYPE_CHECKING:
@@ -102,8 +102,7 @@ class StateResolutionService:
       ScheduleStatusEnum.CONFLICT,
     ):
       msg = (
-        f"Run {run_id} is in {schedule_entry.status.value} state, "
-        "not eligible for state resolution"
+        f"Run {run_id} is in {schedule_entry.status.value} state, not eligible for state resolution"
       )
       raise ValueError(msg)
 
@@ -143,7 +142,7 @@ class StateResolutionService:
     run_id: UUID,
     resolution: StateResolution,
     action: ResolutionActionEnum = ResolutionActionEnum.RESUME,
-  ) -> StateResolutionLogOrm:
+  ) -> StateResolutionLog:
     """Apply resolution and log for audit.
 
     Args:
@@ -183,7 +182,7 @@ class StateResolutionService:
     # Create audit log entry
     # Generate a name from operation info
     log_name = f"resolution_{operation_id}"
-    log_entry = StateResolutionLogOrm(
+    log_entry = StateResolutionLog(
       name=log_name,
       schedule_entry_accession_id=schedule_entry.accession_id,
       protocol_run_accession_id=schedule_entry.protocol_run_accession_id,
@@ -308,7 +307,7 @@ class StateResolutionService:
   async def _get_schedule_entry(
     self,
     run_id: UUID,
-  ) -> ScheduleEntryOrm | None:
+  ) -> ScheduleEntry | None:
     """Get schedule entry by run ID.
 
     Args:
@@ -320,7 +319,7 @@ class StateResolutionService:
     """
     # Try as schedule entry ID
     result = await self._session.execute(
-      select(ScheduleEntryOrm).where(ScheduleEntryOrm.accession_id == run_id)
+      select(ScheduleEntry).where(ScheduleEntry.accession_id == run_id)
     )
     entry = result.scalar_one_or_none()
     if entry:
@@ -328,13 +327,13 @@ class StateResolutionService:
 
     # Try as protocol run ID
     result = await self._session.execute(
-      select(ScheduleEntryOrm).where(ScheduleEntryOrm.protocol_run_accession_id == run_id)
+      select(ScheduleEntry).where(ScheduleEntry.protocol_run_accession_id == run_id)
     )
     return result.scalar_one_or_none()
 
   def _reconstruct_operation_from_entry(
     self,
-    entry: ScheduleEntryOrm,
+    entry: ScheduleEntry,
   ) -> OperationRecord | None:
     """Try to reconstruct operation record from schedule entry.
 
@@ -483,7 +482,7 @@ class StateResolutionLogResponse(BaseModel):
   resolved_by: str = Field(..., description="Who resolved")
 
   @classmethod
-  def from_orm_model(cls, log: StateResolutionLogOrm) -> StateResolutionLogResponse:
+  def from_orm_model(cls, log: StateResolutionLog) -> StateResolutionLogResponse:
     """Create from ORM model."""
     return cls(
       id=log.accession_id,

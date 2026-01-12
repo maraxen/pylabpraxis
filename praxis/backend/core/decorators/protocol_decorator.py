@@ -18,7 +18,7 @@ from praxis.backend.core.run_context import (
   PraxisRunContext,
   serialize_arguments,
 )
-from praxis.backend.models.pydantic_internals.protocol import (
+from praxis.backend.models.domain.protocol import (
   FunctionCallStatusEnum,
   ProtocolRunStatusEnum,
 )
@@ -88,7 +88,7 @@ async def _log_call_start(
   try:
     sequence_val = context.get_and_increment_sequence_val()
     serialized_input_args = serialize_arguments(args, kwargs)
-    call_log_entry_orm = await log_function_call_start(
+    call_log_entry_model = await log_function_call_start(
       db=context.current_db_session,
       protocol_run_orm_accession_id=context.run_accession_id,
       function_definition_accession_id=function_def_db_id,
@@ -96,7 +96,7 @@ async def _log_call_start(
       input_args_json=serialized_input_args,
       parent_function_call_log_accession_id=parent_log_id,
     )
-    return call_log_entry_orm.accession_id
+    return call_log_entry_model.accession_id
   except Exception:  # pylint: disable=broad-except
     logger.exception(
       "Failed to log function call start for run %s",

@@ -2,10 +2,9 @@ import inspect
 from typing import Any, Union, get_args, get_origin
 
 from praxis.backend.models.enums import get_category_from_class, infer_category_from_name
-from praxis.backend.models.pydantic_internals.protocol import (
-  AssetRequirementModel,
+from praxis.backend.models.domain.protocol import (
+  AssetRequirement as AssetRequirementModel,
   ParameterMetadataModel,
-  UIHint,
 )
 from praxis.backend.utils.type_inspection import (
   fqn_from_hint,
@@ -68,7 +67,7 @@ def _process_parameter(
   p_description = param_meta_entry.get("description")
   p_constraints = param_meta_entry.get("constraints", {})
   p_ui_hints_dict = param_meta_entry.get("ui_hints")
-  p_ui_hints = UIHint(**p_ui_hints_dict) if isinstance(p_ui_hints_dict, dict) else None
+  p_ui_hints = p_ui_hints_dict if isinstance(p_ui_hints_dict, dict) else None
 
   type_for_plr_check = param_type_hint
   origin_check = get_origin(param_type_hint)

@@ -1,7 +1,7 @@
 """Entity linking services for synchronizing and managing relationships.
 
 This module provides asynchronous functions to create, link, and synchronize ORM entities such as
-MachineOrm, ResourceOrm, and DeckOrm, ensuring consistency and proper bidirectional relationships in
+Machine, Resource, and Deck, ensuring consistency and proper bidirectional relationships in
 the database.
 """
 
@@ -13,10 +13,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models import (
-  MachineOrm,
+  Machine,
   MachineStatusEnum,
-  ResourceDefinitionOrm,
-  ResourceOrm,
+  ResourceDefinition,
+  Resource,
   ResourceStatusEnum,
 )
 from praxis.backend.models.enums import AssetType
@@ -24,7 +24,7 @@ from praxis.backend.utils.db_decorator import handle_db_transaction
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
 if TYPE_CHECKING:
-  from praxis.backend.models import DeckOrm
+  from praxis.backend.models import Deck
 
 logger = get_logger(__name__)
 
@@ -41,11 +41,11 @@ log_entity_linking_errors = partial(
 async def _read_resource_definition_for_linking(
   db: AsyncSession,
   name: str,
-) -> "ResourceDefinitionOrm":
+) -> "ResourceDefinition":
   """Retrieve a resource definition."""
   result = await db.execute(
-    select(ResourceDefinitionOrm).filter(
-      ResourceDefinitionOrm.name == name,
+    select(ResourceDefinition).filter(
+      ResourceDefinition.name == name,
     ),
   )
   definition = result.scalar_one_or_none()
@@ -60,23 +60,23 @@ async def _read_resource_definition_for_linking(
 @handle_db_transaction
 async def _create_or_link_resource_counterpart_for_machine(
   db: AsyncSession,
-  machine_orm: "MachineOrm",
+  machine_model: "Machine",
   resource_counterpart_accession_id: uuid.UUID | None,
   resource_definition_name: str | None = None,  # Needed if creating a new resource
   resource_properties_json: dict[str, Any] | None = None,  # Needed if creating a new resource
   resource_status: Optional["ResourceStatusEnum"] = None,  # Needed if
   # creating a new resource
-) -> Optional["ResourceOrm"]:
-  """Create or link ResourceOrm counterpart for a MachineOrm."""
-  log_prefix = f"Machine (ID: {machine_orm.accession_id}, Name: '{machine_orm.name}'):"
+) -> Optional["Resource"]:
+  """Create or link Resource counterpart for a Machine."""
+  log_prefix = f"Machine (ID: {machine_model.accession_id}, Name: '{machine_model.name}'):"
 
   # Eager load the existing counterpart if the ID is present
-  if machine_orm.resource_counterpart_accession_id:
-    await db.refresh(machine_orm, attribute_names=["resource_counterpart"])
-  current_resource = machine_orm.resource_counterpart
+  if machine_model.resource_counterpart_accession_id:
+    await db.refresh(machine_model, attribute_names=["resource_counterpart"])
+  current_resource = machine_model.resource_counterpart
 
   if resource_counterpart_accession_id is not None:
-    machine_orm.asset_type = AssetType.MACHINE_RESOURCE
+    machine_model.asset_type = AssetType.MACHINE_RESOURCE
     if current_resource and current_resource.accession_id == resource_counterpart_accession_id:
       logger.debug(
         "%s Already linked to Resource ID %s.",
@@ -86,18 +86,18 @@ async def _create_or_link_resource_counterpart_for_machine(
       new_resource = current_resource
     else:
       new_resource = await db.get(
-        ResourceOrm,
+        Resource,
         resource_counterpart_accession_id,
       )
       if not new_resource:
         msg = (
-          f"{log_prefix} ResourceOrm with ID {resource_counterpart_accession_id} "
+          f"{log_prefix} Resource with ID {resource_counterpart_accession_id} "
           "not found for linking."
         )
         raise ValueError(
           msg,
         )
-      machine_orm.resource_counterpart = new_resource
+      machine_model.resource_counterpart = new_resource
       logger.info(
         "%s Linked to existing Resource ID %s.",
         log_prefix,
@@ -105,8 +105,8 @@ async def _create_or_link_resource_counterpart_for_machine(
       )
 
     if not new_resource.machine_counterpart:
-      new_resource.machine_counterpart = machine_orm
-      new_resource.name = machine_orm.name  # Sync name
+      new_resource.machine_counterpart = machine_model
+      new_resource.name = machine_model.name  # Sync name
       db.add(new_resource)
       logger.debug(
         "%s Ensured reciprocal link from Resource ID %s.",
@@ -134,18 +134,18 @@ async def _create_or_link_resource_counterpart_for_machine(
 
   if not resource_definition_name:
     msg = (
-      f"{log_prefix} Cannot create new ResourceOrm: 'resource_definition_name' is "
+      f"{log_prefix} Cannot create new Resource: 'resource_definition_name' is "
       "required when 'is_resource' is True and no "
       "'resource_counterpart_accession_id' is provided."
     )
     raise ValueError(msg)
 
-  logger.info("%s Creating new ResourceOrm as counterpart.", log_prefix)
+  logger.info("%s Creating new Resource as counterpart.", log_prefix)
   definition = await _read_resource_definition_for_linking(db, resource_definition_name)
 
-  new_resource = ResourceOrm(
-    fqn=machine_orm.fqn,
-    name=f"{machine_orm.name}_resource",
+  new_resource = Resource(
+    fqn=machine_model.fqn,
+    name=f"{machine_model.name}_resource",
     asset_type=AssetType.RESOURCE,
     resource_definition_accession_id=definition.accession_id,
     properties_json=resource_properties_json or {},
@@ -153,14 +153,14 @@ async def _create_or_link_resource_counterpart_for_machine(
   )
   db.add(new_resource)
   await db.flush()
-  machine_orm.resource_counterpart_accession_id = new_resource.accession_id
+  machine_model.resource_counterpart_accession_id = new_resource.accession_id
   logger.info(
-    "%s Created and linked new ResourceOrm ID %s.",
+    "%s Created and linked new Resource ID %s.",
     log_prefix,
     new_resource.accession_id,
   )
   return new_resource
-  machine_orm.asset_type = AssetType.MACHINE
+  machine_model.asset_type = AssetType.MACHINE
   if current_resource:
     logger.info(
       "%s Unlinking Resource ID %s (no longer a resource).",
@@ -169,28 +169,28 @@ async def _create_or_link_resource_counterpart_for_machine(
     )
     current_resource.machine_counterpart = None
     db.add(current_resource)
-    machine_orm.resource_counterpart = None
+    machine_model.resource_counterpart = None
   return None
 
 
 @handle_db_transaction
 async def _create_or_link_machine_counterpart_for_resource(
   db: AsyncSession,
-  resource_orm: "ResourceOrm",
+  resource_model: "Resource",
   machine_counterpart_accession_id: uuid.UUID | None = None,
   machine_name: str | None = None,
   machine_fqn: str | None = None,
   machine_properties_json: dict[str, Any] | None = None,
   machine_status: Optional["MachineStatusEnum"] = None,
-) -> Optional["MachineOrm"]:
-  """Create or link a MachineOrm counterpart for a ResourceOrm."""
-  log_prefix = f"Resource (ID: {resource_orm.accession_id}, Name: '{resource_orm.name}'):"
+) -> Optional["Machine"]:
+  """Create or link a Machine counterpart for a Resource."""
+  log_prefix = f"Resource (ID: {resource_model.accession_id}, Name: '{resource_model.name}'):"
 
   # Eager load the existing counterpart if the ID is present
-  await db.refresh(resource_orm, attribute_names=["machine_counterpart"])
-  current_machine_counterpart = resource_orm.machine_counterpart
+  await db.refresh(resource_model, attribute_names=["machine_counterpart"])
+  current_machine_counterpart = resource_model.machine_counterpart
 
-  resource_orm.asset_type = AssetType.MACHINE_RESOURCE
+  resource_model.asset_type = AssetType.MACHINE_RESOURCE
   if machine_counterpart_accession_id:
     if (
       current_machine_counterpart
@@ -204,18 +204,18 @@ async def _create_or_link_machine_counterpart_for_resource(
       new_machine_counterpart = current_machine_counterpart
     else:
       new_machine_counterpart = await db.get(
-        MachineOrm,
+        Machine,
         machine_counterpart_accession_id,
       )
       if not new_machine_counterpart:
         msg = (
-          f"{log_prefix} MachineOrm with ID {machine_counterpart_accession_id} "
+          f"{log_prefix} Machine with ID {machine_counterpart_accession_id} "
           "not found for linking."
         )
         raise ValueError(
           msg,
         )
-      resource_orm.machine_counterpart = new_machine_counterpart
+      resource_model.machine_counterpart = new_machine_counterpart
       logger.info(
         "%s Linked to existing Machine ID %s.",
         log_prefix,
@@ -224,8 +224,8 @@ async def _create_or_link_machine_counterpart_for_resource(
 
     if not new_machine_counterpart.resource_counterpart:
       new_machine_counterpart.asset_type = AssetType.MACHINE_RESOURCE
-      new_machine_counterpart.resource_counterpart = resource_orm
-      new_machine_counterpart.name = resource_orm.name
+      new_machine_counterpart.resource_counterpart = resource_model
+      new_machine_counterpart.name = resource_model.name
       db.add(new_machine_counterpart)
       logger.debug(
         "%s Ensured reciprocal link from Machine ID %s.",
@@ -257,7 +257,7 @@ async def _create_or_link_machine_counterpart_for_resource(
 
   if not machine_name or not machine_fqn:
     msg = (
-      f"{log_prefix} Cannot create new MachineOrm: 'machine_name' and "
+      f"{log_prefix} Cannot create new Machine: 'machine_name' and "
       "'machine_fqn' are required when 'is_machine' is True and no "
       "'machine_counterpart_accession_id' is provided."
     )
@@ -265,9 +265,9 @@ async def _create_or_link_machine_counterpart_for_resource(
       msg,
     )
 
-  logger.info("%s Creating new MachineOrm as counterpart.", log_prefix)
-  new_machine_counterpart = MachineOrm(
-    name=f"{resource_orm.name}_machine",
+  logger.info("%s Creating new Machine as counterpart.", log_prefix)
+  new_machine_counterpart = Machine(
+    name=f"{resource_model.name}_machine",
     fqn=machine_fqn,
     asset_type=AssetType.MACHINE_RESOURCE,
     properties_json=machine_properties_json or {},
@@ -275,9 +275,9 @@ async def _create_or_link_machine_counterpart_for_resource(
   )
   db.add(new_machine_counterpart)
   await db.flush()
-  resource_orm.machine_counterpart = new_machine_counterpart
+  resource_model.machine_counterpart = new_machine_counterpart
   logger.info(
-    "%s Created and linked new MachineOrm ID %s.",
+    "%s Created and linked new Machine ID %s.",
     log_prefix,
     new_machine_counterpart.accession_id,
   )
@@ -287,15 +287,15 @@ async def _create_or_link_machine_counterpart_for_resource(
 @handle_db_transaction
 async def synchronize_machine_resource_names(
   db: AsyncSession,
-  machine_orm: "MachineOrm",
+  machine_model: "Machine",
   new_machine_name: str | None = None,
 ) -> None:
   """Synchronize names between a machine and its resource counterpart."""
-  if not machine_orm.resource_counterpart:
+  if not machine_model.resource_counterpart:
     return
 
-  name_to_sync = new_machine_name or machine_orm.name
-  resource = machine_orm.resource_counterpart
+  name_to_sync = new_machine_name or machine_model.name
+  resource = machine_model.resource_counterpart
   target_name = f"{name_to_sync}_resource"
 
   if resource.name != target_name:
@@ -303,7 +303,7 @@ async def synchronize_machine_resource_names(
       "Synchronizing resource name from '%s' to '%s' for Machine ID %s",
       resource.name,
       target_name,
-      machine_orm.accession_id,
+      machine_model.accession_id,
     )
     resource.name = target_name
     db.add(resource)
@@ -315,15 +315,15 @@ async def synchronize_machine_resource_names(
 @handle_db_transaction
 async def synchronize_resource_machine_names(
   db: AsyncSession,
-  resource_orm: "ResourceOrm",
+  resource_model: "Resource",
   new_resource_name: str | None = None,
 ) -> None:
   """Synchronize names between a resource and its machine counterpart."""
-  if not resource_orm.machine_counterpart:
+  if not resource_model.machine_counterpart:
     return
 
-  name_to_sync = new_resource_name or resource_orm.name
-  machine = resource_orm.machine_counterpart
+  name_to_sync = new_resource_name or resource_model.name
+  machine = resource_model.machine_counterpart
   target_name = f"{name_to_sync}_machine"
 
   if machine.name != target_name:
@@ -331,7 +331,7 @@ async def synchronize_resource_machine_names(
       "Synchronizing machine name from '%s' to '%s' for Resource ID %s",
       machine.name,
       target_name,
-      resource_orm.accession_id,
+      resource_model.accession_id,
     )
     machine.name = target_name
     db.add(machine)
@@ -343,15 +343,15 @@ async def synchronize_resource_machine_names(
 @handle_db_transaction
 async def synchronize_deck_resource_names(
   db: AsyncSession,
-  deck_orm: "DeckOrm",
+  deck_model: "Deck",
   new_deck_name: str | None = None,
 ) -> None:
   """Synchronize names between a deck instance and its resource counterpart."""
-  if not deck_orm.resource_counterpart:
+  if not deck_model.resource_counterpart:
     return
 
-  name_to_sync = new_deck_name or deck_orm.name
-  resource = deck_orm.resource_counterpart
+  name_to_sync = new_deck_name or deck_model.name
+  resource = deck_model.resource_counterpart
   target_name = f"{name_to_sync}_resource"
 
   if resource.name != target_name:
@@ -359,7 +359,7 @@ async def synchronize_deck_resource_names(
       "Synchronizing resource name from '%s' to '%s' for Deck ID %s",
       resource.name,
       target_name,
-      deck_orm.accession_id,
+      deck_model.accession_id,
     )
     resource.name = target_name
     db.add(resource)
@@ -371,14 +371,14 @@ async def synchronize_deck_resource_names(
 @handle_db_transaction
 async def synchronize_resource_deck_names(
   db: AsyncSession,
-  resource_orm: "ResourceOrm",
+  resource_model: "Resource",
   new_resource_name: str | None = None,
 ) -> None:
   """Synchronize names between a resource and its deck counterpart.
 
   Args:
       db (AsyncSession): The database session.
-      resource_orm (ResourceOrm): The resource instance ORM object.
+      resource_model (Resource): The resource instance ORM object.
       new_resource_name (str | None, optional): The new name for the resource.
 
   If not provided, the current name will be used.
@@ -387,11 +387,11 @@ async def synchronize_resource_deck_names(
       ValueError: If the resource does not have a deck counterpart.
 
   """
-  if not resource_orm.deck_counterpart:
+  if not resource_model.deck_counterpart:
     return
 
-  name_to_sync = new_resource_name or resource_orm.name
-  deck = resource_orm.deck_counterpart
+  name_to_sync = new_resource_name or resource_model.name
+  deck = resource_model.deck_counterpart
   target_name = f"{name_to_sync}_deck"
 
   if deck.name != target_name:
@@ -399,7 +399,7 @@ async def synchronize_resource_deck_names(
       "Synchronizing deck name from '%s' to '%s' for Resource ID %s",
       deck.name,
       target_name,
-      resource_orm.accession_id,
+      resource_model.accession_id,
     )
     deck.name = target_name
     db.add(deck)

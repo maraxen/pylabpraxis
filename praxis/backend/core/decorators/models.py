@@ -5,9 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 from praxis.backend.core.run_context import PraxisRunContext
-from praxis.backend.models.pydantic_internals.protocol import (
-  FunctionProtocolDefinitionCreate,
-)
+from praxis.backend.models.domain.protocol import FunctionProtocolDefinitionCreate
 from praxis.backend.utils.logging import get_logger
 
 if TYPE_CHECKING:

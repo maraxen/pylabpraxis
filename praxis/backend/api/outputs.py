@@ -11,7 +11,7 @@ from praxis.backend.models.domain.outputs import (
   WellDataOutputRead,
   WellDataOutputUpdate,
 )
-from praxis.backend.models.orm.outputs import FunctionDataOutputOrm, WellDataOutputOrm
+from praxis.backend.models.domain.outputs import FunctionDataOutput, WellDataOutput
 from praxis.backend.services.outputs import FunctionDataOutputCRUDService
 from praxis.backend.services.well_outputs import WellDataOutputCRUDService
 
@@ -19,7 +19,7 @@ router = APIRouter()
 
 router.include_router(
   create_crud_router(
-    service=FunctionDataOutputCRUDService(FunctionDataOutputOrm),
+    service=FunctionDataOutputCRUDService(FunctionDataOutput),
     prefix="/outputs",
     tags=["Function Data Outputs"],
     create_schema=FunctionDataOutputCreate,
@@ -30,7 +30,7 @@ router.include_router(
 
 router.include_router(
   create_crud_router(
-    service=WellDataOutputCRUDService(WellDataOutputOrm),
+    service=WellDataOutputCRUDService(WellDataOutput),
     prefix="/well-outputs",
     tags=["Well Data Outputs"],
     create_schema=WellDataOutputCreate,

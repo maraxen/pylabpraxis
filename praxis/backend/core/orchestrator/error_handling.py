@@ -15,7 +15,7 @@ from praxis.backend.core.asset_manager import AssetManager
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models import (
   MachineStatusEnum,
-  ProtocolRunOrm,
+  ProtocolRun,
   ProtocolRunStatusEnum,
   ResourceStatusEnum,
 )
@@ -124,26 +124,26 @@ class ErrorHandlingMixin:
 
   async def _finalize_protocol_run(
     self,
-    protocol_run_orm: ProtocolRunOrm,
+    protocol_run_model: ProtocolRun,
     praxis_state: PraxisState,
     acquired_assets_info: dict[uuid.UUID, Any],
     db_session: AsyncSession,
   ) -> None:
     """Finalize the protocol run, update timestamps, state, and release assets."""
-    run_accession_id = protocol_run_orm.accession_id
+    run_accession_id = protocol_run_model.accession_id
     logger.info("ORCH: Finalizing protocol run %s.", run_accession_id)
 
-    protocol_run_orm.final_state_json = praxis_state.to_dict()
+    protocol_run_model.final_state_json = praxis_state.to_dict()
 
-    if not protocol_run_orm.end_time:
-      protocol_run_orm.end_time = datetime.datetime.now(datetime.timezone.utc)
+    if not protocol_run_model.end_time:
+      protocol_run_model.end_time = datetime.datetime.now(datetime.timezone.utc)
     if (
-      protocol_run_orm.start_time
-      and protocol_run_orm.end_time
-      and protocol_run_orm.duration_ms is None
+      protocol_run_model.start_time
+      and protocol_run_model.end_time
+      and protocol_run_model.duration_ms is None
     ):
-      duration = protocol_run_orm.end_time - protocol_run_orm.start_time
-      protocol_run_orm.duration_ms = int(duration.total_seconds() * 1000)
+      duration = protocol_run_model.end_time - protocol_run_model.start_time
+      protocol_run_model.duration_ms = int(duration.total_seconds() * 1000)
 
     # Release acquired assets
     if acquired_assets_info:
@@ -177,10 +177,10 @@ class ErrorHandlingMixin:
           logger.exception(
             "ORCH-RELEASE: Failed to release asset '%s' (ORM ID: %s)",
             asset_info.get("name_in_protocol", "UnknownAsset"),
-            asset_info.get("orm_accession_id"),
+            asset_info.get("model_accession_id"),
           )
 
-    await db_session.merge(protocol_run_orm)
+    await db_session.merge(protocol_run_model)
 
     # Release scheduler reservations
     # Note: self.scheduler is typed as Any | None in Orchestrator, so we check for existence

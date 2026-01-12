@@ -13,9 +13,9 @@ from praxis.backend.celery_app import celery_app
 from praxis.backend.configure import PraxisConfiguration
 from praxis.backend.core.asset_lock_manager import AssetLockManager
 from praxis.backend.core.scheduler import ProtocolScheduler
-from praxis.backend.models.orm.protocol import (
-  FunctionProtocolDefinitionOrm,
-  ProtocolRunOrm,
+from praxis.backend.models.domain.protocol import (
+  FunctionProtocolDefinition,
+  ProtocolRun,
 )
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
@@ -47,9 +47,9 @@ class GlobalDependencies:
     self.scheduler = ProtocolScheduler(
       db_session_factory=db_session_factory,
       task_queue=celery_app,
-      protocol_run_service=ProtocolRunService(ProtocolRunOrm),
+      protocol_run_service=ProtocolRunService(ProtocolRun),
       protocol_definition_service=ProtocolDefinitionCRUDService(
-        FunctionProtocolDefinitionOrm,
+        FunctionProtocolDefinition,
       ),
     )
     logger.info("Scheduler components initialized")

@@ -41,8 +41,8 @@ from pylabrobot.resources import (
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
-from praxis.backend.models.pydantic_internals.resource import (
+from praxis.backend.models.domain.resource import (
+  ResourceDefinition as ResourceDefinition,
   ResourceDefinitionCreate,
   ResourceDefinitionUpdate,
 )
@@ -88,12 +88,12 @@ VENDOR_MODULE_PATTERNS = (
 
 class ResourceTypeDefinitionService(
   CRUDBase[
-    ResourceDefinitionOrm,
+    ResourceDefinition,
     ResourceDefinitionCreate,
     ResourceDefinitionUpdate,
   ],
   DiscoverableTypeServiceBase[
-    ResourceDefinitionOrm,
+    ResourceDefinition,
     ResourceDefinitionCreate,
     ResourceDefinitionUpdate,
   ],
@@ -139,13 +139,13 @@ class ResourceTypeDefinitionService(
 
   def __init__(self, db: AsyncSession) -> None:
     """Initialize the ResourceTypeDefinitionService."""
-    super().__init__(ResourceDefinitionOrm)
+    super().__init__(ResourceDefinition)
     self.db = db
 
   @property
-  def _orm_model(self) -> type[ResourceDefinitionOrm]:
+  def _orm_model(self) -> type[ResourceDefinition]:
     """The SQLAlchemy ORM model for the type definition."""
-    return ResourceDefinitionOrm
+    return ResourceDefinition
 
   def _can_catalog_resource(self, plr_class: type[Any]) -> bool:
     """Determine if a PyLabRobot class represents a resource definition to catalog.
@@ -501,7 +501,7 @@ class ResourceTypeDefinitionService(
   async def discover_and_synchronize_type_definitions(
     self,
     plr_resources_package: types.ModuleType = pylabrobot,
-  ) -> list[ResourceDefinitionOrm]:
+  ) -> list[ResourceDefinition]:
     """Discover all pylabrobot resource type definitions and synchronize them with the database.
 
     This method discovers both:
@@ -618,14 +618,14 @@ class ResourceTypeDefinitionService(
     tip_volume_ul: float | None = None,
     vendor: str | None = None,
     properties_json: dict[str, Any] | None = None,
-  ) -> ResourceDefinitionOrm:
+  ) -> ResourceDefinition:
     """Sync a single resource definition to the database (create or update)."""
     # Extract vendor from FQN if not provided
     if vendor is None:
       vendor = self._extract_vendor_from_fqn(fqn)
 
     existing_resource_def_result = await self.db.execute(
-      select(ResourceDefinitionOrm).filter(ResourceDefinitionOrm.fqn == fqn),
+      select(ResourceDefinition).filter(ResourceDefinition.fqn == fqn),
     )
     existing_resource_def = existing_resource_def_result.scalar_one_or_none()
 
@@ -654,7 +654,7 @@ class ResourceTypeDefinitionService(
       self.db.add(existing_resource_def)
       logger.debug("Updated resource definition: %s", fqn)
       return existing_resource_def
-    new_resource_def = ResourceDefinitionOrm(
+    new_resource_def = ResourceDefinition(
       name=short_name,
       fqn=fqn,
       description=description,
@@ -680,7 +680,7 @@ class ResourceTypeDefinitionService(
 
 class ResourceTypeDefinitionCRUDService(
   CRUDBase[
-    ResourceDefinitionOrm,
+    ResourceDefinition,
     ResourceDefinitionCreate,
     ResourceDefinitionUpdate,
   ],
@@ -691,9 +691,9 @@ class ResourceTypeDefinitionCRUDService(
     self,
     db: AsyncSession,
     *,
-    db_obj: ResourceDefinitionOrm,
+    db_obj: ResourceDefinition,
     obj_in: ResourceDefinitionUpdate | dict[str, Any],
-  ) -> ResourceDefinitionOrm:
+  ) -> ResourceDefinition:
     """Update an existing resource definition."""
     obj_in_model = ResourceDefinitionUpdate(**obj_in) if isinstance(obj_in, dict) else obj_in
     return await super().update(db=db, db_obj=db_obj, obj_in=obj_in_model)

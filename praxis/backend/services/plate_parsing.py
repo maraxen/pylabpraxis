@@ -10,7 +10,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
+from praxis.backend.models.domain.resource import (
+  Resource as Resource,
+  ResourceDefinition as ResourceDefinition,
+)
 
 
 async def read_plate_dimensions(
@@ -29,9 +32,9 @@ async def read_plate_dimensions(
   """
   # Get the resource instance and its definition
   result = await db.execute(
-    select(ResourceDefinitionOrm)
-    .join(ResourceOrm)
-    .filter(ResourceOrm.accession_id == plate_resource_accession_id),
+    select(ResourceDefinition)
+    .join(Resource)
+    .filter(Resource.accession_id == plate_resource_accession_id),
   )
 
   resource_def = result.scalar_one_or_none()
