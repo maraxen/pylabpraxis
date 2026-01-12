@@ -4,7 +4,7 @@
 /* eslint-disable */
 import type { Body_get_multi_api_v1_protocols_runs_get } from '../models/Body_get_multi_api_v1_protocols_runs_get';
 import type { CancelRunResponse } from '../models/CancelRunResponse';
-import type { ProtocolRunResponse } from '../models/ProtocolRunResponse';
+import type { ProtocolRunRead } from '../models/ProtocolRunRead';
 import type { QueuedRunResponse } from '../models/QueuedRunResponse';
 import type { StartRunRequest } from '../models/StartRunRequest';
 import type { StartRunResponse } from '../models/StartRunResponse';
@@ -76,10 +76,10 @@ export class ProtocolRunsService {
     }
     /**
      * Create
-     * @returns ProtocolRunResponse Successful Response
+     * @returns ProtocolRunRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1ProtocolsRunsPost(): CancelablePromise<ProtocolRunResponse> {
+    public static createApiV1ProtocolsRunsPost(): CancelablePromise<ProtocolRunRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/protocols/runs',
@@ -97,7 +97,7 @@ export class ProtocolRunsService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns ProtocolRunResponse Successful Response
+     * @returns ProtocolRunRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1ProtocolsRunsGet(
@@ -111,7 +111,7 @@ export class ProtocolRunsService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_protocols_runs_get,
-    ): CancelablePromise<Array<ProtocolRunResponse>> {
+    ): CancelablePromise<Array<ProtocolRunRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/protocols/runs',
@@ -136,12 +136,12 @@ export class ProtocolRunsService {
     /**
      * Get
      * @param accessionId
-     * @returns ProtocolRunResponse Successful Response
+     * @returns ProtocolRunRead Successful Response
      * @throws ApiError
      */
     public static getApiV1ProtocolsRunsAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<ProtocolRunResponse> {
+    ): CancelablePromise<ProtocolRunRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/protocols/runs/{accession_id}',
@@ -156,12 +156,12 @@ export class ProtocolRunsService {
     /**
      * Update
      * @param accessionId
-     * @returns ProtocolRunResponse Successful Response
+     * @returns ProtocolRunRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1ProtocolsRunsAccessionIdPut(
         accessionId: string,
-    ): CancelablePromise<ProtocolRunResponse> {
+    ): CancelablePromise<ProtocolRunRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/protocols/runs/{accession_id}',

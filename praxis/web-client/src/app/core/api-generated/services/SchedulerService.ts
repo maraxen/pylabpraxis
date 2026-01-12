@@ -5,7 +5,7 @@
 import type { AssetReservationListResponse } from '../models/AssetReservationListResponse';
 import type { Body_get_multi_api_v1_scheduler_entries_get } from '../models/Body_get_multi_api_v1_scheduler_entries_get';
 import type { ReleaseReservationResponse } from '../models/ReleaseReservationResponse';
-import type { ScheduleEntryResponse } from '../models/ScheduleEntryResponse';
+import type { ScheduleEntryRead } from '../models/ScheduleEntryRead';
 import type { ScheduleEntryUpdate } from '../models/ScheduleEntryUpdate';
 import type { SchedulePriorityUpdateRequest } from '../models/SchedulePriorityUpdateRequest';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -14,10 +14,10 @@ import { request as __request } from '../core/request';
 export class SchedulerService {
     /**
      * Create
-     * @returns ScheduleEntryResponse Successful Response
+     * @returns ScheduleEntryRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1SchedulerEntriesPost(): CancelablePromise<ScheduleEntryResponse> {
+    public static createApiV1SchedulerEntriesPost(): CancelablePromise<ScheduleEntryRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/scheduler/entries',
@@ -35,7 +35,7 @@ export class SchedulerService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns ScheduleEntryResponse Successful Response
+     * @returns ScheduleEntryRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1SchedulerEntriesGet(
@@ -49,7 +49,7 @@ export class SchedulerService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_scheduler_entries_get,
-    ): CancelablePromise<Array<ScheduleEntryResponse>> {
+    ): CancelablePromise<Array<ScheduleEntryRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/scheduler/entries',
@@ -74,12 +74,12 @@ export class SchedulerService {
     /**
      * Get
      * @param accessionId
-     * @returns ScheduleEntryResponse Successful Response
+     * @returns ScheduleEntryRead Successful Response
      * @throws ApiError
      */
     public static getApiV1SchedulerEntriesAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<ScheduleEntryResponse> {
+    ): CancelablePromise<ScheduleEntryRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/scheduler/entries/{accession_id}',
@@ -94,12 +94,12 @@ export class SchedulerService {
     /**
      * Update
      * @param accessionId
-     * @returns ScheduleEntryResponse Successful Response
+     * @returns ScheduleEntryRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1SchedulerEntriesAccessionIdPut(
         accessionId: string,
-    ): CancelablePromise<ScheduleEntryResponse> {
+    ): CancelablePromise<ScheduleEntryRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/scheduler/entries/{accession_id}',
@@ -136,13 +136,13 @@ export class SchedulerService {
      * Update the status of a schedule entry.
      * @param scheduleEntryAccessionId
      * @param requestBody
-     * @returns ScheduleEntryResponse Successful Response
+     * @returns ScheduleEntryRead Successful Response
      * @throws ApiError
      */
     public static updateStatusApiV1SchedulerScheduleEntryAccessionIdStatusPut(
         scheduleEntryAccessionId: string,
         requestBody: ScheduleEntryUpdate,
-    ): CancelablePromise<ScheduleEntryResponse> {
+    ): CancelablePromise<ScheduleEntryRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/scheduler/{schedule_entry_accession_id}/status',
@@ -161,13 +161,13 @@ export class SchedulerService {
      * Update the priority of a schedule entry.
      * @param scheduleEntryAccessionId
      * @param requestBody
-     * @returns ScheduleEntryResponse Successful Response
+     * @returns ScheduleEntryRead Successful Response
      * @throws ApiError
      */
     public static updatePriorityApiV1SchedulerScheduleEntryAccessionIdPriorityPut(
         scheduleEntryAccessionId: string,
         requestBody: SchedulePriorityUpdateRequest,
-    ): CancelablePromise<ScheduleEntryResponse> {
+    ): CancelablePromise<ScheduleEntryRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/scheduler/{schedule_entry_accession_id}/priority',

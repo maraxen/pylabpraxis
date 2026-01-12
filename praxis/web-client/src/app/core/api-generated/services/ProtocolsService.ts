@@ -6,7 +6,7 @@ import type { Body_get_multi_api_v1_protocols_definitions_get } from '../models/
 import type { Body_get_multi_api_v1_protocols_runs_get } from '../models/Body_get_multi_api_v1_protocols_runs_get';
 import type { CancelRunResponse } from '../models/CancelRunResponse';
 import type { FunctionProtocolDefinitionResponse } from '../models/FunctionProtocolDefinitionResponse';
-import type { ProtocolRunResponse } from '../models/ProtocolRunResponse';
+import type { ProtocolRunRead } from '../models/ProtocolRunRead';
 import type { QueuedRunResponse } from '../models/QueuedRunResponse';
 import type { SimulationRequest } from '../models/SimulationRequest';
 import type { SimulationResponse } from '../models/SimulationResponse';
@@ -199,10 +199,10 @@ export class ProtocolsService {
     }
     /**
      * Create
-     * @returns ProtocolRunResponse Successful Response
+     * @returns ProtocolRunRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1ProtocolsRunsPost(): CancelablePromise<ProtocolRunResponse> {
+    public static createApiV1ProtocolsRunsPost(): CancelablePromise<ProtocolRunRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/protocols/runs',
@@ -220,7 +220,7 @@ export class ProtocolsService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns ProtocolRunResponse Successful Response
+     * @returns ProtocolRunRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1ProtocolsRunsGet(
@@ -234,7 +234,7 @@ export class ProtocolsService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_protocols_runs_get,
-    ): CancelablePromise<Array<ProtocolRunResponse>> {
+    ): CancelablePromise<Array<ProtocolRunRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/protocols/runs',
@@ -259,12 +259,12 @@ export class ProtocolsService {
     /**
      * Get
      * @param accessionId
-     * @returns ProtocolRunResponse Successful Response
+     * @returns ProtocolRunRead Successful Response
      * @throws ApiError
      */
     public static getApiV1ProtocolsRunsAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<ProtocolRunResponse> {
+    ): CancelablePromise<ProtocolRunRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/protocols/runs/{accession_id}',
@@ -279,12 +279,12 @@ export class ProtocolsService {
     /**
      * Update
      * @param accessionId
-     * @returns ProtocolRunResponse Successful Response
+     * @returns ProtocolRunRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1ProtocolsRunsAccessionIdPut(
         accessionId: string,
-    ): CancelablePromise<ProtocolRunResponse> {
+    ): CancelablePromise<ProtocolRunRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/protocols/runs/{accession_id}',

@@ -33,6 +33,9 @@
       ],
       "@api/*": [
         "src/app/core/api-generated/*"
+      ],
+      "@api": [
+        "src/app/core/api-generated/index.ts"
       ]
     }
   },

@@ -4,18 +4,18 @@
 /* eslint-disable */
 import type { Body_get_multi_api_v1_decks__get } from '../models/Body_get_multi_api_v1_decks__get';
 import type { Body_get_multi_api_v1_decks_types_get } from '../models/Body_get_multi_api_v1_decks_types_get';
-import type { DeckResponse } from '../models/DeckResponse';
-import type { DeckTypeDefinitionResponse } from '../models/DeckTypeDefinitionResponse';
+import type { DeckDefinitionRead } from '../models/DeckDefinitionRead';
+import type { DeckRead } from '../models/DeckRead';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class DecksService {
     /**
      * Create
-     * @returns DeckResponse Successful Response
+     * @returns DeckRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1DecksPost(): CancelablePromise<DeckResponse> {
+    public static createApiV1DecksPost(): CancelablePromise<DeckRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/decks/',
@@ -33,7 +33,7 @@ export class DecksService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns DeckResponse Successful Response
+     * @returns DeckRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1DecksGet(
@@ -47,7 +47,7 @@ export class DecksService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_decks__get,
-    ): CancelablePromise<Array<DeckResponse>> {
+    ): CancelablePromise<Array<DeckRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/decks/',
@@ -72,12 +72,12 @@ export class DecksService {
     /**
      * Get
      * @param accessionId
-     * @returns DeckResponse Successful Response
+     * @returns DeckRead Successful Response
      * @throws ApiError
      */
     public static getApiV1DecksAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<DeckResponse> {
+    ): CancelablePromise<DeckRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/decks/{accession_id}',
@@ -92,12 +92,12 @@ export class DecksService {
     /**
      * Update
      * @param accessionId
-     * @returns DeckResponse Successful Response
+     * @returns DeckRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1DecksAccessionIdPut(
         accessionId: string,
-    ): CancelablePromise<DeckResponse> {
+    ): CancelablePromise<DeckRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/decks/{accession_id}',
@@ -131,10 +131,10 @@ export class DecksService {
     }
     /**
      * Create
-     * @returns DeckTypeDefinitionResponse Successful Response
+     * @returns DeckDefinitionRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1DecksTypesPost(): CancelablePromise<DeckTypeDefinitionResponse> {
+    public static createApiV1DecksTypesPost(): CancelablePromise<DeckDefinitionRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/decks/types',
@@ -152,7 +152,7 @@ export class DecksService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns DeckTypeDefinitionResponse Successful Response
+     * @returns DeckDefinitionRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1DecksTypesGet(
@@ -166,7 +166,7 @@ export class DecksService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_decks_types_get,
-    ): CancelablePromise<Array<DeckTypeDefinitionResponse>> {
+    ): CancelablePromise<Array<DeckDefinitionRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/decks/types',
@@ -191,12 +191,12 @@ export class DecksService {
     /**
      * Get
      * @param accessionId
-     * @returns DeckTypeDefinitionResponse Successful Response
+     * @returns DeckDefinitionRead Successful Response
      * @throws ApiError
      */
     public static getApiV1DecksTypesAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<DeckTypeDefinitionResponse> {
+    ): CancelablePromise<DeckDefinitionRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/decks/types/{accession_id}',
@@ -211,12 +211,12 @@ export class DecksService {
     /**
      * Update
      * @param accessionId
-     * @returns DeckTypeDefinitionResponse Successful Response
+     * @returns DeckDefinitionRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1DecksTypesAccessionIdPut(
         accessionId: string,
-    ): CancelablePromise<DeckTypeDefinitionResponse> {
+    ): CancelablePromise<DeckDefinitionRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/decks/types/{accession_id}',

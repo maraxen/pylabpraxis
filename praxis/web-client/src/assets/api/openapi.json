@@ -115,7 +115,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionDataOutputResponse"
+                  "$ref": "#/components/schemas/FunctionDataOutputRead"
                 }
               }
             }
@@ -289,7 +289,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionDataOutputResponse"
+                    "$ref": "#/components/schemas/FunctionDataOutputRead"
                   },
                   "title": "Response Get Multi Api V1 Data Outputs Outputs Get"
                 }
@@ -335,7 +335,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionDataOutputResponse"
+                  "$ref": "#/components/schemas/FunctionDataOutputRead"
                 }
               }
             }
@@ -377,7 +377,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionDataOutputResponse"
+                  "$ref": "#/components/schemas/FunctionDataOutputRead"
                 }
               }
             }
@@ -444,7 +444,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WellDataOutputResponse"
+                  "$ref": "#/components/schemas/WellDataOutputRead"
                 }
               }
             }
@@ -618,7 +618,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/WellDataOutputResponse"
+                    "$ref": "#/components/schemas/WellDataOutputRead"
                   },
                   "title": "Response Get Multi Api V1 Data Outputs Well Outputs Get"
                 }
@@ -664,7 +664,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WellDataOutputResponse"
+                  "$ref": "#/components/schemas/WellDataOutputRead"
                 }
               }
             }
@@ -706,7 +706,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WellDataOutputResponse"
+                  "$ref": "#/components/schemas/WellDataOutputRead"
                 }
               }
             }
@@ -1217,7 +1217,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProtocolRunResponse"
+                  "$ref": "#/components/schemas/ProtocolRunRead"
                 }
               }
             }
@@ -1391,7 +1391,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ProtocolRunResponse"
+                    "$ref": "#/components/schemas/ProtocolRunRead"
                   },
                   "title": "Response Get Multi Api V1 Protocols Runs Get"
                 }
@@ -1437,7 +1437,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProtocolRunResponse"
+                  "$ref": "#/components/schemas/ProtocolRunRead"
                 }
               }
             }
@@ -1479,7 +1479,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProtocolRunResponse"
+                  "$ref": "#/components/schemas/ProtocolRunRead"
                 }
               }
             }
@@ -1705,7 +1705,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkcellResponse"
+                  "$ref": "#/components/schemas/WorkcellRead"
                 }
               }
             }
@@ -1879,7 +1879,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/WorkcellResponse"
+                    "$ref": "#/components/schemas/WorkcellRead"
                   },
                   "title": "Response Get Multi Api V1 Workcell  Get"
                 }
@@ -1925,7 +1925,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkcellResponse"
+                  "$ref": "#/components/schemas/WorkcellRead"
                 }
               }
             }
@@ -1967,7 +1967,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkcellResponse"
+                  "$ref": "#/components/schemas/WorkcellRead"
                 }
               }
             }
@@ -2141,7 +2141,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResourceDefinitionResponse"
+                  "$ref": "#/components/schemas/ResourceDefinitionRead"
                 }
               }
             }
@@ -2315,7 +2315,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ResourceDefinitionResponse"
+                    "$ref": "#/components/schemas/ResourceDefinitionRead"
                   },
                   "title": "Response Get Multi Api V1 Resources Definitions Get"
                 }
@@ -2361,7 +2361,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResourceDefinitionResponse"
+                  "$ref": "#/components/schemas/ResourceDefinitionRead"
                 }
               }
             }
@@ -2403,7 +2403,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResourceDefinitionResponse"
+                  "$ref": "#/components/schemas/ResourceDefinitionRead"
                 }
               }
             }
@@ -2470,7 +2470,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResourceResponse"
+                  "$ref": "#/components/schemas/ResourceRead"
                 }
               }
             }
@@ -2644,7 +2644,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ResourceResponse"
+                    "$ref": "#/components/schemas/ResourceRead"
                   },
                   "title": "Response Get Multi Api V1 Resources  Get"
                 }
@@ -2690,7 +2690,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResourceResponse"
+                  "$ref": "#/components/schemas/ResourceRead"
                 }
               }
             }
@@ -2732,7 +2732,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResourceResponse"
+                  "$ref": "#/components/schemas/ResourceRead"
                 }
               }
             }
@@ -2799,7 +2799,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DeckResponse"
+                  "$ref": "#/components/schemas/DeckRead"
                 }
               }
             }
@@ -2973,7 +2973,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/DeckResponse"
+                    "$ref": "#/components/schemas/DeckRead"
                   },
                   "title": "Response Get Multi Api V1 Decks  Get"
                 }
@@ -3019,7 +3019,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DeckResponse"
+                  "$ref": "#/components/schemas/DeckRead"
                 }
               }
             }
@@ -3061,7 +3061,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DeckResponse"
+                  "$ref": "#/components/schemas/DeckRead"
                 }
               }
             }
@@ -3128,7 +3128,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DeckTypeDefinitionResponse"
+                  "$ref": "#/components/schemas/DeckDefinitionRead"
                 }
               }
             }
@@ -3302,7 +3302,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/DeckTypeDefinitionResponse"
+                    "$ref": "#/components/schemas/DeckDefinitionRead"
                   },
                   "title": "Response Get Multi Api V1 Decks Types Get"
                 }
@@ -3348,7 +3348,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DeckTypeDefinitionResponse"
+                  "$ref": "#/components/schemas/DeckDefinitionRead"
                 }
               }
             }
@@ -3390,7 +3390,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DeckTypeDefinitionResponse"
+                  "$ref": "#/components/schemas/DeckDefinitionRead"
                 }
               }
             }
@@ -3488,7 +3488,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MachineDefinitionResponse"
+                  "$ref": "#/components/schemas/MachineDefinitionRead"
                 }
               }
             }
@@ -3662,7 +3662,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/MachineDefinitionResponse"
+                    "$ref": "#/components/schemas/MachineDefinitionRead"
                   },
                   "title": "Response Get Multi Api V1 Machines Definitions Get"
                 }
@@ -3708,7 +3708,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MachineDefinitionResponse"
+                  "$ref": "#/components/schemas/MachineDefinitionRead"
                 }
               }
             }
@@ -3750,7 +3750,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MachineDefinitionResponse"
+                  "$ref": "#/components/schemas/MachineDefinitionRead"
                 }
               }
             }
@@ -3817,7 +3817,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MachineResponse"
+                  "$ref": "#/components/schemas/MachineRead"
                 }
               }
             }
@@ -3991,7 +3991,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/MachineResponse"
+                    "$ref": "#/components/schemas/MachineRead"
                   },
                   "title": "Response Get Multi Api V1 Machines  Get"
                 }
@@ -4037,7 +4037,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MachineResponse"
+                  "$ref": "#/components/schemas/MachineRead"
                 }
               }
             }
@@ -4079,7 +4079,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MachineResponse"
+                  "$ref": "#/components/schemas/MachineRead"
                 }
               }
             }
@@ -4199,7 +4199,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MachineResponse"
+                  "$ref": "#/components/schemas/MachineRead"
                 }
               }
             }
@@ -4604,7 +4604,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScheduleEntryResponse"
+                  "$ref": "#/components/schemas/ScheduleEntryRead"
                 }
               }
             }
@@ -4778,7 +4778,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ScheduleEntryResponse"
+                    "$ref": "#/components/schemas/ScheduleEntryRead"
                   },
                   "title": "Response Get Multi Api V1 Scheduler Entries Get"
                 }
@@ -4824,7 +4824,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScheduleEntryResponse"
+                  "$ref": "#/components/schemas/ScheduleEntryRead"
                 }
               }
             }
@@ -4866,7 +4866,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScheduleEntryResponse"
+                  "$ref": "#/components/schemas/ScheduleEntryRead"
                 }
               }
             }
@@ -4956,7 +4956,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScheduleEntryResponse"
+                  "$ref": "#/components/schemas/ScheduleEntryRead"
                 }
               }
             }
@@ -5011,7 +5011,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScheduleEntryResponse"
+                  "$ref": "#/components/schemas/ScheduleEntryRead"
                 }
               }
             }
@@ -6377,33 +6377,6 @@
         "title": "ConnectionType",
         "description": "Type of hardware connection."
       },
-      "DataOutputTypeEnum": {
-        "type": "string",
-        "enum": [
-          "absorbance_reading",
-          "fluorescence_reading",
-          "luminescence_reading",
-          "optical_density",
-          "temperature_reading",
-          "volume_measurement",
-          "generic_measurement",
-          "plate_image",
-          "microscopy_image",
-          "camera_snapshot",
-          "raw_data_file",
-          "analysis_report",
-          "configuration_file",
-          "calculated_concentration",
-          "kinetic_analysis",
-          "statistical_summary",
-          "machine_status",
-          "liquid_level",
-          "error_log",
-          "unknown"
-        ],
-        "title": "DataOutputTypeEnum",
-        "description": "Enumeration for different types of data outputs."
-      },
       "DataViewMetadataModel": {
         "properties": {
           "name": {
@@ -6468,84 +6441,11 @@
         "title": "DataViewMetadataModel",
         "description": "Defines a data view required by a protocol for input data.\n\nData views allow protocols to declare what input data they need in a structured way.\nThey can reference:\n- PLR state data (e.g., liquid volume tracking, resource positions)\n- Function data outputs from previous protocol runs (e.g., plate reader reads)\n\nSchema validation errors during protocol setup generate warnings but do not\nblock protocol execution."
       },
-      "DeckPositionDefinitionResponse": {
+      "DeckDefinitionRead": {
         "properties": {
           "accession_id": {
             "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "The time the record was created."
-          },
-          "last_updated": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Updated",
-            "description": "The time the record was last updated."
-          },
-          "name": {
-            "type": "string",
-            "title": "Name",
-            "description": "An optional name for the record."
-          },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
-          },
-          "nominal_x_mm": {
-            "type": "number",
-            "title": "Nominal X Mm"
-          },
-          "nominal_y_mm": {
-            "type": "number",
-            "title": "Nominal Y Mm"
-          },
-          "nominal_z_mm": {
-            "type": "number",
-            "title": "Nominal Z Mm"
-          },
-          "deck_type_accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Deck Type Accession Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "nominal_x_mm",
-          "nominal_y_mm",
-          "nominal_z_mm",
-          "deck_type_accession_id"
-        ],
-        "title": "DeckPositionDefinitionResponse",
-        "description": "Model for API responses for a deck position definition."
-      },
-      "DeckResponse": {
-        "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid7",
+            "format": "uuid",
             "title": "Accession Id"
           },
           "created_at": {
@@ -6554,7 +6454,7 @@
             "title": "Created At",
             "description": "The time the record was created."
           },
-          "last_updated": {
+          "updated_at": {
             "anyOf": [
               {
                 "type": "string",
@@ -6564,7 +6464,7 @@
                 "type": "null"
               }
             ],
-            "title": "Last Updated",
+            "title": "Updated At",
             "description": "The time the record was last updated."
           },
           "name": {
@@ -6572,31 +6472,12 @@
             "title": "Name",
             "description": "An optional name for the record."
           },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
-          },
-          "asset_type": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AssetType"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The type of the asset."
-          },
           "fqn": {
+            "type": "string",
+            "title": "Fqn",
+            "description": "Fully qualified name"
+          },
+          "description": {
             "anyOf": [
               {
                 "type": "string"
@@ -6605,8 +6486,108 @@
                 "type": "null"
               }
             ],
+            "title": "Description",
+            "description": "Description of the deck type"
+          },
+          "plr_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Category",
+            "description": "PyLabRobot category"
+          },
+          "default_size_x_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Size X Mm",
+            "description": "Default size in X dimension (mm)"
+          },
+          "default_size_y_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Size Y Mm",
+            "description": "Default size in Y dimension (mm)"
+          },
+          "default_size_z_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Size Z Mm",
+            "description": "Default size in Z dimension (mm)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accession_id",
+          "name",
+          "fqn"
+        ],
+        "title": "DeckDefinitionRead",
+        "description": "Schema for reading a DeckDefinition (API response)."
+      },
+      "DeckRead": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "asset_type": {
+            "$ref": "#/components/schemas/AssetType",
+            "description": "Type of asset, e.g., machine, resource, etc.",
+            "default": "GENERIC_ASSET"
+          },
+          "fqn": {
+            "type": "string",
             "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable."
+            "description": "Fully qualified name of the asset's class, if applicable.",
+            "default": ""
           },
           "location": {
             "anyOf": [
@@ -6618,17 +6599,10 @@
               }
             ],
             "title": "Location",
-            "description": "The location of the asset."
+            "description": "Location of the asset in the lab."
           },
           "status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ResourceStatusEnum"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "$ref": "#/components/schemas/ResourceStatusEnum",
             "default": "unknown"
           },
           "status_details": {
@@ -6640,187 +6614,10 @@
                 "type": "null"
               }
             ],
-            "title": "Status Details"
+            "title": "Status Details",
+            "description": "Additional status details"
           },
-          "workcell_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workcell Accession Id"
-          },
-          "parent_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Accession Id"
-          },
-          "plr_state": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plr State",
-            "description": "A dictionary for additional state information about the asset."
-          },
-          "plr_definition": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plr Definition",
-            "description": "A dictionary for the PyLabRobot definition of the asset."
-          },
-          "children": {
-            "items": {
-              "$ref": "#/components/schemas/ResourceBase-Output"
-            },
-            "type": "array",
-            "title": "Children",
-            "description": "List of child resources associated with this resource."
-          },
-          "parent": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ResourceBase-Output"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "child_accession_ids": {
-            "items": {
-              "type": "string",
-              "format": "uuid7"
-            },
-            "type": "array",
-            "title": "Child Accession Ids",
-            "description": "List of accession IDs for child resources to be associated with this resource."
-          },
-          "machine_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Machine Id"
-          },
-          "deck_type_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deck Type Id"
-          },
-          "resource_definition_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Definition Accession Id"
-          },
-          "parent_response": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ResourceResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "asset_type"
-        ],
-        "title": "DeckResponse"
-      },
-      "DeckTypeDefinitionResponse": {
-        "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "The time the record was created."
-          },
-          "last_updated": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Updated",
-            "description": "The time the record was last updated."
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
-          },
-          "fqn": {
-            "type": "string",
-            "title": "Fqn"
-          },
-          "description": {
+          "location_label": {
             "anyOf": [
               {
                 "type": "string"
@@ -6829,9 +6626,10 @@
                 "type": "null"
               }
             ],
-            "title": "Description"
+            "title": "Location Label",
+            "description": "Physical location label"
           },
-          "plr_category": {
+          "current_deck_position_name": {
             "anyOf": [
               {
                 "type": "string"
@@ -6840,34 +6638,17 @@
                 "type": "null"
               }
             ],
-            "title": "Plr Category"
-          },
-          "positioning_config": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PositioningConfig"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "positions": {
-            "items": {
-              "$ref": "#/components/schemas/DeckPositionDefinitionResponse"
-            },
-            "type": "array",
-            "title": "Positions"
+            "title": "Current Deck Position Name",
+            "description": "Current deck position"
           }
         },
         "type": "object",
         "required": [
-          "name",
-          "fqn",
-          "positions"
+          "accession_id",
+          "name"
         ],
-        "title": "DeckTypeDefinitionResponse",
-        "description": "Model for API responses for a deck type definition."
+        "title": "DeckRead",
+        "description": "Schema for reading a Deck (API response)."
       },
       "DeviceStatus": {
         "type": "string",
@@ -7085,13 +6866,12 @@
         "title": "FailureModeModel",
         "description": "A detected failure mode for a protocol."
       },
-      "FunctionDataOutputResponse": {
+      "FunctionDataOutputRead": {
         "properties": {
           "accession_id": {
             "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
+            "format": "uuid",
+            "title": "Accession Id"
           },
           "created_at": {
             "type": "string",
@@ -7099,7 +6879,7 @@
             "title": "Created At",
             "description": "The time the record was created."
           },
-          "last_updated": {
+          "updated_at": {
             "anyOf": [
               {
                 "type": "string",
@@ -7109,7 +6889,7 @@
                 "type": "null"
               }
             ],
-            "title": "Last Updated",
+            "title": "Updated At",
             "description": "The time the record was last updated."
           },
           "name": {
@@ -7117,175 +6897,7 @@
             "title": "Name",
             "description": "An optional name for the record."
           },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
-          },
           "data_type": {
-            "$ref": "#/components/schemas/DataOutputTypeEnum",
-            "description": "Type of data output"
-          },
-          "data_key": {
-            "type": "string",
-            "maxLength": 255,
-            "title": "Data Key",
-            "description": "Unique key within the function call"
-          },
-          "spatial_context": {
-            "$ref": "#/components/schemas/SpatialContextEnum",
-            "description": "Spatial context of the data"
-          },
-          "spatial_coordinates_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Spatial Coordinates Json",
-            "description": "Spatial coordinates within resource"
-          },
-          "data_units": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 50
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data Units",
-            "description": "Units of measurement"
-          },
-          "data_quality_score": {
-            "anyOf": [
-              {
-                "type": "number",
-                "maximum": 1.0,
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data Quality Score",
-            "description": "Quality score (0.0-1.0)"
-          },
-          "measurement_conditions_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Measurement Conditions Json",
-            "description": "Measurement conditions"
-          },
-          "sequence_in_function": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sequence In Function",
-            "description": "Sequence number within the function call"
-          },
-          "function_call_log_accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Function Call Log Accession Id",
-            "description": "ID of the function call"
-          },
-          "protocol_run_accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Protocol Run Accession Id",
-            "description": "ID of the protocol run"
-          },
-          "resource_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Accession Id",
-            "description": "ID of associated resource"
-          },
-          "machine_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Machine Accession Id",
-            "description": "ID of associated machine"
-          },
-          "deck_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deck Accession Id",
-            "description": "ID of associated deck position"
-          },
-          "data_value_numeric": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data Value Numeric",
-            "description": "Numeric data value"
-          },
-          "data_value_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data Value Json",
-            "description": "Structured data"
-          },
-          "data_value_text": {
             "anyOf": [
               {
                 "type": "string"
@@ -7294,8 +6906,8 @@
                 "type": "null"
               }
             ],
-            "title": "Data Value Text",
-            "description": "Text data"
+            "title": "Data Type",
+            "description": "Type of data output"
           },
           "file_path": {
             "anyOf": [
@@ -7307,51 +6919,62 @@
               }
             ],
             "title": "File Path",
-            "description": "Path to external file"
+            "description": "File path for output data"
           },
-          "file_size_bytes": {
+          "mime_type": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "File Size Bytes",
-            "description": "File size in bytes"
+            "title": "Mime Type",
+            "description": "MIME type of the output"
           },
-          "measurement_timestamp": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Measurement Timestamp",
-            "description": "When the measurement was captured"
-          },
-          "derived_from_data_output_accession_id": {
+          "data_json": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "uuid7"
+                "additionalProperties": true,
+                "type": "object"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Derived From Data Output Accession Id",
-            "description": "ID of source data if derived"
+            "title": "Data Json"
+          },
+          "data_quality_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Quality Score"
+          },
+          "data_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Key"
           }
         },
         "type": "object",
         "required": [
-          "data_type",
-          "data_key",
-          "spatial_context",
-          "function_call_log_accession_id",
-          "protocol_run_accession_id",
-          "measurement_timestamp"
+          "accession_id",
+          "name"
         ],
-        "title": "FunctionDataOutputResponse",
-        "description": "Model for function data output responses."
+        "title": "FunctionDataOutputRead",
+        "description": "Schema for reading a FunctionDataOutput (API response)."
       },
       "FunctionProtocolDefinitionResponse": {
         "properties": {
@@ -7947,13 +7570,12 @@
         "title": "MachineCategoryEnum",
         "description": "Enumeration for classifying machines into predefined categories.\n\nThese categories help in broad classification of machines based on their\nfunctionality, mapping to PyLabRobot's machine types."
       },
-      "MachineDefinitionResponse": {
+      "MachineDefinitionRead": {
         "properties": {
           "accession_id": {
             "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
+            "format": "uuid",
+            "title": "Accession Id"
           },
           "created_at": {
             "type": "string",
@@ -7961,7 +7583,7 @@
             "title": "Created At",
             "description": "The time the record was created."
           },
-          "last_updated": {
+          "updated_at": {
             "anyOf": [
               {
                 "type": "string",
@@ -7971,29 +7593,18 @@
                 "type": "null"
               }
             ],
-            "title": "Last Updated",
+            "title": "Updated At",
             "description": "The time the record was last updated."
           },
           "name": {
             "type": "string",
-            "title": "Name"
-          },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
+            "title": "Name",
+            "description": "An optional name for the record."
           },
           "fqn": {
             "type": "string",
-            "title": "Fqn"
+            "title": "Fqn",
+            "description": "Fully qualified name"
           },
           "description": {
             "anyOf": [
@@ -8004,7 +7615,8 @@
                 "type": "null"
               }
             ],
-            "title": "Description"
+            "title": "Description",
+            "description": "Description of the machine type"
           },
           "plr_category": {
             "anyOf": [
@@ -8015,30 +7627,13 @@
                 "type": "null"
               }
             ],
-            "title": "Plr Category"
+            "title": "Plr Category",
+            "description": "PyLabRobot category"
           },
           "machine_category": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MachineCategoryEnum"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The category of the machine."
-          },
-          "nominal_volume_ul": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Nominal Volume Ul",
-            "description": "The nominal volume in microliters."
+            "$ref": "#/components/schemas/MachineCategoryEnum",
+            "description": "Category of the machine",
+            "default": "Unknown"
           },
           "material": {
             "anyOf": [
@@ -8049,8 +7644,7 @@
                 "type": "null"
               }
             ],
-            "title": "Material",
-            "description": "The material of the machine."
+            "title": "Material"
           },
           "manufacturer": {
             "anyOf": [
@@ -8061,21 +7655,18 @@
                 "type": "null"
               }
             ],
-            "title": "Manufacturer",
-            "description": "The manufacturer of the machine."
+            "title": "Manufacturer"
           },
-          "plr_definition_details_json": {
+          "model": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Plr Definition Details Json",
-            "description": "PyLabRobot specific definition details."
+            "title": "Model"
           },
           "size_x_mm": {
             "anyOf": [
@@ -8087,7 +7678,7 @@
               }
             ],
             "title": "Size X Mm",
-            "description": "The size in the x-dimension in millimeters."
+            "description": "Size in X dimension (mm)"
           },
           "size_y_mm": {
             "anyOf": [
@@ -8099,7 +7690,7 @@
               }
             ],
             "title": "Size Y Mm",
-            "description": "The size in the y-dimension in millimeters."
+            "description": "Size in Y dimension (mm)"
           },
           "size_z_mm": {
             "anyOf": [
@@ -8111,137 +7702,13 @@
               }
             ],
             "title": "Size Z Mm",
-            "description": "The size in the z-dimension in millimeters."
-          },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model",
-            "description": "The model of the machine."
-          },
-          "rotation_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Rotation Json",
-            "description": "The rotation of the machine."
-          },
-          "resource_definition_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Definition Accession Id",
-            "description": "The accession ID of the resource definition."
+            "description": "Size in Z dimension (mm)"
           },
           "has_deck": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "boolean",
             "title": "Has Deck",
-            "description": "Whether the machine has a deck."
-          },
-          "deck_definition_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deck Definition Accession Id",
-            "description": "The accession ID of the deck definition."
-          },
-          "setup_method_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Setup Method Json",
-            "description": "The setup method for the machine."
-          },
-          "capabilities": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Capabilities",
-            "description": "Hardware capabilities (channels, modules, etc)."
-          },
-          "compatible_backends": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Compatible Backends",
-            "description": "List of compatible backend FQNs."
-          },
-          "capabilities_config": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Capabilities Config",
-            "description": "Schema for user-configurable capabilities."
-          },
-          "connection_config": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Connection Config",
-            "description": "Schema for connection parameters (host, port, etc)."
+            "description": "Whether this machine has a deck",
+            "default": false
           },
           "frontend_fqn": {
             "anyOf": [
@@ -8253,49 +7720,9 @@
               }
             ],
             "title": "Frontend Fqn",
-            "description": "FQN of the PLR frontend class (e.g., pylabrobot.liquid_handling.LiquidHandler)."
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "fqn"
-        ],
-        "title": "MachineDefinitionResponse",
-        "description": "Represents a machine definition for API responses."
-      },
-      "MachineResponse": {
-        "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id"
+            "description": "PLR frontend class FQN"
           },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "The time the record was created."
-          },
-          "last_updated": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Updated",
-            "description": "The time the record was last updated."
-          },
-          "name": {
-            "type": "string",
-            "title": "Name",
-            "description": "An optional name for the record."
-          },
-          "properties_json": {
+          "plr_definition_details_json": {
             "anyOf": [
               {
                 "additionalProperties": true,
@@ -8305,31 +7732,83 @@
                 "type": "null"
               }
             ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
+            "title": "Plr Definition Details Json"
+          },
+          "rotation_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotation Json"
+          },
+          "setup_method_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setup Method Json"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accession_id",
+          "name",
+          "fqn"
+        ],
+        "title": "MachineDefinitionRead",
+        "description": "Schema for reading a MachineDefinition (API response)."
+      },
+      "MachineRead": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
           },
           "asset_type": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AssetType"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The type of the asset."
+            "$ref": "#/components/schemas/AssetType",
+            "description": "Type of asset, e.g., machine, resource, etc.",
+            "default": "GENERIC_ASSET"
           },
           "fqn": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable."
+            "description": "Fully qualified name of the asset's class, if applicable.",
+            "default": ""
           },
           "location": {
             "anyOf": [
@@ -8341,65 +7820,11 @@
               }
             ],
             "title": "Location",
-            "description": "The location of the asset."
+            "description": "Location of the asset in the lab."
           },
-          "status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MachineStatusEnum"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": "OFFLINE"
-          },
-          "status_details": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status Details"
-          },
-          "workcell_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workcell Id"
-          },
-          "resource_counterpart_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Counterpart Accession Id"
-          },
-          "has_deck_child": {
-            "type": "boolean",
-            "title": "Has Deck Child",
-            "description": "Indicates if this machine has a deck resource as a child.",
-            "default": false
-          },
-          "has_resource_child": {
-            "type": "boolean",
-            "title": "Has Resource Child",
-            "description": "Indicates if this machine has a resource child.",
-            "default": false
+          "machine_category": {
+            "$ref": "#/components/schemas/MachineCategoryEnum",
+            "default": "Unknown"
           },
           "description": {
             "anyOf": [
@@ -8445,14 +7870,72 @@
             ],
             "title": "Serial Number"
           },
+          "location_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Label",
+            "description": "Physical location label"
+          },
           "installation_date": {
             "anyOf": [
-              {},
+              {
+                "type": "string",
+                "format": "date-time"
+              },
               {
                 "type": "null"
               }
             ],
             "title": "Installation Date"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MachineStatusEnum",
+            "default": "OFFLINE"
+          },
+          "status_details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Details"
+          },
+          "is_simulation_override": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Simulation Override"
+          },
+          "last_seen_online": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen Online"
+          },
+          "maintenance_enabled": {
+            "type": "boolean",
+            "title": "Maintenance Enabled",
+            "default": true
           },
           "connection_info": {
             "anyOf": [
@@ -8466,17 +7949,6 @@
             ],
             "title": "Connection Info"
           },
-          "is_simulation_override": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Simulation Override"
-          },
           "user_configured_capabilities": {
             "anyOf": [
               {
@@ -8488,98 +7960,15 @@
               }
             ],
             "title": "User Configured Capabilities"
-          },
-          "current_protocol_run_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Current Protocol Run Accession Id"
-          },
-          "location_label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Location Label"
-          },
-          "maintenance_enabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Maintenance Enabled",
-            "default": true
-          },
-          "maintenance_schedule_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Maintenance Schedule Json"
-          },
-          "last_maintenance_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Maintenance Json"
-          },
-          "plr_state": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plr State",
-            "description": "A dictionary for additional state information about the asset."
-          },
-          "plr_definition": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plr Definition",
-            "description": "A dictionary for the PyLabRobot definition of the asset."
           }
         },
         "type": "object",
         "required": [
-          "asset_type"
+          "accession_id",
+          "name"
         ],
-        "title": "MachineResponse"
+        "title": "MachineRead",
+        "description": "Schema for reading a Machine (API response)."
       },
       "MachineStatusEnum": {
         "type": "string",
@@ -8904,57 +8293,12 @@
         "title": "ParameterMetadataModel",
         "description": "Provides comprehensive metadata for a protocol parameter.\n\nThis includes its name, type information, default value, description,\nconstraints, and UI rendering hints."
       },
-      "PositioningConfig": {
-        "properties": {
-          "method_name": {
-            "type": "string",
-            "title": "Method Name",
-            "description": "Name of the PyLabRobot deck method to call (e.g., 'rail_to_location','slot_to_location')."
-          },
-          "arg_name": {
-            "type": "string",
-            "title": "Arg Name",
-            "description": "Name of the argument for the position in the method (e.g., 'rail', 'slot')."
-          },
-          "arg_type": {
-            "type": "string",
-            "enum": [
-              "str",
-              "int"
-            ],
-            "title": "Arg Type",
-            "description": "Expected type of the position argument ('str' or 'int').",
-            "default": "str"
-          },
-          "params": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Params",
-            "description": "Additional parameters for the positioning method."
-          }
-        },
-        "type": "object",
-        "required": [
-          "method_name",
-          "arg_name"
-        ],
-        "title": "PositioningConfig",
-        "description": "Configuration for how positions are calculated/managed for this deck type.\n\nA general configuration for methods that follow the pattern:\n`deck.method_name(position_arg)` -> Coordinate"
-      },
-      "ProtocolRunResponse": {
+      "ProtocolRunRead": {
         "properties": {
           "accession_id": {
             "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
+            "format": "uuid",
+            "title": "Accession Id"
           },
           "created_at": {
             "type": "string",
@@ -8962,7 +8306,7 @@
             "title": "Created At",
             "description": "The time the record was created."
           },
-          "last_updated": {
+          "updated_at": {
             "anyOf": [
               {
                 "type": "string",
@@ -8972,10 +8316,15 @@
                 "type": "null"
               }
             ],
-            "title": "Last Updated",
+            "title": "Updated At",
             "description": "The time the record was last updated."
           },
           "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "function_name": {
             "anyOf": [
               {
                 "type": "string"
@@ -8984,32 +8333,26 @@
                 "type": "null"
               }
             ],
-            "title": "Name"
+            "title": "Function Name",
+            "description": "Name of the protocol function"
           },
-          "properties_json": {
+          "function_file": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
+            "title": "Function File",
+            "description": "File containing the protocol function"
           },
           "status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ProtocolRunStatusEnum"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/ProtocolRunStatusEnum",
+            "default": "queued"
           },
-          "start_time": {
+          "started_at": {
             "anyOf": [
               {
                 "type": "string",
@@ -9019,9 +8362,10 @@
                 "type": "null"
               }
             ],
-            "title": "Start Time"
+            "title": "Started At",
+            "description": "When the protocol run started"
           },
-          "end_time": {
+          "completed_at": {
             "anyOf": [
               {
                 "type": "string",
@@ -9031,67 +8375,20 @@
                 "type": "null"
               }
             ],
-            "title": "End Time"
+            "title": "Completed At",
+            "description": "When the protocol run completed"
           },
-          "input_parameters_json": {
+          "error_message": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Input Parameters Json"
-          },
-          "resolved_assets_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resolved Assets Json"
-          },
-          "output_data_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Output Data Json"
-          },
-          "initial_state_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Initial State Json"
-          },
-          "final_state_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Final State Json"
+            "title": "Error Message",
+            "description": "Error message if the run failed"
           },
           "data_directory_path": {
             "anyOf": [
@@ -9104,7 +8401,7 @@
             ],
             "title": "Data Directory Path"
           },
-          "created_by_user": {
+          "function_args_json": {
             "anyOf": [
               {
                 "additionalProperties": true,
@@ -9114,24 +8411,52 @@
                 "type": "null"
               }
             ],
-            "title": "Created By User"
+            "title": "Function Args Json"
           },
-          "previous_accession_id": {
+          "function_kwargs_json": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "uuid7"
+                "additionalProperties": true,
+                "type": "object"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Previous Accession Id"
+            "title": "Function Kwargs Json"
+          },
+          "result_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Json"
+          },
+          "output_data_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Data Json"
           }
         },
         "type": "object",
-        "title": "ProtocolRunResponse",
-        "description": "Model for API responses for a protocol run."
+        "required": [
+          "accession_id",
+          "name"
+        ],
+        "title": "ProtocolRunRead",
+        "description": "Schema for reading a ProtocolRun (API response)."
       },
       "ProtocolRunStatusEnum": {
         "type": "string",
@@ -9423,13 +8748,12 @@
         "title": "ReplResponse",
         "description": "Response from REPL command execution."
       },
-      "ResourceBase-Input": {
+      "ResourceDefinitionRead": {
         "properties": {
           "accession_id": {
             "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
+            "format": "uuid",
+            "title": "Accession Id"
           },
           "created_at": {
             "type": "string",
@@ -9437,7 +8761,7 @@
             "title": "Created At",
             "description": "The time the record was created."
           },
-          "last_updated": {
+          "updated_at": {
             "anyOf": [
               {
                 "type": "string",
@@ -9447,7 +8771,7 @@
                 "type": "null"
               }
             ],
-            "title": "Last Updated",
+            "title": "Updated At",
             "description": "The time the record was last updated."
           },
           "name": {
@@ -9455,416 +8779,10 @@
             "title": "Name",
             "description": "An optional name for the record."
           },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
-          },
-          "asset_type": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AssetType"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The type of the asset."
-          },
           "fqn": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable."
-          },
-          "location": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Location",
-            "description": "The location of the asset."
-          },
-          "status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ResourceStatusEnum"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": "unknown"
-          },
-          "status_details": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status Details"
-          },
-          "workcell_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workcell Accession Id"
-          },
-          "parent_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Accession Id"
-          },
-          "plr_state": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plr State"
-          },
-          "plr_definition": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plr Definition"
-          },
-          "children": {
-            "items": {
-              "$ref": "#/components/schemas/ResourceBase-Input"
-            },
-            "type": "array",
-            "title": "Children",
-            "description": "List of child resources associated with this resource."
-          },
-          "parent": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ResourceBase-Input"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "child_accession_ids": {
-            "items": {
-              "type": "string",
-              "format": "uuid7"
-            },
-            "type": "array",
-            "title": "Child Accession Ids",
-            "description": "List of accession IDs for child resources to be associated with this resource."
-          },
-          "resource_definition_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Definition Accession Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "asset_type"
-        ],
-        "title": "ResourceBase",
-        "description": "Base model for a resource instance."
-      },
-      "ResourceBase-Output": {
-        "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "The time the record was created."
-          },
-          "last_updated": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Updated",
-            "description": "The time the record was last updated."
-          },
-          "name": {
-            "type": "string",
-            "title": "Name",
-            "description": "An optional name for the record."
-          },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
-          },
-          "asset_type": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AssetType"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The type of the asset."
-          },
-          "fqn": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable."
-          },
-          "location": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Location",
-            "description": "The location of the asset."
-          },
-          "status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ResourceStatusEnum"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": "unknown"
-          },
-          "status_details": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status Details"
-          },
-          "workcell_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workcell Accession Id"
-          },
-          "parent_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Accession Id"
-          },
-          "plr_state": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plr State"
-          },
-          "plr_definition": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plr Definition"
-          },
-          "children": {
-            "items": {
-              "$ref": "#/components/schemas/ResourceBase-Output"
-            },
-            "type": "array",
-            "title": "Children",
-            "description": "List of child resources associated with this resource."
-          },
-          "parent": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ResourceBase-Output"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "child_accession_ids": {
-            "items": {
-              "type": "string",
-              "format": "uuid7"
-            },
-            "type": "array",
-            "title": "Child Accession Ids",
-            "description": "List of accession IDs for child resources to be associated with this resource."
-          },
-          "resource_definition_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Definition Accession Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "asset_type"
-        ],
-        "title": "ResourceBase",
-        "description": "Base model for a resource instance."
-      },
-      "ResourceDefinitionResponse": {
-        "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "The time the record was created."
-          },
-          "last_updated": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Updated",
-            "description": "The time the record was last updated."
-          },
-          "name": {
-            "type": "string",
-            "title": "Name",
-            "description": "An optional name for the record."
-          },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
-          },
-          "fqn": {
-            "type": "string",
-            "title": "Fqn"
+            "description": "Fully qualified name"
           },
           "description": {
             "anyOf": [
@@ -9875,7 +8793,8 @@
                 "type": "null"
               }
             ],
-            "title": "Description"
+            "title": "Description",
+            "description": "Description of the resource type"
           },
           "plr_category": {
             "anyOf": [
@@ -9886,7 +8805,8 @@
                 "type": "null"
               }
             ],
-            "title": "Plr Category"
+            "title": "Plr Category",
+            "description": "PyLabRobot category"
           },
           "resource_type": {
             "anyOf": [
@@ -9897,12 +8817,13 @@
                 "type": "null"
               }
             ],
-            "title": "Resource Type"
+            "title": "Resource Type",
+            "description": "Human-readable type of the resource"
           },
           "is_consumable": {
             "type": "boolean",
             "title": "Is Consumable",
-            "default": true
+            "default": false
           },
           "nominal_volume_ul": {
             "anyOf": [
@@ -9913,7 +8834,8 @@
                 "type": "null"
               }
             ],
-            "title": "Nominal Volume Ul"
+            "title": "Nominal Volume Ul",
+            "description": "Nominal volume in microliters"
           },
           "material": {
             "anyOf": [
@@ -9924,7 +8846,8 @@
                 "type": "null"
               }
             ],
-            "title": "Material"
+            "title": "Material",
+            "description": "Material (polypropylene, glass, etc.)"
           },
           "manufacturer": {
             "anyOf": [
@@ -9936,6 +8859,125 @@
               }
             ],
             "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "ordering": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ordering",
+            "description": "Ordering information"
+          },
+          "size_x_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size X Mm",
+            "description": "Size in X dimension (mm)"
+          },
+          "size_y_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Y Mm",
+            "description": "Size in Y dimension (mm)"
+          },
+          "size_z_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Z Mm",
+            "description": "Size in Z dimension (mm)"
+          },
+          "num_items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Items",
+            "description": "Number of items (wells, tips)"
+          },
+          "plate_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plate Type",
+            "description": "Plate skirt type"
+          },
+          "well_volume_ul": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Well Volume Ul",
+            "description": "Well volume for plates"
+          },
+          "tip_volume_ul": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tip Volume Ul",
+            "description": "Tip volume for tip racks"
+          },
+          "vendor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor",
+            "description": "Vendor from FQN"
           },
           "plr_definition_details_json": {
             "anyOf": [
@@ -9949,50 +8991,6 @@
             ],
             "title": "Plr Definition Details Json"
           },
-          "size_x_mm": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Size X Mm"
-          },
-          "size_y_mm": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Size Y Mm"
-          },
-          "size_z_mm": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Size Z Mm"
-          },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model"
-          },
           "rotation_json": {
             "anyOf": [
               {
@@ -10004,88 +9002,23 @@
               }
             ],
             "title": "Rotation Json"
-          },
-          "ordering": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ordering"
-          },
-          "num_items": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Num Items"
-          },
-          "plate_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plate Type"
-          },
-          "well_volume_ul": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Well Volume Ul"
-          },
-          "tip_volume_ul": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tip Volume Ul"
-          },
-          "vendor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Vendor"
           }
         },
         "type": "object",
         "required": [
+          "accession_id",
+          "name",
           "fqn"
         ],
-        "title": "ResourceDefinitionResponse",
-        "description": "Represents a resource definition for API responses."
+        "title": "ResourceDefinitionRead",
+        "description": "Schema for reading a ResourceDefinition (API response)."
       },
-      "ResourceReservationResponse": {
+      "ResourceRead": {
         "properties": {
           "accession_id": {
             "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
+            "format": "uuid",
+            "title": "Accession Id"
           },
           "created_at": {
             "type": "string",
@@ -10093,7 +9026,7 @@
             "title": "Created At",
             "description": "The time the record was created."
           },
-          "last_updated": {
+          "updated_at": {
             "anyOf": [
               {
                 "type": "string",
@@ -10103,7 +9036,7 @@
                 "type": "null"
               }
             ],
-            "title": "Last Updated",
+            "title": "Updated At",
             "description": "The time the record was last updated."
           },
           "name": {
@@ -10111,28 +9044,18 @@
             "title": "Name",
             "description": "An optional name for the record."
           },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
+          "asset_type": {
+            "$ref": "#/components/schemas/AssetType",
+            "description": "Type of asset, e.g., machine, resource, etc.",
+            "default": "GENERIC_ASSET"
           },
-          "resource_type": {
+          "fqn": {
             "type": "string",
-            "title": "Resource Type"
+            "title": "Fqn",
+            "description": "Fully qualified name of the asset's class, if applicable.",
+            "default": ""
           },
-          "resource_name": {
-            "type": "string",
-            "title": "Resource Name"
-          },
-          "resource_identifier": {
+          "location": {
             "anyOf": [
               {
                 "type": "string"
@@ -10141,104 +9064,12 @@
                 "type": "null"
               }
             ],
-            "title": "Resource Identifier"
+            "title": "Location",
+            "description": "Location of the asset in the lab."
           },
           "status": {
-            "$ref": "#/components/schemas/ResourceReservationStatus"
-          },
-          "redis_lock_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Redis Lock Key"
-          },
-          "redis_reservation_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Redis Reservation Id"
-          },
-          "required_capabilities_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Required Capabilities Json"
-          },
-          "constraint_details_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Constraint Details Json"
-          },
-          "reserved_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reserved At"
-          },
-          "released_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Released At"
-          },
-          "expires_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expires At"
-          },
-          "estimated_duration_ms": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Estimated Duration Ms"
+            "$ref": "#/components/schemas/ResourceStatusEnum",
+            "default": "unknown"
           },
           "status_details": {
             "anyOf": [
@@ -10249,40 +9080,41 @@
                 "type": "null"
               }
             ],
-            "title": "Status Details"
+            "title": "Status Details",
+            "description": "Additional status details"
           },
-          "error_details_json": {
+          "location_label": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Error Details Json"
+            "title": "Location Label",
+            "description": "Physical location label"
+          },
+          "current_deck_position_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Deck Position Name",
+            "description": "Current deck position"
           }
         },
         "type": "object",
         "required": [
-          "resource_type",
-          "resource_name",
-          "resource_identifier",
-          "status",
-          "redis_lock_key",
-          "redis_reservation_id",
-          "required_capabilities_json",
-          "constraint_details_json",
-          "reserved_at",
-          "released_at",
-          "expires_at",
-          "estimated_duration_ms",
-          "status_details",
-          "error_details_json"
+          "accession_id",
+          "name"
         ],
-        "title": "ResourceReservationResponse",
-        "description": "Response model for resource reservations."
+        "title": "ResourceRead",
+        "description": "Schema for reading a Resource (API response)."
       },
       "ResourceReservationStatus": {
         "type": "string",
@@ -10296,215 +9128,6 @@
         ],
         "title": "ResourceReservationStatus",
         "description": "Resource reservation status enum for API."
-      },
-      "ResourceResponse": {
-        "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "The time the record was created."
-          },
-          "last_updated": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Updated",
-            "description": "The time the record was last updated."
-          },
-          "name": {
-            "type": "string",
-            "title": "Name",
-            "description": "An optional name for the record."
-          },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
-          },
-          "asset_type": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AssetType"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The type of the asset."
-          },
-          "fqn": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable."
-          },
-          "location": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Location",
-            "description": "The location of the asset."
-          },
-          "status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ResourceStatusEnum"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": "unknown"
-          },
-          "status_details": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status Details"
-          },
-          "workcell_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workcell Accession Id"
-          },
-          "parent_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Accession Id"
-          },
-          "plr_state": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plr State",
-            "description": "A dictionary for additional state information about the asset."
-          },
-          "plr_definition": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plr Definition",
-            "description": "A dictionary for the PyLabRobot definition of the asset."
-          },
-          "children": {
-            "items": {
-              "$ref": "#/components/schemas/ResourceBase-Output"
-            },
-            "type": "array",
-            "title": "Children",
-            "description": "List of child resources associated with this resource."
-          },
-          "parent": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ResourceBase-Output"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "child_accession_ids": {
-            "items": {
-              "type": "string",
-              "format": "uuid7"
-            },
-            "type": "array",
-            "title": "Child Accession Ids",
-            "description": "List of accession IDs for child resources to be associated with this resource."
-          },
-          "resource_definition_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid7"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Definition Accession Id"
-          },
-          "parent_response": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ResourceResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "asset_type"
-        ],
-        "title": "ResourceResponse",
-        "description": "Model for API responses for a resource instance."
       },
       "ResourceStatusEnum": {
         "type": "string",
@@ -10542,13 +9165,12 @@
         ],
         "title": "SaveSessionRequest"
       },
-      "ScheduleEntryResponse": {
+      "ScheduleEntryRead": {
         "properties": {
           "accession_id": {
             "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
+            "format": "uuid",
+            "title": "Accession Id"
           },
           "created_at": {
             "type": "string",
@@ -10556,7 +9178,7 @@
             "title": "Created At",
             "description": "The time the record was created."
           },
-          "last_updated": {
+          "updated_at": {
             "anyOf": [
               {
                 "type": "string",
@@ -10566,7 +9188,7 @@
                 "type": "null"
               }
             ],
-            "title": "Last Updated",
+            "title": "Updated At",
             "description": "The time the record was last updated."
           },
           "name": {
@@ -10574,7 +9196,80 @@
             "title": "Name",
             "description": "An optional name for the record."
           },
-          "properties_json": {
+          "status": {
+            "$ref": "#/components/schemas/ScheduleStatusEnum",
+            "default": "queued"
+          },
+          "scheduled_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled At",
+            "description": "Scheduled start time"
+          },
+          "execution_started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Started At",
+            "description": "Actual start time"
+          },
+          "execution_completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Completed At",
+            "description": "Actual end time"
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority",
+            "description": "Priority for scheduling",
+            "default": 0
+          },
+          "estimated_duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Duration Ms",
+            "description": "Estimated duration"
+          },
+          "required_asset_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Asset Count",
+            "description": "Required asset count"
+          },
+          "user_params_json": {
             "anyOf": [
               {
                 "additionalProperties": true,
@@ -10584,20 +9279,53 @@
                 "type": "null"
               }
             ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
+            "title": "User Params Json",
+            "description": "User parameters"
           },
-          "protocol_run_accession_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Protocol Run Accession Id"
+          "asset_requirements_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Requirements Json",
+            "description": "Asset requirements"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accession_id",
+          "name"
+        ],
+        "title": "ScheduleEntryRead",
+        "description": "Schema for reading a ScheduleEntry (API response)."
+      },
+      "ScheduleEntryUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
           "status": {
-            "$ref": "#/components/schemas/ScheduleStatusEnum"
-          },
-          "priority": {
-            "type": "integer",
-            "title": "Priority"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScheduleStatusEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "scheduled_at": {
             "anyOf": [
@@ -10610,200 +9338,6 @@
               }
             ],
             "title": "Scheduled At"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          },
-          "estimated_duration_ms": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Estimated Duration Ms"
-          },
-          "estimated_resource_count": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Estimated Resource Count"
-          },
-          "analysis_details": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Analysis Details"
-          },
-          "scheduling_metadata": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Scheduling Metadata"
-          },
-          "error_details": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Details"
-          },
-          "status_details": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status Details"
-          },
-          "resource_reservations": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/ResourceReservationResponse"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resource Reservations"
-          }
-        },
-        "type": "object",
-        "required": [
-          "protocol_run_accession_id",
-          "status",
-          "priority",
-          "scheduled_at"
-        ],
-        "title": "ScheduleEntryResponse",
-        "description": "Response model for schedule entries."
-      },
-      "ScheduleEntryUpdate": {
-        "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "The time the record was created."
-          },
-          "last_updated": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Updated",
-            "description": "The time the record was last updated."
-          },
-          "name": {
-            "type": "string",
-            "title": "Name",
-            "description": "An optional name for the record."
-          },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
-          },
-          "status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ScheduleStatusEnum"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "priority": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Priority"
-          },
-          "last_error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Error Message"
           },
           "execution_started_at": {
             "anyOf": [
@@ -10828,11 +9362,33 @@
               }
             ],
             "title": "Execution Completed At"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "last_error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Message"
           }
         },
         "type": "object",
         "title": "ScheduleEntryUpdate",
-        "description": "Request model for updating a schedule entry."
+        "description": "Schema for updating a ScheduleEntry (partial update)."
       },
       "SchedulePriorityUpdateRequest": {
         "properties": {
@@ -11160,18 +9716,6 @@
         "title": "SimulationViolationResponse",
         "description": "A violation detected during simulation."
       },
-      "SpatialContextEnum": {
-        "type": "string",
-        "enum": [
-          "well_specific",
-          "plate_level",
-          "machine_level",
-          "deck_position",
-          "global"
-        ],
-        "title": "SpatialContextEnum",
-        "description": "Enumeration for spatial context types."
-      },
       "StartRunRequest": {
         "properties": {
           "protocol_definition_accession_id": {
@@ -11365,13 +9909,12 @@
         ],
         "title": "ValidationError"
       },
-      "WellDataOutputResponse": {
+      "WellDataOutputRead": {
         "properties": {
           "accession_id": {
             "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
+            "format": "uuid",
+            "title": "Accession Id"
           },
           "created_at": {
             "type": "string",
@@ -11379,7 +9922,7 @@
             "title": "Created At",
             "description": "The time the record was created."
           },
-          "last_updated": {
+          "updated_at": {
             "anyOf": [
               {
                 "type": "string",
@@ -11389,7 +9932,7 @@
                 "type": "null"
               }
             ],
-            "title": "Last Updated",
+            "title": "Updated At",
             "description": "The time the record was last updated."
           },
           "name": {
@@ -11397,49 +9940,65 @@
             "title": "Name",
             "description": "An optional name for the record."
           },
-          "properties_json": {
+          "well_position": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
+            "title": "Well Position",
+            "description": "Well position (e.g., 'A1')"
+          },
+          "measurement_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measurement Type",
+            "description": "Type of measurement"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value",
+            "description": "Measured value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit",
+            "description": "Unit of measurement"
           },
           "well_name": {
-            "type": "string",
-            "maxLength": 10,
-            "title": "Well Name",
-            "description": "Well name (e.g., 'A1')"
-          },
-          "well_row": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Well Row",
-            "description": "0-based row index"
-          },
-          "well_column": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Well Column",
-            "description": "0-based column index"
-          },
-          "well_index": {
             "anyOf": [
               {
-                "type": "integer",
-                "minimum": 0.0
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Well Index",
-            "description": "Linear well index"
+            "title": "Well Name",
+            "description": "Well name (e.g. A1)"
           },
           "data_value": {
             "anyOf": [
@@ -11450,66 +10009,9 @@
                 "type": "null"
               }
             ],
-            "title": "Data Value",
-            "description": "Primary numeric value for this well"
+            "title": "Data Value"
           },
-          "function_data_output_accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Function Data Output Accession Id",
-            "description": "ID of the parent function data output"
-          },
-          "plate_resource_accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Plate Resource Accession Id",
-            "description": "ID of the plate resource"
-          }
-        },
-        "type": "object",
-        "required": [
-          "well_name",
-          "well_row",
-          "well_column",
-          "function_data_output_accession_id",
-          "plate_resource_accession_id"
-        ],
-        "title": "WellDataOutputResponse",
-        "description": "Model for well data output responses."
-      },
-      "WorkcellResponse": {
-        "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid7",
-            "title": "Accession Id",
-            "description": "The unique accession ID of the record."
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "The time the record was created."
-          },
-          "last_updated": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Updated",
-            "description": "The time the record was last updated."
-          },
-          "name": {
-            "type": "string",
-            "title": "Name",
-            "description": "The unique name of the workcell."
-          },
-          "properties_json": {
+          "metadata_json": {
             "anyOf": [
               {
                 "additionalProperties": true,
@@ -11519,20 +10021,47 @@
                 "type": "null"
               }
             ],
-            "title": "Properties Json",
-            "description": "Arbitrary metadata associated with the record."
+            "title": "Metadata Json"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accession_id",
+          "name"
+        ],
+        "title": "WellDataOutputRead",
+        "description": "Schema for reading a WellDataOutput (API response)."
+      },
+      "WorkcellRead": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id"
           },
-          "fqn": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "format": "date-time"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Fqn",
-            "description": "The fully qualified name for the workcell. Defaults to name if not provided."
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "An optional name for the record."
           },
           "description": {
             "anyOf": [
@@ -11544,7 +10073,7 @@
               }
             ],
             "title": "Description",
-            "description": "A description of the workcell."
+            "description": "Description of the workcell's purpose"
           },
           "physical_location": {
             "anyOf": [
@@ -11556,25 +10085,13 @@
               }
             ],
             "title": "Physical Location",
-            "description": "The physical location of the workcell (e.g., 'Lab 2, Room 301')."
+            "description": "Physical location (e.g., 'Lab 2, Room 301')"
           },
           "status": {
-            "$ref": "#/components/schemas/WorkcellStatusEnum",
-            "description": "The current status of the workcell.",
+            "type": "string",
+            "title": "Status",
+            "description": "Current status of the workcell",
             "default": "available"
-          },
-          "latest_state_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest State Json",
-            "description": "The latest state of the workcell as a JSON object."
           },
           "last_state_update_time": {
             "anyOf": [
@@ -11587,67 +10104,28 @@
               }
             ],
             "title": "Last State Update Time",
-            "description": "The timestamp of the last state update."
+            "description": "Timestamp of last state update"
           },
-          "machines": {
-            "items": {
-              "$ref": "#/components/schemas/MachineResponse"
-            },
-            "type": "array",
-            "title": "Machines",
-            "description": "List of machines associated with this workcell."
-          },
-          "resources": {
+          "latest_state_json": {
             "anyOf": [
               {
-                "items": {
-                  "$ref": "#/components/schemas/ResourceResponse"
-                },
-                "type": "array"
+                "additionalProperties": true,
+                "type": "object"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Resources",
-            "description": "List of resources associated with this workcell."
-          },
-          "decks": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/DeckResponse"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Decks",
-            "description": "List of deck configurations associated with this workcell."
+            "title": "Latest State Json"
           }
         },
         "type": "object",
         "required": [
+          "accession_id",
           "name"
         ],
-        "title": "WorkcellResponse",
-        "description": "Represents a workcell for API responses.\n\nThis model extends `WorkcellBase` by adding system-generated identifiers\nand timestamps for creation and last update, suitable for client-facing\nresponses."
-      },
-      "WorkcellStatusEnum": {
-        "type": "string",
-        "enum": [
-          "active",
-          "in_use",
-          "reserved",
-          "available",
-          "error",
-          "inactive",
-          "maintenance"
-        ],
-        "title": "WorkcellStatusEnum",
-        "description": "Enumeration for workcell status.\n\nThis enum defines the possible statuses a workcell can have."
+        "title": "WorkcellRead",
+        "description": "Schema for reading a Workcell (API response)."
       }
     },
     "securitySchemes": {

@@ -14,7 +14,7 @@
     "build:gh-pages": "ng build --configuration=gh-pages",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "generate-api": "npx openapi-typescript-codegen --input ./src/assets/api/openapi.json --output ./src/app/core/api-generated --client fetch --useUnionTypes",
+    "generate-api": "node node_modules/openapi-typescript-codegen/bin/index.js --input ./src/assets/api/openapi.json --output ./src/app/core/api-generated --client fetch --useUnionTypes",
     "prebuild": "npm run generate-api"
   },
   "prettier": {

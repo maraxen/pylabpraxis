@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { Body_get_multi_api_v1_machines_definitions_get } from '../models/Body_get_multi_api_v1_machines_definitions_get';
-import type { MachineDefinitionResponse } from '../models/MachineDefinitionResponse';
+import type { MachineDefinitionRead } from '../models/MachineDefinitionRead';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -24,10 +24,10 @@ export class MachineDefinitionsService {
     }
     /**
      * Create
-     * @returns MachineDefinitionResponse Successful Response
+     * @returns MachineDefinitionRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1MachinesDefinitionsPost(): CancelablePromise<MachineDefinitionResponse> {
+    public static createApiV1MachinesDefinitionsPost(): CancelablePromise<MachineDefinitionRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/machines/definitions',
@@ -45,7 +45,7 @@ export class MachineDefinitionsService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns MachineDefinitionResponse Successful Response
+     * @returns MachineDefinitionRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1MachinesDefinitionsGet(
@@ -59,7 +59,7 @@ export class MachineDefinitionsService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_machines_definitions_get,
-    ): CancelablePromise<Array<MachineDefinitionResponse>> {
+    ): CancelablePromise<Array<MachineDefinitionRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/machines/definitions',
@@ -84,12 +84,12 @@ export class MachineDefinitionsService {
     /**
      * Get
      * @param accessionId
-     * @returns MachineDefinitionResponse Successful Response
+     * @returns MachineDefinitionRead Successful Response
      * @throws ApiError
      */
     public static getApiV1MachinesDefinitionsAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<MachineDefinitionResponse> {
+    ): CancelablePromise<MachineDefinitionRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/machines/definitions/{accession_id}',
@@ -104,12 +104,12 @@ export class MachineDefinitionsService {
     /**
      * Update
      * @param accessionId
-     * @returns MachineDefinitionResponse Successful Response
+     * @returns MachineDefinitionRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1MachinesDefinitionsAccessionIdPut(
         accessionId: string,
-    ): CancelablePromise<MachineDefinitionResponse> {
+    ): CancelablePromise<MachineDefinitionRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/machines/definitions/{accession_id}',

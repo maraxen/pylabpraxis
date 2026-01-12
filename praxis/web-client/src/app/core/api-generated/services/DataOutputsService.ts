@@ -4,18 +4,18 @@
 /* eslint-disable */
 import type { Body_get_multi_api_v1_data_outputs_outputs_get } from '../models/Body_get_multi_api_v1_data_outputs_outputs_get';
 import type { Body_get_multi_api_v1_data_outputs_well_outputs_get } from '../models/Body_get_multi_api_v1_data_outputs_well_outputs_get';
-import type { FunctionDataOutputResponse } from '../models/FunctionDataOutputResponse';
-import type { WellDataOutputResponse } from '../models/WellDataOutputResponse';
+import type { FunctionDataOutputRead } from '../models/FunctionDataOutputRead';
+import type { WellDataOutputRead } from '../models/WellDataOutputRead';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class DataOutputsService {
     /**
      * Create
-     * @returns FunctionDataOutputResponse Successful Response
+     * @returns FunctionDataOutputRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1DataOutputsOutputsPost(): CancelablePromise<FunctionDataOutputResponse> {
+    public static createApiV1DataOutputsOutputsPost(): CancelablePromise<FunctionDataOutputRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/data-outputs/outputs',
@@ -33,7 +33,7 @@ export class DataOutputsService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns FunctionDataOutputResponse Successful Response
+     * @returns FunctionDataOutputRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1DataOutputsOutputsGet(
@@ -47,7 +47,7 @@ export class DataOutputsService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_data_outputs_outputs_get,
-    ): CancelablePromise<Array<FunctionDataOutputResponse>> {
+    ): CancelablePromise<Array<FunctionDataOutputRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/data-outputs/outputs',
@@ -72,12 +72,12 @@ export class DataOutputsService {
     /**
      * Get
      * @param accessionId
-     * @returns FunctionDataOutputResponse Successful Response
+     * @returns FunctionDataOutputRead Successful Response
      * @throws ApiError
      */
     public static getApiV1DataOutputsOutputsAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<FunctionDataOutputResponse> {
+    ): CancelablePromise<FunctionDataOutputRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/data-outputs/outputs/{accession_id}',
@@ -92,12 +92,12 @@ export class DataOutputsService {
     /**
      * Update
      * @param accessionId
-     * @returns FunctionDataOutputResponse Successful Response
+     * @returns FunctionDataOutputRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1DataOutputsOutputsAccessionIdPut(
         accessionId: string,
-    ): CancelablePromise<FunctionDataOutputResponse> {
+    ): CancelablePromise<FunctionDataOutputRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/data-outputs/outputs/{accession_id}',
@@ -131,10 +131,10 @@ export class DataOutputsService {
     }
     /**
      * Create
-     * @returns WellDataOutputResponse Successful Response
+     * @returns WellDataOutputRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1DataOutputsWellOutputsPost(): CancelablePromise<WellDataOutputResponse> {
+    public static createApiV1DataOutputsWellOutputsPost(): CancelablePromise<WellDataOutputRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/data-outputs/well-outputs',
@@ -152,7 +152,7 @@ export class DataOutputsService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns WellDataOutputResponse Successful Response
+     * @returns WellDataOutputRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1DataOutputsWellOutputsGet(
@@ -166,7 +166,7 @@ export class DataOutputsService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_data_outputs_well_outputs_get,
-    ): CancelablePromise<Array<WellDataOutputResponse>> {
+    ): CancelablePromise<Array<WellDataOutputRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/data-outputs/well-outputs',
@@ -191,12 +191,12 @@ export class DataOutputsService {
     /**
      * Get
      * @param accessionId
-     * @returns WellDataOutputResponse Successful Response
+     * @returns WellDataOutputRead Successful Response
      * @throws ApiError
      */
     public static getApiV1DataOutputsWellOutputsAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<WellDataOutputResponse> {
+    ): CancelablePromise<WellDataOutputRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/data-outputs/well-outputs/{accession_id}',
@@ -211,12 +211,12 @@ export class DataOutputsService {
     /**
      * Update
      * @param accessionId
-     * @returns WellDataOutputResponse Successful Response
+     * @returns WellDataOutputRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1DataOutputsWellOutputsAccessionIdPut(
         accessionId: string,
-    ): CancelablePromise<WellDataOutputResponse> {
+    ): CancelablePromise<WellDataOutputRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/data-outputs/well-outputs/{accession_id}',

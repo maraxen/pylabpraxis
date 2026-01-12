@@ -4,8 +4,8 @@
 /* eslint-disable */
 import type { Body_get_multi_api_v1_resources__get } from '../models/Body_get_multi_api_v1_resources__get';
 import type { Body_get_multi_api_v1_resources_definitions_get } from '../models/Body_get_multi_api_v1_resources_definitions_get';
-import type { ResourceDefinitionResponse } from '../models/ResourceDefinitionResponse';
-import type { ResourceResponse } from '../models/ResourceResponse';
+import type { ResourceDefinitionRead } from '../models/ResourceDefinitionRead';
+import type { ResourceRead } from '../models/ResourceRead';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -48,10 +48,10 @@ export class AssetsService {
     }
     /**
      * Create
-     * @returns ResourceDefinitionResponse Successful Response
+     * @returns ResourceDefinitionRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1ResourcesDefinitionsPost(): CancelablePromise<ResourceDefinitionResponse> {
+    public static createApiV1ResourcesDefinitionsPost(): CancelablePromise<ResourceDefinitionRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/resources/definitions',
@@ -69,7 +69,7 @@ export class AssetsService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns ResourceDefinitionResponse Successful Response
+     * @returns ResourceDefinitionRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1ResourcesDefinitionsGet(
@@ -83,7 +83,7 @@ export class AssetsService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_resources_definitions_get,
-    ): CancelablePromise<Array<ResourceDefinitionResponse>> {
+    ): CancelablePromise<Array<ResourceDefinitionRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/resources/definitions',
@@ -108,12 +108,12 @@ export class AssetsService {
     /**
      * Get
      * @param accessionId
-     * @returns ResourceDefinitionResponse Successful Response
+     * @returns ResourceDefinitionRead Successful Response
      * @throws ApiError
      */
     public static getApiV1ResourcesDefinitionsAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<ResourceDefinitionResponse> {
+    ): CancelablePromise<ResourceDefinitionRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/resources/definitions/{accession_id}',
@@ -128,12 +128,12 @@ export class AssetsService {
     /**
      * Update
      * @param accessionId
-     * @returns ResourceDefinitionResponse Successful Response
+     * @returns ResourceDefinitionRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1ResourcesDefinitionsAccessionIdPut(
         accessionId: string,
-    ): CancelablePromise<ResourceDefinitionResponse> {
+    ): CancelablePromise<ResourceDefinitionRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/resources/definitions/{accession_id}',
@@ -167,10 +167,10 @@ export class AssetsService {
     }
     /**
      * Create
-     * @returns ResourceResponse Successful Response
+     * @returns ResourceRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1ResourcesPost(): CancelablePromise<ResourceResponse> {
+    public static createApiV1ResourcesPost(): CancelablePromise<ResourceRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/resources/',
@@ -188,7 +188,7 @@ export class AssetsService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns ResourceResponse Successful Response
+     * @returns ResourceRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1ResourcesGet(
@@ -202,7 +202,7 @@ export class AssetsService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_resources__get,
-    ): CancelablePromise<Array<ResourceResponse>> {
+    ): CancelablePromise<Array<ResourceRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/resources/',
@@ -227,12 +227,12 @@ export class AssetsService {
     /**
      * Get
      * @param accessionId
-     * @returns ResourceResponse Successful Response
+     * @returns ResourceRead Successful Response
      * @throws ApiError
      */
     public static getApiV1ResourcesAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<ResourceResponse> {
+    ): CancelablePromise<ResourceRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/resources/{accession_id}',
@@ -247,12 +247,12 @@ export class AssetsService {
     /**
      * Update
      * @param accessionId
-     * @returns ResourceResponse Successful Response
+     * @returns ResourceRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1ResourcesAccessionIdPut(
         accessionId: string,
-    ): CancelablePromise<ResourceResponse> {
+    ): CancelablePromise<ResourceRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/resources/{accession_id}',

@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { Body_get_multi_api_v1_resources_definitions_get } from '../models/Body_get_multi_api_v1_resources_definitions_get';
-import type { ResourceDefinitionResponse } from '../models/ResourceDefinitionResponse';
+import type { ResourceDefinitionRead } from '../models/ResourceDefinitionRead';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -46,10 +46,10 @@ export class ResourceDefinitionsService {
     }
     /**
      * Create
-     * @returns ResourceDefinitionResponse Successful Response
+     * @returns ResourceDefinitionRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1ResourcesDefinitionsPost(): CancelablePromise<ResourceDefinitionResponse> {
+    public static createApiV1ResourcesDefinitionsPost(): CancelablePromise<ResourceDefinitionRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/resources/definitions',
@@ -67,7 +67,7 @@ export class ResourceDefinitionsService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns ResourceDefinitionResponse Successful Response
+     * @returns ResourceDefinitionRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1ResourcesDefinitionsGet(
@@ -81,7 +81,7 @@ export class ResourceDefinitionsService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_resources_definitions_get,
-    ): CancelablePromise<Array<ResourceDefinitionResponse>> {
+    ): CancelablePromise<Array<ResourceDefinitionRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/resources/definitions',
@@ -106,12 +106,12 @@ export class ResourceDefinitionsService {
     /**
      * Get
      * @param accessionId
-     * @returns ResourceDefinitionResponse Successful Response
+     * @returns ResourceDefinitionRead Successful Response
      * @throws ApiError
      */
     public static getApiV1ResourcesDefinitionsAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<ResourceDefinitionResponse> {
+    ): CancelablePromise<ResourceDefinitionRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/resources/definitions/{accession_id}',
@@ -126,12 +126,12 @@ export class ResourceDefinitionsService {
     /**
      * Update
      * @param accessionId
-     * @returns ResourceDefinitionResponse Successful Response
+     * @returns ResourceDefinitionRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1ResourcesDefinitionsAccessionIdPut(
         accessionId: string,
-    ): CancelablePromise<ResourceDefinitionResponse> {
+    ): CancelablePromise<ResourceDefinitionRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/resources/definitions/{accession_id}',

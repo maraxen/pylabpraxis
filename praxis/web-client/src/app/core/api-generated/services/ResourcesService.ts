@@ -3,17 +3,17 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { Body_get_multi_api_v1_resources__get } from '../models/Body_get_multi_api_v1_resources__get';
-import type { ResourceResponse } from '../models/ResourceResponse';
+import type { ResourceRead } from '../models/ResourceRead';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class ResourcesService {
     /**
      * Create
-     * @returns ResourceResponse Successful Response
+     * @returns ResourceRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1ResourcesPost(): CancelablePromise<ResourceResponse> {
+    public static createApiV1ResourcesPost(): CancelablePromise<ResourceRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/resources/',
@@ -31,7 +31,7 @@ export class ResourcesService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns ResourceResponse Successful Response
+     * @returns ResourceRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1ResourcesGet(
@@ -45,7 +45,7 @@ export class ResourcesService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_resources__get,
-    ): CancelablePromise<Array<ResourceResponse>> {
+    ): CancelablePromise<Array<ResourceRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/resources/',
@@ -70,12 +70,12 @@ export class ResourcesService {
     /**
      * Get
      * @param accessionId
-     * @returns ResourceResponse Successful Response
+     * @returns ResourceRead Successful Response
      * @throws ApiError
      */
     public static getApiV1ResourcesAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<ResourceResponse> {
+    ): CancelablePromise<ResourceRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/resources/{accession_id}',
@@ -90,12 +90,12 @@ export class ResourcesService {
     /**
      * Update
      * @param accessionId
-     * @returns ResourceResponse Successful Response
+     * @returns ResourceRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1ResourcesAccessionIdPut(
         accessionId: string,
-    ): CancelablePromise<ResourceResponse> {
+    ): CancelablePromise<ResourceRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/resources/{accession_id}',

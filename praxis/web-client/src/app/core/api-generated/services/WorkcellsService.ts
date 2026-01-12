@@ -3,17 +3,17 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { Body_get_multi_api_v1_workcell__get } from '../models/Body_get_multi_api_v1_workcell__get';
-import type { WorkcellResponse } from '../models/WorkcellResponse';
+import type { WorkcellRead } from '../models/WorkcellRead';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class WorkcellsService {
     /**
      * Create
-     * @returns WorkcellResponse Successful Response
+     * @returns WorkcellRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1WorkcellPost(): CancelablePromise<WorkcellResponse> {
+    public static createApiV1WorkcellPost(): CancelablePromise<WorkcellRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/workcell/',
@@ -31,7 +31,7 @@ export class WorkcellsService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns WorkcellResponse Successful Response
+     * @returns WorkcellRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1WorkcellGet(
@@ -45,7 +45,7 @@ export class WorkcellsService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_workcell__get,
-    ): CancelablePromise<Array<WorkcellResponse>> {
+    ): CancelablePromise<Array<WorkcellRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/workcell/',
@@ -70,12 +70,12 @@ export class WorkcellsService {
     /**
      * Get
      * @param accessionId
-     * @returns WorkcellResponse Successful Response
+     * @returns WorkcellRead Successful Response
      * @throws ApiError
      */
     public static getApiV1WorkcellAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<WorkcellResponse> {
+    ): CancelablePromise<WorkcellRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/workcell/{accession_id}',
@@ -90,12 +90,12 @@ export class WorkcellsService {
     /**
      * Update
      * @param accessionId
-     * @returns WorkcellResponse Successful Response
+     * @returns WorkcellRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1WorkcellAccessionIdPut(
         accessionId: string,
-    ): CancelablePromise<WorkcellResponse> {
+    ): CancelablePromise<WorkcellRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/workcell/{accession_id}',

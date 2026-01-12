@@ -3,17 +3,17 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { Body_get_multi_api_v1_data_outputs_outputs_get } from '../models/Body_get_multi_api_v1_data_outputs_outputs_get';
-import type { FunctionDataOutputResponse } from '../models/FunctionDataOutputResponse';
+import type { FunctionDataOutputRead } from '../models/FunctionDataOutputRead';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class FunctionDataOutputsService {
     /**
      * Create
-     * @returns FunctionDataOutputResponse Successful Response
+     * @returns FunctionDataOutputRead Successful Response
      * @throws ApiError
      */
-    public static createApiV1DataOutputsOutputsPost(): CancelablePromise<FunctionDataOutputResponse> {
+    public static createApiV1DataOutputsOutputsPost(): CancelablePromise<FunctionDataOutputRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/data-outputs/outputs',
@@ -31,7 +31,7 @@ export class FunctionDataOutputsService {
      * @param resourceAccessionId
      * @param parentAccessionId
      * @param requestBody
-     * @returns FunctionDataOutputResponse Successful Response
+     * @returns FunctionDataOutputRead Successful Response
      * @throws ApiError
      */
     public static getMultiApiV1DataOutputsOutputsGet(
@@ -45,7 +45,7 @@ export class FunctionDataOutputsService {
         resourceAccessionId?: (string | null),
         parentAccessionId?: (string | null),
         requestBody?: Body_get_multi_api_v1_data_outputs_outputs_get,
-    ): CancelablePromise<Array<FunctionDataOutputResponse>> {
+    ): CancelablePromise<Array<FunctionDataOutputRead>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/data-outputs/outputs',
@@ -70,12 +70,12 @@ export class FunctionDataOutputsService {
     /**
      * Get
      * @param accessionId
-     * @returns FunctionDataOutputResponse Successful Response
+     * @returns FunctionDataOutputRead Successful Response
      * @throws ApiError
      */
     public static getApiV1DataOutputsOutputsAccessionIdGet(
         accessionId: string,
-    ): CancelablePromise<FunctionDataOutputResponse> {
+    ): CancelablePromise<FunctionDataOutputRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/data-outputs/outputs/{accession_id}',
@@ -90,12 +90,12 @@ export class FunctionDataOutputsService {
     /**
      * Update
      * @param accessionId
-     * @returns FunctionDataOutputResponse Successful Response
+     * @returns FunctionDataOutputRead Successful Response
      * @throws ApiError
      */
     public static updateApiV1DataOutputsOutputsAccessionIdPut(
         accessionId: string,
-    ): CancelablePromise<FunctionDataOutputResponse> {
+    ): CancelablePromise<FunctionDataOutputRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/data-outputs/outputs/{accession_id}',
