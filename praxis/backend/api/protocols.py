@@ -17,14 +17,16 @@ from praxis.backend.core.simulation import (
   GraphReplayEngine,
   GraphReplayResult,
 )
+from praxis.backend.models.domain.protocol import (
+  ProtocolRunCreate,
+  ProtocolRunRead,
+  ProtocolRunUpdate,
+)
 from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm, ProtocolRunOrm
 from praxis.backend.models.pydantic_internals.protocol import (
   FunctionProtocolDefinitionCreate,
   FunctionProtocolDefinitionResponse,
   FunctionProtocolDefinitionUpdate,
-  ProtocolRunCreate,
-  ProtocolRunResponse,
-  ProtocolRunUpdate,
 )
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
@@ -102,7 +104,7 @@ router.include_router(
     tags=["Protocol Definitions"],
     create_schema=FunctionProtocolDefinitionCreate,
     update_schema=FunctionProtocolDefinitionUpdate,
-    response_schema=FunctionProtocolDefinitionResponse,
+    read_schema=FunctionProtocolDefinitionResponse,
   ),
 )
 
@@ -192,7 +194,7 @@ router.include_router(
     tags=["Protocol Runs"],
     create_schema=ProtocolRunCreate,
     update_schema=ProtocolRunUpdate,
-    response_schema=ProtocolRunResponse,
+    read_schema=ProtocolRunRead,
   ),
 )
 

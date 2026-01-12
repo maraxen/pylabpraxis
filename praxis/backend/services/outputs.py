@@ -14,13 +14,13 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from praxis.backend.models.enums.outputs import DataOutputTypeEnum
-from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.outputs import (
+from praxis.backend.models.domain.outputs import (
   FunctionDataOutputCreate,
   FunctionDataOutputUpdate,
 )
+from praxis.backend.models.enums.outputs import DataOutputTypeEnum
+from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,

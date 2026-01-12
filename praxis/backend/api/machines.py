@@ -13,15 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.api.dependencies import get_db
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
-from praxis.backend.models.orm.machine import MachineDefinitionOrm, MachineOrm, MachineStatusEnum
-from praxis.backend.models.pydantic_internals.machine import (
+from praxis.backend.models.domain.machine import (
   MachineCreate,
   MachineDefinitionCreate,
-  MachineDefinitionResponse,
+  MachineDefinitionRead,
   MachineDefinitionUpdate,
-  MachineResponse,
+  MachineRead,
   MachineUpdate,
 )
+from praxis.backend.models.orm.machine import MachineDefinitionOrm, MachineOrm, MachineStatusEnum
 from praxis.backend.services.machine import MachineService
 from praxis.backend.services.machine_type_definition import MachineTypeDefinitionCRUDService
 from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
@@ -103,7 +103,7 @@ router.include_router(
     tags=["Machine Definitions"],
     create_schema=MachineDefinitionCreate,
     update_schema=MachineDefinitionUpdate,
-    response_schema=MachineDefinitionResponse,
+    read_schema=MachineDefinitionRead,
   ),
 )
 
@@ -115,7 +115,7 @@ router.include_router(
     tags=["Machines"],
     create_schema=MachineCreate,
     update_schema=MachineUpdate,
-    response_schema=MachineResponse,
+    read_schema=MachineRead,
   ),
 )
 
@@ -128,7 +128,7 @@ router.include_router(
 )
 @router.patch(
   "/{accession}/status",
-  response_model=MachineResponse,
+  response_model=MachineRead,
   tags=["Machines"],
 )
 async def update_machine_status(
@@ -137,7 +137,7 @@ async def update_machine_status(
   db: Annotated[AsyncSession, Depends(get_db)],
   status_details: str | None = None,
   current_protocol_run_accession_id: UUID | None = None,
-) -> MachineResponse:
+) -> MachineRead:
   """Update the status of a machine."""
   machine_id = await machine_accession_resolver(
     db=db,
@@ -166,4 +166,4 @@ async def update_machine_status(
       updated_machine.accession_id,
       new_status.value,
     )
-    return MachineResponse.model_validate(updated_machine)
+    return MachineRead.model_validate(updated_machine)

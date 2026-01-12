@@ -21,18 +21,17 @@ from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from praxis.backend.models.enums import FunctionCallStatusEnum
+from praxis.backend.models.domain.protocol import (
+  ProtocolRunCreate,
+  ProtocolRunUpdate,
+)
+from praxis.backend.models.enums import FunctionCallStatusEnum, ProtocolRunStatusEnum
 from praxis.backend.models.orm.protocol import (
   FunctionCallLogOrm,
   FunctionProtocolDefinitionOrm,
   ProtocolRunOrm,
 )
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.protocol import (
-  ProtocolRunCreate,
-  ProtocolRunStatusEnum,
-  ProtocolRunUpdate,
-)
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,

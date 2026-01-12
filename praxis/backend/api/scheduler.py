@@ -1,6 +1,3 @@
-# pylint: disable=too-many-arguments, broad-except, fixme, unused-argument
-"""FastAPI router for all scheduler-related endpoints."""
-
 from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
@@ -11,6 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.api.dependencies import get_db
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
+from praxis.backend.models.domain.schedule import (
+  ScheduleEntryCreate,
+  ScheduleEntryRead,
+  ScheduleEntryUpdate,
+)
 from praxis.backend.models.enums import AssetReservationStatusEnum, ScheduleStatusEnum
 from praxis.backend.models.orm.schedule import AssetReservationOrm, ScheduleEntryOrm
 from praxis.backend.models.pydantic_internals.scheduler import (
@@ -18,9 +20,6 @@ from praxis.backend.models.pydantic_internals.scheduler import (
   AssetReservationResponse,
   ReleaseReservationResponse,
   ResourceReservationStatus,
-  ScheduleEntryCreate,
-  ScheduleEntryResponse,
-  ScheduleEntryUpdate,
   SchedulePriorityUpdateRequest,
 )
 from praxis.backend.services.scheduler import schedule_entry_service
@@ -34,14 +33,14 @@ router.include_router(
     tags=["Scheduler"],
     create_schema=ScheduleEntryCreate,
     update_schema=ScheduleEntryUpdate,
-    response_schema=ScheduleEntryResponse,
+    read_schema=ScheduleEntryRead,
   ),
 )
 
 
 @router.put(
   "/{schedule_entry_accession_id}/status",
-  response_model=ScheduleEntryResponse,
+  response_model=ScheduleEntryRead,
   status_code=status.HTTP_200_OK,
   tags=["Scheduler"],
 )
@@ -74,7 +73,7 @@ async def update_status(
 
 @router.put(
   "/{schedule_entry_accession_id}/priority",
-  response_model=ScheduleEntryResponse,
+  response_model=ScheduleEntryRead,
   status_code=status.HTTP_200_OK,
   tags=["Scheduler"],
 )

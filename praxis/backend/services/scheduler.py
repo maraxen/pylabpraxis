@@ -18,6 +18,10 @@ from sqlalchemy import and_, asc, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from praxis.backend.models.domain.schedule import (
+  ScheduleEntryCreate,
+  ScheduleEntryUpdate,
+)
 from praxis.backend.models.enums import (
   AssetType,
   ScheduleHistoryEventEnum,
@@ -32,10 +36,6 @@ from praxis.backend.models.orm.schedule import (
   ScheduleHistoryOrm,
 )
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.scheduler import (
-  ScheduleEntryCreate,
-  ScheduleEntryUpdate,
-)
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
@@ -108,7 +108,16 @@ class ScheduleEntryCRUDService(
     # Create a new ScheduleEntryOrm
     schedule_entry = self.model(
       **obj_in.model_dump(
-        exclude={"accession_id", "created_at", "updated_at", "protocol_run_accession_id", "status"},
+        exclude={
+          "accession_id",
+          "created_at",
+          "updated_at",
+          "protocol_run_accession_id",
+          "status",
+          "scheduled_at",
+          "execution_started_at",
+          "execution_completed_at",
+        },
       ),
       status=ScheduleStatusEnum.QUEUED,
       protocol_run=protocol_run,

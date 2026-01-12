@@ -16,7 +16,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import DeckOrm, MachineOrm, ResourceDefinitionOrm
-from praxis.backend.models.pydantic_internals.deck import DeckCreate, DeckUpdate
+from praxis.backend.models.domain.deck import DeckCreate, DeckUpdate
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
@@ -244,10 +244,8 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       flag_modified(db_obj, "plr_state")
 
     await db.flush()
-    await db.refresh(
-      db_obj,
-      ["parent", "parent_machine", "children", "deck_type"],
-    )
+    await db.flush()
+    await db.refresh(db_obj)
     logger.info(
       "Successfully updated deck ID %s: '%s'.",
       db_obj.accession_id,

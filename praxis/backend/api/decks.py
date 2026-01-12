@@ -3,15 +3,15 @@
 from fastapi import APIRouter
 
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
-from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
-from praxis.backend.models.pydantic_internals.deck import (
+from praxis.backend.models.domain.deck import (
   DeckCreate,
-  DeckResponse,
-  DeckTypeDefinitionCreate,
-  DeckTypeDefinitionResponse,
-  DeckTypeDefinitionUpdate,
+  DeckDefinitionCreate,
+  DeckDefinitionRead,
+  DeckDefinitionUpdate,
+  DeckRead,
   DeckUpdate,
 )
+from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
 from praxis.backend.services.deck import DeckService
 from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
 
@@ -24,7 +24,7 @@ router.include_router(
     tags=["Decks"],
     create_schema=DeckCreate,
     update_schema=DeckUpdate,
-    response_schema=DeckResponse,
+    read_schema=DeckRead,
   ),
 )
 
@@ -33,8 +33,8 @@ router.include_router(
     service=DeckTypeDefinitionService(DeckDefinitionOrm),
     prefix="/types",
     tags=["Deck Type Definitions"],
-    create_schema=DeckTypeDefinitionCreate,
-    update_schema=DeckTypeDefinitionUpdate,
-    response_schema=DeckTypeDefinitionResponse,
+    create_schema=DeckDefinitionCreate,
+    update_schema=DeckDefinitionUpdate,
+    read_schema=DeckDefinitionRead,
   ),
 )

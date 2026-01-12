@@ -11,13 +11,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
-from praxis.backend.models.enums.resource import ResourceStatusEnum
-from praxis.backend.models.orm.resource import ResourceOrm
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.pydantic_internals.resource import (
+from praxis.backend.models.domain.resource import (
   ResourceCreate,
   ResourceUpdate,
 )
+from praxis.backend.models.enums.resource import ResourceStatusEnum
+from praxis.backend.models.orm.resource import ResourceOrm
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
@@ -208,7 +208,6 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
     await db.flush()
     await db.refresh(
       db_obj,
-      ["children", "parent", "resource_definition"],
     )
     logger.info(
       "Successfully updated resource ID %s: '%s'.",

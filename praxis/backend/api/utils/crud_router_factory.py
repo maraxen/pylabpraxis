@@ -15,7 +15,7 @@ from praxis.backend.utils.db import Base
 ModelType = TypeVar("ModelType", bound=Base)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
-ResponseSchemaType = TypeVar("ResponseSchemaType", bound=BaseModel)
+ReadSchemaType = TypeVar("ReadSchemaType", bound=BaseModel)
 
 
 def create_crud_router(
@@ -25,7 +25,8 @@ def create_crud_router(
   tags: list[str | Any],
   create_schema: type[CreateSchemaType],
   update_schema: type[UpdateSchemaType],
-  response_schema: type[ResponseSchemaType],
+  read_schema: type[ReadSchemaType],
+  table_model: type[ModelType] | None = None,  # Optional for now to support legacy
 ) -> APIRouter:
   """Create a FastAPI router with standard CRUD endpoints."""
   router = APIRouter()
@@ -35,7 +36,7 @@ def create_crud_router(
 
   @router.post(
     prefix,
-    response_model=response_schema,
+    response_model=read_schema,
     status_code=status.HTTP_201_CREATED,
     tags=tags,
   )
@@ -47,14 +48,14 @@ def create_crud_router(
     obj_in = create_schema.model_validate(obj_in_data)
     return await service.create(db=db, obj_in=obj_in)
 
-  @router.get(prefix, response_model=list[response_schema], tags=tags)  # type: ignore[invalid-type-form]
+  @router.get(prefix, response_model=list[read_schema], tags=tags)  # type: ignore[invalid-type-form]
   async def get_multi(
     db: Annotated[AsyncSession, Depends(get_db)],
     filters: Annotated[SearchFilters, Depends()],
   ) -> list[ModelType]:
     return await service.get_multi(db, filters=filters)
 
-  @router.get(f"{prefix}{sep}{{accession_id}}", response_model=response_schema, tags=tags)
+  @router.get(f"{prefix}{sep}{{accession_id}}", response_model=read_schema, tags=tags)
   async def get(
     accession_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -64,7 +65,7 @@ def create_crud_router(
       raise HTTPException(status_code=404, detail="Not found")
     return db_obj
 
-  @router.put(f"{prefix}{sep}{{accession_id}}", response_model=response_schema, tags=tags)
+  @router.put(f"{prefix}{sep}{{accession_id}}", response_model=read_schema, tags=tags)
   async def update(
     accession_id: UUID,
     request: Request,

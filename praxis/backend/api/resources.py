@@ -13,15 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.api.dependencies import get_db
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
-from praxis.backend.models.pydantic_internals.resource import (
+from praxis.backend.models.domain.resource import (
   ResourceCreate,
   ResourceDefinitionCreate,
-  ResourceDefinitionResponse,
+  ResourceDefinitionRead,
   ResourceDefinitionUpdate,
-  ResourceResponse,
+  ResourceRead,
   ResourceUpdate,
 )
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 from praxis.backend.services.resource import resource_service
 from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionCRUDService
 
@@ -117,7 +117,7 @@ router.include_router(
     tags=["Resource Definitions"],
     create_schema=ResourceDefinitionCreate,
     update_schema=ResourceDefinitionUpdate,
-    response_schema=ResourceDefinitionResponse,
+    read_schema=ResourceDefinitionRead,
   ),
 )
 
@@ -128,6 +128,6 @@ router.include_router(
     tags=["Resources"],
     create_schema=ResourceCreate,
     update_schema=ResourceUpdate,
-    response_schema=ResourceResponse,
+    read_schema=ResourceRead,
   ),
 )
