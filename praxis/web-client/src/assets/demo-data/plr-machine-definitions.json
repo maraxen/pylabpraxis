@@ -1,0 +1,10 @@
+[
+  {
+    "accession_id": "plr-machine-085e2be6",
+    "name": "Machine",
+    "fqn": "pylabrobot.machines.machine.Machine",
+    "description": "Abstract base class for machine frontends.",
+    "has_deck": false,
+    "properties_json": {}
+  }
+]
