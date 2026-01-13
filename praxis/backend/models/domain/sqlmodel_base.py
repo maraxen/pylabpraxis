@@ -95,7 +95,6 @@ class PraxisBase(SQLModel):
     description="An optional name for the record.",
   )
 
-  # Note: properties_json uses a deferred definition to avoid Column reuse issues
-  # Each table will get its own Column instance via __init_subclass__ or we define it per-table
-  # For now, leaving as a simple field annotation - subclasses must override if they want the column
-  # properties_json: dict[str, Any] | None = None
+  properties_json: dict[str, Any] | None = Field(
+    default=None, sa_type=JsonVariant, description="Arbitrary metadata."
+  )

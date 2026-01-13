@@ -489,9 +489,9 @@ async def test_deck_orm_is_resource_and_asset(
     db_session: AsyncSession, deck: Deck,
 ) -> None:
     """Verify that a Deckis also a Resourceand Asset."""
-    # Query as Asset
+    # Query as Asset (using Deck since Asset is not a table)
     asset_result = await db_session.execute(
-        select(Asset).where(Asset.accession_id == deck.accession_id),
+        select(Deck).where(Deck.accession_id == deck.accession_id),
     )
     asset = asset_result.scalars().first()
     assert asset is not None
@@ -499,9 +499,9 @@ async def test_deck_orm_is_resource_and_asset(
     assert asset.name == "test_deck_fixture"
     assert asset.asset_type == AssetType.DECK
 
-    # Query as Resource
+    # Query as Resource (using Deck table in Table-Per-Class pattern)
     resource_result = await db_session.execute(
-        select(Resource).where(Resource.accession_id == deck.accession_id),
+        select(Deck).where(Deck.accession_id == deck.accession_id),
     )
     resource = resource_result.scalars().first()
     assert resource is not None

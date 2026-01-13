@@ -11,6 +11,7 @@ from praxis.backend.models.domain.user import (
     UserUpdate,
 )
 from praxis.backend.services.user import UserService, user_service
+from praxis.backend.models.domain.filters import SearchFilters
 
 
 @pytest.mark.asyncio

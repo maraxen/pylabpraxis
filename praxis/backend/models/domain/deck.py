@@ -3,9 +3,10 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING, Any, Literal, Optional, List
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, computed_field, AliasChoices
 from sqlmodel import Field, Relationship, SQLModel
-from sqlalchemy.orm import relationship
+from sqlalchemy import UniqueConstraint, Column
+from sqlalchemy.orm import relationship, synonym
 
 from praxis.backend.models.domain.asset import Asset, AssetBase, AssetRead, AssetUpdate
 from praxis.backend.models.domain.resource import ResourceBase
@@ -18,6 +19,7 @@ from praxis.backend.utils.db import JsonVariant
 if TYPE_CHECKING:
   from praxis.backend.models.domain.machine import Machine
   from praxis.backend.models.domain.resource import Resource, ResourceDefinition
+  from praxis.backend.models.domain.workcell import Workcell
 
 
 class PositioningConfig(SQLModel):
@@ -48,8 +50,10 @@ class PositioningConfig(SQLModel):
 class DeckPositionDefinitionBase(PraxisBase):
   """Base schema for DeckPositionDefinition - shared fields for create/update/response."""
 
-  position_accession_id: str = Field(
-    index=True, description="Human-readable identifier for the position (e.g., 'A1', 'trash_bin')"
+  position_accession_id: str | None = Field(
+    default=None,
+    index=True,
+    description="Human-readable identifier for the position (e.g., 'A1', 'trash_bin')",
   )
   nominal_x_mm: float = Field(default=0.0, description="X-coordinate of the position's center")
   nominal_y_mm: float = Field(default=0.0, description="Y-coordinate of the position's center")
@@ -67,6 +71,7 @@ class DeckPositionDefinition(DeckPositionDefinitionBase, table=True):
   """DeckPositionDefinition ORM model - defines a position on a deck type."""
 
   __tablename__ = "deck_position_definitions"
+  __table_args__ = (UniqueConstraint("deck_type_id", "position_accession_id"),)
 
   allowed_resource_definition_names: list[str] | None = Field(
     default=None, sa_type=JsonVariant, description="List of allowed resource definition names"
@@ -78,17 +83,29 @@ class DeckPositionDefinition(DeckPositionDefinitionBase, table=True):
   # Foreign keys
   deck_type_id: uuid.UUID = Field(foreign_key="deck_definition_catalog.accession_id", index=True)
 
+  # Relationship back to deck definition
+  deck_type: Optional["DeckDefinition"] = Relationship(
+    sa_relationship=relationship("DeckDefinition", back_populates="positions")
+  )
+
 
 class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
   """Schema for creating a DeckPositionDefinition."""
 
-  deck_type_id: uuid.UUID
+  deck_type_id: uuid.UUID | None = None
+  deck_type_accession_id: uuid.UUID | None = None
+  compatible_resource_fqns: dict[str, Any] | None = None
 
 
 class DeckPositionDefinitionRead(DeckPositionDefinitionBase):
   """Schema for reading a DeckPositionDefinition (API response)."""
 
-  accession_id: uuid.UUID
+  deck_type_id: uuid.UUID | None = Field(
+    default=None, validation_alias=AliasChoices("deck_type_id", "deck_type_accession_id")
+  )
+  deck_type_accession_id: uuid.UUID | None = Field(
+    default=None, validation_alias=AliasChoices("deck_type_accession_id", "deck_type_id")
+  )
 
 
 class DeckPositionDefinitionUpdate(SQLModel):
@@ -113,8 +130,14 @@ class DeckPositionDefinitionUpdate(SQLModel):
 
 class DeckDefinitionBase(PraxisBase):
   """Base schema for DeckDefinition - shared fields for create/update/response."""
-
+  name: str = Field(default="", description="Human readable name for the deck type")
   fqn: str = Field(index=True, unique=True, description="Fully qualified name")
+  version: str | None = Field(default=None, description="Version string for the deck type")
+  positioning_config: PositioningConfig | None = Field(
+    default=None,
+    sa_column=Column(JsonVariant),
+    description="Positioning configuration for the deck type",
+  )
   description: str | None = Field(default=None, description="Description of the deck type")
   plr_category: str | None = Field(default=None, description="PyLabRobot category")
   default_size_x_mm: float | None = Field(
@@ -176,13 +199,30 @@ class DeckDefinition(DeckDefinitionBase, table=True):
   children: list["DeckDefinition"] = Relationship(
     sa_relationship=relationship("DeckDefinition", back_populates="parent")
   )
-  decks: list["Deck"] = Relationship(
+  deck: list["Deck"] = Relationship(
     sa_relationship=relationship("Deck", back_populates="deck_type")
   )
+
+  # Position definitions relationship (exposed as `positions` to match existing callers)
+  positions: list[DeckPositionDefinition] = Relationship(
+    sa_relationship=relationship(
+      "DeckPositionDefinition",
+      back_populates="deck_type",
+      cascade="all, delete-orphan",
+      lazy="selectin",
+    )
+  )
+
+  @property
+  def decks(self) -> list["Deck"]:
+    """Compatibility property."""
+    return self.deck
 
 
 class DeckDefinitionCreate(DeckDefinitionBase):
   """Schema for creating a DeckDefinition."""
+  position_definitions: list[DeckPositionDefinitionCreate] | None = None
+  positions: list[DeckPositionDefinitionCreate] | None = None
 
 
 class DeckDefinitionRead(DeckDefinitionBase):
@@ -210,6 +250,38 @@ class DeckDefinitionUpdate(SQLModel):
 
 class DeckBase(ResourceBase):
   """Base schema for Deck - shared fields for create/update/response."""
+  plr_state: dict[str, Any] | None = Field(
+    default=None, sa_type=JsonVariant, description="PyLabRobot state blob for PLR devices"
+  )
+
+  model_config = ConfigDict(extra="allow")
+
+  @property
+  def deck_accession_id(self) -> uuid.UUID | None:
+    """Compatibility property."""
+    if "deck_accession_id" in self.__dict__:
+      return self.__dict__["deck_accession_id"]
+    if self.model_extra and "deck_accession_id" in self.model_extra:
+      return self.model_extra["deck_accession_id"]
+    return getattr(self, "deck_location_accession_id", None)
+
+  @property
+  def machine_id(self) -> uuid.UUID | None:
+    """Compatibility property."""
+    if "machine_id" in self.__dict__:
+      return self.__dict__["machine_id"]
+    if self.model_extra and "machine_id" in self.model_extra:
+      return self.model_extra["machine_id"]
+    return getattr(self, "parent_machine_accession_id", None)
+
+  @property
+  def deck_type_id(self) -> uuid.UUID | None:
+    """Compatibility property."""
+    if "deck_type_id" in self.__dict__:
+      return self.__dict__["deck_type_id"]
+    if self.model_extra and "deck_type_id" in self.model_extra:
+      return self.model_extra["deck_type_id"]
+    return getattr(self, "deck_type_accession_id", None)
 
 
 class Deck(DeckBase, Asset, table=True):
@@ -228,10 +300,15 @@ class Deck(DeckBase, Asset, table=True):
     description="Reference to deck definition catalog",
     foreign_key="deck_definition_catalog.accession_id",
   )
+  workcell_accession_id: uuid.UUID | None = Field(
+    default=None,
+    description="Workcell this deck belongs to",
+    foreign_key="workcells.accession_id",
+  )
 
   # Relationships
   deck_type: Optional["DeckDefinition"] = Relationship(
-    sa_relationship=relationship("DeckDefinition", back_populates="decks")
+    sa_relationship=relationship("DeckDefinition", back_populates="deck")
   )
   # ResourceDefinition is imported from resource.py
   # We need to use string forward ref if circular, but ResourceDefinition is in resource.py?
@@ -240,6 +317,23 @@ class Deck(DeckBase, Asset, table=True):
     description="Reference to resource definition catalog",
     foreign_key="resource_definitions.accession_id",
   )
+
+  @property
+  def deck_accession_id(self) -> uuid.UUID | None:
+    """Compatibility property."""
+    if "deck_accession_id" in self.__dict__:
+      return self.__dict__["deck_accession_id"]
+    return getattr(self, "deck_location_accession_id", None)
+
+  @property
+  def machine_id(self) -> uuid.UUID | None:
+    """Compatibility property."""
+    if "machine_id" in self.__dict__:
+      return self.__dict__["machine_id"]
+    return getattr(
+      self, "machine_location_accession_id", getattr(self, "parent_machine_accession_id", None)
+    )
+
   resource_definition: Optional["ResourceDefinition"] = Relationship(
     sa_relationship=relationship("ResourceDefinition")
   )
@@ -254,27 +348,55 @@ class Deck(DeckBase, Asset, table=True):
   resources: list["Resource"] = Relationship(
     sa_relationship=relationship("Resource", back_populates="deck")
   )
+  workcell: Optional["Workcell"] = Relationship(
+    sa_relationship=relationship("Workcell", back_populates="decks")
+  )
+
+  @machine_id.setter
+  def machine_id(self, value: uuid.UUID | None):
+    self.parent_machine_accession_id = value
+
+  # Self-referential or parent relationships for compatibility
+  parent: Optional["Machine"] = Relationship(
+    sa_relationship=relationship(
+      "Machine",
+      primaryjoin="Deck.parent_machine_accession_id == Machine.accession_id",
+      viewonly=True,
+    )
+  )
+  children: list["Resource"] = Relationship(sa_relationship=relationship("Resource", viewonly=True))
 
 
 class DeckCreate(DeckBase):
   """Schema for creating a Deck."""
 
-  deck_type_id: uuid.UUID
-  parent_accession_id: uuid.UUID | None = None
-  resource_definition_accession_id: uuid.UUID | None = None
-  machine_id: uuid.UUID | None = None  # For compatibility with some tests/services
-  plr_state: str | None = None
+  machine_id: uuid.UUID | None = Field(
+    default=None, validation_alias=AliasChoices("machine_id", "parent_machine_accession_id")
+  )
+  deck_type_id: uuid.UUID | None = Field(
+    default=None, validation_alias=AliasChoices("deck_type_id", "deck_type_accession_id")
+  )
+  name: str | None = None
 
 
 class DeckRead(DeckBase):
   """Schema for reading a Deck (API response)."""
 
-  accession_id: uuid.UUID
+  machine_id: uuid.UUID | None = Field(
+    default=None, validation_alias=AliasChoices("machine_id", "parent_machine_accession_id")
+  )
+  deck_type_id: uuid.UUID | None = Field(
+    default=None, validation_alias=AliasChoices("deck_type_id", "deck_type_accession_id")
+  )
+  deck_accession_id: uuid.UUID | None = Field(
+    default=None, validation_alias=AliasChoices("deck_accession_id", "deck_location_accession_id")
+  )
 
 
-class DeckUpdate(SQLModel):
+class DeckUpdate(AssetUpdate):
   """Schema for updating a Deck (partial update)."""
 
   name: str | None = None
   status: Any | None = None  # ResourceStatusEnum
   parent_machine_accession_id: uuid.UUID | None = None
+  machine_id: uuid.UUID | None = None

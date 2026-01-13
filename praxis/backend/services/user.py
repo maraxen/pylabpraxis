@@ -87,12 +87,11 @@ class UserService(CRUDBase[User, UserCreate, UserUpdate]):
     user_data = obj_in.model_dump(exclude={"password"})
     user_data["hashed_password"] = self._hash_password(obj_in.password)
 
-    # Filter to only valid constructor parameters
-    init_signature = inspect.signature(User.__init__)
-    valid_params = {p.name for p in init_signature.parameters.values()}
-    filtered_data = {key: value for key, value in user_data.items() if key in valid_params}
-
-    user_model = User(**filtered_data)
+    # Construct the User model directly from the prepared data. Using
+    # inspect.signature on SQLModel-generated classes can miss actual
+    # fields (dropping required values like `username`), so pass the
+    # dict straight to the model constructor and let SQLModel validate.
+    user_model = User(**user_data)
     db.add(user_model)
     await db.flush()
     await db.refresh(user_model)

@@ -7,9 +7,10 @@ Additional models (FunctionProtocolDefinition, FunctionCallLog, etc.) can be add
 
 import uuid
 from datetime import datetime
-from typing import Any
-
-from sqlmodel import Field, SQLModel, Relationship
+from typing import TYPE_CHECKING, Any, Optional
+from sqlalchemy import Column, Enum as SAEnum, UniqueConstraint
+from sqlalchemy.orm import relationship
+from sqlmodel import Field, Relationship, SQLModel
 
 from praxis.backend.models.domain.sqlmodel_base import PraxisBase
 from praxis.backend.models.enums import (
@@ -17,6 +18,14 @@ from praxis.backend.models.enums import (
   ProtocolRunStatusEnum,
 )
 from praxis.backend.utils.db import JsonVariant
+
+if TYPE_CHECKING:
+  from praxis.backend.models.domain.protocol_source import (
+    FileSystemProtocolSource,
+    ProtocolSourceRepository,
+  )
+  from praxis.backend.models.domain.schedule import ScheduleEntry, AssetReservation
+  from praxis.backend.models.domain.outputs import FunctionDataOutput
 
 
 class AssetConstraintsModel(SQLModel):
@@ -129,9 +138,9 @@ class ProtocolStatus(SQLModel):
 class ParameterDefinitionBase(PraxisBase):
   """Base schema for ParameterDefinition."""
 
-  name: str = Field(index=True, description="The name of the parameter")
-  type_hint: str = Field(index=True, description="The type hint of the parameter")
-  fqn: str = Field(index=True, description="The fully qualified name of the parameter")
+  name: str = Field(default="", index=True, description="The name of the parameter")
+  type_hint: str = Field(default="", index=True, description="The type hint of the parameter")
+  fqn: str = Field(default="", index=True, description="The fully qualified name of the parameter")
   is_deck_param: bool = Field(default=False)
   optional: bool = Field(default=False, description="Whether the parameter is optional")
   default_value_repr: str | None = Field(
@@ -147,6 +156,7 @@ class ParameterDefinition(ParameterDefinitionBase, table=True):
   """ParameterDefinition ORM model."""
 
   __tablename__ = "parameter_definitions"
+  __table_args__ = (UniqueConstraint("protocol_definition_accession_id", "name"),)
 
   constraints_json: dict[str, Any] | None = Field(
     default=None, sa_type=JsonVariant, description="Parameter constraints"
@@ -160,6 +170,14 @@ class ParameterDefinition(ParameterDefinitionBase, table=True):
 
   protocol_definition_accession_id: uuid.UUID = Field(
     foreign_key="function_protocol_definitions.accession_id", index=True
+  )
+
+  protocol_definition: Optional["FunctionProtocolDefinition"] = Relationship(
+    sa_relationship=relationship(
+      "FunctionProtocolDefinition",
+      back_populates="parameters",
+      foreign_keys="ParameterDefinition.protocol_definition_accession_id",
+    )
   )
 
 
@@ -185,10 +203,10 @@ class ParameterDefinitionUpdate(SQLModel):
 class AssetRequirementBase(PraxisBase):
   """Base schema for AssetRequirement."""
 
-  name: str = Field(index=True, description="The name of the asset requirement")
-  type_hint_str: str = Field(index=True, description="Type hint")
-  fqn: str | None = Field(default=None, index=True, description="Fully qualified name")
-  actual_type_str: str | None = Field(default=None, index=True, description="Actual type")
+  name: str = Field(default="", index=True, description="The name of the asset requirement")
+  type_hint_str: str = Field(default="", index=True, description="Type hint")
+  fqn: str | None = Field(default="", index=True, description="Fully qualified name")
+  actual_type_str: str | None = Field(default="", index=True, description="Actual type")
   optional: bool = Field(default=False)
   default_value_repr: str | None = Field(default=None)
   description: str | None = Field(default=None)
@@ -199,6 +217,7 @@ class AssetRequirement(AssetRequirementBase, table=True):
   """AssetRequirement ORM model."""
 
   __tablename__ = "protocol_asset_requirements"
+  __table_args__ = (UniqueConstraint("protocol_definition_accession_id", "name"),)
 
   constraints_json: dict[str, Any] | None = Field(
     default=None, sa_type=JsonVariant, description="Asset constraints"
@@ -209,6 +228,14 @@ class AssetRequirement(AssetRequirementBase, table=True):
 
   protocol_definition_accession_id: uuid.UUID = Field(
     foreign_key="function_protocol_definitions.accession_id", index=True
+  )
+
+  protocol_definition: Optional["FunctionProtocolDefinition"] = Relationship(
+    sa_relationship=relationship(
+      "FunctionProtocolDefinition",
+      back_populates="assets",
+      foreign_keys="AssetRequirement.protocol_definition_accession_id",
+    )
   )
 
 
@@ -244,9 +271,9 @@ class FunctionProtocolDefinitionBase(PraxisBase):
   fqn: str = Field(index=True, description="Fully qualified name")
   version: str = Field(default="0.1.0", description="Semantic version")
   description: str | None = Field(default=None)
-  source_file_path: str = Field(index=True)
-  module_name: str = Field(index=True)
-  function_name: str = Field(index=True)
+  source_file_path: str = Field(default="", index=True)
+  module_name: str = Field(default="", index=True)
+  function_name: str = Field(default="", index=True)
   is_top_level: bool = Field(default=False, index=True)
   solo_execution: bool = Field(default=False)
   preconfigure_deck: bool = Field(default=False)
@@ -271,6 +298,10 @@ class FunctionProtocolDefinition(FunctionProtocolDefinitionBase, table=True):
   """FunctionProtocolDefinition ORM model."""
 
   __tablename__ = "function_protocol_definitions"
+  __table_args__ = (
+    UniqueConstraint("name", "version", "source_repository_accession_id", "commit_hash"),
+    UniqueConstraint("name", "version", "file_system_source_accession_id", "source_file_path"),
+  )
 
   tags: dict[str, Any] | None = Field(default=None, sa_type=JsonVariant)
   hardware_requirements_json: dict[str, Any] | None = Field(default=None, sa_type=JsonVariant)
@@ -289,6 +320,43 @@ class FunctionProtocolDefinition(FunctionProtocolDefinitionBase, table=True):
     default=None, foreign_key="file_system_protocol_sources.accession_id", index=True
   )
 
+  source_repository: Optional["ProtocolSourceRepository"] = Relationship(
+    sa_relationship=relationship("ProtocolSourceRepository", back_populates="protocols")
+  )
+  file_system_source: Optional["FileSystemProtocolSource"] = Relationship(
+    sa_relationship=relationship("FileSystemProtocolSource", back_populates="protocols")
+  )
+
+  parameters: list["ParameterDefinition"] = Relationship(
+    sa_relationship=relationship(
+      "ParameterDefinition",
+      back_populates="protocol_definition",
+      cascade="all, delete-orphan",
+      lazy="selectin",
+    )
+  )
+
+  assets: list["AssetRequirement"] = Relationship(
+    sa_relationship=relationship(
+      "AssetRequirement",
+      back_populates="protocol_definition",
+      cascade="all, delete-orphan",
+      lazy="selectin",
+    )
+  )
+
+  function_call_logs: list["FunctionCallLog"] = Relationship(
+    sa_relationship=relationship(
+      "FunctionCallLog",
+      back_populates="executed_function_definition",
+      cascade="all, delete-orphan",
+    )
+  )
+
+  protocol_runs: list["ProtocolRun"] = Relationship(
+    sa_relationship=relationship("ProtocolRun", back_populates="top_level_protocol_definition")
+  )
+
 
 class FunctionProtocolDefinitionCreate(FunctionProtocolDefinitionBase):
   """Schema for creating a FunctionProtocolDefinition."""
@@ -299,6 +367,9 @@ class FunctionProtocolDefinitionCreate(FunctionProtocolDefinitionBase):
   assets: list[AssetRequirementCreate] | None = None
   data_views: list[DataViewMetadataModel] | None = None
   setup_instructions_json: list[dict[str, Any]] | None = None
+  # Convenience fields used by service layer to look up/create sources
+  source_repository_name: str | None = None
+  file_system_source_name: str | None = None
 
 
 class FunctionProtocolDefinitionRead(FunctionProtocolDefinitionBase):
@@ -325,7 +396,7 @@ class ProtocolRunBase(PraxisBase):
 
   status: ProtocolRunStatusEnum = Field(
     default=ProtocolRunStatusEnum.PENDING,
-    index=True,
+    description="Current status of the protocol run",
   )
   start_time: datetime | None = Field(default=None, description="When the protocol run started")
   end_time: datetime | None = Field(default=None, description="When the protocol run completed")
@@ -338,6 +409,11 @@ class ProtocolRun(ProtocolRunBase, table=True):
 
   __tablename__ = "protocol_runs"
 
+  status: ProtocolRunStatusEnum = Field(
+    default=ProtocolRunStatusEnum.PENDING,
+    sa_column=Column(SAEnum(ProtocolRunStatusEnum), default=ProtocolRunStatusEnum.PENDING, index=True),
+  )
+
   input_parameters_json: dict[str, Any] | None = Field(
     default=None, sa_type=JsonVariant, description="Input parameters"
   )
@@ -347,6 +423,20 @@ class ProtocolRun(ProtocolRunBase, table=True):
   output_data_json: dict[str, Any] | None = Field(
     default=None, sa_type=JsonVariant, description="Output data"
   )
+
+  schedule_entries: list["ScheduleEntry"] = Relationship(
+    sa_relationship=relationship("ScheduleEntry", back_populates="protocol_run")
+  )
+  top_level_protocol_definition: Optional["FunctionProtocolDefinition"] = Relationship(
+    back_populates="protocol_runs"
+  )
+  asset_reservations: list["AssetReservation"] = Relationship(
+    sa_relationship=relationship("AssetReservation", back_populates="protocol_run")
+  )
+  function_call_logs: list["FunctionCallLog"] = Relationship(
+    sa_relationship=relationship("FunctionCallLog", back_populates="protocol_run")
+  )
+  data_outputs: list["FunctionDataOutput"] = Relationship(back_populates="protocol_run")
   initial_state_json: dict[str, Any] | None = Field(
     default=None, sa_type=JsonVariant, description="Initial state"
   )
@@ -365,11 +455,30 @@ class ProtocolRun(ProtocolRunBase, table=True):
     default=None, foreign_key="protocol_runs.accession_id", index=True
   )
 
+  # Self-referential relationship for continuation chain
+  previous_run: Optional["ProtocolRun"] = Relationship(
+    sa_relationship=relationship(
+      "ProtocolRun",
+      remote_side="ProtocolRun.accession_id",
+    )
+  )
+
 
 class ProtocolRunCreate(ProtocolRunBase):
   """Schema for creating a ProtocolRun."""
 
+  # Allow tests and services to explicitly set the accession id when creating
+  # (legacy factories sometimes pass `run_accession_id`).
+  run_accession_id: uuid.UUID | None = None
+
   top_level_protocol_definition_accession_id: uuid.UUID
+  # JSON fields available at creation time
+  input_parameters_json: dict[str, Any] | None = None
+  resolved_assets_json: dict[str, Any] | None = None
+  output_data_json: dict[str, Any] | None = None
+  initial_state_json: dict[str, Any] | None = None
+  final_state_json: dict[str, Any] | None = None
+  created_by_user: dict[str, Any] | None = None
 
 
 class ProtocolRunRead(ProtocolRunBase):
@@ -400,7 +509,10 @@ class FunctionCallLogBase(PraxisBase):
   """Base schema for FunctionCallLog."""
 
   sequence_in_run: int = Field(index=True)
-  status: FunctionCallStatusEnum = Field(default=FunctionCallStatusEnum.UNKNOWN)
+  status: FunctionCallStatusEnum = Field(
+    default=FunctionCallStatusEnum.UNKNOWN,
+    description="Status of the function call",
+  )
   start_time: datetime = Field(default_factory=datetime.now)
   end_time: datetime | None = Field(default=None)
   duration_ms: int | None = Field(default=None)
@@ -413,6 +525,11 @@ class FunctionCallLog(FunctionCallLogBase, table=True):
 
   __tablename__ = "function_call_logs"
 
+  status: FunctionCallStatusEnum = Field(
+    default=FunctionCallStatusEnum.UNKNOWN,
+    sa_column=Column(SAEnum(FunctionCallStatusEnum), default=FunctionCallStatusEnum.UNKNOWN),
+  )
+
   input_args_json: dict[str, Any] | None = Field(default=None, sa_type=JsonVariant)
   return_value_json: dict[str, Any] | None = Field(default=None, sa_type=JsonVariant)
 
@@ -423,6 +540,23 @@ class FunctionCallLog(FunctionCallLogBase, table=True):
   parent_function_call_log_accession_id: uuid.UUID | None = Field(
     default=None, foreign_key="function_call_logs.accession_id", index=True
   )
+
+  # Relationships
+  protocol_run: Optional["ProtocolRun"] = Relationship(back_populates="function_call_logs")
+  executed_function_definition: Optional["FunctionProtocolDefinition"] = Relationship(
+    back_populates="function_call_logs"
+  )
+  parent_function_call: Optional["FunctionCallLog"] = Relationship(
+    sa_relationship=relationship(
+      "FunctionCallLog",
+      remote_side="FunctionCallLog.accession_id",
+      back_populates="child_function_calls",
+    )
+  )
+  child_function_calls: list["FunctionCallLog"] = Relationship(
+    sa_relationship=relationship("FunctionCallLog", back_populates="parent_function_call")
+  )
+  data_outputs: list["FunctionDataOutput"] = Relationship(back_populates="function_call_log")
 
 
 class FunctionCallLogCreate(FunctionCallLogBase):

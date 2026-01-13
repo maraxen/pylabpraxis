@@ -26,6 +26,7 @@ from praxis.backend.services.utils.query_builder import (
   apply_specific_id_filters,
 )
 from praxis.backend.utils.db import Base
+from sqlmodel import SQLModel
 from praxis.backend.utils.db_decorator import handle_db_transaction
 from praxis.backend.utils.logging import get_logger
 
@@ -133,8 +134,8 @@ class ResourceService(CRUDBase[Resource, ResourceCreate, ResourceUpdate]):
     if conditions:
       stmt = stmt.filter(and_(*conditions))
 
-    if not issubclass(self.model, Base):
-      msg = f"Model {self.model.__name__} must inherit from Base to use generic filters."
+    if not (issubclass(self.model, Base) or issubclass(self.model, SQLModel)):
+      msg = f"Model {self.model.__name__} must inherit from Base or SQLModel to use generic filters."
       raise TypeError(msg)
     stmt = apply_specific_id_filters(stmt, filters, self.model)
     stmt = apply_date_range_filters(stmt, filters, self.model.created_at)

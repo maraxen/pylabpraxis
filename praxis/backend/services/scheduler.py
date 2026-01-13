@@ -119,6 +119,8 @@ class ScheduleEntryCRUDService(
           "scheduled_at",
           "execution_started_at",
           "execution_completed_at",
+          "asset_analysis_completed_at",
+          "assets_reserved_at",
         },
       ),
       status=ScheduleStatusEnum.QUEUED,
@@ -548,7 +550,8 @@ async def get_scheduling_metrics(
 
   # Get average timing metrics
   avg_stmt = select(
-    func.avg(ScheduleHistory.completed_duration_ms).label("avg_duration"),
+    # Use stored/override duration column for SQL aggregation (computed properties are not SQL expressions)
+    func.avg(ScheduleHistory.override_duration_ms).label("avg_duration"),
   ).filter(
     and_(
       ScheduleHistory.created_at >= start_time,

@@ -11,6 +11,7 @@ from praxis.backend.models.domain.workcell import (
     WorkcellUpdate,
 )
 from praxis.backend.services.workcell import workcell_service
+from praxis.backend.models.domain.filters import SearchFilters
 
 
 @pytest.mark.asyncio

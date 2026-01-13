@@ -2,14 +2,18 @@
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy import func
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
 
 from praxis.backend.models.domain.sqlmodel_base import PraxisBase
 from praxis.backend.models.enums.resolution import ResolutionActionEnum, ResolutionTypeEnum
 from praxis.backend.utils.db import JsonVariant
+
+if TYPE_CHECKING:
+  from praxis.backend.models.domain.protocol import ProtocolRun
+  from praxis.backend.models.domain.schedule import ScheduleEntry
 
 
 class StateResolutionLogBase(PraxisBase):
@@ -46,6 +50,10 @@ class StateResolutionLog(StateResolutionLogBase, table=True):
     foreign_key="schedule_entries.accession_id", index=True
   )
   protocol_run_accession_id: uuid.UUID = Field(foreign_key="protocol_runs.accession_id", index=True)
+
+  # Relationships
+  schedule_entry: Optional["ScheduleEntry"] = Relationship()
+  protocol_run: Optional["ProtocolRun"] = Relationship()
 
 
 class StateResolutionLogCreate(StateResolutionLogBase):

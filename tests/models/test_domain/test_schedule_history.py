@@ -128,7 +128,8 @@ async def test_schedule_history_orm_creation_minimal(
     history = ScheduleHistory(
         name="test_history_minimal",
         schedule_entry_accession_id=schedule_entry.accession_id,
-        event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
+        event_type=ScheduleHistoryEventEnum.STATUS_CHANGED.value,
+        event_start=datetime.now(timezone.utc),
     )
     history.schedule_entry = schedule_entry
 
@@ -139,8 +140,8 @@ async def test_schedule_history_orm_creation_minimal(
     # Verify minimal creation
     assert history.accession_id is not None
     assert history.schedule_entry_accession_id == schedule_entry.accession_id
-    assert history.event_type == ScheduleHistoryEventEnum.STATUS_CHANGED
-    assert history.event_start is not None
+    assert history.event_type == ScheduleHistoryEventEnum.STATUS_CHANGED.value
+    assert history.event_start is not None, f"event_start is None. Data: {history.model_dump()}"
     assert isinstance(history.event_start, datetime)
     assert history.triggered_by == ScheduleHistoryEventTriggerEnum.SYSTEM
 
@@ -175,14 +176,14 @@ async def test_schedule_history_orm_creation_with_all_fields(
     history = ScheduleHistory(
         name="test_history_all_fields",
         schedule_entry_accession_id=schedule_entry.accession_id,
-        event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
-        from_status=ScheduleStatusEnum.QUEUED,
-        to_status=ScheduleStatusEnum.READY_TO_EXECUTE,
+        event_type=ScheduleHistoryEventEnum.STATUS_CHANGED.value,
+        from_status=ScheduleStatusEnum.QUEUED.value,
+        to_status=ScheduleStatusEnum.READY_TO_EXECUTE.value,
         event_data_json=event_data,
         message="Status changed to ready",
         error_details="Previous error: timeout",
         asset_count=3,
-        triggered_by=ScheduleHistoryEventTriggerEnum.USER,
+        triggered_by=ScheduleHistoryEventTriggerEnum.USER.value,
     )
     history.schedule_entry = schedule_entry
 
@@ -210,7 +211,7 @@ async def test_schedule_history_orm_persist_to_database(
     history = ScheduleHistory(
         name="test_history_persist",
         schedule_entry_accession_id=schedule_entry.accession_id,
-        event_type=ScheduleHistoryEventEnum.SCHEDULED,
+        event_type=ScheduleHistoryEventEnum.SCHEDULED.value,
         message="Assets reserved successfully",
         asset_count=2,
     )
@@ -257,7 +258,7 @@ async def test_schedule_history_orm_all_event_types(
         history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
-            event_type=event_type,
+            event_type=event_type.value,
             message=f"Test event: {event_type.value}",
         )
         history.schedule_entry = schedule_entry
@@ -269,12 +270,12 @@ async def test_schedule_history_orm_all_event_types(
     for event_type in ScheduleHistoryEventEnum:
         result = await db_session.execute(
             select(ScheduleHistory).where(
-                ScheduleHistory.event_type == event_type,
+                ScheduleHistory.event_type == event_type.value,
             ),
         )
         history = result.scalar_one_or_none()
         assert history is not None
-        assert history.event_type == event_type
+        assert history.event_type == event_type.value
 
 
 @pytest.mark.asyncio
@@ -302,7 +303,7 @@ async def test_schedule_history_orm_status_transitions(
         history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
-            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
+            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED.value,
             from_status=from_status,
             to_status=to_status,
             message=f"Transition: {from_status} → {to_status}",
@@ -344,8 +345,9 @@ async def test_schedule_history_orm_event_timing(
     history = ScheduleHistory(
         name="test_history_timing",
         schedule_entry_accession_id=schedule_entry.accession_id,
-        event_type=ScheduleHistoryEventEnum.COMPLETED,
+        event_type=ScheduleHistoryEventEnum.COMPLETED.value,
         override_duration_ms=5000,
+        event_start=datetime.now(timezone.utc),
     )
     history.schedule_entry = schedule_entry
 
@@ -354,6 +356,10 @@ async def test_schedule_history_orm_event_timing(
     await db_session.refresh(history)
 
     # Verify timing fields
+    # If this fails, it means event_start was not persisted or retrieved correctly
+    if history.event_start is None:
+        raise AssertionError(f"event_start is None! {history.model_dump()}")
+    
     assert history.event_start is not None
     assert history.event_end is None  # Not set yet
     assert history.override_duration_ms == 5000
@@ -389,7 +395,7 @@ async def test_schedule_history_orm_event_data_jsonb(
     history = ScheduleHistory(
         name="test_history_jsonb",
         schedule_entry_accession_id=schedule_entry.accession_id,
-        event_type=ScheduleHistoryEventEnum.SCHEDULED,
+        event_type=ScheduleHistoryEventEnum.SCHEDULED.value,
         event_data_json=event_data,
     )
     history.schedule_entry = schedule_entry
@@ -422,7 +428,7 @@ async def test_schedule_history_orm_error_tracking(
     history = ScheduleHistory(
         name="test_history_error",
         schedule_entry_accession_id=schedule_entry.accession_id,
-        event_type=ScheduleHistoryEventEnum.FAILED,
+        event_type=ScheduleHistoryEventEnum.FAILED.value,
         error_details=error_message,
         message="Execution failed due to asset conflict",
     )
@@ -454,7 +460,7 @@ async def test_schedule_history_orm_all_trigger_types(
         history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
-            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
+            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED.value,
             triggered_by=trigger,
             message=f"Triggered by: {trigger.value}",
         )
@@ -488,7 +494,7 @@ async def test_schedule_history_orm_asset_count_tracking(
         history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
-            event_type=ScheduleHistoryEventEnum.SCHEDULED,
+            event_type=ScheduleHistoryEventEnum.SCHEDULED.value,
             asset_count=count,
             message=f"Reserved {count} assets",
         )
@@ -520,7 +526,7 @@ async def test_schedule_history_orm_relationship_to_schedule_entry(
         history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
-            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
+            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED.value,
             message=f"Event {i}",
         )
         history.schedule_entry = schedule_entry
@@ -529,10 +535,10 @@ async def test_schedule_history_orm_relationship_to_schedule_entry(
     await db_session.flush()
 
     # Refresh schedule_entry to load relationship
-    await db_session.refresh(schedule_entry, ["schedule_history"])
+    await db_session.refresh(schedule_entry, ["history"])
 
-    assert len(schedule_entry.schedule_history) == 3
-    for history in schedule_entry.schedule_history:
+    assert len(schedule_entry.history) == 3
+    for history in schedule_entry.history:
         assert history.schedule_entry == schedule_entry
         assert history.schedule_entry_accession_id == schedule_entry.accession_id
 
@@ -557,7 +563,7 @@ async def test_schedule_history_orm_query_by_event_type(
         history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
-            event_type=event_type,
+            event_type=event_type.value,
         )
         history.schedule_entry = schedule_entry
         db_session.add(history)
@@ -567,7 +573,7 @@ async def test_schedule_history_orm_query_by_event_type(
     # Query STATUS_CHANGED events
     result = await db_session.execute(
         select(ScheduleHistory).where(
-            ScheduleHistory.event_type == ScheduleHistoryEventEnum.STATUS_CHANGED,
+            ScheduleHistory.event_type == ScheduleHistoryEventEnum.STATUS_CHANGED.value,
         ),
     )
     status_changes = result.scalars().all()
@@ -588,7 +594,7 @@ async def test_schedule_history_orm_query_by_time_range(
         history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
-            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
+            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED.value,
             message=f"Event {i}",
         )
         history.schedule_entry = schedule_entry
@@ -626,7 +632,8 @@ async def test_schedule_history_orm_cascade_delete(
         history = ScheduleHistory(
             name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
-            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
+            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED.value,
+            event_start=datetime.now(timezone.utc),
         )
         history.schedule_entry = schedule_entry
         db_session.add(history)

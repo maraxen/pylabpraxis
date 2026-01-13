@@ -64,9 +64,9 @@ class ProtocolRunService(CRUDBase[ProtocolRun, ProtocolRunCreate, ProtocolRunUpd
     # Extract accession_id before filtering (since it has init=False in Base)
     accession_id = data.pop("accession_id", None)
 
-    # Filter to only valid constructor parameters
-    init_signature = inspect.signature(self.model.__init__)
-    valid_params = {p.name for p in init_signature.parameters.values()}
+    # Only keep keys that map to actual table columns to avoid dropping
+    # ORM-mapped fields (constructor signature may not include all columns).
+    valid_params = {col.key for col in sa_inspect(self.model).columns}
     filtered_data = {key: value for key, value in data.items() if key in valid_params}
 
     # Convert enum string values back to enum members for SQLAlchemy
@@ -183,10 +183,10 @@ class ProtocolRunService(CRUDBase[ProtocolRun, ProtocolRunCreate, ProtocolRunUpd
     stmt = (
       select(self.model)
       .options(
-        selectinload(self.model.function_calls)
+        selectinload(self.model.function_call_logs)
         .selectinload(FunctionCallLog.executed_function_definition)
         .selectinload(FunctionProtocolDefinition.source_repository),
-        selectinload(self.model.function_calls)
+        selectinload(self.model.function_call_logs)
         .selectinload(FunctionCallLog.executed_function_definition)
         .selectinload(FunctionProtocolDefinition.file_system_source),
         joinedload(self.model.top_level_protocol_definition),

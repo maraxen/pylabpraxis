@@ -13,6 +13,7 @@ from praxis.backend.services.well_outputs import (
     create_well_data_outputs,
     create_well_data_outputs_from_flat_array,
 )
+from praxis.backend.models.domain.filters import SearchFilters
 from tests.factories import (
     FunctionCallLogFactory,
     FunctionDataOutputFactory,

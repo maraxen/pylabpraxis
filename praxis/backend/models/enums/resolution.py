@@ -3,7 +3,7 @@
 from enum import Enum
 
 
-class ResolutionActionEnum(Enum):
+class ResolutionActionEnum(str, Enum):
   """Actions taken after state resolution."""
 
   RESUME = "resume"  # Continue protocol execution
@@ -11,7 +11,7 @@ class ResolutionActionEnum(Enum):
   RETRY = "retry"  # Retry the failed operation
 
 
-class ResolutionTypeEnum(Enum):
+class ResolutionTypeEnum(str, Enum):
   """Types of state resolution."""
 
   CONFIRMED_SUCCESS = "confirmed_success"  # Effect actually happened

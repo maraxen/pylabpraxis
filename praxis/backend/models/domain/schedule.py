@@ -1,11 +1,12 @@
-# pylint: disable=too-few-public-methods,missing-class-docstring
-"""Unified SQLModel definitions for Schedule and AssetReservation."""
-
 import uuid
-from datetime import datetime
-from typing import Any
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any, List, Optional
 
-from sqlmodel import Field, SQLModel
+from pydantic import computed_field
+from sqlalchemy import Column, Enum as SAEnum, String, UUID
+from sqlalchemy.orm import relationship, foreign, attributes
+from sqlalchemy.sql import func
+from sqlmodel import Field, Relationship, SQLModel
 
 from praxis.backend.models.domain.sqlmodel_base import PraxisBase, json_field
 from praxis.backend.models.enums import (
@@ -17,6 +18,11 @@ from praxis.backend.models.enums import (
 )
 from praxis.backend.utils.db import JsonVariant
 
+if TYPE_CHECKING:
+  from praxis.backend.models.domain.protocol import ProtocolRun
+  from praxis.backend.models.domain.machine import Machine
+  from praxis.backend.models.domain.resource import Resource
+
 # =============================================================================
 # Schedule Entry
 # =============================================================================
@@ -27,7 +33,7 @@ class ScheduleEntryBase(PraxisBase):
 
   status: ScheduleStatusEnum = Field(
     default=ScheduleStatusEnum.QUEUED,
-    index=True,
+    sa_column=Column(SAEnum(ScheduleStatusEnum), default=ScheduleStatusEnum.QUEUED),
   )
   scheduled_at: datetime | None = Field(
     default=None, index=True, description="Scheduled start time"
@@ -38,9 +44,9 @@ class ScheduleEntryBase(PraxisBase):
   execution_completed_at: datetime | None = Field(
     default=None, index=True, description="Actual end time"
   )
-  priority: int = Field(default=0, index=True, description="Priority for scheduling")
+  priority: int = Field(default=1, index=True, description="Priority for scheduling")
   estimated_duration_ms: int | None = Field(default=None, description="Estimated duration")
-  required_asset_count: int | None = Field(default=None, description="Required asset count")
+  required_asset_count: int = Field(default=0, description="Required asset count")
   user_params_json: dict[str, Any] | None = Field(
     default=None, sa_type=JsonVariant, description="User parameters"
   )
@@ -70,6 +76,23 @@ class ScheduleEntry(ScheduleEntryBase, table=True):
   # Foreign keys
   protocol_run_accession_id: uuid.UUID | None = Field(
     default=None, foreign_key="protocol_runs.accession_id", index=True
+  )
+
+  # Relationships
+  protocol_run: Optional["ProtocolRun"] = Relationship()
+  asset_reservations: list["AssetReservation"] = Relationship(
+    sa_relationship=relationship(
+      "AssetReservation",
+      back_populates="schedule_entry",
+      cascade="all, delete-orphan",
+    )
+  )
+  history: list["ScheduleHistory"] = Relationship(
+    sa_relationship=relationship(
+      "ScheduleHistory",
+      back_populates="schedule_entry",
+      cascade="all, delete-orphan",
+    )
   )
   # workcell_accession_id: uuid.UUID | None = Field(
   #   default=None, foreign_key="workcells.accession_id", index=True
@@ -109,7 +132,10 @@ class AssetReservationBase(PraxisBase):
   """Base schema for AssetReservation - shared fields for create/update/response."""
 
   reserved_at: datetime | None = Field(
-    default=None, index=True, description="When the asset was reserved"
+    default_factory=lambda: datetime.now(timezone.utc),
+    sa_column_kwargs={"server_default": func.now()},
+    index=True,
+    description="When the asset was reserved",
   )
   released_at: datetime | None = Field(
     default=None, index=True, description="When the asset was released"
@@ -118,8 +144,14 @@ class AssetReservationBase(PraxisBase):
   is_active: bool = Field(
     default=True, index=True, description="Whether the reservation is currently active"
   )
-  status: AssetReservationStatusEnum = Field(default=AssetReservationStatusEnum.PENDING, index=True)
-  asset_type: AssetType = Field(default=AssetType.ASSET, index=True)
+  status: AssetReservationStatusEnum = Field(
+    default=AssetReservationStatusEnum.PENDING,
+    description="Status of the reservation",
+  )
+  asset_type: AssetType = Field(
+    default=AssetType.ASSET,
+    description="Type of the reserved asset",
+  )
   asset_name: str = Field(index=True)
   redis_lock_key: str = Field(index=True)
   redis_lock_value: str | None = Field(default=None)
@@ -133,14 +165,81 @@ class AssetReservation(AssetReservationBase, table=True):
 
   __tablename__ = "asset_reservations"
 
+  status: AssetReservationStatusEnum = Field(
+    default=AssetReservationStatusEnum.PENDING,
+    sa_column=Column(SAEnum(AssetReservationStatusEnum), default=AssetReservationStatusEnum.PENDING, nullable=False),
+  )
+  asset_type: AssetType = Field(
+    default=AssetType.ASSET,
+    sa_column=Column(SAEnum(AssetType), default=AssetType.ASSET, nullable=False),
+  )
+
   # Foreign keys
   # Soft FK for asset_accession_id (no foreign_key constraint)
-  asset_accession_id: uuid.UUID = Field(index=True, description="Reference to Asset ID (Soft FK)")
+  asset_accession_id: uuid.UUID | None = Field(
+    default=None,
+    sa_column=Column(UUID, nullable=True),
+    description="Reference to Asset ID (Soft FK)",
+  )
 
   schedule_entry_accession_id: uuid.UUID = Field(
     foreign_key="schedule_entries.accession_id", index=True
   )
   protocol_run_accession_id: uuid.UUID = Field(foreign_key="protocol_runs.accession_id", index=True)
+
+  # Relationships
+  schedule_entry: Optional["ScheduleEntry"] = Relationship(back_populates="asset_reservations")
+  protocol_run: Optional["ProtocolRun"] = Relationship(back_populates="asset_reservations")
+  # Explicit relationships to concrete assets
+  machine: Optional["Machine"] = Relationship(
+    sa_relationship=relationship(
+      "Machine",
+      back_populates="asset_reservations",
+      primaryjoin="foreign(AssetReservation.asset_accession_id) == Machine.accession_id",
+      foreign_keys="[AssetReservation.asset_accession_id]",
+      overlaps="resource",
+    )
+  )
+  resource: Optional["Resource"] = Relationship(
+    sa_relationship=relationship(
+      "Resource",
+      back_populates="asset_reservations",
+      primaryjoin="foreign(AssetReservation.asset_accession_id) == Resource.accession_id",
+      foreign_keys="[AssetReservation.asset_accession_id]",
+      overlaps="machine",
+    )
+  )
+
+  @property
+  def asset(self) -> Optional[object]:
+    """Return the concrete asset (machine or resource) for convenience."""
+    return self.machine or self.resource
+
+  @asset.setter
+  def asset(self, value: Optional[object]) -> None:
+    """Set the concrete asset, clearing the other relationship.
+
+    Uses simple runtime type checks (by class name) to avoid import cycles.
+    """
+    if value is None:
+      # Clear relationships and persisted reference for soft-FK
+      self.machine = None
+      self.resource = None
+      self.asset_accession_id = None
+      self.asset_type = AssetType.ASSET
+      return
+
+    cls_name = value.__class__.__name__
+    if cls_name == "Machine":
+      # Write FK/type directly to avoid ambiguity, then set relationship
+      self.asset_accession_id = value.accession_id
+      self.asset_type = AssetType.MACHINE
+      self.machine = value
+    else:
+      # Write FK/type directly to avoid ambiguity, then set relationship
+      self.asset_accession_id = value.accession_id
+      self.asset_type = AssetType.RESOURCE
+      self.resource = value
 
 
 class AssetReservationCreate(AssetReservationBase):
@@ -175,29 +274,61 @@ class AssetReservationUpdate(SQLModel):
 
 
 class ScheduleHistoryBase(PraxisBase):
-  event_type: ScheduleHistoryEventEnum = Field(index=True)
-  from_status: ScheduleStatusEnum | None = Field(default=None)
-  to_status: ScheduleStatusEnum | None = Field(default=None)
+  event_type: ScheduleHistoryEventEnum = Field(description="Type of the schedule history event")
+  from_status: ScheduleStatusEnum | None = Field(default=None, description="Status before the event")
+  to_status: ScheduleStatusEnum | None = Field(default=None, description="Status after the event")
   message: str | None = Field(default=None)
   error_details: str | None = Field(default=None)
-  event_start: datetime | None = Field(default=None)
+  event_start: datetime | None = Field(
+    default_factory=lambda: datetime.now(timezone.utc),
+  )
   event_end: datetime | None = Field(default=None)
-  completed_duration_ms: int | None = Field(default=None)
+  
+  @computed_field
+  @property
+  def completed_duration_ms(self) -> int | None:
+    """Calculated duration between start and end in ms."""
+    if self.event_start and self.event_end:
+      delta = self.event_end - self.event_start
+      return int(delta.total_seconds() * 1000)
+    return None
+
   override_duration_ms: int | None = Field(default=None)
   asset_count: int | None = Field(default=None)
   triggered_by: ScheduleHistoryEventTriggerEnum = Field(
-    default=ScheduleHistoryEventTriggerEnum.SYSTEM
+    default=ScheduleHistoryEventTriggerEnum.SYSTEM,
+    description="What triggered the event",
   )
 
 
 class ScheduleHistory(ScheduleHistoryBase, table=True):
   __tablename__ = "schedule_history"
 
+  event_type: ScheduleHistoryEventEnum = Field(
+    default=ScheduleHistoryEventEnum.STATUS_CHANGED,
+    sa_column=Column(SAEnum(ScheduleHistoryEventEnum), default=ScheduleHistoryEventEnum.STATUS_CHANGED, nullable=False)
+  )
+  from_status: ScheduleStatusEnum | None = Field(
+    default=None,
+    sa_column=Column(SAEnum(ScheduleStatusEnum), nullable=True)
+  )
+  to_status: ScheduleStatusEnum | None = Field(
+    default=None,
+    sa_column=Column(SAEnum(ScheduleStatusEnum), nullable=True)
+  )
+  triggered_by: ScheduleHistoryEventTriggerEnum = Field(
+    default=ScheduleHistoryEventTriggerEnum.SYSTEM,
+    sa_column=Column(SAEnum(ScheduleHistoryEventTriggerEnum), default=ScheduleHistoryEventTriggerEnum.SYSTEM)
+  )
+
   event_data_json: dict[str, Any] | None = Field(default=None, sa_type=JsonVariant)
 
   schedule_entry_accession_id: uuid.UUID = Field(
     foreign_key="schedule_entries.accession_id", index=True
   )
+
+  # Relationships
+  schedule_entry: Optional["ScheduleEntry"] = Relationship(back_populates="history")
 
 
 class ScheduleHistoryRead(ScheduleHistoryBase):
@@ -320,6 +451,7 @@ class ScheduleStatusResponse(SQLModel):
 
 class ReleaseReservationResponse(SQLModel):
   """Response model for releasing asset reservations."""
+
   asset_key: str
   released: bool
   message: str

@@ -6,6 +6,12 @@ from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
+try:
+    import nest_asyncio
+    nest_asyncio.apply()
+except Exception:
+    # If nest_asyncio isn't available, continue without applying.
+    pass
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,

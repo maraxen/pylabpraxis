@@ -8,7 +8,7 @@ Classes:
 import enum
 
 
-class WorkcellStatusEnum(enum.Enum):
+class WorkcellStatusEnum(str, enum.Enum):
   """Enumeration for workcell status.
 
   This enum defines the possible statuses a workcell can have.

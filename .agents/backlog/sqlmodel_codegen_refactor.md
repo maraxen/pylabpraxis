@@ -132,6 +132,9 @@ See: [sqlmodel_openapi_migration.md](../archive/sqlmodel_openapi_migration.md)
   - [ ] Delete `praxis/backend/models/orm/` directory.
   - [ ] Update all imports.
 - **Tests**: Full test suite validation.
+  - **Audit (2025-01-12)**: Comprehensive domain model audit completed. See [AUDIT_REPORT.md](../prompts/260112_2/AUDIT_REPORT.md).
+    - identified critical missing relationships in `protocol.py`, `schedule.py`, `machine.py`, `resource.py`, `outputs.py`.
+    - Remediation planned via follow-up prompts.
 
 ### 7.2 — Final review: Alembic migration + full integration test
 

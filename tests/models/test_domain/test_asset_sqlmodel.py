@@ -4,13 +4,14 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from praxis.backend.models.domain.asset import Asset, AssetCreate, AssetRead, AssetUpdate
 from praxis.backend.models.enums import AssetType
+from praxis.backend.utils.db import Base
 
 
 @pytest.fixture
 def engine():
     """Create in-memory SQLite engine for testing."""
     engine = create_engine("sqlite:///:memory:")
-    SQLModel.metadata.create_all(engine)
+    Base.metadata.create_all(engine)
     return engine
 
 
@@ -21,12 +22,16 @@ def session(engine):
         yield session
 
 
+class ConcreteAsset(Asset, table=True):
+    """Concrete subclass of Asset for testing SQLModel functionality."""
+    __tablename__ = "concrete_assets"
+
 class TestAssetSQLModel:
     """Test suite for Asset SQLModel."""
 
     def test_asset_creation_defaults(self, session):
         """Test creating Asset with minimal fields."""
-        asset = Asset(name="test_asset")
+        asset = ConcreteAsset(name="test_asset")
         session.add(asset)
         session.commit()
         session.refresh(asset)
@@ -39,7 +44,7 @@ class TestAssetSQLModel:
 
     def test_asset_serialization_to_read(self, session):
         """Test serializing Asset to AssetRead response."""
-        asset = Asset(
+        asset = ConcreteAsset(
             name="test_asset",
             fqn="test.Asset",
             plr_state={"key": "value"},
@@ -79,19 +84,19 @@ class TestAssetSQLModel:
 
     def test_polymorphic_identity(self, session):
         """Test that the polymorphic identity is correctly set."""
-        asset = Asset(name="poly_asset")
+        asset = ConcreteAsset(name="poly_asset")
         session.add(asset)
         session.commit()
         
         # Raw SQL check to verify the discriminator column
-        statement = select(Asset).where(Asset.name == "poly_asset")
+        statement = select(ConcreteAsset).where(ConcreteAsset.name == "poly_asset")
         result = session.exec(statement).first()
         assert result.asset_type == AssetType.ASSET
         
     def test_json_fields_roundtrip(self, session):
         """Test that JSON fields are correctly stored and retrieved."""
         plr_def = {"model": "Opentrons", "version": 2}
-        asset = Asset(
+        asset = ConcreteAsset(
             name="robot", 
             plr_definition=plr_def
         )

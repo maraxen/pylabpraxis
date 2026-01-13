@@ -25,7 +25,7 @@ async def test_protocol_source_repository_orm_creation_minimal(
     assert repo.default_ref == "main"  # Default
     assert repo.local_checkout_path is None
     assert repo.last_synced_commit is None
-    assert repo.status == ProtocolSourceStatusEnum.ACTIVE  # Default
+    assert repo.status == ProtocolSourceStatusEnum.ACTIVE.value  # Default
     assert repo.auto_sync_enabled is True  # Default
 
 
@@ -53,7 +53,7 @@ async def test_protocol_source_repository_orm_creation_with_all_fields(
     assert repo.default_ref == "develop"
     assert repo.local_checkout_path == "/opt/protocols/example"
     assert repo.last_synced_commit == "abc123def456"
-    assert repo.status == ProtocolSourceStatusEnum.SYNCING
+    assert repo.status == ProtocolSourceStatusEnum.SYNCING.value
     assert repo.auto_sync_enabled is False
 
 
@@ -137,7 +137,7 @@ async def test_protocol_source_repository_orm_status_transitions(
         await db_session.flush()
 
         # Verify status
-        assert repo.status == status
+        assert repo.status == status.value
 
 
 @pytest.mark.asyncio

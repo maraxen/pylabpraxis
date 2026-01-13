@@ -13,7 +13,7 @@ Classes:
 import enum
 
 
-class ProtocolSourceStatusEnum(enum.Enum):
+class ProtocolSourceStatusEnum(str, enum.Enum):
   """Enumeration for the status of a protocol source (repository or file system)."""
 
   ACTIVE = "active"
@@ -24,30 +24,30 @@ class ProtocolSourceStatusEnum(enum.Enum):
   PENDING_DELETION = "pending_deletion"
 
 
-class ProtocolRunStatusEnum(enum.Enum):
+class ProtocolRunStatusEnum(str, enum.Enum):
   """Enumeration for the operational status of a protocol run."""
 
-  QUEUED = "queued"
-  PENDING = "pending"
-  PREPARING = "preparing"
-  RUNNING = "running"
-  PAUSING = "pausing"
-  PAUSED = "paused"
-  RESUMING = "resuming"
-  COMPLETED = "completed"
-  FAILED = "failed"
-  CANCELING = "canceling"
-  CANCELLED = "cancelled"
-  INTERVENING = "intervening"
-  REQUIRES_INTERVENTION = "requires_intervention"
+  QUEUED = "QUEUED"
+  PENDING = "PENDING"
+  PREPARING = "PREPARING"
+  RUNNING = "RUNNING"
+  PAUSING = "PAUSING"
+  PAUSED = "PAUSED"
+  RESUMING = "RESUMING"
+  COMPLETED = "COMPLETED"
+  FAILED = "FAILED"
+  CANCELING = "CANCELING"
+  CANCELLED = "CANCELLED"
+  INTERVENING = "INTERVENING"
+  REQUIRES_INTERVENTION = "REQUIRES_INTERVENTION"
 
 
-class FunctionCallStatusEnum(enum.Enum):
+class FunctionCallStatusEnum(str, enum.Enum):
   """Enumeration for the outcome status of an individual function call."""
 
-  SUCCESS = "success"
-  ERROR = "error"
-  PENDING = "pending"
+  SUCCESS = "SUCCESS"
+  ERROR = "ERROR"
+  PENDING = "PENDING"
   IN_PROGRESS = "in_progress"
   SKIPPED = "skipped"
   CANCELED = "canceled"

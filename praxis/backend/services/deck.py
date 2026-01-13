@@ -64,9 +64,9 @@ class DeckService(CRUDBase[Deck, DeckCreate, DeckUpdate]):
 
   def _filter_and_convert_enums(self, deck_data: dict) -> dict:
     """Filter data and convert enums for ORM compatibility."""
-    init_signature = inspect.signature(self.model.__init__)
-    valid_params = {p.name for p in init_signature.parameters.values()}
-    filtered_data = {key: value for key, value in deck_data.items() if key in valid_params}
+    # Do not filter by __init__ signature; preserve all provided fields so
+    # required values (like `name`) are not unintentionally dropped.
+    filtered_data = dict(deck_data)
 
     for attr_name, column in sa_inspect(self.model).columns.items():
       if attr_name in filtered_data:

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from praxis.backend.models.enums.workcell import WorkcellStatusEnum
 from praxis.backend.models.domain.workcell import (
@@ -295,7 +296,20 @@ class TestWorkcellSchemas:
         db_session.add(model_workcell)
         await db_session.flush()
 
-        response = WorkcellResponse.model_validate(model_workcell)
+        # Re-query with eager loading to simulate a proper DB fetch
+        stmt = (
+            select(Workcell)
+            .options(
+                selectinload(Workcell.machines),
+                selectinload(Workcell.decks),
+                selectinload(Workcell.resources),
+            )
+            .where(Workcell.accession_id == workcell_id)
+        )
+        result = await db_session.execute(stmt)
+        loaded_workcell = result.scalars().one()
+
+        response = WorkcellResponse.model_validate(loaded_workcell)
 
         assert response.accession_id == workcell_id
         assert response.name == "model_test_workcell"

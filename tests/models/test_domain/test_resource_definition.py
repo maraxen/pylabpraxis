@@ -280,12 +280,12 @@ class TestResourceDefinitionSchemas:
 
     def test_resource_definition_base_minimal(self) -> None:
         """Test ResourceDefinitionBase with minimal fields."""
-        resource_def = ResourceDefinitionBase()
+        resource_def = ResourceDefinitionBase(fqn="test.fqn", name="test_name")
 
         # Verify defaults
         assert resource_def.resource_type is None
         assert resource_def.description is None
-        assert resource_def.is_consumable is True  # Default
+        assert resource_def.is_consumable is False  # Default
         assert resource_def.nominal_volume_ul is None
         assert resource_def.material is None
         assert resource_def.manufacturer is None
@@ -299,6 +299,8 @@ class TestResourceDefinitionSchemas:
         rotation = {"x_deg": 0, "y_deg": 0, "z_deg": 90}
 
         resource_def = ResourceDefinitionBase(
+            name="test_name",
+            fqn="test.fqn",
             resource_type="plate",
             description="96-well microplate",
             is_consumable=True,

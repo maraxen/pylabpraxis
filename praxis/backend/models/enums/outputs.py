@@ -11,7 +11,7 @@ Classes:
 import enum
 
 
-class DataOutputTypeEnum(enum.Enum):
+class DataOutputTypeEnum(str, enum.Enum):
   """Enumeration for different types of data outputs."""
 
   # Measurement data
@@ -47,7 +47,7 @@ class DataOutputTypeEnum(enum.Enum):
   UNKNOWN = "unknown"  # Fallback for unclassified data types
 
 
-class SpatialContextEnum(enum.Enum):
+class SpatialContextEnum(str, enum.Enum):
   """Enumeration for spatial context types."""
 
   WELL_SPECIFIC = "well_specific"  # Data tied to specific well(s)

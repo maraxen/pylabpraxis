@@ -164,6 +164,13 @@ class MachineTypeDefinitionService(
     ):
       obj_in_data.pop(field, None)
 
+    # If the static analysis produced an explicit None for the enum-backed
+    # `machine_category`, remove it so the ORM/model default applies (or set
+    # a sensible default). Passing None into a non-optional enum field will
+    # trigger pydantic validation errors.
+    if "machine_category" in obj_in_data and obj_in_data["machine_category"] is None:
+      obj_in_data.pop("machine_category", None)
+
     new_def = MachineDefinition(**obj_in_data)
     self.db.add(new_def)
     logger.debug("Added new machine definition: %s", cls.fqn)

@@ -59,6 +59,9 @@ async def protocol_definition(
         fqn="test.protocols.test_protocol",
         version="1.0.0",
         is_top_level=True,
+        source_file_path="/tmp/protocols/test_protocol.py",
+        module_name="test.protocols.test_protocol",
+        function_name="test_protocol_fn",
     )
     protocol.source_repository = source_repository
     protocol.file_system_source = file_system_source

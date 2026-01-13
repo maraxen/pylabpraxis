@@ -26,6 +26,14 @@ from praxis.backend.models.domain.outputs import FunctionDataOutput
 from praxis.backend.models.domain.protocol import (
   ProtocolRun,
 )
+from praxis.backend.models.domain.protocol_source import (
+        ProtocolSourceRepository,
+        FileSystemProtocolSource,
+)
+from praxis.backend.models.domain.protocol import (
+        FunctionProtocolDefinition,
+        FunctionCallLog,
+)
 from praxis.backend.models.domain.resource import Resource
 from praxis.backend.models.domain.schedule import AssetReservation, ScheduleEntry
 from praxis.backend.utils.uuid import uuid7

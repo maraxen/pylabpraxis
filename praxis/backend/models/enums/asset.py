@@ -20,7 +20,7 @@ class AssetType(str, enum.Enum):
   ASSET = "GENERIC_ASSET"  # Generic asset type for any physical asset
 
 
-class AssetReservationStatusEnum(enum.Enum):
+class AssetReservationStatusEnum(str, enum.Enum):
   """Enumeration for the status of a asset reservation."""
 
   RESERVED = "reserved"  # Asset successfully reserved

@@ -29,7 +29,13 @@ class DeckTypeDefinitionService(
     obj_in_data.pop("created_at", None)
     obj_in_data.pop("updated_at", None)
     obj_in_data.pop("positioning_config", None)
-    position_definitions = obj_in_data.pop("position_definitions", [])
+    # Normalize position_definitions: ensure None becomes empty list
+    position_definitions = obj_in_data.pop("position_definitions", None) or []
+
+    # Ensure we don't pass a None for the relationship-backed `positions`
+    # attribute into the ORM initializer (SQLAlchemy rejects None for
+    # collection relationships). Remove it if present.
+    obj_in_data.pop("positions", None)
 
     db_obj = self.model(**obj_in_data)
     db_obj.accession_id = uuid7()
@@ -45,15 +51,16 @@ class DeckTypeDefinitionService(
         position_definition.pop("created_at", None)
         position_definition.pop("updated_at", None)
 
-        db_obj.positions.append(
-          DeckPositionDefinition(
-            **position_definition,
-            deck_type=db_obj,
-            deck_type_id=db_obj.accession_id,
-          ),
-        )
+        # Ensure deck_type_id is set for validation/ORM initialization
+        position_definition["deck_type_id"] = db_obj.accession_id
+
+        pos = DeckPositionDefinition(**position_definition)
+        pos.deck_type = db_obj
+        db_obj.positions.append(pos)
 
     db.add(db_obj)
     await db.flush()
-    await db.refresh(db_obj, ["positions", "resource_definition"])
+    # Only refresh positions; `resource_definition` is not a mapped attribute
+    # on DeckDefinition and asking SQLAlchemy to refresh it raises KeyError.
+    await db.refresh(db_obj, ["positions"])
     return db_obj

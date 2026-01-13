@@ -47,5 +47,5 @@ def test_json_field_helper():
 
 
 def test_sqlmodel_metadata_registration():
-  """Test that the model is correctly registered in SQLModel's metadata."""
-  assert "mockmodel" in SQLModel.metadata.tables
+  """Test that the model is correctly registered in its metadata."""
+  assert "mockmodel" in MockModel.metadata.tables

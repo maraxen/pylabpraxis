@@ -4,9 +4,10 @@
 import uuid
 from typing import TYPE_CHECKING, Any, Optional, List
 
-from pydantic import ConfigDict
-from sqlmodel import Field, Relationship, SQLModel
+from pydantic import ConfigDict, AliasChoices, computed_field
+from sqlalchemy import Column, Enum as SAEnum
 from sqlalchemy.orm import relationship
+from sqlmodel import Field, Relationship, SQLModel
 
 from praxis.backend.models.domain.asset import Asset, AssetBase, AssetRead, AssetUpdate
 from praxis.backend.models.domain.sqlmodel_base import PraxisBase
@@ -14,10 +15,11 @@ from praxis.backend.models.enums.resource import ResourceStatusEnum
 from praxis.backend.utils.db import JsonVariant
 
 if TYPE_CHECKING:
-  from praxis.backend.models.domain.deck import Deck
+  from praxis.backend.models.domain.deck import Deck, DeckDefinition
   from praxis.backend.models.domain.machine import Machine
-  from praxis.backend.models.domain.protocol import ProtocolRun
+  from praxis.backend.models.domain.protocol import AssetRequirement, ProtocolRun
   from praxis.backend.models.domain.workcell import Workcell
+  from praxis.backend.models.domain.outputs import FunctionDataOutput
 
 # =============================================================================
 # Resource Definition (Catalog)
@@ -80,6 +82,15 @@ class ResourceDefinition(ResourceDefinitionBase, table=True):
   )
 
   # Relationships
+  deck_definition: Optional["DeckDefinition"] = Relationship(
+    sa_relationship=relationship(
+      "DeckDefinition",
+      foreign_keys="ResourceDefinition.deck_definition_accession_id",
+    )
+  )
+  asset_requirement: Optional["AssetRequirement"] = Relationship()
+
+  # Relationships
   resources: list["Resource"] = Relationship(
     sa_relationship=relationship("Resource", back_populates="resource_definition")
   )
@@ -92,7 +103,6 @@ class ResourceDefinitionCreate(ResourceDefinitionBase):
 class ResourceDefinitionRead(ResourceDefinitionBase):
   """Schema for reading a ResourceDefinition (API response)."""
 
-  accession_id: uuid.UUID
   plr_definition_details_json: dict[str, Any] | None = None
   rotation_json: dict[str, Any] | None = None
 
@@ -131,18 +141,52 @@ class ResourceDefinitionUpdate(SQLModel):
 class ResourceBase(AssetBase):
   """Base schema for Resource - shared fields for create/update/response."""
 
+  model_config = ConfigDict(extra="allow")
+
+  # Resource-specific override: for minimal ResourceBase we expect `fqn` to be None
+  fqn: str | None = Field(default=None, index=True, description="Fully qualified name")
+
   status: ResourceStatusEnum = Field(
     default=ResourceStatusEnum.UNKNOWN,
   )
   status_details: str | None = Field(default=None, description="Additional status details")
   location_label: str | None = Field(default=None, description="Physical location label")
   current_deck_position_name: str | None = Field(default=None, description="Current deck position")
+  resource_definition_accession_id: uuid.UUID | None = Field(
+    default=None, description="Reference to resource definition catalog"
+  )
+  parent_accession_id: uuid.UUID | None = Field(
+    default=None, description="Parent resource for hierarchies"
+  )
+  workcell_accession_id: uuid.UUID | None = Field(
+    default=None, description="Workcell this resource belongs to"
+  )
+
+  @property
+  def deck_accession_id(self) -> uuid.UUID | None:
+    """Compatibility property."""
+    if "deck_accession_id" in self.__dict__:
+      return self.__dict__["deck_accession_id"]
+    return getattr(self, "deck_location_accession_id", None)
+
+  @property
+  def machine_id(self) -> uuid.UUID | None:
+    """Compatibility property."""
+    if "machine_id" in self.__dict__:
+      return self.__dict__["machine_id"]
+    return getattr(
+      self, "machine_location_accession_id", getattr(self, "parent_machine_accession_id", None)
+    )
 
 
 class Resource(ResourceBase, Asset, table=True):
   """Resource table - represents a physical resource instance."""
 
   __tablename__ = "resources"
+
+  status: ResourceStatusEnum = Field(
+    sa_column=Column(SAEnum(ResourceStatusEnum), default=ResourceStatusEnum.UNKNOWN),
+  )
 
   # Foreign key references
   resource_definition_accession_id: uuid.UUID | None = Field(
@@ -192,6 +236,7 @@ class Resource(ResourceBase, Asset, table=True):
       "Machine",
       back_populates="resources",
       primaryjoin="Resource.machine_location_accession_id == Machine.accession_id",
+      foreign_keys="[Resource.machine_location_accession_id]",
     )
   )
   deck: Optional["Deck"] = Relationship(
@@ -200,9 +245,45 @@ class Resource(ResourceBase, Asset, table=True):
   workcell: Optional["Workcell"] = Relationship(
     sa_relationship=relationship("Workcell", back_populates="resources")
   )
+  data_outputs: list["FunctionDataOutput"] = Relationship(back_populates="resource")
 
-  # ProtocolRun Relationship needs forward ref
-  # current_protocol_run: Optional["ProtocolRun"] = Relationship(...)
+  # Asset reservations referencing this resource
+  asset_reservations: list["AssetReservation"] = Relationship(
+    sa_relationship=relationship(
+      "AssetReservation",
+      back_populates="resource",
+      primaryjoin="foreign(AssetReservation.asset_accession_id) == Resource.accession_id",
+      foreign_keys="[AssetReservation.asset_accession_id]",
+      overlaps="machine",
+    )
+  )
+
+  # ProtocolRun Relationship
+  current_protocol_run: Optional["ProtocolRun"] = Relationship()
+
+  # Machine counterpart relationship (reciprocal of Machine.resource_counterpart)
+  machine_counterpart: Optional["Machine"] = Relationship(
+    sa_relationship=relationship(
+      "Machine",
+      back_populates="resource_counterpart",
+      primaryjoin="Machine.resource_counterpart_accession_id == Resource.accession_id",
+      foreign_keys="[Machine.resource_counterpart_accession_id]",
+    )
+  )
+
+  @property
+  def deck_accession_id(self) -> uuid.UUID | None:
+    """Compatibility property."""
+    if "deck_accession_id" in self.__dict__:
+      return self.__dict__["deck_accession_id"]
+    return self.deck_location_accession_id
+
+  @property
+  def machine_id(self) -> uuid.UUID | None:
+    """Compatibility property."""
+    if "machine_id" in self.__dict__:
+      return self.__dict__["machine_id"]
+    return self.machine_location_accession_id
 
 
 class ResourceCreate(ResourceBase):
@@ -218,6 +299,13 @@ class ResourceCreate(ResourceBase):
 
 class ResourceRead(AssetRead, ResourceBase):
   """Schema for reading a Resource (API response)."""
+
+  machine_id: uuid.UUID | None = Field(
+    default=None, validation_alias=AliasChoices("machine_id", "machine_location_accession_id")
+  )
+  deck_accession_id: uuid.UUID | None = Field(
+    default=None, validation_alias=AliasChoices("deck_accession_id", "deck_location_accession_id")
+  )
 
 
 class ResourceUpdate(AssetUpdate):

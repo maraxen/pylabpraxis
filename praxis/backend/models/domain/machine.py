@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, List, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
+from sqlalchemy import Column, Enum as SAEnum, UniqueConstraint, Boolean
 from sqlalchemy.orm import relationship
 
 from praxis.backend.models.domain.asset import Asset, AssetBase, AssetRead
@@ -17,9 +18,11 @@ from praxis.backend.models.enums import (
 from praxis.backend.utils.db import JsonVariant
 
 if TYPE_CHECKING:
-  from praxis.backend.models.domain.deck import Deck
-  from praxis.backend.models.domain.resource import Resource
+  from praxis.backend.models.domain.deck import Deck, DeckDefinition
+  from praxis.backend.models.domain.protocol import AssetRequirement, ProtocolRun
+  from praxis.backend.models.domain.resource import Resource, ResourceDefinition
   from praxis.backend.models.domain.workcell import Workcell
+  from praxis.backend.models.domain.outputs import FunctionDataOutput
 
 # =============================================================================
 # Machine Definition (Catalog)
@@ -32,8 +35,8 @@ class MachineDefinitionBase(PraxisBase):
   fqn: str = Field(index=True, unique=True, description="Fully qualified name")
   description: str | None = Field(default=None, description="Description of the machine type")
   plr_category: str | None = Field(default=None, description="PyLabRobot category")
-  machine_category: MachineCategoryEnum = Field(
-    default=MachineCategoryEnum.UNKNOWN,
+  machine_category: MachineCategoryEnum | None = Field(
+    default=None,
     description="Category of the machine",
   )
   material: str | None = Field(default=None)
@@ -42,15 +45,11 @@ class MachineDefinitionBase(PraxisBase):
   size_x_mm: float | None = Field(default=None, description="Size in X dimension (mm)")
   size_y_mm: float | None = Field(default=None, description="Size in Y dimension (mm)")
   size_z_mm: float | None = Field(default=None, description="Size in Z dimension (mm)")
-  has_deck: bool = Field(default=False, description="Whether this machine has a deck")
+  has_deck: bool | None = Field(default=None, description="Whether this machine has a deck")
   frontend_fqn: str | None = Field(default=None, description="PLR frontend class FQN")
+  nominal_volume_ul: float | None = Field(default=None, description="Nominal volume in microliters")
 
-
-class MachineDefinition(MachineDefinitionBase, table=True):
-  """MachineDefinition ORM model - catalog of machine types."""
-
-  __tablename__ = "machine_definitions"
-
+  # JSON fields moved to Base for schema support
   plr_definition_details_json: dict[str, Any] | None = Field(
     default=None, sa_type=JsonVariant, description="Additional PyLabRobot definition details"
   )
@@ -63,7 +62,8 @@ class MachineDefinition(MachineDefinitionBase, table=True):
   capabilities: dict[str, Any] | None = Field(
     default=None, sa_type=JsonVariant, description="Hardware capabilities (channels, modules)"
   )
-  compatible_backends: dict[str, Any] | None = Field(
+  # Accept either a mapping or a simple list (some parsers return a list)
+  compatible_backends: list[Any] | dict[str, Any] | None = Field(
     default=None, sa_type=JsonVariant, description="Compatible backend class FQNs"
   )
   capabilities_config: dict[str, Any] | None = Field(
@@ -71,6 +71,23 @@ class MachineDefinition(MachineDefinitionBase, table=True):
   )
   connection_config: dict[str, Any] | None = Field(
     default=None, sa_type=JsonVariant, description="Connection parameters schema"
+  )
+
+
+class MachineDefinition(MachineDefinitionBase, table=True):
+  """MachineDefinition ORM model - catalog of machine types."""
+
+  __tablename__ = "machine_definitions"
+  __table_args__ = (UniqueConstraint("name"),)
+
+  machine_category: MachineCategoryEnum = Field(
+    default=MachineCategoryEnum.UNKNOWN,
+    sa_column=Column(SAEnum(MachineCategoryEnum), default=MachineCategoryEnum.UNKNOWN, nullable=False),
+  )
+  has_deck: bool = Field(
+    default=False,
+    sa_column=Column(Boolean, default=False, nullable=False),
+    description="Whether this machine has a deck",
   )
 
   # Foreign keys
@@ -89,6 +106,11 @@ class MachineDefinition(MachineDefinitionBase, table=True):
     description="Asset requirement accession ID",
     foreign_key="protocol_asset_requirements.accession_id",
   )
+
+  # Relationships
+  resource_definition: Optional["ResourceDefinition"] = Relationship()
+  deck_definition: Optional["DeckDefinition"] = Relationship()
+  asset_requirement: Optional["AssetRequirement"] = Relationship()
 
 
 class MachineDefinitionCreate(MachineDefinitionBase):
@@ -120,9 +142,14 @@ class MachineDefinitionUpdate(SQLModel):
   size_z_mm: float | None = None
   has_deck: bool | None = None
   frontend_fqn: str | None = None
+  nominal_volume_ul: float | None = None
   plr_definition_details_json: dict[str, Any] | None = None
   rotation_json: dict[str, Any] | None = None
   setup_method_json: dict[str, Any] | None = None
+  capabilities: dict[str, Any] | None = None
+  compatible_backends: list[Any] | dict[str, Any] | None = None
+  capabilities_config: dict[str, Any] | None = None
+  connection_config: dict[str, Any] | None = None
 
 
 # =============================================================================
@@ -135,15 +162,17 @@ class MachineBase(AssetBase):
 
   machine_category: MachineCategoryEnum = Field(
     default=MachineCategoryEnum.UNKNOWN,
+    description="Category of the machine",
   )
   description: str | None = Field(default=None)
   manufacturer: str | None = Field(default=None)
   model: str | None = Field(default=None)
-  serial_number: str | None = Field(default=None)  # Removed unique=True constraint for schema
+  serial_number: str | None = Field(default=None, index=True)
   location_label: str | None = Field(default=None, description="Physical location label")
   installation_date: datetime | None = Field(default=None)
   status: MachineStatusEnum = Field(
     default=MachineStatusEnum.OFFLINE,
+    description="Status of the machine",
   )
   status_details: str | None = Field(default=None)
   is_simulation_override: bool | None = Field(default=None)
@@ -169,6 +198,16 @@ class Machine(MachineBase, Asset, table=True):
   """Machine table - represents a physical machine instance."""
 
   __tablename__ = "machines"
+
+  machine_category: MachineCategoryEnum = Field(
+    default=MachineCategoryEnum.UNKNOWN,
+    sa_column=Column(SAEnum(MachineCategoryEnum), default=MachineCategoryEnum.UNKNOWN, nullable=False),
+  )
+  status: MachineStatusEnum = Field(
+    default=MachineStatusEnum.OFFLINE,
+    sa_column=Column(SAEnum(MachineStatusEnum), default=MachineStatusEnum.OFFLINE, nullable=False),
+  )
+  serial_number: str | None = Field(default=None, unique=True, index=True)
 
   # Foreign key references (for schema validation)
   workcell_accession_id: uuid.UUID | None = Field(
@@ -206,6 +245,7 @@ class Machine(MachineBase, Asset, table=True):
       "Deck",
       back_populates="parent_machine",
       primaryjoin="Deck.parent_machine_accession_id == Machine.accession_id",
+      foreign_keys="Deck.parent_machine_accession_id",
     )
   )
   resources: list["Resource"] = Relationship(
@@ -213,14 +253,50 @@ class Machine(MachineBase, Asset, table=True):
       "Resource",
       back_populates="machine",
       primaryjoin="Resource.machine_location_accession_id == Machine.accession_id",
+      foreign_keys="Resource.machine_location_accession_id",
+    )
+  )
+
+  # Asset reservations referencing this machine
+  asset_reservations: list["AssetReservation"] = Relationship(
+    sa_relationship=relationship(
+      "AssetReservation",
+      back_populates="machine",
+      primaryjoin="foreign(AssetReservation.asset_accession_id) == Machine.accession_id",
+      foreign_keys="[AssetReservation.asset_accession_id]",
+      overlaps="resource",
     )
   )
 
   workcell: Optional["Workcell"] = Relationship(back_populates="machines")
 
+  data_outputs: list["FunctionDataOutput"] = Relationship(back_populates="machine")
+
+  resource_counterpart: Optional["Resource"] = Relationship(
+    sa_relationship=relationship(
+      "Resource",
+      foreign_keys="[Machine.resource_counterpart_accession_id]",
+      back_populates="machine_counterpart",
+    )
+  )
+  deck_child: Optional["Deck"] = Relationship(
+    sa_relationship=relationship(
+      "Deck",
+      foreign_keys="[Machine.deck_child_accession_id]",
+    )
+  )
+  deck_child_definition: Optional["DeckDefinition"] = Relationship()
+  current_protocol_run: Optional["ProtocolRun"] = Relationship()
+  machine_definition: Optional["MachineDefinition"] = Relationship()
+
 
 class MachineCreate(MachineBase):
   """Schema for creating a Machine."""
+  # Fields that tie a Machine to a Resource counterpart when creating
+  resource_def_name: str | None = None
+  resource_properties_json: dict[str, Any] | None = None
+  resource_initial_status: str | None = None
+  resource_counterpart_accession_id: uuid.UUID | None = None
 
 
 from praxis.backend.models.domain.asset import AssetRead, AssetUpdate
