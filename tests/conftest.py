@@ -1,3 +1,31 @@
+"""Test configuration and fixtures.
+
+This module patches `asyncio.run` to be safe when tests run under an
+already-running event loop (pytest-asyncio / anyio). It falls back to the
+project's `run_sync` helper when `asyncio.run` would raise a RuntimeError.
+"""
+from __future__ import annotations
+
+import asyncio
+import typing
+
+from praxis.backend.utils.async_run import run_sync
+
+
+_orig_asyncio_run = asyncio.run
+
+
+def _safe_asyncio_run(coro: typing.Coroutine) -> typing.Any:
+  try:
+    return _orig_asyncio_run(coro)
+  except RuntimeError as e:  # pragma: no cover - fallback path in test harness
+    if "cannot be called from a running event loop" not in str(e):
+      raise
+    return run_sync(coro)
+
+
+# Patch at import time so all tests benefit.
+asyncio.run = _safe_asyncio_run
 import contextlib
 import os
 import subprocess
@@ -75,6 +103,9 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers", "sqlite_only: mark test to run only on SQLite"
+    )
+    config.addinivalue_line(
+        "markers", "slow: mark test as slow so it can be excluded from default runs"
     )
 
 

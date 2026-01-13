@@ -8,6 +8,7 @@ This is the main entry point for protocol discovery integration.
 from __future__ import annotations
 
 import asyncio
+from praxis.backend.utils.async_run import run_sync
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
@@ -207,7 +208,7 @@ class ProtocolSimulator:
     graph: ProtocolComputationGraph | None = None,
   ) -> ProtocolSimulationResult:
     """Synchronous version of analyze_protocol."""
-    return asyncio.run(
+    return run_sync(
       self.analyze_protocol(
         protocol_func=protocol_func,
         parameter_types=parameter_types,
@@ -291,7 +292,7 @@ def analyze_protocol_sync(
   enable_failure_detection: bool = True,
 ) -> ProtocolSimulationResult:
   """Synchronous version of analyze_protocol."""
-  return asyncio.run(
+  return run_sync(
     analyze_protocol(
       protocol_func=protocol_func,
       parameter_types=parameter_types,

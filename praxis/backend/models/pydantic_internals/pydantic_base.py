@@ -5,6 +5,7 @@ to ensure consistency in API responses.
 """
 
 import datetime
+from enum import Enum
 from typing import Any
 
 from pydantic import UUID7, BaseModel, ConfigDict, Field
@@ -47,5 +48,8 @@ class PraxisBaseModel(BaseModel):
   model_config = ConfigDict(
     from_attributes=True,
     use_enum_values=True,
+    json_encoders={
+      Enum: lambda v: (v.value.lower() if isinstance(v.value, str) else v.value),
+    },
     validate_assignment=True,
   )

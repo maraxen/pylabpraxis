@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
+from praxis.backend.utils.async_run import run_sync
 from praxis.backend.core.tracing.recorder import OperationRecorder
 from praxis.backend.core.tracing.tracers import (
   TracedMachine,
@@ -168,7 +169,7 @@ class ProtocolTracingExecutor:
         The extracted ProtocolComputationGraph.
 
     """
-    return asyncio.run(self.trace_protocol(protocol_func, parameter_types, protocol_fqn))
+    return run_sync(self.trace_protocol(protocol_func, parameter_types, protocol_fqn))
 
   def _create_tracers(
     self,
@@ -320,4 +321,4 @@ def trace_protocol_sync(
       The extracted ProtocolComputationGraph.
 
   """
-  return asyncio.run(trace_protocol(protocol_func, parameter_types, protocol_fqn, deck_layout_type))
+  return run_sync(trace_protocol(protocol_func, parameter_types, protocol_fqn, deck_layout_type))

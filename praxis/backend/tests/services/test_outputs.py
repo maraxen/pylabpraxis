@@ -17,6 +17,7 @@ def mock_db_session():
 
 
 @pytest.mark.asyncio
+@pytest.mark.slow
 class TestFunctionDataOutputCRUDService:
 
     """Test suite for the FunctionDataOutputCRUDService."""

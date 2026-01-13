@@ -525,4 +525,4 @@ async def test_function_call_log_orm_repr(
     assert str(call_log.accession_id) in repr_str
     assert str(protocol_run.accession_id) in repr_str
     assert "42" in repr_str
-    assert "SUCCESS" in repr_str
+    assert "success" in repr_str

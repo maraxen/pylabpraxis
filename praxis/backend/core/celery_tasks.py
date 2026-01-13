@@ -21,6 +21,7 @@ from praxis.backend.core.container import Container
 from praxis.backend.models import ProtocolRunStatusEnum
 from praxis.backend.services.state import PraxisState
 from praxis.backend.utils.logging import get_logger
+from praxis.backend.utils.async_run import run_sync
 
 if TYPE_CHECKING:
   import uuid
@@ -55,7 +56,7 @@ def execute_protocol_run_task(
   )
 
   try:
-    result = asyncio.run(
+    result = run_sync(
       _execute_protocol_async(
         protocol_run_id,
         input_parameters,
@@ -72,7 +73,7 @@ def execute_protocol_run_task(
     error_msg = f"Protocol execution failed for run_id={protocol_run_id}: {e}"
     task_logger.exception(error_msg)
     try:
-      asyncio.run(
+      run_sync(
         _update_run_status_on_error(
           protocol_run_id,
           str(e),

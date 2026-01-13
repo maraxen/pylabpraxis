@@ -7,6 +7,7 @@ to efficiently detect all ways a protocol can fail.
 from __future__ import annotations
 
 import asyncio
+from praxis.backend.utils.async_run import run_sync
 from dataclasses import dataclass, field
 from itertools import product
 from typing import TYPE_CHECKING, Any
@@ -260,7 +261,7 @@ class FailureModeDetector:
     graph: ProtocolComputationGraph | None = None,
   ) -> FailureDetectionResult:
     """Synchronous version of detect."""
-    return asyncio.run(self.detect(protocol_func, parameter_types, graph))
+    return run_sync(self.detect(protocol_func, parameter_types, graph))
 
   def _extract_resources(self, parameter_types: dict[str, str]) -> list[str]:
     """Extract resource names from parameter types."""

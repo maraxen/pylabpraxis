@@ -463,4 +463,4 @@ async def test_protocol_run_repr(
     repr_str = repr(run)
     assert "ProtocolRun" in repr_str
     assert str(run_id) in repr_str
-    assert "RUNNING" in repr_str
+    assert "running" in repr_str

@@ -13,6 +13,7 @@ issues at the cheapest level that can catch them.
 from __future__ import annotations
 
 import asyncio
+from praxis.backend.utils.async_run import run_sync
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -542,7 +543,7 @@ def simulate_protocol_sync(
   deck_layout_type: DeckLayoutType = DeckLayoutType.CARRIER_BASED,
 ) -> HierarchicalSimulationResult:
   """Synchronous version of simulate_protocol."""
-  return asyncio.run(
+  return run_sync(
     simulate_protocol(
       protocol_func=protocol_func,
       parameter_types=parameter_types,
