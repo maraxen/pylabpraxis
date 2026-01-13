@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, ChangeDetectionStrategy, ViewChild } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,10 +8,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { forkJoin } from 'rxjs';
 
 import { AssetService } from '../../services/asset.service';
-import { AssetFiltersComponent, AssetFilterState } from '../asset-filters/asset-filters.component';
 import { AssetStatusChipComponent } from '../asset-status-chip/asset-status-chip.component';
 import { Machine, Resource, Workcell } from '../../models/asset.models';
-import { FilterHeaderComponent } from '../filter-header/filter-header.component';
+import { ViewControlsComponent } from '../../../../shared/components/view-controls/view-controls.component';
+import { ViewControlsConfig, ViewControlsState } from '../../../../shared/components/view-controls/view-controls.types';
 
 @Component({
   selector: 'app-spatial-view',
@@ -23,29 +23,19 @@ import { FilterHeaderComponent } from '../filter-header/filter-header.component'
     MatCardModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
-    AssetFiltersComponent,
     AssetStatusChipComponent,
-    FilterHeaderComponent
+    ViewControlsComponent
   ],
   template: `
     <div class="h-full flex flex-col bg-[var(--mat-sys-surface-variant)]">
-      <!-- Filters Header -->
-      <app-filter-header
-        searchPlaceholder="Search spatial view..."
-        [filterCount]="activeFiltersCount()"
-        [searchValue]="currentFilters().search"
-        (searchChange)="onSearch($event)"
-        (clearFilters)="clearFilters()">
-        
-        <app-asset-filters filterContent
-          [categories]="categories()"
-          [machines]="machines()"
-          [workcells]="workcells()"
-          [showMachineFilter]="true"
-          [showWorkcellFilter]="true"
-          (filtersChange)="onFiltersChange($event)">
-        </app-asset-filters>
-      </app-filter-header>
+      <!-- Standardized View Controls -->
+      <div class="bg-[var(--mat-sys-surface)] border-b border-[var(--theme-border)] px-6 py-2">
+        <app-view-controls
+          [config]="viewConfig()"
+          [state]="viewState()"
+          (stateChange)="onViewStateChange($event)">
+        </app-view-controls>
+      </div>
 
       <!-- Main Content -->
       <div class="flex-1 overflow-y-auto p-6 relative">
@@ -150,41 +140,96 @@ import { FilterHeaderComponent } from '../filter-header/filter-header.component'
 export class SpatialViewComponent implements OnInit {
   private assetService = inject(AssetService);
 
-  @ViewChild(AssetFiltersComponent) assetFilters!: AssetFiltersComponent;
-
   // Data Signals
   machines = signal<Machine[]>([]);
   resources = signal<Resource[]>([]);
-  // Placeholder workcells until service supports them, or derive from machines?
-  // We'll derive unique workcell IDs from machines for now if not available directly
   workcells = signal<Workcell[]>([]);
-
   isLoading = signal(true);
 
-  // Filter State
-  currentFilters = signal<AssetFilterState>({
-    status: [],
-    search: '',
-    category: [],
-    machine_id: null,
-    workcell_id: null,
-    maintenance_due: false,
-    sort_by: 'created_at',
-    sort_order: 'desc'
+  // Standardized View Controls Config
+  viewConfig = computed<ViewControlsConfig>(() => ({
+    viewTypes: ['card', 'list'],
+    groupByOptions: [
+      { label: 'None', value: null },
+      { label: 'Status', value: 'status' },
+      { label: 'Category', value: 'category' },
+      { label: 'Location', value: 'location' },
+    ],
+    filters: [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'multiselect',
+        options: [
+          { label: 'Available', value: 'available', icon: 'check_circle' },
+          { label: 'In Use', value: 'in_use', icon: 'play_circle' },
+          { label: 'Error', value: 'error', icon: 'error' },
+          { label: 'Maintenance', value: 'maintenance', icon: 'build' }
+        ]
+      },
+      {
+        key: 'category',
+        label: 'Category',
+        type: 'chips',
+        options: this.categories().map(cat => ({ label: cat, value: cat }))
+      },
+      {
+        key: 'machine_id',
+        label: 'Location',
+        type: 'select',
+        options: [
+          { label: 'Any location', value: null },
+          ...this.machines().map(m => ({ label: m.name, value: m.accession_id }))
+        ]
+      },
+      {
+        key: 'workcell_id',
+        label: 'Workcell',
+        type: 'select',
+        options: [
+          { label: 'Any workcell', value: null },
+          ...this.workcells().map(w => ({ label: w.name, value: w.accession_id }))
+        ]
+      },
+      {
+        key: 'maintenance_due',
+        label: 'Maintenance',
+        type: 'select',
+        options: [
+          { label: 'All', value: false },
+          { label: 'Due Only', value: true }
+        ]
+      }
+    ],
+    sortOptions: [
+      { label: 'Name', value: 'name' },
+      { label: 'Date Added', value: 'created_at' },
+      { label: 'Status', value: 'status' },
+      { label: 'Category', value: 'category' }
+    ],
+    storageKey: 'spatial-view',
+    defaults: {
+      sortBy: 'created_at',
+      sortOrder: 'desc'
+    }
+  }));
+
+  viewState = signal<ViewControlsState>({
+    viewType: 'card',
+    groupBy: null,
+    filters: {
+      status: [],
+      category: [],
+      machine_id: [],
+      workcell_id: [],
+      maintenance_due: []
+    },
+    sortBy: 'created_at',
+    sortOrder: 'desc',
+    search: ''
   });
 
-  // Derived
-  activeFiltersCount = computed(() => {
-    const f = this.currentFilters();
-    let count = 0;
-    if (f.status.length) count++;
-    if (f.category.length) count++;
-    if (f.machine_id) count++;
-    if (f.workcell_id) count++;
-    if (f.maintenance_due) count++;
-    return count;
-  });
-
+  // Categories derived for filters
   categories = computed(() => {
     // Collect all unique categories from machines and resources
     const cats = new Set<string>();
@@ -203,11 +248,11 @@ export class SpatialViewComponent implements OnInit {
 
   filteredAssets = computed(() => {
     let assets = this.allAssets();
-    const filters = this.currentFilters();
+    const state = this.viewState();
 
     // 1. Search
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
+    if (state.search) {
+      const q = state.search.toLowerCase();
       assets = assets.filter(a =>
         a.name.toLowerCase().includes(q) ||
         (a.fqn || '').toLowerCase().includes(q) ||
@@ -216,65 +261,68 @@ export class SpatialViewComponent implements OnInit {
     }
 
     // 2. Status
-    if (filters.status.length > 0) {
-      assets = assets.filter(a => filters.status.includes(a.status));
+    const statusFilters = state.filters['status'] || [];
+    if (statusFilters.length > 0) {
+      assets = assets.filter(a => statusFilters.includes(a.status));
     }
 
     // 3. Category
-    if (filters.category.length > 0) {
-      // Only machines really have 'category' easily accessible on the asset itself (machine_category)
-      // Resources have it on definition. For simplicity, filtering machines by category.
+    const categoryFilters = state.filters['category'] || [];
+    if (categoryFilters.length > 0) {
       assets = assets.filter(a => {
         if (this.isMachine(a)) {
-          return a.machine_category && filters.category.includes(a.machine_category);
+          return a.machine_category && categoryFilters.includes(a.machine_category);
         }
-        return false; // Or true if we don't want to filter resources out
+        return false;
       });
     }
 
     // 4. Machine ID (Location)
-    if (filters.machine_id) {
+    const machineIdFilter = state.filters['machine_id']?.[0]; // Select type returns array
+    if (machineIdFilter) {
       assets = assets.filter(a => {
-        // Include the machine itself? No, usually "Location: Machine X" means things *in* machine X.
-        // But if it's the machine itself, it matches ID.
-        if (a.accession_id === filters.machine_id) return true;
-        // If resource, check location
+        if (a.accession_id === machineIdFilter) return true;
         if (!this.isMachine(a)) {
-          return (a as Resource).machine_location_accession_id === filters.machine_id;
+          return (a as Resource).machine_location_accession_id === machineIdFilter;
         }
         return false;
       });
     }
 
     // 5. Workcell ID
-    if (filters.workcell_id) {
+    const workcellIdFilter = state.filters['workcell_id']?.[0];
+    if (workcellIdFilter) {
       assets = assets.filter(a => {
-        // Machines have workcell_accession_id directly?
-        // Need to check Machine interface update if workcell_accession_id is there
-        // Based on backend it is.
-        return (a as Machine | Resource).workcell_accession_id === filters.workcell_id;
+        return (a as Machine | Resource).workcell_accession_id === workcellIdFilter;
       });
     }
 
-    // 6. Sorting
-    assets.sort((a, b) => {
-      let valA: any = '';
-      let valB: any = '';
+    // 6. Maintenance Due
+    const maintenanceDueFilter = state.filters['maintenance_due']?.[0];
+    if (maintenanceDueFilter === true) {
+      // In a real app, this would check a 'maintenance_due' property or date
+      // For now, mirroring existing logic (which didn't actually have property check implemented here)
+      // assets = assets.filter(a => a.maintenance_due); 
+    }
 
-      // Helper to get value
-      const getVal = (item: any, field: string) => {
+    // 7. Sorting
+    assets.sort((a, b) => {
+      let valA: string | number = '';
+      let valB: string | number = '';
+
+      const getVal = (item: Machine | Resource, field: string): string | number => {
         if (field === 'name') return item.name?.toLowerCase() || '';
         if (field === 'created_at') return new Date(item.created_at || 0).getTime();
         if (field === 'status') return item.status;
-        if (field === 'category') return (item.machine_category || item.asset_type || '').toLowerCase();
+        if (field === 'category') return (this.isMachine(item) ? item.machine_category : '').toLowerCase();
         return '';
       };
 
-      valA = getVal(a, filters.sort_by);
-      valB = getVal(b, filters.sort_by);
+      valA = getVal(a, state.sortBy);
+      valB = getVal(b, state.sortBy);
 
-      if (valA < valB) return filters.sort_order === 'asc' ? -1 : 1;
-      if (valA > valB) return filters.sort_order === 'asc' ? 1 : -1;
+      if (valA < valB) return state.sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return state.sortOrder === 'asc' ? 1 : -1;
       return 0;
     });
 
@@ -303,38 +351,31 @@ export class SpatialViewComponent implements OnInit {
     });
   }
 
-  onFiltersChange(filters: AssetFilterState) {
-    this.currentFilters.set(filters);
-  }
-
-  onSearch(term: string) {
-    this.currentFilters.update(f => ({ ...f, search: term }));
+  onViewStateChange(state: ViewControlsState) {
+    this.viewState.set(state);
   }
 
   clearFilters() {
-    this.currentFilters.set({
-      status: [],
+    this.viewState.update(s => ({
+      ...s,
       search: '',
-      category: [],
-      machine_id: null,
-      workcell_id: null,
-      maintenance_due: false,
-      sort_by: 'created_at',
-      sort_order: 'desc'
-    });
-    
-    // Also reset child component state
-    if (this.assetFilters) {
-      this.assetFilters.clearFilters();
-    }
+      groupBy: null,
+      filters: {
+        status: [],
+        category: [],
+        machine_id: [],
+        workcell_id: [],
+        maintenance_due: []
+      }
+    }));
   }
 
   // Helpers
-  isMachine(asset: any): asset is Machine {
-    return 'machine_category' in asset; // Crude check, or check status enum values
+  isMachine(asset: Machine | Resource): asset is Machine {
+    return 'machine_category' in asset;
   }
 
-  getIcon(asset: any): string {
+  getIcon(asset: Machine | Resource): string {
     if (this.isMachine(asset)) {
       if (asset.machine_category?.toLowerCase().includes('liquid')) return 'water_drop';
       return 'precision_manufacturing';
@@ -342,19 +383,19 @@ export class SpatialViewComponent implements OnInit {
     return 'science'; // Resource
   }
 
-  getIconBgClass(asset: any): string {
+  getIconBgClass(asset: Machine | Resource): string {
     if (this.isMachine(asset)) return 'bg-blue-500/10';
     return 'bg-orange-500/10';
   }
 
-  getIconTextClass(asset: any): string {
+  getIconTextClass(asset: Machine | Resource): string {
     if (this.isMachine(asset)) return 'text-blue-500';
     return 'text-orange-500';
   }
 
-  getAssetSubtitle(asset: any): string {
-    if (this.isMachine(asset)) return (asset as Machine).model || (asset as Machine).manufacturer || 'Unknown Model';
-    return (asset as Resource).resource_definition_accession_id ? 'Resource' : 'Custom Resource'; // Could fetch definition name
+  getAssetSubtitle(asset: Machine | Resource): string {
+    if (this.isMachine(asset)) return asset.model || asset.manufacturer || 'Unknown Model';
+    return (asset as Resource).resource_definition_accession_id ? 'Resource' : 'Custom Resource';
   }
 
   getLocationLabel(asset: any): string {

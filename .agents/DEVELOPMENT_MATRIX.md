@@ -30,7 +30,7 @@
 
 | Item | Difficulty | Backlog | Description |
 |------|------------|---------|-------------|
-| Asset Filtering | Medium | [asset_management.md](./backlog/asset_management.md) | Autofill not filtered to appropriate PLR class |
+| Registry UI | Medium | [asset_management.md](./backlog/asset_management.md) | "Definitions precinct in browser mode" error; needs redesign |
 
 ---
 
@@ -41,7 +41,7 @@
 | Item | Difficulty | Backlog | Description |
 |------|------------|---------|-------------|
 | Simulated Backend Clarity | Medium | [simulation.md](./backlog/simulation.md) | Unclear simulated backend behavior; demo naming persists |
-| Registry UI | Medium | [asset_management.md](./backlog/asset_management.md) | "Definitions precinct in browser mode" error; needs redesign |
+| Protocol Library Filters | Medium | [protocol_workflow.md](./backlog/protocol_workflow.md) | No filters implemented |
 | Protocol Library Filters | Medium | [protocol_workflow.md](./backlog/protocol_workflow.md) | No filters implemented |
 
 ### Visualization Issues
@@ -107,7 +107,9 @@
 |------|----------|------|-------------|
 | [Historical Items (Jan 2026)](./archive/COMPLETED_ITEMS_ARCHIVE_JAN_2026.md) | - | 2026-01-12 | Consolidated archive of previous completions |
 | Model Unification (SQLModel) | P2 | 2026-01-13 | Massive refactor to unified SQLModel domain models, removed legacy ORM/Pydantic duplication |
-| Frontend Schema Sync | P1 | 2026-01-13 | Aligned frontend with SQLModel backend, fixed API client, removed build warnings |
+| [Frontend Schema Sync](./archive/backlog/frontend_schema_sync.md) | P1 | 2026-01-13 | Aligned frontend with SQLModel backend, fixed API client, removed build warnings |
+| Assets View Controls (Machines, Resources, Registry) | P2 | 2026-01-13 | Implemented unified `ViewControlsComponent`, refactored all Assets tabs for standardized filtering, sorting, and grouping |
+| Asset Filtering / Registry UI Redesign | P1/P2 | 2026-01-13 | Standardized filtering and resolved browser-mode registry errors |
 
 ---
 
@@ -115,12 +117,12 @@
 
 | Priority | Count | Focus |
 |----------|-------|-------|
-| **P1** | 1 | Alpha blockers |
-| **P2** | 20 | Alpha quality (including hardware) |
+| **P1** | 0 | Alpha blockers |
+| **P2** | 19 | Alpha quality (including hardware) |
 | **P3** | 1 | Should have for alpha |
 | **P4** | 3 | Post-alpha / beta |
 
-**Total Active Items**: 25
+**Total Active Items**: 23
 
 ---
 

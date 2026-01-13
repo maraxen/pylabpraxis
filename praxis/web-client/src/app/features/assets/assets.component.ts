@@ -8,9 +8,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MachineListComponent } from './components/machine-list/machine-list.component';
 import { ResourceAccordionComponent } from './components/resource-accordion/resource-accordion.component';
 import { DefinitionsListComponent } from './components/definitions-list/definitions-list.component';
-import { MachineDialogComponent } from './components/machine-dialog.component';
-import { ResourceDialogComponent } from './components/resource-dialog.component';
-import { AddAssetChoiceDialogComponent } from './components/add-asset-choice-dialog.component';
+import { AddAssetDialogComponent } from '@shared/dialogs/add-asset-dialog/add-asset-dialog.component';
 import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-discovery-dialog/hardware-discovery-dialog.component';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 import { AssetDashboardComponent } from './components/asset-dashboard/asset-dashboard.component';
@@ -320,14 +318,7 @@ export class AssetsComponent implements OnInit, OnDestroy {
   }
 
   private openAddAssetChoice() {
-    const dialogRef = this.dialog.open(AddAssetChoiceDialogComponent, {
-      width: '500px'
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result === 'machine') this.openAddMachine();
-      if (result === 'resource') this.openAddResource();
-    });
+    this.openUnifiedDialog();
   }
 
   private triggerSyncDefinitions() {
@@ -346,56 +337,46 @@ export class AssetsComponent implements OnInit, OnDestroy {
   }
 
   private openAddMachine() {
-    console.debug('[ASSET-DEBUG] openAddMachine: Opening dialog');
-    const dialogRef = this.dialog.open(MachineDialogComponent, {
-      width: '700px'
-    });
-
-    dialogRef.afterClosed().pipe(
-      filter(result => {
-        console.debug('[ASSET-DEBUG] openAddMachine: Dialog closed with result:', result);
-        return !!result;
-      }),
-      switchMap(result => {
-        console.debug('[ASSET-DEBUG] openAddMachine: Calling assetService.createMachine');
-        this.isLoading.set(true); // Set loading true before API call
-        return this.assetService.createMachine(result).pipe(
-          finalize(() => this.isLoading.set(false)) // Set loading false after API call completes
-        );
-      })
-    ).subscribe({
-      next: (createdMachine) => {
-        console.debug('[ASSET-DEBUG] openAddMachine: Machine created, reloading list', createdMachine);
-        this.machineList.loadMachines();
-      },
-      error: (err) => console.error('[ASSET-DEBUG] openAddMachine: Error', err)
-    });
+    this.openUnifiedDialog('machine');
   }
 
   private openAddResource() {
-    console.debug('[ASSET-DEBUG] openAddResource: Opening dialog');
-    const dialogRef = this.dialog.open(ResourceDialogComponent, {
-      width: '700px'
+    this.openUnifiedDialog('resource');
+  }
+
+  private openUnifiedDialog(type: 'machine' | 'resource' | null = null) {
+    const dialogRef = this.dialog.open(AddAssetDialogComponent, {
+      width: '800px',
+      data: type ? { initialAssetType: type } : {}
     });
 
+    // Handle MatDialog data binding for standalone components
+    if (type) {
+      dialogRef.componentInstance.initialAssetType = type;
+    }
+
     dialogRef.afterClosed().pipe(
-      filter(result => {
-        console.debug('[ASSET-DEBUG] openAddResource: Dialog closed with result:', result);
-        return !!result;
-      }),
+      filter(result => !!result),
       switchMap(result => {
-        console.debug('[ASSET-DEBUG] openAddResource: Calling assetService.createResource');
-        this.isLoading.set(true); // Set loading true before API call
-        return this.assetService.createResource(result).pipe(
-          finalize(() => this.isLoading.set(false)) // Set loading false after API call completes
-        );
+        this.isLoading.set(true);
+        if (result.machine_definition_accession_id) {
+          return this.assetService.createMachine(result).pipe(
+            finalize(() => {
+              this.isLoading.set(false);
+              this.machineList?.loadMachines();
+            })
+          );
+        } else {
+          return this.assetService.createResource(result).pipe(
+            finalize(() => {
+              this.isLoading.set(false);
+              this.resourceAccordion?.loadData();
+            })
+          );
+        }
       })
     ).subscribe({
-      next: (createdResource) => {
-        console.debug('[ASSET-DEBUG] openAddResource: Resource created, reloading list', createdResource);
-        this.resourceAccordion.loadData();
-      },
-      error: (err) => console.error('[ASSET-DEBUG] openAddResource: Error', err)
+      error: (err) => console.error('[ASSET-DEBUG] openUnifiedDialog: Error', err)
     });
   }
 

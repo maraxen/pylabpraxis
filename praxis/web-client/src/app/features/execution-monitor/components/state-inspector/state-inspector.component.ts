@@ -28,7 +28,7 @@ import { StateDisplayComponent } from './state-display.component';
     MatTooltipModule,
     MatDividerModule,
     StateDisplayComponent
-],
+  ],
   template: `
     <div class="state-inspector">
       <!-- Header -->
@@ -540,56 +540,78 @@ export class StateInspectorComponent {
       direction: 'increase' | 'decrease' | 'change';
     }> = [];
 
-    // Compare tips
-    if (before.tips.tips_loaded !== after.tips.tips_loaded) {
-      diffs.push({
-        key: 'tips_loaded',
-        before: before.tips.tips_loaded ? 'Yes' : 'No',
-        after: after.tips.tips_loaded ? 'Yes' : 'No',
-        direction: after.tips.tips_loaded ? 'increase' : 'decrease'
-      });
-    }
-
-    if (before.tips.tips_count !== after.tips.tips_count) {
-      diffs.push({
-        key: 'tips_count',
-        before: String(before.tips.tips_count),
-        after: String(after.tips.tips_count),
-        direction: after.tips.tips_count > before.tips.tips_count ? 'increase' : 'decrease'
-      });
-    }
-
-    // Compare liquid volumes
-    const allResources = new Set([
-      ...Object.keys(before.liquids || {}),
-      ...Object.keys(after.liquids || {})
-    ]);
-
-    for (const resource of allResources) {
-      const beforeLiquids = before.liquids?.[resource] || {};
-      const afterLiquids = after.liquids?.[resource] || {};
-
-      const allWells = new Set([
-        ...Object.keys(beforeLiquids),
-        ...Object.keys(afterLiquids)
+    const compareObjects = (obj1: any, obj2: any, prefix = ''): void => {
+      const allKeys = new Set([
+        ...Object.keys(obj1 || {}),
+        ...Object.keys(obj2 || {})
       ]);
 
-      for (const well of allWells) {
-        const beforeVol = beforeLiquids[well] || 0;
-        const afterVol = afterLiquids[well] || 0;
+      for (const key of allKeys) {
+        const val1 = obj1?.[key];
+        const val2 = obj2?.[key];
+        const fullKey = prefix ? `${prefix}.${key}` : key;
 
-        if (beforeVol !== afterVol) {
-          diffs.push({
-            key: `${resource}.${well}`,
-            before: `${beforeVol}µL`,
-            after: `${afterVol}µL`,
-            direction: afterVol > beforeVol ? 'increase' : 'decrease'
-          });
+        // Skip if values are identical or both effectively empty/equal
+        if (val1 === val2) continue;
+        if (JSON.stringify(val1) === JSON.stringify(val2)) continue;
+
+        // Recursively compare if both are objects (and not null)
+        if (
+          typeof val1 === 'object' && val1 !== null &&
+          typeof val2 === 'object' && val2 !== null &&
+          !Array.isArray(val1) && !Array.isArray(val2)
+        ) {
+          compareObjects(val1, val2, fullKey);
+          continue;
         }
+
+        // Handle array comparison (simple string representation for now)
+        if (Array.isArray(val1) || Array.isArray(val2)) {
+          diffs.push({
+            key: fullKey,
+            before: JSON.stringify(val1 || []),
+            after: JSON.stringify(val2 || []),
+            direction: 'change'
+          });
+          continue;
+        }
+
+        // Basic types diff
+        const beforeStr = this.formatValue(fullKey, val1);
+        const afterStr = this.formatValue(fullKey, val2);
+
+        let direction: 'increase' | 'decrease' | 'change' = 'change';
+        if (typeof val1 === 'number' && typeof val2 === 'number') {
+          direction = val2 > val1 ? 'increase' : 'decrease';
+        } else if (val1 === undefined || val1 === null || val1 === false) {
+          direction = 'increase';
+        } else if (val2 === undefined || val2 === null || val2 === false) {
+          direction = 'decrease';
+        }
+
+        diffs.push({
+          key: fullKey,
+          before: beforeStr,
+          after: afterStr,
+          direction
+        });
       }
+    };
+
+    compareObjects(before, after);
+    return diffs;
+  }
+
+  private formatValue(key: string, value: any): string {
+    if (value === undefined || value === null) return 'None';
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+
+    // Specialized formatting for known keys
+    if (key.includes('liquids.')) {
+      return `${value}µL`;
     }
 
-    return diffs;
+    return String(value);
   }
 }
 

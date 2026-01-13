@@ -86,9 +86,9 @@ Migrate from deprecated `@import` to `@use` syntax.
 
 ### Phase 7: Verification
 
-- [ ] Run `npm run build` - expect 0 errors, 0 warnings
-- [ ] Run `npm test` - ensure no test regressions
-- [ ] Manually test key flows: protocol library, data visualization, hardware discovery
+- [x] Run `npm run build` - expect 0 errors, 0 warnings
+- [x] Run `npm test` - ensure no test regressions
+- [x] Manually test key flows: protocol library, data visualization, hardware discovery
 
 ---
 

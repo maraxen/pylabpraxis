@@ -15,11 +15,13 @@ import { FilterOption } from '../../services/filter-result.service';
     ],
     template: `
 <div class="filter-chip" [class.active]="isActive" [class.disabled]="disabled" [class.shake]="isShaking"
-  [matTooltip]="disabled ? 'No results match this filter combination' : activeSelectionTooltip" [matMenuTriggerFor]="disabled ? null : menu"
+  [matTooltip]="disabled ? 'No results match this filter combination' : activeSelectionTooltip" [matMenuTriggerFor]="(disabled || isToggle) ? null : menu"
   (click)="onChipClick($event)" tabindex="0" role="button" [attr.aria-disabled]="disabled" [attr.aria-label]="label">
 
   <span class="chip-text">{{ displayLabel }}</span>
-  <mat-icon class="chip-chevron">expand_more</mat-icon>
+  @if (!isToggle) {
+    <mat-icon class="chip-chevron">expand_more</mat-icon>
+  }
 </div>
 
 <mat-menu #menu="matMenu" class="filter-chip-menu">
@@ -219,6 +221,7 @@ export class FilterChipComponent {
     @Input() disabled: boolean = false;
     @Input() resultCount: number | null = null;
     @Input() multiple: boolean = false;
+    @Input() isToggle: boolean = false;
 
     @Output() selectionChange = new EventEmitter<any>();
 
@@ -227,6 +230,9 @@ export class FilterChipComponent {
     isShaking = false;
 
     get isActive(): boolean {
+        if (this.isToggle) {
+            return this.selectedValue === true;
+        }
         if (this.multiple) {
             return Array.isArray(this.selectedValue) && this.selectedValue.length > 0;
         }
@@ -240,6 +246,9 @@ export class FilterChipComponent {
     }
 
     get activeSelectionTooltip(): string {
+        if (this.isToggle) {
+            return `${this.label}: ${this.isActive ? 'On' : 'Off'}`;
+        }
         if (!this.isActive) return '';
 
         if (this.multiple) {
@@ -259,6 +268,10 @@ export class FilterChipComponent {
         if (this.disabled) {
             event.stopPropagation();
             this.triggerShake();
+            return;
+        }
+        if (this.isToggle) {
+            this.selectionChange.emit(!this.isActive);
         }
     }
 

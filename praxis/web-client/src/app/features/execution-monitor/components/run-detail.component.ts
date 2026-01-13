@@ -17,6 +17,7 @@ import { StateHistory } from '@core/models/simulation.models';
 import { StateInspectorComponent } from './state-inspector';
 import { StateHistoryTimelineComponent } from './state-history-timeline';
 import { StateDeltaComponent } from './state-delta/state-delta.component';
+import { ParameterViewerComponent } from './parameter-viewer';
 
 /**
  * Displays detailed information about a single protocol run.
@@ -36,7 +37,8 @@ import { StateDeltaComponent } from './state-delta/state-delta.component';
     NgxSkeletonLoaderModule,
     StateInspectorComponent,
     StateHistoryTimelineComponent,
-    StateDeltaComponent
+    StateDeltaComponent,
+    ParameterViewerComponent
   ],
   template: `
     <div class="p-6 max-w-screen-xl mx-auto">
@@ -152,7 +154,7 @@ import { StateDeltaComponent } from './state-delta/state-delta.component';
               @if (run()!.input_parameters_json && hasKeys(run()!.input_parameters_json)) {
                 <div class="mt-4">
                   <h3 class="font-semibold text-sys-text-primary mb-2">Input Parameters</h3>
-                  <pre class="bg-surface-container p-3 rounded-lg text-sm overflow-x-auto">{{ formatJson(run()!.input_parameters_json) }}</pre>
+                  <app-parameter-viewer [parameters]="run()!.input_parameters_json" />
                 </div>
               }
             </mat-card-content>
@@ -184,7 +186,7 @@ import { StateDeltaComponent } from './state-delta/state-delta.component';
                   <mat-card-title>Output Data</mat-card-title>
                 </mat-card-header>
                 <mat-card-content class="pt-4">
-                  <pre class="bg-surface-container p-3 rounded-lg text-sm overflow-x-auto max-h-64">{{ formatJson(run()!.output_data_json) }}</pre>
+                  <app-parameter-viewer [parameters]="run()!.output_data_json" />
                 </mat-card-content>
               </mat-card>
             }

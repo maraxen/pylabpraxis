@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal, ViewChild, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, ViewChild, computed, OnInit } from '@angular/core';
 
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
@@ -10,18 +10,15 @@ import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AssetService } from '../../services/asset.service';
-import { Machine, MachineStatus, MachineDefinition } from '../../models/asset.models';
-import { AssetStatusChipComponent, AssetStatusType } from '../asset-status-chip/asset-status-chip.component';
+import { Machine, MachineDefinition } from '../../models/asset.models';
+import { AssetStatusChipComponent } from '../asset-status-chip/asset-status-chip.component';
 import { LocationBreadcrumbComponent } from '../location-breadcrumb/location-breadcrumb.component';
-import { MachineFiltersComponent, MachineFilterState } from '../machine-filters/machine-filters.component';
 import { MaintenanceBadgeComponent } from '../maintenance-badge/maintenance-badge.component';
-import { calculateMaintenanceStatus } from '../../utils/maintenance.utils';
 import { MachineDetailsDialogComponent } from './machine-details-dialog.component';
-import { FilterHeaderComponent } from '../filter-header/filter-header.component';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { debounceTime, distinctUntilChanged, startWith, switchMap, filter, finalize } from 'rxjs/operators';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { ViewControlsComponent } from '../../../../shared/components/view-controls/view-controls.component';
+import { ViewControlsConfig, ViewControlsState } from '../../../../shared/components/view-controls/view-controls.types';
 import { AppStore } from '../../../../core/store/app.store';
 
 @Component({
@@ -32,122 +29,189 @@ import { AppStore } from '../../../../core/store/app.store';
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
-    MatInputModule,
     MatFormFieldModule,
+    MatInputModule,
     MatMenuModule,
     MatDividerModule,
     MatChipsModule,
-    ReactiveFormsModule,
+    MatProgressSpinnerModule,
     AssetStatusChipComponent,
     LocationBreadcrumbComponent,
-    MachineFiltersComponent,
     MaintenanceBadgeComponent,
-    FilterHeaderComponent
-],
+    ViewControlsComponent
+  ],
   template: `
     <div class="machine-list-container">
-      <app-filter-header
-        searchPlaceholder="Search machines..."
-        [filterCount]="activeFiltersCount()"
-        [searchValue]="currentSearch()"
-        (searchChange)="onSearch($event)"
-        (clearFilters)="machineFilters.clearFilters()">
-        
-        <app-machine-filters filterContent
-          [machines]="machines()"
-          [machineDefinitions]="machineDefinitions()"
-          [search]="currentSearch()"
-          (filtersChange)="onFiltersChange($event)">
-        </app-machine-filters>
-      </app-filter-header>
+      <!-- Standardized View Controls -->
+      <div class="bg-[var(--mat-sys-surface)] border-b border-[var(--theme-border)] px-4 py-2 mb-4 rounded-xl shadow-sm">
+        <app-view-controls
+          [config]="viewConfig()"
+          [state]="viewState()"
+          (stateChange)="onViewStateChange($event)">
+        </app-view-controls>
+      </div>
 
-      <table mat-table [dataSource]="filteredMachines()" class="mat-elevation-z2">
-        <!-- Name Column -->
-        <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef> Name </th>
-          <td mat-cell *matCellDef="let machine"> {{ machine.name }} </td>
-        </ng-container>
+      <!-- Content Area -->
+      <div class="flex-1 overflow-hidden relative">
+        @if (isLoading()) {
+          <div class="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-black/50 z-20 backdrop-blur-sm rounded-xl">
+            <mat-spinner diameter="40"></mat-spinner>
+          </div>
+        }
 
-        <!-- Simulated Indicator -->
-        <ng-container matColumnDef="simulated">
-          <th mat-header-cell *matHeaderCellDef> Mode </th>
-          <td mat-cell *matCellDef="let machine">
-            @if (machine.is_simulation_override) {
-              <mat-chip class="simulated-chip" [highlighted]="false">
-                <mat-icon class="chip-icon">computer</mat-icon>
-                Simulated
-              </mat-chip>
-            } @else {
-              <mat-chip class="physical-chip" [highlighted]="false">
-                <mat-icon class="chip-icon">precision_manufacturing</mat-icon>
-                Physical
-              </mat-chip>
+        <!-- Table View -->
+        @if (viewState().viewType === 'table') {
+          <div class="bg-[var(--mat-sys-surface)] border border-[var(--theme-border)] rounded-xl overflow-hidden shadow-sm">
+            <table mat-table [dataSource]="filteredMachines()" class="w-full">
+              <!-- Name Column -->
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef> Name </th>
+                <td mat-cell *matCellDef="let machine"> {{ machine.name }} </td>
+              </ng-container>
+
+              <!-- Simulated Indicator -->
+              <ng-container matColumnDef="simulated">
+                <th mat-header-cell *matHeaderCellDef> Mode </th>
+                <td mat-cell *matCellDef="let machine">
+                  @if (machine.is_simulation_override) {
+                    <mat-chip class="simulated-chip" [highlighted]="false">
+                      <mat-icon class="chip-icon">computer</mat-icon>
+                      Simulated
+                    </mat-chip>
+                  } @else {
+                    <mat-chip class="physical-chip" [highlighted]="false">
+                      <mat-icon class="chip-icon">precision_manufacturing</mat-icon>
+                      Physical
+                    </mat-chip>
+                  }
+                </td>
+              </ng-container>
+
+              <!-- Status Column -->
+              <ng-container matColumnDef="status">
+                <th mat-header-cell *matHeaderCellDef> Status </th>
+                <td mat-cell *matCellDef="let machine">
+                  <app-asset-status-chip [status]="machine.status" [showLabel]="true" />
+                </td>
+              </ng-container>
+
+              <!-- Category Column -->
+              <ng-container matColumnDef="category">
+                <th mat-header-cell *matHeaderCellDef> Category </th>
+                <td mat-cell *matCellDef="let machine"> {{ machine.machine_category || 'Unknown' }} </td>
+              </ng-container>
+
+              <!-- Model Column -->
+              <ng-container matColumnDef="model">
+                <th mat-header-cell *matHeaderCellDef> Model </th>
+                <td mat-cell *matCellDef="let machine"> {{ machine.model || 'N/A' }} </td>
+              </ng-container>
+
+              <!-- Location Column -->
+              <ng-container matColumnDef="location">
+                <th mat-header-cell *matHeaderCellDef> Location </th>
+                <td mat-cell *matCellDef="let machine">
+                    <app-location-breadcrumb [location]="machine.location"></app-location-breadcrumb>
+                </td>
+              </ng-container>
+
+              <!-- Maintenance Column -->
+              <ng-container matColumnDef="maintenance">
+                <th mat-header-cell *matHeaderCellDef> Maintenance </th>
+                <td mat-cell *matCellDef="let machine">
+                    <app-maintenance-badge [machine]="machine" />
+                </td>
+              </ng-container>
+
+              <!-- Actions Column -->
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef> Actions </th>
+                <td mat-cell *matCellDef="let machine">
+                  <button mat-icon-button color="primary" matTooltip="View Details" (click)="viewDetails(machine)">
+                    <mat-icon>info</mat-icon>
+                  </button>
+                  <button mat-icon-button color="accent" matTooltip="Edit Machine" (click)="editMachine(machine)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button color="warn" matTooltip="Delete Machine" (click)="deleteMachine(machine)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns();" 
+                  (contextmenu)="onContextMenu($event, row)"
+                  class="machine-row"></tr>
+
+              <tr class="mat-row" *matNoDataRow>
+                <td class="mat-cell" colspan="7">No machines matching the selected filters</td>
+              </tr>
+            </table>
+          </div>
+        }
+
+        <!-- Card View -->
+        @if (viewState().viewType === 'card') {
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            @for (machine of filteredMachines(); track machine.accession_id) {
+              <div class="machine-card group relative bg-[var(--mat-sys-surface)] border border-[var(--theme-border)] rounded-2xl p-4 hover:shadow-lg transition-all cursor-pointer"
+                   (click)="viewDetails(machine)"
+                   (contextmenu)="onContextMenu($event, machine)">
+                <div class="flex items-start gap-4 mb-3">
+                  <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-primary/10 text-primary">
+                    <mat-icon>{{ machine.is_simulation_override ? 'computer' : 'precision_manufacturing' }}</mat-icon>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="font-bold text-base truncate">{{ machine.name }}</h3>
+                    <p class="text-xs text-[var(--mat-sys-on-surface-variant)] truncate">{{ machine.model || machine.machine_category }}</p>
+                  </div>
+                </div>
+                <div class="flex items-center justify-between mb-3">
+                  <app-asset-status-chip [status]="machine.status" />
+                  @if (store.maintenanceEnabled()) {
+                    <app-maintenance-badge [machine]="machine" />
+                  }
+                </div>
+                <div class="text-xs text-[var(--mat-sys-on-surface-variant)] flex items-center gap-1">
+                  <mat-icon class="!w-3 !h-3 !text-[12px]">location_on</mat-icon>
+                  <span class="truncate">{{ machine.location_label || 'Unassigned' }}</span>
+                </div>
+              </div>
             }
-          </td>
-        </ng-container>
+          </div>
+        }
 
-        <!-- Status Column -->
-        <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef> Status </th>
-          <td mat-cell *matCellDef="let machine">
-            <app-asset-status-chip [status]="machine.status" [showLabel]="true" />
-          </td>
-        </ng-container>
+        <!-- List View -->
+        @if (viewState().viewType === 'list') {
+          <div class="flex flex-col gap-2">
+            @for (machine of filteredMachines(); track machine.accession_id) {
+              <div class="flex items-center gap-4 p-3 bg-[var(--mat-sys-surface)] border border-[var(--theme-border)] rounded-xl hover:bg-[var(--mat-sys-surface-container-highest)] cursor-pointer"
+                   (click)="viewDetails(machine)">
+                <mat-icon class="text-primary">{{ machine.is_simulation_override ? 'computer' : 'precision_manufacturing' }}</mat-icon>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-bold truncate">{{ machine.name }}</span>
+                    <span class="text-xs text-[var(--mat-sys-on-surface-variant)]">{{ machine.machine_category }}</span>
+                  </div>
+                </div>
+                <app-asset-status-chip [status]="machine.status" />
+                <div class="flex items-center gap-1">
+                  <button mat-icon-button (click)="$event.stopPropagation(); editMachine(machine)"><mat-icon>edit</mat-icon></button>
+                  <button mat-icon-button color="warn" (click)="$event.stopPropagation(); deleteMachine(machine)"><mat-icon>delete</mat-icon></button>
+                </div>
+              </div>
+            }
+          </div>
+        }
 
-        <!-- Category Column -->
-        <ng-container matColumnDef="category">
-          <th mat-header-cell *matHeaderCellDef> Category </th>
-          <td mat-cell *matCellDef="let machine"> {{ machine.machine_category || 'Unknown' }} </td>
-        </ng-container>
-
-        <!-- Model Column -->
-        <ng-container matColumnDef="model">
-          <th mat-header-cell *matHeaderCellDef> Model </th>
-          <td mat-cell *matCellDef="let machine"> {{ machine.model || 'N/A' }} </td>
-        </ng-container>
-
-        <!-- Location Column -->
-        <ng-container matColumnDef="location">
-          <th mat-header-cell *matHeaderCellDef> Location </th>
-          <td mat-cell *matCellDef="let machine">
-              <app-location-breadcrumb [location]="machine.location"></app-location-breadcrumb>
-          </td>
-        </ng-container>
-
-        <!-- Maintenance Column -->
-        <ng-container matColumnDef="maintenance">
-          <th mat-header-cell *matHeaderCellDef> Maintenance </th>
-          <td mat-cell *matCellDef="let machine">
-              <app-maintenance-badge [machine]="machine" />
-          </td>
-        </ng-container>
-
-        <!-- Actions Column -->
-        <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef> Actions </th>
-          <td mat-cell *matCellDef="let machine">
-            <button mat-icon-button color="primary" matTooltip="View Details" (click)="viewDetails(machine)">
-              <mat-icon>info</mat-icon>
-            </button>
-            <button mat-icon-button color="accent" matTooltip="Edit Machine" (click)="editMachine(machine)">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button mat-icon-button color="warn" matTooltip="Delete Machine" (click)="deleteMachine(machine)">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns();" 
-            (contextmenu)="onContextMenu($event, row)"
-            class="machine-row"></tr>
-
-        <!-- Row shown when there is no matching data. -->
-        <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell" colspan="7">No machines matching the selected filters</td>
-        </tr>
-      </table>
+        @if (!isLoading() && filteredMachines().length === 0) {
+          <div class="flex flex-col items-center justify-center p-12 text-[var(--mat-sys-on-surface-variant)]">
+            <mat-icon class="!w-12 !h-12 !text-[48px] mb-4 opacity-20">inventory_2</mat-icon>
+            <p>No machines matching the current filters.</p>
+          </div>
+        }
+      </div>
 
       <!-- Context Menu -->
       <div style="visibility: hidden; position: fixed"
@@ -217,26 +281,98 @@ import { AppStore } from '../../../../core/store/app.store';
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MachineListComponent {
+export class MachineListComponent implements OnInit {
   private assetService = inject(AssetService);
   private dialog = inject(MatDialog);
-  private store = inject(AppStore);
+  public store = inject(AppStore);
 
   machines = signal<Machine[]>([]);
-  filteredMachines = signal<Machine[]>([]);
   machineDefinitions = signal<MachineDefinition[]>([]);
-  activeFilters = signal<MachineFilterState | null>(null);
-  currentSearch = signal('');
+  isLoading = signal(true);
 
-  activeFiltersCount = computed(() => {
-    const f = this.activeFilters();
-    if (!f) return 0;
-    let count = 0;
-    if (f.status.length) count++;
-    if (f.categories.length) count++;
-    if (f.simulated !== null) count++;
-    if (f.backends.length) count++;
-    return count;
+  // Standardized View Controls
+  viewConfig = computed<ViewControlsConfig>(() => ({
+    viewTypes: ['table', 'card', 'list'],
+    groupByOptions: [
+      { label: 'None', value: null },
+      { label: 'Status', value: 'status' },
+      { label: 'Category', value: 'machine_category' },
+    ],
+    filters: [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'multiselect',
+        options: [
+          { label: 'Idle', value: 'idle', icon: 'hourglass_empty' },
+          { label: 'Running', value: 'running', icon: 'play_arrow' },
+          { label: 'Error', value: 'error', icon: 'error_outline' },
+          { label: 'Offline', value: 'offline', icon: 'wifi_off' },
+          { label: 'Maintenance', value: 'maintenance', icon: 'build' }
+        ]
+      },
+      {
+        key: 'category',
+        label: 'Category',
+        type: 'chips',
+        options: this.availableCategories().map(cat => ({ label: cat, value: cat }))
+      },
+      {
+        key: 'simulated',
+        label: 'Mode',
+        type: 'select',
+        options: [
+          { label: 'All', value: null },
+          { label: 'Physical', value: false, icon: 'precision_manufacturing' },
+          { label: 'Simulated', value: true, icon: 'computer' }
+        ]
+      },
+      {
+        key: 'backends',
+        label: 'Backend',
+        type: 'multiselect',
+        options: this.availableBackends().map(b => ({ label: b, value: b }))
+      }
+    ],
+    sortOptions: [
+      { label: 'Name', value: 'name' },
+      { label: 'Category', value: 'category' },
+      { label: 'Status', value: 'status' },
+      { label: 'Date Added', value: 'created_at' }
+    ],
+    storageKey: 'machine-list',
+    defaults: {
+      viewType: 'table',
+      sortBy: 'name',
+      sortOrder: 'asc'
+    }
+  }));
+
+  viewState = signal<ViewControlsState>({
+    viewType: 'table',
+    groupBy: null,
+    filters: {},
+    sortBy: 'name',
+    sortOrder: 'asc',
+    search: ''
+  });
+
+  availableCategories = computed(() => {
+    const cats = new Set<string>();
+    this.machines().forEach(m => {
+      if (m.machine_category) cats.add(m.machine_category);
+    });
+    return Array.from(cats).sort();
+  });
+
+  availableBackends = computed(() => {
+    const backends = new Set<string>();
+    this.machineDefinitions().forEach(def => {
+      if (def.compatible_backends) {
+        def.compatible_backends.forEach(b => backends.add(b));
+      }
+    });
+    return Array.from(backends).sort();
   });
 
   displayedColumns = computed(() => {
@@ -249,59 +385,45 @@ export class MachineListComponent {
   });
 
   @ViewChild(MatMenuTrigger) contextMenuTrigger!: MatMenuTrigger;
-  @ViewChild(MachineFiltersComponent) machineFilters!: MachineFiltersComponent;
   contextMenuPosition = { x: '0px', y: '0px' };
 
-  constructor() {
+  ngOnInit() {
     this.loadMachines();
     this.loadMachineDefinitions();
   }
 
   loadMachines(): void {
-    console.debug('[ASSET-DEBUG] loadMachines: Calling assetService.getMachines()');
-    this.assetService.getMachines().subscribe(
-      (data) => {
-        console.debug('[ASSET-DEBUG] loadMachines: Received', data.length, 'machines:', data);
+    this.isLoading.set(true);
+    this.assetService.getMachines().subscribe({
+      next: (data: Machine[]) => {
         this.machines.set(data);
-        if (this.activeFilters()) {
-          this.applyFilters(this.activeFilters()!);
-        } else {
-          this.filteredMachines.set(data);
-        }
+        this.isLoading.set(false);
       },
-      (error) => {
+      error: (error: Error) => {
         console.error('[ASSET-DEBUG] loadMachines: Error fetching machines:', error);
+        this.isLoading.set(false);
       }
-    );
+    });
   }
 
   loadMachineDefinitions(): void {
     this.assetService.getMachineDefinitions().subscribe({
-      next: (defs) => this.machineDefinitions.set(defs),
-      error: (err) => console.error('[ASSET-DEBUG] Error loading machine definitions:', err)
+      next: (defs: MachineDefinition[]) => this.machineDefinitions.set(defs),
+      error: (err: Error) => console.error('[ASSET-DEBUG] Error loading machine definitions:', err)
     });
   }
 
-  onFiltersChange(filters: MachineFilterState) {
-    this.activeFilters.set(filters);
-    // Sync search if updated from filters (e.g. clear)
-    if (filters.search !== this.currentSearch()) {
-      this.currentSearch.set(filters.search);
-    }
-    this.applyFilters(filters);
+  onViewStateChange(state: ViewControlsState) {
+    this.viewState.set(state);
   }
 
-  onSearch(term: string) {
-    this.currentSearch.set(term);
-    // MachineFiltersComponent will receive this update via input and emit filtersChange
-  }
-
-  private applyFilters(filters: MachineFilterState): void {
+  filteredMachines = computed(() => {
     let filtered = this.machines();
+    const state = this.viewState();
 
     // 1. Search Filter
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
+    if (state.search) {
+      const search = state.search.toLowerCase();
       filtered = filtered.filter(m =>
         m.name.toLowerCase().includes(search) ||
         m.machine_category?.toLowerCase().includes(search) ||
@@ -311,33 +433,40 @@ export class MachineListComponent {
     }
 
     // 2. Status Filter
-    if (filters.status.length > 0) {
-      filtered = filtered.filter(m => filters.status.includes(m.status));
+    const statusFilters = state.filters['status'] || [];
+    if (statusFilters.length > 0) {
+      filtered = filtered.filter(m => statusFilters.includes(m.status));
     }
 
     // 3. Category Filter
-    if (filters.categories.length > 0) {
+    const categoryFilters = state.filters['category'] || [];
+    if (categoryFilters.length > 0) {
       filtered = filtered.filter(m =>
-        m.machine_category && filters.categories.includes(m.machine_category)
+        m.machine_category && categoryFilters.includes(m.machine_category)
       );
     }
 
     // 4. Simulated Filter
-    if (filters.simulated !== null) {
+    const simulatedFilter = state.filters['simulated']?.[0];
+    if (simulatedFilter !== undefined && simulatedFilter !== null) {
       filtered = filtered.filter(m =>
-        (m.is_simulation_override ?? false) === filters.simulated
+        (m.is_simulation_override ?? false) === simulatedFilter
       );
     }
 
-    // 5. Backend Filter (requires machine definition lookup)
-    // For now, skip backend filtering as it requires joining with definitions
+    // 5. Backend Filter
+    const backendFilters = state.filters['backends'] || [];
+    if (backendFilters.length > 0) {
+      // requires joining with definitions or property on machine if available
+      // For now skip as per original implementation note
+    }
 
     // 6. Sort
     filtered.sort((a, b) => {
-      let valA: any = '';
-      let valB: any = '';
+      let valA: string | number = '';
+      let valB: string | number = '';
 
-      switch (filters.sort_by) {
+      switch (state.sortBy) {
         case 'name':
           valA = a.name.toLowerCase();
           valB = b.name.toLowerCase();
@@ -356,15 +485,12 @@ export class MachineListComponent {
           break;
       }
 
-      if (filters.sort_order === 'asc') {
-        return valA > valB ? 1 : -1;
-      } else {
-        return valA < valB ? 1 : -1;
-      }
+      const comparison = valA > valB ? 1 : (valA < valB ? -1 : 0);
+      return state.sortOrder === 'asc' ? comparison : -comparison;
     });
 
-    this.filteredMachines.set(filtered);
-  }
+    return filtered;
+  });
 
   onContextMenu(event: MouseEvent, machine: Machine) {
     event.preventDefault();

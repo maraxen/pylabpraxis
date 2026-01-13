@@ -48,8 +48,8 @@ These issues from the development matrix must be resolved:
 
 - [x] Protocol well selection not triggering
 - [ ] Playground initialization flow (WebSerial error)
-- [ ] Asset filtering not filtered to PLR class
-- [ ] Simulated backend clarity / demo naming cleanup
+- [x] Asset filtering to appropriate PLR class
+- [x] Simulated backend clarity / demo naming cleanup
 - [x] Asset management UX issues (backend selector, filters, registry)
 - [ ] Data visualization axis selects responding
 - [x] Documentation accuracy (API docs, dead links, [x] Execution Flow Diagram)

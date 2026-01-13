@@ -5,6 +5,8 @@ Examine `.agents/README.md` for development context.
 **Status:** 🟢 Not Started
 **Priority:** [P1/P2/P3]
 **Batch:** [YYMMDD](../YYMMDD/README.md)
+**Difficulty:** [Easy/Medium/Hard]
+**Dependencies:** [List of dependencies]
 **Backlog Reference:** [Link to backlog item]
 
 ---

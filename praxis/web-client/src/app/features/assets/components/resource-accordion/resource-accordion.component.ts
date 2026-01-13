@@ -7,25 +7,19 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { AssetService } from '../../services/asset.service';
 import { Resource, ResourceStatus, ResourceDefinition, Machine } from '../../models/asset.models';
 import { ResourceInstancesDialogComponent } from './resource-instances-dialog.component';
 import { AssetStatusChipComponent, AssetStatusType } from '../asset-status-chip/asset-status-chip.component';
-import { debounceTime, distinctUntilChanged, startWith } from 'rxjs/operators';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { getCategoryTooltip, getPropertyTooltip } from '@shared/constants/resource-tooltips';
 import { getResourceCategoryIcon } from '@shared/constants/asset-icons';
-import { inferCategory } from '../../utils/category-inference';
-import { ResourceFiltersComponent, ResourceFilterState } from '../resource-filters/resource-filters.component';
 import { getUiGroup, UI_GROUP_ORDER, shouldHideCategory, ResourceUiGroup } from '../../utils/resource-category-groups';
 import { ResourceChipsComponent } from '../resource-chips/resource-chips.component';
 import { getDisplayLabel } from '../../utils/resource-name-parser';
 import { AppStore } from '../../../../core/store/app.store';
-import { FilterHeaderComponent } from '../filter-header/filter-header.component';
+import { ViewControlsComponent } from '../../../../shared/components/view-controls/view-controls.component';
+import { ViewControlsConfig, ViewControlsState } from '../../../../shared/components/view-controls/view-controls.types';
 
 export interface ResourceGroup {
   category: string;
@@ -57,34 +51,24 @@ export interface ResourceDefinitionGroup {
     MatBadgeModule,
     MatSlideToggleModule,
     MatDialogModule,
-    MatChipsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    FormsModule,
     ReactiveFormsModule,
     AssetStatusChipComponent,
-    ResourceFiltersComponent,
     ResourceChipsComponent,
-    FilterHeaderComponent
+    ViewControlsComponent
   ],
   template: `
     <div class="resource-accordion-container">
-      <!-- Resource Filters -->
-      <app-filter-header
-        searchPlaceholder="Search resources..."
-        [filterCount]="activeFiltersCount()"
-        [searchValue]="currentSearch()"
-        (searchChange)="onSearch($event)">
-        
-        <app-resource-filters filterContent
-          [categories]="categories()"
-          [machines]="machines()"
-          [search]="currentSearch()"
-          (filtersChange)="onFiltersChange($event)">
-        </app-resource-filters>
-      </app-filter-header>
+      <!-- Standardized View Controls -->
+      <div class="bg-[var(--mat-sys-surface)] border-b border-[var(--theme-border)] px-4 py-2 mb-4 rounded-xl shadow-sm">
+        <app-view-controls
+          [config]="viewConfig()"
+          [state]="viewState()"
+          (stateChange)="onViewStateChange($event)">
+        </app-view-controls>
+      </div>
 
-      <mat-accordion multi="true">
+      @if (viewState().viewType === 'accordion') {
+        <mat-accordion multi="true">
         @for (group of filteredGroups(); track group.category) {
           <mat-expansion-panel class="category-panel">
             <mat-expansion-panel-header>
@@ -142,7 +126,7 @@ export interface ResourceDefinitionGroup {
                         {{ defGroup.isConsumable ? defGroup.activeCount : 1 }}
                       </span>
                     }
-                    @if (activeFilters().show_discarded && defGroup.discardedCount > 0) {
+                    @if (viewState().filters['show_discarded'] === true && defGroup.discardedCount > 0) {
                       <span class="count discarded" [matTooltip]="getPropertyTooltip('depleted')">
                         ({{ defGroup.discardedCount }} discarded)
                       </span>
@@ -157,7 +141,35 @@ export interface ResourceDefinitionGroup {
             </div>
           </mat-expansion-panel>
         }
-      </mat-accordion>
+        </mat-accordion>
+      }
+
+      @if (viewState().viewType === 'list') {
+        <div class="flex flex-col gap-2">
+          @for (group of filteredGroups(); track group.category) {
+            @for (defGroup of group.definitions; track defGroup.definition.accession_id) {
+              <div class="flex items-center gap-4 p-3 bg-[var(--mat-sys-surface)] border border-[var(--theme-border)] rounded-lg hover:border-[var(--mat-sys-primary)] transition-colors cursor-pointer"
+                   (click)="openInstancesDialog(defGroup)">
+                <div class="w-10 h-10 rounded-full bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-on-primary-container)] flex items-center justify-center">
+                  <mat-icon>{{ getCategoryIcon(group.category) }}</mat-icon>
+                </div>
+                <div class="flex-1 flex flex-col">
+                  <span class="font-medium">{{ getDisplayLabel(defGroup.definition) }}</span>
+                  <span class="text-xs text-[var(--mat-sys-on-surface-variant)]">{{ group.category }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  @if (defGroup.isConsumable && defGroup.primaryStatus) {
+                    <app-asset-status-chip [status]="defGroup.primaryStatus" size="small" />
+                  }
+                  <div class="text-sm font-semibold px-2 py-1 bg-[var(--mat-sys-surface-container-highest)] rounded text-[var(--mat-sys-on-surface)]">
+                    {{ defGroup.isConsumable && defGroup.isInfinite ? '∞' : (defGroup.isConsumable ? defGroup.activeCount : 1) }}
+                  </div>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      }
 
       @if (filteredGroups().length === 0) {
         <div class="empty-state">
@@ -353,38 +365,91 @@ export class ResourceAccordionComponent implements OnInit {
   definitions = signal<ResourceDefinition[]>([]);
   machines = signal<Machine[]>([]);
 
-  // Filter State
-  activeFilters = signal<ResourceFilterState>({
-    search: '',
-    status: [],
-    categories: [],
-    brands: [],
-    machine_id: null,
-    show_discarded: false,
-    sort_by: 'name',
-    sort_order: 'asc'
+  viewConfig = computed<ViewControlsConfig>(() => ({
+    viewTypes: ['accordion', 'list'],
+    groupByOptions: [
+      { label: 'Category', value: 'category' },
+      { label: 'None', value: null },
+    ],
+    filters: [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'multiselect',
+        options: [
+          { label: 'Available', value: ResourceStatus.AVAILABLE, icon: 'check_circle' },
+          { label: 'In Use', value: ResourceStatus.IN_USE, icon: 'play_arrow' },
+          { label: 'Reserved', value: ResourceStatus.RESERVED, icon: 'lock' },
+          { label: 'Depleted', value: ResourceStatus.DEPLETED, icon: 'remove_circle' },
+          { label: 'Expired', value: ResourceStatus.EXPIRED, icon: 'event_busy' }
+        ]
+      },
+      {
+        key: 'category',
+        label: 'Category',
+        type: 'multiselect',
+        options: this.categories().map(c => ({ label: c, value: c }))
+      },
+      {
+        key: 'brands',
+        label: 'Brand',
+        type: 'multiselect',
+        options: this.brands().map(b => ({ label: b, value: b }))
+      },
+      {
+        key: 'machine_id',
+        label: 'Location',
+        type: 'multiselect',
+        options: this.machines().map(m => ({ label: m.name, value: m.accession_id }))
+      },
+      {
+        key: 'show_discarded',
+        label: 'Show Discarded',
+        type: 'toggle',
+        defaultValue: false
+      }
+    ],
+    sortOptions: [
+      { label: 'Name', value: 'name' },
+      { label: 'Count', value: 'count' },
+      { label: 'Category', value: 'category' },
+      { label: 'Created', value: 'created_at' }
+    ],
+    storageKey: 'resource-accordion',
+    defaults: {
+      viewType: 'accordion',
+      sortBy: 'name',
+      sortOrder: 'asc'
+    }
+  }));
+
+  viewState = signal<ViewControlsState>({
+    viewType: 'accordion',
+    groupBy: 'category',
+    filters: {},
+    sortBy: 'name',
+    sortOrder: 'asc',
+    search: ''
   });
 
-  currentSearch = signal('');
+  onViewStateChange(state: ViewControlsState) {
+    this.viewState.set(state);
+  }
 
-  activeFiltersCount = computed(() => {
-    const f = this.activeFilters();
-    let count = 0;
-    if (f.status.length) count++;
-    if (f.categories.length) count++;
-    if (f.brands.length) count++;
-    if (f.machine_id) count++;
-    if (f.show_discarded) count++;
-    return count;
+  brands = computed(() => {
+    const brands = new Set<string>();
+    this.resources().forEach(r => {
+      const vendor = (r as any).definition?.vendor || (r as any).vendor || (r as any).manufacturer;
+      if (vendor) brands.add(vendor);
+    });
+    return Array.from(brands).sort();
   });
 
   constructor() {
     // Removed old filterControl logic
   }
 
-  onSearch(term: string) {
-     this.currentSearch.set(term);
-  }
+
 
   // Computed Categories for Filter
   categories = computed(() => {
@@ -479,13 +544,19 @@ export class ResourceAccordionComponent implements OnInit {
 
   // Filtered groups based on all filters
   filteredGroups = computed(() => {
-    const filters = this.activeFilters();
+    const state = this.viewState();
     let groups = this.resourceGroups();
 
     // 1. Filter by Category
-    if (filters.categories.length > 0) {
-      groups = groups.filter(g => filters.categories.includes(g.category));
+    const categoryFilters = state.filters['category'] || [];
+    if (categoryFilters.length > 0) {
+      groups = groups.filter(g => categoryFilters.includes(g.category));
     }
+
+    const showDiscarded = state.filters['show_discarded'] === true;
+    const statusFilters = state.filters['status'] || [];
+    const brandsFilters = state.filters['brands'] || [];
+    const machineIdFilters = state.filters['machine_id'] || [];
 
     return groups.map(group => {
       // Filter definitions within the group and update counts based on filters
@@ -494,47 +565,48 @@ export class ResourceAccordionComponent implements OnInit {
         let matchingInstances = defGroup.instances;
 
         // Default: Hide discarded unless requested
-        // (Note: If specific status filter is applied, we might want to respect that, but typically discarded requires opt-in)
-        if (!filters.show_discarded) {
+        if (!showDiscarded) {
           matchingInstances = matchingInstances.filter(inst =>
             inst.status !== ResourceStatus.DEPLETED && inst.status !== ResourceStatus.EXPIRED
           );
         }
 
         // Status Filter
-        if (filters.status.length > 0) {
+        if (statusFilters.length > 0) {
           matchingInstances = matchingInstances.filter(inst =>
-            filters.status.includes(inst.status)
+            statusFilters.includes(inst.status)
           );
         }
 
         // Location Filter (Machine)
-        if (filters.machine_id) {
-          const machineId = filters.machine_id;
+        if (machineIdFilters.length > 0) {
           matchingInstances = matchingInstances.filter(inst =>
-            inst.location && inst.location.startsWith(machineId)
+            inst.location && machineIdFilters.some((id: string) => inst.location?.startsWith(id))
           );
         }
 
+        // Brand Filter
+        if (brandsFilters.length > 0) {
+          const vendor = (defGroup.definition as any).vendor;
+          if (!vendor || !brandsFilters.includes(vendor)) {
+            return null;
+          }
+        }
+
         // Search Filter (Name or Category) - Applies to Definition
-        if (filters.search) {
-          const searchLower = filters.search.toLowerCase();
+        if (state.search) {
+          const searchLower = state.search.toLowerCase();
           const matchesName = defGroup.definition.name.toLowerCase().includes(searchLower);
           const matchesCategory = group.category.toLowerCase().includes(searchLower);
 
           if (!matchesName && !matchesCategory) {
-            // Check if any instance matches FQN/Asset ID? 
-            // For now, if name matches, we show ALL matching instances (filtered by status).
-            // If name doesn't match, we hide definition.
             return null;
           }
         }
 
         // If status/location filter is active, and no instances match, hide the definition
-        // EXCEPTION: If filter is only SEARCH, we usually show the definition (with 0 count if none).
-        // But if filtering by physical properties (Location/Status), 0 matches usually means hide.
-        const hasActiveFilters = filters.status.length > 0 || filters.machine_id;
-        if (hasActiveFilters && matchingInstances.length === 0) {
+        const hasActivePhysicalFilters = statusFilters.length > 0 || machineIdFilters.length > 0;
+        if (hasActivePhysicalFilters && matchingInstances.length === 0) {
           return null;
         }
 
@@ -556,7 +628,7 @@ export class ResourceAccordionComponent implements OnInit {
 
         return {
           ...defGroup,
-          instances: matchingInstances, // instances passed to dialog will only be the matching ones
+          instances: matchingInstances,
           activeCount: activeCount,
           primaryStatus: primaryStatus
         } as ResourceDefinitionGroup;
@@ -568,7 +640,7 @@ export class ResourceAccordionComponent implements OnInit {
         let valA: any = '';
         let valB: any = '';
 
-        switch (filters.sort_by) {
+        switch (state.sortBy) {
           case 'name':
             valA = a.definition.name.toLowerCase();
             valB = b.definition.name.toLowerCase();
@@ -577,15 +649,14 @@ export class ResourceAccordionComponent implements OnInit {
             valA = a.activeCount;
             valB = b.activeCount;
             break;
-          case 'category':
+          case 'created_at':
+            valA = (a.definition as any).created_at || '';
+            valB = (b.definition as any).created_at || '';
             break;
         }
 
-        if (filters.sort_order === 'asc') {
-          return valA > valB ? 1 : -1;
-        } else {
-          return valA < valB ? 1 : -1;
-        }
+        const comparison = valA > valB ? 1 : (valA < valB ? -1 : 0);
+        return state.sortOrder === 'asc' ? comparison : -comparison;
       });
 
       return {
@@ -596,12 +667,9 @@ export class ResourceAccordionComponent implements OnInit {
 
     }).filter(group => group.definitions.length > 0).sort((a, b) => {
       // Sort groups if 'category' sort is selected
-      if (filters.sort_by === 'category') {
-        if (filters.sort_order === 'asc') {
-          return a.category.localeCompare(b.category);
-        } else {
-          return b.category.localeCompare(a.category);
-        }
+      if (state.sortBy === 'category') {
+        const comparison = a.category.localeCompare(b.category);
+        return state.sortOrder === 'asc' ? comparison : -comparison;
       }
       return a.category.localeCompare(b.category); // Default category sort
     });
@@ -624,11 +692,9 @@ export class ResourceAccordionComponent implements OnInit {
     });
   }
 
-  onFiltersChange(filters: ResourceFilterState) {
-    this.activeFilters.set(filters);
-    if (filters.search !== this.currentSearch()) {
-      this.currentSearch.set(filters.search);
-    }
+  onFiltersChange(_filters: any) {
+    // Legacy method - can be removed or redirected if needed
+    // But viewState is now primary
   }
 
   getCategoryIcon(category: string): string {
@@ -661,7 +727,7 @@ export class ResourceAccordionComponent implements OnInit {
       data: {
         definition: defGroup.definition,
         instances: defGroup.instances,
-        showDiscarded: this.activeFilters().show_discarded
+        showDiscarded: this.viewState().filters['show_discarded'] === true
       }
     });
   }

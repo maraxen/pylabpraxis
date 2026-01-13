@@ -4,17 +4,13 @@ import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTabsModule } from '@angular/material/tabs';
 import { AssetService } from '../../services/asset.service';
 import { ResourceDefinition } from '../../models/asset.models';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { debounceTime, distinctUntilChanged, startWith } from 'rxjs/operators';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { getPropertyTooltip } from '@shared/constants/resource-tooltips';
 import { MachineDefinitionAccordionComponent } from '../machine-definition-accordion/machine-definition-accordion.component';
-import { FilterHeaderComponent } from '../filter-header/filter-header.component';
+import { ViewControlsComponent } from '@shared/components/view-controls/view-controls.component';
+import { ViewControlsConfig, ViewControlsState } from '@shared/components/view-controls/view-controls.types';
 import { ModeService } from '@core/services/mode.service';
 
 @Component({
@@ -25,12 +21,9 @@ import { ModeService } from '@core/services/mode.service';
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
-    MatInputModule,
-    MatFormFieldModule,
     MatTabsModule,
-    ReactiveFormsModule,
     MachineDefinitionAccordionComponent,
-    FilterHeaderComponent
+    ViewControlsComponent
   ],
   template: `
     <div class="definitions-list-container">
@@ -52,13 +45,14 @@ import { ModeService } from '@core/services/mode.service';
             </div>
           </ng-template>
           <div class="tab-content">
-            <app-filter-header
-              searchPlaceholder="Search machine types..."
-              [searchValue]="machineSearch()"
-              (searchChange)="machineSearch.set($event)">
-              <!-- No additional filters yet -->
-            </app-filter-header>
-            <app-machine-definition-accordion [search]="machineSearch()"></app-machine-definition-accordion>
+            <div class="bg-[var(--mat-sys-surface)] border-b border-[var(--theme-border)] px-4 py-2 mb-4 rounded-xl shadow-sm mx-4 mt-4">
+              <app-view-controls
+                [config]="machineViewConfig()"
+                [state]="machineViewState()"
+                (stateChange)="onMachineViewStateChange($event)">
+              </app-view-controls>
+            </div>
+            <app-machine-definition-accordion [viewState]="machineViewState()"></app-machine-definition-accordion>
           </div>
         </mat-tab>
 
@@ -70,12 +64,13 @@ import { ModeService } from '@core/services/mode.service';
             </div>
           </ng-template>
           <div class="resource-tab-content">
-            <app-filter-header
-              searchPlaceholder="Filter Resource Definitions..."
-              [searchValue]="resourceSearch()"
-              (searchChange)="resourceSearch.set($event)">
-              <!-- No additional filters yet -->
-            </app-filter-header>
+            <div class="bg-[var(--mat-sys-surface)] border-b border-[var(--theme-border)] px-4 py-2 mb-4 rounded-xl shadow-sm mt-4">
+              <app-view-controls
+                [config]="resourceViewConfig()"
+                [state]="resourceViewState()"
+                (stateChange)="onResourceViewStateChange($event)">
+              </app-view-controls>
+            </div>
 
             <table mat-table [dataSource]="filteredResourceDefinitions()" class="mat-elevation-z2 mt-4">
               <ng-container matColumnDef="name">
@@ -126,7 +121,7 @@ import { ModeService } from '@core/services/mode.service';
                 <td class="mat-cell" colspan="6">
                   <div class="empty-state">
                     <mat-icon>search_off</mat-icon>
-                    <span>No resource definitions matching the filter "{{ resourceSearch() }}"</span>
+                    <span>No resource definitions matching the filter "{{ resourceViewState().search }}"</span>
                   </div>
                 </td>
               </tr>
@@ -197,18 +192,124 @@ export class DefinitionsListComponent {
   public modeService = inject(ModeService);
 
   resourceDefinitions = signal<ResourceDefinition[]>([]);
-  machineSearch = signal('');
-  resourceSearch = signal('');
-  
-  filteredResourceDefinitions = computed(() => {
-    const filterValue = this.resourceSearch().toLowerCase();
-    return this.resourceDefinitions().filter(def =>
-      def.name.toLowerCase().includes(filterValue) ||
-      def.resource_type?.toLowerCase().includes(filterValue) ||
-      def.manufacturer?.toLowerCase().includes(filterValue) ||
-      def.model?.toLowerCase().includes(filterValue)
-    );
+  machineViewState = signal<ViewControlsState>({
+    viewType: 'accordion',
+    groupBy: 'category',
+    filters: {},
+    sortBy: 'name',
+    sortOrder: 'asc',
+    search: ''
   });
+
+  resourceViewState = signal<ViewControlsState>({
+    viewType: 'table',
+    groupBy: null,
+    filters: {},
+    sortBy: 'name',
+    sortOrder: 'asc',
+    search: ''
+  });
+
+  machineViewConfig = computed<ViewControlsConfig>(() => ({
+    viewTypes: ['accordion'],
+    groupByOptions: [
+      { label: 'Category', value: 'category' },
+      { label: 'Manufacturer', value: 'manufacturer' },
+      { label: 'None', value: null }
+    ],
+    sortOptions: [
+      { label: 'Name', value: 'name' },
+      { label: 'Manufacturer', value: 'manufacturer' }
+    ],
+    storageKey: 'machine-definitions',
+    defaults: {
+      viewType: 'accordion',
+      sortBy: 'name',
+      sortOrder: 'asc'
+    }
+  }));
+
+  resourceViewConfig = computed<ViewControlsConfig>(() => ({
+    viewTypes: ['table'],
+    filters: [
+      {
+        key: 'manufacturer',
+        label: 'Manufacturer',
+        type: 'multiselect',
+        options: this.manufacturers().map(m => ({ label: m, value: m }))
+      },
+      {
+        key: 'consumable',
+        label: 'Consumable Only',
+        type: 'toggle',
+        defaultValue: false
+      }
+    ],
+    sortOptions: [
+      { label: 'Name', value: 'name' },
+      { label: 'Type', value: 'resource_type' },
+      { label: 'Manufacturer', value: 'manufacturer' }
+    ],
+    storageKey: 'resource-definitions',
+    defaults: {
+      viewType: 'table',
+      sortBy: 'name',
+      sortOrder: 'asc'
+    }
+  }));
+
+  manufacturers = computed(() => {
+    const mfgs = new Set<string>();
+    this.resourceDefinitions().forEach(d => {
+      if (d.manufacturer) mfgs.add(d.manufacturer);
+    });
+    return Array.from(mfgs).sort();
+  });
+
+  filteredResourceDefinitions = computed(() => {
+    const state = this.resourceViewState();
+    let filtered = this.resourceDefinitions();
+
+    // 1. Search
+    if (state.search) {
+      const search = state.search.toLowerCase();
+      filtered = filtered.filter(def =>
+        def.name.toLowerCase().includes(search) ||
+        def.resource_type?.toLowerCase().includes(search) ||
+        def.manufacturer?.toLowerCase().includes(search) ||
+        def.model?.toLowerCase().includes(search)
+      );
+    }
+
+    // 2. Manufacturer Filter
+    const mfgFilters = state.filters['manufacturer'] || [];
+    if (mfgFilters.length > 0) {
+      filtered = filtered.filter(def => def.manufacturer && mfgFilters.includes(def.manufacturer));
+    }
+
+    // 3. Consumable Toggle
+    if (state.filters['consumable'] === true) {
+      filtered = filtered.filter(def => def.is_consumable);
+    }
+
+    // 4. Sorting
+    filtered = [...filtered].sort((a, b) => {
+      const valA = (a as unknown as Record<string, unknown>)[state.sortBy] || '';
+      const valB = (b as unknown as Record<string, unknown>)[state.sortBy] || '';
+      const comparison = valA.toString().localeCompare(valB.toString());
+      return state.sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return filtered;
+  });
+
+  onMachineViewStateChange(state: ViewControlsState) {
+    this.machineViewState.set(state);
+  }
+
+  onResourceViewStateChange(state: ViewControlsState) {
+    this.resourceViewState.set(state);
+  }
 
   displayedResourceColumns: string[] = ['name', 'type', 'manufacturer', 'model', 'consumable', 'actions'];
 
