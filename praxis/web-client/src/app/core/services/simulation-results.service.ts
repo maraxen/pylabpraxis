@@ -37,7 +37,7 @@ export class SimulationResultsService {
         }
 
         return this.apiWrapper.wrap(ProtocolDefinitionsService.getApiV1ProtocolsDefinitionsAccessionIdGet(protocolId)).pipe(
-            map(response => (response.inferred_requirements as unknown as InferredRequirement[]) || []),
+            map(response => ((response as any).inferred_requirements_json as InferredRequirement[]) || []),
             catchError(err => {
                 console.error('[SimulationResults] Error fetching requirements:', err);
                 return of([]);
@@ -55,7 +55,7 @@ export class SimulationResultsService {
         }
 
         return this.apiWrapper.wrap(ProtocolDefinitionsService.getApiV1ProtocolsDefinitionsAccessionIdGet(protocolId)).pipe(
-            map(response => (response.failure_modes as unknown as FailureMode[]) || []),
+            map(response => ((response as any).failure_modes_json as FailureMode[]) || []),
             catchError(err => {
                 console.error('[SimulationResults] Error fetching failure modes:', err);
                 return of([]);
@@ -73,7 +73,7 @@ export class SimulationResultsService {
         }
 
         return this.apiWrapper.wrap(ProtocolDefinitionsService.getApiV1ProtocolsDefinitionsAccessionIdGet(protocolId)).pipe(
-            map(response => (response.simulation_result as unknown as SimulationResult) || null),
+            map(response => ((response as any).simulation_result_json as unknown as SimulationResult) || null),
             catchError(err => {
                 console.error('[SimulationResults] Error fetching simulation result:', err);
                 return of(null);
@@ -114,7 +114,7 @@ export class SimulationResultsService {
             switchMap(isReady => {
                 if (!isReady) return of([]);
                 return this.sqliteService.getProtocolSimulationData(protocolId).pipe(
-                    map(data => data?.inferred_requirements || [])
+                    map(data => (data as any)?.inferred_requirements_json || [])
                 );
             }),
             catchError(() => of([]))
@@ -126,7 +126,7 @@ export class SimulationResultsService {
             switchMap(isReady => {
                 if (!isReady) return of([]);
                 return this.sqliteService.getProtocolSimulationData(protocolId).pipe(
-                    map(data => data?.failure_modes || [])
+                    map(data => (data as any)?.failure_modes_json || [])
                 );
             }),
             catchError(() => of([]))
@@ -138,7 +138,7 @@ export class SimulationResultsService {
             switchMap(isReady => {
                 if (!isReady) return of(null);
                 return this.sqliteService.getProtocolSimulationData(protocolId).pipe(
-                    map(data => data?.simulation_result || null)
+                    map(data => (data as any)?.simulation_result_json || null)
                 );
             }),
             catchError(() => of(null))
