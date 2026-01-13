@@ -14,7 +14,7 @@ import { RunHistoryService } from '../services/run-history.service';
 import { RunDetail } from '../models/monitor.models';
 import { SimulationResultsService } from '@core/services/simulation-results.service';
 import { StateHistory } from '@core/models/simulation.models';
-import { StateInspectorComponent, StateDisplayComponent } from './state-inspector';
+import { StateInspectorComponent } from './state-inspector';
 import { StateHistoryTimelineComponent } from './state-history-timeline';
 import { StateDeltaComponent } from './state-delta/state-delta.component';
 
@@ -35,8 +35,6 @@ import { StateDeltaComponent } from './state-delta/state-delta.component';
     MatTabsModule,
     NgxSkeletonLoaderModule,
     StateInspectorComponent,
-    StateDisplayComponent,
-    StateDisplayComponent,
     StateHistoryTimelineComponent,
     StateDeltaComponent
   ],

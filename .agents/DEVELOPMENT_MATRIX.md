@@ -1,6 +1,6 @@
 # Praxis Development Matrix
 
-**Last Updated**: 2026-01-12 (Archival Cleanup)
+**Last Updated**: 2026-01-13 (Archival Cleanup)
 **Purpose**: Current iteration work items with priority and difficulty ratings.
 
 ---
@@ -106,6 +106,8 @@
 | Item | Priority | Date | Description |
 |------|----------|------|-------------|
 | [Historical Items (Jan 2026)](./archive/COMPLETED_ITEMS_ARCHIVE_JAN_2026.md) | - | 2026-01-12 | Consolidated archive of previous completions |
+| Model Unification (SQLModel) | P2 | 2026-01-13 | Massive refactor to unified SQLModel domain models, removed legacy ORM/Pydantic duplication |
+| Frontend Schema Sync | P1 | 2026-01-13 | Aligned frontend with SQLModel backend, fixed API client, removed build warnings |
 
 ---
 
@@ -113,12 +115,12 @@
 
 | Priority | Count | Focus |
 |----------|-------|-------|
-| **P1** | 2 | Alpha blockers |
+| **P1** | 1 | Alpha blockers |
 | **P2** | 20 | Alpha quality (including hardware) |
 | **P3** | 1 | Should have for alpha |
 | **P4** | 3 | Post-alpha / beta |
 
-**Total Active Items**: 24
+**Total Active Items**: 25
 
 ---
 

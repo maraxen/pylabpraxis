@@ -1,6 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
 
-import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { KeycloakService } from '../../core/auth/keycloak.service';
@@ -9,7 +8,6 @@ import { KeycloakService } from '../../core/auth/keycloak.service';
   selector: 'app-register',
   standalone: true,
   imports: [
-    RouterLink,
     MatCardModule,
     MatProgressSpinnerModule
 ],

@@ -92,7 +92,7 @@ def discover_resources_static(conn: sqlite3.Connection) -> int:
 
             conn.execute(
                 """
-                INSERT OR REPLACE INTO resource_definition_catalog (
+                INSERT OR REPLACE INTO resource_definitions (
                     accession_id, fqn, name, description, plr_category,
                     is_consumable, vendor, manufacturer,
                     properties_json, created_at, updated_at
@@ -176,7 +176,7 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
 
             conn.execute(
                 """
-                INSERT OR REPLACE INTO machine_definition_catalog (
+                INSERT OR REPLACE INTO machine_definitions (
                     accession_id, fqn, name, description, plr_category,
                     machine_category, has_deck, manufacturer,
                     capabilities, compatible_backends, properties_json, created_at, updated_at
@@ -203,41 +203,30 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
             instance_id = generate_uuid_from_fqn(f"instance:{machine.fqn}")
             instance_name = f"Demo {machine.name}"
             
-            # First insert into assets table (parent)
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO assets (
-                    accession_id, asset_type, name, fqn, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    instance_id,
-                    "machine",
-                    instance_name,
-                    machine.fqn,
-                    now,
-                    now,
-                )
-            )
-            
-            # Then insert into machines table (child)
+            # Insert directly into machines table (includes Asset fields)
             conn.execute(
                 """
                 INSERT OR REPLACE INTO machines (
-                    accession_id, machine_category, status, machine_definition_accession_id, 
+                    accession_id, name, asset_type, fqn,
+                    machine_category, status, machine_definition_accession_id, 
                     maintenance_enabled, maintenance_schedule_json, 
-                    location_label, is_simulation_override
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    location_label, is_simulation_override, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     instance_id,
+                    instance_name,
+                    "machine",
+                    machine.fqn,
                     category,
                     "available",
                     accession_id,
                     1,
                     safe_json_dumps(maintenance_schedule),
                     "Main Lab, Bench 1",
-                    1  # All browser-mode machines are simulated
+                    1,  # All browser-mode machines are simulated
+                    now,
+                    now,
                 )
             )
 
@@ -391,7 +380,7 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
                         INSERT OR REPLACE INTO parameter_definitions (
                             accession_id, protocol_definition_accession_id, name, type_hint, fqn,
                             is_deck_param, optional, default_value_repr, description,
-                            constraints, field_type, is_itemized, itemized_spec, linked_to, ui_hint,
+                            constraints_json, field_type, is_itemized, itemized_spec_json, linked_to, ui_hint_json,
                             created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
@@ -424,7 +413,7 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
                         INSERT OR REPLACE INTO protocol_asset_requirements (
                             accession_id, protocol_definition_accession_id, name, type_hint_str,
                             actual_type_str, fqn, optional, default_value_repr, description,
-                            constraints, location_constraints, created_at, updated_at
+                            constraints_json, location_constraints_json, created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
@@ -521,7 +510,7 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
 
             conn.execute(
                 """
-                INSERT OR REPLACE INTO machine_definition_catalog (
+                INSERT OR REPLACE INTO machine_definitions (
                     accession_id, fqn, name, description, plr_category,
                     machine_category, has_deck, manufacturer,
                     capabilities, compatible_backends, properties_json, created_at, updated_at,
@@ -555,34 +544,21 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
             instance_id = generate_uuid_from_fqn(f"instance:{backend.fqn}")
             instance_name = f"{backend.name} (Simulated)"
             
-            # First insert into assets table (parent)
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO assets (
-                    accession_id, asset_type, name, fqn, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    instance_id,
-                    "machine",
-                    instance_name,
-                    backend.fqn,
-                    now,
-                    now,
-                )
-            )
-            
-            # Then insert into machines table (child)
+            # Insert directly into machines table (includes Asset fields)
             conn.execute(
                 """
                 INSERT OR REPLACE INTO machines (
-                    accession_id, machine_category, status, machine_definition_accession_id, 
+                    accession_id, name, asset_type, fqn,
+                    machine_category, status, machine_definition_accession_id, 
                     maintenance_enabled, maintenance_schedule_json, 
-                    location_label, connection_info, is_simulation_override
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    location_label, connection_info, is_simulation_override, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     instance_id,
+                    instance_name,
+                    "machine",
+                    backend.fqn,
                     category,
                     "available",
                     accession_id,
@@ -590,7 +566,9 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
                     safe_json_dumps(maintenance_schedule),
                     "Virtual Lab",
                     safe_json_dumps({"backend": "simulated"}),
-                    1  # All browser-mode machines are simulated
+                    1,  # All browser-mode machines are simulated
+                    now,
+                    now,
                 )
             )
 
@@ -628,7 +606,7 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
     for short_name, frontend_fqn in frontend_types:
         # Check if any backend exists for this frontend
         cursor = conn.execute(
-            "SELECT count(*) FROM machine_definition_catalog WHERE frontend_fqn = ?", 
+            "SELECT count(*) FROM machine_definitions WHERE frontend_fqn = ?", 
             (frontend_fqn,)
         )
         count = cursor.fetchone()[0]
@@ -640,7 +618,7 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
             
             conn.execute(
                 """
-                INSERT OR REPLACE INTO machine_definition_catalog (
+                INSERT OR REPLACE INTO machine_definitions (
                     accession_id, fqn, name, description, plr_category,
                     machine_category, has_deck, manufacturer,
                     capabilities, compatible_backends, properties_json, created_at, updated_at,
@@ -669,34 +647,21 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
             instance_id = generate_uuid_from_fqn(f"instance:{fqn}")
             instance_name = f"Simulated {short_name}"
             
-            # First insert into assets table (parent)
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO assets (
-                    accession_id, asset_type, name, fqn, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    instance_id,
-                    "machine",
-                    instance_name,
-                    fqn,
-                    now,
-                    now,
-                )
-            )
-            
-            # Then insert into machines table (child)
+            # Insert directly into machines table (includes Asset fields)
             conn.execute(
                 """
                 INSERT OR REPLACE INTO machines (
-                    accession_id, machine_category, status, machine_definition_accession_id, 
+                    accession_id, name, asset_type, fqn,
+                    machine_category, status, machine_definition_accession_id, 
                     maintenance_enabled, maintenance_schedule_json, 
-                    location_label, connection_info, is_simulation_override
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    location_label, connection_info, is_simulation_override, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     instance_id,
+                    instance_name,
+                    "machine",
+                    fqn,
                     short_name,
                     "available",
                     accession_id,
@@ -704,7 +669,9 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
                     "{}",
                     "Virtual Lab",
                     safe_json_dumps({"backend": "simulated"}),
-                    1  # All browser-mode machines are simulated
+                    1,  # All browser-mode machines are simulated
+                    now,
+                    now,
                 )
             )
 

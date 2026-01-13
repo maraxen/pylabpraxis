@@ -22,21 +22,28 @@ export type MachineCreate = {
      */
     updated_at?: (string | null);
     /**
-     * An optional name for the record.
+     * Unique, human-readable name for the asset
      */
     name: string;
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
     /**
      * Type of asset, e.g., machine, resource, etc.
      */
     asset_type?: AssetType;
     /**
-     * Fully qualified name of the asset's class, if applicable.
+     * Fully qualified name (e.g., 'pylabrobot.resources.Plate')
      */
-    fqn?: (string | null);
+    fqn?: string;
     /**
      * Location of the asset in the lab.
      */
     location?: (string | null);
+    /**
+     * Category of the machine
+     */
     machine_category?: MachineCategoryEnum;
     description?: (string | null);
     manufacturer?: (string | null);
@@ -47,6 +54,9 @@ export type MachineCreate = {
      */
     location_label?: (string | null);
     installation_date?: (string | null);
+    /**
+     * Status of the machine
+     */
     status?: MachineStatusEnum;
     status_details?: (string | null);
     is_simulation_override?: (boolean | null);
@@ -68,5 +78,9 @@ export type MachineCreate = {
      * Record of last maintenance
      */
     last_maintenance_json?: (Record<string, any> | null);
+    resource_def_name?: (string | null);
+    resource_properties_json?: (Record<string, any> | null);
+    resource_initial_status?: (string | null);
+    resource_counterpart_accession_id?: (string | null);
 };
 

@@ -1,10 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
+import { ProtocolDefinitionsService } from '../../../core/api-generated/services/ProtocolDefinitionsService';
 import { ProtocolsService } from '../../../core/api-generated/services/ProtocolsService';
 import { ApiWrapperService } from '../../../core/services/api-wrapper.service';
-import { FunctionProtocolDefinitionResponse } from '../../../core/api-generated/models/FunctionProtocolDefinitionResponse';
+import { FunctionProtocolDefinitionRead } from '../../../core/api-generated/models/FunctionProtocolDefinitionRead';
 import { ProtocolRunRead } from '../../../core/api-generated/models/ProtocolRunRead';
+import { ProtocolDefinition } from '../models/protocol.models';
 
 @Injectable({
   providedIn: 'root'
@@ -14,8 +16,8 @@ export class ProtocolService {
   private http = inject(HttpClient);
   private readonly API_URL = '/api/v1';
 
-  getProtocols(): Observable<FunctionProtocolDefinitionResponse[]> {
-    return this.apiWrapper.wrap(ProtocolsService.getMultiApiV1ProtocolsDefinitionsGet());
+  getProtocols(): Observable<ProtocolDefinition[]> {
+    return this.apiWrapper.wrap(ProtocolDefinitionsService.getMultiApiV1ProtocolsDefinitionsGet()) as unknown as Observable<ProtocolDefinition[]>;
   }
 
   getRuns(): Observable<ProtocolRunRead[]> {
@@ -24,9 +26,9 @@ export class ProtocolService {
 
   // If uploading a file
   // NOTE: This endpoint is not yet in the generated API client
-  uploadProtocol(file: File): Observable<FunctionProtocolDefinitionResponse> {
+  uploadProtocol(file: File): Observable<FunctionProtocolDefinitionRead> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<FunctionProtocolDefinitionResponse>(`${this.API_URL}/protocols/upload`, formData);
+    return this.http.post<FunctionProtocolDefinitionRead>(`${this.API_URL}/protocols/upload`, formData);
   }
 }

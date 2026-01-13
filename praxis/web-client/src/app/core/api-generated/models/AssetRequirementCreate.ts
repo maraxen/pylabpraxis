@@ -21,11 +21,15 @@ export type AssetRequirementCreate = {
     /**
      * The name of the asset requirement
      */
-    name: string;
+    name?: string;
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
     /**
      * Type hint
      */
-    type_hint_str: string;
+    type_hint_str?: string;
     /**
      * Fully qualified name
      */

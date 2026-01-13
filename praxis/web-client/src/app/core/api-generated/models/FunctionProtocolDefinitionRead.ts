@@ -18,7 +18,11 @@ export type FunctionProtocolDefinitionRead = {
     /**
      * An optional name for the record.
      */
-    name: string;
+    name?: (string | null);
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
     /**
      * Fully qualified name
      */
@@ -28,9 +32,9 @@ export type FunctionProtocolDefinitionRead = {
      */
     version?: string;
     description?: (string | null);
-    source_file_path: string;
-    module_name: string;
-    function_name: string;
+    source_file_path?: string;
+    module_name?: string;
+    function_name?: string;
     is_top_level?: boolean;
     solo_execution?: boolean;
     preconfigure_deck?: boolean;

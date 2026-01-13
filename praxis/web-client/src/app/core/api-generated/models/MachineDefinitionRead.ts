@@ -19,7 +19,11 @@ export type MachineDefinitionRead = {
     /**
      * An optional name for the record.
      */
-    name: string;
+    name?: (string | null);
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
     /**
      * Fully qualified name
      */
@@ -35,7 +39,7 @@ export type MachineDefinitionRead = {
     /**
      * Category of the machine
      */
-    machine_category?: MachineCategoryEnum;
+    machine_category?: (MachineCategoryEnum | null);
     material?: (string | null);
     manufacturer?: (string | null);
     model?: (string | null);
@@ -54,13 +58,33 @@ export type MachineDefinitionRead = {
     /**
      * Whether this machine has a deck
      */
-    has_deck?: boolean;
+    has_deck?: (boolean | null);
     /**
      * PLR frontend class FQN
      */
     frontend_fqn?: (string | null);
+    /**
+     * Nominal volume in microliters
+     */
+    nominal_volume_ul?: (number | null);
     plr_definition_details_json?: (Record<string, any> | null);
     rotation_json?: (Record<string, any> | null);
     setup_method_json?: (Record<string, any> | null);
+    /**
+     * Hardware capabilities (channels, modules)
+     */
+    capabilities?: (Record<string, any> | null);
+    /**
+     * Compatible backend class FQNs
+     */
+    compatible_backends?: (Record<string, any> | null);
+    /**
+     * User-configurable capabilities schema
+     */
+    capabilities_config?: (Record<string, any> | null);
+    /**
+     * Connection parameters schema
+     */
+    connection_config?: (Record<string, any> | null);
 };
 

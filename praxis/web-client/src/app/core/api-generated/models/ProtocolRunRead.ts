@@ -19,7 +19,14 @@ export type ProtocolRunRead = {
     /**
      * An optional name for the record.
      */
-    name: string;
+    name?: (string | null);
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
+    /**
+     * Current status of the protocol run
+     */
     status?: ProtocolRunStatusEnum;
     /**
      * When the protocol run started
@@ -37,6 +44,10 @@ export type ProtocolRunRead = {
      * Duration in milliseconds
      */
     duration_ms?: (number | null);
+    top_level_protocol_definition_accession_id: string;
+    protocol_name?: (string | null);
+    started_at?: (string | null);
+    completed_at?: (string | null);
     input_parameters_json?: (Record<string, any> | null);
     resolved_assets_json?: (Record<string, any> | null);
     output_data_json?: (Record<string, any> | null);

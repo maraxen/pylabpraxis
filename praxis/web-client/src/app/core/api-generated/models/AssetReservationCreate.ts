@@ -23,7 +23,11 @@ export type AssetReservationCreate = {
     /**
      * An optional name for the record.
      */
-    name: string;
+    name?: (string | null);
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
     /**
      * When the asset was reserved
      */
@@ -37,7 +41,13 @@ export type AssetReservationCreate = {
      * Whether the reservation is currently active
      */
     is_active?: boolean;
+    /**
+     * Status of the reservation
+     */
     status?: AssetReservationStatusEnum;
+    /**
+     * Type of the reserved asset
+     */
     asset_type?: AssetType;
     asset_name: string;
     redis_lock_key: string;

@@ -6,7 +6,7 @@ import { ApiConfigService } from '../../../core/services/api-config.service';
 import { tap } from 'rxjs/operators';
 import { LoginRequest } from '../models/auth.models';
 import { LoginResponse } from '../../../core/api-generated/models/LoginResponse';
-import { UserResponse } from '../../../core/api-generated/models/UserResponse';
+import { UserRead } from '../../../core/api-generated/models/UserRead';
 
 @Injectable({
   providedIn: 'root'
@@ -33,7 +33,7 @@ export class AuthService {
     );
   }
 
-  getCurrentUser(): Observable<UserResponse> {
+  getCurrentUser(): Observable<UserRead> {
     return this.apiWrapper.wrap(AuthenticationService.getCurrentUserInfoApiV1AuthMeGet());
   }
 }

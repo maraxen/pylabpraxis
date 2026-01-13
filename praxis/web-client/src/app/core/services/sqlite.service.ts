@@ -502,7 +502,7 @@ export class SqliteService {
             const insertRun = db.prepare(`
                 INSERT INTO protocol_runs 
                 (accession_id, top_level_protocol_definition_accession_id, name, status, 
-                 created_at, updated_at, input_parameters_json, properties_json, started_at, completed_at)
+                 created_at, updated_at, input_parameters_json, properties_json, start_time, end_time)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 

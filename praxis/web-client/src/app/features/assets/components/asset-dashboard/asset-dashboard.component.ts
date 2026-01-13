@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { Subscription, forkJoin } from 'rxjs';
 import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 import { AssetService } from '../../services/asset.service';
@@ -19,8 +19,6 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
     MatButtonModule,
     MatCardModule,
     MatTooltipModule,
-    RouterLink,
-    RouterLink,
     NgxSkeletonLoaderModule
   ],
   template: `

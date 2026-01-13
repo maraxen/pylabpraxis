@@ -2,11 +2,12 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { WorkcellStatusEnum } from './WorkcellStatusEnum';
 /**
  * Schema for reading a Workcell (API response).
  */
 export type WorkcellRead = {
-    accession_id: string;
+    accession_id?: string;
     /**
      * The time the record was created.
      */
@@ -18,7 +19,15 @@ export type WorkcellRead = {
     /**
      * An optional name for the record.
      */
-    name: string;
+    name?: (string | null);
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
+    /**
+     * Fully qualified name
+     */
+    fqn?: (string | null);
     /**
      * Description of the workcell's purpose
      */
@@ -30,11 +39,17 @@ export type WorkcellRead = {
     /**
      * Current status of the workcell
      */
-    status?: string;
+    status?: WorkcellStatusEnum;
     /**
      * Timestamp of last state update
      */
     last_state_update_time?: (string | null);
+    /**
+     * Latest state of the workcell
+     */
     latest_state_json?: (Record<string, any> | null);
+    machines?: Array<any>;
+    decks?: Array<any>;
+    resources?: Array<any>;
 };
 

@@ -4,7 +4,7 @@ import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { environment } from '@env/environment';
 import { ReplOutput, ReplRuntime, CompletionItem, SignatureInfo, ReplacementVariable } from './repl-runtime.interface';
 import { BehaviorSubject, filter } from 'rxjs';
-import { ReplService } from './api-generated/services/ReplService';
+import { ReplService } from '../api-generated/services/ReplService';
 import { ApiWrapperService } from './api-wrapper.service';
 
 @Injectable({
@@ -95,7 +95,7 @@ export class PlaygroundRuntimeService implements ReplRuntime {
         this.socket$.next({ type: 'RESTART', id });
 
         return this.socket$.asObservable().pipe(
-            filter(msg => msg.id === id),
+            filter(msg => (msg as any).id === id),
             map(() => void 0)
         );
     }
@@ -116,10 +116,11 @@ export class PlaygroundRuntimeService implements ReplRuntime {
         const id = crypto.randomUUID();
         return new Promise((resolve) => {
             const subscription = this.socket$?.asObservable().subscribe(msg => {
-                if (msg.id === id && msg.type === 'COMPLETION_RESULT') {
+                const m = msg as any;
+                if (m.id === id && m.type === 'COMPLETION_RESULT') {
                     subscription?.unsubscribe();
                     // Backend may return either string[] or CompletionItem[]
-                    const matches = msg.payload.matches || [];
+                    const matches = m.payload.matches || [];
                     const items = matches.map((m: string | CompletionItem) =>
                         typeof m === 'string' ? { name: m, type: 'unknown' } : m
                     );
@@ -147,9 +148,10 @@ export class PlaygroundRuntimeService implements ReplRuntime {
         const id = crypto.randomUUID();
         return new Promise((resolve) => {
             const subscription = this.socket$?.asObservable().subscribe(msg => {
-                if (msg.id === id && msg.type === 'SIGNATURE_RESULT') {
+                const m = msg as any;
+                if (m.id === id && m.type === 'SIGNATURE_RESULT') {
                     subscription?.unsubscribe();
-                    resolve(msg.payload.signatures || []);
+                    resolve(m.payload.signatures || []);
                 }
             });
 

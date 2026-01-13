@@ -6,7 +6,10 @@
  * Schema for reading a ResourceDefinition (API response).
  */
 export type ResourceDefinitionRead = {
-    accession_id: string;
+    /**
+     * The unique accession ID of the record.
+     */
+    accession_id?: string;
     /**
      * The time the record was created.
      */
@@ -18,7 +21,11 @@ export type ResourceDefinitionRead = {
     /**
      * An optional name for the record.
      */
-    name: string;
+    name?: (string | null);
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
     /**
      * Fully qualified name
      */

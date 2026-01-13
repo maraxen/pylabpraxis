@@ -9,8 +9,6 @@ import {
   computed,
   signal,
 } from '@angular/core';
-import { NgClass } from '@angular/common';
-import { Grid, GridRow, GridCell, GridCellWidget } from '@angular/aria/grid';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -19,11 +17,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   selector: 'app-well-selector',
   standalone: true,
   imports: [
-    Grid,
-    GridRow,
-    GridCell,
-    GridCellWidget,
-    NgClass,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,

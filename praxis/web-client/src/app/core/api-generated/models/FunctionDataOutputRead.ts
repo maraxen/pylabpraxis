@@ -20,15 +20,19 @@ export type FunctionDataOutputRead = {
     /**
      * An optional name for the record.
      */
-    name: string;
+    name?: (string | null);
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
     /**
      * Type of data output
      */
-    data_type: DataOutputTypeEnum;
+    data_type?: DataOutputTypeEnum;
     /**
      * Unique key within the function call
      */
-    data_key: string;
+    data_key?: string;
     /**
      * Spatial context of the data
      */
@@ -69,9 +73,10 @@ export type FunctionDataOutputRead = {
      * When the measurement was captured
      */
     measurement_timestamp?: (string | null);
-    data_json?: (Record<string, any> | null);
+    data_value_json?: (Record<string, any> | null);
     data_value_numeric?: (number | null);
     data_value_text?: (string | null);
+    data_value_binary?: (Blob | null);
     function_call_log_accession_id: string;
     protocol_run_accession_id: string;
     resource_accession_id?: (string | null);

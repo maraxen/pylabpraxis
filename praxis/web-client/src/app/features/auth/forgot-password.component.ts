@@ -1,6 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
 
-import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
@@ -10,7 +9,6 @@ import { environment } from '../../../environments/environment';
   selector: 'app-forgot-password',
   standalone: true,
   imports: [
-    RouterLink,
     MatCardModule,
     MatProgressSpinnerModule,
     MatIconModule

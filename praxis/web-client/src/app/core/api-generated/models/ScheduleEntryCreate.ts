@@ -22,7 +22,11 @@ export type ScheduleEntryCreate = {
     /**
      * An optional name for the record.
      */
-    name: string;
+    name?: (string | null);
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
     status?: ScheduleStatusEnum;
     /**
      * Scheduled start time
@@ -47,7 +51,7 @@ export type ScheduleEntryCreate = {
     /**
      * Required asset count
      */
-    required_asset_count?: (number | null);
+    required_asset_count?: number;
     /**
      * User parameters
      */

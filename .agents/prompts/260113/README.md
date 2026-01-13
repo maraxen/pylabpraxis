@@ -16,11 +16,11 @@ This batch addresses the **29 TypeScript compilation errors** and **17 warnings*
 
 | # | Prompt | Priority | Complexity | Status |
 |:--|:-------|:---------|:-----------|:-------|
-| 1 | [P1_01_schema_type_alignment.md](./P1_01_schema_type_alignment.md) | P1 | Low | 🟢 Not Started |
-| 2 | [P1_02_api_client_imports.md](./P1_02_api_client_imports.md) | P1 | Low | 🟢 Not Started |
+| 1 | [P1_01_schema_type_alignment.md](./P1_01_schema_type_alignment.md) | P1 | Low | 🟢 Complete |
+| 2 | [P1_02_api_client_imports.md](./P1_02_api_client_imports.md) | P1 | Low | 🟢 Complete |
 | 3 | [P1_03_service_updates.md](./P1_03_service_updates.md) | P1 | Medium | 🟢 Complete |
-| 4 | [P1_04_component_updates.md](./P1_04_component_updates.md) | P1 | Medium | 🟢 Not Started |
-| 5 | [P1_05_cleanup_and_sass.md](./P1_05_cleanup_and_sass.md) | P1 | Low | 🟢 Not Started |
+| 4 | [P1_04_component_updates.md](./P1_04_component_updates.md) | P1 | Medium | 🟢 Complete |
+| 5 | [P1_05_cleanup_and_sass.md](./P1_05_cleanup_and_sass.md) | P1 | Low | 🟢 Complete |
 
 ---
 

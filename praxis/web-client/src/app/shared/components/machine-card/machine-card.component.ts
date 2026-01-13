@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Machine } from '../../../features/assets/models/asset.models';
-import { MachineCompatibility } from '../../../features/run-protocol/components/machine-selection/machine-selection.component';
+import { MachineCompatibility } from '../../../features/run-protocol/models/machine-compatibility.models';
 import { HardwareBadgeComponent } from '../hardware-badge/hardware-badge.component';
 import { CommonModule } from '@angular/common';
 

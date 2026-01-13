@@ -20,8 +20,13 @@ export type MachineDefinitionUpdate = {
     size_z_mm?: (number | null);
     has_deck?: (boolean | null);
     frontend_fqn?: (string | null);
+    nominal_volume_ul?: (number | null);
     plr_definition_details_json?: (Record<string, any> | null);
     rotation_json?: (Record<string, any> | null);
     setup_method_json?: (Record<string, any> | null);
+    capabilities?: (Record<string, any> | null);
+    compatible_backends?: (Record<string, any> | null);
+    capabilities_config?: (Record<string, any> | null);
+    connection_config?: (Record<string, any> | null);
 };
 

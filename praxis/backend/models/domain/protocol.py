@@ -406,6 +406,13 @@ class FunctionProtocolDefinitionRead(FunctionProtocolDefinitionBase):
   """Schema for reading a FunctionProtocolDefinition."""
 
   accession_id: uuid.UUID
+  parameters: list[ParameterDefinitionRead] = []
+  assets: list[AssetRequirementRead] = []
+  tags: dict[str, Any] | list[str] | None = None
+  hardware_requirements_json: dict[str, Any] | None = None
+  inferred_requirements_json: list[Any] | None = None
+  failure_modes_json: list[Any] | None = None
+  simulation_result_json: dict[str, Any] | None = None
 
 
 class FunctionProtocolDefinitionUpdate(SQLModel):
@@ -441,7 +448,9 @@ class ProtocolRun(ProtocolRunBase, table=True):
 
   status: ProtocolRunStatusEnum = Field(
     default=ProtocolRunStatusEnum.PENDING,
-    sa_column=Column(SAEnum(ProtocolRunStatusEnum), default=ProtocolRunStatusEnum.PENDING, index=True),
+    sa_column=Column(
+      SAEnum(ProtocolRunStatusEnum), default=ProtocolRunStatusEnum.PENDING, index=True
+    ),
   )
 
   input_parameters_json: dict[str, Any] | None = Field(
@@ -477,10 +486,22 @@ class ProtocolRun(ProtocolRunBase, table=True):
     default=None, sa_type=JsonVariant, description="User info"
   )
 
-  # Foreign keys
   top_level_protocol_definition_accession_id: uuid.UUID = Field(
     foreign_key="function_protocol_definitions.accession_id", index=True
   )
+
+  @property
+  def protocol_name(self) -> str | None:
+    return self.top_level_protocol_definition.name if self.top_level_protocol_definition else None
+
+  @property
+  def started_at(self) -> datetime | None:
+    return self.start_time
+
+  @property
+  def completed_at(self) -> datetime | None:
+    return self.end_time
+
   previous_accession_id: uuid.UUID | None = Field(
     default=None, foreign_key="protocol_runs.accession_id", index=True
   )
@@ -515,6 +536,10 @@ class ProtocolRunRead(ProtocolRunBase):
   """Schema for reading a ProtocolRun (API response)."""
 
   accession_id: uuid.UUID
+  top_level_protocol_definition_accession_id: uuid.UUID
+  protocol_name: str | None = None
+  started_at: datetime | None = None
+  completed_at: datetime | None = None
   input_parameters_json: dict[str, Any] | None = None
   resolved_assets_json: dict[str, Any] | None = None
   output_data_json: dict[str, Any] | None = None

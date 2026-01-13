@@ -2,6 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { PositioningConfig } from './PositioningConfig';
 /**
  * Schema for reading a DeckDefinition (API response).
  */
@@ -16,13 +17,25 @@ export type DeckDefinitionRead = {
      */
     updated_at?: (string | null);
     /**
-     * An optional name for the record.
+     * Human readable name for the deck type
      */
-    name: string;
+    name?: string;
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
     /**
      * Fully qualified name
      */
     fqn: string;
+    /**
+     * Version string for the deck type
+     */
+    version?: (string | null);
+    /**
+     * Positioning configuration for the deck type
+     */
+    positioning_config?: (PositioningConfig | null);
     /**
      * Description of the deck type
      */

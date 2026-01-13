@@ -35,61 +35,54 @@ After the backend migration to SQLModel unified domain models, the frontend Angu
 
 Update `schema.ts` or add aliases to bridge naming gaps.
 
-- [ ] Add `Asset` interface to schema.ts (or confirm inheritance from Machine/Resource/Deck)
-- [ ] Add type aliases: `MachineDefinitionCatalog = MachineDefinition`, `ResourceDefinitionCatalog = ResourceDefinition`
-- [ ] Update `repositories.ts` imports to use correct type names
-- [ ] Audit all `Record<string, unknown>` fields that should be `string` (accession_id types)
+- [x] Add `Asset` interface to schema.ts (or confirm inheritance from Machine/Resource/Deck)
+- [x] Add type aliases: `MachineDefinitionCatalog = MachineDefinition`, `ResourceDefinitionCatalog = ResourceDefinition`
+- [x] Update `repositories.ts` imports to use correct type names
+- [x] Audit all `Record<string, unknown>` fields that should be `string` (accession_id types)
 
-### Phase 2: API Client Regeneration Audit
+### Phase 2: API Client Audit
 
-Verify OpenAPI client generation captured all endpoints and models.
+- [x] Confirm `UserResponse` is renamed to `UserRead`
+- [x] Confirm `ReplService` import paths follow project depth conventions
+- [x] Audit for any missing interface exports in generated models
 
-- [ ] Confirm `ReplService` exists in `api-generated/services/` or regenerate
-- [ ] Confirm `UserResponse` or equivalent exists in `api-generated/models/`
-- [ ] Check if `FunctionProtocolDefinitionResponse` is generated (or renamed)
-- [ ] Verify `ProtocolRunRead` includes all fields used by components
+### Phase 3: Service Layer JSONB Alignment
 
-### Phase 3: Service Layer Updates
-
-Update services to use new type names and property paths.
-
-- [ ] `playground-runtime.service.ts`: Fix ReplService import, type `msg` properly
-- [x] `simulation-results.service.ts`: Update property access (`inferred_requirements_json`, `failure_modes_json`, `simulation_result_json`)
-- [ ] `auth.service.ts`: Fix UserResponse import path
-- [ ] `asset.service.ts`: Fix ResourceDefinitionCatalog import
-- [ ] `protocol.service.ts`: Fix FunctionProtocolDefinitionResponse import
+- [x] Update `simulation-results.service.ts` to use `_json` field suffixes
+- [x] Add type assertions for `_json` fields where generator lacks explicit types
+- [x] Verify no regression in browser-mode simulation data loading
 
 ### Phase 4: Component Updates
 
 Update components to align with new schema property names.
 
-- [ ] `data-visualization.component.ts`: Update ProtocolRunRead property access
+- [x] `data-visualization.component.ts`: Update ProtocolRunRead property access
   - `protocol_name` → determine new field or derived value
   - `started_at` → `start_time`
   - `completed_at` → `end_time`
   - Handle nullable Date arguments properly
-- [ ] `run-protocol.component.ts`: Fix `MachineCompatibility[]` type mapping
-- [ ] `hardware-discovery-dialog`: Fix property access on empty object type
+- [x] `run-protocol.component.ts`: Fix `MachineCompatibility[]` type mapping
+- [x] `hardware-discovery-dialog`: Fix property access on empty object type
 
 ### Phase 5: Cleanup Unused Imports (Warnings)
 
 Remove or fix unused component imports in Angular files.
 
-- [ ] `AssetDashboardComponent`: Remove unused RouterLink import
-- [ ] `ForgotPasswordComponent`: Remove unused RouterLink import
-- [ ] `LoginComponent`: Remove unused RouterLink import
-- [ ] `RegisterComponent`: Remove unused RouterLink import
-- [ ] `RunDetailComponent`: Remove unused StateDisplayComponent import
-- [ ] `HomeComponent`: Remove unused MachineCardComponent import
-- [ ] `WellSelectorComponent`: Remove unused Grid/GridRow/GridCell/NgClass imports
-- [ ] `GuidedSetupComponent`: Remove unnecessary optional chain
+- [x] `AssetDashboardComponent`: Remove unused RouterLink import
+- [x] `ForgotPasswordComponent`: Remove unused RouterLink import
+- [x] `LoginComponent`: Remove unused RouterLink import
+- [x] `RegisterComponent`: Remove unused RouterLink import
+- [x] `RunDetailComponent`: Remove unused StateDisplayComponent import
+- [x] `HomeComponent`: Remove unused MachineCardComponent import
+- [x] `WellSelectorComponent`: Remove unused Grid/GridRow/GridCell/NgClass imports
+- [x] `GuidedSetupComponent`: Remove unnecessary optional chain
 
 ### Phase 6: Sass Migration (Warnings)
 
 Migrate from deprecated `@import` to `@use` syntax.
 
-- [ ] Update `src/styles.scss` to use `@use` instead of `@import`
-- [ ] Update any component-level SCSS files using `@import`
+- [x] Update `src/styles.scss` to use `@use` instead of `@import`
+- [x] Update any component-level SCSS files using `@import`
 
 ### Phase 7: Verification
 

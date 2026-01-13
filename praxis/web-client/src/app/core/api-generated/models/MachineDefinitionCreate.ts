@@ -22,7 +22,11 @@ export type MachineDefinitionCreate = {
     /**
      * An optional name for the record.
      */
-    name: string;
+    name?: (string | null);
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
     /**
      * Fully qualified name
      */
@@ -38,7 +42,7 @@ export type MachineDefinitionCreate = {
     /**
      * Category of the machine
      */
-    machine_category?: MachineCategoryEnum;
+    machine_category?: (MachineCategoryEnum | null);
     material?: (string | null);
     manufacturer?: (string | null);
     model?: (string | null);
@@ -57,10 +61,42 @@ export type MachineDefinitionCreate = {
     /**
      * Whether this machine has a deck
      */
-    has_deck?: boolean;
+    has_deck?: (boolean | null);
     /**
      * PLR frontend class FQN
      */
     frontend_fqn?: (string | null);
+    /**
+     * Nominal volume in microliters
+     */
+    nominal_volume_ul?: (number | null);
+    /**
+     * Additional PyLabRobot definition details
+     */
+    plr_definition_details_json?: (Record<string, any> | null);
+    /**
+     * PLR rotation object
+     */
+    rotation_json?: (Record<string, any> | null);
+    /**
+     * Setup method configuration
+     */
+    setup_method_json?: (Record<string, any> | null);
+    /**
+     * Hardware capabilities (channels, modules)
+     */
+    capabilities?: (Record<string, any> | null);
+    /**
+     * Compatible backend class FQNs
+     */
+    compatible_backends?: (Record<string, any> | null);
+    /**
+     * User-configurable capabilities schema
+     */
+    capabilities_config?: (Record<string, any> | null);
+    /**
+     * Connection parameters schema
+     */
+    connection_config?: (Record<string, any> | null);
 };
 

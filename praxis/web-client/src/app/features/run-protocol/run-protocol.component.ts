@@ -27,7 +27,8 @@ import { WellSelectorDialogComponent, WellSelectorDialogData, WellSelectorDialog
 import { MachineStatus } from '../assets/models/asset.models';
 import { DeckSetupWizardComponent } from './components/deck-setup-wizard/deck-setup-wizard.component';
 import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component'; // Import added
-import { MachineCompatibility, MachineSelectionComponent } from './components/machine-selection/machine-selection.component';
+import { MachineSelectionComponent } from './components/machine-selection/machine-selection.component';
+import { MachineCompatibility } from './models/machine-compatibility.models';
 import { ParameterConfigComponent } from './components/parameter-config/parameter-config.component';
 import { ProtocolCardSkeletonComponent } from './components/protocol-card/protocol-card-skeleton.component';
 import { ProtocolCardComponent } from './components/protocol-card/protocol-card.component';

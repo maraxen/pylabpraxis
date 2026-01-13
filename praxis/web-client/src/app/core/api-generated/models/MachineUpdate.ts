@@ -2,11 +2,13 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { AssetType } from './AssetType';
 import type { MachineStatusEnum } from './MachineStatusEnum';
 /**
  * Schema for updating a Machine (partial update).
  */
 export type MachineUpdate = {
+    asset_type?: (AssetType | null);
     name?: (string | null);
     fqn?: (string | null);
     location?: (string | null);

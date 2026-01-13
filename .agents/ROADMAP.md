@@ -1,6 +1,6 @@
 # Praxis Development Roadmap
 
-**Last Updated**: 2026-01-12
+**Last Updated**: 2026-01-13
 **Purpose**: High-level strategic phases and milestones for release planning.
 
 ---
@@ -31,12 +31,16 @@
   - Pause/resume/cancel flows
 - [x] **Playground Fully Operational**
   - [x] Loads without manual intervention (no reload kernel / dismiss loading)
-  - [ ] Interactive hardware control working (In Progress)
+  - [🟡] Interactive hardware control working (In Progress)
   - [x] Asset inventory integration functional
 - [ ] **Protocol Workflow Complete**
   - [x] Well selection triggering correctly
   - Asset filtering to appropriate PLR classes
-  - End-to-end protocol run flow
+  - [x] End-to-end protocol run flow
+- [x] **Model Unification (SQLModel)**
+  - [x] Integrated SQLModel for unified domain models
+  - [x] Removed legacy ORM/Pydantic duplication
+  - [x] Implemented Soft Foreign Keys for Table-Per-Class inheritance
 
 #### Bug Fixes Required (Prerequisites)
 

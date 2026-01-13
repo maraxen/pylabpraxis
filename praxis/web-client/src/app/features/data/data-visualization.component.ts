@@ -614,8 +614,8 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
     const runs = this.filteredRuns();
     const q = this.searchQuery().toLowerCase();
     if (!q) return runs;
-    return runs.filter(r => 
-      r.protocolName.toLowerCase().includes(q) || 
+    return runs.filter(r =>
+      r.protocolName.toLowerCase().includes(q) ||
       r.id.toLowerCase().includes(q) ||
       r.status.toLowerCase().includes(q)
     );
@@ -641,23 +641,27 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
         if (runs && runs.length > 0) {
           // Map backend/SQLite run objects to MockRun interface for visualization
           const mappedRuns: MockRun[] = runs.map(r => {
-            const name = r.name || r.protocol_name || 'Unknown Protocol';
+            // Use run name; fallback to 'Unknown Protocol' (protocol_name was never a direct field)
+            const name = r.name || 'Unknown Protocol';
             // Infer well count based on protocol name/type
             let wellCount = 96;
             if (name.includes('Simple') || name.includes('Transfer')) wellCount = 12;
-            
+
             return {
               id: r.accession_id,
               protocolName: name,
-              protocolId: r.top_level_protocol_definition_accession_id || r.protocol_definition_accession_id || 'unknown',
+              // top_level_protocol_definition_accession_id is the correct FK
+              protocolId: (r as any).top_level_protocol_definition_accession_id || 'unknown',
               status: (r.status || 'failed').toLowerCase() as 'completed' | 'running' | 'failed',
-              startTime: r.started_at ? new Date(r.started_at) : new Date(r.created_at),
-              endTime: r.completed_at ? new Date(r.completed_at) : undefined,
-              wellCount: wellCount, 
+              // Use start_time instead of started_at
+              startTime: r.start_time ? new Date(r.start_time) : (r.created_at ? new Date(r.created_at) : new Date()),
+              // Use end_time instead of completed_at
+              endTime: r.end_time ? new Date(r.end_time) : undefined,
+              wellCount: wellCount,
               totalVolume: 1000 // Default for seeded runs
             };
           });
-          
+
           this.runs.set(mappedRuns);
 
           // Auto-select first run
@@ -695,7 +699,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
       ];
       this.protocols.set(fallbackProtocols);
     }
-    
+
     const mockRuns = generateMockRuns(this.protocols());
     this.runs.set(mockRuns);
     if (mockRuns.length > 0) {
@@ -736,7 +740,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
     // Reset to all runs
     const allRuns = this.runs();
     if (allRuns.length > 0) {
-        this.selectRun(allRuns[0]);
+      this.selectRun(allRuns[0]);
     }
   }
 

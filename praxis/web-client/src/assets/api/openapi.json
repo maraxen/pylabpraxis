@@ -5807,12 +5807,27 @@
           "name": {
             "type": "string",
             "title": "Name",
-            "description": "The name of the asset requirement"
+            "description": "The name of the asset requirement",
+            "default": ""
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "type_hint_str": {
             "type": "string",
             "title": "Type Hint Str",
-            "description": "Type hint"
+            "description": "Type hint",
+            "default": ""
           },
           "fqn": {
             "anyOf": [
@@ -5824,7 +5839,8 @@
               }
             ],
             "title": "Fqn",
-            "description": "Fully qualified name"
+            "description": "Fully qualified name",
+            "default": ""
           },
           "actual_type_str": {
             "anyOf": [
@@ -5836,7 +5852,8 @@
               }
             ],
             "title": "Actual Type Str",
-            "description": "Actual type"
+            "description": "Actual type",
+            "default": ""
           },
           "optional": {
             "type": "boolean",
@@ -5884,8 +5901,6 @@
         },
         "type": "object",
         "required": [
-          "name",
-          "type_hint_str",
           "protocol_definition_accession_id"
         ],
         "title": "AssetRequirementCreate",
@@ -5919,9 +5934,29 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "reserved_at": {
             "anyOf": [
@@ -5969,10 +6004,12 @@
           },
           "status": {
             "$ref": "#/components/schemas/AssetReservationStatusEnum",
+            "description": "Status of the reservation",
             "default": "pending"
           },
           "asset_type": {
             "$ref": "#/components/schemas/AssetType",
+            "description": "Type of the reserved asset",
             "default": "GENERIC_ASSET"
           },
           "asset_name": {
@@ -6040,7 +6077,6 @@
         },
         "type": "object",
         "required": [
-          "name",
           "asset_name",
           "redis_lock_key",
           "asset_accession_id",
@@ -6719,9 +6755,28 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
-            "title": "Name",
-            "description": "An optional name for the record."
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "asset_type": {
             "$ref": "#/components/schemas/AssetType",
@@ -6738,7 +6793,7 @@
               }
             ],
             "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable."
+            "description": "Fully qualified name"
           },
           "location": {
             "anyOf": [
@@ -6792,10 +6847,18 @@
             "title": "Current Deck Position Name",
             "description": "Current deck position"
           },
-          "deck_type_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Deck Type Id"
+          "resource_definition_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Definition Accession Id",
+            "description": "Reference to resource definition catalog"
           },
           "parent_accession_id": {
             "anyOf": [
@@ -6807,9 +6870,10 @@
                 "type": "null"
               }
             ],
-            "title": "Parent Accession Id"
+            "title": "Parent Accession Id",
+            "description": "Parent resource for hierarchies"
           },
-          "resource_definition_accession_id": {
+          "workcell_accession_id": {
             "anyOf": [
               {
                 "type": "string",
@@ -6819,7 +6883,21 @@
                 "type": "null"
               }
             ],
-            "title": "Resource Definition Accession Id"
+            "title": "Workcell Accession Id",
+            "description": "Workcell this resource belongs to"
+          },
+          "plr_state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr State",
+            "description": "PyLabRobot state blob for PLR devices"
           },
           "machine_id": {
             "anyOf": [
@@ -6833,23 +6911,21 @@
             ],
             "title": "Machine Id"
           },
-          "plr_state": {
+          "deck_type_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "format": "uuid"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Plr State"
+            "title": "Deck Type Id"
           }
         },
+        "additionalProperties": true,
         "type": "object",
-        "required": [
-          "name",
-          "deck_type_id"
-        ],
         "title": "DeckCreate",
         "description": "Schema for creating a Deck."
       },
@@ -6883,12 +6959,49 @@
           "name": {
             "type": "string",
             "title": "Name",
-            "description": "An optional name for the record."
+            "description": "Human readable name for the deck type",
+            "default": ""
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "fqn": {
             "type": "string",
             "title": "Fqn",
             "description": "Fully qualified name"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version",
+            "description": "Version string for the deck type"
+          },
+          "positioning_config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PositioningConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Positioning configuration for the deck type"
           },
           "description": {
             "anyOf": [
@@ -6949,11 +7062,38 @@
             ],
             "title": "Default Size Z Mm",
             "description": "Default size in Z dimension (mm)"
+          },
+          "position_definitions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DeckPositionDefinitionCreate"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Definitions"
+          },
+          "positions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DeckPositionDefinitionCreate"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Positions"
           }
         },
         "type": "object",
         "required": [
-          "name",
           "fqn"
         ],
         "title": "DeckDefinitionCreate",
@@ -6988,12 +7128,49 @@
           "name": {
             "type": "string",
             "title": "Name",
-            "description": "An optional name for the record."
+            "description": "Human readable name for the deck type",
+            "default": ""
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "fqn": {
             "type": "string",
             "title": "Fqn",
             "description": "Fully qualified name"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version",
+            "description": "Version string for the deck type"
+          },
+          "positioning_config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PositioningConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Positioning configuration for the deck type"
           },
           "description": {
             "anyOf": [
@@ -7059,7 +7236,6 @@
         "type": "object",
         "required": [
           "accession_id",
-          "name",
           "fqn"
         ],
         "title": "DeckDefinitionRead",
@@ -7149,12 +7325,196 @@
         "title": "DeckDefinitionUpdate",
         "description": "Schema for updating a DeckDefinition (partial update)."
       },
+      "DeckPositionDefinitionCreate": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
+          },
+          "position_accession_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Accession Id",
+            "description": "Human-readable identifier for the position (e.g., 'A1', 'trash_bin')"
+          },
+          "nominal_x_mm": {
+            "type": "number",
+            "title": "Nominal X Mm",
+            "description": "X-coordinate of the position's center",
+            "default": 0.0
+          },
+          "nominal_y_mm": {
+            "type": "number",
+            "title": "Nominal Y Mm",
+            "description": "Y-coordinate of the position's center",
+            "default": 0.0
+          },
+          "nominal_z_mm": {
+            "type": "number",
+            "title": "Nominal Z Mm",
+            "description": "Z-coordinate of the position's center",
+            "default": 0.0
+          },
+          "pylabrobot_position_type_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pylabrobot Position Type Name",
+            "description": "PyLabRobot position type"
+          },
+          "accepts_tips": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepts Tips",
+            "description": "Whether position accepts tips"
+          },
+          "accepts_plates": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepts Plates",
+            "description": "Whether position accepts plates"
+          },
+          "accepts_tubes": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepts Tubes",
+            "description": "Whether position accepts tubes"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "description": "Additional notes for the position"
+          },
+          "deck_type_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Type Id"
+          },
+          "deck_type_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Type Accession Id"
+          },
+          "compatible_resource_fqns": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compatible Resource Fqns"
+          }
+        },
+        "type": "object",
+        "title": "DeckPositionDefinitionCreate",
+        "description": "Schema for creating a DeckPositionDefinition."
+      },
       "DeckRead": {
         "properties": {
           "accession_id": {
             "type": "string",
             "format": "uuid",
-            "title": "Accession Id"
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
           },
           "created_at": {
             "type": "string",
@@ -7178,7 +7538,20 @@
           "name": {
             "type": "string",
             "title": "Name",
-            "description": "An optional name for the record."
+            "description": "Unique, human-readable name for the asset"
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "asset_type": {
             "$ref": "#/components/schemas/AssetType",
@@ -7195,7 +7568,7 @@
               }
             ],
             "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable."
+            "description": "Fully qualified name"
           },
           "location": {
             "anyOf": [
@@ -7248,11 +7621,99 @@
             ],
             "title": "Current Deck Position Name",
             "description": "Current deck position"
+          },
+          "resource_definition_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Definition Accession Id",
+            "description": "Reference to resource definition catalog"
+          },
+          "parent_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Accession Id",
+            "description": "Parent resource for hierarchies"
+          },
+          "workcell_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workcell Accession Id",
+            "description": "Workcell this resource belongs to"
+          },
+          "plr_state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr State",
+            "description": "PyLabRobot state blob for PLR devices"
+          },
+          "machine_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Machine Id"
+          },
+          "deck_type_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Type Id"
+          },
+          "deck_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Accession Id"
           }
         },
+        "additionalProperties": true,
         "type": "object",
         "required": [
-          "accession_id",
           "name"
         ],
         "title": "DeckRead",
@@ -7260,6 +7721,16 @@
       },
       "DeckUpdate": {
         "properties": {
+          "asset_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssetType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "anyOf": [
               {
@@ -7270,6 +7741,64 @@
               }
             ],
             "title": "Name"
+          },
+          "fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "plr_state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr State"
+          },
+          "plr_definition": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Definition"
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json"
           },
           "status": {
             "anyOf": [
@@ -7291,6 +7820,18 @@
               }
             ],
             "title": "Parent Machine Accession Id"
+          },
+          "machine_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Machine Id"
           }
         },
         "type": "object",
@@ -7492,24 +8033,46 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
           },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
+          },
           "data_type": {
             "$ref": "#/components/schemas/DataOutputTypeEnum",
-            "description": "Type of data output"
+            "description": "Type of data output",
+            "default": "unknown"
           },
           "data_key": {
             "type": "string",
             "maxLength": 255,
             "title": "Data Key",
-            "description": "Unique key within the function call"
+            "description": "Unique key within the function call",
+            "default": ""
           },
           "spatial_context": {
             "$ref": "#/components/schemas/SpatialContextEnum",
             "description": "Spatial context of the data",
-            "default": "unknown"
+            "default": "global"
           },
           "spatial_coordinates_json": {
             "anyOf": [
@@ -7705,6 +8268,18 @@
             ],
             "title": "Data Value Text"
           },
+          "data_value_binary": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "binary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Value Binary"
+          },
           "derived_from_data_output_accession_id": {
             "anyOf": [
               {
@@ -7720,9 +8295,6 @@
         },
         "type": "object",
         "required": [
-          "name",
-          "data_type",
-          "data_key",
           "function_call_log_accession_id",
           "protocol_run_accession_id"
         ],
@@ -7756,24 +8328,46 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
           },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
+          },
           "data_type": {
             "$ref": "#/components/schemas/DataOutputTypeEnum",
-            "description": "Type of data output"
+            "description": "Type of data output",
+            "default": "unknown"
           },
           "data_key": {
             "type": "string",
             "maxLength": 255,
             "title": "Data Key",
-            "description": "Unique key within the function call"
+            "description": "Unique key within the function call",
+            "default": ""
           },
           "spatial_context": {
             "$ref": "#/components/schemas/SpatialContextEnum",
             "description": "Spatial context of the data",
-            "default": "unknown"
+            "default": "global"
           },
           "spatial_coordinates_json": {
             "anyOf": [
@@ -7889,7 +8483,7 @@
             "title": "Measurement Timestamp",
             "description": "When the measurement was captured"
           },
-          "data_json": {
+          "data_value_json": {
             "anyOf": [
               {
                 "additionalProperties": true,
@@ -7899,7 +8493,7 @@
                 "type": "null"
               }
             ],
-            "title": "Data Json"
+            "title": "Data Value Json"
           },
           "data_value_numeric": {
             "anyOf": [
@@ -7922,6 +8516,18 @@
               }
             ],
             "title": "Data Value Text"
+          },
+          "data_value_binary": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "binary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Value Binary"
           },
           "function_call_log_accession_id": {
             "type": "string",
@@ -7985,9 +8591,6 @@
         "type": "object",
         "required": [
           "accession_id",
-          "name",
-          "data_type",
-          "data_key",
           "function_call_log_accession_id",
           "protocol_run_accession_id"
         ],
@@ -8017,7 +8620,7 @@
             ],
             "title": "File Path"
           },
-          "data_json": {
+          "data_value_json": {
             "anyOf": [
               {
                 "additionalProperties": true,
@@ -8027,7 +8630,7 @@
                 "type": "null"
               }
             ],
-            "title": "Data Json"
+            "title": "Data Value Json"
           },
           "data_quality_score": {
             "anyOf": [
@@ -8114,9 +8717,29 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "fqn": {
             "type": "string",
@@ -8142,15 +8765,18 @@
           },
           "source_file_path": {
             "type": "string",
-            "title": "Source File Path"
+            "title": "Source File Path",
+            "default": ""
           },
           "module_name": {
             "type": "string",
-            "title": "Module Name"
+            "title": "Module Name",
+            "default": ""
           },
           "function_name": {
             "type": "string",
-            "title": "Function Name"
+            "title": "Function Name",
+            "default": ""
           },
           "is_top_level": {
             "type": "boolean",
@@ -8326,6 +8952,12 @@
           "tags": {
             "anyOf": [
               {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
                 "additionalProperties": true,
                 "type": "object"
               },
@@ -8391,15 +9023,33 @@
               }
             ],
             "title": "Setup Instructions Json"
+          },
+          "source_repository_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Repository Name"
+          },
+          "file_system_source_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File System Source Name"
           }
         },
         "type": "object",
         "required": [
-          "name",
-          "fqn",
-          "source_file_path",
-          "module_name",
-          "function_name"
+          "fqn"
         ],
         "title": "FunctionProtocolDefinitionCreate",
         "description": "Schema for creating a FunctionProtocolDefinition."
@@ -8431,9 +9081,29 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "fqn": {
             "type": "string",
@@ -8459,15 +9129,18 @@
           },
           "source_file_path": {
             "type": "string",
-            "title": "Source File Path"
+            "title": "Source File Path",
+            "default": ""
           },
           "module_name": {
             "type": "string",
-            "title": "Module Name"
+            "title": "Module Name",
+            "default": ""
           },
           "function_name": {
             "type": "string",
-            "title": "Function Name"
+            "title": "Function Name",
+            "default": ""
           },
           "is_top_level": {
             "type": "boolean",
@@ -8644,11 +9317,7 @@
         "type": "object",
         "required": [
           "accession_id",
-          "name",
-          "fqn",
-          "source_file_path",
-          "module_name",
-          "function_name"
+          "fqn"
         ],
         "title": "FunctionProtocolDefinitionRead",
         "description": "Schema for reading a FunctionProtocolDefinition."
@@ -8854,7 +9523,20 @@
           "name": {
             "type": "string",
             "title": "Name",
-            "description": "An optional name for the record."
+            "description": "Unique, human-readable name for the asset"
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "asset_type": {
             "$ref": "#/components/schemas/AssetType",
@@ -8862,16 +9544,10 @@
             "default": "GENERIC_ASSET"
           },
           "fqn": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable."
+            "description": "Fully qualified name (e.g., 'pylabrobot.resources.Plate')",
+            "default": ""
           },
           "location": {
             "anyOf": [
@@ -8887,6 +9563,7 @@
           },
           "machine_category": {
             "$ref": "#/components/schemas/MachineCategoryEnum",
+            "description": "Category of the machine",
             "default": "Unknown"
           },
           "description": {
@@ -8959,6 +9636,7 @@
           },
           "status": {
             "$ref": "#/components/schemas/MachineStatusEnum",
+            "description": "Status of the machine",
             "default": "OFFLINE"
           },
           "status_details": {
@@ -9051,6 +9729,52 @@
             ],
             "title": "Last Maintenance Json",
             "description": "Record of last maintenance"
+          },
+          "resource_def_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Def Name"
+          },
+          "resource_properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Properties Json"
+          },
+          "resource_initial_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Initial Status"
+          },
+          "resource_counterpart_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Counterpart Accession Id"
           }
         },
         "type": "object",
@@ -9088,9 +9812,29 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "fqn": {
             "type": "string",
@@ -9122,9 +9866,15 @@
             "description": "PyLabRobot category"
           },
           "machine_category": {
-            "$ref": "#/components/schemas/MachineCategoryEnum",
-            "description": "Category of the machine",
-            "default": "Unknown"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MachineCategoryEnum"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Category of the machine"
           },
           "material": {
             "anyOf": [
@@ -9196,10 +9946,16 @@
             "description": "Size in Z dimension (mm)"
           },
           "has_deck": {
-            "type": "boolean",
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Has Deck",
-            "description": "Whether this machine has a deck",
-            "default": false
+            "description": "Whether this machine has a deck"
           },
           "frontend_fqn": {
             "anyOf": [
@@ -9212,11 +9968,117 @@
             ],
             "title": "Frontend Fqn",
             "description": "PLR frontend class FQN"
+          },
+          "nominal_volume_ul": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nominal Volume Ul",
+            "description": "Nominal volume in microliters"
+          },
+          "plr_definition_details_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Definition Details Json",
+            "description": "Additional PyLabRobot definition details"
+          },
+          "rotation_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotation Json",
+            "description": "PLR rotation object"
+          },
+          "setup_method_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setup Method Json",
+            "description": "Setup method configuration"
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities",
+            "description": "Hardware capabilities (channels, modules)"
+          },
+          "compatible_backends": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compatible Backends",
+            "description": "Compatible backend class FQNs"
+          },
+          "capabilities_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities Config",
+            "description": "User-configurable capabilities schema"
+          },
+          "connection_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Config",
+            "description": "Connection parameters schema"
           }
         },
         "type": "object",
         "required": [
-          "name",
           "fqn"
         ],
         "title": "MachineDefinitionCreate",
@@ -9249,9 +10111,29 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "fqn": {
             "type": "string",
@@ -9283,9 +10165,15 @@
             "description": "PyLabRobot category"
           },
           "machine_category": {
-            "$ref": "#/components/schemas/MachineCategoryEnum",
-            "description": "Category of the machine",
-            "default": "Unknown"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MachineCategoryEnum"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Category of the machine"
           },
           "material": {
             "anyOf": [
@@ -9357,10 +10245,16 @@
             "description": "Size in Z dimension (mm)"
           },
           "has_deck": {
-            "type": "boolean",
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Has Deck",
-            "description": "Whether this machine has a deck",
-            "default": false
+            "description": "Whether this machine has a deck"
           },
           "frontend_fqn": {
             "anyOf": [
@@ -9373,6 +10267,18 @@
             ],
             "title": "Frontend Fqn",
             "description": "PLR frontend class FQN"
+          },
+          "nominal_volume_ul": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nominal Volume Ul",
+            "description": "Nominal volume in microliters"
           },
           "plr_definition_details_json": {
             "anyOf": [
@@ -9409,12 +10315,67 @@
               }
             ],
             "title": "Setup Method Json"
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities",
+            "description": "Hardware capabilities (channels, modules)"
+          },
+          "compatible_backends": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compatible Backends",
+            "description": "Compatible backend class FQNs"
+          },
+          "capabilities_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities Config",
+            "description": "User-configurable capabilities schema"
+          },
+          "connection_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Config",
+            "description": "Connection parameters schema"
           }
         },
         "type": "object",
         "required": [
           "accession_id",
-          "name",
           "fqn"
         ],
         "title": "MachineDefinitionRead",
@@ -9564,6 +10525,17 @@
             ],
             "title": "Frontend Fqn"
           },
+          "nominal_volume_ul": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nominal Volume Ul"
+          },
           "plr_definition_details_json": {
             "anyOf": [
               {
@@ -9599,6 +10571,58 @@
               }
             ],
             "title": "Setup Method Json"
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities"
+          },
+          "compatible_backends": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compatible Backends"
+          },
+          "capabilities_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities Config"
+          },
+          "connection_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Config"
           }
         },
         "type": "object",
@@ -9635,6 +10659,18 @@
             "type": "string",
             "title": "Name"
           },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json"
+          },
           "asset_type": {
             "$ref": "#/components/schemas/AssetType"
           },
@@ -9662,6 +10698,7 @@
           },
           "machine_category": {
             "$ref": "#/components/schemas/MachineCategoryEnum",
+            "description": "Category of the machine",
             "default": "Unknown"
           },
           "description": {
@@ -9734,6 +10771,7 @@
           },
           "status": {
             "$ref": "#/components/schemas/MachineStatusEnum",
+            "description": "Status of the machine",
             "default": "OFFLINE"
           },
           "status_details": {
@@ -9850,18 +10888,6 @@
               }
             ],
             "title": "Plr Definition"
-          },
-          "properties_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties Json"
           }
         },
         "type": "object",
@@ -9887,6 +10913,16 @@
       },
       "MachineUpdate": {
         "properties": {
+          "asset_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssetType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "anyOf": [
               {
@@ -10270,6 +11306,17 @@
             "type": "string",
             "title": "Type Hint"
           },
+          "fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn"
+          },
           "description": {
             "anyOf": [
               {
@@ -10280,6 +11327,20 @@
               }
             ],
             "title": "Description"
+          },
+          "optional": {
+            "type": "boolean",
+            "title": "Optional",
+            "default": false
+          },
+          "default_value_repr": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Value Repr"
           },
           "default_value": {
             "anyOf": [
@@ -10299,6 +11360,34 @@
                 "type": "null"
               }
             ]
+          },
+          "ui_hint": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ui Hint"
+          },
+          "linked_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked To"
+          },
+          "is_deck_param": {
+            "type": "boolean",
+            "title": "Is Deck Param",
+            "default": false
           }
         },
         "type": "object",
@@ -10308,6 +11397,50 @@
         ],
         "title": "ParameterMetadataModel",
         "description": "Model for parameter metadata."
+      },
+      "PositioningConfig": {
+        "properties": {
+          "method_name": {
+            "type": "string",
+            "title": "Method Name",
+            "description": "Name of the PyLabRobot deck method to call (e.g., 'rail_to_location')."
+          },
+          "arg_name": {
+            "type": "string",
+            "title": "Arg Name",
+            "description": "Name of the argument for the position in the method (e.g., 'rail', 'slot')."
+          },
+          "arg_type": {
+            "type": "string",
+            "enum": [
+              "str",
+              "int"
+            ],
+            "title": "Arg Type",
+            "description": "Expected type of the position argument ('str' or 'int').",
+            "default": "str"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Params",
+            "description": "Additional parameters for the positioning method."
+          }
+        },
+        "type": "object",
+        "required": [
+          "method_name",
+          "arg_name"
+        ],
+        "title": "PositioningConfig",
+        "description": "Configuration for how positions are calculated/managed for this deck type."
       },
       "ProtocolRunCreate": {
         "properties": {
@@ -10337,12 +11470,236 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
           },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
+          },
           "status": {
             "$ref": "#/components/schemas/ProtocolRunStatusEnum",
+            "description": "Current status of the protocol run",
+            "default": "pending"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time",
+            "description": "When the protocol run started"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time",
+            "description": "When the protocol run completed"
+          },
+          "data_directory_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Directory Path",
+            "description": "Path to data directory"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms",
+            "description": "Duration in milliseconds"
+          },
+          "run_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Accession Id"
+          },
+          "top_level_protocol_definition_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Top Level Protocol Definition Accession Id"
+          },
+          "input_parameters_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Parameters Json"
+          },
+          "resolved_assets_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved Assets Json"
+          },
+          "output_data_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Data Json"
+          },
+          "initial_state_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial State Json"
+          },
+          "final_state_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final State Json"
+          },
+          "created_by_user": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By User"
+          }
+        },
+        "type": "object",
+        "required": [
+          "top_level_protocol_definition_accession_id"
+        ],
+        "title": "ProtocolRunCreate",
+        "description": "Schema for creating a ProtocolRun."
+      },
+      "ProtocolRunRead": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProtocolRunStatusEnum",
+            "description": "Current status of the protocol run",
             "default": "pending"
           },
           "start_time": {
@@ -10399,78 +11756,8 @@
             "type": "string",
             "format": "uuid",
             "title": "Top Level Protocol Definition Accession Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "top_level_protocol_definition_accession_id"
-        ],
-        "title": "ProtocolRunCreate",
-        "description": "Schema for creating a ProtocolRun."
-      },
-      "ProtocolRunRead": {
-        "properties": {
-          "accession_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Accession Id"
           },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "The time the record was created."
-          },
-          "updated_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Updated At",
-            "description": "The time the record was last updated."
-          },
-          "name": {
-            "type": "string",
-            "title": "Name",
-            "description": "An optional name for the record."
-          },
-          "status": {
-            "$ref": "#/components/schemas/ProtocolRunStatusEnum",
-            "default": "pending"
-          },
-          "start_time": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Start Time",
-            "description": "When the protocol run started"
-          },
-          "end_time": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "End Time",
-            "description": "When the protocol run completed"
-          },
-          "data_directory_path": {
+          "protocol_name": {
             "anyOf": [
               {
                 "type": "string"
@@ -10479,20 +11766,31 @@
                 "type": "null"
               }
             ],
-            "title": "Data Directory Path",
-            "description": "Path to data directory"
+            "title": "Protocol Name"
           },
-          "duration_ms": {
+          "started_at": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string",
+                "format": "date-time"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Duration Ms",
-            "description": "Duration in milliseconds"
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
           },
           "input_parameters_json": {
             "anyOf": [
@@ -10534,7 +11832,7 @@
         "type": "object",
         "required": [
           "accession_id",
-          "name"
+          "top_level_protocol_definition_accession_id"
         ],
         "title": "ProtocolRunRead",
         "description": "Schema for reading a ProtocolRun (API response)."
@@ -10880,7 +12178,20 @@
           "name": {
             "type": "string",
             "title": "Name",
-            "description": "An optional name for the record."
+            "description": "Unique, human-readable name for the asset"
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "asset_type": {
             "$ref": "#/components/schemas/AssetType",
@@ -10897,7 +12208,7 @@
               }
             ],
             "title": "Fqn",
-            "description": "Fully qualified name of the asset's class, if applicable."
+            "description": "Fully qualified name"
           },
           "location": {
             "anyOf": [
@@ -10975,6 +12286,18 @@
             ],
             "title": "Parent Accession Id"
           },
+          "workcell_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workcell Accession Id"
+          },
           "machine_location_accession_id": {
             "anyOf": [
               {
@@ -10999,18 +12322,6 @@
             ],
             "title": "Deck Location Accession Id"
           },
-          "workcell_accession_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workcell Accession Id"
-          },
           "plr_state": {
             "anyOf": [
               {
@@ -11024,6 +12335,7 @@
             "title": "Plr State"
           }
         },
+        "additionalProperties": true,
         "type": "object",
         "required": [
           "name"
@@ -11059,9 +12371,29 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "fqn": {
             "type": "string",
@@ -11292,7 +12624,6 @@
         },
         "type": "object",
         "required": [
-          "name",
           "fqn"
         ],
         "title": "ResourceDefinitionCreate",
@@ -11303,7 +12634,8 @@
           "accession_id": {
             "type": "string",
             "format": "uuid",
-            "title": "Accession Id"
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
           },
           "created_at": {
             "type": "string",
@@ -11325,9 +12657,29 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "fqn": {
             "type": "string",
@@ -11556,8 +12908,6 @@
         },
         "type": "object",
         "required": [
-          "accession_id",
-          "name",
           "fqn"
         ],
         "title": "ResourceDefinitionRead",
@@ -11833,6 +13183,18 @@
             "type": "string",
             "title": "Name"
           },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json"
+          },
           "asset_type": {
             "$ref": "#/components/schemas/AssetType"
           },
@@ -11898,6 +13260,45 @@
             "title": "Current Deck Position Name",
             "description": "Current deck position"
           },
+          "resource_definition_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Definition Accession Id",
+            "description": "Reference to resource definition catalog"
+          },
+          "parent_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Accession Id",
+            "description": "Parent resource for hierarchies"
+          },
+          "workcell_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workcell Accession Id",
+            "description": "Workcell this resource belongs to"
+          },
           "plr_state": {
             "anyOf": [
               {
@@ -11922,19 +13323,32 @@
             ],
             "title": "Plr Definition"
           },
-          "properties_json": {
+          "machine_id": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "type": "string",
+                "format": "uuid"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Properties Json"
+            "title": "Machine Id"
+          },
+          "deck_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Accession Id"
           }
         },
+        "additionalProperties": true,
         "type": "object",
         "required": [
           "name",
@@ -11965,6 +13379,16 @@
       },
       "ResourceUpdate": {
         "properties": {
+          "asset_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssetType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "anyOf": [
               {
@@ -12138,9 +13562,29 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "status": {
             "$ref": "#/components/schemas/ScheduleStatusEnum",
@@ -12189,7 +13633,7 @@
             "type": "integer",
             "title": "Priority",
             "description": "Priority for scheduling",
-            "default": 0
+            "default": 1
           },
           "estimated_duration_ms": {
             "anyOf": [
@@ -12204,16 +13648,10 @@
             "description": "Estimated duration"
           },
           "required_asset_count": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "integer",
             "title": "Required Asset Count",
-            "description": "Required asset count"
+            "description": "Required asset count",
+            "default": 0
           },
           "user_params_json": {
             "anyOf": [
@@ -12328,7 +13766,6 @@
         },
         "type": "object",
         "required": [
-          "name",
           "protocol_run_accession_id"
         ],
         "title": "ScheduleEntryCreate",
@@ -12361,9 +13798,29 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "status": {
             "$ref": "#/components/schemas/ScheduleStatusEnum",
@@ -12412,7 +13869,7 @@
             "type": "integer",
             "title": "Priority",
             "description": "Priority for scheduling",
-            "default": 0
+            "default": 1
           },
           "estimated_duration_ms": {
             "anyOf": [
@@ -12427,16 +13884,10 @@
             "description": "Estimated duration"
           },
           "required_asset_count": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "integer",
             "title": "Required Asset Count",
-            "description": "Required asset count"
+            "description": "Required asset count",
+            "default": 0
           },
           "user_params_json": {
             "anyOf": [
@@ -12546,8 +13997,7 @@
         },
         "type": "object",
         "required": [
-          "accession_id",
-          "name"
+          "accession_id"
         ],
         "title": "ScheduleEntryRead",
         "description": "Schema for reading a ScheduleEntry (API response)."
@@ -12640,16 +14090,39 @@
       },
       "SchedulePriorityUpdateRequest": {
         "properties": {
-          "priority": {
+          "new_priority": {
             "type": "integer",
+            "title": "New Priority"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Priority"
           }
         },
         "type": "object",
         "required": [
-          "priority"
+          "new_priority"
         ],
-        "title": "SchedulePriorityUpdateRequest"
+        "title": "SchedulePriorityUpdateRequest",
+        "description": "Request model for updating a schedule entry's priority.\n\nAccepts both `new_priority` (used by API/tests) and `priority` for\nbackward-compatibility with older clients."
       },
       "ScheduleStatusEnum": {
         "type": "string",
@@ -12813,8 +14286,7 @@
           "plate_level",
           "machine_level",
           "deck_position",
-          "global",
-          "unknown"
+          "global"
         ],
         "title": "SpatialContextEnum",
         "description": "Enumeration for spatial context types."
@@ -12906,9 +14378,29 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "username": {
             "type": "string",
@@ -12966,7 +14458,6 @@
         "type": "object",
         "required": [
           "accession_id",
-          "name",
           "username",
           "email"
         ],
@@ -13034,9 +14525,29 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "well_position": {
             "anyOf": [
@@ -13087,16 +14598,10 @@
             "description": "Unit of measurement"
           },
           "well_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Well Name",
-            "description": "Well name (e.g. A1)"
+            "description": "Well name (e.g. A1)",
+            "default": ""
           },
           "data_value": {
             "anyOf": [
@@ -13149,7 +14654,6 @@
         },
         "type": "object",
         "required": [
-          "name",
           "function_data_output_accession_id",
           "plate_resource_accession_id"
         ],
@@ -13183,9 +14687,29 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
           },
           "well_position": {
             "anyOf": [
@@ -13236,16 +14760,10 @@
             "description": "Unit of measurement"
           },
           "well_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Well Name",
-            "description": "Well name (e.g. A1)"
+            "description": "Well name (e.g. A1)",
+            "default": ""
           },
           "data_value": {
             "anyOf": [
@@ -13311,7 +14829,6 @@
         "type": "object",
         "required": [
           "accession_id",
-          "name",
           "function_data_output_accession_id",
           "plate_resource_accession_id"
         ],
@@ -13431,9 +14948,41 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
+          },
+          "fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn",
+            "description": "Fully qualified name"
           },
           "description": {
             "anyOf": [
@@ -13460,8 +15009,7 @@
             "description": "Physical location (e.g., 'Lab 2, Room 301')"
           },
           "status": {
-            "type": "string",
-            "title": "Status",
+            "$ref": "#/components/schemas/WorkcellStatusEnum",
             "description": "Current status of the workcell",
             "default": "available"
           },
@@ -13477,12 +15025,22 @@
             ],
             "title": "Last State Update Time",
             "description": "Timestamp of last state update"
+          },
+          "latest_state_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest State Json",
+            "description": "Latest state of the workcell"
           }
         },
         "type": "object",
-        "required": [
-          "name"
-        ],
         "title": "WorkcellCreate",
         "description": "Schema for creating a Workcell."
       },
@@ -13513,9 +15071,41 @@
             "description": "The time the record was last updated."
           },
           "name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Name",
             "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
+          },
+          "fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn",
+            "description": "Fully qualified name"
           },
           "description": {
             "anyOf": [
@@ -13542,8 +15132,7 @@
             "description": "Physical location (e.g., 'Lab 2, Room 301')"
           },
           "status": {
-            "type": "string",
-            "title": "Status",
+            "$ref": "#/components/schemas/WorkcellStatusEnum",
             "description": "Current status of the workcell",
             "default": "available"
           },
@@ -13570,16 +15159,42 @@
                 "type": "null"
               }
             ],
-            "title": "Latest State Json"
+            "title": "Latest State Json",
+            "description": "Latest state of the workcell"
+          },
+          "machines": {
+            "items": {},
+            "type": "array",
+            "title": "Machines"
+          },
+          "decks": {
+            "items": {},
+            "type": "array",
+            "title": "Decks"
+          },
+          "resources": {
+            "items": {},
+            "type": "array",
+            "title": "Resources"
           }
         },
         "type": "object",
-        "required": [
-          "accession_id",
-          "name"
-        ],
         "title": "WorkcellRead",
         "description": "Schema for reading a Workcell (API response)."
+      },
+      "WorkcellStatusEnum": {
+        "type": "string",
+        "enum": [
+          "active",
+          "in_use",
+          "reserved",
+          "available",
+          "error",
+          "inactive",
+          "maintenance"
+        ],
+        "title": "WorkcellStatusEnum",
+        "description": "Enumeration for workcell status.\n\nThis enum defines the possible statuses a workcell can have."
       },
       "WorkcellUpdate": {
         "properties": {

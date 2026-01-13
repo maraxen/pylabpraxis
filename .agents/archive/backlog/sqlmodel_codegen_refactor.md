@@ -1,6 +1,6 @@
 # SQLModel + OpenAPI Codegen Unification Refactor
 
-> **Status**: Planning  
+> **Status**: ✅ Completed (Archived 2026-01-13)  
 > **Priority**: High  
 > **Estimated Prompts**: 17
 
@@ -125,24 +125,24 @@ See: [sqlmodel_openapi_migration.md](../archive/sqlmodel_openapi_migration.md)
 - **Database Implication**: `AssetReservation` can no longer have a physical Foreign Key to `assets.id`.
   - **Solution**: Use "Soft" Foreign Keys. Remove the SQL constraint but keep the indexed `asset_id` column. Rely on UUID7 global uniqueness for application-level integrity.
 - **Action Items**:
-  - [ ] Consolidate `orm/` and `domain/` into a single `models/` directory (renaming `domain/` to `models/` effectively).
-  - [ ] Refactor `Asset` to `table=False`.
-  - [ ] Refactor `Machine`, `Resource` to inherit from `Asset` with `table=True`.
-  - [ ] Update `AssetReservation` to remove FK constraint.
-  - [ ] Delete `praxis/backend/models/orm/` directory.
-  - [ ] Update all imports.
+  - [x] Consolidate `orm/` and `domain/` into a single `models/` directory (renaming `domain/` to `models/` effectively).
+  - [x] Refactor `Asset` to `table=False`.
+  - [x] Refactor `Machine`, `Resource` to inherit from `Asset` with `table=True`.
+  - [x] Update `AssetReservation` to remove FK constraint.
+  - [x] Delete `praxis/backend/models/orm/` directory.
+  - [x] Update all imports.
 - **Tests**: Full test suite validation.
   - **Audit (2025-01-12)**: Comprehensive domain model audit completed. See [AUDIT_REPORT.md](../prompts/260112_2/AUDIT_REPORT.md).
     - identified critical missing relationships in `protocol.py`, `schedule.py`, `machine.py`, `resource.py`, `outputs.py`.
-    - Remediation planned via follow-up prompts.
+    - Remediation completed via follow-up prompts in `260112_2`.
 
-### 7.2 — Final review: Alembic migration + full integration test
+### 7.2 — Final review: Alembic migration + full integration test (✅ Done)
 
-- Generate Alembic migration to verify SQLModel metadata compatibility
-- Run `alembic upgrade head` against test database
-- Execute full test suite: `pytest tests/ -v --cov`
-- Verify OpenAPI schema matches expectations
-- Run `npm run generate-api && ng build` to confirm pipeline
+- [x] Generated Alembic migration to verify SQLModel metadata compatibility
+- [x] Ran `alembic upgrade head` against test database
+- [x] Executed full test suite: `pytest tests/ -v --cov`
+- [x] Verified OpenAPI schema matches expectations
+- [x] Ran `npm run generate-api && ng build` to confirm pipeline
 
 ---
 

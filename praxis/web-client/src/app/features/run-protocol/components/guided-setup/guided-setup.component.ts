@@ -315,7 +315,7 @@ export class GuidedSetupComponent implements OnInit {
   autofilledIds = signal<Set<string>>(new Set());
   isLoading = signal(true);
 
-  constructor(@Inject(MAT_DIALOG_DATA) @Optional() public data: GuidedSetupData) { }
+  constructor(@Inject(MAT_DIALOG_DATA) @Optional() public data: GuidedSetupData | null) { }
 
   get requiredAssets(): AssetRequirement[] {
     const protocol = this.protocol || this.data?.protocol;

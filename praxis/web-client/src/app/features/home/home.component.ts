@@ -20,7 +20,6 @@ import { ModeService } from '@core/services/mode.service';
 import { Machine, Resource, MachineStatus } from '../assets/models/asset.models';
 import { ProtocolDefinition } from '../protocols/models/protocol.models';
 import { ExecutionStatus } from '../run-protocol/models/execution.models';
-import { MachineCardComponent } from '@shared/components/machine-card/machine-card.component';
 
 interface RecentRun {
   id: string;
@@ -46,8 +45,7 @@ interface RecentRun {
     MatTooltipModule,
     MatBadgeModule,
     HardwareDiscoveryButtonComponent,
-    SparklineComponent,
-    MachineCardComponent
+    SparklineComponent
   ],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto" data-tour-id="dashboard-root">

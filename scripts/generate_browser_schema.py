@@ -118,6 +118,7 @@ def sqlalchemy_to_typescript_type(column_type: Any, nullable: bool = False) -> s
     else:
         type_map = {
             "UUID": "string",
+            "Uuid": "string",
             "JSONB": "Record<string, unknown>",
             "JSON": "Record<string, unknown>",
             "DateTime": "string",
@@ -308,6 +309,24 @@ def generate_typescript_interfaces(metadata: Any) -> str:
 
         lines.append("}")
         lines.append("")
+
+    # Add legacy aliases for backward compatibility
+    lines.append("// =============================================================================")
+    lines.append("// TYPE ALIASES FOR BACKWARD COMPATIBILITY")
+    lines.append("// =============================================================================")
+    lines.append("")
+    lines.append("/** Legacy alias for MachineDefinition (was 'machine_definition_catalog' table) */")
+    lines.append("export type MachineDefinitionCatalog = MachineDefinition;")
+    lines.append("")
+    lines.append("/** Legacy alias for ResourceDefinition (was 'resource_definition_catalog' table) */")
+    lines.append("export type ResourceDefinitionCatalog = ResourceDefinition;")
+    lines.append("")
+    lines.append("/**")
+    lines.append(" * Asset is the base type for Machine, Resource, and Deck entities.")
+    lines.append(" * In the backend, these use Joined Table Inheritance (JTI).")
+    lines.append(" */")
+    lines.append("export type Asset = Machine | Resource | Deck;")
+    lines.append("")
 
     return "\n".join(lines)
 

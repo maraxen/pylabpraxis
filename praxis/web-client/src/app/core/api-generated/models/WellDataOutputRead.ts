@@ -18,7 +18,11 @@ export type WellDataOutputRead = {
     /**
      * An optional name for the record.
      */
-    name: string;
+    name?: (string | null);
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
     /**
      * Well position (e.g., 'A1')
      */
@@ -38,7 +42,7 @@ export type WellDataOutputRead = {
     /**
      * Well name (e.g. A1)
      */
-    well_name?: (string | null);
+    well_name?: string;
     data_value?: (number | null);
     /**
      * 0-based row index

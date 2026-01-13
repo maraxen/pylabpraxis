@@ -614,7 +614,7 @@ export class HardwareDiscoveryDialogComponent {
     }
 
     async registerAsMachine(device: DiscoveredDevice): Promise<void> {
-        const result = await this.hardwareService.registerAsMachine(device);
+        const result = await this.hardwareService.registerAsMachine(device) as any;
         if (result) {
             this.snackBar.open(`Registered: ${result.name}`, 'View Asset', {
                 duration: 5000

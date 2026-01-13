@@ -19,9 +19,13 @@ export type MachineRead = {
      */
     updated_at?: (string | null);
     name: string;
+    properties_json?: (Record<string, any> | null);
     asset_type: AssetType;
     fqn?: (string | null);
     location?: (string | null);
+    /**
+     * Category of the machine
+     */
     machine_category?: MachineCategoryEnum;
     description?: (string | null);
     manufacturer?: (string | null);
@@ -32,6 +36,9 @@ export type MachineRead = {
      */
     location_label?: (string | null);
     installation_date?: (string | null);
+    /**
+     * Status of the machine
+     */
     status?: MachineStatusEnum;
     status_details?: (string | null);
     is_simulation_override?: (boolean | null);
@@ -55,6 +62,5 @@ export type MachineRead = {
     last_maintenance_json?: (Record<string, any> | null);
     plr_state?: (Record<string, any> | null);
     plr_definition?: (Record<string, any> | null);
-    properties_json?: (Record<string, any> | null);
 };
 

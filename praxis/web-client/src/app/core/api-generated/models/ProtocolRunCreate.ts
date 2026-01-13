@@ -22,7 +22,14 @@ export type ProtocolRunCreate = {
     /**
      * An optional name for the record.
      */
-    name: string;
+    name?: (string | null);
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
+    /**
+     * Current status of the protocol run
+     */
     status?: ProtocolRunStatusEnum;
     /**
      * When the protocol run started
@@ -40,6 +47,13 @@ export type ProtocolRunCreate = {
      * Duration in milliseconds
      */
     duration_ms?: (number | null);
+    run_accession_id?: (string | null);
     top_level_protocol_definition_accession_id: string;
+    input_parameters_json?: (Record<string, any> | null);
+    resolved_assets_json?: (Record<string, any> | null);
+    output_data_json?: (Record<string, any> | null);
+    initial_state_json?: (Record<string, any> | null);
+    final_state_json?: (Record<string, any> | null);
+    created_by_user?: (Record<string, any> | null);
 };
 

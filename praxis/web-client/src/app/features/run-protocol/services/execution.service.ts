@@ -8,6 +8,7 @@ import { Observable, Subject, of } from 'rxjs';
 import { catchError, retry, tap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
 import { ExecutionMessage, ExecutionState, ExecutionStatus } from '../models/execution.models';
+import { MachineCompatibility } from '../models/machine-compatibility.models';
 import { ProtocolsService } from '../../../core/api-generated/services/ProtocolsService';
 import { ApiWrapperService } from '../../../core/services/api-wrapper.service';
 
@@ -41,20 +42,20 @@ export class ExecutionService {
   /**
    * Check protocol compatibility with available machines
    */
-  getCompatibility(protocolId: string): Observable<Record<string, unknown>[]> {
+  getCompatibility(protocolId: string): Observable<MachineCompatibility[]> {
     // In browser mode, return mock compatibility data
     if (this.modeService.isBrowserMode()) {
       return of([{
         machine: {
           accession_id: 'sim-machine-1',
           name: 'Simulation Machine',
-          status: 'IDLE' as unknown as string,
+          status: 'IDLE' as unknown as any,
           machine_category: 'HamiltonSTAR'
         },
         compatibility: { is_compatible: true, missing_capabilities: [], matched_capabilities: [], warnings: [] }
-      }]);
+      } as MachineCompatibility]);
     }
-    return this.apiWrapper.wrap(ProtocolsService.getProtocolCompatibilityApiV1ProtocolsAccessionIdCompatibilityGet(protocolId)) as Observable<Record<string, unknown>[]>;
+    return this.apiWrapper.wrap(ProtocolsService.getProtocolCompatibilityApiV1ProtocolsAccessionIdCompatibilityGet(protocolId)) as Observable<MachineCompatibility[]>;
   }
 
   /**

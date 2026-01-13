@@ -21,7 +21,11 @@ export type FunctionProtocolDefinitionCreate = {
     /**
      * An optional name for the record.
      */
-    name: string;
+    name?: (string | null);
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
     /**
      * Fully qualified name
      */
@@ -31,9 +35,9 @@ export type FunctionProtocolDefinitionCreate = {
      */
     version?: string;
     description?: (string | null);
-    source_file_path: string;
-    module_name: string;
-    function_name: string;
+    source_file_path?: string;
+    module_name?: string;
+    function_name?: string;
     is_top_level?: boolean;
     solo_execution?: boolean;
     preconfigure_deck?: boolean;
@@ -52,10 +56,12 @@ export type FunctionProtocolDefinitionCreate = {
     bytecode_cache_version?: (string | null);
     bytecode_cached_at?: (string | null);
     commit_hash?: (string | null);
-    tags?: (Record<string, any> | null);
+    tags?: (Array<string> | Record<string, any> | null);
     parameters?: (Array<ParameterMetadataModel> | null);
     assets?: (Array<AssetRequirementCreate> | null);
     data_views?: (Array<DataViewMetadataModel> | null);
     setup_instructions_json?: null;
+    source_repository_name?: (string | null);
+    file_system_source_name?: (string | null);
 };
 

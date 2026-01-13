@@ -2,6 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { WorkcellStatusEnum } from './WorkcellStatusEnum';
 /**
  * Schema for creating a Workcell.
  */
@@ -21,7 +22,15 @@ export type WorkcellCreate = {
     /**
      * An optional name for the record.
      */
-    name: string;
+    name?: (string | null);
+    /**
+     * Arbitrary metadata.
+     */
+    properties_json?: (Record<string, any> | null);
+    /**
+     * Fully qualified name
+     */
+    fqn?: (string | null);
     /**
      * Description of the workcell's purpose
      */
@@ -33,10 +42,14 @@ export type WorkcellCreate = {
     /**
      * Current status of the workcell
      */
-    status?: string;
+    status?: WorkcellStatusEnum;
     /**
      * Timestamp of last state update
      */
     last_state_update_time?: (string | null);
+    /**
+     * Latest state of the workcell
+     */
+    latest_state_json?: (Record<string, any> | null);
 };
 
