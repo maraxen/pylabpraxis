@@ -108,6 +108,7 @@
 | [Historical Items (Jan 2026)](./archive/COMPLETED_ITEMS_ARCHIVE_JAN_2026.md) | - | 2026-01-12 | Consolidated archive of previous completions |
 | Model Unification (SQLModel) | P2 | 2026-01-13 | Massive refactor to unified SQLModel domain models, removed legacy ORM/Pydantic duplication |
 | [Frontend Schema Sync](./archive/backlog/frontend_schema_sync.md) | P1 | 2026-01-13 | Aligned frontend with SQLModel backend, fixed API client, removed build warnings |
+| Monitor State & Parameter Display | P2 | 2026-01-13 | Implemented agnostic state diffing and user-friendly parameter viewer |
 | Assets View Controls (Machines, Resources, Registry) | P2 | 2026-01-13 | Implemented unified `ViewControlsComponent`, refactored all Assets tabs for standardized filtering, sorting, and grouping |
 | Asset Filtering / Registry UI Redesign | P1/P2 | 2026-01-13 | Standardized filtering and resolved browser-mode registry errors |
 

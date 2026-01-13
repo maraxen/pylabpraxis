@@ -30,7 +30,7 @@
 | 6 | Multiselect fixed height + scrollable | B | P2 | Medium | 🟢 | - | TBD |
 | 7 | Back button in add asset dialog | B | P3 | Easy | 🟢 | - | TBD |
 | 8 | Unify add asset/machine routes | A | P2 | Medium | 🟢 | - | TBD |
-| 9 | Quick add autocomplete | A | P2 | Medium | 🟢 | - | TBD |
+| 9 | Quick add autocomplete | A | P2 | Medium | ✅ | - | [A-03_quick_add_autocomplete.md](./A-03_quick_add_autocomplete.md) |
 | 10 | Spatial view filter scroll issue | B | P2 | Medium | 🟢 | - | TBD |
 | 11 | Spatial view card overlap | B | P2 | Easy | 🟢 | - | TBD |
 | 12 | View type toggle (card/list) | A | P2 | Medium | 🟢 | - | TBD |
