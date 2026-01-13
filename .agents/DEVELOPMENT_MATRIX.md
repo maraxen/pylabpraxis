@@ -111,6 +111,7 @@
 | Monitor State & Parameter Display | P2 | 2026-01-13 | Implemented agnostic state diffing and user-friendly parameter viewer |
 | Assets View Controls (Machines, Resources, Registry) | P2 | 2026-01-13 | Implemented unified `ViewControlsComponent`, refactored all Assets tabs for standardized filtering, sorting, and grouping |
 | Asset Filtering / Registry UI Redesign | P1/P2 | 2026-01-13 | Standardized filtering and resolved browser-mode registry errors |
+| Add Asset Dialog Unification | P2 | 2026-01-13 | Unified 'Add Machine' and 'Add Resource' into a single stepper-based flow |
 
 ---
 

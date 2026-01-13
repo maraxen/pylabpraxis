@@ -178,7 +178,7 @@ After review approval:
 | **Group A: View Controls Standardization** | | |
 | [A-P1_spatial_view_ux_analysis.md](A-P1_spatial_view_ux_analysis.md) | 🟢 Completed | P3 Planning: Spatial View UX Analysis |
 | [A-01_shared_view_controls.md](A-01_shared_view_controls.md) | 🟢 Ready | P1 Implementation: Shared View Controls Component |
-| [A-02_add_dialog_unification.md](A-02_add_dialog_unification.md) | 🟢 Ready | P2 Implementation: Unified Add Asset/Machine Dialog |
+| [A-02_add_dialog_unification.md](A-02_add_dialog_unification.md) | ✅ Completed | P2 Implementation: Unified Add Asset/Machine Dialog |
 | [A-03_quick_add_autocomplete.md](A-03_quick_add_autocomplete.md) | 🟢 Ready | P2 Implementation: Quick Add Autocomplete |
 | [A-04_adopt_shared_controls.md](A-04_adopt_shared_controls.md) | 🟢 Ready | P2 Implementation: Adopt Shared Controls Across Tabs |
 | **Group B: UI/UX Consistency** | | |
