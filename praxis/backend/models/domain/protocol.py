@@ -61,9 +61,21 @@ class ParameterMetadataModel(SQLModel):
 
   name: str
   type_hint: str
+  # Fully-qualified name string for the type hint (e.g., 'pylabrobot.resources.Plate')
+  fqn: str | None = None
   description: str | None = None
+  # Whether the parameter is optional
+  optional: bool = False
+  # String representation of the default value (matches what the decorator emits)
+  default_value_repr: Any | None = None
+  # Backwards-compatible field name
   default_value: Any | None = None
+  # Constraints object
   constraints: ParameterConstraintsModel | None = None
+  # UI hint dictionary (may be emitted as 'ui_hint' or 'ui_hints')
+  ui_hint: dict[str, Any] | None = None
+  linked_to: str | None = None
+  is_deck_param: bool = False
 
 
 class DataViewMetadataModel(SQLModel):
@@ -238,6 +250,23 @@ class AssetRequirement(AssetRequirementBase, table=True):
     )
   )
 
+  @property
+  def constraints(self) -> dict[str, Any] | None:
+    """Backwards-compatible accessor for `constraints_json` used by tests/services.
+
+    Tests and some service code reference `asset_requirement.constraints`. The
+    persisted field is `constraints_json`; expose it here for compatibility.
+    """
+    return self.constraints_json
+
+  @property
+  def location_constraints(self) -> dict[str, Any] | None:
+    """Backwards-compatible accessor for `location_constraints_json`.
+
+    Some service/test code expects `asset_requirement.location_constraints`.
+    """
+    return self.location_constraints_json
+
 
 class AssetRequirementRead(AssetRequirementBase):
   """Schema for reading an AssetRequirement."""
@@ -362,7 +391,8 @@ class FunctionProtocolDefinitionCreate(FunctionProtocolDefinitionBase):
   """Schema for creating a FunctionProtocolDefinition."""
 
   accession_id: uuid.UUID | None = None
-  tags: dict[str, Any] | None = None
+  # Allow tags provided by the decorator as a list or a dict (backwards compat).
+  tags: list[str] | dict[str, Any] | None = None
   parameters: list[ParameterMetadataModel] | None = None
   assets: list[AssetRequirementCreate] | None = None
   data_views: list[DataViewMetadataModel] | None = None

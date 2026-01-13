@@ -426,7 +426,15 @@ class ScheduleListResponse(SQLModel):
 
 
 class SchedulePriorityUpdateRequest(SQLModel):
-  priority: int
+  """Request model for updating a schedule entry's priority.
+
+  Accepts both `new_priority` (used by API/tests) and `priority` for
+  backward-compatibility with older clients.
+  """
+  new_priority: int
+  reason: str | None = None
+  # Backwards-compatible alias
+  priority: int | None = None
 
 
 class ScheduleProtocolRequest(SQLModel):

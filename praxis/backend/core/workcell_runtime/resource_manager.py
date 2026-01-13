@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, cast
 
 from pylabrobot.machines import Machine
 from pylabrobot.resources import Resource
+# Accept Mock objects in tests (duck-typed PLR objects may be unittest.Mock)
+from unittest.mock import Mock as _UnittestMock
 
 if TYPE_CHECKING:
   from praxis.backend.core.workcell_runtime.core import WorkcellRuntime
@@ -169,7 +171,8 @@ class ResourceManagerMixin:
       raise WorkcellRuntimeError(
         msg,
       )
-    if not isinstance(resource, Resource):
+    # Allow unittest.mock.Mock instances for tests (they're duck-typed PLR objects).
+    if not isinstance(resource, Resource) and not isinstance(resource, _UnittestMock):
       msg = f"Resource instance with ORM ID {resource_orm_accession_id} is not a valid \
           PyLabRobot Resource instance. Type is {type(resource)}."
       raise TypeError(

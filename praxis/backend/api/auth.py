@@ -88,6 +88,7 @@ async def login(
   # Return user data and token
   return LoginResponse(
     user=UserResponse(
+      accession_id=user.accession_id,
       username=user.username,
       email=user.email,
       full_name=user.full_name,
@@ -156,6 +157,7 @@ async def get_current_user(
     )
 
   return UserResponse(
+    accession_id=user.accession_id,
     username=user.username,
     email=user.email,
     full_name=user.full_name,

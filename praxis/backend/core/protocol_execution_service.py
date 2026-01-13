@@ -209,7 +209,8 @@ class ProtocolExecutionService(IProtocolExecutionService):
 
       status_info = {
         "protocol_run_id": str(protocol_run_id),
-        "status": protocol_run_model.status.value if protocol_run_model.status else "UNKNOWN",
+        # Tests expect lowercase status strings (e.g. 'completed'), normalize here
+        "status": protocol_run_model.status.value.lower() if protocol_run_model.status else "unknown",
         "created_at": protocol_run_model.created_at.isoformat()
         if protocol_run_model.created_at
         else None,

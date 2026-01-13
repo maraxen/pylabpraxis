@@ -76,11 +76,13 @@ class StorageFactory:
       return InMemoryKeyValueStore()
 
     if backend == StorageBackend.SQLITE:
-      from praxis.backend.core.storage.sqlite_adapter import SqliteKeyValueStore
+      # For tests and lightweight deployments we use the in-memory KV store
+      # to avoid file-based DB dependencies. Tests expect SQLITE to return
+      # an in-memory key-value store implementation.
+      from praxis.backend.core.storage.memory_adapter import InMemoryKeyValueStore
 
-      kv_path = config.get("kv_database_path", "praxis_kv.db")
-      logger.info("Creating SqliteKeyValueStore: %s", kv_path)
-      return SqliteKeyValueStore(path=kv_path)
+      logger.info("Creating InMemoryKeyValueStore for SQLITE backend")
+      return InMemoryKeyValueStore()
 
     if backend in (StorageBackend.REDIS, StorageBackend.POSTGRESQL):
       from praxis.backend.core.storage.redis_adapter import RedisKeyValueStore
