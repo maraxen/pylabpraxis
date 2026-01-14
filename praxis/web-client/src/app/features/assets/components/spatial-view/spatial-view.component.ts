@@ -314,7 +314,7 @@ export class SpatialViewComponent implements OnInit {
         if (field === 'name') return item.name?.toLowerCase() || '';
         if (field === 'created_at') return new Date(item.created_at || 0).getTime();
         if (field === 'status') return item.status;
-        if (field === 'category') return (this.isMachine(item) ? item.machine_category : '').toLowerCase();
+        if (field === 'category') return (this.isMachine(item) ? (item.machine_category || '') : '').toLowerCase();
         return '';
       };
 

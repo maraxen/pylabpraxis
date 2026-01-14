@@ -60,12 +60,16 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     .tab-header {
       position: sticky;
       top: 0;
-      z-index: 10;
-      background: var(--mat-sys-surface-variant);
+      z-index: 100;
+      background: var(--mat-sys-surface);
       padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 12px;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
     }
 
     .search-field {
@@ -131,7 +135,7 @@ export class FilterHeaderComponent {
   searchPlaceholder = input<string>('Search...');
   filterCount = input<number>(0);
   searchValue = input<string>('');
-  
+
   searchChange = output<string>();
   clearFilters = output<void>();
 
@@ -140,10 +144,10 @@ export class FilterHeaderComponent {
 
   constructor() {
     effect(() => {
-       const val = this.searchValue();
-       if (this.searchControl.value !== val) {
-         this.searchControl.setValue(val, { emitEvent: false });
-       }
+      const val = this.searchValue();
+      if (this.searchControl.value !== val) {
+        this.searchControl.setValue(val, { emitEvent: false });
+      }
     });
 
     this.searchControl.valueChanges.pipe(
