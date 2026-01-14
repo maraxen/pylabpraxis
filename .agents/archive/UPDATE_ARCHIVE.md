@@ -33,7 +33,18 @@ fi
 
 ### 3. Merge Content
 
-Move candidate directories into the temp location. Use `rsync` to merge contents if directories already exist, then remove the source.
+**Strategy**: We are performing a **flat merge** of the current loose folders into the existing archive structure. **Avoid nesting** (e.g., do not end up with `prompts/prompts/`).
+
+1. **Prepare target directories** in the temp pack.
+
+    ```bash
+    mkdir -p .agents/archive/.temp_pack/prompts
+    mkdir -p .agents/archive/.temp_pack/summaries
+    mkdir -p .agents/archive/.temp_pack/backlog
+    mkdir -p .agents/archive/.temp_pack/artifacts
+    ```
+
+2. **Move candidate directories** into the temp location using `rsync` with trailing slashes to ensure only contents are merged.
 
 **Candidates to archive**:
 
@@ -45,10 +56,7 @@ Move candidate directories into the temp location. Use `rsync` to merge contents
 
 **Exclusions**:
 
-- `archive.tar.gz`
-- `README.md`
-- `UPDATE_ARCHIVE.md`
-- `COMPRESSED_ARCHIVE.md`
+- `archive.tar.gz`, `README.md`, `UPDATE_ARCHIVE.md`, `COMPRESSED_ARCHIVE.md`, `.temp_pack`
 
 **Command Template**:
 For each candidate directory (e.g., `prompts`):
@@ -56,7 +64,8 @@ For each candidate directory (e.g., `prompts`):
 ```bash
 # Example for 'prompts'
 if [ -d .agents/archive/prompts ]; then
-  # Snyc contents to temp/prompts, creating it if needed
+  # Sync CONTENTS to temp/prompts. 
+  # Note the trailing slashes: they ensure we merge contents and avoid nesting.
   rsync -av .agents/archive/prompts/ .agents/archive/.temp_pack/prompts/
   # Remove the source directory after successful sync
   rm -rf .agents/archive/prompts
