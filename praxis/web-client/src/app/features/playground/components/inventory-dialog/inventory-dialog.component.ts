@@ -368,10 +368,35 @@ export interface InventoryItem {
     /* Stepper Polish */
     .polished-stepper {
       background: transparent;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+
+      --mat-stepper-container-color: transparent;
+      --mat-stepper-header-label-text-color: var(--mat-sys-on-surface-variant);
+      --mat-stepper-header-selected-state-label-text-color: var(--mat-sys-primary);
+      --mat-stepper-header-done-state-icon-background-color: var(--mat-sys-primary);
+      --mat-stepper-header-edit-state-icon-background-color: var(--mat-sys-primary);
+      --mat-stepper-header-line-color: var(--mat-sys-outline-variant);
+    }
+
+    :host ::ng-deep {
+      .mat-horizontal-stepper-header-container {
+        padding: 0 16px;
+      }
+      .mat-horizontal-content-container {
+        padding: 0 !important;
+        flex-grow: 1;
+        overflow-y: auto;
+      }
+      .mat-step-header .mat-step-icon-selected {
+        background-color: var(--mat-sys-primary);
+        color: var(--mat-sys-on-primary);
+      }
     }
 
     .step-wrapper {
-      padding: 16px 4px;
+      padding: 16px 24px;
       display: flex;
       flex-direction: column;
       gap: 20px;
@@ -574,7 +599,7 @@ export class InventoryDialogComponent {
     if (type === 'machine') {
       return [allLabel, ...mapCats(this.machineCategories())];
     }
-    
+
     if (type === 'resource') {
       return [allLabel, ...mapCats(this.resourceCategories())];
     }

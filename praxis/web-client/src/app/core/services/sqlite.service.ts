@@ -299,6 +299,24 @@ export class SqliteService {
                         this.safeAddColumn(d, 'function_protocol_definitions', 'failure_modes_json', 'TEXT');
                     }
                 }
+                {
+                    version: 4,
+                    name: 'add_simulated_frontends',
+                    run: (d: Database) => {
+                        this.safeAddColumn(d, 'machine_definition_catalog', 'is_simulated_frontend', 'BOOLEAN DEFAULT 0');
+                        this.safeAddColumn(d, 'machine_definition_catalog', 'available_simulation_backends', 'TEXT');
+                        this.safeAddColumn(d, 'machines', 'simulation_backend_name', 'TEXT');
+                    }
+                },
+                {
+                    version: 4,
+                    name: 'add_simulated_frontends',
+                    run: (d: Database) => {
+                        this.safeAddColumn(d, 'machine_definition_catalog', 'is_simulated_frontend', 'BOOLEAN DEFAULT 0');
+                        this.safeAddColumn(d, 'machine_definition_catalog', 'available_simulation_backends', 'TEXT');
+                        this.safeAddColumn(d, 'machines', 'simulation_backend_name', 'TEXT');
+                    }
+                }
             ];
 
             // 4. Run pending migrations
@@ -478,7 +496,7 @@ export class SqliteService {
             `);
 
             for (const p of MOCK_PROTOCOLS) {
-                 insertProtocol.run([
+                insertProtocol.run([
                     p.accession_id,
                     p.name,
                     p.description,
@@ -494,7 +512,7 @@ export class SqliteService {
                     JSON.stringify({}), // hardware_requirements
                     JSON.stringify([]), // inferred_requirements
                     JSON.stringify([])  // failure_modes
-                 ]);
+                ]);
             }
             insertProtocol.free();
 
@@ -584,8 +602,8 @@ export class SqliteService {
             // Seed Machines
             const insertMachDef = db.prepare(`
                 INSERT OR IGNORE INTO machine_definition_catalog
-                (accession_id, name, fqn, machine_category, manufacturer, description, has_deck, properties_json, capabilities_config, frontend_fqn)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (accession_id, name, fqn, machine_category, manufacturer, description, has_deck, properties_json, capabilities_config, frontend_fqn, is_simulated_frontend, available_simulation_backends)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             for (const def of PLR_MACHINE_DEFINITIONS) {
@@ -605,7 +623,9 @@ export class SqliteService {
                     def.has_deck ? 1 : 0,
                     JSON.stringify(def.properties_json),
                     capConfig ? JSON.stringify(capConfig) : null,
-                    def.frontend_fqn || null
+                    def.frontend_fqn || null,
+                    def.is_simulated_frontend ? 1 : 0,
+                    def.available_simulation_backends ? JSON.stringify(def.available_simulation_backends) : null
                 ]);
             }
             insertMachDef.free();

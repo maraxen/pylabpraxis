@@ -2,10 +2,10 @@ import { Component, Input } from '@angular/core';
 
 
 @Component({
-    selector: 'app-protocol-list-skeleton',
-    standalone: true,
-    imports: [],
-    template: `
+  selector: 'app-protocol-list-skeleton',
+  standalone: true,
+  imports: [],
+  template: `
     <div class="skeleton-table w-full">
       @for (i of [].constructor(rows); track i) {
         <div class="skeleton-row">
@@ -18,7 +18,7 @@ import { Component, Input } from '@angular/core';
       }
     </div>
     `,
-    styles: [`
+  styles: [`
     @keyframes shimmer {
       0% { background-position: -200px 0; }
       100% { background-position: calc(200px + 100%) 0; }
@@ -36,7 +36,7 @@ import { Component, Input } from '@angular/core';
     .skeleton-cell {
       display: table-cell;
       padding: 1rem;
-      border-bottom: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
     }
 
     .skeleton-bar {
@@ -44,10 +44,10 @@ import { Component, Input } from '@angular/core';
       height: 20px;
       background: linear-gradient(
         to right,
-        var(--mat-sys-surface-container, #f6f7f8) 0%,
-        var(--mat-sys-surface-container-high, #edeef1) 20%,
-        var(--mat-sys-surface-container, #f6f7f8) 40%,
-        var(--mat-sys-surface-container, #f6f7f8) 100%
+        var(--mat-sys-surface-container) 0%,
+        var(--mat-sys-surface-container-high) 20%,
+        var(--mat-sys-surface-container) 40%,
+        var(--mat-sys-surface-container) 100%
       );
       background-size: 200px 100%;
       animation: shimmer 1.5s infinite;
@@ -56,6 +56,6 @@ import { Component, Input } from '@angular/core';
   `]
 })
 export class ProtocolListSkeletonComponent {
-    @Input() rows = 5;
-    @Input() cols = 4;
+  @Input() rows = 5;
+  @Input() cols = 4;
 }

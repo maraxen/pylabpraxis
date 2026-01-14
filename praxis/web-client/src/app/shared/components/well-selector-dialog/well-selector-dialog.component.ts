@@ -541,7 +541,10 @@ const PLATE_CONFIGS: Record<'96' | '384', PlateConfig> = {
     }
 
     .well-chip {
-      font-size: 12px;
+      font-size: 11px;
+      height: 26px;
+      --mdc-chip-label-text-size: 11px;
+      --mdc-chip-container-height: 26px;
     }
 
     .more-indicator {

@@ -305,6 +305,12 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
  */
 export const browserModeInterceptor = (req: HttpRequest<unknown>, next: HttpHandlerFn): Observable<HttpEvent<unknown>> => {
     const modeService = inject(ModeService);
+    const url = req.url;
+
+    // Debug logging for troubleshooting mode detection
+    if (url.includes('/api/') && !url.includes('assets/')) {
+        console.debug(`[BrowserModeIntercepter] Request: ${req.method} ${url}, IsBrowserMode: ${modeService.isBrowserMode()}`);
+    }
 
     // Only intercept in browser modes
     if (!modeService.isBrowserMode()) {
@@ -317,7 +323,6 @@ export const browserModeInterceptor = (req: HttpRequest<unknown>, next: HttpHand
     }
 
     const sqliteService = inject(SqliteService);
-    const url = req.url;
     const method = req.method;
 
     // Route to mock handlers

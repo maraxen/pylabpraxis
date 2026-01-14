@@ -2,10 +2,10 @@ import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 
 
 @Component({
-    selector: 'app-protocol-card-skeleton',
-    standalone: true,
-    imports: [],
-    template: `
+  selector: 'app-protocol-card-skeleton',
+  standalone: true,
+  imports: [],
+  template: `
     <div class="skeleton-card" [class.compact]="compact">
       <div class="skeleton-header">
         <div class="skeleton-avatar"></div>
@@ -28,13 +28,13 @@ import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
       }
     </div>
   `,
-    styles: [`
+  styles: [`
     @keyframes shimmer {
       0% { background-position: -200% 0; }
       100% { background-position: 200% 0; }
     }
     .skeleton-card {
-      background: var(--sys-surface-container-low);
+      background: var(--mat-sys-surface-container-low);
       border-radius: 12px;
       padding: 16px;
       min-width: 280px;
@@ -53,7 +53,7 @@ import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background: linear-gradient(90deg, var(--sys-surface-container) 25%, var(--sys-surface-container-high) 50%, var(--sys-surface-container) 75%);
+      background: linear-gradient(90deg, var(--mat-sys-surface-container) 25%, var(--mat-sys-surface-container-high) 50%, var(--mat-sys-surface-container) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
     }
@@ -64,7 +64,7 @@ import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
       height: 20px;
       width: 60%;
       border-radius: 4px;
-      background: linear-gradient(90deg, var(--sys-surface-container) 25%, var(--sys-surface-container-high) 50%, var(--sys-surface-container) 75%);
+      background: linear-gradient(90deg, var(--mat-sys-surface-container) 25%, var(--mat-sys-surface-container-high) 50%, var(--mat-sys-surface-container) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
       margin-bottom: 8px;
@@ -73,7 +73,7 @@ import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
       height: 14px;
       width: 40%;
       border-radius: 4px;
-      background: linear-gradient(90deg, var(--sys-surface-container) 25%, var(--sys-surface-container-high) 50%, var(--sys-surface-container) 75%);
+      background: linear-gradient(90deg, var(--mat-sys-surface-container) 25%, var(--mat-sys-surface-container-high) 50%, var(--mat-sys-surface-container) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
     }
@@ -84,7 +84,7 @@ import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
       height: 14px;
       width: 100%;
       border-radius: 4px;
-      background: linear-gradient(90deg, var(--sys-surface-container) 25%, var(--sys-surface-container-high) 50%, var(--sys-surface-container) 75%);
+      background: linear-gradient(90deg, var(--mat-sys-surface-container) 25%, var(--mat-sys-surface-container-high) 50%, var(--mat-sys-surface-container) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
       margin-bottom: 8px;
@@ -100,13 +100,13 @@ import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
       height: 24px;
       width: 60px;
       border-radius: 12px;
-      background: linear-gradient(90deg, var(--sys-surface-container) 25%, var(--sys-surface-container-high) 50%, var(--sys-surface-container) 75%);
+      background: linear-gradient(90deg, var(--mat-sys-surface-container) 25%, var(--mat-sys-surface-container-high) 50%, var(--mat-sys-surface-container) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
     }
   `],
-    changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProtocolCardSkeletonComponent {
-    @Input() compact = false;
+  @Input() compact = false;
 }

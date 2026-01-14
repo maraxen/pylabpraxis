@@ -1,17 +1,20 @@
 # F-01: Simulated Deck States Implementation
 
-**Status:** 🔴 Blocked by F-P1
+**Status:** 🟢 Ready for Implementation
 **Priority:** High
 **Assignee:** Agent
 **Type:** 🟢 Implementation (Frontend)
+**Unblocked By:** F-P1 (Workcell UX Planning) - Completed 2026-01-13
 
-## Context
+## Design Reference
 
-"no deck state available. we should have simulated deck states."
-Currently, `VisualizerComponent` shows "No deck state available" if `deck.data.resource` is missing. The backend `Machine` model has a `plr_state` field (JSONB) that holds the simulation state (volume, tips, location). This prompt focuses on connecting that data to the frontend visualization.
-
-> [!IMPORTANT]
-> This task is **dependent** on the design decisions made in **F-P1 (Workcell UX Planning)**. Do not start this task until F-P1 is complete and approved. The implementation details below are *provisional* and should be updated based on F-P1's output.
+> [!NOTE]
+> F-P1 is now complete. See the design documents for context:
+>
+> - **Design:** [`artifacts/workcell_ux_redesign.md`](./artifacts/workcell_ux_redesign.md)
+> - **Implementation Plan:** [`artifacts/workcell_implementation_plan.md`](./artifacts/workcell_implementation_plan.md)
+>
+> This task (F-01) corresponds to **Phase 3: Deck State Integration** in the implementation plan.
 
 ## Objectives
 

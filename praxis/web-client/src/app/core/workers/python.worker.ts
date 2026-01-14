@@ -162,6 +162,21 @@ async function initializePyodide(id?: string) {
     console.error('Failed to install PyLabRobot/Jedi:', err);
   }
 
+  // Load WebSerial Shim (must be before bridge if bridge depends on it, but here bridge imports it optionally)
+  // We want it available as a module 'web_serial_shim'
+  try {
+    const shimResponse = await fetch('assets/shims/web_serial_shim.py');
+    if (shimResponse.ok) {
+      const shimCode = await shimResponse.text();
+      pyodide.FS.writeFile('web_serial_shim.py', shimCode);
+      console.log('WebSerial Shim loaded successfully');
+    } else {
+      console.error('Failed to fetch WebSerial Shim:', shimResponse.statusText);
+    }
+  } catch (err) {
+    console.error('Error loading WebSerial Shim:', err);
+  }
+
   // Load WebBridge Python code (for RAW_IO and signature help)
   const response = await fetch('assets/python/web_bridge.py');
   const bridgeCode = await response.text();

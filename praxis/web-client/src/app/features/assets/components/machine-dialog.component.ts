@@ -215,20 +215,35 @@ interface FrontendType {
                   </div>
                 </div>
 
-                <div class="section-card" [class.opacity-60]="form.get('backend_driver')?.value === 'sim'">
+                <div class="section-card" [class.opacity-60]="isSimulatedDefinition(selectedDefinition!) && !form.get('backend_driver')?.value">
                   <div class="section-header">Connection</div>
-                  @if (shouldShowConnectionConfig()) {
+                  @if (isSimulatedDefinition(selectedDefinition!)) {
+                     <div class="flex flex-col gap-2">
+                       <p class="text-sm sys-text-secondary">Select the simulation driver to use.</p>
+                       <mat-form-field appearance="outline" class="w-full">
+                         <mat-label>Simulation Backend</mat-label>
+                         <mat-select formControlName="backend_driver">
+                           @for (backendFqn of selectedDefinition?.available_simulation_backends; track backendFqn) {
+                             <mat-option [value]="backendFqn">
+                               {{ getSimulatedBackendShortName(backendFqn) }}
+                             </mat-option>
+                           }
+                         </mat-select>
+                         @if (form.get('backend_driver')?.hasError('required')) {
+                           <mat-error>Backend is required</mat-error>
+                         }
+                       </mat-form-field>
+                     </div>
+                  } @else if (shouldShowConnectionConfig()) {
                     <app-dynamic-capability-form
                       [config]="selectedDefinition!.connection_config"
                       (valueChange)="updateConnectionInfo($event)">
                     </app-dynamic-capability-form>
-                  } @else if (form.get('backend_driver')?.value !== 'sim') {
-                    <div class="muted-box mb-3">No structured connection schema; enter JSON if required.</div>
                   } @else {
-                    <div class="muted-box">Simulated mode — no connection required.</div>
+                    <div class="muted-box mb-3">No structured connection schema; enter JSON if required.</div>
                   }
 
-                  @if (form.get('backend_driver')?.value !== 'sim') {
+                  @if (!isSimulatedDefinition(selectedDefinition!)) {
                     <button mat-stroked-button type="button" class="w-full justify-between" (click)="showAdvancedConnectionJson = !showAdvancedConnectionJson">
                       <span>Advanced JSON</span>
                       <mat-icon>{{ showAdvancedConnectionJson ? 'expand_less' : 'expand_more' }}</mat-icon>
@@ -498,7 +513,7 @@ export class MachineDialogComponent implements OnInit {
     this.filteredBackends = this.allDefinitions.filter(d => d.frontend_fqn === fqn);
     this.selectedDefinition = null;
     this.form.patchValue({ backend_driver: 'sim' });
-    
+
     // Reset downstream steps
     this.steps[1].completed = false;
     this.steps[2].completed = false;
@@ -519,23 +534,64 @@ export class MachineDialogComponent implements OnInit {
       user_configured_capabilities: '',
       name: `Simulated ${this.getSelectedFrontendLabel()} ${Math.floor(Math.random() * 100) + 1}`
     });
+
+    // Clear backend_driver validators if not a simulated frontend
+    this.form.get('backend_driver')?.clearValidators();
+    this.form.get('backend_driver')?.updateValueAndValidity();
+
     // Reset downstream step
     this.steps[2].completed = false;
   }
 
   /** Check if a backend definition is a simulation backend */
   isSimulatedDefinition(def: MachineDefinition): boolean {
-    const fqnLower = (def.fqn || '').toLowerCase();
-    const nameLower = (def.name || '').toLowerCase();
-    return fqnLower.includes('chatterbox') ||
-      fqnLower.includes('simulator') ||
-      nameLower.includes('simulated');
+    return !!def.is_simulated_frontend;
+  }
+
+  isSimulatedBackend(backendFqn: string): boolean {
+    const fqnLower = (backendFqn || '').toLowerCase();
+    return fqnLower.includes('chatterbox') || fqnLower.includes('simulator');
+  }
+
+  getSimulatedBackendShortName(backendFqn: string): string {
+    const parts = backendFqn.split('.');
+    const name = parts[parts.length - 1]; // e.g. "ChatterboxBackend" or "LiquidHandlerChatterboxBackend"
+
+    // Make it more readable
+    if (name.includes('Chatterbox')) return 'Chatterbox';
+    if (name.includes('Simulator')) return 'Standard Simulator';
+    return name;
+  }
+
+  onMachineDefinitionChange(def: MachineDefinition) {
+    if (!def) return;
+
+    const isSimulated = this.isSimulatedDefinition(def);
+
+    this.form.patchValue({
+      // For simulated frontends, backend_driver should be the SELECTED simulation backend.
+      // For normal machines, backend_driver is the machine FQN.
+      backend_driver: isSimulated ? '' : (def.fqn || def.name)
+    });
+
+    if (isSimulated) {
+      this.form.get('backend_driver')?.setValidators([Validators.required]);
+
+      // If there's only one option, select it automatically
+      const available = def.available_simulation_backends || [];
+      if (available.length === 1) {
+        this.form.patchValue({ backend_driver: available[0] });
+      }
+    } else {
+      this.form.get('backend_driver')?.clearValidators();
+    }
+
+    this.form.get('backend_driver')?.updateValueAndValidity();
   }
 
   selectBackend(def: MachineDefinition) {
     this.selectedDefinition = def;
-
-    const isSimulatedBackend = this.isSimulatedDefinition(def);
+    this.onMachineDefinitionChange(def);
 
     this.form.patchValue({
       model: def.model || def.name,
@@ -543,7 +599,7 @@ export class MachineDialogComponent implements OnInit {
       description: def.description || '',
       machine_definition_accession_id: def.accession_id,
       machine_category: def.machine_category || 'unknown',
-      backend_driver: isSimulatedBackend ? 'sim' : (def.fqn || def.name),
+      // backend_driver is handled by onMachineDefinitionChange
       name: `${def.name} ${Math.floor(Math.random() * 100) + 1}`,
       connection_info: '',
       user_configured_capabilities: ''
@@ -676,10 +732,17 @@ export class MachineDialogComponent implements OnInit {
         } catch (e) { console.error(e); }
       }
 
-      const isSimulated = value.backend_driver === 'sim';
+      const isSimulated = this.selectedDefinition ? this.isSimulatedDefinition(this.selectedDefinition) : false;
+      let simulationBackendName: string | undefined = undefined;
 
-      if (value.backend_driver && value.backend_driver !== 'sim') {
-        connectionInfo['backend_fqn'] = value.backend_driver;
+      if (isSimulated) {
+        // For simulated frontends, backend_driver contains the selected backend FQN
+        simulationBackendName = value.backend_driver || undefined;
+      } else {
+        // Normal machine
+        if (value.backend_driver) {
+          connectionInfo['backend_fqn'] = value.backend_driver;
+        }
       }
 
       let userConfiguredCapabilities: any = null;
@@ -697,7 +760,8 @@ export class MachineDialogComponent implements OnInit {
         frontend_fqn: this.selectedFrontendFqn,
         connection_info: connectionInfo,
         user_configured_capabilities: userConfiguredCapabilities,
-        is_simulated: isSimulated
+        is_simulated: isSimulated,
+        simulation_backend_name: simulationBackendName
       });
     }
   }

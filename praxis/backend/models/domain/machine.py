@@ -72,6 +72,15 @@ class MachineDefinitionBase(PraxisBase):
   connection_config: dict[str, Any] | None = Field(
     default=None, sa_type=JsonVariant, description="Connection parameters schema"
   )
+  is_simulated_frontend: bool | None = Field(
+    default=None,
+    description="True if this is a generic simulated frontend (not a real backend)",
+  )
+  available_simulation_backends: list[str] | None = Field(
+    default=None,
+    sa_type=JsonVariant,
+    description="FQNs of simulation backends available for this frontend type",
+  )
 
 
 class MachineDefinition(MachineDefinitionBase, table=True):
@@ -82,7 +91,9 @@ class MachineDefinition(MachineDefinitionBase, table=True):
 
   machine_category: MachineCategoryEnum = Field(
     default=MachineCategoryEnum.UNKNOWN,
-    sa_column=Column(SAEnum(MachineCategoryEnum), default=MachineCategoryEnum.UNKNOWN, nullable=False),
+    sa_column=Column(
+      SAEnum(MachineCategoryEnum), default=MachineCategoryEnum.UNKNOWN, nullable=False
+    ),
   )
   has_deck: bool = Field(
     default=False,
@@ -192,6 +203,10 @@ class MachineBase(AssetBase):
   last_maintenance_json: dict[str, Any] | None = Field(
     default=None, sa_type=JsonVariant, description="Record of last maintenance"
   )
+  simulation_backend_name: str | None = Field(
+    default=None,
+    description="Selected simulation backend name (when is_simulated_frontend = True)",
+  )
 
 
 class Machine(MachineBase, Asset, table=True):
@@ -201,7 +216,9 @@ class Machine(MachineBase, Asset, table=True):
 
   machine_category: MachineCategoryEnum = Field(
     default=MachineCategoryEnum.UNKNOWN,
-    sa_column=Column(SAEnum(MachineCategoryEnum), default=MachineCategoryEnum.UNKNOWN, nullable=False),
+    sa_column=Column(
+      SAEnum(MachineCategoryEnum), default=MachineCategoryEnum.UNKNOWN, nullable=False
+    ),
   )
   status: MachineStatusEnum = Field(
     default=MachineStatusEnum.OFFLINE,
@@ -292,6 +309,7 @@ class Machine(MachineBase, Asset, table=True):
 
 class MachineCreate(MachineBase):
   """Schema for creating a Machine."""
+
   # Fields that tie a Machine to a Resource counterpart when creating
   resource_def_name: str | None = None
   resource_properties_json: dict[str, Any] | None = None

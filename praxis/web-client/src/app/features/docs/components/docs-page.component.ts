@@ -10,16 +10,17 @@ import { ActivatedRoute } from '@angular/router';
 import { MarkdownModule } from 'ngx-markdown';
 import { catchError, of } from 'rxjs';
 import { SystemTopologyComponent } from './system-topology/system-topology.component';
+import mermaid from 'mermaid';
 
 @Component({
   selector: 'app-docs-page',
   standalone: true,
   imports: [
-    MarkdownModule, 
-    SystemTopologyComponent, 
-    MatButtonModule, 
+    MarkdownModule,
+    SystemTopologyComponent,
+    MatButtonModule,
     MatButtonToggleModule,
-    MatIconModule, 
+    MatIconModule,
     DiagramOverlayComponent
   ],
   template: `
@@ -56,7 +57,7 @@ import { SystemTopologyComponent } from './system-topology/system-topology.compo
           @if (showSystemTopology()) {
             <app-system-topology></app-system-topology>
           }
-          <markdown [data]="markdownContent()" mermaid [mermaidOptions]="mermaidOptions()" (ready)="onMarkdownReady()"></markdown>
+          <markdown [data]="markdownContent()" (ready)="onMarkdownReady()"></markdown>
         </article>
 
         @if (expandedDiagram()) {
@@ -485,7 +486,7 @@ export class DocsPageComponent {
 
       // Only show mode switch for architecture pages where it matters
       this.showModeSwitch.set(section === 'architecture' && (page === 'overview' || page === 'backend'));
-      
+
       // We are handling topology in the markdown files now via mode switching
       this.showSystemTopology.set(false);
     }, { allowSignalWrites: true });
@@ -520,10 +521,10 @@ export class DocsPageComponent {
           // If mode specific not found, try default
           return this.http.get(defaultPath, { responseType: 'text' }).pipe(
             catchError(() => {
-               // If default not found with section, try root default
-               return this.http.get(`assets/docs/${page}.md`, { responseType: 'text' }).pipe(
-                 catchError(() => of(null))
-               );
+              // If default not found with section, try root default
+              return this.http.get(`assets/docs/${page}.md`, { responseType: 'text' }).pipe(
+                catchError(() => of(null))
+              );
             })
           );
         })
@@ -564,37 +565,73 @@ export class DocsPageComponent {
     }
   }
 
-  onMarkdownReady(): void {
-    // Inject expand buttons into Mermaid diagrams
-    setTimeout(() => {
-      const article = this.el.nativeElement.querySelector('.docs-article');
-      if (!article) return;
+  async onMarkdownReady(): Promise<void> {
+    const article = this.el.nativeElement.querySelector('.docs-article');
+    if (!article) return;
 
-      const diagrams = article.querySelectorAll('.mermaid');
-      diagrams.forEach((d: HTMLElement) => {
-        // Skip if already wrapped or has button
-        if (d.parentElement?.classList.contains('diagram-wrapper')) return;
+    // 1. Convert any detected mermaid code blocks from ngx-markdown's format
+    // ngx-markdown likely renders as <pre><code class="language-mermaid">...</code></pre>
+    const mermaidCodes = article.querySelectorAll('code.language-mermaid');
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'diagram-wrapper';
-
-        d.parentNode?.insertBefore(wrapper, d);
-        wrapper.appendChild(d);
-
-        const btn = document.createElement('button');
-        btn.className = 'expand-btn';
-        btn.title = 'Fullscreen';
-        btn.innerHTML = '<i class="material-icons">fullscreen</i>';
-
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          // We need to get the innerHTML of the mermaid div
-          this.expandedDiagram.set(d.innerHTML);
-        };
-
-        wrapper.appendChild(btn);
+    if (mermaidCodes.length > 0) {
+      // Initialize mermaid with our options
+      mermaid.initialize({
+        startOnLoad: false,
+        ...this.mermaidOptions()
       });
-    }, 100);
+
+      const nodesToRun: HTMLElement[] = [];
+
+      mermaidCodes.forEach((code: HTMLElement) => {
+        const pre = code.parentElement;
+        if (pre && pre.tagName === 'PRE') {
+          // Replace <pre><code>...</code></pre> with <div class="mermaid">...</div>
+          // This matches what mermaid expects and what our CSS targets
+          const div = document.createElement('div');
+          div.className = 'mermaid';
+          div.textContent = code.textContent || '';
+
+          pre.parentNodereplaceChild(div, pre);
+          nodesToRun.push(div);
+        }
+      });
+
+      // Run mermaid on our new div elements
+      if (nodesToRun.length > 0) {
+        try {
+          await mermaid.run({ nodes: nodesToRun });
+        } catch (e) {
+          console.error('Mermaid render error:', e);
+        }
+      }
+    }
+
+    // 2. Inject expand buttons
+    // We do this after mermaid run, because mermaid replaces the content with SVG
+    const diagrams = article.querySelectorAll('.mermaid');
+    diagrams.forEach((d: HTMLElement) => {
+      // Skip if already wrapped or has button
+      if (d.parentElement?.classList.contains('diagram-wrapper')) return;
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'diagram-wrapper';
+
+      d.parentNode?.insertBefore(wrapper, d);
+      wrapper.appendChild(d);
+
+      const btn = document.createElement('button');
+      btn.className = 'expand-btn';
+      btn.title = 'Fullscreen';
+      btn.innerHTML = '<i class="material-icons">fullscreen</i>';
+
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        // Get the innerHTML (the SVG)
+        this.expandedDiagram.set(d.innerHTML);
+      };
+
+      wrapper.appendChild(btn);
+    });
   }
 
   closeExpanded(): void {

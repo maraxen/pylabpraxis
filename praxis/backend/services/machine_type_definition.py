@@ -75,30 +75,69 @@ class MachineTypeDefinitionService(
     all_discovered = self.parser.discover_machine_classes()
     logger.info("Discovered %d machine types total.", len(all_discovered))
 
-    # Enforce singleton pattern for simulated frontends/backends per category
-    # to avoid UI noise and potential DB clobbering.
-    simulated_seen = set()
-    discovered_machines = []
+    # Group simulated backends by frontend type
+    simulated_by_frontend: dict[str, list[DiscoveredClass]] = {}
+    non_simulated: list[DiscoveredClass] = []
 
     for cls in all_discovered:
       if cls.is_simulated():
-        # Identify category (either from backend mapping or class type itself)
-        category = BACKEND_TYPE_TO_FRONTEND_FQN.get(cls.class_type) or cls.class_type
-        if category in simulated_seen:
-          continue
-        simulated_seen.add(category)
-      discovered_machines.append(cls)
-
-    logger.info("Kept %d machine types after deduplication.", len(discovered_machines))
+        frontend_fqn = BACKEND_TYPE_TO_FRONTEND_FQN.get(cls.class_type)
+        if frontend_fqn:
+          simulated_by_frontend.setdefault(frontend_fqn, []).append(cls)
+      else:
+        non_simulated.append(cls)
 
     synced_definitions = []
-    for cls in discovered_machines:
+
+    # Upsert non-simulated backends as before
+    for cls in non_simulated:
       definition = await self._upsert_definition(cls)
+      synced_definitions.append(definition)
+
+    # Create ONE simulated frontend per category
+    for frontend_fqn, sim_backends in simulated_by_frontend.items():
+      definition = await self._upsert_simulated_frontend(frontend_fqn, sim_backends)
       synced_definitions.append(definition)
 
     await self.db.commit()
     logger.info("Synchronized %d machine definitions.", len(synced_definitions))
     return synced_definitions
+
+  async def _upsert_simulated_frontend(
+    self,
+    frontend_fqn: str,
+    sim_backends: list[DiscoveredClass],
+  ) -> MachineDefinition:
+    """Create/update a single simulated frontend definition for a category."""
+    # Generate name like "Simulated Liquid Handler"
+    category_name = frontend_fqn.split(".")[-1]  # LiquidHandler
+    name = f"Simulated {category_name}"
+    fqn = f"praxis.simulated.{category_name}"
+
+    backend_fqns = [cls.fqn for cls in sim_backends]
+
+    # Check for existing
+    existing = await self.db.execute(select(MachineDefinition).filter(MachineDefinition.fqn == fqn))
+    existing_def = existing.scalar_one_or_none()
+
+    if existing_def:
+      existing_def.available_simulation_backends = backend_fqns
+      existing_def.is_simulated_frontend = True
+      # Ensure frontend_fqn is set (in case it was missing/wrong before)
+      existing_def.frontend_fqn = frontend_fqn
+      return existing_def
+
+    # Create new
+    new_def = MachineDefinition(
+      name=name,
+      fqn=fqn,
+      frontend_fqn=frontend_fqn,
+      is_simulated_frontend=True,
+      available_simulation_backends=backend_fqns,
+      description=f"Simulated {category_name} - select backend at instantiation",
+    )
+    self.db.add(new_def)
+    return new_def
 
   async def _upsert_definition(self, cls: DiscoveredClass) -> MachineDefinition:
     """Create or update a machine definition from discovered class.

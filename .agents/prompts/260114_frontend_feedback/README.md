@@ -192,8 +192,8 @@ After review approval:
 | [E-02_playground_theming.md](E-02_playground_theming.md) | 🟢 Ready | P3 Implementation: Playground Theming Quick Wins |
 | [E-P1_inventory_planning.md](E-P1_inventory_planning.md) | 🟢 Ready | P2 Planning: Inventory/Asset Selector UX Design |
 | **Group F: Workcell & Deck** | | |
-| [F-P1_workcell_ux_planning.md](F-P1_workcell_ux_planning.md) | 🟢 Ready | P2 Planning: Workcell UX Audit & Redesign |
-| [F-01_simulated_deck_states.md](F-01_simulated_deck_states.md) | ⏳ Blocked | P2 Implementation: Blocked by F-P1 |
+| [F-P1_workcell_ux_planning.md](F-P1_workcell_ux_planning.md) | ✅ Completed | P2 Planning: Workcell UX Audit & Redesign. See [artifacts/](artifacts/) |
+| [F-01_simulated_deck_states.md](F-01_simulated_deck_states.md) | 🟢 Ready | P2 Implementation: Simulated Deck States (unblocked by F-P1) |
 | **Group G: Documentation & Rendering** | | |
 | [G-01_protocols_not_loading.md](G-01_protocols_not_loading.md) | 🟢 Ready | P1 Investigation: Diagnose protocol loading in browser mode |
 | [G-02_docs_404_and_mermaid.md](G-02_docs_404_and_mermaid.md) | 🟢 Ready | P1/P2 Implementation: Fix 404 for docs and mermaid rendering |

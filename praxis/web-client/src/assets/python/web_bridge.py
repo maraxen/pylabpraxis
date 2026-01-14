@@ -417,6 +417,14 @@ def bootstrap_playground(namespace=None):
   except ImportError:
     pass
 
+  # Inject WebSerial from shim if available
+  try:
+    from web_serial_shim import WebSerial
+
+    target["WebSerial"] = WebSerial
+  except ImportError:
+    pass
+
 
 # =============================================================================
 # Signature Help (still uses Jedi if available)

@@ -63,6 +63,7 @@ export interface Machine extends AssetBase {
   connection_info?: Record<string, any>;
   is_simulation_override?: boolean;
   user_configured_capabilities?: Record<string, any>;
+  simulation_backend_name?: string;
 
   // Maintenance fields
   maintenance_enabled?: boolean;
@@ -83,6 +84,7 @@ export interface MachineCreate {
   connection_info?: Record<string, any>;
   is_simulation_override?: boolean;
   user_configured_capabilities?: Record<string, any>;
+  simulation_backend_name?: string;
   machine_definition_accession_id?: string;
   maintenance_enabled?: boolean;
   maintenance_schedule_json?: MaintenanceSchedule;
@@ -120,6 +122,8 @@ export interface MachineDefinition {
   capabilities_config?: any;
   connection_config?: any;
   frontend_fqn?: string;
+  is_simulated_frontend?: boolean;
+  available_simulation_backends?: string[];
 }
 
 export interface MachineCapabilityConfigSchema {
