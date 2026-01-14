@@ -62,8 +62,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
               <div
                 gridCell
                 class="well-cell"
-                [class.selected]="isSelected(wellId)"
-                [class.dragging]="isDragging"
+                [class.selected]="isPreviewSelected(wellId)"
+                [class.dragging]="isDragging()"
                 (mousedown)="onMouseDown(wellId, $event)"
                 (mouseenter)="onMouseEnter(wellId)"
               >
@@ -71,7 +71,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
                   <div
                     class="well-circle"
                     [matTooltip]="wellId"
-                    [class.has-selection]="isSelected(wellId)"
+                    [class.has-selection]="isPreviewSelected(wellId)"
                   ></div>
                 </div>
               </div>
@@ -185,6 +185,29 @@ export class WellSelectorComponent implements OnChanges {
   @Output() selectionChange = new EventEmitter<string[]>();
 
   protected readonly selectedWellsSet = signal(new Set<string>());
+  protected readonly draggedWells = signal(new Set<string>());
+  protected readonly isDragging = signal(false);
+  private startState = false;
+
+  readonly previewSelection = computed(() => {
+    const committed = this.selectedWellsSet();
+    const dragged = this.draggedWells();
+    const isDragging = this.isDragging();
+
+    if (!isDragging || dragged.size === 0) {
+      return committed;
+    }
+
+    const newSelection = new Set(committed);
+    if (this.startState) {
+      // Selecting: Union
+      dragged.forEach((well) => newSelection.add(well));
+    } else {
+      // Deselecting: Difference
+      dragged.forEach((well) => newSelection.delete(well));
+    }
+    return newSelection;
+  });
 
   readonly rowLabels = computed(() =>
     Array.from({ length: this.rows }, (_, i) => String.fromCharCode(65 + i))
@@ -193,9 +216,6 @@ export class WellSelectorComponent implements OnChanges {
   readonly colLabels = computed(() =>
     Array.from({ length: this.cols }, (_, i) => i + 1)
   );
-
-  isDragging = false;
-  private startState = false;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['selectedWells']) {
@@ -207,38 +227,35 @@ export class WellSelectorComponent implements OnChanges {
     return this.selectedWellsSet().has(well);
   }
 
+  isPreviewSelected(well: string): boolean {
+    return this.previewSelection().has(well);
+  }
+
   onMouseDown(well: string, event: MouseEvent): void {
     if (event.button !== 0) return;
     event.preventDefault();
 
-    this.isDragging = true;
-    const currentSet = this.selectedWellsSet();
-    this.startState = !currentSet.has(well);
-    this.updateWell(well, this.startState);
+    this.isDragging.set(true);
+    this.startState = !this.isSelected(well);
+    this.draggedWells.set(new Set([well]));
   }
 
   onMouseEnter(well: string): void {
-    if (this.isDragging) {
-      this.updateWell(well, this.startState);
+    if (this.isDragging()) {
+      const currentDragged = this.draggedWells();
+      if (!currentDragged.has(well)) {
+        const nextDragged = new Set(currentDragged);
+        nextDragged.add(well);
+        this.draggedWells.set(nextDragged);
+      }
     }
   }
 
   onMouseUp(): void {
-    this.isDragging = false;
-  }
-
-  private updateWell(well: string, select: boolean): void {
-    const currentSet = new Set(this.selectedWellsSet());
-    if (select) {
-      if (!currentSet.has(well)) {
-        currentSet.add(well);
-        this.emitChange(currentSet);
-      }
-    } else {
-      if (currentSet.has(well)) {
-        currentSet.delete(well);
-        this.emitChange(currentSet);
-      }
+    if (this.isDragging()) {
+      this.isDragging.set(false);
+      this.emitChange(this.previewSelection());
+      this.draggedWells.set(new Set());
     }
   }
 

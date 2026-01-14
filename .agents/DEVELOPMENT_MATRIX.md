@@ -1,7 +1,8 @@
 # Praxis Development Matrix
 
-**Last Updated**: 2026-01-13 (Archival Cleanup)
+**Last Updated**: 2026-01-15 (Batch 260115 Planning)
 **Purpose**: Current iteration work items with priority and difficulty ratings.
+**Current Batch**: [260115_dev_cycle](prompts/260115_dev_cycle/README.md)
 
 ---
 
@@ -9,93 +10,77 @@
 
 ### Priority
 
-| Priority | Description |
-|----------|-------------|
-| **P1** | Critical - Blocking alpha release |
-| **P2** | High - Required for alpha quality |
-| **P3** | Medium - Should have for alpha |
-| **P4** | Low - Nice to have / post-alpha |
+| Priority | Description                       |
+|----------|-----------------------------------|
+| **P1**   | Critical - Blocking alpha release |
+| **P2**   | High - Required for alpha quality |
+| **P3**   | Medium - Should have for alpha    |
+| **P4**   | Low - Nice to have / post-alpha   |
 
 ### Difficulty
 
-| Difficulty | Description |
-|------------|-------------|
-| **Hard** | Complex architecture, multi-system, likely debugging |
-| **Medium** | Well-defined but substantial work |
-| **Easy** | Straightforward, minimal ambiguity |
+| Difficulty | Description                                          |
+|------------|------------------------------------------------------|
+| **Hard**   | Complex architecture, multi-system, likely debugging |
+| **Medium** | Well-defined but substantial work                   |
+| **Easy**   | Straightforward, minimal ambiguity                   |
 
 ---
 
 ## P1 - Critical (Alpha Blockers)
 
-| Item | Difficulty | Backlog | Description |
-|------|------------|---------|-------------|
-| Registry UI | Medium | [asset_management.md](./backlog/asset_management.md) | "Definitions precinct in browser mode" error; needs redesign |
+| Item                  | Difficulty | Backlog                                 | Description                                                          |
+|-----------------------|------------|-----------------------------------------|----------------------------------------------------------------------|
+| WebSerial "NameError" | Medium     | [playground.md](./backlog/playground.md) | Top blocker: WebSerial not correctly defined in Pyodide/REPL builtins |
 
 ---
 
 ## P2 - High Priority (Alpha Quality)
 
-### UI/UX Issues
+### UI/UX Implementation (from Redesign Artifacts)
 
-| Item | Difficulty | Backlog | Description |
-|------|------------|---------|-------------|
-| Simulated Backend Clarity | Medium | [simulation.md](./backlog/simulation.md) | Unclear simulated backend behavior; demo naming persists |
-| Protocol Library Filters | Medium | [protocol_workflow.md](./backlog/protocol_workflow.md) | No filters implemented |
-| Protocol Library Filters | Medium | [protocol_workflow.md](./backlog/protocol_workflow.md) | No filters implemented |
-
-### Visualization Issues
-
-...
-
-### Documentation Issues
-
-| Item | Difficulty | Backlog | Description |
-|------|------------|---------|-------------|
-| API Docs Broken | Medium | [docs.md](./backlog/docs.md) | API documentation not rendering |
-| Architecture View Expansion | Medium | [docs.md](./backlog/docs.md) | Shows text instead of visual diagrams |
-| Mode Separation in Docs | Medium | [docs.md](./backlog/docs.md) | Separate browser-lite vs production tabs |
-| Tutorial Updates | Medium | [docs.md](./backlog/docs.md) | Bring tutorial up to date |
-| Docs Accuracy Audit | Medium | [docs.md](./backlog/docs.md) | Verify all docs are current |
-
-### Playground Issues
-
-| Item | Difficulty | Backlog | Description |
-|------|------------|---------|-------------|
-| Resource Filter Broken | Medium | [playground.md](./backlog/playground.md) | Filters not working, inconsistent styling |
-| Browser Tab Blank | Medium | [playground.md](./backlog/playground.md) | Categories shows blank area |
-| WebUSB/Polyfill Audit | Hard | [playground.md](./backlog/playground.md) | Audit polyfill/webusb communication |
+| Item                           | Difficulty | Backlog                                                       | Description                                          |
+|--------------------------------|------------|---------------------------------------------------------------|------------------------------------------------------|
+| Workcell Hierarchical Explorer | Hard       | [workcell_ux_redesign.md](./artifacts/workcell_ux_redesign.md) | Implement tree-based sidebar and status cards        |
+| Unified Asset Selector         | Medium     | [inventory_ux_design.md](./artifacts/inventory_ux_design.md)   | Implement shared browsing for Playground and Protocol |
+| Simulated Backend Separation   | Medium     | [simulation.md](./backlog/simulation.md)                        | Decouple frontend definitions from backend drivers   |
+| Protocol Library Filters       | Medium     | [protocol_workflow.md](./backlog/protocol_workflow.md)         | Implement filtering in the main Protocol view        |
 
 ### Hardware Validation (Required for Alpha)
 
-| Item | Difficulty | Backlog | Description |
-|------|------------|---------|-------------|
-| Hardware Discovery | Hard | [hardware.md](./backlog/hardware.md) | WebSerial/WebUSB device enumeration in browser |
-| Connection Persistence | Medium | [hardware.md](./backlog/hardware.md) | Connections persist across sessions |
-| Plate Reader Validation | Medium | [hardware.md](./backlog/hardware.md) | Validate plate reader (may need debugging) |
-| Hamilton Starlet Validation | Hard | [hardware.md](./backlog/hardware.md) | Validate with Hamilton hardware |
-| Frontend Protocol Execution | Hard | [hardware.md](./backlog/hardware.md) | Full protocol execution from browser UI |
-| Playground Hardware | Hard | [hardware.md](./backlog/hardware.md) | Interactive hardware control from playground |
+| Item                        | Difficulty | Backlog                              | Description                                     |
+|-----------------------------|------------|--------------------------------------|-------------------------------------------------|
+| Hardware Discovery          | Hard       | [hardware.md](./backlog/hardware.md) | WebSerial/WebUSB device enumeration in browser  |
+| Connection Persistence      | Medium     | [hardware.md](./backlog/hardware.md) | Connections persist across sessions             |
+| Plate Reader Validation     | Medium     | [hardware.md](./backlog/hardware.md) | Validate plate reader (may need debugging)      |
+| Hamilton Starlet Validation | Hard       | [hardware.md](./backlog/hardware.md) | Validate with Hamilton hardware                 |
+| Frontend Protocol Execution | Hard       | [hardware.md](./backlog/hardware.md) | Full protocol execution from browser UI         |
+| Playground Hardware         | Hard       | [hardware.md](./backlog/hardware.md) | Interactive hardware control from playground    |
 
 ---
 
 ## P3 - Medium Priority (Should Have for Alpha)
 
-### Testing
+### State & Monitoring
 
-| Item | Difficulty | Backlog | Description |
-|------|------------|---------|-------------|
-| Maintenance Tracking Tests | Medium | [testing.md](./backlog/testing.md) | Test maintenance system |
+| Item                       | Difficulty | Backlog                                                       | Description                                          |
+|----------------------------|------------|---------------------------------------------------------------|------------------------------------------------------|
+| Live Deck State Overlays   | Medium     | [workcell_ux_redesign.md](./artifacts/workcell_ux_redesign.md) | Render liquid and tips on deck view from `plr_state` |
+| Maintenance Tracking Tests | Medium     | [testing.md](./backlog/testing.md)                            | Test maintenance system                              |
+
+### Agentic Infrastructure
+
+| Item                   | Difficulty | Description                                                          |
+|------------------------|------------|----------------------------------------------------------------------|
+| Agentic Workflow Skill | Medium     | Implement multi-stage (Inspect -> Plan -> Exec) development workflow |
 
 ---
 
 ## P4 - Low Priority (Post-Alpha / Beta)
 
-| Item | Difficulty | Description |
-|------|------------|-------------|
-| Production Mode Validation | Hard | Document what's needed for full production validation |
-| Workcell UI Redesign | Hard | Rethink and rework workcell interface |
-| Frontend/Backend Separation | Hard | Better architectural separation for simulation |
+| Item                       | Difficulty | Description                                           |
+|----------------------------|------------|-------------------------------------------------------|
+| Production Mode Validation | Hard       | Document what's needed for full production validation |
 
 ---
 
@@ -103,43 +88,37 @@
 
 ## Completed Items
 
-| Item | Priority | Date | Description |
-|------|----------|------|-------------|
-| [Historical Items (Jan 2026)](./archive/COMPLETED_ITEMS_ARCHIVE_JAN_2026.md) | - | 2026-01-12 | Consolidated archive of previous completions |
-| Model Unification (SQLModel) | P2 | 2026-01-13 | Massive refactor to unified SQLModel domain models, removed legacy ORM/Pydantic duplication |
-| [Frontend Schema Sync](./archive/backlog/frontend_schema_sync.md) | P1 | 2026-01-13 | Aligned frontend with SQLModel backend, fixed API client, removed build warnings |
-| Monitor State & Parameter Display | P2 | 2026-01-13 | Implemented agnostic state diffing and user-friendly parameter viewer |
-| Assets View Controls (Machines, Resources, Registry) | P2 | 2026-01-13 | Implemented unified `ViewControlsComponent`, refactored all Assets tabs for standardized filtering, sorting, and grouping |
-| Asset Filtering / Registry UI Redesign | P1/P2 | 2026-01-13 | Standardized filtering and resolved browser-mode registry errors |
-| Add Asset Dialog Unification | P2 | 2026-01-13 | Unified 'Add Machine' and 'Add Resource' into a single stepper-based flow |
-| Realistic Simulated Data Visualization | P2 | 2026-01-14 | Refactored DataViz to use persistent SQLite data with realistic transfer profiles |
-| Documentation Fixes (404/Mermaid) | P1/P2 | 2026-01-14 | Resolved 404 links, added Mermaid rendering, split installation guides |
-| Protocol Loading (Browser Mode) | P1 | 2026-01-14 | Fixed protocol loading in browser mode and updated intercepts |
-| Tutorial UI & State Fixes | P2 | 2026-01-14 | Audited tutorial accuracy and updated Settings UI for completion status |
-| Quick Add Autocomplete | P2 | 2026-01-14 | Implemented autocomplete for fast asset/machine selection in add dialog |
-| Playground Theming Quick Wins | P3 | 2026-01-14 | Standardized stepper, chip sizes, and skeleton loading with theme tokens |
-| Workcell UX Planning | P2 | 2026-01-14 | Completed comprehensive UX audit and redesign plan for the Workcell view |
-| Inventory/Asset Selector Design | P2 | 2026-01-14 | Planned unification of playground inventory and protocol asset selection |
-| Spatial View UX Analysis | P3 | 2026-01-14 | Analyzed purpose and value of Spatial View for future integration |
-| FilterChip Deprecation (A-05) | P2 | 2026-01-14 | Replaced `FilterChipComponent` with `PraxisSelect` in `ViewControlsComponent`, marked original as deprecated |
-| RunProtocol Fix | P2 | 2026-01-14 | Fixed critical `@Component` decorator error in `RunProtocolComponent` |
+| Item                                                | Priority | Date       | Description                                                          |
+|-----------------------------------------------------|----------|------------|----------------------------------------------------------------------|
+| [Historical Items (Jan 2026)](./archive/COMPLETED_ITEMS_ARCHIVE_JAN_2026.md) | -        | 2026-01-12 | Consolidated archive of previous completions                         |
+| Model Unification (SQLModel)                        | P2       | 2026-01-13 | Massive refactor to unified SQLModel domain models                   |
+| [Frontend Schema Sync](./archive/backlog/frontend_schema_sync.md) | P1 | 2026-01-13 | Aligned frontend with SQLModel backend                               |
+| Monitor State & Parameter Display                   | P2       | 2026-01-13 | Implemented agnostic state diffing and user-friendly parameter viewer |
+| Assets View Controls                                | P2       | 2026-01-13 | Implemented unified `ViewControlsComponent`                          |
+| Asset Filtering / Registry UI Redesign              | P1/P2    | 2026-01-13 | Standardized filtering and resolved browser-mode registry errors     |
+| Add Asset Dialog Unification                        | P2       | 2026-01-13 | Unified 'Add Machine' and 'Add Resource' flow                        |
+| Realistic Simulated Data Visualization              | P2       | 2026-01-14 | Refactored DataViz to use persistent SQLite data                     |
+| Documentation Fixes (404/Mermaid)                   | P1/P2    | 2026-01-14 | Resolved 404 links, added Mermaid rendering                          |
+| Protocol Loading (Browser Mode)                     | P1       | 2026-01-14 | Fixed protocol loading in browser mode                               |
+| Tutorial UI & State Fixes                           | P2       | 2026-01-14 | Audited tutorial accuracy and updated Settings UI                    |
+| Quick Add Autocomplete                              | P2       | 2026-01-14 | Implemented autocomplete in add dialog                               |
+| Playground Theming Quick Wins                       | P3       | 2026-01-14 | Standardized stepper, chip sizes, and loading skeletons              |
+| Workcell UX Planning                                | P2       | 2026-01-14 | Completed comprehensive UX audit and redesign plan                   |
+| Inventory/Asset Selector Design                     | P2       | 2026-01-14 | Planned unification of playground inventory and protocol asset selection |
+| Spatial View UX Analysis                             | P3       | 2026-01-14 | Analyzed purpose and value of Spatial View                           |
+| FilterChip Deprecation (A-05)                       | P2       | 2026-01-14 | Replaced `FilterChipComponent` with `PraxisSelect`                   |
+| RunProtocol Fix                                     | P2       | 2026-01-14 | Fixed critical `@Component` decorator error in `RunProtocolComponent` |
+| Well Selector Performance Optimization (E-02)       | P2       | 2026-01-14 | Batched selection updates to improve click+drag performance          |
 
 ---
 
 ## Summary
 
-| Priority | Count | Focus |
-|----------|-------|-------|
-| **P1** | 0 | Alpha blockers |
-| **P2** | 19 | Alpha quality (including hardware) |
-| **P3** | 1 | Should have for alpha |
-| **P4** | 3 | Post-alpha / beta |
+| Priority | Count | Focus                                |
+|----------|-------|--------------------------------------|
+| **P1**   | 1     | Alpha blockers (WebSerial)           |
+| **P2**   | 10    | Implementation & Hardware validation |
+| **P3**   | 2     | UI Enhancements & Maintenance        |
+| **P4**   | 1     | Long-term validation                 |
 
-**Total Active Items**: 23
-
----
-
-## Related Documents
-
-- [ROADMAP.md](./ROADMAP.md) - Strategic milestones
-- [backlog/](./backlog/) - Detailed issue tracking
+**Total Active Items**: 14
