@@ -72,6 +72,7 @@ Implementation of the new Workcell Dashboard and Explorer.
 | K-08 | [Simulated Deck States](K-08_simulated_deck_states.md) | ✅ Complete | K-07 |
 | K-09 | [Deck State Indicator](K-09_deck_state_indicator.md) | ✅ Complete | K-08 |
 | K-10 | [Workcell Polish & Animations](K-10_workcell_polish.md) | ✅ Complete | K-09 |
+| K-11 | [Workcell Route Migration](K-11_workcell_route_migration.md) | ✅ Complete | K-10 |
 
 ---
 
