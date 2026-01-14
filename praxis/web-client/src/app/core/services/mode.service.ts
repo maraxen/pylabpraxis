@@ -1,4 +1,4 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { computed, Injectable, signal } from '@angular/core';
 import { environment } from '../../../environments/environment';
 
 /**
@@ -70,35 +70,32 @@ export class ModeService {
      * Detect application mode from environment configuration.
      */
     private detectMode(): AppMode {
-        // 1. URL override has highest priority (for testing/forcing modes)
-        const urlMode = this.getUrlModeOverride();
-        if (urlMode) {
-            this.persistOverride(urlMode);
-            console.log(`[ModeService] Using URL override mode: ${urlMode}`);
-            return urlMode;
-        }
-
         const env = environment as {
             browserMode?: boolean;
             production?: boolean;
             lite?: boolean;
         };
 
-        // 2. Build-time browser mode flag has second priority
-        // This MUST override LocalStorage to ensure 'npm run start:browser' always works
+        // 1. If built specifically for browser mode (environment.browserMode = true),
+        // FORCE browser mode regardless of storage. This ensures `npm run start:browser` works.
         if (env.browserMode) {
-            console.log('[ModeService] Detected browser mode from environment');
             return 'browser';
         }
 
-        // 3. Stored override (last valid session)
+        // 2. Check URL override (transient)
+        const urlMode = this.getUrlModeOverride();
+        if (urlMode) {
+            this.persistOverride(urlMode);
+            return urlMode;
+        }
+
+        // 3. Check Stored override (persistence)
         const storedMode = this.getStoredModeOverride();
         if (storedMode) {
-            console.log(`[ModeService] Using stored override mode: ${storedMode}`);
             return storedMode;
         }
 
-        // 4. Default based on other environment flags
+        // 4. Fallback to other environment flags
         if (env.lite) {
             return 'lite';
         }

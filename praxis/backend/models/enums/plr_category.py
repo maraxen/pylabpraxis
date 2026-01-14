@@ -105,8 +105,9 @@ def get_category_from_class(cls: type) -> PLRCategory | None:
         >>> from pylabrobot.resources import Plate
         >>> get_category_from_class(Plate)
         PLRCategory.PLATE
+
     """
-    if not hasattr(cls, 'category'):
+    if not hasattr(cls, "category"):
         return None
 
     category_value = cls.category
@@ -132,6 +133,7 @@ def infer_category_from_name(name: str) -> PLRCategory | None:
 
     Returns:
         The inferred PLRCategory if detectable, None otherwise
+
     """
     name_lower = name.lower()
 

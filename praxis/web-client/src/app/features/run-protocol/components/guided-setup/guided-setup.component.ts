@@ -64,7 +64,10 @@ export interface GuidedSetupResult {
       } @else {
         <div class="requirements-list">
           @for (req of requiredAssets; track req.accession_id) {
-            <div class="requirement-item" [class.autofilled]="isAutofilled(req.accession_id)" [class.unassigned]="!selectedAssets()[req.accession_id]">
+            <div class="requirement-item" 
+                 [class.autofilled]="isAutofilled(req.accession_id)" 
+                 [class.assigned]="selectedAssets()[req.accession_id] && !isAutofilled(req.accession_id)"
+                 [class.unassigned]="!selectedAssets()[req.accession_id]">
               <div class="req-info">
                 <div class="req-header">
                   <span class="req-name">{{ req.name }}</span>
@@ -72,6 +75,11 @@ export interface GuidedSetupResult {
                     <span class="autofill-badge" matTooltip="Auto-matched based on resource type">
                       <mat-icon class="autofill-icon">auto_awesome</mat-icon>
                       Auto
+                    </span>
+                  } @else if (selectedAssets()[req.accession_id]) {
+                    <span class="set-badge" matTooltip="Selection is confirmed">
+                      <mat-icon class="set-icon">check_circle</mat-icon>
+                      Set
                     </span>
                   }
                   @if (req.optional) {
@@ -181,6 +189,10 @@ export interface GuidedSetupResult {
       border-color: rgba(34, 197, 94, 0.3);
       background: rgba(34, 197, 94, 0.05);
     }
+    .requirement-item.assigned {
+      border-color: rgba(59, 130, 246, 0.3);
+      background: rgba(59, 130, 246, 0.05);
+    }
     .requirement-item.unassigned {
       border-color: rgba(251, 191, 36, 0.3);
       background: rgba(251, 191, 36, 0.05);
@@ -200,7 +212,7 @@ export interface GuidedSetupResult {
       font-weight: 600;
       font-size: 1rem;
     }
-    .autofill-badge {
+    .autofill-badge, .set-badge {
       display: inline-flex;
       align-items: center;
       gap: 4px;
@@ -209,10 +221,16 @@ export interface GuidedSetupResult {
       text-transform: uppercase;
       padding: 2px 8px;
       border-radius: 12px;
+    }
+    .autofill-badge {
       background: rgba(34, 197, 94, 0.15);
       color: rgb(34, 197, 94);
     }
-    .autofill-icon {
+    .set-badge {
+      background: rgba(59, 130, 246, 0.15);
+      color: rgb(59, 130, 246);
+    }
+    .autofill-icon, .set-icon {
       font-size: 14px !important;
       width: 14px !important;
       height: 14px !important;
@@ -308,6 +326,7 @@ export class GuidedSetupComponent implements OnInit {
   // Inline Inputs
   @Input() protocol: ProtocolDefinition | null = null;
   @Input({ transform: booleanAttribute }) isInline = false;
+  @Input() initialSelections: Record<string, Resource> = {};
   @Output() selectionChange = new EventEmitter<Record<string, Resource>>();
 
   inventory = signal<Resource[]>([]);
@@ -351,6 +370,11 @@ export class GuidedSetupComponent implements OnInit {
   });
 
   ngOnInit() {
+    // Initialize with initial selections if provided
+    if (this.initialSelections && Object.keys(this.initialSelections).length > 0) {
+      this.selectedAssets.set({ ...this.initialSelections });
+    }
+
     this.assetService.getResources().subscribe({
       next: (resources) => {
         this.inventory.set(resources);
@@ -365,11 +389,22 @@ export class GuidedSetupComponent implements OnInit {
   }
 
   autoSelect() {
-    const map: Record<string, Resource | null> = {};
-    const autofilled = new Set<string>();
+    const currentMap = this.selectedAssets();
+    const map: Record<string, Resource | null> = { ...currentMap };
+    const autofilled = new Set<string>(this.autofilledIds());
+
+    // Tracks resources already assigned (either manually or by auto-select)
     const usedResourceIds = new Set<string>();
+    Object.values(currentMap).forEach(res => {
+      if (res) usedResourceIds.add(res.accession_id);
+    });
 
     this.requiredAssets.forEach(req => {
+      // Skip if already has a selection
+      if (map[req.accession_id]) {
+        return;
+      }
+
       // Find compatible resources sorted by match quality
       const candidates = this.getCompatibleResources(req);
 

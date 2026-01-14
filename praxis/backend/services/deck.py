@@ -6,7 +6,6 @@ functions to create, read, update, and delete decks.
 """
 
 import enum
-import inspect
 import uuid
 
 from sqlalchemy import and_, or_, select
@@ -18,6 +17,8 @@ from sqlalchemy.orm.attributes import flag_modified
 from praxis.backend.models import Machine, ResourceDefinition
 from praxis.backend.models.domain.deck import (
   Deck as Deck,
+)
+from praxis.backend.models.domain.deck import (
   DeckCreate,
   DeckUpdate,
 )

@@ -10,8 +10,8 @@ from praxis.backend.core.protocol_code_manager import ProtocolCodeManager
 from praxis.backend.core.run_context import PraxisRunContext
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models import (
-  FunctionProtocolDefinitionCreate,
   FunctionProtocolDefinition,
+  FunctionProtocolDefinitionCreate,
   ProtocolRun,
 )
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService

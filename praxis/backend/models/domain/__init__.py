@@ -35,6 +35,7 @@ from .outputs import (
   WellDataOutputRead,
   WellDataOutputUpdate,
 )
+from .plr_sync import PLRTypeDefinition, PLRTypeDefinitionBase
 from .protocol import (
   AssetRequirement,
   AssetRequirementCreate,
@@ -66,7 +67,6 @@ from .protocol_source import (
   ProtocolSourceRepositoryRead,
   ProtocolSourceRepositoryUpdate,
 )
-from .plr_sync import PLRTypeDefinition, PLRTypeDefinitionBase
 from .resolution import (
   ResolutionActionEnum,
   ResolutionTypeEnum,

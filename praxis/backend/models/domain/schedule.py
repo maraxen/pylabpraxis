@@ -1,14 +1,15 @@
 import uuid
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import computed_field
-from sqlalchemy import Column, Enum as SAEnum, String, UUID
-from sqlalchemy.orm import relationship, foreign, attributes
+from sqlalchemy import UUID, Column
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlmodel import Field, Relationship, SQLModel
 
-from praxis.backend.models.domain.sqlmodel_base import PraxisBase, json_field
+from praxis.backend.models.domain.sqlmodel_base import PraxisBase
 from praxis.backend.models.enums import (
   AssetReservationStatusEnum,
   AssetType,
@@ -19,8 +20,8 @@ from praxis.backend.models.enums import (
 from praxis.backend.utils.db import JsonVariant
 
 if TYPE_CHECKING:
-  from praxis.backend.models.domain.protocol import ProtocolRun
   from praxis.backend.models.domain.machine import Machine
+  from praxis.backend.models.domain.protocol import ProtocolRun
   from praxis.backend.models.domain.resource import Resource
 
 # =============================================================================
@@ -211,12 +212,12 @@ class AssetReservation(AssetReservationBase, table=True):
   )
 
   @property
-  def asset(self) -> Optional[object]:
+  def asset(self) -> object | None:
     """Return the concrete asset (machine or resource) for convenience."""
     return self.machine or self.resource
 
   @asset.setter
-  def asset(self, value: Optional[object]) -> None:
+  def asset(self, value: object | None) -> None:
     """Set the concrete asset, clearing the other relationship.
 
     Uses simple runtime type checks (by class name) to avoid import cycles.
@@ -283,7 +284,7 @@ class ScheduleHistoryBase(PraxisBase):
     default_factory=lambda: datetime.now(timezone.utc),
   )
   event_end: datetime | None = Field(default=None)
-  
+
   @computed_field
   @property
   def completed_duration_ms(self) -> int | None:
@@ -431,6 +432,7 @@ class SchedulePriorityUpdateRequest(SQLModel):
   Accepts both `new_priority` (used by API/tests) and `priority` for
   backward-compatibility with older clients.
   """
+
   new_priority: int
   reason: str | None = None
   # Backwards-compatible alias

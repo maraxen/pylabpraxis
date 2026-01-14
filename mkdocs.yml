@@ -35,9 +35,11 @@ theme:
 nav:
   - Home: index.md
   - Getting Started:
-    - Installation: getting-started/installation.md
+    - Overview: getting-started/installation.md
+    - Browser Mode: getting-started/installation-browser.md
+    - Production Mode: getting-started/installation-production.md
+    - Lite Mode: getting-started/installation-lite.md
     - Quick Start: getting-started/quickstart.md
-    - Browser Mode: getting-started/browser-mode.md
     - Browser Script: getting-started/browser-script.md
   - Architecture:
     - Overview: architecture/overview.md

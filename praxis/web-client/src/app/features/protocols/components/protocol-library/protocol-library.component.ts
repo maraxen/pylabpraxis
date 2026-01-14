@@ -9,13 +9,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { ProtocolService } from '../../services/protocol.service';
 import { ProtocolDefinition } from '../../models/protocol.models';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { debounceTime, distinctUntilChanged, startWith, finalize } from 'rxjs/operators';
-import { FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs/operators';
+import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { FilterHeaderComponent } from '../../../assets/components/filter-header/filter-header.component';
-import { PraxisSelectComponent, SelectOption } from '../../../../shared/components/praxis-select/praxis-select.component';
+import { ViewControlsComponent } from '../../../../shared/components/view-controls/view-controls.component';
+import { ViewControlsConfig, ViewControlsState } from '../../../../shared/components/view-controls/view-controls.types';
+import { ProtocolCardComponent } from '../../../run-protocol/components/protocol-card/protocol-card.component';
 
 import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protocol-detail-dialog.component';
 
@@ -33,8 +33,8 @@ import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protoco
     ReactiveFormsModule,
     FormsModule,
     MatProgressSpinnerModule,
-    FilterHeaderComponent,
-    PraxisSelectComponent
+    ViewControlsComponent,
+    ProtocolCardComponent
   ],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col">
@@ -50,49 +50,13 @@ import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protoco
       </div>
 
       <div class="bg-surface border border-[var(--theme-border)] rounded-3xl overflow-hidden backdrop-blur-xl flex flex-col flex-1 min-h-0 shadow-xl">
-        <app-filter-header
-          searchPlaceholder="Search protocols..."
-          [searchValue]="searchQuery()"
-          [filterCount]="filterCount()"
-          (searchChange)="onSearchChange($event)"
-          (clearFilters)="clearFilters()">
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4" filterContent>
-            <!-- Category Filter -->
-            <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide px-1">Category</label>
-              <app-praxis-select
-                [options]="categoryOptions()"
-                [ngModel]="selectedCategory()"
-                (ngModelChange)="selectedCategory.set($event)"
-                placeholder="All Categories">
-              </app-praxis-select>
-            </div>
-
-            <!-- Type Filter -->
-            <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide px-1">Type</label>
-              <app-praxis-select
-                [options]="typeOptions"
-                [ngModel]="selectedType()"
-                (ngModelChange)="selectedType.set($event)"
-                placeholder="All Types">
-              </app-praxis-select>
-            </div>
-
-            <!-- Status Filter -->
-            <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-sys-text-secondary uppercase tracking-wide px-1">Status</label>
-              <app-praxis-select
-                [options]="statusOptions"
-                [ngModel]="selectedStatus()"
-                (ngModelChange)="selectedStatus.set($event)"
-                placeholder="All Statuses">
-              </app-praxis-select>
-            </div>
-          </div>
-
-        </app-filter-header>
+        <div class="bg-surface border-b border-[var(--theme-border)] px-4 py-2">
+          <app-view-controls
+            [config]="viewConfig()"
+            [state]="viewState()"
+            (stateChange)="onStateChange($event)">
+          </app-view-controls>
+        </div>
 
         <div class="flex-1 overflow-auto bg-[var(--mat-sys-surface-variant)] relative">
            @if (isLoading()) {
@@ -102,65 +66,76 @@ import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protoco
            }
            
           @if (filteredProtocols().length > 0) {
-            <table mat-table [dataSource]="filteredProtocols()" class="!bg-transparent w-full" data-tour-id="protocol-table">
-              <!-- Name Column -->
-              <ng-container matColumnDef="name">
-                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Name </th>
-                <td mat-cell *matCellDef="let protocol" class="!text-sys-text-primary border-b !border-[var(--theme-border)] px-6 py-4">
-                  <div class="flex flex-col">
-                    <div class="flex items-center gap-2">
-                      <span class="font-medium text-base">{{ protocol.name }}</span>
-                      @if (protocol.is_top_level) {
-                        <span class="px-2 py-0.5 rounded-md bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider border border-primary/20">Top Level</span>
-                      }
+            @if (viewState().viewType === 'table' || viewState().viewType === 'list') {
+              <table mat-table [dataSource]="filteredProtocols()" class="!bg-transparent w-full" data-tour-id="protocol-table">
+                <!-- Name Column -->
+                <ng-container matColumnDef="name">
+                  <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Name </th>
+                  <td mat-cell *matCellDef="let protocol" class="!text-sys-text-primary border-b !border-[var(--theme-border)] px-6 py-4">
+                    <div class="flex flex-col">
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-base">{{ protocol.name }}</span>
+                        @if (protocol.is_top_level) {
+                          <span class="px-2 py-0.5 rounded-md bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider border border-primary/20">Top Level</span>
+                        }
+                      </div>
                     </div>
-                  </div>
-                </td>
-              </ng-container>
+                  </td>
+                </ng-container>
 
-              <!-- Version Column -->
-              <ng-container matColumnDef="version">
-                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Version </th>
-                <td mat-cell *matCellDef="let protocol" class="!text-sys-text-secondary border-b !border-[var(--theme-border)] px-6 py-4"> 
-                  <span class="font-mono text-xs bg-[var(--theme-surface-elevated)] px-2 py-1 rounded text-sys-text-secondary">{{ protocol.version }}</span>
-                </td>
-              </ng-container>
+                <!-- Version Column -->
+                <ng-container matColumnDef="version">
+                  <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Version </th>
+                  <td mat-cell *matCellDef="let protocol" class="!text-sys-text-secondary border-b !border-[var(--theme-border)] px-6 py-4"> 
+                    <span class="font-mono text-xs bg-[var(--theme-surface-elevated)] px-2 py-1 rounded text-sys-text-secondary">{{ protocol.version }}</span>
+                  </td>
+                </ng-container>
 
-              <!-- Description Column -->
-              <ng-container matColumnDef="description">
-                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Description </th>
-                <td mat-cell *matCellDef="let protocol" class="!text-sys-text-secondary opacity-70 border-b !border-[var(--theme-border)] px-6 py-4 max-w-md truncate"> {{ protocol.description || 'No description' }} </td>
-              </ng-container>
+                <!-- Description Column -->
+                <ng-container matColumnDef="description">
+                  <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Description </th>
+                  <td mat-cell *matCellDef="let protocol" class="!text-sys-text-secondary opacity-70 border-b !border-[var(--theme-border)] px-6 py-4 max-w-md truncate"> {{ protocol.description || 'No description' }} </td>
+                </ng-container>
 
-              <!-- Category Column -->
-              <ng-container matColumnDef="category">
-                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Category </th>
-                <td mat-cell *matCellDef="let protocol" class="!text-sys-text-secondary border-b !border-[var(--theme-border)] px-6 py-4">
-                  @if (protocol.category) {
-                    <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-400/10 text-blue-300 border border-blue-400/20">
-                      {{ protocol.category }}
-                    </span>
-                  } @else {
-                    <span class="text-sys-text-tertiary italic">Uncategorized</span>
-                  }
-                </td>
-              </ng-container>
+                <!-- Category Column -->
+                <ng-container matColumnDef="category">
+                  <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Category </th>
+                  <td mat-cell *matCellDef="let protocol" class="!text-sys-text-secondary border-b !border-[var(--theme-border)] px-6 py-4">
+                    @if (protocol.category) {
+                      <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-400/10 text-blue-300 border border-blue-400/20">
+                        {{ protocol.category }}
+                      </span>
+                    } @else {
+                      <span class="text-sys-text-tertiary italic">Uncategorized</span>
+                    }
+                  </td>
+                </ng-container>
 
-              <!-- Actions Column -->
-              <ng-container matColumnDef="actions">
-                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4 text-right"> Actions </th>
-                <td mat-cell *matCellDef="let protocol" class="border-b !border-[var(--theme-border)] px-6 py-4">
-                  <div class="flex justify-end gap-2">
-                    <button mat-icon-button class="!text-green-400 hover:!bg-green-400/20 transition-all" matTooltip="Run Protocol" (click)="$event.stopPropagation(); runProtocol(protocol)">
-                      <mat-icon>play_arrow</mat-icon>
-                    </button>
-                  </div>
-                </td>
-              </ng-container>
+                <!-- Actions Column -->
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4 text-right"> Actions </th>
+                  <td mat-cell *matCellDef="let protocol" class="border-b !border-[var(--theme-border)] px-6 py-4">
+                    <div class="flex justify-end gap-2">
+                      <button mat-icon-button class="!text-green-400 hover:!bg-green-400/20 transition-all" matTooltip="Run Protocol" (click)="$event.stopPropagation(); runProtocol(protocol)">
+                        <mat-icon>play_arrow</mat-icon>
+                      </button>
+                    </div>
+                  </td>
+                </ng-container>
 
-              <tr mat-header-row *matHeaderRowDef="displayedColumns" class="!h-12"></tr>
-              <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="viewDetails(row)" class="hover:bg-[var(--mat-sys-surface-variant)] transition-colors cursor-pointer !h-16"></tr>
-            </table>
+                <tr mat-header-row *matHeaderRowDef="displayedColumns" class="!h-12"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="viewDetails(row)" class="hover:bg-[var(--mat-sys-surface-variant)] transition-colors cursor-pointer !h-16"></tr>
+              </table>
+            } @else {
+              <div class="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                @for (protocol of filteredProtocols(); track protocol.accession_id) {
+                  <app-protocol-card
+                    [protocol]="protocol"
+                    (select)="viewDetails($event)">
+                  </app-protocol-card>
+                }
+              </div>
+            }
           } @else {
             <div class="flex flex-col items-center justify-center h-full text-sys-text-tertiary py-20">
               <mat-icon class="!w-16 !h-16 !text-[64px] opacity-20 mb-4">science</mat-icon>
@@ -191,54 +166,76 @@ export class ProtocolLibraryComponent {
   private dialog = inject(MatDialog);
 
   protocols = signal<ProtocolDefinition[]>([]);
-  searchQuery = signal('');
   isLoading = signal(false);
 
-  // Filter Signals
-  selectedCategory = signal<string | null>(null);
-  selectedType = signal<string>('all');
-  selectedStatus = signal<string>('all');
+  viewState = signal<ViewControlsState>({
+    viewType: 'table',
+    groupBy: null,
+    filters: {},
+    sortBy: 'name',
+    sortOrder: 'asc',
+    search: ''
+  });
 
-  // Filter Options
-  categoryOptions = computed<SelectOption[]>(() => {
+  viewConfig = computed<ViewControlsConfig>(() => ({
+    viewTypes: ['table', 'card'],
+    filters: [
+      {
+        key: 'category',
+        label: 'Category',
+        type: 'multiselect',
+        options: this.categoryOptions()
+      },
+      {
+        key: 'type',
+        label: 'Type',
+        type: 'select',
+        options: [
+          { label: 'All Types', value: 'all' },
+          { label: 'Top Level', value: 'top_level' },
+          { label: 'Sub-Protocol', value: 'sub' }
+        ]
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'multiselect',
+        options: [
+          { label: 'Passed', value: 'passed' },
+          { label: 'Failed', value: 'failed' },
+          { label: 'Not Simulated', value: 'none' }
+        ]
+      }
+    ],
+    sortOptions: [
+      { label: 'Name', value: 'name' },
+      { label: 'Category', value: 'category' },
+      { label: 'Version', value: 'version' }
+    ],
+    storageKey: 'protocol-library-view',
+    defaults: {
+      viewType: 'table',
+      sortBy: 'name',
+      sortOrder: 'asc'
+    }
+  }));
+
+  private categoryOptions = computed(() => {
     const cats = new Set<string>();
     this.protocols().forEach(p => {
       if (p.category) cats.add(p.category);
     });
-    return [
-      { label: 'All Categories', value: null },
-      ...Array.from(cats).sort().map(c => ({ label: c, value: c }))
-    ];
-  });
-
-  typeOptions: SelectOption[] = [
-    { label: 'All Types', value: 'all' },
-    { label: 'Top Level', value: 'top_level' },
-    { label: 'Sub-Protocol', value: 'sub' }
-  ];
-
-  statusOptions: SelectOption[] = [
-    { label: 'All Statuses', value: 'all' },
-    { label: 'Passed', value: 'passed' },
-    { label: 'Failed', value: 'failed' },
-    { label: 'Not Simulated', value: 'none' }
-  ];
-
-  filterCount = computed(() => {
-    let count = 0;
-    if (this.selectedCategory() !== null) count++;
-    if (this.selectedType() !== 'all') count++;
-    if (this.selectedStatus() !== 'all') count++;
-    return count;
+    return Array.from(cats).sort().map(c => ({ label: c, value: c }));
   });
 
   filteredProtocols = computed(() => {
-    const query = this.searchQuery().toLowerCase();
-    const category = this.selectedCategory();
-    const type = this.selectedType();
-    const status = this.selectedStatus();
+    const state = this.viewState();
+    const query = state.search.toLowerCase();
+    const categories = state.filters['category'] || [];
+    const type = state.filters['type']?.[0] || 'all';
+    const statuses = state.filters['status'] || [];
 
-    return this.protocols().filter(protocol => {
+    let filtered = this.protocols().filter(protocol => {
       // Search filter
       const matchesSearch = !query ||
         protocol.name.toLowerCase().includes(query) ||
@@ -246,7 +243,7 @@ export class ProtocolLibraryComponent {
         protocol.category?.toLowerCase().includes(query);
 
       // Category filter
-      const matchesCategory = !category || protocol.category === category;
+      const matchesCategory = categories.length === 0 || (protocol.category && categories.includes(protocol.category));
 
       // Type filter
       const matchesType = type === 'all' ||
@@ -255,16 +252,25 @@ export class ProtocolLibraryComponent {
 
       // Status filter
       let matchesStatus = true;
-      if (status === 'passed') {
-        matchesStatus = protocol.simulation_result?.passed === true;
-      } else if (status === 'failed') {
-        matchesStatus = !!protocol.simulation_result && protocol.simulation_result.passed === false;
-      } else if (status === 'none') {
-        matchesStatus = !protocol.simulation_result;
+      if (statuses.length > 0) {
+        matchesStatus = false;
+        if (statuses.includes('passed') && protocol.simulation_result?.passed === true) matchesStatus = true;
+        if (statuses.includes('failed') && protocol.simulation_result && protocol.simulation_result.passed === false) matchesStatus = true;
+        if (statuses.includes('none') && !protocol.simulation_result) matchesStatus = true;
       }
 
       return matchesSearch && matchesCategory && matchesType && matchesStatus;
     });
+
+    // Sorting
+    filtered = [...filtered].sort((a, b) => {
+      const valA = (a as unknown as Record<string, unknown>)[state.sortBy] || '';
+      const valB = (b as unknown as Record<string, unknown>)[state.sortBy] || '';
+      const comparison = valA.toString().localeCompare(valB.toString());
+      return state.sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return filtered;
   });
 
   displayedColumns: string[] = ['name', 'version', 'description', 'category', 'actions'];
@@ -301,14 +307,8 @@ export class ProtocolLibraryComponent {
     this.router.navigate(['/run'], { queryParams: { protocolId: protocol.accession_id } });
   }
 
-  onSearchChange(value: string) {
-    this.searchQuery.set(value);
-  }
-
-  clearFilters() {
-    this.selectedCategory.set(null);
-    this.selectedType.set('all');
-    this.selectedStatus.set('all');
+  onStateChange(newState: ViewControlsState) {
+    this.viewState.set(newState);
   }
 
   uploadProtocol() {
@@ -317,8 +317,9 @@ export class ProtocolLibraryComponent {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.py';
-    fileInput.onchange = (event: any) => {
-      const file = event.target.files[0];
+    fileInput.onchange = (event: Event) => {
+      const target = event.target as HTMLInputElement;
+      const file = target.files?.[0];
       if (file) {
         this.isLoading.set(true); // Set loading true before API call
         this.protocolService.uploadProtocol(file).pipe(

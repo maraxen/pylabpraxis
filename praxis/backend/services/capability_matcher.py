@@ -8,6 +8,8 @@ from typing import Any
 
 from praxis.backend.models.domain.machine import (
   Machine as Machine,
+)
+from praxis.backend.models.domain.machine import (
   MachineDefinition as MachineDefinition,
 )
 from praxis.backend.models.domain.protocol import (

@@ -2,10 +2,11 @@
 """Unified SQLModel definitions for Resource and ResourceDefinition."""
 
 import uuid
-from typing import TYPE_CHECKING, Any, Optional, List
+from typing import TYPE_CHECKING, Any, Optional
 
-from pydantic import ConfigDict, AliasChoices, computed_field
-from sqlalchemy import Column, Enum as SAEnum
+from pydantic import AliasChoices, ConfigDict
+from sqlalchemy import Column
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -17,9 +18,9 @@ from praxis.backend.utils.db import JsonVariant
 if TYPE_CHECKING:
   from praxis.backend.models.domain.deck import Deck, DeckDefinition
   from praxis.backend.models.domain.machine import Machine
+  from praxis.backend.models.domain.outputs import FunctionDataOutput
   from praxis.backend.models.domain.protocol import AssetRequirement, ProtocolRun
   from praxis.backend.models.domain.workcell import Workcell
-  from praxis.backend.models.domain.outputs import FunctionDataOutput
 
 # =============================================================================
 # Resource Definition (Catalog)
@@ -219,7 +220,7 @@ class Resource(ResourceBase, Asset, table=True):
   )
 
   # Relationships
-  resource_definition: Optional[ResourceDefinition] = Relationship(back_populates="resources")
+  resource_definition: ResourceDefinition | None = Relationship(back_populates="resources")
 
   # Self-referential parent/children
   parent: Optional["Resource"] = Relationship(

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy import func
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import Field, Relationship
 
 from praxis.backend.models.domain.sqlmodel_base import PraxisBase
 from praxis.backend.models.enums.resolution import ResolutionActionEnum, ResolutionTypeEnum

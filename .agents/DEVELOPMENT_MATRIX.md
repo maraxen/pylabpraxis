@@ -43,7 +43,6 @@
 |--------------------------------|------------|---------------------------------------------------------------|------------------------------------------------------|
 | Workcell Hierarchical Explorer | Hard       | [workcell_ux_redesign.md](./artifacts/workcell_ux_redesign.md) | Implement tree-based sidebar and status cards        |
 | Unified Asset Selector         | Medium     | [inventory_ux_design.md](./artifacts/inventory_ux_design.md)   | Implement shared browsing for Playground and Protocol |
-| Protocol Library Filters       | Medium     | [protocol_workflow.md](./backlog/protocol_workflow.md)         | Implement filtering in the main Protocol view        |
 
 ### Hardware Validation (Required for Alpha)
 
@@ -111,6 +110,13 @@
 | Simulation Frontend Consolidation                   | P2       | 2026-01-14 | Consolidated simulated backends into single definitions per type     |
 | Breadcrumb Removal (C-01)                           | P2       | 2026-01-14 | Removed global breadcrumb bar and associated service/component       |
 | Well Arguments Cleanup (E-01)                       | P2       | 2026-01-14 | Filtered well parameters from configuration step and added summary   |
+| Browser Mode Database Sync                          | P1       | 2026-01-15 | Refactored BrowserMockRouter to use SQLite db, generated full prebuilt DB |
+| Protocol Library ViewControls                       | P2       | 2026-01-15 | Adopted ViewControls for Protocol Library filtering/sorting          |
+| Playground Theme Sync (D-02)                        | P2       | 2026-01-15 | Resolved theme race condition by delaying iframe mount until AfterViewInit |
+| Playground Kernel Load & Loading Overlay (D-01/D-03) | P1/P2    | 2026-01-15 | Implemented loading state with ready signal and timeout fallback |
+| WebSerial/WebUSB Shims Fix (D-04)                   | P1       | 2026-01-15 | Injected hardware shims into builtins via async bootstrap          |
+| Installation Docs Split (F-01)                      | P3       | 2026-01-15 | Created dedicated guides for Browser, Production, and Lite modes   |
+| Deck View Implementation (J-01)                    | P2       | 2026-01-15 | **Tentative Pass** - Logic/Persistence done, awaiting improved Workcell view |
 
 ---
 
@@ -119,8 +125,8 @@
 | Priority | Count | Focus                                |
 |----------|-------|--------------------------------------|
 | **P1**   | 1     | Alpha blockers (WebSerial)           |
-| **P2**   | 10    | Implementation & Hardware validation |
-| **P3**   | 2     | UI Enhancements & Maintenance        |
+| **P2**   | 8     | Implementation & Hardware validation |
+| **P3**   | 3     | UI Enhancements & Maintenance        |
 | **P4**   | 1     | Long-term validation                 |
 
-**Total Active Items**: 14
+**Total Active Items**: 13

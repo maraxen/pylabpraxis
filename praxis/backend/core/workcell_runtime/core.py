@@ -24,7 +24,7 @@ if TYPE_CHECKING:
   from pylabrobot.machines import Machine
   from pylabrobot.resources import Deck, Resource
 
-  from praxis.backend.models.domain.deck import Deck  # noqa: F401
+  from praxis.backend.models.domain.deck import Deck
 
 logger = get_logger(__name__)
 

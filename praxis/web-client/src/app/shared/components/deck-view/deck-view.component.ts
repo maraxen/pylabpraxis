@@ -1,9 +1,11 @@
 import { Component, ChangeDetectionStrategy, Input, computed, signal, inject, output, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
+import { DragDropModule, CdkDragDrop, CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
 import { PlrResource, PlrState, PlrResourceDetails } from '@core/models/plr.models';
 import { DeckCatalogService } from '@features/run-protocol/services/deck-catalog.service';
+import { DeckConstraintService, ValidationResult } from '@features/run-protocol/services/deck-constraint.service';
 import { DeckRail, DeckSlotSpec } from '@features/run-protocol/models/deck-layout.models';
+
 
 /** Tooltip position state */
 interface TooltipState {
@@ -531,6 +533,42 @@ export class DeckViewComponent {
   /* Configuration */
   readonly pixelsPerMm = 0.5;
 
+  private constraintService = inject(DeckConstraintService);
+
+  // Track drag state for visual feedback
+  activeDropTarget = signal<{ id: string | number, valid: boolean, reason?: string } | null>(null);
+
+  onDragEnter(event: any, target: DeckSlotSpec | DeckRail) {
+    // This requires access to the item being dragged. 
+    // CDK DragDrop doesn't easily expose the data during 'enter' without some setup.
+    // For now, we assume the dragged item is exposed via a service or signal if needed,
+    // OR we rely on the specific drag item context if available.
+
+    // Simplification: We'll do validation on 'start' or track it via CDK predicate if possible.
+    // But since `cdkDropListEnterPredicate` takes `(drag: CdkDrag, drop: CdkDropList)`, we can use that.
+  }
+
+  /**
+   * Predicate to determine if an item can be dropped on a Rail.
+   * Can be bound to [cdkDropListEnterPredicate].
+   */
+  railEnterPredicate = (drag: CdkDrag<PlrResource>, drop: CdkDropList) => {
+    // Retrieve rail info from drop list data or attributes
+    // This is tricky because predicates are often static or need closure scope.
+    // We'll trust the visual feedback and 'onDrop' validation for now, 
+    // OR implement a more complex tracking system.
+    return true;
+  };
+
+  /**
+   * Check validity for styling purposes during rendering (if static).
+   * For dynamic drag feedback, we'll need to hook into CDK events.
+   */
+
+  validateDropPreview(resource: PlrResource, target: DeckSlotSpec | DeckRail): ValidationResult {
+    return this.constraintService.validateDrop(resource, target, this.resource()!);
+  }
+
   containerWidth = computed(() => {
     const res = this.resource();
     return res ? res.size_x * this.pixelsPerMm : 0;
@@ -791,3 +829,4 @@ export class DeckViewComponent {
     return [];
   }
 }
+

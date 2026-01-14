@@ -10,10 +10,9 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
-import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
-import { PraxisAutocompleteComponent } from '@shared/components/praxis-autocomplete/praxis-autocomplete.component';
+import { ViewControlsComponent } from '@shared/components/view-controls/view-controls.component';
+import { ViewControlsConfig, ViewControlsState } from '@shared/components/view-controls/view-controls.types';
 import { WellSelectorDialogComponent } from '@shared/components/well-selector-dialog/well-selector-dialog.component';
-import { FilterHeaderComponent } from '../assets/components/filter-header/filter-header.component';
 import { PlotlyModule } from 'angular-plotly.js';
 import { interval, Subscription } from 'rxjs';
 import { ProtocolService } from '../protocols/services/protocol.service';
@@ -34,6 +33,8 @@ interface MockRun {
   id: string;
   protocolName: string;
   protocolId: string;
+  measurementType: string;
+  plateId: string;
   status: 'completed' | 'running' | 'failed';
   startTime: Date;
   endTime?: Date;
@@ -56,66 +57,25 @@ interface MockRun {
     MatTooltipModule,
     PlotlyModule,
     FormsModule,
-    PraxisSelectComponent,
-    PraxisAutocompleteComponent,
-    FilterHeaderComponent
+    ViewControlsComponent
   ],
   template: `
     <div class="data-page">
       <header class="page-header">
         <div class="title-row">
           <h1>Data Visualization</h1>
-          <button mat-stroked-button (click)="showFilters.set(!showFilters())">
-            <mat-icon>{{ showFilters() ? 'filter_list_off' : 'filter_list' }}</mat-icon>
-            {{ showFilters() ? 'Hide Filters' : 'Show Filters' }}
-          </button>
         </div>
         <p class="subtitle">Analyze experiment data and transfer volumes</p>
       </header>
 
-      <!-- Filter Header -->
-      @if (showFilters()) {
-        <app-filter-header
-          searchPlaceholder="Filter runs and protocols..."
-          [searchValue]="searchQuery()"
-          (searchChange)="searchQuery.set($event)"
-          (clearFilters)="clearFilters()">
-          
-          <div class="selector-row" filterContent>
-            <div class="protocol-select">
-              <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block uppercase tracking-wide">Protocol</label>
-              <app-praxis-autocomplete
-                label="Protocol"
-                [options]="protocolOptions()"
-                [(ngModel)]="selectedProtocolId"
-                (ngModelChange)="onProtocolChange($event)"
-                placeholder="Search protocols..."
-              ></app-praxis-autocomplete>
-            </div>
-
-            <div class="run-select">
-              <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block uppercase tracking-wide">Run</label>
-              <app-praxis-autocomplete
-                label="Run"
-                [options]="runOptions()"
-                [(ngModel)]="selectedRunId"
-                (ngModelChange)="onRunChange($event)"
-                placeholder="Search runs..."
-              ></app-praxis-autocomplete>
-            </div>
-
-            <div class="group-select">
-              <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block uppercase tracking-wide">Group By</label>
-              <app-praxis-select
-                placeholder="Group By"
-                [options]="groupByOptions"
-                [ngModel]="groupBy()"
-                (ngModelChange)="groupBy.set($event)"
-              ></app-praxis-select>
-            </div>
-          </div>
-        </app-filter-header>
-      }
+      <!-- Standardized View Controls -->
+      <div class="bg-sys-surface border-b border-sys-outline-variant px-4 py-2 mb-4 rounded-xl shadow-sm">
+        <app-view-controls
+          [config]="viewConfig()"
+          [state]="viewState()"
+          (stateChange)="onViewStateChange($event)">
+        </app-view-controls>
+      </div>
 
       <!-- Chart Configuration -->
       <mat-card class="config-card">
@@ -123,22 +83,20 @@ interface MockRun {
           <div class="config-row">
             <div>
               <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block">X-Axis</label>
-              <app-praxis-select
-                placeholder="X-Axis"
-                [options]="xAxisOptions"
-                [ngModel]="xAxis()"
-                (ngModelChange)="xAxis.set($event)"
-              ></app-praxis-select>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-[150px]">
+                <mat-select [ngModel]="xAxis()" (ngModelChange)="xAxis.set($event)">
+                  <mat-option *ngFor="let opt of xAxisOptions" [value]="opt.value">{{ opt.label }}</mat-option>
+                </mat-select>
+              </mat-form-field>
             </div>
 
             <div>
               <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block">Y-Axis</label>
-              <app-praxis-select
-                placeholder="Y-Axis"
-                [options]="yAxisOptions"
-                [ngModel]="yAxis()"
-                (ngModelChange)="yAxis.set($event)"
-              ></app-praxis-select>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-[150px]">
+                <mat-select [ngModel]="yAxis()" (ngModelChange)="yAxis.set($event)">
+                  <mat-option *ngFor="let opt of yAxisOptions" [value]="opt.value">{{ opt.label }}</mat-option>
+                </mat-select>
+              </mat-form-field>
             </div>
 
             <div class="well-filter">
@@ -487,6 +445,66 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   // Table columns
   displayedColumns = ['status', 'protocol', 'startTime', 'duration', 'wells', 'volume', 'actions'];
 
+  // Standardized View Controls
+  viewConfig = computed<ViewControlsConfig>(() => ({
+    viewTypes: ['table'], // Only table view for history
+    groupByOptions: [
+      { label: 'Well', value: 'well' },
+      { label: 'Experiment', value: 'protocol' },
+      { label: 'Status', value: 'status' }
+    ],
+    filters: [
+      {
+        key: 'protocolId',
+        label: 'Protocol',
+        type: 'multiselect',
+        options: this.protocols().map(p => ({ label: p.name, value: p.accession_id }))
+      },
+      {
+        key: 'measurementType',
+        label: 'Measurement Type',
+        type: 'multiselect',
+        options: this.availableMeasurementTypes().map(m => ({ label: m, value: m }))
+      },
+      {
+        key: 'plateId',
+        label: 'Plate ID',
+        type: 'multiselect',
+        options: this.availablePlateIds().map(p => ({ label: p, value: p }))
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'multiselect',
+        options: [
+          { label: 'Completed', value: 'completed', icon: 'check_circle' },
+          { label: 'Running', value: 'running', icon: 'pending' },
+          { label: 'Failed', value: 'failed', icon: 'error' }
+        ]
+      }
+    ],
+    sortOptions: [
+      { label: 'Start Time', value: 'startTime' },
+      { label: 'Protocol', value: 'protocolName' },
+      { label: 'Volume', value: 'totalVolume' }
+    ],
+    storageKey: 'data-viz-history',
+    defaults: {
+      viewType: 'table',
+      sortBy: 'startTime',
+      sortOrder: 'desc'
+    }
+  }));
+
+  viewState = signal<ViewControlsState>({
+    viewType: 'table',
+    groupBy: 'well',
+    filters: {},
+    sortBy: 'startTime',
+    sortOrder: 'desc',
+    search: ''
+  });
+
   // Well configuration
   allWells = Array.from({ length: 96 }, (_, i) => {
     const row = String.fromCharCode(65 + Math.floor(i / 12));
@@ -500,11 +518,9 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   yAxis = signal<string>('volumeTransferred');
 
   // Selection state
-  selectedProtocolId = '';
   selectedRunId = '';
-  searchQuery = signal('');
   showFilters = signal(true);
-  groupBy = signal<string>('well');
+  groupBy = computed(() => this.viewState().groupBy || 'well');
 
   // Data signals
   protocols = signal<ProtocolDefinition[]>([]);
@@ -512,34 +528,28 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   private transferData = signal<TransferDataPoint[]>([]);
   private updateSubscription?: Subscription;
 
-  protocolOptions = computed(() => {
-    const protos = this.protocols();
-    return [
-      { label: 'All Protocols', value: '' },
-      ...protos.map(p => ({ label: p.name, value: p.accession_id }))
-    ];
+  availableMeasurementTypes = computed(() => {
+    const types = new Set<string>();
+    this.runs().forEach(r => {
+      if (r.measurementType) types.add(r.measurementType);
+    });
+    return Array.from(types).sort();
   });
 
-  runOptions = computed(() => {
-    return this.filteredRuns().map(r => ({
-      label: `${r.protocolName} - ${r.startTime.toLocaleString()}`,
-      value: r.id,
-      icon: r.status === 'completed' ? 'check_circle' : r.status === 'running' ? 'pending' : 'error'
-    }));
+  availablePlateIds = computed(() => {
+    const ids = new Set<string>();
+    this.runs().forEach(r => {
+      if (r.plateId) ids.add(r.plateId);
+    });
+    return Array.from(ids).sort();
   });
 
-  readonly groupByOptions: SelectOption[] = [
-    { label: 'Well', value: 'well' },
-    { label: 'Protocol', value: 'protocol' },
-    { label: 'Status', value: 'status' }
-  ];
-
-  readonly xAxisOptions: SelectOption[] = [
+  readonly xAxisOptions = [
     { label: 'Time', value: 'timestamp' },
     { label: 'Well', value: 'well' }
   ];
 
-  readonly yAxisOptions: SelectOption[] = [
+  readonly yAxisOptions = [
     { label: 'Volume Transferred (µL)', value: 'volumeTransferred' },
     { label: 'Cumulative Volume (µL)', value: 'cumulativeVolume' },
     { label: 'Temperature (°C)', value: 'temperature' },
@@ -552,23 +562,65 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
     modeBarButtonsToRemove: ['lasso2d', 'select2d']
   };
 
-  // Computed: filter runs by selected protocol
-  filteredRuns = computed(() => {
-    const runs = this.runs();
-    if (!this.selectedProtocolId) return runs;
-    return runs.filter(r => r.protocolId === this.selectedProtocolId);
+  // Computed: filter runs by standardize ViewControls state
+  filteredRunsTable = computed(() => {
+    let filtered = this.runs();
+    const state = this.viewState();
+
+    // 1. Search Filter
+    if (state.search) {
+      const q = state.search.toLowerCase();
+      filtered = filtered.filter(r =>
+        r.protocolName.toLowerCase().includes(q) ||
+        r.id.toLowerCase().includes(q)
+      );
+    }
+
+    // 2. Protocol Filter
+    const protocolFilters = (state.filters['protocolId'] || []) as string[];
+    if (protocolFilters.length > 0) {
+      filtered = filtered.filter(r => protocolFilters.includes(r.protocolId));
+    }
+
+    // 3. Status Filter
+    const statusFilters = (state.filters['status'] || []) as string[];
+    if (statusFilters.length > 0) {
+      filtered = filtered.filter(r => statusFilters.includes(r.status));
+    }
+
+    // 4. Measurement Type Filter
+    const typeFilters = (state.filters['measurementType'] || []) as string[];
+    if (typeFilters.length > 0) {
+      filtered = filtered.filter(r => typeFilters.includes(r.measurementType));
+    }
+
+    // 5. Plate ID Filter
+    const plateFilters = (state.filters['plateId'] || []) as string[];
+    if (plateFilters.length > 0) {
+      filtered = filtered.filter(r => plateFilters.includes(r.plateId));
+    }
+
+    // 6. Sort
+    filtered = [...filtered].sort((a, b) => {
+      const sortBy = state.sortBy as keyof MockRun;
+      let valA: any = a[sortBy];
+      let valB: any = b[sortBy];
+
+      if (valA instanceof Date) valA = valA.getTime();
+      if (valB instanceof Date) valB = valB.getTime();
+
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+
+      const comparison = valA > valB ? 1 : (valA < valB ? -1 : 0);
+      return state.sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return filtered;
   });
 
-  filteredRunsTable = computed(() => {
-    const runs = this.filteredRuns();
-    const q = this.searchQuery().toLowerCase();
-    if (!q) return runs;
-    return runs.filter(r =>
-      r.protocolName.toLowerCase().includes(q) ||
-      r.id.toLowerCase().includes(q) ||
-      r.status.toLowerCase().includes(q)
-    );
-  });
+  // Keep filteredRuns for run selection logic
+  filteredRuns = computed(() => this.filteredRunsTable());
 
   // Computed: get selected run object
   selectedRun = computed(() => {
@@ -576,6 +628,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit() {
+    this.initializeViewControls();
     // Load protocols first to populate filter options
     this.protocolService.getProtocols().subscribe({
       next: (protocols) => {
@@ -599,12 +652,11 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
             return {
               id: r.accession_id,
               protocolName: name,
-              // top_level_protocol_definition_accession_id is the correct FK
               protocolId: (r as any).top_level_protocol_definition_accession_id || 'unknown',
+              measurementType: name.includes('Plate Reader') ? 'Absorbance' : 'Transfer',
+              plateId: `PLT-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
               status: (r.status || 'failed').toLowerCase() as 'completed' | 'running' | 'failed',
-              // Use start_time instead of started_at
               startTime: r.start_time ? new Date(r.start_time) : (r.created_at ? new Date(r.created_at) : new Date()),
-              // Use end_time instead of completed_at
               endTime: r.end_time ? new Date(r.end_time) : undefined,
               wellCount: wellCount,
               totalVolume: 1000 // Default for seeded runs
@@ -613,10 +665,11 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
 
           this.runs.set(mappedRuns);
 
-          // Auto-select first run
-          if (mappedRuns.length > 0) {
-            this.selectedRunId = mappedRuns[0].id;
-            this.loadRunData(mappedRuns[0]);
+          // Auto-select first run from filtered list
+          const firstFiltered = this.filteredRuns()[0];
+          if (firstFiltered) {
+            this.selectedRunId = firstFiltered.id;
+            this.loadRunData(firstFiltered);
           }
         } else {
           // Fallback to client-side mock generation if no runs found (e.g. empty DB)
@@ -648,21 +701,27 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
     this.updateSubscription?.unsubscribe();
   }
 
-  onProtocolChange(protocolId: string) {
-    this.selectedProtocolId = protocolId;
-    // Auto-select first run of filtered list
+  initializeViewControls() {
+    // Optional initialization from URL or local storage if needed
+  }
+
+  onViewStateChange(state: ViewControlsState) {
+    this.viewState.set(state);
+
+    // Auto-select first run of filtered list when filters change
     const filtered = this.filteredRuns();
-    if (filtered.length > 0) {
+    if (filtered.length > 0 && !filtered.find(r => r.id === this.selectedRunId)) {
       this.selectedRunId = filtered[0].id;
       this.loadRunData(filtered[0]);
     }
   }
 
-  onRunChange(runId: string) {
-    const run = this.runs().find(r => r.id === runId);
-    if (run) {
-      this.loadRunData(run);
-    }
+  onProtocolChange() {
+    // Deprecated by ViewControls, but keeping for compatibility if needed
+  }
+
+  onRunChange() {
+    // Deprecated by ViewControls
   }
 
   selectRun(run: MockRun) {
@@ -671,13 +730,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   }
 
   clearFilters() {
-    this.searchQuery.set('');
-    this.selectedProtocolId = '';
-    // Reset to all runs
-    const allRuns = this.runs();
-    if (allRuns.length > 0) {
-      this.selectRun(allRuns[0]);
-    }
+    // Handled by ViewControls component internal state
   }
 
   private loadRunData(run: MockRun) {

@@ -82,78 +82,94 @@ describe('ProtocolLibraryComponent', () => {
 
   it('should load protocols on init', () => {
     expect(component.protocols().length).toBe(3);
-    // categoryOptions includes "All Categories" + unique categories
-    expect(component.categoryOptions().length).toBe(3); // All, DNA Extraction, Liquid Handling
+    // ViewConfig filters[0] is Category, options should include "All Categories" + unique categories
+    const categoryFilter = component.viewConfig().filters?.find(f => f.key === 'category');
+    // Options: "All Categories", "DNA Extraction", "Liquid Handling"
+    expect(categoryFilter?.options?.length).toBe(3);
   });
 
   it('should filter by category', () => {
-    component.selectedCategory.set('DNA Extraction');
+    component.onStateChange({
+      ...component.viewState(),
+      filters: { category: ['DNA Extraction'] }
+    });
     fixture.detectChanges();
     expect(component.filteredProtocols().length).toBe(2);
     expect(component.filteredProtocols().every(p => p.category === 'DNA Extraction')).toBe(true);
   });
 
   it('should filter by type (top level)', () => {
-    component.selectedType.set('top_level');
+    component.onStateChange({
+      ...component.viewState(),
+      filters: { type: ['top_level'] }
+    });
     fixture.detectChanges();
     expect(component.filteredProtocols().length).toBe(2);
     expect(component.filteredProtocols().every(p => p.is_top_level)).toBe(true);
   });
 
   it('should filter by type (sub protocol)', () => {
-    component.selectedType.set('sub');
+    component.onStateChange({
+      ...component.viewState(),
+      filters: { type: ['sub'] }
+    });
     fixture.detectChanges();
     expect(component.filteredProtocols().length).toBe(1);
     expect(component.filteredProtocols()[0].accession_id).toBe('p2');
   });
 
   it('should filter by status (passed)', () => {
-    component.selectedStatus.set('passed');
+    component.onStateChange({
+      ...component.viewState(),
+      filters: { status: ['passed'] }
+    });
     fixture.detectChanges();
     expect(component.filteredProtocols().length).toBe(1);
     expect(component.filteredProtocols()[0].accession_id).toBe('p1');
   });
 
   it('should filter by status (failed)', () => {
-    component.selectedStatus.set('failed');
+    component.onStateChange({
+      ...component.viewState(),
+      filters: { status: ['failed'] }
+    });
     fixture.detectChanges();
     expect(component.filteredProtocols().length).toBe(1);
     expect(component.filteredProtocols()[0].accession_id).toBe('p2');
   });
 
   it('should filter by status (none)', () => {
-    component.selectedStatus.set('none');
+    component.onStateChange({
+      ...component.viewState(),
+      filters: { status: ['none'] }
+    });
     fixture.detectChanges();
     expect(component.filteredProtocols().length).toBe(1);
     expect(component.filteredProtocols()[0].accession_id).toBe('p3');
   });
 
   it('should combine filters', () => {
-    component.selectedCategory.set('DNA Extraction');
-    component.selectedType.set('top_level');
+    component.onStateChange({
+      ...component.viewState(),
+      filters: {
+        category: ['DNA Extraction'],
+        type: ['top_level']
+      }
+    });
     fixture.detectChanges();
     expect(component.filteredProtocols().length).toBe(1);
     expect(component.filteredProtocols()[0].accession_id).toBe('p1');
   });
 
-  it('should clear filters', () => {
-    component.selectedCategory.set('Liquid Handling');
-    component.selectedType.set('sub');
-    component.clearFilters();
-    fixture.detectChanges();
-    expect(component.selectedCategory()).toBeNull();
-    expect(component.selectedType()).toBe('all');
-    expect(component.selectedStatus()).toBe('all');
-    expect(component.filteredProtocols().length).toBe(3);
-  });
+  it('should support view switching', () => {
+    expect(component.viewState().viewType).toBe('table');
 
-  it('should update filter count', () => {
-    expect(component.filterCount()).toBe(0);
-    component.selectedCategory.set('DNA Extraction');
-    expect(component.filterCount()).toBe(1);
-    component.selectedType.set('sub');
-    expect(component.filterCount()).toBe(2);
-    component.selectedStatus.set('failed');
-    expect(component.filterCount()).toBe(3);
+    component.onStateChange({
+      ...component.viewState(),
+      viewType: 'card'
+    });
+    fixture.detectChanges();
+
+    expect(component.viewState().viewType).toBe('card');
   });
 });

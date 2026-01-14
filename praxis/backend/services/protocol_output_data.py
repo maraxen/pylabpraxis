@@ -13,8 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.domain.outputs import (
   FunctionDataOutput as FunctionDataOutput,
-  WellDataOutput as WellDataOutput,
+)
+from praxis.backend.models.domain.outputs import (
   ProtocolRunDataSummary,
+)
+from praxis.backend.models.domain.outputs import (
+  WellDataOutput as WellDataOutput,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 

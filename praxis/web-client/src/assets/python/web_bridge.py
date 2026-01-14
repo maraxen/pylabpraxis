@@ -10,7 +10,9 @@ This module provides:
 """
 
 import asyncio
+import builtins
 import json
+import os
 import sys
 import uuid
 from typing import Any
@@ -417,13 +419,43 @@ def bootstrap_playground(namespace=None):
   except ImportError:
     pass
 
-  # Inject WebSerial from shim if available
+  # Inject WebSerial & WebUSB from shims if available
   try:
-    from web_serial_shim import WebSerial
+    # Ensure importability from root/current dir
+    if "." not in sys.path:
+      sys.path.append(".")
+    if "/" not in sys.path:
+      sys.path.append("/")
 
-    target["WebSerial"] = WebSerial
-  except ImportError:
-    pass
+    print(f"DEBUG: CWD={os.getcwd()}", file=sys.stderr)
+
+    # 1. Inject WebSerial
+    try:
+      from web_serial_shim import WebSerial
+
+      if namespace is not None:
+        namespace["WebSerial"] = WebSerial
+      builtins.WebSerial = WebSerial
+      print("SUCCESS: WebSerial injected into builtins", file=sys.stderr)
+    except ImportError:
+      print("WARNING: web_serial_shim not found", file=sys.stderr)
+
+    # 2. Inject WebUSB
+    try:
+      from web_usb_shim import WebUSB
+
+      if namespace is not None:
+        namespace["WebUSB"] = WebUSB
+      builtins.WebUSB = WebUSB
+      print("SUCCESS: WebUSB injected into builtins", file=sys.stderr)
+    except ImportError:
+      print("WARNING: web_usb_shim not found", file=sys.stderr)
+
+  except Exception as e:
+    import traceback
+
+    print(f"ERROR: Failed during shim injection: {e}", file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
 
 
 # =============================================================================

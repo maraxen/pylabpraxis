@@ -144,66 +144,48 @@ export class DeckGeneratorService {
             children: []
         };
 
-        // Create slot children for visualization
-        // (Note: In real PLR, slots might be coordinate hacks, but here we can represent them as resources or just rely on the component using the spec)
-        // However, we need to place resources INTO these slots.
+        // Create trash if deck has one defined in slots
+        // OT-2 Trash is typically in slot 12
+        const slots = spec.slots || [];
+        const trashSlot = slots.find((s: any) => s.slotType === 'trash');
 
-        if (protocol.assets) {
-            let slotIndex = 0;
-            const slots = spec.slots || [];
+        if (trashSlot) {
+            deck.children.push({
+                name: 'Trash',
+                type: 'Trash',
+                location: {
+                    x: trashSlot.position.x,
+                    y: trashSlot.position.y,
+                    z: trashSlot.position.z,
+                    type: "Coordinate"
+                },
+                size_x: trashSlot.dimensions.width,
+                size_y: trashSlot.dimensions.height,
+                size_z: 100, // Arbitrary height
+                children: [],
+                slot_id: trashSlot.slotNumber
+            } as PlrResource);
+        }
 
-            protocol.assets.forEach((asset) => {
-                // Find next available slot
-                // For now, just fill 1, 2, 3...
-                // Ideally this would use location constraints from protocol
-                if (slotIndex >= slots.length) return;
-                const slot = slots[slotIndex];
-                slotIndex++;
+        // Only place resources that are explicitly in the assetMap (user-assigned)
+        if (protocol.assets && assetMap) {
+            // Logic for placing assigned assets can go here if we want pre-population of assigned items.
+            // For "Guided Setup" strictly starting empty, we might want to skip this loop entirely?
+            // The prompt says "Guided Deck Setup Empty Start... only including machine-specific defaults".
+            // However, if the user has already assigned assets in valid slots (e.g. re-entering wizard?), they should show up.
+            // But the CarrierInferenceService is typically what places them.
+            // DeckGeneratorService is seemingly used for VISUALIZATION.
+            // If we remove logic here, the Deck View of the "Asset Selection" or "Wizard" steps might be empty even if successful?
 
-                // Skip trash slot for regular assets
-                if (slot.slotType === 'trash') {
-                    // Try next one
-                    if (slotIndex >= slots.length) return; // double check boundary
-                    // slot = slots[slotIndex]; 
-                    // slotIndex++;
-                    // (Logic simplified for basic layout - we just increment one more time if needed above or handle loop properly)
-                }
+            // Re-reading: "Deck state should be pulled from the database."
+            // "The deck should start empty except for immutable machine defaults. Users add labware matching protocol requirements."
 
-                let resource: PlrResource | null = null;
-                let isGhost = false;
-                let displayName = asset.name;
-
-                if (!assetMap || !assetMap[asset.accession_id]) {
-                    isGhost = true;
-                    displayName = `ghost_${asset.name}`;
-                } else {
-                    displayName = assetMap[asset.accession_id].name;
-                }
-
-                const typeHint = asset.type_hint_str?.toLowerCase() || '';
-                const name = asset.name.toLowerCase();
-
-                if (typeHint.includes('plate') || name.includes('plate')) {
-                    resource = this.createPlate(displayName);
-                } else if (typeHint.includes('tip') || name.includes('tip')) {
-                    resource = this.createTipRack(displayName);
-                } else if (typeHint.includes('trough') || name.includes('reservoir')) {
-                    resource = this.createTrough(displayName);
-                }
-
-                if (resource) {
-                    // Position at slot coordinates
-                    resource.location.x = slot.position.x + 10; // offset slightly
-                    resource.location.y = slot.position.y + 10;
-                    resource.location.z = slot.position.z;
-                    resource.slot_id = slot.slotNumber; // Tag with slot ID
-
-                    if (isGhost) {
-                        resource.children = [];
-                    }
-                    deck.children.push(resource);
-                }
-            });
+            // For now, we REMOVE the auto-placement logic.
+            // The WizardStateService/CarrierInferenceService will handle adding things back one by one.
+            // If assetMap is provided, we assume those assets are ALREADY known and placed?
+            // Actually, in the current app flow, DeckGenerator is used to create the BACKGROUND deck.
+            // The items on top are often handled by the wizard state overlay.
+            // But let's stick to the plan: START EMPTY.
         }
 
         return { resource: deck, state: {} };
@@ -222,98 +204,8 @@ export class DeckGeneratorService {
             children: []
         };
 
-        // Get hardware-spec rail positions
-        const spec = this.deckCatalog.getHamiltonSTARSpec();
-        const railPositions = spec.railPositions!;
-
-        // 2. Add Standard Carriers at specific rails
-        // Plate Carrier at rail 5
-        const plateCarrierRail = 5;
-        const plateCarrier = this.createCarrier(
-            "plate_carrier",
-            "PlateCarrier",
-            railPositions[plateCarrierRail]
-        );
-        deck.children.push(plateCarrier);
-
-        // Tip Carrier at rail 15
-        const tipCarrierRail = 15;
-        const tipCarrier = this.createCarrier(
-            "tip_carrier",
-            "TipCarrier",
-            railPositions[tipCarrierRail]
-        );
-        deck.children.push(tipCarrier);
-
-        // Trough/Reservoir Carrier at rail 25
-        const troughCarrierRail = 25;
-        const troughCarrier = this.createCarrier(
-            "trough_carrier",
-            "PlateCarrier",
-            railPositions[troughCarrierRail]
-        );
-        deck.children.push(troughCarrier);
-
-        // 3. Place Assets from Protocol
-        if (protocol.assets) {
-            let plateSlotIndex = 0;
-            let tipSlotIndex = 0;
-            let troughSlotIndex = 0;
-
-            protocol.assets.forEach((asset, index) => {
-                let resource: PlrResource | null = null;
-                let parent: PlrResource | null = null;
-                let yOffset = 0;
-                let isGhost = false;
-
-                // Determine name and ghost status
-                let displayName = asset.name;
-
-                // If assetMap is null (initial) or asset not in map -> Ghost
-                if (!assetMap || !assetMap[asset.accession_id]) {
-                    isGhost = true;
-                    displayName = `ghost_${asset.name}`;
-                } else {
-                    displayName = assetMap[asset.accession_id].name;
-                }
-
-                // Simple logic to interpret type hints and place them
-                const typeHint = asset.type_hint_str?.toLowerCase() || '';
-                const name = asset.name.toLowerCase();
-
-                // If ghost, we default to standard container size roughly match
-                // We reuse create functions but will strip children and colorize
-
-                if (typeHint.includes('plate') || name.includes('plate')) {
-                    resource = this.createPlate(displayName);
-                    parent = plateCarrier;
-                    yOffset = 10 + (plateSlotIndex * 100);
-                    plateSlotIndex++;
-                } else if (typeHint.includes('tip') || name.includes('tip')) {
-                    resource = this.createTipRack(displayName);
-                    parent = tipCarrier;
-                    yOffset = 10 + (tipSlotIndex * 100);
-                    tipSlotIndex++;
-                } else if (typeHint.includes('trough') || name.includes('reservoir')) {
-                    resource = this.createTrough(displayName);
-                    parent = troughCarrier;
-                    yOffset = 10 + (troughSlotIndex * 100);
-                    troughSlotIndex++;
-                }
-
-                if (resource && parent) {
-                    resource.location.y = yOffset;
-                    resource.location.z = 10;
-
-                    if (isGhost) {
-                        resource.children = []; // No detailed wells for ghosts
-                        // resource.color is REMOVED so CSS class .is-ghost can apply background/border
-                    }
-
-                    parent.children.push(resource);
-                }
-            });
-        }
+        // No default carriers created. 
+        // The deck starts empty. Users must add carriers.
 
         return {
             resource: deck,
@@ -351,74 +243,10 @@ export class DeckGeneratorService {
         const carrierDims = await this.getResourceDimensions('carrier');
 
         // 2. Add Standard Carriers at specific rails
-        const plateCarrier = this.createCarrierWithDims(
-            "plate_carrier", "PlateCarrier", railPositions[5], carrierDims
-        );
-        deck.children.push(plateCarrier);
-
-        const tipCarrier = this.createCarrierWithDims(
-            "tip_carrier", "TipCarrier", railPositions[15], carrierDims
-        );
-        deck.children.push(tipCarrier);
-
-        const troughCarrier = this.createCarrierWithDims(
-            "trough_carrier", "PlateCarrier", railPositions[25], carrierDims
-        );
-        deck.children.push(troughCarrier);
+        // Removed default carriers: Deck starts empty.
 
         // 3. Place Assets from Protocol with cached dimensions
-        if (protocol.assets) {
-            let plateSlotIndex = 0;
-            let tipSlotIndex = 0;
-            let troughSlotIndex = 0;
-
-            for (const asset of protocol.assets) {
-                let resource: PlrResource | null = null;
-                let parent: PlrResource | null = null;
-                let yOffset = 0;
-                let isGhost = false;
-
-                let displayName = asset.name;
-                if (!assetMap || !assetMap[asset.accession_id]) {
-                    isGhost = true;
-                    displayName = `ghost_${asset.name}`;
-                } else {
-                    displayName = assetMap[asset.accession_id].name;
-                }
-
-                const typeHint = asset.type_hint_str?.toLowerCase() || '';
-                const name = asset.name.toLowerCase();
-
-                if (typeHint.includes('plate') || name.includes('plate')) {
-                    const dims = await this.getResourceDimensions('plate', asset.fqn);
-                    resource = this.createPlateWithDims(displayName, dims);
-                    parent = plateCarrier;
-                    yOffset = 10 + (plateSlotIndex * 100);
-                    plateSlotIndex++;
-                } else if (typeHint.includes('tip') || name.includes('tip')) {
-                    const dims = await this.getResourceDimensions('tipRack', asset.fqn);
-                    resource = this.createTipRackWithDims(displayName, dims);
-                    parent = tipCarrier;
-                    yOffset = 10 + (tipSlotIndex * 100);
-                    tipSlotIndex++;
-                } else if (typeHint.includes('trough') || name.includes('reservoir')) {
-                    const dims = await this.getResourceDimensions('trough', asset.fqn);
-                    resource = this.createTroughWithDims(displayName, dims);
-                    parent = troughCarrier;
-                    yOffset = 10 + (troughSlotIndex * 100);
-                    troughSlotIndex++;
-                }
-
-                if (resource && parent) {
-                    resource.location.y = yOffset;
-                    resource.location.z = 10;
-                    if (isGhost) {
-                        resource.children = [];
-                    }
-                    parent.children.push(resource);
-                }
-            }
-        }
+        // Removed auto-placement logic.
 
         return { resource: deck, state: {} };
     }

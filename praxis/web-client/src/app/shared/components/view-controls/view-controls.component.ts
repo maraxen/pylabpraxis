@@ -8,6 +8,8 @@ import {
   ChangeDetectionStrategy,
   signal,
   effect,
+  inject,
+  computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -16,16 +18,22 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatBottomSheet, MatBottomSheetModule } from '@angular/material/bottom-sheet';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { Router, ActivatedRoute } from '@angular/router';
+import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 
-import { PraxisSelectComponent } from '../praxis-select/praxis-select.component';
 import { PraxisMultiselectComponent } from '../praxis-multiselect/praxis-multiselect.component';
 import { ViewTypeToggleComponent } from './view-type-toggle.component';
 import { GroupBySelectComponent } from './group-by-select.component';
+import { ViewControlsMobileSheetComponent } from './view-controls-mobile-sheet.component';
 import {
   ViewControlsState,
   ViewControlsConfig,
   ViewType,
+  ActiveFilter,
 } from './view-controls.types';
 
 @Component({
@@ -39,123 +47,159 @@ import {
     MatTooltipModule,
     MatSelectModule,
     MatFormFieldModule,
-    PraxisSelectComponent,
+    MatMenuModule,
+    MatDividerModule,
+    MatBottomSheetModule,
     PraxisMultiselectComponent,
     ViewTypeToggleComponent,
     GroupBySelectComponent,
   ],
   template: `
-<div class="view-controls-container">
-  <!-- Search -->
-  <div class="search-wrapper">
-    <mat-icon class="search-icon">search</mat-icon>
-    <input
-      type="text"
-      class="search-input"
-      [placeholder]="config.defaults?.search || 'Search...'"
-      [value]="state.search"
-      (input)="onSearchInput($event)"
-      aria-label="Search"
-    />
-    @if (state.search) {
-      <button mat-icon-button class="clear-search" (click)="clearSearch()">
-        <mat-icon>close</mat-icon>
-      </button>
-    }
-  </div>
-
-  <div class="controls-actions">
-    <!-- View Type -->
-    @if (config.viewTypes && config.viewTypes.length > 1) {
-      <app-view-type-toggle
-        [viewType]="state.viewType"
-        [availableTypes]="config.viewTypes"
-        (viewTypeChange)="onViewTypeChange($event)"
-      ></app-view-type-toggle>
-    }
-
-    <!-- Group By -->
-    @if (config.groupByOptions && config.groupByOptions.length > 0) {
-      <app-group-by-select
-        [value]="state.groupBy"
-        [options]="config.groupByOptions"
-        (valueChange)="onGroupByChange($event)"
-      ></app-group-by-select>
-    }
-
-    <!-- Filters -->
-    <div class="filters-row">
-      @for (filterConfig of config.filters; track filterConfig.key) {
-        @switch (filterConfig.type) {
-          @case ('multiselect') {
-            <app-praxis-multiselect
-              [label]="filterConfig.label"
-              [options]="filterConfig.options || []"
-              [value]="state.filters[filterConfig.key]"
-              (valueChange)="onFilterChange(filterConfig.key, $event)"
-            ></app-praxis-multiselect>
-          }
-          @case ('chips') {
-            <app-praxis-multiselect
-              [label]="filterConfig.label"
-              [options]="filterConfig.options || []"
-              [value]="state.filters[filterConfig.key]"
-              (valueChange)="onFilterChange(filterConfig.key, $event)"
-            ></app-praxis-multiselect>
-          }
-          @case ('select') {
-            <app-praxis-select
-              [placeholder]="filterConfig.label"
-              [options]="filterConfig.options || []"
-              [value]="state.filters[filterConfig.key]?.[0]"
-              (valueChange)="onFilterChange(filterConfig.key, [$event])"
-            ></app-praxis-select>
-          }
-          @case ('toggle') {
-            <button 
-              mat-stroked-button
-              class="filter-toggle-btn"
-              [class.active]="state.filters[filterConfig.key]"
-              (click)="onFilterChange(filterConfig.key, !state.filters[filterConfig.key])"
-              [matTooltip]="filterConfig.label"
-            >
-              <mat-icon>{{ state.filters[filterConfig.key] ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
-              {{ filterConfig.label }}
+<div class="view-controls-container" [class.mobile]="isMobile()">
+  <!-- Desktop / Table Layout -->
+  @if (!isMobile()) {
+    <div class="controls-row-primary">
+      <div class="left-group">
+        <!-- Search -->
+        <div class="search-wrapper">
+          <mat-icon class="search-icon">search</mat-icon>
+          <input
+            type="text"
+            class="search-input"
+            [placeholder]="config.defaults?.search || 'Search...'"
+            [value]="state.search"
+            (input)="onSearchInput($event)"
+            aria-label="Search"
+          />
+          @if (state.search) {
+            <button mat-icon-button class="clear-search" (click)="clearSearch()">
+              <mat-icon>close</mat-icon>
             </button>
           }
+        </div>
+
+        <!-- View Type Toggle -->
+        @if (config.viewTypes && config.viewTypes.length > 1) {
+          <app-view-type-toggle
+            [viewType]="state.viewType"
+            [availableTypes]="config.viewTypes"
+            (viewTypeChange)="onViewTypeChange($event)"
+          ></app-view-type-toggle>
         }
-      }
-    </div>
 
-    <!-- Sort -->
-    @if (config.sortOptions && config.sortOptions.length > 0) {
-      <div class="sort-controls">
-        <mat-form-field appearance="outline" class="sort-field" subscriptSizing="dynamic">
-          <mat-label>Sort By</mat-label>
-          <mat-select [value]="state.sortBy" (selectionChange)="onSortByChange($event.value)">
-            @for (option of config.sortOptions; track option.value) {
-              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+        <mat-divider vertical="true" class="h-6 mx-2"></mat-divider>
+
+        <!-- Group By -->
+        @if (config.groupByOptions && config.groupByOptions.length > 0) {
+          <app-group-by-select
+            [value]="state.groupBy"
+            [options]="config.groupByOptions"
+            (valueChange)="onGroupByChange($event)"
+          ></app-group-by-select>
+        }
+
+        <!-- Pinned Filters -->
+        <div class="pinned-filters">
+          @for (filter of pinnedFilters(); track filter.key) {
+            <app-praxis-multiselect
+              [label]="filter.label"
+              [options]="filter.options || []"
+              [value]="state.filters[filter.key] || []"
+              (valueChange)="onFilterChange(filter.key, $event)"
+              class="compact-filter"
+            ></app-praxis-multiselect>
+          }
+        </div>
+
+        <!-- Add Filter Button -->
+        @if (unpinnedFilters().length > 0) {
+          <button mat-stroked-button [matMenuTriggerFor]="filterMenu" class="add-filter-btn">
+            <mat-icon>add</mat-icon>
+            Add Filter
+          </button>
+          <mat-menu #filterMenu="matMenu" class="filter-popover-menu">
+            @for (filter of unpinnedFilters(); track filter.key) {
+              <div class="filter-menu-item" (click)="$event.stopPropagation()">
+                <span class="filter-label">{{ filter.label }}</span>
+                <app-praxis-multiselect
+                  [options]="filter.options || []"
+                  [value]="state.filters[filter.key] || []"
+                  (valueChange)="onFilterChange(filter.key, $event)"
+                ></app-praxis-multiselect>
+              </div>
             }
-          </mat-select>
-        </mat-form-field>
-        <button
-          mat-icon-button
-          class="sort-order-btn"
-          [matTooltip]="state.sortOrder === 'asc' ? 'Sort Ascending' : 'Sort Descending'"
-          (click)="toggleSortOrder()"
-        >
-          <mat-icon>{{ state.sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
-        </button>
+          </mat-menu>
+        }
       </div>
-    }
 
-    <!-- Clear All -->
-    @if (hasActiveFilters) {
-      <button mat-button class="clear-all-btn" (click)="clearAll()">
-        Clear Filters
+      <div class="right-group">
+        <!-- Sort -->
+        @if (config.sortOptions && config.sortOptions.length > 0) {
+          <div class="sort-controls">
+            <mat-form-field appearance="outline" class="sort-field" subscriptSizing="dynamic">
+              <mat-label>Sort By</mat-label>
+              <mat-select [value]="state.sortBy" (selectionChange)="onSortByChange($event.value)">
+                @for (option of config.sortOptions; track option.value) {
+                  <mat-option [value]="option.value">{{ option.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <button
+              mat-icon-button
+              class="sort-order-btn"
+              [matTooltip]="state.sortOrder === 'asc' ? 'Sort Ascending' : 'Sort Descending'"
+              (click)="toggleSortOrder()"
+            >
+              <mat-icon>{{ state.sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            </button>
+          </div>
+        }
+
+        <!-- Result Count -->
+        @if (config.showResultCount && state.resultCount !== undefined) {
+          <span class="result-count">{{ state.resultCount }} items</span>
+        }
+      </div>
+    </div>
+  } @else {
+    <!-- Mobile Layout -->
+    <div class="controls-row-mobile">
+      <div class="search-wrapper mobile">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input
+          type="text"
+          class="search-input"
+          [placeholder]="config.defaults?.search || 'Search...'"
+          [value]="state.search"
+          (input)="onSearchInput($event)"
+          aria-label="Search"
+        />
+      </div>
+      <button mat-stroked-button (click)="openMobileFilters()" class="mobile-filters-btn">
+        <mat-icon>filter_list</mat-icon>
+        Filters
+        @if (activeFilters().length > 0) {
+          <span class="mobile-filter-badge">{{ activeFilters().length }}</span>
+        }
       </button>
-    }
-  </div>
+    </div>
+  }
+
+  <!-- Active Filter Chips (Row 2) -->
+  @if (activeFilters().length > 0) {
+    <div class="active-filters-row">
+      <span class="active-label">Active:</span>
+      <div class="chips-scroll-container">
+        @for (filter of activeFilters(); track filter.filterId) {
+          <span class="filter-chip">
+            <span class="chip-content">{{ filter.displayText }}</span>
+            <mat-icon class="chip-remove" (click)="removeFilter(filter.filterId)">close</mat-icon>
+          </span>
+        }
+        <button mat-button class="clear-all-link" (click)="clearAll()">Clear all</button>
+      </div>
+    </div>
+  }
 </div>
   `,
   styles: [`
@@ -165,18 +209,29 @@ import {
 
 .view-controls-container {
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.controls-row-primary {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 8px 0;
   flex-wrap: wrap;
+}
+
+.left-group, .right-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .search-wrapper {
   position: relative;
-  flex: 1;
   min-width: 200px;
-  max-width: 400px;
+  max-width: 300px;
   display: flex;
   align-items: center;
 
@@ -228,46 +283,41 @@ import {
   }
 }
 
-.controls-actions {
+.pinned-filters {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.filters-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-
-  app-praxis-select, app-praxis-multiselect {
-    min-width: 140px;
+.compact-filter {
+  ::ng-deep .praxis-multiselect-trigger {
+    height: 32px !important;
+    padding: 0 10px !important;
+    border-radius: 16px !important;
   }
 }
 
-.filter-toggle-btn {
+.add-filter-btn {
   height: 32px;
   border-radius: 16px;
   font-size: 13px;
   padding: 0 12px;
-  border: 1px solid var(--theme-border);
-  background: transparent;
-  color: var(--theme-text-primary);
+  border-style: dashed;
+}
+
+.filter-menu-item {
+  padding: 8px 16px;
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
 
-  &.active {
-    background-color: var(--theme-surface-elevated);
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-  }
-
-  .mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
+  .filter-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--theme-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 }
 
@@ -305,26 +355,125 @@ import {
   }
 }
 
-.clear-all-btn {
-  height: 32px;
+.result-count {
   font-size: 13px;
   color: var(--theme-text-secondary);
-  &:hover {
-    color: var(--primary-color);
+  font-weight: 500;
+}
+
+.active-filters-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px;
+  background: var(--theme-surface-subtle);
+  border-radius: 8px;
+  animation: fadeIn 0.2s ease;
+
+  .active-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--theme-text-secondary);
+    letter-spacing: 0.5px;
   }
 }
 
-@media (max-width: 768px) {
-  .view-controls-container {
-    flex-direction: column;
-    align-items: stretch;
+.chips-scroll-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  flex: 1;
+  padding-bottom: 2px; // for scrollbar offset
+  
+  &::-webkit-scrollbar {
+    height: 0;
   }
-  .search-wrapper {
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  background: var(--theme-surface-elevated);
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--theme-text-primary);
+  white-space: nowrap;
+  animation: slideIn 0.2s ease;
+
+  .chip-content {
+    font-weight: 500;
+  }
+
+  .chip-remove {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    color: var(--theme-text-secondary);
+    &:hover {
+      color: var(--mat-sys-error);
+    }
+  }
+}
+
+.clear-all-link {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+  color: var(--primary-color);
+  font-weight: 600;
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.controls-row-mobile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  .search-wrapper.mobile {
+    flex: 1;
     max-width: none;
   }
-  .controls-actions {
-    justify-content: flex-start;
+  
+  .mobile-filters-btn {
+    height: 36px;
+    border-radius: 18px;
+    position: relative;
   }
+
+  .mobile-filter-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: var(--primary-color);
+    color: white;
+    font-size: 10px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-10px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -333,7 +482,10 @@ export class ViewControlsComponent implements OnInit, OnDestroy {
   @Input() config: ViewControlsConfig = {};
 
   @Input() set state(value: ViewControlsState) {
-    this._state.set(value);
+    this._state.set({
+      ...this._state(),
+      ...value,
+    });
   }
   get state(): ViewControlsState {
     return this._state();
@@ -342,7 +494,7 @@ export class ViewControlsComponent implements OnInit, OnDestroy {
   @Output() stateChange = new EventEmitter<ViewControlsState>();
   @Output() viewTypeChange = new EventEmitter<ViewType>();
   @Output() groupByChange = new EventEmitter<string | null>();
-  @Output() filtersChange = new EventEmitter<Record<string, any[]>>();
+  @Output() filtersChange = new EventEmitter<Record<string, unknown[]>>();
   @Output() sortChange = new EventEmitter<{
     sortBy: string;
     sortOrder: 'asc' | 'desc';
@@ -359,18 +511,81 @@ export class ViewControlsComponent implements OnInit, OnDestroy {
   });
 
   private searchSubject = new Subject<string>();
-  private searchSubscription = this.searchSubject
-    .pipe(debounceTime(300), distinctUntilChanged())
-    .subscribe((value) => {
-      this.updateState({ search: value });
-      this.searchChange.emit(value);
-    });
+  private destroy$ = new Subject<void>();
+
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private bottomSheet = inject(MatBottomSheet);
+  private breakpointObserver = inject(BreakpointObserver);
+
+  isMobile = signal(false);
+
+  // Filters pinned to the bar (always visible)
+  pinnedFilters = computed(() => {
+    // Default pinning: Status and Category or first 2
+    const filters = this.config.filters || [];
+    if (filters.some(f => f.pinned)) {
+      return filters.filter(f => f.pinned);
+    }
+
+    // MVP: Pin Status and Category if they exist
+    const highlighted = filters.filter(f =>
+      ['status', 'category'].includes(f.key.toLowerCase())
+    );
+
+    if (highlighted.length > 0) return highlighted;
+
+    return filters.slice(0, 2);
+  });
+
+  // Filters in the "+ Add Filter" menu
+  unpinnedFilters = computed(() => {
+    const pinnedKeys = new Set(this.pinnedFilters().map(f => f.key));
+    return (this.config.filters || []).filter(f => !pinnedKeys.has(f.key));
+  });
+
+  // Active filters for chip display
+  activeFilters = computed<ActiveFilter[]>(() => {
+    const result: ActiveFilter[] = [];
+    const currentState = this._state();
+
+    for (const [key, values] of Object.entries(currentState.filters)) {
+      if (!values || (Array.isArray(values) && values.length === 0)) continue;
+
+      const config = this.config.filters?.find(f => f.key === key);
+      if (!config) continue;
+
+      const valArray = Array.isArray(values) ? values : [values];
+      const displayValues = valArray
+        .map(v => config.options?.find(o => o.value === v)?.label || String(v))
+        .join(', ');
+
+      result.push({
+        filterId: key,
+        label: config.label,
+        values: valArray,
+        displayText: `${config.label}: ${displayValues}`
+      });
+    }
+
+    return result;
+  });
 
   constructor() {
     effect(() => {
       const currentState = this._state();
       this.persistState(currentState);
+      if (this.config.enableUrlSync) {
+        this.syncToUrl(currentState);
+      }
     });
+
+    this.breakpointObserver
+      .observe([Breakpoints.Handset, Breakpoints.HandsetPortrait, '(max-width: 768px)'])
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(result => {
+        this.isMobile.set(result.matches);
+      });
   }
 
   ngOnInit() {
@@ -378,43 +593,52 @@ export class ViewControlsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    this.searchSubscription.unsubscribe();
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   private initializeState() {
     const persisted = this.loadPersistedState();
+    const urlState = this.config.enableUrlSync ? this.readFromUrl() : {};
     const defaults = this.config.defaults || {};
 
     const initialState: ViewControlsState = {
       ...this._state(),
       ...defaults,
       ...persisted,
+      ...urlState,
     };
 
-    // Ensure all filter keys from config are present in state
+    // Ensure state fields are not undefined (fallback to base defaults)
+    initialState.search = initialState.search ?? '';
+    initialState.sortBy = initialState.sortBy ?? '';
+    initialState.sortOrder = initialState.sortOrder ?? 'asc';
+    initialState.filters = initialState.filters ?? {};
+
+    // Ensure all filter keys from config are present in state as arrays
     if (this.config.filters) {
       this.config.filters.forEach(f => {
         if (initialState.filters[f.key] === undefined) {
           initialState.filters[f.key] = [];
+        } else if (!Array.isArray(initialState.filters[f.key])) {
+          initialState.filters[f.key] = [initialState.filters[f.key]];
         }
       });
     }
 
     this._state.set(initialState);
+
+    // Setup search debounce
+    this.searchSubject
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((value) => {
+        this.updateState({ search: value });
+        this.searchChange.emit(value);
+      });
   }
 
   get hasActiveFilters(): boolean {
-    const s = this._state();
-    const hasSearch = !!s.search;
-    const hasFilters = Object.entries(s.filters).some(([key, v]) => {
-      const config = this.config.filters?.find(f => f.key === key);
-      if (config?.type === 'toggle') {
-        return v === true;
-      }
-      return Array.isArray(v) ? v.length > 0 : !!v;
-    });
-    const hasGroupBy = !!s.groupBy;
-    return hasSearch || hasFilters || hasGroupBy;
+    return this.activeFilters().length > 0 || !!this._state().search || !!this._state().groupBy;
   }
 
   onSearchInput(event: Event) {
@@ -424,7 +648,6 @@ export class ViewControlsComponent implements OnInit, OnDestroy {
 
   clearSearch() {
     this.searchSubject.next('');
-    // We also need to manually update the state since the subject might not emit if it was already empty
     this.updateState({ search: '' });
     this.searchChange.emit('');
   }
@@ -439,8 +662,16 @@ export class ViewControlsComponent implements OnInit, OnDestroy {
     this.groupByChange.emit(groupBy);
   }
 
-  onFilterChange(key: string, value: any) {
-    const newFilters = { ...this.state.filters, [key]: value };
+  onFilterChange(key: string, value: unknown[]) {
+    const valArray = Array.isArray(value) ? value : [value];
+    const newFilters = { ...this.state.filters, [key]: valArray };
+    this.updateState({ filters: newFilters });
+    this.filtersChange.emit(newFilters);
+  }
+
+  removeFilter(filterId: string) {
+    const newFilters = { ...this.state.filters };
+    delete newFilters[filterId];
     this.updateState({ filters: newFilters });
     this.filtersChange.emit(newFilters);
   }
@@ -474,6 +705,21 @@ export class ViewControlsComponent implements OnInit, OnDestroy {
     this.filtersChange.emit(clearedFilters);
   }
 
+  openMobileFilters() {
+    const sheetRef = this.bottomSheet.open(ViewControlsMobileSheetComponent, {
+      data: {
+        config: this.config,
+        state: this.state
+      }
+    });
+
+    sheetRef.afterDismissed().subscribe((result: ViewControlsState | undefined) => {
+      if (result) {
+        this.updateState(result);
+      }
+    });
+  }
+
   private updateState(patch: Partial<ViewControlsState>) {
     const newState = { ...this.state, ...patch };
     this._state.set(newState);
@@ -498,5 +744,51 @@ export class ViewControlsComponent implements OnInit, OnDestroy {
     } catch (e) {
       console.warn('Failed to persist view controls state', e);
     }
+  }
+
+  private readFromUrl(): Partial<ViewControlsState> {
+    const params = this.route.snapshot.queryParams;
+    const filters: Record<string, unknown[]> = {};
+    const prefix = this.config.urlParamPrefix || '';
+
+    this.config.filters?.forEach(f => {
+      const paramName = prefix + (f.urlParam || f.key);
+      const value = params[paramName];
+      if (value) {
+        filters[f.key] = Array.isArray(value) ? value : value.split(',');
+      }
+    });
+
+    const state: Partial<ViewControlsState> = { filters };
+
+    if (params['q']) state.search = params['q'];
+    if (params['groupBy']) state.groupBy = params['groupBy'];
+    if (params['sortBy']) state.sortBy = params['sortBy'];
+    if (params['sortOrder']) state.sortOrder = params['sortOrder'] as 'asc' | 'desc';
+
+    return state;
+  }
+
+  private syncToUrl(state: ViewControlsState): void {
+    const queryParams: Record<string, string | null> = {};
+    const prefix = this.config.urlParamPrefix || '';
+
+    this.config.filters?.forEach(f => {
+      const paramName = prefix + (f.urlParam || f.key);
+      const values = state.filters[f.key];
+      queryParams[paramName] = values?.length ? values.join(',') : null;
+    });
+
+    queryParams['q'] = state.search || null;
+    queryParams['groupBy'] = state.groupBy || null;
+    queryParams['sortBy'] = state.sortBy || null;
+    queryParams['sortOrder'] = state.sortOrder !== 'asc' ? state.sortOrder : null;
+
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams,
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
   }
 }

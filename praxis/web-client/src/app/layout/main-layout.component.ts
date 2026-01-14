@@ -56,9 +56,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
             <mat-icon>play_circle</mat-icon>
             <span class="nav-label">Run</span>
           </a>
-          <a class="nav-item" routerLink="/app/visualizer" routerLinkActive="active">
+          <a class="nav-item" routerLink="/app/workcell" routerLinkActive="active">
             <mat-icon>view_in_ar</mat-icon>
-            <span class="nav-label">Deck</span>
+            <span class="nav-label">Workcell</span>
           </a>
           <a class="nav-item" routerLink="/app/playground" routerLinkActive="active">
             <mat-icon>terminal</mat-icon>

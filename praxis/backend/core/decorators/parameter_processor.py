@@ -1,11 +1,13 @@
 import inspect
 from typing import Any, Union, get_args, get_origin
 
-from praxis.backend.models.enums import get_category_from_class, infer_category_from_name
 from praxis.backend.models.domain.protocol import (
   AssetRequirement as AssetRequirementModel,
+)
+from praxis.backend.models.domain.protocol import (
   ParameterMetadataModel,
 )
+from praxis.backend.models.enums import get_category_from_class, infer_category_from_name
 from praxis.backend.utils.type_inspection import (
   fqn_from_hint,
   is_pylabrobot_resource,
@@ -27,6 +29,7 @@ def _extract_plr_category(type_hint: type, fqn: str) -> str | None:
 
   Returns:
     The PLR category string (e.g., 'Plate', 'TipRack') or None
+
   """
   # Primary method: Extract category attribute from the actual class
   category_enum = get_category_from_class(type_hint)

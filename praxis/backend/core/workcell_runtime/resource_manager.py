@@ -4,10 +4,11 @@
 import uuid
 from typing import TYPE_CHECKING, cast
 
-from pylabrobot.machines import Machine
-from pylabrobot.resources import Resource
 # Accept Mock objects in tests (duck-typed PLR objects may be unittest.Mock)
 from unittest.mock import Mock as _UnittestMock
+
+from pylabrobot.machines import Machine
+from pylabrobot.resources import Resource
 
 if TYPE_CHECKING:
   from praxis.backend.core.workcell_runtime.core import WorkcellRuntime

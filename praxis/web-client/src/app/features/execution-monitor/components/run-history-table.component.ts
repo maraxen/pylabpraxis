@@ -9,9 +9,8 @@ import { MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
 import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 
-import { RunSummary } from '../models/monitor.models';
+import { RunSummary, FilterState } from '../models/monitor.models';
 import { RunHistoryService } from '../services/run-history.service';
-import { FilterState } from './run-filters.component';
 
 /**
  * Displays a paginated table of historical protocol runs.
@@ -28,91 +27,97 @@ import { FilterState } from './run-filters.component';
     MatProgressSpinnerModule,
     MatChipsModule,
     NgxSkeletonLoaderModule
-],
+  ],
   template: `
-    <div class="history-container">
-      <div class="flex items-center justify-between mb-4">
+    <div class="history-container praxis-card mt-6">
+      <div class="card-header border-b border-[var(--theme-border)] bg-[var(--mat-sys-surface-variant)]">
         <h2 class="text-xl font-semibold text-sys-text-primary">Run History</h2>
       </div>
 
-      @if (isLoading() && runs().length === 0) {
-        <div class="skeleton-container flex flex-col gap-3">
-             <ngx-skeleton-loader count="1" appearance="line" [theme]="{ height: '48px', 'border-radius': '12px', 'margin-bottom': '0' }"></ngx-skeleton-loader>
-             <ngx-skeleton-loader count="5" appearance="line" [theme]="{ height: '64px', 'border-radius': '12px', 'margin-bottom': '0' }"></ngx-skeleton-loader>
+      <div class="card-content !p-0">
+        @if (isLoading() && runs().length === 0) {
+          <div class="skeleton-container flex flex-col gap-3 p-4">
+               <ngx-skeleton-loader count="1" appearance="line" [theme]="{ height: '48px', 'border-radius': '12px', 'margin-bottom': '0' }"></ngx-skeleton-loader>
+               <ngx-skeleton-loader count="5" appearance="line" [theme]="{ height: '64px', 'border-radius': '12px', 'margin-bottom': '0' }"></ngx-skeleton-loader>
+          </div>
+        } @else if (runs().length === 0 && !isLoading()) {
+          <div class="empty-state text-center py-12 text-sys-text-tertiary opacity-60">
+            <mat-icon class="!w-16 !h-16 !text-[64px] mb-4">history</mat-icon>
+            <p class="text-lg">No runs yet</p>
+            <p class="text-sm">Execute a protocol to see run history here</p>
+          </div>
+        } @else {
+          <div class="table-container overflow-hidden">
+            <table mat-table [dataSource]="runs()" class="w-full">
+              <!-- Status Column -->
+              <ng-container matColumnDef="status">
+                <th mat-header-cell *matHeaderCellDef class="!bg-[var(--mat-sys-surface-container)]">Status</th>
+                <td mat-cell *matCellDef="let run" class="!py-3">
+                  <div class="flex items-center gap-2">
+                    <mat-icon [class]="runHistoryService.getStatusColor(run.status)" class="!w-5 !h-5 !text-[20px]">
+                      {{ runHistoryService.getStatusIcon(run.status) }}
+                    </mat-icon>
+                    <span class="text-sm font-medium">{{ run.status }}</span>
+                  </div>
+                </td>
+              </ng-container>
+  
+              <!-- Protocol Name Column -->
+              <ng-container matColumnDef="protocol">
+                <th mat-header-cell *matHeaderCellDef class="!bg-[var(--mat-sys-surface-container)]">Protocol</th>
+                <td mat-cell *matCellDef="let run" class="!py-3">
+                  <span class="font-medium text-sys-text-primary">
+                    {{ run.protocol_name || run.name || 'Unnamed' }}
+                  </span>
+                </td>
+              </ng-container>
+  
+              <!-- Started Column -->
+              <ng-container matColumnDef="started">
+                <th mat-header-cell *matHeaderCellDef class="!bg-[var(--mat-sys-surface-container)]">Started</th>
+                <td mat-cell *matCellDef="let run" class="!py-3 text-sys-text-secondary">
+                  {{ formatDate(run.start_time || run.created_at) }}
+                </td>
+              </ng-container>
+  
+              <!-- Duration Column -->
+              <ng-container matColumnDef="duration">
+                <th mat-header-cell *matHeaderCellDef class="!bg-[var(--mat-sys-surface-container)]">Duration</th>
+                <td mat-cell *matCellDef="let run" class="!py-3 text-sys-text-secondary">
+                  {{ runHistoryService.formatDuration(run.duration_ms) }}
+                </td>
+              </ng-container>
+  
+              <!-- Actions Column -->
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef class="!bg-[var(--mat-sys-surface-container)] w-16"></th>
+                <td mat-cell *matCellDef="let run" class="!py-3">
+                  <button mat-icon-button [routerLink]="['/app/monitor', run.accession_id]" aria-label="View run details">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+  
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+                  class="hover:bg-[var(--mat-sys-surface-variant)] cursor-pointer"
+                  [routerLink]="['/app/monitor', row.accession_id]"></tr>
+            </table>
+          </div>
+        }
+      </div>
+
+      @if (runs().length > 0) {
+        <div class="card-actions bg-[var(--mat-sys-surface-container)] !p-0">
+          <mat-paginator
+            [length]="totalRuns()"
+            [pageSize]="pageSize"
+            [pageSizeOptions]="[10, 25, 50]"
+            (page)="onPageChange($event)"
+            aria-label="Select page of runs"
+            class="w-full !bg-transparent">
+          </mat-paginator>
         </div>
-      } @else if (runs().length === 0 && !isLoading()) {
-        <div class="empty-state text-center py-12 text-sys-text-tertiary border border-[var(--theme-border)] rounded-2xl bg-surface">
-          <mat-icon class="!w-16 !h-16 !text-[64px] opacity-30 mb-4">history</mat-icon>
-          <p class="text-lg">No runs yet</p>
-          <p class="text-sm opacity-70">Execute a protocol to see run history here</p>
-        </div>
-      } @else {
-        <div class="table-container rounded-2xl border border-[var(--theme-border)] overflow-hidden bg-surface">
-          <table mat-table [dataSource]="runs()" class="w-full">
-            <!-- Status Column -->
-            <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef class="!bg-surface-container">Status</th>
-              <td mat-cell *matCellDef="let run" class="!py-3">
-                <div class="flex items-center gap-2">
-                  <mat-icon [class]="runHistoryService.getStatusColor(run.status)" class="!w-5 !h-5 !text-[20px]">
-                    {{ runHistoryService.getStatusIcon(run.status) }}
-                  </mat-icon>
-                  <span class="text-sm font-medium">{{ run.status }}</span>
-                </div>
-              </td>
-            </ng-container>
-
-            <!-- Protocol Name Column -->
-            <ng-container matColumnDef="protocol">
-              <th mat-header-cell *matHeaderCellDef class="!bg-surface-container">Protocol</th>
-              <td mat-cell *matCellDef="let run" class="!py-3">
-                <span class="font-medium text-sys-text-primary">
-                  {{ run.protocol_name || run.name || 'Unnamed' }}
-                </span>
-              </td>
-            </ng-container>
-
-            <!-- Started Column -->
-            <ng-container matColumnDef="started">
-              <th mat-header-cell *matHeaderCellDef class="!bg-surface-container">Started</th>
-              <td mat-cell *matCellDef="let run" class="!py-3 text-sys-text-secondary">
-                {{ formatDate(run.start_time || run.created_at) }}
-              </td>
-            </ng-container>
-
-            <!-- Duration Column -->
-            <ng-container matColumnDef="duration">
-              <th mat-header-cell *matHeaderCellDef class="!bg-surface-container">Duration</th>
-              <td mat-cell *matCellDef="let run" class="!py-3 text-sys-text-secondary">
-                {{ runHistoryService.formatDuration(run.duration_ms) }}
-              </td>
-            </ng-container>
-
-            <!-- Actions Column -->
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef class="!bg-surface-container w-16"></th>
-              <td mat-cell *matCellDef="let run" class="!py-3">
-                <button mat-icon-button [routerLink]="['/app/monitor', run.accession_id]" aria-label="View run details">
-                  <mat-icon>visibility</mat-icon>
-                </button>
-              </td>
-            </ng-container>
-
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-                class="hover:bg-surface-container cursor-pointer"
-                [routerLink]="['/app/monitor', row.accession_id]"></tr>
-          </table>
-        </div>
-
-        <mat-paginator
-          [length]="totalRuns()"
-          [pageSize]="pageSize"
-          [pageSizeOptions]="[10, 25, 50]"
-          (page)="onPageChange($event)"
-          aria-label="Select page of runs"
-          class="mt-4">
-        </mat-paginator>
       }
     </div>
   `,
@@ -161,7 +166,7 @@ export class RunHistoryTableComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     // Initial load handled by effect
-    
+
     // Auto-refresh every 10 seconds
     this.refreshInterval = setInterval(() => {
       this.loadRuns();
@@ -184,6 +189,7 @@ export class RunHistoryTableComponent implements OnInit, OnDestroy {
         offset: this.currentOffset,
         status: currentFilters?.status?.length ? currentFilters.status : undefined,
         protocol_id: currentFilters?.protocol_id ?? undefined,
+        machine_id: currentFilters?.machine_id ?? undefined,
         sort_by: currentFilters?.sort_by ?? 'created_at',
         sort_order: currentFilters?.sort_order ?? 'desc',
         search: this.search() || undefined

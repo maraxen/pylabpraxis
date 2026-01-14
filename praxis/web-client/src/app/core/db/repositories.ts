@@ -169,9 +169,7 @@ export class MachineRepository extends SqliteRepository<WithIndex<Machine>> {
      * Find machines by status
      */
     private get joinedSelect() {
-        return `SELECT m.*, a.asset_type, a.name, a.fqn, a.location, a.plr_state, a.plr_definition, a.properties_json
-                FROM ${this.tableName} m
-                LEFT JOIN assets a ON m.accession_id = a.accession_id`;
+        return `SELECT m.* FROM ${this.tableName} m`;
     }
 
     /**
@@ -229,20 +227,11 @@ export class MachineRepository extends SqliteRepository<WithIndex<Machine>> {
      * Inserts into 'assets' and 'machines' tables.
      */
     override create(entity: Omit<WithIndex<Machine>, 'created_at' | 'updated_at'>): WithIndex<Machine> {
-        // 1. Prepare Asset fields
-        const assetFields = [
-            'accession_id', 'asset_type', 'name', 'fqn', 'location',
-            'plr_state', 'plr_definition', 'created_at', 'updated_at', 'properties_json'
-        ];
-
-        const assetData: Record<string, any> = {};
-        assetFields.forEach(f => {
-            if (f in entity) assetData[f] = entity[f];
-        });
-
-        // 2. Prepare Machine fields
+        // Flattened schema: Insert directly into machines table
         const machineFields = [
-            'accession_id', 'machine_category', 'description', 'manufacturer', 'model',
+            'accession_id', 'asset_type', 'name', 'fqn', 'location',
+            'plr_state', 'plr_definition', 'properties_json',
+            'machine_category', 'description', 'manufacturer', 'model',
             'serial_number', 'installation_date', 'status', 'status_details',
             'connection_info', 'is_simulation_override', 'user_configured_capabilities',
             'workcell_accession_id', 'resource_counterpart_accession_id',
@@ -255,18 +244,6 @@ export class MachineRepository extends SqliteRepository<WithIndex<Machine>> {
             if (f in entity) machineData[f] = entity[f];
         });
 
-        // 3. Insert into Assets
-        const assetCols = Object.keys(assetData);
-        if (assetCols.length > 0) {
-            const assetVals = Object.values(assetData).map(v => this.serializeValue(v)) as SqlValue[];
-            const assetPlaceholders = assetCols.map(() => '?').join(', ');
-            const assetSql = `INSERT INTO assets (${assetCols.join(', ')}) VALUES (${assetPlaceholders})`;
-            const stmt = this.db.prepare(assetSql);
-            stmt.run(assetVals);
-            stmt.free();
-        }
-
-        // 4. Insert into Machines
         const machineCols = Object.keys(machineData);
         if (machineCols.length > 0) {
             const machineVals = Object.values(machineData).map(v => this.serializeValue(v)) as SqlValue[];
@@ -286,7 +263,7 @@ export class MachineRepository extends SqliteRepository<WithIndex<Machine>> {
  */
 export class MachineDefinitionRepository extends SqliteRepository<WithIndex<MachineDefinitionCatalog>> {
     constructor(db: Database) {
-        super(db, 'machine_definition_catalog', 'accession_id');
+        super(db, 'machine_definitions', 'accession_id');
     }
 
     /**
@@ -323,9 +300,7 @@ export class ResourceRepository extends SqliteRepository<WithIndex<Resource>> {
      * Find resources by status
      */
     private get joinedSelect() {
-        return `SELECT r.*, a.asset_type, a.name, a.fqn, a.location, a.plr_state, a.plr_definition, a.properties_json
-                FROM ${this.tableName} r
-                LEFT JOIN assets a ON r.accession_id = a.accession_id`;
+        return `SELECT r.* FROM ${this.tableName} r`;
     }
 
     /**
@@ -376,20 +351,11 @@ export class ResourceRepository extends SqliteRepository<WithIndex<Resource>> {
      * Inserts into 'assets' and 'resources' tables.
      */
     override create(entity: Omit<WithIndex<Resource>, 'created_at' | 'updated_at'>): WithIndex<Resource> {
-        // 1. Prepare Asset fields
-        const assetFields = [
-            'accession_id', 'asset_type', 'name', 'fqn', 'location',
-            'plr_state', 'plr_definition', 'created_at', 'updated_at', 'properties_json'
-        ];
-
-        const assetData: Record<string, any> = {};
-        assetFields.forEach(f => {
-            if (f in entity) assetData[f] = entity[f];
-        });
-
-        // 2. Prepare Resource fields
+        // Flattened schema: Insert directly into resources table
         const resourceFields = [
-            'accession_id', 'resource_definition_accession_id', 'parent_accession_id',
+            'accession_id', 'asset_type', 'name', 'fqn', 'location',
+            'plr_state', 'plr_definition', 'properties_json',
+            'resource_definition_accession_id', 'parent_accession_id',
             'status', 'status_details', 'current_protocol_run_accession_id',
             'current_deck_position_name', 'machine_location_accession_id',
             'deck_accession_id', 'workcell_accession_id'
@@ -400,18 +366,6 @@ export class ResourceRepository extends SqliteRepository<WithIndex<Resource>> {
             if (f in entity) resourceData[f] = entity[f];
         });
 
-        // 3. Insert into Assets
-        const assetCols = Object.keys(assetData);
-        if (assetCols.length > 0) {
-            const assetVals = Object.values(assetData).map(v => this.serializeValue(v)) as SqlValue[];
-            const assetPlaceholders = assetCols.map(() => '?').join(', ');
-            const assetSql = `INSERT INTO assets (${assetCols.join(', ')}) VALUES (${assetPlaceholders})`;
-            const stmt = this.db.prepare(assetSql);
-            stmt.run(assetVals);
-            stmt.free();
-        }
-
-        // 4. Insert into Resources
         const resourceCols = Object.keys(resourceData);
         if (resourceCols.length > 0) {
             const resourceVals = Object.values(resourceData).map(v => this.serializeValue(v)) as SqlValue[];
@@ -431,7 +385,7 @@ export class ResourceRepository extends SqliteRepository<WithIndex<Resource>> {
  */
 export class ResourceDefinitionRepository extends SqliteRepository<WithIndex<ResourceDefinitionCatalog>> {
     constructor(db: Database) {
-        super(db, 'resource_definition_catalog', 'accession_id');
+        super(db, 'resource_definitions', 'accession_id');
     }
 
     /**

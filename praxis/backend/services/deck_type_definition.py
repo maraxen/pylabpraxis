@@ -4,9 +4,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.domain.deck import (
   DeckDefinition as DeckDefinition,
-  DeckPositionDefinition as DeckPositionDefinition,
+)
+from praxis.backend.models.domain.deck import (
   DeckDefinitionCreate as DeckTypeDefinitionCreate,
+)
+from praxis.backend.models.domain.deck import (
   DeckDefinitionUpdate as DeckTypeDefinitionUpdate,
+)
+from praxis.backend.models.domain.deck import (
+  DeckPositionDefinition as DeckPositionDefinition,
 )
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.utils.uuid import uuid7

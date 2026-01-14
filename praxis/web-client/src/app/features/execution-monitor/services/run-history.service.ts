@@ -43,6 +43,16 @@ export class RunHistoryService {
                         filtered = filtered.filter(r => protocolIds.includes(r.protocol_accession_id || ''));
                     }
 
+                    // Apply machine filter (Note: schema might need update to support this directly)
+                    if (params?.machine_id) {
+                        const machineIds = Array.isArray(params.machine_id) ? params.machine_id : [params.machine_id];
+                        // Temporary check against property until column is guaranteed
+                        filtered = filtered.filter(r => {
+                            const rid = (r as any).machine_accession_id || (r as any).machine_id;
+                            return machineIds.includes(rid || '');
+                        });
+                    }
+
                     // Apply sorting
                     const sortBy = params?.sort_by || 'created_at';
                     const sortOrder = params?.sort_order || 'desc';
@@ -72,7 +82,7 @@ export class RunHistoryService {
             undefined, // date_range_start
             undefined, // date_range_end
             params?.protocol_id as string | undefined,
-            undefined, // machine_accession_id
+            params?.machine_id as string | undefined,
             undefined, // resource_accession_id
             undefined, // parent_accession_id
             undefined, // requestBody
@@ -141,22 +151,22 @@ export class RunHistoryService {
     getStatusColor(status: RunStatus): string {
         switch (status) {
             case 'RUNNING':
-                return 'text-green-500';
+                return 'status-running';
             case 'QUEUED':
             case 'PREPARING':
-                return 'text-amber-500';
+                return 'status-warning';
             case 'PENDING':
-                return 'text-blue-500';
+                return 'status-info';
             case 'COMPLETED':
-                return 'text-gray-500';
+                return 'status-success';
             case 'FAILED':
-                return 'text-red-500';
+                return 'status-error';
             case 'CANCELLED':
-                return 'text-gray-400';
+                return 'status-neutral';
             case 'PAUSED':
-                return 'text-yellow-500';
+                return 'status-warning';
             default:
-                return 'text-gray-500';
+                return 'status-neutral';
         }
     }
 

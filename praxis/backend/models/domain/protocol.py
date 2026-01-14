@@ -8,7 +8,9 @@ Additional models (FunctionProtocolDefinition, FunctionCallLog, etc.) can be add
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
-from sqlalchemy import Column, Enum as SAEnum, UniqueConstraint
+
+from sqlalchemy import Column, UniqueConstraint
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -20,12 +22,12 @@ from praxis.backend.models.enums import (
 from praxis.backend.utils.db import JsonVariant
 
 if TYPE_CHECKING:
+  from praxis.backend.models.domain.outputs import FunctionDataOutput
   from praxis.backend.models.domain.protocol_source import (
     FileSystemProtocolSource,
     ProtocolSourceRepository,
   )
-  from praxis.backend.models.domain.schedule import ScheduleEntry, AssetReservation
-  from praxis.backend.models.domain.outputs import FunctionDataOutput
+  from praxis.backend.models.domain.schedule import AssetReservation, ScheduleEntry
 
 
 class AssetConstraintsModel(SQLModel):

@@ -4,6 +4,8 @@ from typing import Any, cast
 
 from praxis.backend.models.domain.protocol import (
   AssetRequirement as AssetRequirementModel,
+)
+from praxis.backend.models.domain.protocol import (
   DataViewMetadataModel,
   FunctionProtocolDefinitionCreate,
   ParameterMetadataModel,

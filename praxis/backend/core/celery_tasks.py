@@ -8,7 +8,6 @@ and to inject dependencies into the tasks.
 
 from __future__ import annotations
 
-import asyncio
 import json
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
@@ -20,8 +19,8 @@ from praxis.backend.core.celery import celery_app
 from praxis.backend.core.container import Container
 from praxis.backend.models import ProtocolRunStatusEnum
 from praxis.backend.services.state import PraxisState
-from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.async_run import run_sync
+from praxis.backend.utils.logging import get_logger
 
 if TYPE_CHECKING:
   import uuid

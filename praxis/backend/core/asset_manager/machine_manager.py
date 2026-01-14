@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING, Any
 
 from pylabrobot.resources import Deck
 
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.machine import Machine
 from praxis.backend.models.enums import MachineStatusEnum
-from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.utils.errors import AssetAcquisitionError, AssetReleaseError
 from praxis.backend.utils.logging import get_logger
 

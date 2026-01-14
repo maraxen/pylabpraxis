@@ -9,6 +9,71 @@ the database schema is in sync with the ORM models.
 
 from __future__ import annotations
 
+from .domain.asset import (
+  Asset as Asset,
+)
+from .domain.deck import (
+  Deck as Deck,
+)
+from .domain.deck import (
+  DeckDefinition as DeckDefinition,
+)
+from .domain.deck import (
+  DeckPositionDefinition as DeckPositionDefinition,
+)
+from .domain.machine import (
+  Machine as Machine,
+)
+from .domain.machine import (
+  MachineDefinition as MachineDefinition,
+)
+from .domain.outputs import (
+  FunctionDataOutput as FunctionDataOutput,
+)
+from .domain.outputs import (
+  WellDataOutput as WellDataOutput,
+)
+from .domain.protocol import (
+  AssetRequirement as AssetRequirement,
+)
+from .domain.protocol import (
+  FunctionCallLog as FunctionCallLog,
+)
+from .domain.protocol import (
+  FunctionProtocolDefinition as FunctionProtocolDefinition,
+)
+from .domain.protocol import (
+  ParameterDefinition as ParameterDefinition,
+)
+from .domain.protocol import (
+  ProtocolRun as ProtocolRun,
+)
+from .domain.protocol_source import (
+  FileSystemProtocolSource as FileSystemProtocolSource,
+)
+from .domain.protocol_source import (
+  ProtocolSourceRepository as ProtocolSourceRepository,
+)
+from .domain.resource import (
+  Resource as Resource,
+)
+from .domain.resource import (
+  ResourceDefinition as ResourceDefinition,
+)
+from .domain.schedule import (
+  AssetReservation as AssetReservation,
+)
+from .domain.schedule import (
+  ScheduleEntry as ScheduleEntry,
+)
+from .domain.schedule import (
+  ScheduleHistory as ScheduleHistory,
+)
+from .domain.schedule import (
+  SchedulerMetricsView,
+)
+from .domain.user import User as User
+from .domain.workcell import Workcell as Workcell
 from .enums import (
   AssetReservationStatusEnum,
   AssetType,
@@ -23,45 +88,6 @@ from .enums import (
   ScheduleStatusEnum,
   SpatialContextEnum,
   WorkcellStatusEnum,
-)
-from .domain.deck import (
-  Deck as Deck,
-  DeckDefinition as DeckDefinition,
-  DeckPositionDefinition as DeckPositionDefinition,
-)
-from .domain.machine import (
-  Machine as Machine,
-  MachineDefinition as MachineDefinition,
-)
-from .domain.outputs import (
-  FunctionDataOutput as FunctionDataOutput,
-  WellDataOutput as WellDataOutput,
-)
-from .domain.protocol import (
-  AssetRequirement as AssetRequirement,
-  FunctionCallLog as FunctionCallLog,
-  FunctionProtocolDefinition as FunctionProtocolDefinition,
-  ParameterDefinition as ParameterDefinition,
-  ProtocolRun as ProtocolRun,
-)
-from .domain.protocol_source import (
-  FileSystemProtocolSource as FileSystemProtocolSource,
-  ProtocolSourceRepository as ProtocolSourceRepository,
-)
-from .domain.resource import (
-  Resource as Resource,
-  ResourceDefinition as ResourceDefinition,
-)
-from .domain.schedule import (
-  AssetReservation as AssetReservation,
-  ScheduleEntry as ScheduleEntry,
-  ScheduleHistory as ScheduleHistory,
-  SchedulerMetricsView,
-)
-from .domain.user import User as User
-from .domain.workcell import Workcell as Workcell
-from .domain.asset import (
-  Asset as Asset,
 )
 from .pydantic_internals import (
   AcquireAsset,

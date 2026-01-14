@@ -14,83 +14,55 @@ import { ProtocolWarningBadgeComponent } from '@shared/components/protocol-warni
     MatIconModule,
     MatChipsModule,
     ProtocolWarningBadgeComponent
-],
+  ],
   template: `
-    <mat-card class="protocol-card" [class.compact]="compact" (click)="select.emit(protocol)">
-      <mat-card-header>
-        <mat-icon mat-card-avatar class="card-icon">science</mat-icon>
-        <mat-card-title>{{ protocol.name }}</mat-card-title>
-        @if (!compact && protocol.category) {
-          <mat-card-subtitle>{{ protocol.category }}</mat-card-subtitle>
-        }
-      </mat-card-header>
+    <div class="praxis-card premium group cursor-pointer" [class.praxis-card-min]="compact" (click)="select.emit(protocol)">
+      <div class="card-header">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center bg-primary text-on-primary">
+            <mat-icon>science</mat-icon>
+          </div>
+          <div class="min-w-0">
+            <h3 class="card-title group-hover:text-primary transition-colors">{{ protocol.name }}</h3>
+            @if (!compact && protocol.category) {
+              <p class="card-subtitle">{{ protocol.category }}</p>
+            }
+          </div>
+        </div>
+      </div>
+
       @if (!compact) {
-        <mat-card-content>
-          <p class="description">{{ protocol.description || 'No description available.' }}</p>
-        </mat-card-content>
-        <mat-card-actions>
-          <div class="actions-row">
-            <mat-chip-set aria-label="Protocol tags">
-              <mat-chip [highlighted]="true">v{{ protocol.version }}</mat-chip>
+        <div class="card-content">
+          <p class="text-sm text-sys-text-secondary line-clamp-2 min-h-[40px]">{{ protocol.description || 'No description available.' }}</p>
+        </div>
+        <div class="card-actions">
+          <div class="flex items-center justify-between w-full gap-2">
+            <div class="flex flex-wrap gap-2">
+              <span class="px-2 py-0.5 rounded bg-primary/10 text-primary font-mono text-[10px] font-bold">v{{ protocol.version }}</span>
               @if (protocol.is_top_level) {
-                <mat-chip>Top Level</mat-chip>
+                <span class="px-2 py-0.5 rounded bg-secondary/10 text-secondary text-[10px] font-bold uppercase tracking-wider">Top Level</span>
               }
-            </mat-chip-set>
+            </div>
             <app-protocol-warning-badge [protocol]="protocol"></app-protocol-warning-badge>
           </div>
-        </mat-card-actions>
+        </div>
       } @else {
-        <!-- Compact mode: show badge inline -->
-        <div class="compact-badge">
+        <div class="card-content pt-0">
           <app-protocol-warning-badge [protocol]="protocol"></app-protocol-warning-badge>
         </div>
       }
-    </mat-card>
+    </div>
   `,
   styles: [`
-    .protocol-card {
-      cursor: pointer;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .protocol-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-    }
-    .protocol-card.compact {
+    /* Component specific tweaks that go beyond global defaults */
+    .praxis-card.praxis-card-min {
       min-width: 180px;
       max-width: 220px;
     }
-    .card-icon {
-      font-size: 24px;
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--sys-primary);
-      color: var(--sys-on-primary);
-      border-radius: 50%;
-    }
-    .description {
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      min-height: 40px;
-      color: var(--sys-on-surface-variant);
-    }
-    mat-card-actions {
-      padding: 0 16px 16px;
-    }
-    .actions-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-    }
-    .compact-badge {
-      padding: 8px 16px;
+    :host ::ng-deep app-protocol-warning-badge mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,

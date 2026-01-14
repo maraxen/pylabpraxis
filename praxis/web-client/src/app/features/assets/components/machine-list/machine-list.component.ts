@@ -155,27 +155,34 @@ import { AppStore } from '../../../../core/store/app.store';
         @if (viewState().viewType === 'card') {
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             @for (machine of filteredMachines(); track machine.accession_id) {
-              <div class="machine-card group relative bg-[var(--mat-sys-surface)] border border-[var(--theme-border)] rounded-2xl p-4 hover:shadow-lg transition-all cursor-pointer"
+              <div class="praxis-card premium group cursor-pointer"
                    (click)="viewDetails(machine)"
                    (contextmenu)="onContextMenu($event, machine)">
-                <div class="flex items-start gap-4 mb-3">
-                  <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-primary/10 text-primary">
-                    <mat-icon>{{ machine.is_simulation_override ? 'computer' : 'precision_manufacturing' }}</mat-icon>
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <h3 class="font-bold text-base truncate">{{ machine.name }}</h3>
-                    <p class="text-xs text-[var(--mat-sys-on-surface-variant)] truncate">{{ machine.model || machine.machine_category }}</p>
+                
+                <div class="card-header">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center bg-primary/10 text-primary">
+                      <mat-icon>{{ machine.is_simulation_override ? 'computer' : 'precision_manufacturing' }}</mat-icon>
+                    </div>
+                    <div class="min-w-0">
+                      <h3 class="card-title group-hover:text-primary transition-colors">{{ machine.name }}</h3>
+                      <p class="card-subtitle">{{ machine.model || machine.machine_category }}</p>
+                    </div>
                   </div>
                 </div>
-                <div class="flex items-center justify-between mb-3">
+
+                <div class="card-content">
+                  <div class="card-meta mb-2">
+                    <mat-icon class="!w-3 !h-3 !text-[12px]">location_on</mat-icon>
+                    <span class="truncate">{{ machine.location_label || 'Unassigned' }}</span>
+                  </div>
+                </div>
+
+                <div class="card-actions">
                   <app-asset-status-chip [status]="machine.status" />
                   @if (store.maintenanceEnabled()) {
                     <app-maintenance-badge [machine]="machine" />
                   }
-                </div>
-                <div class="text-xs text-[var(--mat-sys-on-surface-variant)] flex items-center gap-1">
-                  <mat-icon class="!w-3 !h-3 !text-[12px]">location_on</mat-icon>
-                  <span class="truncate">{{ machine.location_label || 'Unassigned' }}</span>
                 </div>
               </div>
             }

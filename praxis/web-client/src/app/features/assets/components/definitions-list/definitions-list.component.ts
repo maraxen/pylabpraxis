@@ -288,7 +288,7 @@ export class DefinitionsListComponent {
     }
 
     // 3. Consumable Toggle
-    if (state.filters['consumable'] === true) {
+    if (state.filters['consumable']?.includes(true)) {
       filtered = filtered.filter(def => def.is_consumable);
     }
 

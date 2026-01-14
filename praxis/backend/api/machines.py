@@ -14,14 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from praxis.backend.api.dependencies import get_db
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
 from praxis.backend.models.domain.machine import (
+  Machine,
   MachineCreate,
+  MachineDefinition,
   MachineDefinitionCreate,
   MachineDefinitionRead,
   MachineDefinitionUpdate,
   MachineRead,
   MachineUpdate,
 )
-from praxis.backend.models.domain.machine import Machine, MachineDefinition
 from praxis.backend.models.enums import MachineStatusEnum
 from praxis.backend.services.machine import MachineService
 from praxis.backend.services.machine_type_definition import MachineTypeDefinitionCRUDService

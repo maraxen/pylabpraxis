@@ -26,6 +26,7 @@ class ProtocolSourceStatusEnum(str, enum.Enum):
 
 class ProtocolRunStatusEnum(str, enum.Enum):
   """Enumeration for the operational status of a protocol run."""
+
   QUEUED = "queued"
   PENDING = "pending"
   PREPARING = "preparing"

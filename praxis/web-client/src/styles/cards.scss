@@ -1,0 +1,106 @@
+
+// Praxis Premium Card System
+// Addresses visual overlaps, hierarchy, and responsive sizing
+
+.praxis-card {
+  @apply relative flex flex-col;
+  // Use CSS variables for theming - fallback to reasonable defaults
+  background: var(--mat-sys-surface, #1e1e2d);
+  border: 1px solid var(--theme-border, rgba(255, 255, 255, 0.08));
+  border-radius: 16px; // rounded-2xl
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 160px; // Minimum functional height
+  
+  // Premium Feel: Glassmorphism & Aurora hints
+  &.premium {
+    background: linear-gradient(135deg, var(--mat-sys-surface) 0%, var(--mat-sys-surface-container-low) 100%);
+    backdrop-filter: blur(12px);
+    
+    // Aurora glow effect on hover
+    &::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at center, var(--aurora-primary, rgba(237, 122, 155, 0.1)) 0%, transparent 70%);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+      z-index: 0;
+    }
+
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2); // Elevate
+      border-color: var(--mat-sys-primary, #ED7A9B);
+      
+      &::before {
+        opacity: 1;
+      }
+    }
+  }
+
+  // Content Layout
+  .card-header {
+    @apply flex items-start justify-between p-4 pb-2 z-10;
+    gap: 12px;
+  }
+
+  .card-content {
+    @apply flex-grow px-4 py-2 z-10;
+    min-width: 0; // Fix flebox truncation
+  }
+
+  .card-actions {
+    @apply flex items-center justify-between p-4 pt-2 mt-auto z-10;
+  }
+
+  // Text Typography & Truncation
+  .card-title {
+    @apply text-base font-bold truncate block;
+    color: var(--theme-text-primary);
+  }
+
+  .card-subtitle {
+    @apply text-xs font-medium uppercase tracking-wider truncate block;
+    color: var(--theme-text-secondary);
+    margin-top: 4px;
+  }
+
+  .card-meta {
+    @apply text-xs flex items-center gap-1 truncate;
+    color: var(--theme-text-tertiary);
+  }
+
+  // Chip Handling to prevent overlaps
+  .corner-chip {
+    // Instead of absolute positioning which overlaps, 
+    // we encourage flex placement in header.
+    // However, if absolute is needed:
+    &.absolute-top-right {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 20;
+      // Ensure specific max-width if needed
+      max-width: 40%;
+    }
+  }
+}
+
+// Minimum Card Variant (Constraint-based)
+// When width < 300px, simplify layout
+.praxis-card-min {
+  .card-header {
+    flex-wrap: wrap; // Allow wrapping
+  }
+  
+  .card-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

@@ -6,24 +6,28 @@ import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
   standalone: true,
   imports: [],
   template: `
-    <div class="skeleton-card" [class.compact]="compact">
-      <div class="skeleton-header">
-        <div class="skeleton-avatar"></div>
-        <div class="skeleton-title-area">
-          <div class="skeleton-title"></div>
-          @if (!compact) {
-            <div class="skeleton-subtitle"></div>
-          }
+    <div class="praxis-card" [class.praxis-card-min]="compact">
+      <div class="card-header">
+        <div class="flex items-center gap-3 w-full">
+          <div class="skeleton-avatar"></div>
+          <div class="flex-1">
+            <div class="skeleton-title"></div>
+            @if (!compact) {
+              <div class="skeleton-subtitle"></div>
+            }
+          </div>
         </div>
       </div>
       @if (!compact) {
-        <div class="skeleton-content">
+        <div class="card-content">
           <div class="skeleton-line"></div>
           <div class="skeleton-line short"></div>
         </div>
-        <div class="skeleton-chips">
-          <div class="skeleton-chip"></div>
-          <div class="skeleton-chip"></div>
+        <div class="card-actions">
+          <div class="flex gap-2">
+            <div class="skeleton-chip"></div>
+            <div class="skeleton-chip"></div>
+          </div>
         </div>
       }
     </div>
@@ -33,13 +37,7 @@ import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
       0% { background-position: -200% 0; }
       100% { background-position: 200% 0; }
     }
-    .skeleton-card {
-      background: var(--mat-sys-surface-container-low);
-      border-radius: 12px;
-      padding: 16px;
-      min-width: 280px;
-    }
-    .skeleton-card.compact {
+    .praxis-card-min {
       min-width: 180px;
       max-width: 220px;
     }

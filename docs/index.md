@@ -6,7 +6,7 @@ Praxis is a comprehensive platform for automating laboratory workflows. It provi
 
 <div class="grid cards" markdown>
 
--   :material-rocket-launch:{ .lg .middle } **Getting Started**
+- :material-rocket-launch:{ .lg .middle } **Getting Started**
 
     ---
 
@@ -14,7 +14,7 @@ Praxis is a comprehensive platform for automating laboratory workflows. It provi
 
     [:octicons-arrow-right-24: Installation](getting-started/installation.md)
 
--   :material-architecture:{ .lg .middle } **Architecture**
+- :material-architecture:{ .lg .middle } **Architecture**
 
     ---
 
@@ -22,7 +22,7 @@ Praxis is a comprehensive platform for automating laboratory workflows. It provi
 
     [:octicons-arrow-right-24: Overview](architecture/overview.md)
 
--   :material-book-open-variant:{ .lg .middle } **User Guide**
+- :material-book-open-variant:{ .lg .middle } **User Guide**
 
     ---
 
@@ -30,7 +30,7 @@ Praxis is a comprehensive platform for automating laboratory workflows. It provi
 
     [:octicons-arrow-right-24: Protocols](user-guide/protocols.md)
 
--   :material-api:{ .lg .middle } **API Reference**
+- :material-api:{ .lg .middle } **API Reference**
 
     ---
 
@@ -83,19 +83,6 @@ The system consists of:
 
 ## Quick Start
 
-=== "With Backend"
-
-    ```bash
-    # Start database
-    make db-test
-
-    # Start backend
-    PRAXIS_DB_DSN="postgresql+asyncpg://..." uv run uvicorn main:app --reload
-
-    # Start frontend
-    cd praxis/web-client && npm start
-    ```
-
 === "Browser Mode"
 
     ```bash
@@ -103,7 +90,30 @@ The system consists of:
     npm run start:browser
     ```
 
-    Demo mode runs entirely in the browser with mock data - no backend required.
+    Zero setup. Runs entirely in the browser with mock data or direct hardware control via WebSerial/WebUSB. Perfect for demos or local research.
+    [:octicons-arrow-right-24: Browser Installation](getting-started/installation-browser.md)
+
+=== "Lite Mode (Local API)"
+
+    ```bash
+    # Set to SQLite in praxis.ini
+    uv run uvicorn main:app --reload
+    cd praxis/web-client && npm start
+    ```
+
+    Fast local development with a Python backend but no heavy infrastructure (Postgres/Redis).
+    [:octicons-arrow-right-24: Lite Installation](getting-started/installation-lite.md)
+
+=== "Production Mode"
+
+    ```bash
+    docker compose up -d db redis
+    uv run alembic upgrade head
+    uv run uvicorn main:app --reload
+    ```
+
+    Full stack with persistence and scheduling. Recommended for shared laboratory environments.
+    [:octicons-arrow-right-24: Production Installation](getting-started/installation-production.md)
 
 ---
 

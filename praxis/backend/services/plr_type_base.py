@@ -3,12 +3,14 @@
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
-from praxis.backend.models.domain.plr_sync import (
-  PLRTypeDefinitionBase as PLRTypeDefinitionModel,
-)
 from praxis.backend.models.domain.machine import (
   MachineDefinitionCreate as PLRTypeDefinitionCreate,
+)
+from praxis.backend.models.domain.machine import (
   MachineDefinitionUpdate as PLRTypeDefinitionUpdate,
+)
+from praxis.backend.models.domain.plr_sync import (
+  PLRTypeDefinitionBase as PLRTypeDefinitionModel,
 )
 
 ModelType = TypeVar("ModelType", bound=PLRTypeDefinitionModel)

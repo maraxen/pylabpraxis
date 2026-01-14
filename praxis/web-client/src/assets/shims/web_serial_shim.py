@@ -262,11 +262,9 @@ class SerialProxy:
 
   async def reset_input_buffer(self):
     """Clear the input buffer (no-op for proxy)."""
-    pass
 
   async def reset_output_buffer(self):
     """Clear the output buffer (no-op for proxy)."""
-    pass
 
   async def set_baudrate(self, baudrate):
     """Set the baud rate (requires reconnection)."""
@@ -275,11 +273,9 @@ class SerialProxy:
 
   async def set_line_property(self, data_bits, stop_bits, parity):
     """Set line properties (no-op for proxy)."""
-    pass
 
   async def set_latency_timer(self, latency):
     """Set latency timer (no-op for proxy)."""
-    pass
 
   @property
   def dtr(self) -> bool:

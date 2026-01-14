@@ -8,6 +8,13 @@ export interface SelectOption {
     disabled?: boolean;
 }
 
+export interface ActiveFilter {
+    filterId: string;
+    label: string;
+    values: any[];
+    displayText: string;
+}
+
 export type FilterOption = SelectOption;
 
 export interface FilterConfig {
@@ -22,6 +29,9 @@ export interface FilterConfig {
     options?: FilterOption[];
     allowInvert?: boolean;
     defaultValue?: any;
+    icon?: string;           // NEW: Icon for the filter chip
+    pinned?: boolean;        // NEW: If true, show inline in bar (not in "+ Add Filter")
+    urlParam?: string;       // NEW: Override URL param name (defaults to key)
 }
 
 export type SortOption = SelectOption;
@@ -29,10 +39,11 @@ export type SortOption = SelectOption;
 export interface ViewControlsState {
     viewType: ViewType;
     groupBy: string | null;
-    filters: Record<string, any>;
+    filters: Record<string, any[]>; // Standardized to any[]
     sortBy: string;
     sortOrder: 'asc' | 'desc';
     search: string;
+    resultCount?: number;   // NEW: Current matching item count
 }
 
 export interface ViewControlsConfig {
@@ -53,4 +64,9 @@ export interface ViewControlsConfig {
 
     // Initial values
     defaults?: Partial<ViewControlsState>;
+
+    enableUrlSync?: boolean;          // NEW: Sync state to URL query params
+    urlParamPrefix?: string;          // NEW: Prefix for URL params (e.g., "filter_")
+    showResultCount?: boolean;        // NEW: Display matching item count
+    collapseMobileAt?: number;        // NEW: Breakpoint for mobile collapse (default: 768)
 }

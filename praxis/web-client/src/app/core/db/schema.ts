@@ -1,6 +1,6 @@
 /**
  * Auto-generated TypeScript interfaces from SQLAlchemy ORM models
- * Generated at: 2026-01-13T14:35:24.792494
+ * Generated at: 2026-01-14T13:43:14.952507
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 
@@ -239,6 +239,8 @@ export interface MachineDefinition {
   compatible_backends: Record<string, unknown> | null;
   capabilities_config: Record<string, unknown> | null;
   connection_config: Record<string, unknown> | null;
+  is_simulated_frontend: boolean | null;
+  available_simulation_backends: Record<string, unknown> | null;
   machine_category: MachineCategory | null;
   has_deck: boolean | null;
   resource_definition_accession_id: string | null;
@@ -273,6 +275,7 @@ export interface Machine {
   user_configured_capabilities: Record<string, unknown> | null;
   maintenance_schedule_json: Record<string, unknown> | null;
   last_maintenance_json: Record<string, unknown> | null;
+  simulation_backend_name: string | null;
   machine_category: MachineCategory | null;
   status: MachineStatus | null;
   serial_number: string | null;

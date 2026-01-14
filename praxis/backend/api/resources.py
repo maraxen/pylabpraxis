@@ -15,13 +15,13 @@ from praxis.backend.api.dependencies import get_db
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
 from praxis.backend.models.domain.resource import (
   ResourceCreate,
+  ResourceDefinition,
   ResourceDefinitionCreate,
   ResourceDefinitionRead,
   ResourceDefinitionUpdate,
   ResourceRead,
   ResourceUpdate,
 )
-from praxis.backend.models.domain.resource import ResourceDefinition
 from praxis.backend.services.resource import resource_service
 from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionCRUDService
 

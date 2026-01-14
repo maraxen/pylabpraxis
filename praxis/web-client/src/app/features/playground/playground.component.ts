@@ -9,6 +9,7 @@ import {
   ChangeDetectorRef,
   signal,
   computed,
+  AfterViewInit,
 } from '@angular/core';
 import { AppStore } from '../../core/store/app.store';
 
@@ -26,6 +27,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ModeService } from '../../core/services/mode.service';
 import { AssetService } from '../assets/services/asset.service';
@@ -62,6 +64,7 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
     MatDividerModule,
     MatSelectModule,
     MatChipsModule,
+    MatProgressSpinnerModule,
     HardwareDiscoveryButtonComponent,
 
   ],
@@ -107,6 +110,21 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
                 allow="cross-origin-isolated; usb; serial"
                 sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
               ></iframe>
+            }
+
+            @if (isLoading()) {
+              <div class="loading-overlay">
+                <div class="loading-content">
+                  <mat-spinner diameter="48"></mat-spinner>
+                  <p>Initializing Pyodide Environment...</p>
+                  @if (loadingError()) {
+                    <button mat-flat-button color="warn" (click)="reloadNotebook()">
+                      <mat-icon>refresh</mat-icon>
+                      Retry Loading
+                    </button>
+                  }
+                </div>
+              </div>
             }
           </div>
         </mat-card>
@@ -378,10 +396,37 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
         background-color: var(--mat-sys-secondary-container);
         color: var(--mat-sys-on-secondary-container);
       }
+      .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--mat-sys-surface-container-low);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        transition: opacity 0.5s ease-out;
+      }
+
+      .loading-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+
+      .loading-content p {
+        margin: 0;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+      }
     `,
   ],
 })
-export class PlaygroundComponent implements OnInit, OnDestroy {
+export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('notebookFrame') notebookFrame!: ElementRef<HTMLIFrameElement>;
 
   private modeService = inject(ModeService);
@@ -399,7 +444,11 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
 
   // JupyterLite Iframe Configuration
   jupyterliteUrl: SafeResourceUrl | undefined;
-  currentTheme = 'light';
+  currentTheme = '';
+  isLoading = signal(true);
+  loadingError = signal(false);
+  private loadingTimeout: ReturnType<typeof setTimeout> | undefined;
+  private viewInitialized = false;
 
   private subscription = new Subscription();
 
@@ -409,7 +458,10 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
   constructor() {
     effect(() => {
       const theme = this.store.theme();
-      this.updateJupyterliteTheme(theme);
+      // Only update if view is initialized to avoid early DOM mounting issues
+      if (this.viewInitialized) {
+        this.updateJupyterliteTheme(theme);
+      }
     });
     // Initialize WebSerial Polyfill if WebUSB is available
     if (typeof navigator !== 'undefined' && 'usb' in navigator) {
@@ -427,7 +479,13 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.setupReadyListener();
-    // buildJupyterliteUrl is called by updateJupyterliteTheme initially via effect
+  }
+
+  ngAfterViewInit() {
+    this.viewInitialized = true;
+    // Trigger initial load now that view is ready
+    this.updateJupyterliteTheme(this.store.theme());
+    this.cdr.detectChanges();
   }
 
   /**
@@ -444,6 +502,12 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
     this.replChannel.onmessage = (event) => {
       if (event.data?.type === 'praxis:ready') {
         console.log('[REPL] Received kernel ready signal');
+        this.isLoading.set(false);
+        if (this.loadingTimeout) {
+          clearTimeout(this.loadingTimeout);
+          this.loadingTimeout = undefined;
+        }
+        this.cdr.detectChanges();
       }
     };
   }
@@ -454,6 +518,9 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
     if (this.replChannel) {
       this.replChannel.close();
       this.replChannel = null;
+    }
+    if (this.loadingTimeout) {
+      clearTimeout(this.loadingTimeout);
     }
   }
 
@@ -488,19 +555,33 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
   /* Helper methods for Code Generation */
 
   /**
+   * Helper to determine if dark mode is active based on body class or store
+   */
+  private getIsDarkMode(): boolean {
+    // Single source of truth for the UI is the class on document.body
+    return document.body.classList.contains('dark-theme');
+  }
+
+  /**
    * Build the JupyterLite URL with configuration parameters
    */
-  private buildJupyterliteUrl() {
-    const theme = this.store.theme();
-    const isDark =
-      theme === 'dark' ||
-      (theme === 'system' &&
-        window.matchMedia('(prefers-color-scheme: dark)').matches);
+  private async buildJupyterliteUrl() {
+    if (this.loadingTimeout) {
+      clearTimeout(this.loadingTimeout);
+    }
 
+    this.isLoading.set(true);
+    this.loadingError.set(false);
+    this.jupyterliteUrl = undefined;
+    this.cdr.detectChanges();
+
+    const isDark = this.getIsDarkMode();
     this.currentTheme = isDark ? 'dark' : 'light';
 
     // Build bootstrap code for asset preloading
-    const bootstrapCode = this.generateBootstrapCode();
+    const bootstrapCode = await this.getOptimizedBootstrap();
+
+    console.log('[REPL] Building JupyterLite URL. Calculated isDark:', isDark, 'Effective Theme Class:', this.currentTheme);
 
     // JupyterLite REPL URL with parameters
     const baseUrl = './assets/jupyterlite/repl/index.html';
@@ -510,6 +591,8 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
       theme: isDark ? 'JupyterLab Dark' : 'JupyterLab Light',
     });
 
+    console.log('[REPL] Generated Params:', params.toString());
+
     // Add bootstrap code if we have assets
     if (bootstrapCode) {
       params.set('code', bootstrapCode);
@@ -517,24 +600,31 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
 
     const fullUrl = `${baseUrl}?${params.toString()}`;
     this.jupyterliteUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
+
+    // Set a timeout to show error/retry if iframe load is slow
+    this.loadingTimeout = setTimeout(() => {
+      if (this.isLoading()) {
+        console.warn('[REPL] Loading timeout reached - forcing overlay close');
+        this.isLoading.set(false);
+        this.cdr.detectChanges();
+      }
+    }, 15000); // 15 second fallback
+
     this.cdr.detectChanges();
   }
 
   /**
    * Update theme when app theme changes
    */
-  private updateJupyterliteTheme(theme: string) {
-    const isDark =
-      theme === 'dark' ||
-      (theme === 'system' &&
-        window.matchMedia('(prefers-color-scheme: dark)').matches);
-
+  private async updateJupyterliteTheme(_: string) {
+    const isDark = this.getIsDarkMode();
     const newTheme = isDark ? 'dark' : 'light';
 
     // Only reload if theme actually changed
     if (this.currentTheme !== newTheme) {
+      console.log('[REPL] Theme changed from', this.currentTheme, 'to', newTheme, '- rebuilding URL');
       this.currentTheme = newTheme;
-      this.buildJupyterliteUrl();
+      await this.buildJupyterliteUrl();
     }
   }
 
@@ -548,6 +638,13 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
       '# Installing pylabrobot from local wheel...',
       'import micropip',
       "await micropip.install('/assets/wheels/pylabrobot-0.1.6-py3-none-any.whl')",
+      '',
+      '# Ensure WebSerial and WebUSB are in builtins for all cells',
+      'import builtins',
+      'if "WebSerial" in globals():',
+      '    builtins.WebSerial = WebSerial',
+      'if "WebUSB" in globals():',
+      '    builtins.WebUSB = WebUSB',
       '',
       '# Mock pylibftdi (not supported in browser/Pyodide)',
       'import sys',
@@ -620,7 +717,10 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
       '',
       '# Send ready signal to Angular host',
       'try:',
-      '    _praxis_channel.postMessage({"type": "praxis:ready"})',
+      '    # Must convert dict to JS Object for structured clone in BroadcastChannel',
+      '    from pyodide.ffi import to_js',
+      '    ready_msg = to_js({"type": "praxis:ready"}, dict_converter=js.Object.fromEntries)',
+      '    _praxis_channel.postMessage(ready_msg)',
       '    print("✓ Ready signal sent")',
       'except Exception as e:',
       '    print(f"! Ready signal failed: {e}")',
@@ -633,27 +733,27 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
    * Enhanced bootstrap that includes shims directly or uses more efficient fetching
    */
   private async getOptimizedBootstrap(): Promise<string> {
-    const baseBootstrap = this.generateBootstrapCode();
-
-    // Attempt to fetch shims once and cache them
+    // We cannot inline the shims because they are too large for the URL parameters (causes 431 error).
+    // Instead, we generate Python code to fetch and execute them from within the kernel.
     const shims = ['web_serial_shim.py', 'web_usb_shim.py'];
-    let shimInjections = '\n# Injected Shims\n';
+    let shimInjections = '# --- Browser Hardware Shims --- \n';
+    shimInjections += 'import pyodide.http\n';
 
     for (const shim of shims) {
-      try {
-        const response = await fetch(`/assets/shims/${shim}`);
-        if (response.ok) {
-          const code = await response.text();
-          shimInjections += `\n# --- ${shim} ---\n${code}\n`;
-        }
-      } catch (e) {
-        console.warn(`[REPL] Failed to pre-load shim: ${shim}`, e);
-        // Fallback to runtime fetch in Python if pre-load fails
-        shimInjections += `import pyodide.http\nexec(await (await pyodide.http.pyfetch('/assets/shims/${shim}')).string())\n`;
-      }
+      // Generate Python code to fetch and exec
+      shimInjections += `
+print("PylibPraxis: Loading ${shim}...")
+try:
+    _shim_code = await (await pyodide.http.pyfetch('/assets/shims/${shim}')).string()
+    exec(_shim_code, globals())
+    print("PylibPraxis: Loaded ${shim}")
+except Exception as e:
+    print(f"PylibPraxis: Failed to load ${shim}: {e}")
+`;
     }
 
-    return baseBootstrap + shimInjections;
+    const baseBootstrap = this.generateBootstrapCode();
+    return shimInjections + '\n' + baseBootstrap;
   }
 
   /**
@@ -674,14 +774,27 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
    */
   onIframeLoad() {
     console.log('[REPL] Iframe loaded event fired');
+
     // Check if iframe has actual content
     const iframe = this.notebookFrame?.nativeElement;
-    if (iframe && (iframe.contentDocument?.body?.childNodes?.length ?? 0) > 0) {
+    // We try to access contentDocument. If it fails (cross-origin) or is empty/about:blank, likely failed or just initialized.
+    let hasContent = false;
+    try {
+      hasContent = (iframe?.contentDocument?.body?.childNodes?.length ?? 0) > 0;
+    } catch (e) {
+      console.warn('[REPL] Cannot access iframe content (possibly 431 error or cross-origin):', e);
+      hasContent = false;
+    }
+
+    if (hasContent) {
       console.log('[REPL] Iframe content detected');
+      // Success case - but we wait for 'ready' signal to clear isLoading for the user.
+      // However, if we don't get 'ready' signal, we rely on timeout.
+      // We do NOT clear isLoading here immediately because the kernel is still booting.
 
       // Inject fetch interceptor to suppress 404s for virtual filesystem lookups
       try {
-        const script = iframe.contentWindow?.document.createElement('script');
+        const script = iframe!.contentWindow?.document.createElement('script');
         if (script) {
           script.textContent = `
             (function() {
@@ -697,14 +810,22 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
               };
             })();
           `;
-          iframe.contentWindow?.document.head.appendChild(script);
+          iframe!.contentWindow?.document.head.appendChild(script);
           console.log('[REPL] Fetch interceptor injected into iframe');
         }
       } catch (e) {
         console.warn('[REPL] Could not inject interceptor (likely cross-origin):', e);
       }
     } else {
-      console.warn('[REPL] Iframe load event fired but no content detected');
+      console.warn('[REPL] Iframe load event fired but no content detected (or access denied)');
+      // If we loaded blank/error page (like 431), we should probably fail.
+      // But 'about:blank' also fires load.
+      // Let's assume if it's a 431 error page, it has SOME content but maybe not what we expect?
+      // Actually, if it's 431, the browser shows an error page.
+
+      // If we clear isLoading here, we hide the spinner and show the error page (white screen or browser error).
+      // If we don't clear it, the timeout will eventually catch it.
+      // Let's rely on the timeout to show "Retry" if the kernel doesn't say "Ready".
     }
   }
 
@@ -716,8 +837,8 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
     this.jupyterliteUrl = undefined; // Force DOM cleanup
     this.cdr.detectChanges();
 
-    setTimeout(() => {
-      this.buildJupyterliteUrl();
+    setTimeout(async () => {
+      await this.buildJupyterliteUrl();
       this.cdr.detectChanges();
     }, 100);
   }

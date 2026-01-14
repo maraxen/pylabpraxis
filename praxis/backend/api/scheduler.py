@@ -9,30 +9,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from praxis.backend.api.dependencies import get_db
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
 from praxis.backend.models.domain.schedule import (
+  AssetReservation,
+  ReleaseReservationResponse,
+  ResourceReservationStatus,
+  ScheduleEntry,
   ScheduleEntryCreate,
   ScheduleEntryRead,
   ScheduleEntryUpdate,
+  SchedulePriorityUpdateRequest,
+)
+from praxis.backend.models.domain.schedule import (
+  AssetReservationCreate as AssetReservationListResponse,  # Wait, ListResponse is likely a list container or alias
+)
+from praxis.backend.models.domain.schedule import (
+  AssetReservationRead as AssetReservationResponse,
 )
 from praxis.backend.models.enums import AssetReservationStatusEnum, ScheduleStatusEnum
-from praxis.backend.models.domain.schedule import AssetReservation, ScheduleEntry
-from praxis.backend.models.domain.schedule import (
-  CancelScheduleRequest,
-  ReleaseReservationResponse,
-  ResourceReservationStatus,
-  ScheduleAnalysisResponse,
-  ScheduleEntryRead as ScheduleEntryResponse,
-  ScheduleHistoryRead as ScheduleHistoryResponse,
-  ScheduleListFilters,
-  ScheduleListRequest,
-  ScheduleListResponse,
-  SchedulePriorityUpdateRequest,
-  ScheduleProtocolRequest,
-  SchedulerMetricsResponse,
-  SchedulerSystemStatusResponse,
-  ScheduleStatusResponse,
-  AssetReservationRead as AssetReservationResponse,
-  AssetReservationCreate as AssetReservationListResponse, # Wait, ListResponse is likely a list container or alias
-)
 from praxis.backend.services.scheduler import schedule_entry_service
 
 router = APIRouter()

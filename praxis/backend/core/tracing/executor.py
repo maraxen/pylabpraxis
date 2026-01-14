@@ -10,12 +10,12 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-from praxis.backend.utils.async_run import run_sync
 from praxis.backend.core.tracing.recorder import OperationRecorder
 from praxis.backend.core.tracing.tracers import (
   TracedMachine,
   TracedResource,
 )
+from praxis.backend.utils.async_run import run_sync
 from praxis.backend.utils.plr_static_analysis.resource_hierarchy import (
   DeckLayoutType,
   get_parental_chain,

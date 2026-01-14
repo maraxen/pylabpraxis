@@ -99,7 +99,7 @@ describe('DeckGeneratorService', () => {
         expect(data.resource.size_x).toBeCloseTo(624.3);
     });
 
-    it('should place resources in slots for OT-2 deck', () => {
+    it('should generate an empty OT-2 deck (no auto-placed resources)', () => {
         const protocol: ProtocolDefinition = {
             name: 'Test',
             accession_id: 'test_1',
@@ -112,21 +112,10 @@ describe('DeckGeneratorService', () => {
                     type_hint_str: 'Plate',
                     fqn: 'pylabrobot.resources.Plate',
                     optional: false,
-                    constraints: {
-                        required_methods: [],
-                        required_attributes: [],
-                        required_method_signatures: {},
-                        required_method_args: {}
-                    },
-                    location_constraints: {
-                        location_requirements: [],
-                        on_resource_type: '',
-                        stack: false,
-                        directly_position: false,
-                        position_condition: []
-                    }
+                    constraints: {},
+                    location_constraints: {}
                 }
-            ],
+            ] as any,
             parameters: []
         };
 
@@ -143,16 +132,19 @@ describe('DeckGeneratorService', () => {
 
         const data = service.generateDeckForProtocol(protocol, undefined, ot2Machine);
 
-        // Should have a child (the plate)
-        expect(data.resource.children.length).toBeGreaterThan(0);
-
+        // Should NOT have user assets auto-placed
         const plate = data.resource.children.find(c => c.name === 'ghost_SourcePlate');
-        expect(plate).toBeDefined();
-        // Check if it has a slot_id (from our generateSlotBasedDeck implementation)
-        expect(plate!.slot_id).toBeDefined();
+        expect(plate).toBeUndefined();
+
+        // Should have Trash if spec defined it (mock spec handled by DeckCatalogService)
+        // Note: DeckCatalogService is real in this test, so it should have OT2 slots including trash
+        const trash = data.resource.children.find(c => c.name === 'Trash');
+        if (trash) {
+            expect(trash.type).toBe('Trash');
+        }
     });
 
-    it('should create ghost resources when asset map is missing (Hamilton default)', () => {
+    it('should generate an empty Hamilton deck (no default carriers or ghosts)', () => {
         const protocol: ProtocolDefinition = {
             name: 'Test',
             accession_id: 'test_1',
@@ -165,81 +157,21 @@ describe('DeckGeneratorService', () => {
                     type_hint_str: 'Plate',
                     fqn: 'pylabrobot.resources.Plate',
                     optional: false,
-                    constraints: {
-                        required_methods: [],
-                        required_attributes: [],
-                        required_method_signatures: {},
-                        required_method_args: {}
-                    },
-                    location_constraints: {
-                        location_requirements: [],
-                        on_resource_type: '',
-                        stack: false,
-                        directly_position: false,
-                        position_condition: []
-                    }
+                    constraints: {},
+                    location_constraints: {}
                 }
-            ],
+            ] as any,
             parameters: []
         };
 
         const data = service.generateDeckForProtocol(protocol); // No asset map
 
-        // Find the plate carrier
-        const plateCarrier = data.resource.children.find(c => c.name === 'plate_carrier');
-        expect(plateCarrier).toBeTruthy();
+        // Should have NO carriers
+        const carriers = data.resource.children.filter(c => c.type.includes('Carrier'));
+        expect(carriers.length).toBe(0);
 
-        // Check for ghost plate
-        const ghost = plateCarrier!.children.find(c => c.name.startsWith('ghost_'));
-        expect(ghost).toBeTruthy();
-
-        // Verify ghost properties
-        if (ghost) {
-            expect(ghost.name).toBe('ghost_SourcePlate');
-            expect(ghost.children.length).toBe(0); // Should have no wells
-            expect(ghost.color).toBeUndefined(); // Should NOT have manual color override (let CSS handle it)
-        }
-    });
-
-    it('should create standard dimensions for carriers (Hamilton)', () => {
-        const protocol: ProtocolDefinition = {
-            name: 'Test',
-            accession_id: 'test_1',
-            assets: [],
-            is_top_level: true,
-            version: '1.0',
-            parameters: []
-        };
-        const data = service.generateDeckForProtocol(protocol);
-        const carrier = data.resource.children.find(c => c.name === 'plate_carrier');
-
-        expect(carrier).toBeTruthy();
-        expect(carrier!.size_x).toBe(135.0);
-        expect(carrier!.size_y).toBe(497.0);
-    });
-
-    it('should place carriers at hardware-accurate rail positions (Hamilton)', () => {
-        const protocol: ProtocolDefinition = {
-            name: 'Test',
-            accession_id: 'test_1',
-            assets: [],
-            is_top_level: true,
-            version: '1.0',
-            parameters: []
-        };
-        const data = service.generateDeckForProtocol(protocol);
-
-        const plateCarrier = data.resource.children.find(c => c.name === 'plate_carrier');
-        const tipCarrier = data.resource.children.find(c => c.name === 'tip_carrier');
-        const troughCarrier = data.resource.children.find(c => c.name === 'trough_carrier');
-
-        // Plate carrier at rail 5: 100 + (5 * 22.5) = 212.5mm
-        expect(plateCarrier!.location.x).toBe(212.5);
-
-        // Tip carrier at rail 15: 100 + (15 * 22.5) = 437.5mm
-        expect(tipCarrier!.location.x).toBe(437.5);
-
-        // Trough carrier at rail 25: 100 + (25 * 22.5) = 662.5mm
-        expect(troughCarrier!.location.x).toBe(662.5);
+        // Should have NO ghost resources
+        const ghost = data.resource.children.find(c => c.name.startsWith('ghost_'));
+        expect(ghost).toBeUndefined();
     });
 });

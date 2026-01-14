@@ -338,6 +338,7 @@ interface FilterCategory {
                     <app-guided-setup 
                       [protocol]="selectedProtocol()" 
                       [isInline]="true"
+                      [initialSelections]="configuredAssets() || {}"
                       (selectionChange)="onAssetSelectionChange($event)">
                     </app-guided-setup>
                  }

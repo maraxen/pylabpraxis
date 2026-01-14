@@ -8,18 +8,17 @@ from typing import Any, Protocol
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from praxis.backend.models.enums import AssetReservationStatusEnum, AssetType, ProtocolRunStatusEnum
-from praxis.backend.models.domain.protocol import (
-  FunctionProtocolDefinition,
-  ProtocolRun,
-)
-from praxis.backend.models.domain.schedule import AssetReservation
 from praxis.backend.models.domain.protocol import (
   AssetConstraintsModel,
-  AssetRequirement as AssetRequirementModel,
+  FunctionProtocolDefinition,
   LocationConstraintsModel,
   ProtocolRunUpdate,
 )
+from praxis.backend.models.domain.protocol import (
+  AssetRequirement as AssetRequirementModel,
+)
+from praxis.backend.models.domain.schedule import AssetReservation
+from praxis.backend.models.enums import AssetReservationStatusEnum, AssetType, ProtocolRunStatusEnum
 from praxis.backend.models.pydantic_internals.runtime import RuntimeAssetRequirement
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService

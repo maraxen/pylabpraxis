@@ -3,21 +3,21 @@
 
 import uuid
 from datetime import datetime
-from typing import Any, List, Optional, TYPE_CHECKING, ForwardRef
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Column, Enum as SAEnum, UniqueConstraint
+from sqlalchemy import Column, UniqueConstraint
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship, SQLModel
 
 from praxis.backend.models.domain.sqlmodel_base import PraxisBase
 from praxis.backend.models.enums.workcell import WorkcellStatusEnum
 from praxis.backend.utils.db import JsonVariant
-from sqlalchemy import String
 
 if TYPE_CHECKING:
-  from praxis.backend.models.domain.machine import Machine, MachineRead
-  from praxis.backend.models.domain.resource import Resource, ResourceRead
-  from praxis.backend.models.domain.deck import Deck, DeckRead
+  from praxis.backend.models.domain.deck import Deck
+  from praxis.backend.models.domain.machine import Machine
+  from praxis.backend.models.domain.resource import Resource
 
 
 class WorkcellBase(PraxisBase):
@@ -57,21 +57,21 @@ class Workcell(WorkcellBase, table=True):
   )
 
   # Relationships with explicit join conditions to avoid mapper errors
-  machines: List["Machine"] = Relationship(
+  machines: list["Machine"] = Relationship(
     sa_relationship=relationship(
       "Machine",
       back_populates="workcell",
       primaryjoin="Machine.workcell_accession_id == Workcell.accession_id",
     )
   )
-  decks: List["Deck"] = Relationship(
+  decks: list["Deck"] = Relationship(
     sa_relationship=relationship(
       "Deck",
       back_populates="workcell",
       primaryjoin="Deck.workcell_accession_id == Workcell.accession_id",
     )
   )
-  resources: List["Resource"] = Relationship(
+  resources: list["Resource"] = Relationship(
     sa_relationship=relationship(
       "Resource",
       back_populates="workcell",
@@ -88,9 +88,9 @@ class WorkcellRead(WorkcellBase):
   """Schema for reading a Workcell (API response)."""
 
   accession_id: uuid.UUID = Field(default_factory=uuid.uuid4)
-  machines: List[Any] = Field(default_factory=list)
-  decks: List[Any] = Field(default_factory=list)
-  resources: List[Any] = Field(default_factory=list)
+  machines: list[Any] = Field(default_factory=list)
+  decks: list[Any] = Field(default_factory=list)
+  resources: list[Any] = Field(default_factory=list)
 
 
 class WorkcellUpdate(SQLModel):

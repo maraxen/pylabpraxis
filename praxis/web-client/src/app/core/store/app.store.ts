@@ -1,5 +1,5 @@
 
-import { patchState, signalStore, withMethods, withState, withComputed } from '@ngrx/signals';
+import { patchState, signalStore, withMethods, withState, withComputed, withHooks } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
 import { KeycloakService } from '../auth/keycloak.service';
 
@@ -162,5 +162,15 @@ export const AppStore = signalStore(
         return keycloakService.register(redirectUri);
       }
     };
+  }),
+  withMethods((store) => ({
+    initTheme() {
+      store.setTheme(store.theme());
+    }
+  })),
+  withHooks({
+    onInit({ initTheme }) {
+      initTheme();
+    }
   })
 );

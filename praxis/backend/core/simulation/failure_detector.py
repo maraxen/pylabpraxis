@@ -6,8 +6,6 @@ to efficiently detect all ways a protocol can fail.
 
 from __future__ import annotations
 
-import asyncio
-from praxis.backend.utils.async_run import run_sync
 from dataclasses import dataclass, field
 from itertools import product
 from typing import TYPE_CHECKING, Any
@@ -21,6 +19,7 @@ from praxis.backend.core.simulation.state_models import (
   BooleanLiquidState,
   SimulationState,
 )
+from praxis.backend.utils.async_run import run_sync
 
 if TYPE_CHECKING:
   from collections.abc import Callable, Iterator

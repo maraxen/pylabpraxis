@@ -42,6 +42,12 @@
   - [x] Removed legacy ORM/Pydantic duplication
   - [x] Implemented Soft Foreign Keys for Table-Per-Class inheritance
 
+#### Agentic Development Tools (Internal)
+
+- [ ] **Structured Agentic Multi-Stage Workflow**
+  - Implement Inspect -> Plan -> Execute lifecycle
+  - Integrate with Development Matrix and Roadmap
+
 #### Bug Fixes Required (Prerequisites)
 
 These issues from the development matrix must be resolved:

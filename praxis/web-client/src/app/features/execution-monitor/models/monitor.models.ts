@@ -59,7 +59,19 @@ export interface RunHistoryParams {
     offset?: number;
     status?: RunStatus | RunStatus[];
     protocol_id?: string | string[];
+    machine_id?: string | string[];
     sort_by?: 'created_at' | 'start_time' | 'status';
     sort_order?: 'asc' | 'desc';
     search?: string;
+}
+
+/**
+ * UI State for filtering runs.
+ */
+export interface FilterState {
+    status: RunStatus[];
+    protocol_id: string | string[] | null;
+    machine_id?: string | string[] | null;
+    sort_by: 'created_at' | 'start_time' | 'status';
+    sort_order: 'asc' | 'desc';
 }

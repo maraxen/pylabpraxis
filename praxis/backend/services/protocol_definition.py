@@ -6,20 +6,30 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.protocol import (
   AssetRequirement as AssetRequirement,
+)
+from praxis.backend.models.domain.protocol import (
   AssetRequirement as AssetRequirementModel,
+)
+from praxis.backend.models.domain.protocol import (
   FunctionProtocolDefinition as FunctionProtocolDefinition,
-  ParameterDefinition as ParameterDefinition,
-  ParameterMetadataModel,
+)
+from praxis.backend.models.domain.protocol import (
   FunctionProtocolDefinitionCreate,
   FunctionProtocolDefinitionUpdate,
+  ParameterMetadataModel,
+)
+from praxis.backend.models.domain.protocol import (
+  ParameterDefinition as ParameterDefinition,
 )
 from praxis.backend.models.domain.protocol_source import (
   FileSystemProtocolSource as FileSystemProtocolSource,
+)
+from praxis.backend.models.domain.protocol_source import (
   ProtocolSourceRepository as ProtocolSourceRepository,
 )
-from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.utils.db_decorator import handle_db_transaction
 from praxis.backend.utils.logging import get_logger

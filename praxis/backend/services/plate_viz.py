@@ -15,8 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.domain.outputs import (
   FunctionDataOutput as FunctionDataOutput,
-  WellDataOutput as WellDataOutput,
+)
+from praxis.backend.models.domain.outputs import (
   PlateDataVisualization,
+)
+from praxis.backend.models.domain.outputs import (
+  WellDataOutput as WellDataOutput,
 )
 from praxis.backend.models.enums import DataOutputTypeEnum
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors

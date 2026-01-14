@@ -11,7 +11,6 @@ protocol run instances, and function call logs.
 
 import datetime
 import enum
-import inspect
 import json
 import logging
 import uuid
@@ -21,15 +20,21 @@ from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from praxis.backend.models.enums import FunctionCallStatusEnum, ProtocolRunStatusEnum
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.protocol import (
-  ProtocolRun as ProtocolRun,
-  ProtocolRunCreate,
-  ProtocolRunUpdate,
   FunctionCallLog as FunctionCallLog,
+)
+from praxis.backend.models.domain.protocol import (
   FunctionProtocolDefinition as FunctionProtocolDefinition,
 )
-from praxis.backend.models.domain.filters import SearchFilters
+from praxis.backend.models.domain.protocol import (
+  ProtocolRun as ProtocolRun,
+)
+from praxis.backend.models.domain.protocol import (
+  ProtocolRunCreate,
+  ProtocolRunUpdate,
+)
+from praxis.backend.models.enums import FunctionCallStatusEnum, ProtocolRunStatusEnum
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,

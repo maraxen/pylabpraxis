@@ -18,9 +18,20 @@ from sqlalchemy import and_, asc, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from praxis.backend.models.domain.filters import SearchFilters
+from praxis.backend.models.domain.protocol import ProtocolRun as ProtocolRun
+from praxis.backend.models.domain.schedule import (
+  AssetReservation as AssetReservation,
+)
+from praxis.backend.models.domain.schedule import (
+  ScheduleEntry as ScheduleEntry,
+)
 from praxis.backend.models.domain.schedule import (
   ScheduleEntryCreate,
   ScheduleEntryUpdate,
+)
+from praxis.backend.models.domain.schedule import (
+  ScheduleHistory as ScheduleHistory,
 )
 from praxis.backend.models.enums import (
   AssetReservationStatusEnum,
@@ -29,15 +40,6 @@ from praxis.backend.models.enums import (
   ScheduleHistoryEventTriggerEnum,
   ScheduleStatusEnum,
 )
-from praxis.backend.models.domain.protocol import ProtocolRun as ProtocolRun
-from praxis.backend.models.domain.schedule import (
-  ScheduleEntry as ScheduleEntry,
-  ScheduleHistory as ScheduleHistory,
-  ScheduleHistoryCreate,
-  AssetReservation as AssetReservation,
-  AssetReservationCreate,
-)
-from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,

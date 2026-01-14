@@ -7,8 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.domain.machine import (
   MachineDefinition as MachineDefinition,
+)
+from praxis.backend.models.domain.machine import (
   MachineDefinitionCreate,
-  MachineDefinitionRead as MachineDefinitionResponse,
   MachineDefinitionUpdate,
 )
 from praxis.backend.services.plr_type_base import DiscoverableTypeServiceBase

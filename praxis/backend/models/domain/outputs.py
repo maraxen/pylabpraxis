@@ -1,21 +1,22 @@
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from uuid import UUID
 
-from pydantic import ConfigDict
-from sqlalchemy import Column, Enum as SAEnum
+from sqlalchemy import Column
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship, SQLModel
 
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.sqlmodel_base import PraxisBase
 from praxis.backend.models.enums import DataOutputTypeEnum, SpatialContextEnum
-from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.utils.db import JsonVariant
 
 if TYPE_CHECKING:
   import uuid
+
   from praxis.backend.models.domain.deck import Deck
   from praxis.backend.models.domain.machine import Machine
   from praxis.backend.models.domain.protocol import FunctionCallLog, ProtocolRun

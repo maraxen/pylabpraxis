@@ -69,7 +69,7 @@ export const routes: Routes = [
             ]
           },
           {
-            path: 'visualizer',
+            path: 'workcell',
             loadChildren: () => import('./features/visualizer/visualizer.routes').then(m => m.VISUALIZER_ROUTES)
           },
           {
@@ -108,7 +108,8 @@ export const routes: Routes = [
   { path: 'assets', redirectTo: 'app/assets' },
   { path: 'protocols', redirectTo: 'app/protocols' },
   { path: 'run', redirectTo: 'app/run' },
-  { path: 'visualizer', redirectTo: 'app/visualizer' },
+  { path: 'visualizer', redirectTo: 'app/workcell' },
+  { path: 'workcell', redirectTo: 'app/workcell' },
   { path: 'data', redirectTo: 'app/data' },
   { path: 'settings', redirectTo: 'app/settings' },
   { path: 'stress-test', redirectTo: 'app/stress-test' },

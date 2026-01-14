@@ -3,6 +3,7 @@
 @use 'shepherd.js/dist/css/shepherd.css' as *;
 @use 'styles/shepherd-theme' as *;
 @use 'styles/praxis-select' as *;
+@use 'styles/cards' as *;
 
 @tailwind base;
 @tailwind components;
@@ -144,6 +145,11 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --mat-sys-on-error-container: #ffb4ab;
   --mat-sys-tertiary-container: rgba(115, 169, 194, 0.3);
   --mat-sys-on-tertiary-container: #cce5ff;
+  --mat-sys-primary-container: rgba(237, 122, 155, 0.15);
+  --mat-sys-success: #4ade80;
+  --mat-sys-success-container: rgba(74, 222, 128, 0.15);
+  --mat-sys-warning: #facc15;
+  --mat-sys-warning-container: rgba(250, 204, 21, 0.15);
 
   // Default to dark theme - Refined Gradient
   --theme-bg-gradient: linear-gradient(135deg, #12121e 0%, #1a1a2e 50%, #0f0f1a 100%);
@@ -186,6 +192,11 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --mat-sys-on-error-container: #410002;
   --mat-sys-tertiary-container: #e0f2fe;
   --mat-sys-on-tertiary-container: #0c4a6e;
+  --mat-sys-primary-container: #ffe4e6;
+  --mat-sys-success: #16a34a;
+  --mat-sys-success-container: #dcfce7;
+  --mat-sys-warning: #ca8a04;
+  --mat-sys-warning-container: #fef9c3;
 
   --theme-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f1f5f9 100%);
   --theme-surface: rgba(255, 255, 255, 0.7);
@@ -292,6 +303,31 @@ body {
 
 .text-tertiary {
   color: var(--theme-text-tertiary);
+}
+
+/* Status Utility Classes */
+.status-success {
+  color: var(--mat-sys-success);
+}
+
+.status-warning {
+  color: var(--mat-sys-warning);
+}
+
+.status-error {
+  color: var(--mat-sys-error);
+}
+
+.status-info {
+  color: var(--mat-sys-tertiary);
+}
+
+.status-neutral {
+  color: var(--theme-text-tertiary);
+}
+
+.status-running {
+  color: var(--mat-sys-primary);
 }
 
 /* Skeleton Loading Utilities */

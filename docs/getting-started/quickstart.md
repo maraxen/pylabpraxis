@@ -4,7 +4,7 @@ Get up and running with Praxis in 5 minutes.
 
 ## Prerequisites
 
-Complete the [Installation](installation.md) guide first.
+Complete the [Installation](installation.md) guide first. You can choose between [Browser Mode](installation-browser.md), [Production Mode](installation-production.md), or [Lite Mode](installation-lite.md).
 
 ## Modes: Pick Your Flow
 
@@ -22,9 +22,7 @@ Praxis can be run in two main ways. For a 5-minute start, we recommend **Browser
 
 3. Open <http://localhost:4200>. You're ready to go!
 
-### Option B: Production Mode (Full Stack)
-
-Requires Python 3.11+, PostgreSQL, and Redis. Follow the [Installation Guide](installation.md) for full setup.
+Requires Python 3.11+, PostgreSQL, and Redis. Follow the [Production Installation Guide](installation-production.md) for full setup.
 
 ## Running Your First Protocol
 

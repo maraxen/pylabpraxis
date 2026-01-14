@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from pylabrobot.resources import Deck as PLRDeck
 
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.resource import (
   Resource,
   ResourceDefinition,
@@ -14,7 +15,6 @@ from praxis.backend.models.domain.resource import (
   ResourceUpdate,
 )
 from praxis.backend.models.pydantic_internals.runtime import AcquireAsset
-from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.utils.errors import AssetAcquisitionError, AssetReleaseError
 from praxis.backend.utils.logging import get_logger
 

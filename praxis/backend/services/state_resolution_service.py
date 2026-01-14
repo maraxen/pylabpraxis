@@ -29,13 +29,13 @@ from praxis.backend.core.simulation.state_resolution import (
   apply_resolution,
   identify_uncertain_states,
 )
-from praxis.backend.models.enums.schedule import ScheduleStatusEnum
+from praxis.backend.models.domain.resolution import StateResolutionLog as StateResolutionLog
+from praxis.backend.models.domain.schedule import ScheduleEntry as ScheduleEntry
 from praxis.backend.models.enums.resolution import (
   ResolutionActionEnum,
   ResolutionTypeEnum,
 )
-from praxis.backend.models.domain.resolution import StateResolutionLog as StateResolutionLog
-from praxis.backend.models.domain.schedule import ScheduleEntry as ScheduleEntry
+from praxis.backend.models.enums.schedule import ScheduleStatusEnum
 from praxis.backend.utils.db_decorator import handle_db_transaction
 
 if TYPE_CHECKING:

@@ -211,7 +211,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       logger.info("Initializing ProtocolExecutionService...")
       from praxis.backend.core.protocol_execution_service import ProtocolExecutionService
       from praxis.backend.core.scheduler import ProtocolScheduler
-      from praxis.backend.models.domain.protocol import ProtocolRun
       from praxis.backend.services.mock_data_generator import MockTelemetryService
       from praxis.backend.services.protocols import ProtocolRunService
 

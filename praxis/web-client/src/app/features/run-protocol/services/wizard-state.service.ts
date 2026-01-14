@@ -99,7 +99,8 @@ export class WizardStateService {
         // Use CarrierInferenceService to calculate requirements
         const setup = this.carrierInference.createDeckSetup(protocol, deckType);
 
-        // Pre-fill assignments from assetMap
+        // Pre-fill assignments from assetMap, but ensure they are not marked as 'placed' yet
+        // The wizard is about verifying physical placement.
         const assignments = setup.slotAssignments.map(assignment => {
             // Find if this assignment corresponds to a protocol asset
             // The assignment resource name usually matches the protocol asset name
@@ -110,10 +111,14 @@ export class WizardStateService {
                 // We want its accession_id as the assignedAssetId
                 return {
                     ...assignment,
-                    assignedAssetId: selected.accession_id
+                    assignedAssetId: selected.accession_id,
+                    placed: false // Explicitly ensure false at start of wizard
                 };
             }
-            return assignment;
+            return {
+                ...assignment,
+                placed: false
+            };
         });
 
         this._carrierRequirements.set(setup.carrierRequirements);

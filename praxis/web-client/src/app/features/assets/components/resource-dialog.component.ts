@@ -1,21 +1,21 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormsModule, FormBuilder, Validators, FormControl } from '@angular/forms';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { FormBuilder, FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { AssetService } from '../services/asset.service';
-import { ResourceStatus, ResourceDefinition } from '../models/asset.models';
-import { startWith, debounceTime } from 'rxjs';
-import { getResourceCategoryIcon } from '@shared/constants/asset-icons';
-import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { PraxisMultiselectComponent } from '@shared/components/praxis-multiselect/praxis-multiselect.component';
+import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
+import { getResourceCategoryIcon } from '@shared/constants/asset-icons';
 import { FilterOption } from '@shared/services/filter-result.service';
-import { getUiGroup, UI_GROUP_ORDER, shouldHideCategory, ResourceUiGroup, getSubCategory } from '../utils/resource-category-groups';
+import { debounceTime, startWith } from 'rxjs';
+import { ResourceDefinition, ResourceStatus } from '../models/asset.models';
+import { AssetService } from '../services/asset.service';
+import { getSubCategory, getUiGroup, ResourceUiGroup, shouldHideCategory, UI_GROUP_ORDER } from '../utils/resource-category-groups';
 import { ResourceChipsComponent } from './resource-chips/resource-chips.component';
 
 interface GroupedDefinitions {
@@ -261,19 +261,19 @@ interface GroupedDefinitions {
     .facet-title { font-size: 0.85rem; font-weight: 600; color: var(--mat-sys-on-surface-variant); }
 
     .category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
-    .category-card { padding: 12px; border-radius: 14px; border: 1px solid var(--mat-sys-outline-variant); background: linear-gradient(135deg, var(--mat-sys-surface) 0%, var(--mat-sys-surface-container-low) 100%); cursor: pointer; transition: all 0.2s ease; }
+    .category-card { padding: 12px; border-radius: 14px; border: 1px solid var(--mat-sys-outline-variant); background: linear-gradient(135deg, var(--mat-sys-surface) 0%, var(--mat-sys-surface-container-low, #f6f8fb) 100%); cursor: pointer; transition: all 0.2s ease; }
     .category-card:hover { border-color: var(--mat-sys-primary); box-shadow: 0 8px 18px -14px var(--mat-sys-primary); transform: translateY(-1px); }
     .category-card.card-active { border-color: var(--mat-sys-primary); background: var(--mat-sys-primary-container); color: var(--mat-sys-on-primary-container); }
-    .cat-icon { width: 38px; height: 38px; border-radius: 10px; background: var(--mat-sys-surface-container-high); display: grid; place-items: center; }
+    .cat-icon { width: 38px; height: 38px; border-radius: 10px; background: var(--mat-sys-surface-container-high, #e8edf5); display: grid; place-items: center; }
 
     .models-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
-    .model-card { border: 1px solid var(--theme-border, var(--mat-sys-outline-variant)); border-radius: 16px; padding: 14px; background: linear-gradient(135deg, var(--mat-sys-surface) 0%, var(--mat-sys-surface-container-low) 100%); width: 100%; text-align: left; transition: all 0.18s ease; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    .model-card { border: 1px solid var(--theme-border, var(--mat-sys-outline-variant)); border-radius: 16px; padding: 14px; background: linear-gradient(135deg, var(--mat-sys-surface) 0%, var(--mat-sys-surface-container-low, #f6f8fb) 100%); width: 100%; text-align: left; transition: all 0.18s ease; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
     .model-card:hover { border-color: var(--mat-sys-primary); box-shadow: 0 10px 22px -14px var(--mat-sys-primary); transform: translateY(-1px); }
-    .model-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--mat-sys-surface-container-high); display: grid; place-items: center; }
+    .model-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--mat-sys-surface-container-high, #e8edf5); display: grid; place-items: center; }
     .pill { background: var(--mat-sys-surface-container-high); color: var(--mat-sys-on-surface-variant); padding: 2px 8px; border-radius: 999px; font-size: 11px; }
 
     .loading-state { padding: 12px; }
-    .skeleton-row { height: 48px; background: var(--mat-sys-surface-container-high); margin-bottom: 8px; border-radius: 8px; animation: pulse 1.5s infinite; opacity: 0.5; }
+    .skeleton-row { height: 48px; background: var(--mat-sys-surface-container-highest); margin-bottom: 8px; border-radius: 8px; animation: pulse 1.5s infinite; opacity: 0.5; }
     @keyframes pulse { 0% { opacity: 0.3; } 50% { opacity: 0.6; } 100% { opacity: 0.3; } }
     .empty-state { grid-column: 1 / -1; text-align: center; padding: 32px; color: var(--mat-sys-on-surface-variant); display: flex; flex-direction: column; gap: 8px; align-items: center; }
 
@@ -403,7 +403,7 @@ export class ResourceDialogComponent implements OnInit {
       for (const key of Object.keys(facetFilters)) {
         const values = facetFilters[key];
         if (!values || values.length === 0) continue;
-        const defVal = (def as unknown as Record<string, unknown>)[key];
+        const defVal: any = (def as any)[key];
         const normalized = defVal === undefined || defVal === null ? '' : defVal.toString();
         if (!values.map(v => v.toString()).includes(normalized)) {
           return false;
@@ -455,7 +455,7 @@ export class ResourceDialogComponent implements OnInit {
 
     defs.forEach(def => {
       Object.keys(opts).forEach(key => {
-        const val = (def as unknown as Record<string, unknown>)[key];
+        const val = (def as any)[key];
         if (val !== undefined && val !== null && val !== '') {
           opts[key].add(val.toString());
         }

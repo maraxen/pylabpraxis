@@ -4,14 +4,15 @@ from fastapi import APIRouter
 
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
 from praxis.backend.models.domain.deck import (
+  Deck,
   DeckCreate,
+  DeckDefinition,
   DeckDefinitionCreate,
   DeckDefinitionRead,
   DeckDefinitionUpdate,
   DeckRead,
   DeckUpdate,
 )
-from praxis.backend.models.domain.deck import Deck, DeckDefinition
 from praxis.backend.services.deck import DeckService
 from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
 

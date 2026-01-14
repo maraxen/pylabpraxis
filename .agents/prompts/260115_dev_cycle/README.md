@@ -15,10 +15,10 @@ Generate detailed findings artifacts before implementation.
 | ID | Title | Status | Target Artifact |
 |:---|:------|:-------|:----------------|
 | I-01 | [ViewControls DOM/CSS Inspection](I-01_viewcontrols_inspection.md) | 🟢 Not Started | `viewcontrols_inspection_findings.md` |
-| I-02 | [Playground Regression Inspection](I-02_playground_inspection.md) | 🟢 Not Started | `playground_inspection_findings.md` |
-| I-03 | [ViewControls Adoption Audit](I-03_viewcontrols_adoption.md) | 🟢 Not Started | Updates existing pages |
-| I-04 | [Card Visual Audit](I-04_card_visual_audit.md) | 🟢 Not Started | `card_audit_findings.md` |
-| I-05 | [Documentation Audit](I-05_docs_audit.md) | 🟢 Not Started | `docs_audit_findings.md` |
+| I-02 | [Playground Regression Inspection](I-02_playground_inspection.md) | ✅ Complete | `playground_inspection_findings.md` |
+| I-03 | [ViewControls Adoption Audit](I-03_viewcontrols_adoption.md) | ✅ Complete | Updates existing pages |
+| I-04 | [Card Visual Audit](I-04_card_visual_audit.md) | ✅ Complete | `card_audit_findings.md` |
+| I-05 | [Documentation Audit](I-05_docs_audit.md) | ✅ Complete | `docs_audit_findings.md` |
 
 ### Phase 2: Planning Prompts (P-XX)
 
@@ -40,21 +40,21 @@ Actionable implementation tasks.
 | B-01 | [ViewControls Visual Polish](B-01_viewcontrols_polish.md) | 🟢 Not Started | I-01 |
 | B-02 | [ViewControls Toggle/Chip Logic](B-02_viewcontrols_logic.md) | 🟢 Not Started | I-01 |
 | C-01 | [Remove Breadcrumbs](C-01_remove_breadcrumbs.md) | ✅ Complete | None |
-| C-02 | [Protocol Library ViewControls](C-02_protocol_library_viewcontrols.md) | 🟢 Not Started | I-03 |
+| C-02 | [Protocol Library ViewControls](C-02_protocol_library_viewcontrols.md) | ✅ Complete | I-03 |
 | C-03 | [Execution Monitor ViewControls](C-03_execution_monitor_viewcontrols.md) | 🟢 Not Started | I-03 |
 | C-04 | [DataViz ViewControls](C-04_dataviz_viewcontrols.md) | 🟢 Not Started | I-03 |
-| D-01 | [Playground Kernel Load Fix](D-01_playground_kernel.md) | 🟢 Not Started | I-02 |
-| D-02 | [Playground Theme Sync](D-02_playground_theme.md) | 🟢 Not Started | I-02 |
-| D-03 | [Playground Loading Overlay](D-03_playground_loading.md) | 🟢 Not Started | I-02 |
-| D-04 | [WebSerial/WebUSB Builtins Fix](D-04_webserial_fix.md) | 🟢 Not Started | I-02 |
+| D-01 | [Playground Kernel Load Fix](D-01_playground_kernel.md) | ✅ Complete | I-02 |
+| D-02 | [Playground Theme Sync](D-02_playground_theme.md) | ✅ Complete | I-02 |
+| D-03 | [Playground Loading Overlay](D-03_playground_loading.md) | ✅ Complete | I-02 |
+| D-04 | [WebSerial/WebUSB Builtins Fix](D-04_webserial_fix.md) | ✅ Complete | I-02 |
 | E-01 | [Well Arguments Cleanup](E-01_well_arguments.md) | 🟢 Not Started | None |
 | E-02 | [Well Selector Performance](E-02_well_selector_perf.md) | 🟢 Not Started | None |
 | E-03 | [Asset Autocomplete Redesign](E-03_asset_autocomplete.md) | 🟢 Not Started | P-03 |
 | E-04 | [Guided Deck Setup Empty Start](E-04_guided_deck_empty.md) | 🟢 Not Started | None |
-| F-01 | [Installation Docs Split](F-01_installation_docs.md) | 🟢 Not Started | I-05 |
+| F-01 | [Installation Docs Split](F-01_installation_docs.md) | ✅ Complete | I-05 |
 | F-02 | [Mermaid Rendering Fix](F-02_mermaid_fix.md) | 🟢 Not Started | I-05 |
 | G-01 | [Home Recent Activity Mock Data](G-01_home_recent_activity.md) | 🟢 Not Started | None |
-| H-01 | [Card Visual Polish](H-01_card_polish.md) | 🟢 Not Started | I-04 |
+| H-01 | [Card Visual Polish](H-01_card_polish.md) | ✅ Complete | I-04 |
 
 ---
 

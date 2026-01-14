@@ -4,7 +4,8 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Column, Enum as SAEnum, String, UniqueConstraint
+from sqlalchemy import Column, UniqueConstraint
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship, SQLModel
 

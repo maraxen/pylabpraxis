@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Any, Literal, Optional, List
+from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import ConfigDict, computed_field, AliasChoices
+from pydantic import AliasChoices, ConfigDict
+from sqlalchemy import Column, UniqueConstraint
+from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship, SQLModel
-from sqlalchemy import UniqueConstraint, Column
-from sqlalchemy.orm import relationship, synonym
 
-from praxis.backend.models.domain.asset import Asset, AssetBase, AssetRead, AssetUpdate
+from praxis.backend.models.domain.asset import Asset, AssetUpdate
 from praxis.backend.models.domain.resource import ResourceBase
 
 if TYPE_CHECKING:
@@ -84,7 +84,7 @@ class DeckPositionDefinition(DeckPositionDefinitionBase, table=True):
   deck_type_id: uuid.UUID = Field(foreign_key="deck_definition_catalog.accession_id", index=True)
 
   # Relationship back to deck definition
-  deck_type: Optional["DeckDefinition"] = Relationship(
+  deck_type: DeckDefinition | None = Relationship(
     sa_relationship=relationship("DeckDefinition", back_populates="positions")
   )
 
@@ -130,6 +130,7 @@ class DeckPositionDefinitionUpdate(SQLModel):
 
 class DeckDefinitionBase(PraxisBase):
   """Base schema for DeckDefinition - shared fields for create/update/response."""
+
   name: str = Field(default="", description="Human readable name for the deck type")
   fqn: str = Field(index=True, unique=True, description="Fully qualified name")
   version: str | None = Field(default=None, description="Version string for the deck type")
@@ -189,17 +190,17 @@ class DeckDefinition(DeckDefinitionBase, table=True):
     foreign_key="deck_definition_catalog.accession_id",
   )
   # Relationships
-  parent: Optional["DeckDefinition"] = Relationship(
+  parent: DeckDefinition | None = Relationship(
     sa_relationship=relationship(
       "DeckDefinition",
       back_populates="children",
       remote_side="DeckDefinition.accession_id",
     )
   )
-  children: list["DeckDefinition"] = Relationship(
+  children: list[DeckDefinition] = Relationship(
     sa_relationship=relationship("DeckDefinition", back_populates="parent")
   )
-  deck: list["Deck"] = Relationship(
+  deck: list[Deck] = Relationship(
     sa_relationship=relationship("Deck", back_populates="deck_type")
   )
 
@@ -214,13 +215,14 @@ class DeckDefinition(DeckDefinitionBase, table=True):
   )
 
   @property
-  def decks(self) -> list["Deck"]:
+  def decks(self) -> list[Deck]:
     """Compatibility property."""
     return self.deck
 
 
 class DeckDefinitionCreate(DeckDefinitionBase):
   """Schema for creating a DeckDefinition."""
+
   position_definitions: list[DeckPositionDefinitionCreate] | None = None
   positions: list[DeckPositionDefinitionCreate] | None = None
 
@@ -250,6 +252,7 @@ class DeckDefinitionUpdate(SQLModel):
 
 class DeckBase(ResourceBase):
   """Base schema for Deck - shared fields for create/update/response."""
+
   plr_state: dict[str, Any] | None = Field(
     default=None, sa_type=JsonVariant, description="PyLabRobot state blob for PLR devices"
   )
@@ -307,7 +310,7 @@ class Deck(DeckBase, Asset, table=True):
   )
 
   # Relationships
-  deck_type: Optional["DeckDefinition"] = Relationship(
+  deck_type: DeckDefinition | None = Relationship(
     sa_relationship=relationship("DeckDefinition", back_populates="deck")
   )
   # ResourceDefinition is imported from resource.py
@@ -334,21 +337,21 @@ class Deck(DeckBase, Asset, table=True):
       self, "machine_location_accession_id", getattr(self, "parent_machine_accession_id", None)
     )
 
-  resource_definition: Optional["ResourceDefinition"] = Relationship(
+  resource_definition: ResourceDefinition | None = Relationship(
     sa_relationship=relationship("ResourceDefinition")
   )
 
-  parent_machine: Optional["Machine"] = Relationship(
+  parent_machine: Machine | None = Relationship(
     sa_relationship=relationship(
       "Machine",
       back_populates="decks",
       primaryjoin="Deck.parent_machine_accession_id == Machine.accession_id",
     )
   )
-  resources: list["Resource"] = Relationship(
+  resources: list[Resource] = Relationship(
     sa_relationship=relationship("Resource", back_populates="deck")
   )
-  workcell: Optional["Workcell"] = Relationship(
+  workcell: Workcell | None = Relationship(
     sa_relationship=relationship("Workcell", back_populates="decks")
   )
 
@@ -357,14 +360,14 @@ class Deck(DeckBase, Asset, table=True):
     self.parent_machine_accession_id = value
 
   # Self-referential or parent relationships for compatibility
-  parent: Optional["Machine"] = Relationship(
+  parent: Machine | None = Relationship(
     sa_relationship=relationship(
       "Machine",
       primaryjoin="Deck.parent_machine_accession_id == Machine.accession_id",
       viewonly=True,
     )
   )
-  children: list["Resource"] = Relationship(sa_relationship=relationship("Resource", viewonly=True))
+  children: list[Resource] = Relationship(sa_relationship=relationship("Resource", viewonly=True))
 
 
 class DeckCreate(DeckBase):

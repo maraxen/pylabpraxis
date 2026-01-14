@@ -11,7 +11,7 @@ import threading
 from typing import Any
 
 
-def run_sync(coro: "collections.abc.Coroutine[Any, Any, Any]") -> Any:
+def run_sync(coro: collections.abc.Coroutine[Any, Any, Any]) -> Any:
   """Run an async coroutine from sync code without calling `asyncio.run`.
 
   This helper avoids using `asyncio.run` to prevent issues when tests

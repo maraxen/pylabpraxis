@@ -4,7 +4,9 @@ import uuid
 from typing import Any, Protocol, runtime_checkable
 
 from pylabrobot.machines import Machine as PLRMachine
-from pylabrobot.resources import Coordinate, Deck as PLRDeck, Resource as PLRResource
+from pylabrobot.resources import Coordinate
+from pylabrobot.resources import Deck as PLRDeck
+from pylabrobot.resources import Resource as PLRResource
 
 from praxis.backend.core.protocols.workcell import IWorkcell
 from praxis.backend.models.domain.machine import Machine

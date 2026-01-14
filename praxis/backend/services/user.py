@@ -5,7 +5,6 @@ including creation, retrieval, updates, and deletion. It includes password hashi
 for secure credential storage.
 """
 
-import inspect
 import logging
 import uuid
 from typing import Any
@@ -15,13 +14,12 @@ from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.domain.user import User
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.user import (
-  User as User,
+  User,
   UserCreate,
   UserUpdate,
 )
-from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import apply_pagination
 from praxis.backend.utils.db_decorator import handle_db_transaction

@@ -1,21 +1,14 @@
 """Unified Asset domain model using SQLModel."""
 
 import uuid
-
 from typing import Any
 
-
 from pydantic import ConfigDict
-
 from sqlmodel import Field, SQLModel
 
-
 from praxis.backend.models.domain.sqlmodel_base import PraxisBase
-
 from praxis.backend.models.enums import AssetType
-
 from praxis.backend.utils.db import JsonVariant
-
 from praxis.backend.utils.uuid import uuid7
 
 

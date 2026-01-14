@@ -20,10 +20,10 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.domain.protocol import AssetRequirementRead
 from praxis.backend.models.domain.schedule import (
   AssetReservation,
 )
-from praxis.backend.models.domain.protocol import AssetRequirementRead
 from praxis.backend.models.enums import AssetReservationStatusEnum
 from praxis.backend.utils.logging import get_logger
 
@@ -270,8 +270,6 @@ class ConsumableAssignmentService:
 
   async def _get_reserved_asset_ids(self) -> set[str]:
     """Get IDs of assets currently reserved."""
-    from praxis.backend.models.domain.schedule import AssetReservation
-
     stmt = select(AssetReservation.asset_accession_id).filter(
       AssetReservation.status.in_(
         [

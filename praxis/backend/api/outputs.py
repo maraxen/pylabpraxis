@@ -4,14 +4,15 @@ from fastapi import APIRouter
 
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
 from praxis.backend.models.domain.outputs import (
+  FunctionDataOutput,
   FunctionDataOutputCreate,
   FunctionDataOutputRead,
   FunctionDataOutputUpdate,
+  WellDataOutput,
   WellDataOutputCreate,
   WellDataOutputRead,
   WellDataOutputUpdate,
 )
-from praxis.backend.models.domain.outputs import FunctionDataOutput, WellDataOutput
 from praxis.backend.services.outputs import FunctionDataOutputCRUDService
 from praxis.backend.services.well_outputs import WellDataOutputCRUDService
 

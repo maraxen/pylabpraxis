@@ -13,7 +13,6 @@ issues at the cheapest level that can catch them.
 from __future__ import annotations
 
 import asyncio
-from praxis.backend.utils.async_run import run_sync
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -34,6 +33,7 @@ from praxis.backend.core.tracing.executor import (
   infer_machine_type,
 )
 from praxis.backend.core.tracing.recorder import OperationRecorder
+from praxis.backend.utils.async_run import run_sync
 from praxis.backend.utils.plr_static_analysis.resource_hierarchy import (
   DeckLayoutType,
   get_parental_chain,

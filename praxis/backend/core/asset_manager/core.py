@@ -10,12 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.core.protocols.asset_lock_manager import IAssetLockManager
 from praxis.backend.core.protocols.workcell_runtime import IWorkcellRuntime
+from praxis.backend.models.domain.protocol import AssetRequirement as AssetRequirementModel
 from praxis.backend.models.pydantic_internals.runtime import (
   AcquireAsset,
   AcquireAssetLock,
-  ReleaseAsset,
 )
-from praxis.backend.models.domain.protocol import AssetRequirement as AssetRequirementModel
 from praxis.backend.services.deck import DeckService
 from praxis.backend.services.machine import MachineService
 from praxis.backend.services.resource import ResourceService

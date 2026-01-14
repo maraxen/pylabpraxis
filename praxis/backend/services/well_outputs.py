@@ -13,13 +13,17 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.outputs import (
-  WellDataOutput as WellDataOutput,
-  WellDataOutputCreate,
-  WellDataOutputUpdate,
   FunctionDataOutput as FunctionDataOutput,
 )
-from praxis.backend.models.domain.filters import SearchFilters
+from praxis.backend.models.domain.outputs import (
+  WellDataOutput as WellDataOutput,
+)
+from praxis.backend.models.domain.outputs import (
+  WellDataOutputCreate,
+  WellDataOutputUpdate,
+)
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import apply_search_filters
 from praxis.backend.utils.db_decorator import handle_db_transaction

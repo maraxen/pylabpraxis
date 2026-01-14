@@ -15,14 +15,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from praxis.backend.models.domain.machine import Machine
-from praxis.backend.models.enums import MachineStatusEnum
 from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.machine import (
-  Machine as Machine,
+  Machine,
   MachineCreate,
   MachineUpdate,
 )
+from praxis.backend.models.enums import MachineStatusEnum
 from praxis.backend.services.entity_linking import (
   _create_or_link_resource_counterpart_for_machine,
   synchronize_machine_resource_names,

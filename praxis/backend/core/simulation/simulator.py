@@ -7,8 +7,6 @@ This is the main entry point for protocol discovery integration.
 
 from __future__ import annotations
 
-import asyncio
-from praxis.backend.utils.async_run import run_sync
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
@@ -23,6 +21,7 @@ from praxis.backend.core.simulation.pipeline import (
   HierarchicalSimulator,
   InferredRequirement,
 )
+from praxis.backend.utils.async_run import run_sync
 from praxis.backend.utils.plr_static_analysis.resource_hierarchy import DeckLayoutType
 
 if TYPE_CHECKING:

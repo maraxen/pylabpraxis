@@ -3,11 +3,12 @@
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
-from sqlmodel import Field, Relationship, SQLModel
-from sqlalchemy import Column, Enum as SAEnum, UniqueConstraint, Boolean
+from sqlalchemy import Boolean, Column, UniqueConstraint
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
+from sqlmodel import Field, Relationship, SQLModel
 
 from praxis.backend.models.domain.asset import Asset, AssetBase, AssetRead
 from praxis.backend.models.domain.sqlmodel_base import PraxisBase
@@ -19,10 +20,10 @@ from praxis.backend.utils.db import JsonVariant
 
 if TYPE_CHECKING:
   from praxis.backend.models.domain.deck import Deck, DeckDefinition
+  from praxis.backend.models.domain.outputs import FunctionDataOutput
   from praxis.backend.models.domain.protocol import AssetRequirement, ProtocolRun
   from praxis.backend.models.domain.resource import Resource, ResourceDefinition
   from praxis.backend.models.domain.workcell import Workcell
-  from praxis.backend.models.domain.outputs import FunctionDataOutput
 
 # =============================================================================
 # Machine Definition (Catalog)
@@ -317,7 +318,7 @@ class MachineCreate(MachineBase):
   resource_counterpart_accession_id: uuid.UUID | None = None
 
 
-from praxis.backend.models.domain.asset import AssetRead, AssetUpdate
+from praxis.backend.models.domain.asset import AssetUpdate
 
 
 class MachineRead(AssetRead, MachineBase):

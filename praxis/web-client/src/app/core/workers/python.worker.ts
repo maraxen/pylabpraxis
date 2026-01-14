@@ -145,7 +145,7 @@ addEventListener('message', async (event) => {
 async function initializePyodide(id?: string) {
   // Load Pyodide with core files from local assets, packages from CDN
   pyodide = await loadPyodide({
-    indexURL: 'assets/pyodide/',
+    indexURL: '/assets/pyodide/',
     lockFileURL: 'https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide-lock.json'
   });
 
@@ -170,6 +170,14 @@ async function initializePyodide(id?: string) {
       const shimCode = await shimResponse.text();
       pyodide.FS.writeFile('web_serial_shim.py', shimCode);
       console.log('WebSerial Shim loaded successfully');
+
+      // Verify file exists
+      try {
+        const files = pyodide.FS.readdir('.');
+        console.log('Pyodide FS root files:', files.filter(f => f.endsWith('.py')));
+      } catch (e) {
+        console.warn('Could not list FS:', e);
+      }
     } else {
       console.error('Failed to fetch WebSerial Shim:', shimResponse.statusText);
     }
@@ -212,6 +220,18 @@ console
 
   const consoleProxy = await pyodide.runPythonAsync(consoleCode);
   pyConsole = consoleProxy;
+
+  // Verification call
+  try {
+    const checkCode = `
+import builtins
+print(f"SCOPE CHECK: WebSerial in builtins: {hasattr(builtins, 'WebSerial')}")
+print(f"SCOPE CHECK: WebUSB in builtins: {hasattr(builtins, 'WebUSB')}")
+    `.trim();
+    pyConsole.push(checkCode);
+  } catch (e) {
+    console.warn('Scope check failed:', e);
+  }
 
   postMessage({ type: 'INIT_COMPLETE', id });
 }

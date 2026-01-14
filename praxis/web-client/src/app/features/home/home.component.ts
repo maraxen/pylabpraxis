@@ -71,56 +71,63 @@ interface RecentRun {
       </header>
 
       <!-- Stats Overview -->
-      <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="group relative bg-surface border border-[var(--theme-border)] rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/run" matTooltip="View active protocol runs">
-          <!-- Glow effect -->
-          <div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          
-          <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-primary/20 to-secondary/20 relative z-10">
-            <mat-icon class="text-primary">play_arrow</mat-icon>
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="praxis-card premium group cursor-pointer" routerLink="/app/run" matTooltip="View active protocol runs">
+          <!-- Glow effect via cards.scss aurora hint -->
+          <div class="card-header pb-0">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-primary/20 to-secondary/20 shrink-0">
+              <mat-icon class="text-primary">play_arrow</mat-icon>
+            </div>
+            <div class="w-16 h-8 ml-auto">
+              <app-sparkline [data]="runTrend()" color="var(--mat-sys-primary)" />
+            </div>
           </div>
-          <div class="flex flex-col relative z-10 flex-1">
-            <span class="text-2xl font-bold text-sys-text-primary">{{ runningCount() }}</span>
-            <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Running</span>
-          </div>
-          <div class="w-16 h-8 relative z-10">
-            <app-sparkline [data]="runTrend()" color="var(--mat-sys-primary)" />
+          <div class="card-content">
+            <span class="text-3xl font-bold text-sys-text-primary block">{{ runningCount() }}</span>
+            <span class="card-subtitle">Running Protocols</span>
           </div>
           <div class="absolute top-4 right-4 w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.6)]"></div>
         </div>
 
-        <div class="group relative bg-surface border border-[var(--theme-border)] rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/assets" matTooltip="View laboratory machines">
-          <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500/20 to-purple-500/20 relative z-10 shrink-0">
-            <mat-icon class="text-blue-400">precision_manufacturing</mat-icon>
+        <div class="praxis-card premium group cursor-pointer" routerLink="/app/assets" matTooltip="View laboratory machines">
+          <div class="card-header pb-0">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500/20 to-purple-500/20 shrink-0">
+              <mat-icon class="text-blue-400">precision_manufacturing</mat-icon>
+            </div>
+            <div class="flex flex-col items-end ml-auto opacity-60">
+              <span class="text-sm font-bold text-sys-text-secondary">{{ simulatedOnlineMachines() }}/{{ simulatedMachinesCount() }}</span>
+              <span class="text-[8px] uppercase font-bold tracking-tighter">Simulated</span>
+            </div>
           </div>
-          <div class="flex flex-col relative z-10 flex-1">
-            <span class="text-2xl font-bold text-sys-text-primary">{{ physicalOnlineMachines() }}<span class="text-base font-normal text-sys-text-tertiary">/{{ physicalMachinesCount() }}</span></span>
-            <span class="text-[10px] font-medium text-sys-text-tertiary uppercase tracking-wide">Physical Hardware</span>
-          </div>
-          <!-- Simulated Counter Mini -->
-          <div class="flex flex-col items-end relative z-10 opacity-60">
-            <span class="text-sm font-bold text-sys-text-secondary">{{ simulatedOnlineMachines() }}/{{ simulatedMachinesCount() }}</span>
-            <span class="text-[8px] uppercase font-bold tracking-tighter">Simulated</span>
-          </div>
-        </div>
-
-        <div class="group relative bg-surface border border-[var(--theme-border)] rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/protocols" matTooltip="Manage protocols">
-          <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-purple-500/20 to-pink-500/20 relative z-10">
-            <mat-icon class="text-purple-400">science</mat-icon>
-          </div>
-          <div class="flex flex-col relative z-10">
-            <span class="text-2xl font-bold text-sys-text-primary">{{ totalProtocols() }}</span>
-            <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Protocols</span>
+          <div class="card-content">
+            <span class="text-3xl font-bold text-sys-text-primary block">
+              {{ physicalOnlineMachines() }}<span class="text-base font-normal text-sys-text-tertiary">/{{ physicalMachinesCount() }}</span>
+            </span>
+            <span class="card-subtitle">Physical Hardware</span>
           </div>
         </div>
 
-        <div class="group relative bg-surface border border-[var(--theme-border)] rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/assets" matTooltip="Manage resources">
-          <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-orange-500/20 to-primary/20 relative z-10">
-            <mat-icon class="text-orange-400">inventory_2</mat-icon>
+        <div class="praxis-card premium group cursor-pointer" routerLink="/app/protocols" matTooltip="Manage protocols">
+          <div class="card-header pb-0">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-purple-500/20 to-pink-500/20 shrink-0">
+              <mat-icon class="text-purple-400">science</mat-icon>
+            </div>
           </div>
-          <div class="flex flex-col relative z-10">
-            <span class="text-2xl font-bold text-sys-text-primary">{{ totalResources() }}</span>
-            <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Resources</span>
+          <div class="card-content">
+            <span class="text-3xl font-bold text-sys-text-primary block">{{ totalProtocols() }}</span>
+            <span class="card-subtitle">Available Protocols</span>
+          </div>
+        </div>
+
+        <div class="praxis-card premium group cursor-pointer" routerLink="/app/assets" matTooltip="Manage resources">
+          <div class="card-header pb-0">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-orange-500/20 to-primary/20 shrink-0">
+              <mat-icon class="text-orange-400">inventory_2</mat-icon>
+            </div>
+          </div>
+          <div class="card-content">
+            <span class="text-3xl font-bold text-sys-text-primary block">{{ totalResources() }}</span>
+            <span class="card-subtitle">Active Resources</span>
           </div>
         </div>
       </section>
@@ -128,85 +135,81 @@ interface RecentRun {
       <!-- Main Content Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Live Experiments Panel -->
-        <section class="lg:col-span-2 bg-surface border border-[var(--theme-border)] rounded-3xl overflow-hidden backdrop-blur-xl">
-          <div class="p-5 border-b border-[var(--theme-border)] flex justify-between items-center bg-[var(--mat-sys-surface-variant)]">
-            <h2 class="text-lg font-semibold text-sys-text-primary flex items-center gap-2">
-              <mat-icon class="text-primary">monitor_heart</mat-icon>
-              Live Experiments
-            </h2>
-            @if (runningCount() > 0) {
-              <span class="flex items-center gap-2 text-sm font-medium text-green-400 bg-green-400/10 px-3 py-1 rounded-full border border-green-400/20">
-                <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                {{ runningCount() }} Active
-              </span>
-            }
+        <section class="lg:col-span-2 praxis-card">
+          <div class="card-header border-b border-[var(--theme-border)] bg-[var(--mat-sys-surface-variant)]">
+            <div class="flex justify-between items-center w-full">
+              <h2 class="text-lg font-semibold text-sys-text-primary flex items-center gap-2">
+                <mat-icon class="text-primary">monitor_heart</mat-icon>
+                Live Experiments
+              </h2>
+              @if (runningCount() > 0) {
+                <span class="flex items-center gap-2 text-sm font-medium text-green-400 bg-green-400/10 px-3 py-1 rounded-full border border-green-400/20">
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                  {{ runningCount() }} Active
+                </span>
+              }
+            </div>
           </div>
 
-          <div class="p-4">
+          <div class="card-content">
             @if (hasRunningExperiments()) {
               @for (run of currentRuns(); track run.id) {
-                <div class="group relative bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-xl p-4 mb-3 hover:bg-[var(--mat-sys-surface-variant)] hover:border-[var(--theme-border)] transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer" 
-                     [class.border-green-500-30]="run.status === 'running'"
+                <div class="praxis-card-min group cursor-pointer mb-3 hover:bg-[var(--mat-sys-surface-variant)] transition-all" 
                      routerLink="/app/run"
                      matTooltip="View run details">
                   <div class="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 class="font-semibold text-sys-text-primary group-hover:text-primary transition-colors">{{ run.name }}</h3>
-                      <span class="text-sm text-sys-text-secondary">{{ run.protocolName }}</span>
+                    <div class="min-w-0">
+                      <h3 class="font-semibold text-sys-text-primary group-hover:text-primary transition-colors truncate">{{ run.name }}</h3>
+                      <span class="text-xs text-sys-text-secondary truncate block">{{ run.protocolName }}</span>
                     </div>
-                    <mat-chip [class]="getStatusClass(run.status) + ' !border-0 !min-h-[24px] !text-xs !font-bold uppercase tracking-wider'">
+                    <span [class]="getStatusClass(run.status) + ' px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider'">
                       {{ run.status }}
-                    </mat-chip>
+                    </span>
                   </div>
 
                   @if (run.status === 'running') {
                     <div class="flex items-center gap-4 mb-3">
-                      <mat-progress-bar mode="determinate" [value]="run.progress" class="flex-1 rounded-full overflow-hidden !h-2"></mat-progress-bar>
-                      <span class="text-sm font-bold text-primary min-w-[3rem] text-right">{{ run.progress }}%</span>
+                      <mat-progress-bar mode="determinate" [value]="run.progress" class="flex-1 rounded-full overflow-hidden !h-1.5"></mat-progress-bar>
+                      <span class="text-xs font-bold text-primary min-w-[2.5rem] text-right">{{ run.progress }}%</span>
                     </div>
                   }
 
-                  <div class="flex justify-between items-center text-sm text-sys-text-tertiary group-hover:text-sys-text-secondary transition-colors">
+                  <div class="flex justify-between items-center text-xs text-sys-text-tertiary">
                     <span class="flex items-center gap-1.5">
-                      <mat-icon class="!w-4 !h-4 !text-[16px]">schedule</mat-icon>
+                      <mat-icon class="!w-3.5 !h-3.5 !text-[14px]">schedule</mat-icon>
                       Started {{ formatTimeAgo(run.startedAt) }}
                     </span>
-                    @if (run.status === 'running') {
-                      <button mat-icon-button class="!text-sys-text-tertiary hover:!text-primary transition-colors">
-                        <mat-icon>visibility</mat-icon>
-                      </button>
-                    }
+                    <mat-icon class="!w-4 !h-4 !text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">visibility</mat-icon>
                   </div>
                 </div>
               }
             } @else {
-              <div class="flex flex-col items-center justify-center py-16 text-sys-text-tertiary">
-                <div class="w-16 h-16 rounded-full bg-[var(--mat-sys-surface-variant)] flex items-center justify-center mb-4">
-                  <mat-icon class="!w-8 !h-8 !text-[32px] opacity-50">science</mat-icon>
-                </div>
+              <div class="flex flex-col items-center justify-center py-12 text-sys-text-tertiary opacity-60">
+                <mat-icon class="!w-16 !h-16 !text-[64px] mb-4">science</mat-icon>
                 <p class="mb-4 text-center">No experiments running right now</p>
-                <a mat-stroked-button class="!border-primary !text-primary hover:!bg-primary/10 transition-all" routerLink="/app/run">Start a Protocol</a>
+                <a mat-stroked-button class="!border-primary !text-primary hover:!bg-primary/10" routerLink="/app/run">Start a Protocol</a>
               </div>
             }
           </div>
         </section>
 
-        <!-- Right Column (Activity & Links) -->
         <div class="flex flex-col gap-6">
           <!-- Recent Activity -->
-          <section class="bg-surface border border-[var(--theme-border)] rounded-3xl overflow-hidden backdrop-blur-xl">
-            <div class="p-5 border-b border-[var(--theme-border)] flex justify-between items-center bg-[var(--mat-sys-surface-variant)]">
-              <h2 class="text-lg font-semibold text-sys-text-primary flex items-center gap-2">
-                <mat-icon class="text-blue-400">history</mat-icon>
-                Recent Activity
-              </h2>
-              <a mat-button class="!text-sys-text-secondary hover:!text-sys-text-primary" routerLink="/app/monitor">View All</a>
+          <section class="praxis-card">
+            <div class="card-header border-b border-[var(--theme-border)] bg-[var(--mat-sys-surface-variant)]">
+              <div class="flex justify-between items-center w-full">
+                <h2 class="text-lg font-semibold text-sys-text-primary flex items-center gap-2">
+                  <mat-icon class="text-blue-400">history</mat-icon>
+                  Recent Activity
+                </h2>
+                <a mat-button class="!text-sys-text-secondary hover:!text-sys-text-primary" routerLink="/app/monitor">View All</a>
+              </div>
             </div>
 
-            <div class="p-2">
+            <div class="card-content pt-2">
               @if (recentRuns().length > 0) {
                 @for (run of recentRuns(); track run.id) {
-                  <a class="flex items-center gap-3 p-3 hover:bg-[var(--mat-sys-surface-variant)] rounded-xl transition-all cursor-pointer group no-underline hover:shadow-md hover:-translate-y-0.5"
+                  <a class="flex items-center gap-3 p-3 hover:bg-[var(--mat-sys-surface-variant)] rounded-xl transition-all cursor-pointer group no-underline"
                      [routerLink]="['/app/monitor', run.id]"
                      [matTooltip]="'View run details'"
                      matTooltipPosition="left">
@@ -220,13 +223,21 @@ interface RecentRun {
                     <mat-icon class="!text-sys-text-tertiary !w-4 !h-4 !text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</mat-icon>
                   </a>
                 }
+                <div class="px-1 pt-3">
+                  <button mat-stroked-button (click)="clearDemoRuns()" class="!rounded-xl w-full !text-sys-text-tertiary hover:!text-sys-text-primary transition-colors">
+                    <mat-icon class="!w-4 !h-4 !text-[16px]">delete_sweep</mat-icon>
+                    Clear Demo Runs
+                  </button>
+                </div>
               } @else {
-                <div class="p-8 text-center text-sys-text-tertiary">
+                <div class="p-8 text-center text-sys-text-tertiary opacity-60">
+                  <mat-icon class="!w-12 !h-12 !text-[48px] mb-2">history</mat-icon>
                   <p>No recent activity</p>
                 </div>
               }
             </div>
           </section>
+        </div>
       </div>
     </div>
   `,
@@ -308,14 +319,24 @@ export class HomeComponent implements OnInit, OnDestroy {
     );
   }
 
+  clearDemoRuns() {
+    this.recentRuns.set([]);
+    localStorage.setItem('praxis_demo_runs_cleared', 'true');
+  }
+
   private loadRuns() {
+    if (localStorage.getItem('praxis_demo_runs_cleared') === 'true') {
+      this.recentRuns.set([]);
+      return;
+    }
+
     // Simulated recent runs for browser mode
-    // In production, this would come from a runs API
+    // Using realistic names from bundled protocols
     this.recentRuns.set([
       {
         id: '1',
-        name: 'Serial Dilution Run #42',
-        protocolName: 'Serial Dilution',
+        name: 'PCR Prep Run #12',
+        protocolName: 'PCR Prep (96-well)',
         status: 'completed',
         progress: 100,
         startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
@@ -323,8 +344,8 @@ export class HomeComponent implements OnInit, OnDestroy {
       },
       {
         id: '2',
-        name: 'PCR Setup Batch 7',
-        protocolName: 'PCR Setup',
+        name: 'Cell Culture Feed Batch A',
+        protocolName: 'Cell Culture Feed (24-well)',
         status: 'completed',
         progress: 100,
         startedAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
@@ -332,8 +353,8 @@ export class HomeComponent implements OnInit, OnDestroy {
       },
       {
         id: '3',
-        name: 'Cell Culture Transfer',
-        protocolName: 'Cell Transfer',
+        name: 'System Calibration',
+        protocolName: 'Daily System Maintenance',
         status: 'failed',
         progress: 67,
         startedAt: new Date(Date.now() - 8 * 60 * 60 * 1000),

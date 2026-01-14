@@ -103,7 +103,7 @@
 
 ## F. Protocol Execution & Run Protocol
 
-### F.1 Well Arguments Duplication
+### F.1 Well Arguments Duplication [DONE]
 
 **Issue:** Well selection shows in Parameters step AND Well Selection step.  
 **Specified Solution:** Remove from Parameters. Show in protocol summary screen after selection.

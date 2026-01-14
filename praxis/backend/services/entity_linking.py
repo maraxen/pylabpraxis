@@ -5,8 +5,8 @@ Machine, Resource, and Deck, ensuring consistency and proper bidirectional relat
 the database.
 """
 
-import uuid
 import gc
+import uuid
 from functools import partial
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -16,8 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from praxis.backend.models import (
   Machine,
   MachineStatusEnum,
-  ResourceDefinition,
   Resource,
+  ResourceDefinition,
   ResourceStatusEnum,
 )
 from praxis.backend.models.enums import AssetType

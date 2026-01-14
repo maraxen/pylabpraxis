@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.domain.resource import (
   Resource as Resource,
+)
+from praxis.backend.models.domain.resource import (
   ResourceDefinition as ResourceDefinition,
 )
 

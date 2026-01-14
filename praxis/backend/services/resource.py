@@ -10,14 +10,17 @@ from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.attributes import flag_modified
+from sqlmodel import SQLModel
 
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.resource import (
   Resource as Resource,
+)
+from praxis.backend.models.domain.resource import (
   ResourceCreate,
   ResourceUpdate,
 )
 from praxis.backend.models.enums.resource import ResourceStatusEnum
-from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
@@ -26,7 +29,6 @@ from praxis.backend.services.utils.query_builder import (
   apply_specific_id_filters,
 )
 from praxis.backend.utils.db import Base
-from sqlmodel import SQLModel
 from praxis.backend.utils.db_decorator import handle_db_transaction
 from praxis.backend.utils.logging import get_logger
 

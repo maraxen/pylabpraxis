@@ -21,8 +21,8 @@ from collections.abc import Callable
 from pathlib import Path
 
 from praxis.backend.models import (
-  FunctionProtocolDefinitionCreate,
   FunctionProtocolDefinition,
+  FunctionProtocolDefinitionCreate,
 )
 from praxis.backend.utils.logging import get_logger
 

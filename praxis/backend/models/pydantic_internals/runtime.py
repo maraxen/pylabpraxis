@@ -5,8 +5,8 @@ from typing import Any
 from pydantic import UUID7, ConfigDict
 
 from praxis.backend.models.domain.machine import MachineDefinition
-from praxis.backend.models.domain.resource import ResourceDefinition
 from praxis.backend.models.domain.protocol import AssetRequirement as AssetRequirementModel
+from praxis.backend.models.domain.resource import ResourceDefinition
 from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
 
 

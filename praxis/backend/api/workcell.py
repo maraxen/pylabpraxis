@@ -8,11 +8,11 @@ from fastapi import APIRouter
 
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
 from praxis.backend.models.domain.workcell import (
+  Workcell,
   WorkcellCreate,
   WorkcellRead,
   WorkcellUpdate,
 )
-from praxis.backend.models.domain.workcell import Workcell
 from praxis.backend.services.workcell import WorkcellService
 
 router = APIRouter()

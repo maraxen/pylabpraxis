@@ -14,14 +14,8 @@
  */
 
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Observable, of, map, forkJoin } from 'rxjs';
 import { SqliteService } from '../services/sqlite.service';
-
-// Import mock data
-import { MOCK_PROTOCOL_RUNS } from '../../../assets/browser-data/protocol-runs';
-import { MOCK_RESOURCES, MOCK_RESOURCE_DEFINITIONS } from '../../../assets/browser-data/resources';
-import { MOCK_MACHINES } from '../../../assets/browser-data/machines';
-import { PLR_RESOURCE_DEFINITIONS, PLR_MACHINE_DEFINITIONS } from '../../../assets/browser-data/plr-definitions';
 
 // Singleton instance for non-DI contexts
 let _sqliteServiceInstance: SqliteService | null = null;
@@ -61,16 +55,19 @@ export class BrowserMockRouter {
 
         // Protocol run queue - return active/running runs
         if (url.includes('/protocols/runs/queue') && method === 'GET') {
-            const activeRuns = MOCK_PROTOCOL_RUNS.filter(r =>
-                ['PENDING', 'PREPARING', 'QUEUED', 'RUNNING'].includes(r.status)
-            ).map(r => ({
-                accession_id: r.accession_id,
-                name: r.protocol_name,
-                status: r.status,
-                created_at: r.created_at,
-                protocol_name: r.protocol_name,
-            }));
-            return of(activeRuns) as Observable<T>;
+            return db.getProtocolRuns().pipe(
+                map(runs => {
+                    return runs.filter((r: any) =>
+                        ['PENDING', 'PREPARING', 'QUEUED', 'RUNNING'].includes(r.status)
+                    ).map((r: any) => ({
+                        accession_id: r.accession_id,
+                        name: r.name || r.protocol_name,
+                        status: r.status,
+                        created_at: r.created_at,
+                        protocol_name: r.name || r.protocol_name,
+                    }));
+                })
+            ) as Observable<T>;
         }
 
         // Protocol run records (history) - return all runs for pagination
@@ -78,37 +75,42 @@ export class BrowserMockRouter {
             const recordMatch = url.match(/\/protocols\/runs\/records\/([a-f0-9-]+)$/);
             if (recordMatch) {
                 const runId = recordMatch[1];
-                const run = MOCK_PROTOCOL_RUNS.find(r => r.accession_id === runId);
-                if (run) {
-                    return of({
-                        ...run,
-                        name: run.protocol_name,
-                        start_time: (run as Record<string, unknown>)['started_at'],
-                        end_time: (run as Record<string, unknown>)['completed_at'],
-                        duration_ms: run.status === 'COMPLETED' ? 262000 : null,
-                        logs: [
-                            'Starting protocol execution...',
-                            'Initializing liquid handler...',
-                            'Loading deck configuration...',
-                            `Executing ${run.protocol_name}...`,
-                            run.status === 'COMPLETED' ? 'Protocol completed successfully.' : 'Protocol execution in progress...',
-                        ],
-                    }) as Observable<T>;
-                }
-                return of(null) as Observable<T>;
+                return db.getProtocolRun(runId).pipe(
+                    map(run => {
+                        if (run) {
+                            return {
+                                ...run,
+                                name: run.name || run.protocol_name,
+                                start_time: run.created_at, // Approximation if started_at missing
+                                end_time: run.updated_at,
+                                duration_ms: run.status === 'COMPLETED' ? 262000 : null,
+                                logs: [
+                                    'Starting protocol execution...',
+                                    'Initializing liquid handler...',
+                                    'Loading deck configuration...',
+                                    `Executing ${run.name || run.protocol_name}...`,
+                                    run.status === 'COMPLETED' ? 'Protocol completed successfully.' : 'Protocol execution in progress...',
+                                ],
+                            };
+                        }
+                        return null;
+                    })
+                ) as Observable<T>;
             }
             // Return list with consistent field names
-            return of(MOCK_PROTOCOL_RUNS.map(r => ({
-                accession_id: r.accession_id,
-                name: r.protocol_name,
-                status: r.status,
-                created_at: r.created_at,
-                start_time: (r as Record<string, unknown>)['started_at'],
-                end_time: (r as Record<string, unknown>)['completed_at'],
-                duration_ms: r.status === 'COMPLETED' ? 262000 : null,
-                protocol_name: r.protocol_name,
-                protocol_accession_id: r.protocol_definition_accession_id,
-            }))) as Observable<T>;
+            return db.getProtocolRuns().pipe(
+                map(runs => runs.map((r: any) => ({
+                    accession_id: r.accession_id,
+                    name: r.name || r.protocol_name,
+                    status: r.status,
+                    created_at: r.created_at,
+                    start_time: r.created_at,
+                    end_time: r.updated_at,
+                    duration_ms: r.status === 'COMPLETED' ? 262000 : null,
+                    protocol_name: r.name || r.protocol_name,
+                    protocol_accession_id: r.top_level_protocol_definition_accession_id,
+                })))
+            ) as Observable<T>;
         }
 
         // Protocol runs - return array from SQLite (legacy fallback)
@@ -120,76 +122,93 @@ export class BrowserMockRouter {
         const singleRunMatch = url.match(/\/protocols\/runs\/([a-f0-9-]+)$/);
         if (singleRunMatch && method === 'GET') {
             const runId = singleRunMatch[1];
-            const run = MOCK_PROTOCOL_RUNS.find(r => r.accession_id === runId);
-            if (run) {
-                return of({
-                    ...run,
-                    name: run.protocol_name,
-                    start_time: (run as Record<string, unknown>)['started_at'],
-                    end_time: (run as Record<string, unknown>)['completed_at'],
-                    duration_ms: run.status === 'COMPLETED' ? 262000 : null,
-                }) as Observable<T>;
-            }
-            return of(null) as Observable<T>;
+            return db.getProtocolRun(runId).pipe(
+                map(run => {
+                    if (run) {
+                        return {
+                            ...run,
+                            name: run.name || run.protocol_name,
+                            start_time: run.created_at,
+                            end_time: run.updated_at,
+                            duration_ms: run.status === 'COMPLETED' ? 262000 : null,
+                        };
+                    }
+                    return null;
+                })
+            ) as Observable<T>;
         }
 
         // PLR Resource type definitions (comprehensive list)
         if (url.includes('/resources/type-definitions') && method === 'GET') {
-            return of(PLR_RESOURCE_DEFINITIONS) as Observable<T>;
+            return db.getResourceDefinitions() as Observable<T>;
         }
 
         // Resource definitions (for AssetSelector filtering)
         if (url.includes('/resources/definitions') && method === 'GET') {
-            return of([...MOCK_RESOURCE_DEFINITIONS, ...PLR_RESOURCE_DEFINITIONS]) as Observable<T>;
+            return db.getResourceDefinitions() as Observable<T>;
         }
 
-        // Resources - return array directly
+        // Resources - return array from database
         if (url.includes('/resources') && !url.includes('type-definitions') && !url.includes('definitions') && method === 'GET') {
-            return of(MOCK_RESOURCES) as Observable<T>;
+            return db.getResources() as Observable<T>;
         }
 
         // PLR Machine type definitions (comprehensive list)
         if (url.includes('/machines/type-definitions') && method === 'GET') {
-            return of(PLR_MACHINE_DEFINITIONS) as Observable<T>;
+            return db.getMachineDefinitions() as Observable<T>;
         }
 
-        // Machines - return array directly
+        // Machines - return array from database
         if (url.includes('/machines') && !url.includes('type-definitions') && !url.includes('definitions') && method === 'GET') {
-            return of(MOCK_MACHINES) as Observable<T>;
+            return db.getMachines() as Observable<T>;
         }
 
         // Machine definitions
         if (url.includes('/machines/definitions') && method === 'GET') {
-            return of([...MOCK_MACHINES, ...PLR_MACHINE_DEFINITIONS]) as Observable<T>;
+            return db.getMachineDefinitions() as Observable<T>;
         }
 
         // Discovery - type definitions (trigger sync)
         if (url.includes('/discovery/sync-all') && method === 'POST') {
-            return of({
-                message: 'Browser mode - PLR definitions loaded',
-                synced: true,
-                resources: PLR_RESOURCE_DEFINITIONS.length,
-                machines: PLR_MACHINE_DEFINITIONS.length,
-            }) as Observable<T>;
+            return forkJoin({
+                resources: db.getResourceDefinitions(),
+                machines: db.getMachineDefinitions()
+            }).pipe(
+                map(({ resources, machines }) => ({
+                    message: 'Browser mode - PLR definitions loaded (SQLite)',
+                    synced: true,
+                    resources: resources.length,
+                    machines: machines.length,
+                }))
+            ) as Observable<T>;
         }
 
         // Discovery - get type definitions
         if (url.includes('/discovery/type-definitions') && method === 'GET') {
-            return of({
-                resources: PLR_RESOURCE_DEFINITIONS,
-                machines: PLR_MACHINE_DEFINITIONS,
-            }) as Observable<T>;
+            return forkJoin({
+                resources: db.getResourceDefinitions(),
+                machines: db.getMachineDefinitions()
+            }).pipe(
+                map(({ resources, machines }) => ({
+                    resources,
+                    machines
+                }))
+            ) as Observable<T>;
         }
 
         // Resource facets
         if (url.includes('/facets')) {
-            const categories = [...new Set(PLR_RESOURCE_DEFINITIONS.map(r => r.plr_category))];
-            const vendors = [...new Set(PLR_RESOURCE_DEFINITIONS.map(r => r.vendor).filter(Boolean))];
-            return of({
-                category: categories,
-                brand: vendors,
-                vendor: vendors,
-            }) as Observable<T>;
+            return db.getResourceDefinitions().pipe(
+                map(defs => {
+                    const categories = [...new Set(defs.map((r: any) => r.plr_category))];
+                    const vendors = [...new Set(defs.map((r: any) => r.vendor).filter(Boolean))];
+                    return {
+                        category: categories,
+                        brand: vendors,
+                        vendor: vendors,
+                    };
+                })
+            ) as Observable<T>;
         }
 
         // User info
@@ -222,11 +241,13 @@ export class BrowserMockRouter {
 
         // Workcell
         if (url.includes('/workcell') && method === 'GET') {
-            return of({
-                name: 'Default Workcell',
-                status: 'AVAILABLE',
-                machines: MOCK_MACHINES.slice(0, 2),
-            }) as Observable<T>;
+            return db.getMachines().pipe(
+                map(machines => ({
+                    name: 'Default Workcell',
+                    status: 'AVAILABLE',
+                    machines: machines.slice(0, 2),
+                }))
+            ) as Observable<T>;
         }
 
         // Scheduler - queue
@@ -241,52 +262,56 @@ export class BrowserMockRouter {
 
         // Hardware discovery
         if (url.includes('/hardware/discover') && method === 'GET') {
-            const simulators = PLR_MACHINE_DEFINITIONS
-                .filter(m => m.fqn.includes('simulation') || (m.properties_json as Record<string, boolean>)?.['simulated'])
-                .map(m => ({
-                    id: `sim-${m.accession_id}`,
-                    name: m.name,
-                    connection_type: 'simulator',
-                    status: 'available',
-                    manufacturer: m.vendor || 'PyLabRobot',
-                    model: m.name,
-                    plr_backend: m.fqn,
-                    properties: m.properties_json,
-                }));
+            return db.getMachineDefinitions().pipe(
+                map(defs => {
+                    const simulators = defs
+                        .filter((m: any) => m.fqn.includes('simulation') || m.properties_json?.['simulated'])
+                        .map((m: any) => ({
+                            id: `sim-${m.accession_id}`,
+                            name: m.name,
+                            connection_type: 'simulator',
+                            status: 'available',
+                            manufacturer: m.vendor || 'PyLabRobot',
+                            model: m.name,
+                            plr_backend: m.fqn,
+                            properties: m.properties_json,
+                        }));
 
-            const simulatedDevices = [
-                ...simulators,
-                {
-                    id: 'sim-ot2',
-                    name: 'Opentrons OT-2 (Simulated)',
-                    connection_type: 'network',
-                    status: 'available',
-                    ip_address: '192.168.1.100',
-                    manufacturer: 'Opentrons',
-                    model: 'OT-2',
-                    plr_backend: 'pylabrobot.liquid_handling.backends.opentrons.OT2',
-                    properties: { simulated: true },
-                },
-                {
-                    id: 'sim-star',
-                    name: 'Hamilton STAR (Simulated)',
-                    connection_type: 'serial',
-                    status: 'available',
-                    port: '/dev/ttyUSB0',
-                    manufacturer: 'Hamilton',
-                    model: 'STAR',
-                    plr_backend: 'pylabrobot.liquid_handling.backends.hamilton.STAR',
-                    properties: { simulated: true },
-                },
-            ];
+                    const simulatedDevices = [
+                        ...simulators,
+                        {
+                            id: 'sim-ot2',
+                            name: 'Opentrons OT-2 (Simulated)',
+                            connection_type: 'network',
+                            status: 'available',
+                            ip_address: '192.168.1.100',
+                            manufacturer: 'Opentrons',
+                            model: 'OT-2',
+                            plr_backend: 'pylabrobot.liquid_handling.backends.opentrons.OT2',
+                            properties: { simulated: true },
+                        },
+                        {
+                            id: 'sim-star',
+                            name: 'Hamilton STAR (Simulated)',
+                            connection_type: 'serial',
+                            status: 'available',
+                            port: '/dev/ttyUSB0',
+                            manufacturer: 'Hamilton',
+                            model: 'STAR',
+                            plr_backend: 'pylabrobot.liquid_handling.backends.hamilton.STAR',
+                            properties: { simulated: true },
+                        },
+                    ];
 
-            return of({
-                devices: simulatedDevices,
-                total: simulatedDevices.length,
-                serial_count: 1,
-                simulator_count: simulators.length,
-                network_count: 1,
-            }) as Observable<T>;
+                    return {
+                        devices: simulatedDevices,
+                        total: simulatedDevices.length,
+                        serial_count: 1,
+                        simulator_count: simulators.length,
+                        network_count: 1,
+                    };
+                })
+            ) as Observable<T>;
         }
 
         // Hardware connection
@@ -317,21 +342,24 @@ export class BrowserMockRouter {
 
         // Protocol compatibility check
         if (url.match(/\/protocols\/[a-f0-9-]+\/compatibility$/) && method === 'GET') {
-            const liquidHandlers = MOCK_MACHINES.filter(m => m.type === 'liquid_handler');
-            const mockCompatibility = liquidHandlers.map(machine => ({
-                machine: {
-                    accession_id: machine.accession_id,
-                    name: machine.name,
-                    machine_type: machine.type || 'liquid_handler',
-                },
-                compatibility: {
-                    is_compatible: true,
-                    missing_capabilities: [],
-                    matched_capabilities: ['liquid_handling', 'pipetting'],
-                    warnings: [],
-                }
-            }));
-            return of(mockCompatibility) as Observable<T>;
+            return db.getMachines().pipe(
+                map(machines => {
+                    const liquidHandlers = machines.filter((m: any) => m.asset_type === 'liquid_handler' || m.asset_type === 'machine'); // Broaden filer
+                    return liquidHandlers.map((machine: any) => ({
+                        machine: {
+                            accession_id: machine.accession_id,
+                            name: machine.name,
+                            machine_type: machine.asset_type || 'liquid_handler',
+                        },
+                        compatibility: {
+                            is_compatible: true,
+                            missing_capabilities: [],
+                            matched_capabilities: ['liquid_handling', 'pipetting'],
+                            warnings: [],
+                        }
+                    }));
+                })
+            ) as Observable<T>;
         }
 
         // Hardware REPL command

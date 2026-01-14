@@ -126,7 +126,7 @@ export interface ResourceDefinitionGroup {
                         {{ defGroup.isConsumable ? defGroup.activeCount : 1 }}
                       </span>
                     }
-                    @if (viewState().filters['show_discarded'] === true && defGroup.discardedCount > 0) {
+                    @if (viewState().filters['show_discarded']?.includes(true) && defGroup.discardedCount > 0) {
                       <span class="count discarded" [matTooltip]="getPropertyTooltip('depleted')">
                         ({{ defGroup.discardedCount }} discarded)
                       </span>
@@ -248,17 +248,19 @@ export interface ResourceDefinitionGroup {
       display: flex;
       align-items: center;
       padding: 12px 16px;
-      background: linear-gradient(to right, var(--sys-surface-container), var(--sys-surface-container-low));
-      border: 1px solid var(--sys-outline-variant);
-      border-radius: 8px;
+      // Premium surface gradient
+      background: linear-gradient(135deg, var(--mat-sys-surface) 0%, var(--mat-sys-surface-container-low) 100%);
+      border: 1px solid var(--theme-border);
+      border-radius: 12px; // Match standard
       cursor: pointer;
       transition: all 0.2s ease;
     }
 
     .definition-item:hover {
-      background: linear-gradient(to right, var(--sys-surface-container-high), var(--sys-surface-container));
+      background: linear-gradient(135deg, var(--mat-sys-surface-container-low) 0%, var(--mat-sys-surface-container) 100%);
       border-color: var(--sys-primary);
       transform: translateX(4px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
     .def-info {
@@ -266,11 +268,16 @@ export interface ResourceDefinitionGroup {
       display: flex;
       flex-direction: column;
       gap: 2px;
+      min-width: 0; // CRITICAL for truncation in flex
     }
 
     .def-name {
       font-weight: 500;
       font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--theme-text-primary);
     }
 
     .def-chips {
@@ -553,7 +560,7 @@ export class ResourceAccordionComponent implements OnInit {
       groups = groups.filter(g => categoryFilters.includes(g.category));
     }
 
-    const showDiscarded = state.filters['show_discarded'] === true;
+    const showDiscarded = state.filters['show_discarded']?.includes(true);
     const statusFilters = state.filters['status'] || [];
     const brandsFilters = state.filters['brands'] || [];
     const machineIdFilters = state.filters['machine_id'] || [];
@@ -727,7 +734,7 @@ export class ResourceAccordionComponent implements OnInit {
       data: {
         definition: defGroup.definition,
         instances: defGroup.instances,
-        showDiscarded: this.viewState().filters['show_discarded'] === true
+        showDiscarded: this.viewState().filters['show_discarded']?.includes(true)
       }
     });
   }

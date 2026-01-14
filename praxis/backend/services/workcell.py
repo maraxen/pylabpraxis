@@ -18,12 +18,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.workcell import (
   Workcell as Workcell,
+)
+from praxis.backend.models.domain.workcell import (
   WorkcellCreate,
   WorkcellUpdate,
 )
-from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
