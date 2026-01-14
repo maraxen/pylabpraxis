@@ -111,10 +111,12 @@ Captures lessons learned, specialized knowledge, and "gotchas" discovered during
 Use the **Jules** skill (`.agents/skills/jules-remote/`) to dispatch atomic coding tasks to Google's autonomous coding agent.
 
 ### When to Use
+
 - **Atomic Tasks**: Unit tests, single components, bug fixes with reproduction steps.
 - **New Files**: Creating services or components from scratch.
 
 ### Quick Workflow
+
 1. **Dispatch**: `jules new --session "Task Title" "Detailed Description..."`
 2. **List**: `jules remote list --session`
 3. **Review**: `jules remote pull --session <ID>` (downloads patch for review)
@@ -165,6 +167,15 @@ The `references/` directory maintains external documentation and best practices:
 - `architecture/` - System design decisions
 
 Use [templates/reference_document.md](templates/reference_document.md) to add new references.
+
+---
+
+## 📦 Archive System
+
+The `.agents/archive/` directory is used to store completed work and keep the main workspace clean.
+
+- **Automated Archiving**: Use the prompt in `.agents/archive/UPDATE_ARCHIVE.md` to consolidate completed prompts, summaries, and artifacts into `archive.tar.gz`.
+- **Manifest**: Check `.agents/archive/COMPRESSED_ARCHIVE.md` to see what is currently stored in the archive without unpacking it.
 
 ---
 
