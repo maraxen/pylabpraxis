@@ -22,7 +22,7 @@
 
 | ID | Issue | Group | Priority | Complexity | Status | Backlog Ref | Prompt |
 |----|-------|-------|----------|------------|--------|-------------|--------|
-| 1 | No protocols showing up | G | P1 | Medium | 🔴 | - | TBD |
+| 1 | No protocols showing up | G | P1 | Medium | ✅ | - | [G-01_protocols_not_loading.md](./G-01_protocols_not_loading.md) |
 | 2 | Simulated backend separation | C | P2 | Hard | 🟢 | [simulation.md](../../backlog/simulation.md) | TBD |
 | 3 | Add asset display: plates/tips on new lines | B | P3 | Easy | 🟢 | - | TBD |
 | 4 | Add resource: category dropdown vs chips | B | P3 | Easy | 🟢 | - | TBD |
@@ -45,8 +45,8 @@
 | 21 | Well selector smaller chips | E | P3 | Easy | 🟢 | - | TBD |
 | 22 | Well selector programmatic selection | E | P4 | Medium | 🔵 | - | - |
 | 23 | DataViz filter bar UI | H | P2 | Medium | 🟢 | [dataviz.md](../../backlog/dataviz.md) | TBD |
-| 24 | 404 on installation-production.md | G | P1 | Easy | 🟢 | - | TBD |
-| 25 | Mermaid/diagrams not rendering | G | P2 | Medium | 🟢 | [docs.md](../../backlog/docs.md) | TBD |
+| 24 | 404 on installation-production.md | G | P1 | Easy | ✅ | - | [G-02_docs_404_and_mermaid.md](./G-02_docs_404_and_mermaid.md) |
+| 25 | Mermaid/diagrams not rendering | G | P2 | Medium | ✅ | [docs.md](../../backlog/docs.md) | [G-02_docs_404_and_mermaid.md](./G-02_docs_404_and_mermaid.md) |
 | 26 | State inspection incomplete (dispense volume) | FF | P2 | Medium | ✅ | - | TBD |
 | 27 | Input parameters display in monitor | FF | P2 | Medium | ✅ | - | TBD |
 | 28 | Playground loading skeleton theme | E | P3 | Easy | 🟢 | - | TBD |
@@ -55,7 +55,7 @@
 | 31 | Unite inventory adder with protocol selector | E | P2 | Medium | 🟢 | - | TBD |
 | 32 | Stepper themed CSS | E | P3 | Easy | 🟢 | - | TBD |
 | 33 | Settings headers to left | B | P3 | Easy | 🟢 | - | TBD |
-| 34 | Tutorial end reset + audit | G | P2 | Medium | 🟢 | [docs.md](../../backlog/docs.md) | TBD |
+| 34 | Tutorial end reset + audit | G | P2 | Medium | ✅ | [docs.md](../../backlog/docs.md) | [G-P1_tutorial_audit.md](./G-P1_tutorial_audit.md) / [G-03_fix_tutorial_completion.md](./G-03_fix_tutorial_completion.md) |
 
 ---
 
@@ -65,9 +65,9 @@
 
 | ID | Issue | Status |
 |----|-------|--------|
-| 1 | No protocols showing up | 🔴 |
+| 1 | No protocols showing up | ✅ |
 | 18 | Shared view controls component | 🟢 |
-| 24 | 404 on installation-production.md | 🟢 |
+| 24 | 404 on installation-production.md | ✅ |
 | 29 | WebSerial NameError | 🔴 |
 
 ### P2 - High Priority (20 items)
@@ -86,12 +86,12 @@
 | 19 | Simulated deck states | 🟢 |
 | 20 | Workcell menu | 🔴 |
 | 23 | DataViz filter bar | 🟢 |
-| 25 | Mermaid diagrams | 🟢 |
-| 26 | State inspection | 🟢 |
-| 27 | Input params display | 🟢 |
+| 25 | Mermaid diagrams | ✅ |
+| 26 | State inspection | ✅ |
+| 27 | Input params display | ✅ |
 | 30 | Playground categories | 🟢 |
 | 31 | Unite inventory/protocol | 🟢 |
-| 34 | Tutorial audit | 🟢 |
+| 34 | Tutorial audit | ✅ |
 
 ### P3 - Medium Priority (9 items)
 

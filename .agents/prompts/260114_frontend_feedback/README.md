@@ -176,10 +176,10 @@ After review approval:
 | [README.md](README.md) | 📝 Draft | This file |
 | [ISSUE_TABLE.md](ISSUE_TABLE.md) | 📝 Draft | Editable issue tracking table |
 | **Group A: View Controls Standardization** | | |
-| [A-P1_spatial_view_ux_analysis.md](A-P1_spatial_view_ux_analysis.md) | 🟢 Completed | P3 Planning: Spatial View UX Analysis |
+| [A-P1_spatial_view_ux_analysis.md](A-P1_spatial_view_ux_analysis.md) | ✅ Completed | P3 Planning: Spatial View UX Analysis |
 | [A-01_shared_view_controls.md](A-01_shared_view_controls.md) | 🟢 Ready | P1 Implementation: Shared View Controls Component |
 | [A-02_add_dialog_unification.md](A-02_add_dialog_unification.md) | ✅ Completed | P2 Implementation: Unified Add Asset/Machine Dialog |
-| [A-03_quick_add_autocomplete.md](A-03_quick_add_autocomplete.md) | 🟢 Ready | P2 Implementation: Quick Add Autocomplete |
+| [A-03_quick_add_autocomplete.md](A-03_quick_add_autocomplete.md) | ✅ Completed | P2 Implementation: Quick Add Autocomplete |
 | [A-04_adopt_shared_controls.md](A-04_adopt_shared_controls.md) | 🟢 Ready | P2 Implementation: Adopt Shared Controls Across Tabs |
 | **Group B: UI/UX Consistency** | | |
 | *(Prompts pending A completion)* | ⏳ Blocked | B-01 and B-02 will be generated after Group A |
@@ -189,15 +189,16 @@ After review approval:
 | [D-01_monitor_state_and_parameters.md](D-01_monitor_state_and_parameters.md) | ✅ Completed | P2 Implementation: Monitor State & Parameter Display |
 | **Group E: Playground Improvements** | | |
 | [E-01_webserial_fix.md](E-01_webserial_fix.md) | 🟢 Ready | P1 Bug Fix: WebSerial NameError |
-| [E-02_playground_theming.md](E-02_playground_theming.md) | 🟢 Ready | P3 Implementation: Playground Theming Quick Wins |
-| [E-P1_inventory_planning.md](E-P1_inventory_planning.md) | 🟢 Ready | P2 Planning: Inventory/Asset Selector UX Design |
+| [E-02_playground_theming.md](E-02_playground_theming.md) | ✅ Completed | P3 Implementation: Playground Theming Quick Wins |
+| [E-P1_inventory_planning.md](E-P1_inventory_planning.md) | ✅ Completed | P2 Planning: Inventory/Asset Selector UX Design. See [artifacts/inventory_ux_design.md](../../artifacts/inventory_ux_design.md) |
 | **Group F: Workcell & Deck** | | |
 | [F-P1_workcell_ux_planning.md](F-P1_workcell_ux_planning.md) | ✅ Completed | P2 Planning: Workcell UX Audit & Redesign. See [artifacts/](artifacts/) |
 | [F-01_simulated_deck_states.md](F-01_simulated_deck_states.md) | 🟢 Ready | P2 Implementation: Simulated Deck States (unblocked by F-P1) |
 | **Group G: Documentation & Rendering** | | |
-| [G-01_protocols_not_loading.md](G-01_protocols_not_loading.md) | 🟢 Ready | P1 Investigation: Diagnose protocol loading in browser mode |
-| [G-02_docs_404_and_mermaid.md](G-02_docs_404_and_mermaid.md) | 🟢 Ready | P1/P2 Implementation: Fix 404 for docs and mermaid rendering |
-| [G-P1_tutorial_audit.md](G-P1_tutorial_audit.md) | 🟢 Ready | P2 Planning: Audit tutorial accuracy and reset issue |
+| [G-01_protocols_not_loading.md](G-01_protocols_not_loading.md) | ✅ Completed | P1 Investigation: Diagnose protocol loading in browser mode |
+| [G-02_docs_404_and_mermaid.md](G-02_docs_404_and_mermaid.md) | ✅ Completed | P1/P2 Implementation: Fix 404 for docs and mermaid rendering |
+| [G-P1_tutorial_audit.md](G-P1_tutorial_audit.md) | ✅ Completed | P2 Planning: Audit tutorial accuracy and reset issue |
+| [G-03_fix_tutorial_completion.md](G-03_fix_tutorial_completion.md) | ✅ Completed | P2 Implementation: Fix tutorial completion UI |
 | **Group H: Data Visualization** | | |
 | [H-01_dataviz_filter_bar.md](H-01_dataviz_filter_bar.md) | 🟢 Ready | P2 Implementation: DataViz Filter Bar Redesign |
-| [H-02_realistic_sim_data.md](H-02_realistic_sim_data.md) | 🟢 Ready | P2 Implementation: Realistic Simulated Data |
+| [H-02_realistic_sim_data.md](H-02_realistic_sim_data.md) | ✅ Completed | P2 Implementation: Realistic Simulated Data |

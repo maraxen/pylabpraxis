@@ -112,6 +112,15 @@
 | Assets View Controls (Machines, Resources, Registry) | P2 | 2026-01-13 | Implemented unified `ViewControlsComponent`, refactored all Assets tabs for standardized filtering, sorting, and grouping |
 | Asset Filtering / Registry UI Redesign | P1/P2 | 2026-01-13 | Standardized filtering and resolved browser-mode registry errors |
 | Add Asset Dialog Unification | P2 | 2026-01-13 | Unified 'Add Machine' and 'Add Resource' into a single stepper-based flow |
+| Realistic Simulated Data Visualization | P2 | 2026-01-14 | Refactored DataViz to use persistent SQLite data with realistic transfer profiles |
+| Documentation Fixes (404/Mermaid) | P1/P2 | 2026-01-14 | Resolved 404 links, added Mermaid rendering, split installation guides |
+| Protocol Loading (Browser Mode) | P1 | 2026-01-14 | Fixed protocol loading in browser mode and updated intercepts |
+| Tutorial UI & State Fixes | P2 | 2026-01-14 | Audited tutorial accuracy and updated Settings UI for completion status |
+| Quick Add Autocomplete | P2 | 2026-01-14 | Implemented autocomplete for fast asset/machine selection in add dialog |
+| Playground Theming Quick Wins | P3 | 2026-01-14 | Standardized stepper, chip sizes, and skeleton loading with theme tokens |
+| Workcell UX Planning | P2 | 2026-01-14 | Completed comprehensive UX audit and redesign plan for the Workcell view |
+| Inventory/Asset Selector Design | P2 | 2026-01-14 | Planned unification of playground inventory and protocol asset selection |
+| Spatial View UX Analysis | P3 | 2026-01-14 | Analyzed purpose and value of Spatial View for future integration |
 
 ---
 
