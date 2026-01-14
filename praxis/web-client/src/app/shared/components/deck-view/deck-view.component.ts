@@ -14,6 +14,7 @@ interface TooltipState {
   y: number;
   resource: PlrResource | null;
   parent: PlrResource | null;
+  index?: number;
 }
 
 @Component({
@@ -51,7 +52,7 @@ interface TooltipState {
       }
     
       <!-- Render the root resource and its children recursively -->
-      <ng-container *ngTemplateOutlet="resourceTpl; context: { $implicit: resource(), parent: null }"></ng-container>
+      <ng-container *ngTemplateOutlet="resourceTpl; context: { $implicit: resource(), parent: null, index: -1 }"></ng-container>
     
       <!-- Hover Tooltip -->
       @if (tooltip().visible && tooltip().resource) {
@@ -61,25 +62,25 @@ interface TooltipState {
           <div class="tooltip-header">{{ tooltip().resource!.name }}</div>
           <div class="tooltip-type">{{ tooltip().resource!.type }}</div>
           <div class="tooltip-dims">{{ tooltip().resource!.size_x | number:'1.1-1' }} × {{ tooltip().resource!.size_y | number:'1.1-1' }} mm</div>
-          @if (hasLiquid(tooltip().resource!)) {
-            <div class="tooltip-volume">Volume: {{ getVolume(tooltip().resource!) | number:'1.0-1' }} µL</div>
+          @if (hasLiquid(tooltip().resource!, tooltip().parent, tooltip().index)) {
+            <div class="tooltip-volume">Volume: {{ getVolume(tooltip().resource!, tooltip().parent, tooltip().index) | number:'1.0-1' }} µL</div>
           }
-          @if (hasTip(tooltip().resource!, tooltip().parent)) {
+          @if (hasTip(tooltip().resource!, tooltip().parent, tooltip().index)) {
             <div class="tooltip-tip">Tip: Present</div>
           }
         </div>
       }
     </div>
     
-    <ng-template #resourceTpl let-res let-parent="parent">
+    <ng-template #resourceTpl let-res let-parent="parent" let-index="index">
       <div class="resource-node"
         [title]="res.name"
         cdkDropList
         [cdkDropListDisabled]="!isGhost(res)"
         (cdkDropListDropped)="onDrop($event)"
-        (mouseenter)="onResourceHover($event, res, parent)"
+        (mouseenter)="onResourceHover($event, res, parent, index)"
         (mouseleave)="onResourceLeave()"
-        (click)="onResourceClick($event, res, parent)"
+        (click)="onResourceClick($event, res, parent, index)"
         [attr.data-type]="res.type"
         [style.left.px]="scaleLeft(res.location.x)"
         [style.bottom.px]="scaleBottom(res.location.y)"
@@ -97,12 +98,12 @@ interface TooltipState {
         [class.type-petridish]="isPetriDishType(res.type)"
         [class.type-tube]="isTubeType(res.type)"
         [class.type-adapter]="isPlateAdapterType(res.type)"
-        [class.has-liquid]="hasLiquid(res)"
-        [class.has-tip]="isWellOrSpot(res.type) && hasTip(res, parent)"
-        [class.empty]="isWellOrSpot(res.type) && isEmpty(res, parent)"
+        [class.has-liquid]="hasLiquid(res, parent, index)"
+        [class.has-tip]="isWellOrSpot(res.type) && hasTip(res, parent, index)"
+        [class.empty]="isWellOrSpot(res.type) && isEmpty(res, parent, index)"
         [class.is-selected]="selectedResource() === res"
-        [style.background]="hasLiquid(res) ? getLiquidStyle(res) : getCustomColor(res)"
-        [style.background-color]="!hasLiquid(res) ? getCustomColor(res) : null">
+        [style.background]="hasLiquid(res, parent, index) ? getLiquidStyle(res, parent, index) : getCustomColor(res)"
+        [style.background-color]="!hasLiquid(res, parent, index) ? getCustomColor(res) : null">
     
         <!-- Label for significant resources -->
         @if (shouldShowLabel(res)) {
@@ -112,8 +113,8 @@ interface TooltipState {
         }
     
         <!-- Recursively render children -->
-        @for (child of res.children; track child.name) {
-          <ng-container *ngTemplateOutlet="resourceTpl; context: { $implicit: child, parent: res }"></ng-container>
+        @for (child of res.children; track child.name; let i = $index) {
+          <ng-container *ngTemplateOutlet="resourceTpl; context: { $implicit: child, parent: res, index: i }"></ng-container>
         }
       </div>
     </ng-template>
@@ -488,19 +489,20 @@ export class DeckViewComponent {
     this.itemDropped.emit(event);
   }
 
-  onResourceHover(event: MouseEvent, res: PlrResource, parent: PlrResource | null) {
+  onResourceHover(event: MouseEvent, res: PlrResource, parent: PlrResource | null, index: number = -1) {
     if (res === this.resource()) return; // Don't show tooltip for root
     this.tooltip.set({
       visible: true,
       x: event.clientX,
       y: event.clientY,
       resource: res,
-      parent
+      parent,
+      index
     });
   }
 
   onResourceLeave() {
-    this.tooltip.set({ visible: false, x: 0, y: 0, resource: null, parent: null });
+    this.tooltip.set({ visible: false, x: 0, y: 0, resource: null, parent: null, index: undefined });
   }
 
   @HostListener('mousemove', ['$event'])
@@ -510,20 +512,19 @@ export class DeckViewComponent {
     }
   }
 
-  onResourceClick(event: MouseEvent, res: PlrResource, parent: PlrResource | null) {
+  onResourceClick(event: MouseEvent, res: PlrResource, parent: PlrResource | null, index: number = -1) {
     if (res === this.resource()) return; // Don't select root
     event.stopPropagation();
     this.selectedResource.set(res);
 
-    const state = this.getAllState(res);
     const details: PlrResourceDetails = {
       name: res.name,
       type: res.type,
       location: res.location,
       dimensions: { x: res.size_x, y: res.size_y, z: res.size_z },
-      volume: state?.volume,
+      volume: this.getVolume(res, parent, index),
       maxVolume: res.max_volume,
-      hasTip: this.hasTip(res, parent),
+      hasTip: this.hasTip(res, parent, index),
       parentName: parent?.name,
       slotId: res.slot_id
     };
@@ -662,20 +663,62 @@ export class DeckViewComponent {
 
   /* State Helpers */
 
-  hasLiquid(res: PlrResource): boolean {
+  /**
+   * Resolve volume from resource or parent state.
+   */
+  getVolume(res: PlrResource, parent: PlrResource | null = null, index: number = -1): number {
+    // 1. Direct state
     const s = this.getAllState(res);
-    return !!s && typeof s.volume === 'number' && s.volume > 0;
+    if (s?.volume !== undefined) return s.volume;
+
+    // 2. Parent state
+    if (parent) {
+      const parentState = this.getAllState(parent);
+      if (parentState && Array.isArray(parentState.volumes)) {
+        // Use provided index or fallback to indexOf
+        const idx = index >= 0 ? index : parent.children.indexOf(res);
+        if (idx >= 0 && idx < parentState.volumes.length) {
+          return parentState.volumes[idx] || 0;
+        }
+      }
+    }
+    return 0;
+  }
+
+  hasLiquid(res: PlrResource, parent: PlrResource | null = null, index: number = -1): boolean {
+    const vol = this.getVolume(res, parent, index);
+    if (vol > 0) return true;
+
+    // Check liquid mask if no specific volume found
+    if (parent) {
+      const parentState = this.getAllState(parent);
+      if (parentState?.liquid_mask) {
+         const idx = index >= 0 ? index : parent.children.indexOf(res);
+         // Optimization: We could cache decoded masks if needed
+         const numChildren = parent.children.length;
+         const liquids = this.decodeBitmask(parentState.liquid_mask, numChildren);
+         return idx >= 0 && idx < liquids.length ? liquids[idx] : false;
+      }
+    }
+    return false;
   }
 
   /**
    * Calculates the background gradient for liquid fill.
    */
-  getLiquidStyle(res: PlrResource): string {
-    const s = this.getAllState(res);
-    if (!s || !s.volume) return '';
+  getLiquidStyle(res: PlrResource, parent: PlrResource | null = null, index: number = -1): string {
+    const volume = this.getVolume(res, parent, index);
+    
+    // If no volume but hasLiquid is true (via mask), show generic fill
+    if (volume <= 0 && this.hasLiquid(res, parent, index)) {
+      const liquidColor = res.color || 'rgba(59, 130, 246, 0.8)';
+      return `linear-gradient(to top, ${liquidColor} 50%, transparent 50%)`; // 50% fill for unknown volume
+    }
+
+    if (volume <= 0) return '';
 
     const maxVol = res.max_volume || 1000; // default if missing
-    const fillRatio = Math.min(s.volume / maxVol, 1) * 100;
+    const fillRatio = Math.min(volume / maxVol, 1) * 100;
 
     // Default liquid color (blue-ish) or specific if available
     const liquidColor = res.color || 'rgba(59, 130, 246, 0.8)';
@@ -683,7 +726,7 @@ export class DeckViewComponent {
     return `linear-gradient(to top, ${liquidColor} ${fillRatio}%, transparent ${fillRatio}%)`;
   }
 
-  hasTip(res: PlrResource, parent: PlrResource | null): boolean {
+  hasTip(res: PlrResource, parent: PlrResource | null, index: number = -1): boolean {
     // 1. Check individual state
     const s = this.getAllState(res);
     if (s && s.has_tip !== undefined) {
@@ -691,18 +734,25 @@ export class DeckViewComponent {
     }
 
     // 2. Check parent state (bitmask/array logic) if applicable
-    // Usually PLR TipRacks manage child state.
     if (parent && this.isTipRackType(parent.type)) {
       const parentState = this.getAllState(parent);
-      // Example: parentState.tips might be a boolean array matching children order
-      // We'd need to know the index of this child.
-      // Since we don't strictly know the index in the filtered children list vs logic,
-      // this is a fallback.
-      if (parentState && Array.isArray(parentState.tips)) {
-        // Try to find index in parent's children
-        const idx = parent.children.indexOf(res);
-        if (idx >= 0 && idx < parentState.tips.length) {
-          return !!parentState.tips[idx];
+      if (parentState) {
+        const idx = index >= 0 ? index : parent.children.indexOf(res);
+        if (idx < 0) return false;
+
+        // 2a. Array
+        if (Array.isArray(parentState.tips)) {
+          if (idx < parentState.tips.length) {
+            return !!parentState.tips[idx];
+          }
+        }
+        // 2b. Bitmask
+        if (parentState.tip_mask) {
+          const numChildren = parent.children.length;
+          const tips = this.decodeBitmask(parentState.tip_mask, numChildren);
+          if (idx < tips.length) {
+            return tips[idx];
+          }
         }
       }
     }
@@ -711,8 +761,8 @@ export class DeckViewComponent {
     return false;
   }
 
-  isEmpty(res: PlrResource, parent: PlrResource | null): boolean {
-    return !this.hasLiquid(res) && !this.hasTip(res, parent);
+  isEmpty(res: PlrResource, parent: PlrResource | null, index: number = -1): boolean {
+    return !this.hasLiquid(res, parent, index) && !this.hasTip(res, parent, index);
   }
 
   shouldShowLabel(res: PlrResource): boolean {
@@ -731,11 +781,6 @@ export class DeckViewComponent {
     return stateMap ? stateMap[res.name] : null;
   }
 
-  getVolume(res: PlrResource): number {
-    const s = this.getAllState(res);
-    return s?.volume ?? 0;
-  }
-
   /* =========================================
      Bitmask Decoding Utilities (P4 Optimization)
      ========================================= */
@@ -747,28 +792,18 @@ export class DeckViewComponent {
    * @param length Expected length of the boolean array
    */
   decodeBitmask(hexMask: string, length: number): boolean[] {
-    const cleanHex = hexMask.replace(/^0x/i, '');
-    const bigInt = BigInt('0x' + cleanHex);
-    const result: boolean[] = [];
-    for (let i = 0; i < length; i++) {
-      result.push((bigInt & (1n << BigInt(i))) !== 0n);
+    try {
+      const cleanHex = hexMask.replace(/^0x/i, '');
+      const bigInt = BigInt('0x' + cleanHex);
+      const result: boolean[] = [];
+      for (let i = 0; i < length; i++) {
+        result.push((bigInt & (1n << BigInt(i))) !== 0n);
+      }
+      return result;
+    } catch (e) {
+      console.warn('Error decoding bitmask:', hexMask, e);
+      return new Array(length).fill(false);
     }
-    return result;
-  }
-
-  /**
-   * Check tip presence using bitmask from parent state.
-   * Falls back to individual state if no bitmask.
-   */
-  hasTipFromBitmask(res: PlrResource, parent: PlrResource | null, childIndex: number): boolean {
-    if (!parent) return false;
-    const parentState = this.getAllState(parent);
-    if (parentState?.tip_mask) {
-      const numChildren = parent.children?.length || 96;
-      const tips = this.decodeBitmask(parentState.tip_mask, numChildren);
-      return childIndex >= 0 && childIndex < tips.length ? tips[childIndex] : false;
-    }
-    return false;
   }
 
   /* Rails Helper */
