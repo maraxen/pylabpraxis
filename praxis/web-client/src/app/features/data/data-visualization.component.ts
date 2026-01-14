@@ -26,6 +26,8 @@ interface TransferDataPoint {
   cumulativeVolume: number;
   temperature?: number;
   pressure?: number;
+  protocolName?: string;
+  status?: string;
 }
 
 interface MockRun {
@@ -37,97 +39,6 @@ interface MockRun {
   endTime?: Date;
   wellCount: number;
   totalVolume: number;
-}
-
-// Seeded random number generator for deterministic data
-class SeededRandom {
-  private seed: number;
-
-  constructor(seed: number) {
-    this.seed = seed;
-  }
-
-  next(): number {
-    const x = Math.sin(this.seed++) * 10000;
-    return x - Math.floor(x);
-  }
-
-  range(min: number, max: number): number {
-    return min + this.next() * (max - min);
-  }
-}
-
-// Generate deterministic data based on protocol and run
-function generateSeededTransferData(protocolId: string, runId: string): TransferDataPoint[] {
-  // Create seed from protocol and run IDs for deterministic output
-  const seedValue = hashCode(protocolId + runId);
-  const rng = new SeededRandom(seedValue);
-
-  const wells = ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4'];
-  const data: TransferDataPoint[] = [];
-  const baseTime = new Date();
-  baseTime.setHours(baseTime.getHours() - 1);
-
-  wells.forEach(well => {
-    let cumulative = 0;
-    const numPoints = Math.floor(rng.range(8, 15));
-    for (let i = 0; i < numPoints; i++) {
-      const volume = rng.range(40, 120);
-      cumulative += volume;
-      data.push({
-        timestamp: new Date(baseTime.getTime() + i * 5 * 60 * 1000),
-        well,
-        volumeTransferred: Math.round(volume * 10) / 10,
-        cumulativeVolume: Math.round(cumulative * 10) / 10,
-        temperature: 22 + rng.range(0, 3),
-        pressure: 101 + rng.range(0, 2)
-      });
-    }
-  });
-
-  return data;
-}
-
-function hashCode(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash);
-}
-
-// Generate mock run history based on protocols
-function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
-  const runs: MockRun[] = [];
-  const now = new Date();
-
-  protocols.forEach((protocol, pIdx) => {
-    // Generate 2-4 runs per protocol
-    const numRuns = 2 + (hashCode(protocol.accession_id) % 3);
-    for (let i = 0; i < numRuns; i++) {
-      const rng = new SeededRandom(hashCode(protocol.accession_id + i.toString()));
-      const startOffset = rng.range(1, 72); // 1-72 hours ago
-      const duration = rng.range(5, 45); // 5-45 minutes
-      const startTime = new Date(now.getTime() - startOffset * 60 * 60 * 1000);
-      const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
-
-      runs.push({
-        id: `run-${protocol.accession_id.slice(0, 8)}-${i + 1}`,
-        protocolName: protocol.name,
-        protocolId: protocol.accession_id,
-        status: i === 0 && pIdx === 0 ? 'running' : (rng.next() > 0.1 ? 'completed' : 'failed'),
-        startTime,
-        endTime: i === 0 && pIdx === 0 ? undefined : endTime,
-        wellCount: Math.floor(rng.range(6, 96)),
-        totalVolume: Math.round(rng.range(500, 5000))
-      });
-    }
-  });
-
-  // Sort by start time descending
-  return runs.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
 }
 
 @Component({
@@ -152,41 +63,59 @@ function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
   template: `
     <div class="data-page">
       <header class="page-header">
-        <h1>Data Visualization</h1>
+        <div class="title-row">
+          <h1>Data Visualization</h1>
+          <button mat-stroked-button (click)="showFilters.set(!showFilters())">
+            <mat-icon>{{ showFilters() ? 'filter_list_off' : 'filter_list' }}</mat-icon>
+            {{ showFilters() ? 'Hide Filters' : 'Show Filters' }}
+          </button>
+        </div>
         <p class="subtitle">Analyze experiment data and transfer volumes</p>
       </header>
 
       <!-- Filter Header -->
-      <app-filter-header
-        searchPlaceholder="Filter runs and protocols..."
-        [searchValue]="searchQuery()"
-        (searchChange)="searchQuery.set($event)"
-        (clearFilters)="clearFilters()">
-        
-        <div class="selector-row" filterContent>
-          <div class="protocol-select">
-            <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block uppercase tracking-wide">Protocol</label>
-            <app-praxis-autocomplete
-              label="Protocol"
-              [options]="protocolOptions()"
-              [(ngModel)]="selectedProtocolId"
-              (ngModelChange)="onProtocolChange($event)"
-              placeholder="Search protocols..."
-            ></app-praxis-autocomplete>
-          </div>
+      @if (showFilters()) {
+        <app-filter-header
+          searchPlaceholder="Filter runs and protocols..."
+          [searchValue]="searchQuery()"
+          (searchChange)="searchQuery.set($event)"
+          (clearFilters)="clearFilters()">
+          
+          <div class="selector-row" filterContent>
+            <div class="protocol-select">
+              <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block uppercase tracking-wide">Protocol</label>
+              <app-praxis-autocomplete
+                label="Protocol"
+                [options]="protocolOptions()"
+                [(ngModel)]="selectedProtocolId"
+                (ngModelChange)="onProtocolChange($event)"
+                placeholder="Search protocols..."
+              ></app-praxis-autocomplete>
+            </div>
 
-          <div class="run-select">
-            <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block uppercase tracking-wide">Run</label>
-            <app-praxis-autocomplete
-              label="Run"
-              [options]="runOptions()"
-              [(ngModel)]="selectedRunId"
-              (ngModelChange)="onRunChange($event)"
-              placeholder="Search runs..."
-            ></app-praxis-autocomplete>
+            <div class="run-select">
+              <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block uppercase tracking-wide">Run</label>
+              <app-praxis-autocomplete
+                label="Run"
+                [options]="runOptions()"
+                [(ngModel)]="selectedRunId"
+                (ngModelChange)="onRunChange($event)"
+                placeholder="Search runs..."
+              ></app-praxis-autocomplete>
+            </div>
+
+            <div class="group-select">
+              <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block uppercase tracking-wide">Group By</label>
+              <app-praxis-select
+                placeholder="Group By"
+                [options]="groupByOptions"
+                [ngModel]="groupBy()"
+                (ngModelChange)="groupBy.set($event)"
+              ></app-praxis-select>
+            </div>
           </div>
-        </div>
-      </app-filter-header>
+        </app-filter-header>
+      }
 
       <!-- Chart Configuration -->
       <mat-card class="config-card">
@@ -370,13 +299,21 @@ function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
   `,
   styles: [`
     .data-page {
-      padding: 24px;
+      padding: 0 24px 24px 24px;
       max-width: 1400px;
       margin: 0 auto;
     }
 
     .page-header {
-      margin-bottom: 24px;
+      margin-bottom: 16px;
+      padding-top: 24px;
+    }
+
+    .title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
     }
 
     .page-header h1 {
@@ -406,8 +343,12 @@ function generateMockRuns(protocols: ProtocolDefinition[]): MockRun[] {
     }
 
     .run-select {
-      min-width: 350px;
+      min-width: 300px;
       flex: 1;
+    }
+
+    .group-select {
+        min-width: 150px;
     }
 
     .run-option {
@@ -562,6 +503,8 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   selectedProtocolId = '';
   selectedRunId = '';
   searchQuery = signal('');
+  showFilters = signal(true);
+  groupBy = signal<string>('well');
 
   // Data signals
   protocols = signal<ProtocolDefinition[]>([]);
@@ -584,6 +527,12 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
       icon: r.status === 'completed' ? 'check_circle' : r.status === 'running' ? 'pending' : 'error'
     }));
   });
+
+  readonly groupByOptions: SelectOption[] = [
+    { label: 'Well', value: 'well' },
+    { label: 'Protocol', value: 'protocol' },
+    { label: 'Status', value: 'status' }
+  ];
 
   readonly xAxisOptions: SelectOption[] = [
     { label: 'Time', value: 'timestamp' },
@@ -690,22 +639,9 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   }
 
   private generateFallbackData() {
-    // Original mock generation logic as fallback
-    if (this.protocols().length === 0) {
-      const fallbackProtocols: ProtocolDefinition[] = [
-        { accession_id: 'proto-001', name: 'Simple Transfer', is_top_level: true, version: '1.0', parameters: [], assets: [] },
-        { accession_id: 'proto-002', name: 'Serial Dilution', is_top_level: true, version: '1.0', parameters: [], assets: [] },
-        { accession_id: 'proto-003', name: 'Plate Replication', is_top_level: true, version: '1.0', parameters: [], assets: [] }
-      ];
-      this.protocols.set(fallbackProtocols);
-    }
-
-    const mockRuns = generateMockRuns(this.protocols());
-    this.runs.set(mockRuns);
-    if (mockRuns.length > 0) {
-      this.selectedRunId = mockRuns[0].id;
-      this.loadRunData(mockRuns[0]);
-    }
+    // If no data in DB, we rely on SqliteService seeding.
+    // If seeding failed or is skipped, we show a message.
+    console.warn('No runs found in database. Please ensure database is seeded.');
   }
 
   ngOnDestroy() {
@@ -745,29 +681,44 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   }
 
   private loadRunData(run: MockRun) {
-    // Generate deterministic data for this run
-    const data = generateSeededTransferData(run.protocolId, run.id);
-    this.transferData.set(data);
+    this.protocolService.getTransferLogs(run.id).subscribe({
+      next: (logs) => {
+        const mappedData: TransferDataPoint[] = logs.map(l => ({
+          timestamp: new Date(l.timestamp),
+          well: l.well,
+          volumeTransferred: l.volume_transferred,
+          cumulativeVolume: l.cumulative_volume,
+          temperature: l.temperature,
+          pressure: l.pressure,
+          protocolName: run.protocolName,
+          status: run.status
+        }));
+        this.transferData.set(mappedData);
+      },
+      error: (err) => console.error('Failed to load transfer logs', err)
+    });
   }
 
   private addLiveDataPoint() {
     const run = this.selectedRun();
     if (!run) return;
 
-    const rng = new SeededRandom(Date.now());
+    // Simple pseudo-random for live data
     const newData = [...this.transferData()];
     const latestTime = new Date();
 
     this.selectedWells().slice(0, 3).forEach(well => {
-      const volume = rng.range(40, 120);
+      const volume = 10 + Math.random() * 20;
       const lastPoint = newData.filter(d => d.well === well).pop();
       newData.push({
         timestamp: latestTime,
         well,
         volumeTransferred: Math.round(volume * 10) / 10,
-        cumulativeVolume: (lastPoint?.cumulativeVolume || 0) + volume,
-        temperature: 22 + rng.range(0, 3),
-        pressure: 101 + rng.range(0, 2)
+        cumulativeVolume: Math.round(((lastPoint?.cumulativeVolume || 0) + volume) * 10) / 10,
+        temperature: 22 + Math.random() * 2,
+        pressure: 101 + Math.random(),
+        protocolName: run.protocolName,
+        status: run.status
       });
     });
     this.transferData.set(newData);
@@ -804,37 +755,52 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
 
   chartData = computed(() => {
     const data = this.filteredData();
-    const wells = [...new Set(data.map(d => d.well))];
+    const groupBy = this.groupBy();
+
+    // Determine unique groups based on selection
+    const groups = [...new Set(data.map(d => {
+      if (groupBy === 'protocol') return d.protocolName || 'Unknown';
+      if (groupBy === 'status') return d.status || 'Unknown';
+      return d.well;
+    }))];
 
     if (this.xAxis() === 'well') {
-      // Bar chart grouped by well
-      const grouped = wells.map(well => {
-        const wellData = data.filter(d => d.well === well);
-        const total = wellData.reduce((sum, d) => sum + (d as Record<string, any>)[this.yAxis()], 0);
-        return { well, value: total / wellData.length };
+      // Bar chart grouped by selection
+      const grouped = groups.map(group => {
+        const groupData = data.filter(d => {
+          if (groupBy === 'protocol') return d.protocolName === group;
+          if (groupBy === 'status') return d.status === group;
+          return d.well === group;
+        });
+        const total = groupData.reduce((sum, d) => sum + (d as Record<string, any>)[this.yAxis()], 0);
+        return { group, value: total / groupData.length };
       });
 
       return [{
-        x: grouped.map(g => g.well),
+        x: grouped.map(g => g.group),
         y: grouped.map(g => g.value),
         type: 'bar',
         marker: { color: '#00e5ff' }
       }];
     }
 
-    // Line chart over time, one trace per well
-    return wells.map((well, i) => {
-      const wellData = data.filter(d => d.well === well).sort((a, b) =>
+    // Line chart over time, one trace per group
+    return groups.map((group, i) => {
+      const groupData = data.filter(d => {
+        if (groupBy === 'protocol') return d.protocolName === group;
+        if (groupBy === 'status') return d.status === group;
+        return d.well === group;
+      }).sort((a, b) =>
         a.timestamp.getTime() - b.timestamp.getTime()
       );
       const colors = ['#00e5ff', '#ff6b6b', '#4ecdc4', '#ffd93d', '#c3aed6', '#667eea', '#f093fb', '#a8e6cf', '#fdcb6e'];
 
       return {
-        x: wellData.map(d => d.timestamp.toLocaleTimeString()),
-        y: wellData.map(d => (d as Record<string, any>)[this.yAxis()]),
+        x: groupData.map(d => d.timestamp.toLocaleTimeString()),
+        y: groupData.map(d => (d as Record<string, any>)[this.yAxis()]),
         type: 'scatter',
         mode: 'lines+markers',
-        name: well,
+        name: group,
         line: { color: colors[i % colors.length] },
         marker: { color: colors[i % colors.length] }
       };

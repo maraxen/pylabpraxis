@@ -40,6 +40,7 @@ import type {
 import { OFFLINE_CAPABILITY_OVERRIDES, PLR_MACHINE_DEFINITIONS, PLR_RESOURCE_DEFINITIONS } from '../../../assets/browser-data/plr-definitions';
 import { MOCK_PROTOCOLS } from '../../../assets/browser-data/protocols';
 import { MOCK_PROTOCOL_RUNS } from '../../../assets/browser-data/protocol-runs';
+import { MockDataGenerator } from './mock-data-generator';
 
 
 export interface SqliteStatus {
@@ -298,7 +299,7 @@ export class SqliteService {
                     run: (d: Database) => {
                         this.safeAddColumn(d, 'function_protocol_definitions', 'failure_modes_json', 'TEXT');
                     }
-                }
+                },
                 {
                     version: 4,
                     name: 'add_simulated_frontends',
@@ -309,12 +310,20 @@ export class SqliteService {
                     }
                 },
                 {
-                    version: 4,
-                    name: 'add_simulated_frontends',
+                    version: 5,
+                    name: 'add_transfer_logs',
                     run: (d: Database) => {
-                        this.safeAddColumn(d, 'machine_definition_catalog', 'is_simulated_frontend', 'BOOLEAN DEFAULT 0');
-                        this.safeAddColumn(d, 'machine_definition_catalog', 'available_simulation_backends', 'TEXT');
-                        this.safeAddColumn(d, 'machines', 'simulation_backend_name', 'TEXT');
+                        d.run(`CREATE TABLE IF NOT EXISTS transfer_logs (
+                            accession_id TEXT PRIMARY KEY,
+                            run_accession_id TEXT,
+                            timestamp TEXT,
+                            well TEXT,
+                            volume_transferred REAL,
+                            cumulative_volume REAL,
+                            temperature REAL,
+                            pressure REAL
+                        )`);
+                        d.run(`CREATE INDEX IF NOT EXISTS idx_transfer_logs_run ON transfer_logs (run_accession_id)`);
                     }
                 }
             ];
@@ -537,6 +546,33 @@ export class SqliteService {
                     (r as any).started_at || null,
                     (r as any).completed_at || null
                 ]);
+
+                // 3. Seed Transfer Logs for this run
+                const logs = MockDataGenerator.generateForRun(
+                    r.accession_id,
+                    r.protocol_name,
+                    new Date(r.started_at || r.created_at)
+                );
+
+                const insertLog = db.prepare(`
+                    INSERT INTO transfer_logs 
+                    (accession_id, run_accession_id, timestamp, well, volume_transferred, cumulative_volume, temperature, pressure)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                `);
+
+                for (const log of logs) {
+                    insertLog.run([
+                        log.accession_id,
+                        log.run_accession_id,
+                        log.timestamp,
+                        log.well,
+                        log.volume_transferred,
+                        log.cumulative_volume,
+                        log.temperature || null,
+                        log.pressure || null
+                    ]);
+                }
+                insertLog.free();
             }
             insertRun.free();
 
@@ -894,6 +930,25 @@ export class SqliteService {
                     console.error('[SqliteService] Failed to create machine:', err);
                     throw err;
                 }
+            })
+        );
+    }
+
+    /**
+     * Get transfer logs for a run
+     */
+    public getTransferLogs(runId: string): Observable<any[]> {
+        return this.db$.pipe(
+            map(db => {
+                const res = db.exec("SELECT * FROM transfer_logs WHERE run_accession_id = ? ORDER BY timestamp ASC", [runId]);
+                if (res.length === 0) return [];
+
+                const columns = res[0].columns;
+                return res[0].values.map(row => {
+                    const obj: any = {};
+                    columns.forEach((col, i) => obj[col] = row[i]);
+                    return obj;
+                });
             })
         );
     }
