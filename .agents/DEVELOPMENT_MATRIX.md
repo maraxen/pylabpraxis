@@ -110,6 +110,7 @@
 | Well Selector Performance Optimization (E-02)       | P2       | 2026-01-14 | Batched selection updates to improve click+drag performance          |
 | Simulation Frontend Consolidation                   | P2       | 2026-01-14 | Consolidated simulated backends into single definitions per type     |
 | Breadcrumb Removal (C-01)                           | P2       | 2026-01-14 | Removed global breadcrumb bar and associated service/component       |
+| Well Arguments Cleanup (E-01)                       | P2       | 2026-01-14 | Filtered well parameters from configuration step and added summary   |
 
 ---
 

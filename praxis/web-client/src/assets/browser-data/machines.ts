@@ -3,13 +3,37 @@
  */
 export const MOCK_MACHINES = [
     {
+        accession_id: 'machine-def-sim-lh',
+        name: 'Simulated Liquid Handler',
+        fqn: 'praxis.simulated.LiquidHandler',
+        type: 'liquid_handler',
+        category: 'LiquidHandler',
+        status: 'AVAILABLE',
+        description: 'Generic Simulated Liquid Handler',
+        frontend_fqn: 'pylabrobot.liquid_handling.LiquidHandler',
+        is_simulated_frontend: true,
+        available_simulation_backends: [
+            'pylabrobot.liquid_handling.backends.simulation.simulator.SimulatorBackend',
+            'pylabrobot.liquid_handling.backends.chatterbox.ChatterBoxBackend'
+        ],
+        connection_info: {
+            backend: 'simulation'
+        },
+        properties_json: {
+            channels: 8,
+            deck_positions: 12,
+            brand: 'Generic'
+        }
+    },
+    {
         accession_id: 'machine-001',
-        name: 'Simulated Hamilton STAR',
+        name: 'Hamilton STAR (Simulated)',
         fqn: 'pylabrobot.machines.hamilton.STAR',
         type: 'liquid_handler',
         category: 'LiquidHandler',
         status: 'AVAILABLE',
         description: 'Hamilton STAR Liquid Handler - 8 channels',
+        frontend_fqn: 'pylabrobot.liquid_handling.LiquidHandler',
         connection_info: {
             backend: 'simulation',
             serial_port: null
