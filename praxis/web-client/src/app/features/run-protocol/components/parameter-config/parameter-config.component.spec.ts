@@ -36,26 +36,22 @@ describe('ParameterConfigComponent', () => {
             assets: [],
             parameters: [
                 {
-                    name: 'source_wells',
-                    type_hint: 'Sequence[Well]',
-                    fqn: 'typing.Sequence',
+                    name: 'param1',
+                    type_hint: 'float',
+                    fqn: 'float',
                     is_deck_param: false,
                     optional: false,
                     constraints: {},
-                    field_type: 'index_selector',
-                    itemized_spec: { items_x: 12, items_y: 8 },
-                    linked_to: 'dest_wells'
+                    linked_to: 'param2'
                 } as ParameterMetadata,
                 {
-                    name: 'dest_wells',
-                    type_hint: 'Sequence[Well]',
-                    fqn: 'typing.Sequence',
+                    name: 'param2',
+                    type_hint: 'float',
+                    fqn: 'float',
                     is_deck_param: false,
                     optional: false,
                     constraints: {},
-                    field_type: 'index_selector',
-                    itemized_spec: { items_x: 12, items_y: 8 },
-                    linked_to: 'source_wells'
+                    linked_to: 'param1'
                 } as ParameterMetadata
             ]
         };
@@ -74,10 +70,10 @@ describe('ParameterConfigComponent', () => {
         expect(fields.length).toBe(1); // Should be 1 group
         expect(fields[0].fieldGroupClassName).toBe('linked-parameter-row');
         expect(fields[0].fieldGroup?.length).toBe(3); // param1, checkbox, param2
-        expect(fields[0].fieldGroup![0].key).toBe('source_wells');
+        expect(fields[0].fieldGroup![0].key).toBe('param1');
         expect(fields[0].fieldGroup![1].key).toContain('_unlink_');
         expect(fields[0].fieldGroup![1].type).toBe('checkbox');
-        expect(fields[0].fieldGroup![2].key).toBe('dest_wells');
+        expect(fields[0].fieldGroup![2].key).toBe('param2');
     });
 
     it('should not group independent parameters', () => {
@@ -193,5 +189,57 @@ describe('ParameterConfigComponent', () => {
         // Should only have 'volume' - 'lh' and 'plate' should be filtered out
         expect(fields.length).toBe(1);
         expect(fields[0].key).toBe('volume');
+    });
+
+    it('should filter out well parameters', () => {
+        const mockProtocol: ProtocolDefinition = {
+            accession_id: 'abc',
+            name: 'Well Filter Test',
+            version: '1.0.0',
+            is_top_level: true,
+            assets: [],
+            parameters: [
+                {
+                    name: 'source_wells',
+                    type_hint: 'Sequence[Well]',
+                    fqn: 'Sequence',
+                    is_deck_param: false,
+                    optional: false,
+                    constraints: {}
+                } as ParameterMetadata,
+                {
+                    name: 'incubation_time',
+                    type_hint: 'float',
+                    fqn: 'float',
+                    is_deck_param: false,
+                    optional: false,
+                    constraints: {}
+                } as ParameterMetadata,
+                {
+                    name: 'target_well_ids',
+                    type_hint: 'List[str]',
+                    fqn: 'List',
+                    is_deck_param: false,
+                    optional: false,
+                    constraints: {},
+                    ui_hint: { type: 'well_selector' }
+                } as ParameterMetadata
+            ]
+        };
+
+        component.protocol = mockProtocol;
+        component.ngOnChanges({
+            protocol: {
+                currentValue: mockProtocol,
+                previousValue: null,
+                firstChange: true,
+                isFirstChange: () => true
+            }
+        });
+
+        const fields = component.paramFields();
+        // Should only have 'incubation_time'
+        expect(fields.length).toBe(1);
+        expect(fields[0].key).toBe('incubation_time');
     });
 });

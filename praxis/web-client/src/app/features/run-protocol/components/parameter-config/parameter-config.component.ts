@@ -97,6 +97,9 @@ export class ParameterConfigComponent implements OnChanges {
       // Skip if this parameter matches an asset requirement by name or fqn
       if (this.isAssetParameter(p, protocol)) return false;
 
+      // Skip well parameters
+      if (this.isWellParameter(p)) return false;
+
       return true;
     });
 
@@ -276,6 +279,23 @@ export class ParameterConfigComponent implements OnChanges {
     const typeHint = param.type_hint || '';
 
     return machinePatterns.some(p => typeHint.includes(p)) ||
-           resourcePatterns.some(p => typeHint.includes(p));
+      resourcePatterns.some(p => typeHint.includes(p));
+  }
+
+  private isWellParameter(param: ParameterMetadata): boolean {
+    const name = (param.name || '').toLowerCase();
+
+    // Check name patterns
+    const wellNamePatterns = ['well', 'wells', 'source_wells', 'target_wells', 'well_ids'];
+    if (wellNamePatterns.some(p => name.includes(p))) {
+      return true;
+    }
+
+    // Check ui_hint if available
+    if ((param as any).ui_hint?.type === 'well_selector') {
+      return true;
+    }
+
+    return false;
   }
 }

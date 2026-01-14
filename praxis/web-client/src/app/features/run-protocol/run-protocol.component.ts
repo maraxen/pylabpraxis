@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
 
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatBadgeModule } from '@angular/material/badge';
@@ -14,9 +13,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatStepper, MatStepperModule } from '@angular/material/stepper';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Action } from 'rxjs/internal/scheduler/Action';
-import { finalize } from 'rxjs/operators';
 import { ActivatedRoute, Router } from '@angular/router';
+import { finalize } from 'rxjs/operators';
 
 import { MatDialog } from '@angular/material/dialog';
 import { ModeService } from '@core/services/mode.service';
@@ -28,15 +26,16 @@ import { WellSelectorDialogComponent, WellSelectorDialogData, WellSelectorDialog
 import { MachineStatus } from '../assets/models/asset.models';
 import { DeckSetupWizardComponent } from './components/deck-setup-wizard/deck-setup-wizard.component';
 import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component'; // Import added
-import { MachineSelectionComponent } from './components/machine-selection/machine-selection.component';
 import { MachineCompatibility } from './models/machine-compatibility.models';
+import { MachineSelectionComponent } from './components/machine-selection/machine-selection.component';
 import { ParameterConfigComponent } from './components/parameter-config/parameter-config.component';
 import { ProtocolCardSkeletonComponent } from './components/protocol-card/protocol-card-skeleton.component';
 import { ProtocolCardComponent } from './components/protocol-card/protocol-card.component';
+import { DeckCatalogService } from './services/deck-catalog.service';
 import { DeckGeneratorService } from './services/deck-generator.service';
 import { ExecutionService } from './services/execution.service';
 import { WizardStateService } from './services/wizard-state.service';
-import { DeckCatalogService } from './services/deck-catalog.service';
+import { ProtocolSummaryComponent } from './components/protocol-summary/protocol-summary.component';
 
 const RECENTS_KEY = 'praxis_recent_protocols';
 const MAX_RECENTS = 5;
@@ -58,7 +57,6 @@ interface FilterCategory {
   selector: 'app-run-protocol',
   standalone: true,
   imports: [
-    CommonModule,
     MatStepperModule,
     MatButtonModule,
     MatIconModule,
@@ -68,6 +66,7 @@ interface FilterCategory {
     MatInputModule,
     MatExpansionModule,
     MatCheckboxModule,
+    MatBadgeModule,
     MatBadgeModule,
     MatProgressSpinnerModule,
     MatSlideToggleModule,
@@ -79,6 +78,7 @@ interface FilterCategory {
     MachineSelectionComponent,
     HardwareDiscoveryButtonComponent,
     DeckSetupWizardComponent,
+    ProtocolSummaryComponent,
     GuidedSetupComponent
   ],
   template: `
@@ -438,18 +438,29 @@ interface FilterCategory {
                <h2 class="text-4xl font-bold text-sys-text-primary mb-2">Ready to Launch</h2>
                <p class="text-xl text-sys-text-secondary mb-12">Confirm execution parameters before starting</p>
                
-               <div class="grid grid-cols-2 gap-4 w-full mb-12">
-                  <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-6 flex flex-col items-center">
-                     <span class="text-sys-text-tertiary text-sm uppercase tracking-wider font-bold mb-2">Protocol</span>
-                     <span class="text-sys-text-primary text-lg font-medium" data-testid="review-protocol-name">{{ selectedProtocol()?.name }}</span>
+                <div class="grid grid-cols-2 gap-4 w-full mb-8">
+                   <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-6 flex flex-col items-center">
+                      <span class="text-sys-text-tertiary text-sm uppercase tracking-wider font-bold mb-2">Protocol</span>
+                      <span class="text-sys-text-primary text-lg font-medium" data-testid="review-protocol-name">{{ selectedProtocol()?.name }}</span>
+                   </div>
+                                   <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-6 flex flex-col items-center">
+                      <span class="text-sys-text-tertiary text-sm uppercase tracking-wider font-bold mb-2">Mode</span>
+                     <span class="text-lg font-medium" [class.text-primary]="store.simulationMode()" [class.text-blue-400]="!store.simulationMode()">
+                       {{ store.simulationMode() ? 'Simulation' : 'Physical Run' }}
+                     </span>
                   </div>
-                                  <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-6 flex flex-col items-center">
-                     <span class="text-sys-text-tertiary text-sm uppercase tracking-wider font-bold mb-2">Mode</span>
-                    <span class="text-lg font-medium" [class.text-primary]="store.simulationMode()" [class.text-blue-400]="!store.simulationMode()">
-                      {{ store.simulationMode() ? 'Simulation' : 'Physical Run' }}
-                    </span>
-                 </div>
-               </div>
+                </div>
+
+                <!-- Protocol Summary -->
+                <div class="w-full mb-8 text-left">
+                  <app-protocol-summary
+                    [protocol]="selectedProtocol()"
+                    [parameters]="parametersFormGroup.value"
+                    [assets]="configuredAssets() || {}"
+                    [wellSelections]="wellSelections()"
+                    [wellSelectionRequired]="wellSelectionRequired()">
+                  </app-protocol-summary>
+                </div>
 
 
                 <!-- Name & Notes Section -->
