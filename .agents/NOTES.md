@@ -68,3 +68,13 @@ PyLabRobot module imports fail until `sys.path` is explicitly configured in the 
 **Files:** `praxis/web-client/src/app/features/repl/components/jupyterlite-repl/`
 
 ---
+---
+
+### Breadcrumb Removal
+
+**Date:** 2026-01-14
+**Area:** Frontend - UI
+
+The global breadcrumb bar was removed from the unified shell as it served no purpose and added visual clutter. The `BreadcrumbService` and `BreadcrumbComponent` were also deleted.
+
+**Files:** `praxis/web-client/src/app/layout/unified-shell.component.ts`, `praxis/web-client/src/app/core/components/breadcrumb/`, `praxis/web-client/src/app/core/services/breadcrumb.service.ts`

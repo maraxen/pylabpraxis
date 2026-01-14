@@ -7,7 +7,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { AppStore } from '@core/store/app.store';
 import { ModeService } from '@core/services/mode.service';
-import { BreadcrumbComponent } from '@core/components/breadcrumb/breadcrumb.component';
 import { ExecutionService } from '@features/run-protocol/services/execution.service';
 import { ExecutionStatus } from '@features/run-protocol/models/execution.models';
 import { CommandRegistryService } from '@core/services/command-registry.service';
@@ -28,8 +27,7 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
     MatIconModule,
     MatTooltipModule,
     MatTooltipModule,
-    MatButtonModule,
-    BreadcrumbComponent
+    MatButtonModule
   ],
   template: `
     <div class="shell-layout">
@@ -146,9 +144,6 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
 
       <!-- Main Content -->
       <div class="main-wrapper">
-        <div class="breadcrumb-bar">
-            <app-breadcrumb></app-breadcrumb>
-        </div>
         <main class="main-content">
           <router-outlet></router-outlet>
         </main>
@@ -372,14 +367,6 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
       position: relative; /* For stacking context if needed */
     }
 
-    .breadcrumb-bar {
-        padding: 8px 24px;
-        /* Subtle separation without heavy border */
-        display: flex;
-        align-items: center;
-        min-height: 48px;
-    }
-
     .main-content {
       flex: 1;
       overflow-y: auto;
@@ -388,6 +375,73 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
     }
 
     /* Footer */
+    .app-footer {
+        height: 32px;
+        min-height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: var(--mat-sys-surface-container);
+        border-top: 1px solid var(--mat-sys-outline-variant);
+        padding: 0 16px;
+        z-index: 10;
+        font-size: 12px;
+    }
+
+    .footer-link {
+        color: var(--mat-sys-on-surface-variant);
+        opacity: 0.5;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+    }
+
+    .footer-link:hover {
+        opacity: 1;
+        background: var(--mat-sys-surface-variant);
+        color: var(--mat-sys-primary);
+    }
+
+    .footer-link mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+    }
+
+    .footer-divider {
+        width: 1px;
+        height: 16px;
+        background: var(--mat-sys-outline-variant);
+        opacity: 0.5;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .sidebar-rail {
+        width: 64px;
+        min-width: 64px;
+      }
+      
+      .nav-item {
+        width: 52px;
+        height: 52px;
+      }
+
+      .nav-label {
+        font-size: 9px;
+      }
+
+      .nav-divider {
+        width: 32px;
+      }
+    }
+     /* Footer */
     .app-footer {
         height: 32px;
         min-height: 32px;

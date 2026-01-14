@@ -43,7 +43,6 @@
 |--------------------------------|------------|---------------------------------------------------------------|------------------------------------------------------|
 | Workcell Hierarchical Explorer | Hard       | [workcell_ux_redesign.md](./artifacts/workcell_ux_redesign.md) | Implement tree-based sidebar and status cards        |
 | Unified Asset Selector         | Medium     | [inventory_ux_design.md](./artifacts/inventory_ux_design.md)   | Implement shared browsing for Playground and Protocol |
-| Simulated Backend Separation   | Medium     | [simulation.md](./backlog/simulation.md)                        | Decouple frontend definitions from backend drivers   |
 | Protocol Library Filters       | Medium     | [protocol_workflow.md](./backlog/protocol_workflow.md)         | Implement filtering in the main Protocol view        |
 
 ### Hardware Validation (Required for Alpha)
@@ -109,6 +108,8 @@
 | FilterChip Deprecation (A-05)                       | P2       | 2026-01-14 | Replaced `FilterChipComponent` with `PraxisSelect`                   |
 | RunProtocol Fix                                     | P2       | 2026-01-14 | Fixed critical `@Component` decorator error in `RunProtocolComponent` |
 | Well Selector Performance Optimization (E-02)       | P2       | 2026-01-14 | Batched selection updates to improve click+drag performance          |
+| Simulation Frontend Consolidation                   | P2       | 2026-01-14 | Consolidated simulated backends into single definitions per type     |
+| Breadcrumb Removal (C-01)                           | P2       | 2026-01-14 | Removed global breadcrumb bar and associated service/component       |
 
 ---
 
