@@ -591,7 +591,7 @@ export class DocsPageComponent {
           div.className = 'mermaid';
           div.textContent = code.textContent || '';
 
-          pre.parentNodereplaceChild(div, pre);
+          pre.parentNode?.replaceChild(div, pre);
           nodesToRun.push(div);
         }
       });

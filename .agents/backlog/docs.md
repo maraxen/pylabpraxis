@@ -40,10 +40,10 @@ Trying to expand the system architecture views does not work and instead yields 
 
 ### Tasks
 
-- [ ] Debug diagram rendering in docs
-- [ ] Check if Mermaid/diagram library loading
-- [ ] Fix expand/collapse functionality
-- [ ] Test in different browsers
+- [x] Debug diagram rendering in docs
+- [x] Check if Mermaid/diagram library loading
+- [x] Fix expand/collapse functionality
+- [x] Test in different browsers
 
 ---
 
