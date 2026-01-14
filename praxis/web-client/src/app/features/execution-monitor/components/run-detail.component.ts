@@ -89,7 +89,7 @@ import { ParameterViewerComponent } from './parameter-viewer';
                 <div class="w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors duration-300"
                      [class.border-primary]="step.state === 'completed' || step.state === 'active'"
                      [class.bg-primary]="step.state === 'completed'"
-                     [class.text-on-primary]="step.state === 'completed'"
+                     [class.text-[var(--mat-sys-on-primary)]]="step.state === 'completed'"
                      [class.border-error]="step.state === 'error'"
                      [class.text-error]="step.state === 'error'"
                      [class.border-outline-variant]="step.state === 'pending'">

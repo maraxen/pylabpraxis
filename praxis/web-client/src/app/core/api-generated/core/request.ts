@@ -192,17 +192,6 @@ export const getRequestBody = (options: ApiRequestOptions): any => {
     return undefined;
 };
 
-import { lastValueFrom } from 'rxjs';
-import { BrowserMockRouter } from '../../interceptors/browser-mock-router';
-
-let browserMockRouter: BrowserMockRouter | null = null;
-function getBrowserRouter(): BrowserMockRouter {
-    if (!browserMockRouter) {
-        browserMockRouter = new BrowserMockRouter();
-    }
-    return browserMockRouter;
-}
-
 export const sendRequest = async (
     config: OpenAPIConfig,
     options: ApiRequestOptions,
@@ -213,50 +202,6 @@ export const sendRequest = async (
     onCancel: OnCancel
 ): Promise<Response> => {
     const controller = new AbortController();
-
-    // Browser Mode Interception (Patch)
-    // Check if running in browser mode (localStorage flag from ModeService)
-    const isBrowserMode = typeof localStorage !== 'undefined' && localStorage.getItem('praxis_mode') === 'browser';
-
-    if (isBrowserMode && url.includes('/api/')) {
-        const router = getBrowserRouter();
-        // Convert options.method to string
-        const method = options.method;
-
-        // Try to route
-        // We pass null for SqliteService to let router lazy-load its own singleton
-        const route$ = router.route(url, method, body, null);
-
-        if (route$) {
-            console.debug('[request.ts] Intercepting request for Browser Mode:', method, url);
-            try {
-                // Wait for the mock response
-                const result = await lastValueFrom(route$);
-
-                // Simulate network delay slightly for realism? (Optional, router might handle it)
-                // Return a Response object
-                return new Response(JSON.stringify(result), {
-                    status: 200,
-                    statusText: 'OK',
-                    headers: new Headers({ 'Content-Type': 'application/json' })
-                });
-            } catch (error) {
-                console.error('[request.ts] Mock route failed:', error);
-                return new Response(JSON.stringify({ message: 'Internal Mock Error' }), {
-                    status: 500,
-                    statusText: 'Internal Server Error'
-                });
-            }
-        } else {
-            // No mock handler found, but in browser mode. 
-            // We should probably fail or log warning. 
-            // Falling back to fetch implies hitting the proxy which will fail.
-            // But maybe assets/ etc are fine.
-            if (!url.includes('assets/')) {
-                console.warn('[request.ts] No mock handler found for:', method, url);
-            }
-        }
-    }
 
     const request: RequestInit = {
         headers,

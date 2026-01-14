@@ -2,7 +2,7 @@
 
 Examine `.agents/README.md` for development context.
 
-**Status:** 🟢 Not Started  
+**Status:** 🟢 Completed  
 **Priority:** P2  
 **Batch:** [260115](README.md)  
 **Difficulty:** Medium  
@@ -33,11 +33,11 @@ Replace custom filters in `ExecutionMonitorComponent` (or `RunHistoryComponent`?
 
 ## 4. Verification Plan
 
-- [ ] Filtering by Status works.
-- [ ] Sorting by Date works.
+- [x] Filtering by Status works.
+- [x] Sorting by Date works.
 
 ---
 
 ## On Completion
 
-- [ ] Update this prompt status to 🟢 Completed.
+- [x] Update this prompt status to 🟢 Completed.

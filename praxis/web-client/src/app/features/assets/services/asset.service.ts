@@ -5,7 +5,7 @@ import { map, switchMap } from 'rxjs/operators';
 import {
   Machine, MachineCreate, Resource, ResourceCreate,
   MachineDefinition, ResourceDefinition, ActiveFilters,
-  MachineStatus, ResourceStatus
+  MachineStatus, ResourceStatus, Workcell
 } from '../models/asset.models';
 import { ModeService } from '../../../core/services/mode.service';
 import { SqliteService } from '../../../core/services/sqlite.service';
@@ -21,6 +21,7 @@ import { ApiWrapperService } from '../../../core/services/api-wrapper.service';
 import { MachineCreate as ApiMachineCreate } from '../../../core/api-generated/models/MachineCreate';
 import { MachineUpdate as ApiMachineUpdate } from '../../../core/api-generated/models/MachineUpdate';
 import { ResourceCreate as ApiResourceCreate } from '../../../core/api-generated/models/ResourceCreate';
+import { WorkcellsService } from '../../../core/api-generated/services/WorkcellsService';
 
 // Facet item with value and count
 export interface FacetItem {
@@ -187,6 +188,24 @@ export class AssetService {
       );
     }
     return this.apiWrapper.wrap(ResourcesService.deleteApiV1ResourcesAccessionIdDelete(accessionId));
+  }
+
+  // --- Workcells ---
+  getWorkcells(): Observable<Workcell[]> {
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.workcells.pipe(
+        map(repo => {
+          const results = repo.findAll();
+          return results.map(w => ({
+            ...w,
+            status: w.status || 'unknown'
+          }) as unknown as Workcell);
+        })
+      );
+    }
+    return this.apiWrapper.wrap(WorkcellsService.getMultiApiV1WorkcellGet()).pipe(
+      map(workcells => workcells.map(w => w as unknown as Workcell))
+    );
   }
 
   // --- Definitions (Discovery) ---

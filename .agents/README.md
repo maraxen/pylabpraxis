@@ -95,6 +95,8 @@ Captures lessons learned, specialized knowledge, and "gotchas" discovered during
 ### During Work
 
 - Follow [codestyles/](codestyles/) for language conventions
+- **Frontend Styling**: Always use theme variables (CSS variables) rather than hardcoded values unless explicitly justified.
+- **Frontend Testing**: Run tests using `npx vitest [target] --run` within `praxis/web-client` to ensure non-interactive execution.
 - Use `uv run` for all Python commands
 - Wrap long commands with `timeout`
 
@@ -188,8 +190,8 @@ PRAXIS_DB_DSN="..." uv run uvicorn main:app --reload --port 8000
 cd praxis/web-client && npm start
 
 # Run tests
-uv run pytest                    # Backend
-cd praxis/web-client && npm test # Frontend
+uv run pytest                                # Backend
+cd praxis/web-client && npx vitest [target] --run # Frontend
 
 # Linting
 uv run ruff check praxis/backend --fix

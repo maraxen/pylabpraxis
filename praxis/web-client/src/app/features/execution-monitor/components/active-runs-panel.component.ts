@@ -55,7 +55,7 @@ import { RunSummary } from '../models/monitor.models';
                       {{ runHistoryService.getStatusIcon(run.status) }}
                     </mat-icon>
                     <div class="min-w-0">
-                      <div class="font-medium text-sys-text-primary truncate group-hover:text-primary transition-colors">
+                      <div class="font-medium text-sys-text-primary truncate group-hover:text-[var(--mat-sys-primary)] transition-colors">
                         {{ run.protocol_name || run.name || 'Unnamed Run' }}
                       </div>
                       <div class="text-xs text-sys-text-secondary truncate">

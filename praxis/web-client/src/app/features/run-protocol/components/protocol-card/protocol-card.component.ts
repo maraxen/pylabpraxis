@@ -19,11 +19,11 @@ import { ProtocolWarningBadgeComponent } from '@shared/components/protocol-warni
     <div class="praxis-card premium group cursor-pointer" [class.praxis-card-min]="compact" (click)="select.emit(protocol)">
       <div class="card-header">
         <div class="flex items-center gap-3 min-w-0">
-          <div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center bg-primary text-on-primary">
+          <div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center bg-[var(--mat-sys-primary)] text-[var(--mat-sys-on-primary)]">
             <mat-icon>science</mat-icon>
           </div>
           <div class="min-w-0">
-            <h3 class="card-title group-hover:text-primary transition-colors">{{ protocol.name }}</h3>
+            <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors">{{ protocol.name }}</h3>
             @if (!compact && protocol.category) {
               <p class="card-subtitle">{{ protocol.category }}</p>
             }
@@ -38,9 +38,9 @@ import { ProtocolWarningBadgeComponent } from '@shared/components/protocol-warni
         <div class="card-actions">
           <div class="flex items-center justify-between w-full gap-2">
             <div class="flex flex-wrap gap-2">
-              <span class="px-2 py-0.5 rounded bg-primary/10 text-primary font-mono text-[10px] font-bold">v{{ protocol.version }}</span>
+              <span class="px-2 py-0.5 rounded bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-primary)] font-mono text-[10px] font-bold">v{{ protocol.version }}</span>
               @if (protocol.is_top_level) {
-                <span class="px-2 py-0.5 rounded bg-secondary/10 text-secondary text-[10px] font-bold uppercase tracking-wider">Top Level</span>
+                <span class="px-2 py-0.5 rounded bg-[var(--mat-sys-tertiary-container)] text-[var(--mat-sys-tertiary)] text-[10px] font-bold uppercase tracking-wider">Top Level</span>
               }
             </div>
             <app-protocol-warning-badge [protocol]="protocol"></app-protocol-warning-badge>

@@ -47,7 +47,7 @@ Actionable implementation tasks.
 | D-02 | [Playground Theme Sync](D-02_playground_theme.md) | ✅ Complete | I-02 |
 | D-03 | [Playground Loading Overlay](D-03_playground_loading.md) | ✅ Complete | I-02 |
 | D-04 | [WebSerial/WebUSB Builtins Fix](D-04_webserial_fix.md) | ✅ Complete | I-02 |
-| E-01 | [Well Arguments Cleanup](E-01_well_arguments.md) | 🟢 Not Started | None |
+| E-01 | [Well Arguments Cleanup](E-01_well_arguments.md) | ✅ Complete | None |
 | E-02 | [Well Selector Performance](E-02_well_selector_perf.md) | 🟢 Not Started | None |
 | E-03 | [Asset Autocomplete Redesign](E-03_asset_autocomplete.md) | 🟢 Not Started | P-03 |
 | E-04 | [Guided Deck Setup Empty Start](E-04_guided_deck_empty.md) | 🟢 Not Started | None |
@@ -55,6 +55,21 @@ Actionable implementation tasks.
 | F-02 | [Mermaid Rendering Fix](F-02_mermaid_fix.md) | 🟢 Not Started | I-05 |
 | G-01 | [Home Recent Activity Mock Data](G-01_home_recent_activity.md) | 🟢 Not Started | None |
 | H-01 | [Card Visual Polish](H-01_card_polish.md) | ✅ Complete | I-04 |
+
+### Phase 4: Workcell Redesign (K-XX)
+
+Implementation of the new Workcell Dashboard and Explorer.
+
+| ID | Title | Status | Dependencies |
+|:---|:------|:-------|:-------------|
+| K-01 | [Workcell View Models](K-01_workcell_models.md) | ✅ Complete | None |
+| K-02 | [Workcell View Service](K-02_workcell_service.md) | ✅ Complete | K-01 |
+| K-03 | [Workcell Dashboard Container](K-03_workcell_dashboard.md) | ✅ Complete | K-02 |
+| K-04 | [Workcell Explorer](K-04_workcell_explorer.md) | ✅ Complete | K-02 |
+| K-05 | [Machine Status Badge](K-05_machine_status_badge.md) | ✅ Complete | None |
+| K-06 | [Machine Card Component](K-06_machine_card.md) | ✅ Complete | K-04, K-05 |
+| K-07 | [Machine Focus View](K-07_machine_focus_view.md) | ✅ Complete | K-06 |
+| K-08 | [Simulated Deck States](K-08_simulated_deck_states.md) | ✅ Complete | K-07 |
 
 ---
 

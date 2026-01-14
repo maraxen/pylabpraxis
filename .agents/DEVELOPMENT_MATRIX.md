@@ -41,7 +41,6 @@
 
 | Item                           | Difficulty | Backlog                                                       | Description                                          |
 |--------------------------------|------------|---------------------------------------------------------------|------------------------------------------------------|
-| Workcell Hierarchical Explorer | Hard       | [workcell_ux_redesign.md](./artifacts/workcell_ux_redesign.md) | Implement tree-based sidebar and status cards        |
 | Unified Asset Selector         | Medium     | [inventory_ux_design.md](./artifacts/inventory_ux_design.md)   | Implement shared browsing for Playground and Protocol |
 
 ### Hardware Validation (Required for Alpha)
@@ -116,7 +115,12 @@
 | Playground Kernel Load & Loading Overlay (D-01/D-03) | P1/P2    | 2026-01-15 | Implemented loading state with ready signal and timeout fallback |
 | WebSerial/WebUSB Shims Fix (D-04)                   | P1       | 2026-01-15 | Injected hardware shims into builtins via async bootstrap          |
 | Installation Docs Split (F-01)                      | P3       | 2026-01-15 | Created dedicated guides for Browser, Production, and Lite modes   |
-| Deck View Implementation (J-01)                    | P2       | 2026-01-15 | **Tentative Pass** - Logic/Persistence done, awaiting improved Workcell view |
+| Deck View Implementation (J-01)                  | P2       | 2026-01-15 | **Tentative Pass** - Logic/Persistence done, awaiting improved Workcell view |
+| Workcell View Service (K-02)                  | P1       | 2026-01-15 | Implemented `WorkcellViewService` and extended `AssetService` |
+| Workcell Dashboard Container (P1.1)           | P2       | 2026-01-15 | Implemented main dashboard shell with responsive layout and view modes |
+| Workcell Hierarchical Explorer (P1.2)        | P2       | 2026-01-15 | Implemented hierarchical tree-based sidebar with search and persistence |
+| Machine Status Badge (K-05)                   | P2       | 2026-01-15 | Implemented reusable status badge with pulse animations and state source tags |
+| Machine Card Component (K-06)                 | P2       | 2026-01-15 | Implemented main machine status cards with mini-deck view and progress bars |
 
 ---
 

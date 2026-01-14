@@ -2,7 +2,7 @@
 
 Examine `.agents/README.md` for development context.
 
-**Status:** 🟢 Not Started  
+**Status:** 🟢 Completed  
 **Priority:** P3  
 **Batch:** [260115](README.md)  
 **Difficulty:** Easy  
@@ -85,9 +85,9 @@ private loadRuns() {
 
 **Definition of Done:**
 
-1. Recent activity shows realistic protocol names
-2. "Clear Demo Runs" button works
-3. Cleared state persists across page refresh
+1. [x] Recent activity shows realistic protocol names
+2. [x] "Clear Demo Runs" button works
+3. [x] Cleared state persists across page refresh
 
 **Manual Verification:**
 
@@ -100,8 +100,8 @@ private loadRuns() {
 
 ## On Completion
 
-- [ ] Commit changes
-- [ ] Mark this prompt complete
+- [x] Commit changes
+- [x] Mark this prompt complete
 
 ---
 

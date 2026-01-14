@@ -70,7 +70,7 @@ export const routes: Routes = [
           },
           {
             path: 'workcell',
-            loadChildren: () => import('./features/visualizer/visualizer.routes').then(m => m.VISUALIZER_ROUTES)
+            loadChildren: () => import('./features/workcell/workcell.routes').then(m => m.WORKCELL_ROUTES)
           },
           {
             path: 'data',

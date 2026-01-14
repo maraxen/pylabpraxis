@@ -9,7 +9,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatBadgeModule } from '@angular/material/badge';
-import { map, interval, Subscription } from 'rxjs';
+import { Subscription } from 'rxjs';
 
 import { AssetService } from '../assets/services/asset.service';
 import { ProtocolService } from '../protocols/services/protocol.service';
@@ -86,13 +86,13 @@ interface RecentRun {
             <span class="text-3xl font-bold text-sys-text-primary block">{{ runningCount() }}</span>
             <span class="card-subtitle">Running Protocols</span>
           </div>
-          <div class="absolute top-4 right-4 w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.6)]"></div>
+          <div class="absolute top-4 right-4 w-2 h-2 bg-[var(--mat-sys-primary)] rounded-full animate-pulse shadow-[0_0_8px_var(--mat-sys-primary)]"></div>
         </div>
 
         <div class="praxis-card premium group cursor-pointer" routerLink="/app/assets" matTooltip="View laboratory machines">
           <div class="card-header pb-0">
-            <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500/20 to-purple-500/20 shrink-0">
-              <mat-icon class="text-blue-400">precision_manufacturing</mat-icon>
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-[var(--mat-sys-tertiary-container)] shrink-0">
+              <mat-icon class="text-[var(--mat-sys-tertiary)]">precision_manufacturing</mat-icon>
             </div>
             <div class="flex flex-col items-end ml-auto opacity-60">
               <span class="text-sm font-bold text-sys-text-secondary">{{ simulatedOnlineMachines() }}/{{ simulatedMachinesCount() }}</span>
@@ -109,8 +109,8 @@ interface RecentRun {
 
         <div class="praxis-card premium group cursor-pointer" routerLink="/app/protocols" matTooltip="Manage protocols">
           <div class="card-header pb-0">
-            <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-purple-500/20 to-pink-500/20 shrink-0">
-              <mat-icon class="text-purple-400">science</mat-icon>
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-[var(--mat-sys-surface-variant)] shrink-0">
+              <mat-icon class="text-[var(--theme-text-primary)]">science</mat-icon>
             </div>
           </div>
           <div class="card-content">
@@ -121,8 +121,8 @@ interface RecentRun {
 
         <div class="praxis-card premium group cursor-pointer" routerLink="/app/assets" matTooltip="Manage resources">
           <div class="card-header pb-0">
-            <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-orange-500/20 to-primary/20 shrink-0">
-              <mat-icon class="text-orange-400">inventory_2</mat-icon>
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-[var(--mat-sys-warning-container)] shrink-0">
+              <mat-icon class="text-[var(--mat-sys-warning)]">inventory_2</mat-icon>
             </div>
           </div>
           <div class="card-content">
@@ -143,8 +143,8 @@ interface RecentRun {
                 Live Experiments
               </h2>
               @if (runningCount() > 0) {
-                <span class="flex items-center gap-2 text-sm font-medium text-green-400 bg-green-400/10 px-3 py-1 rounded-full border border-green-400/20">
-                  <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                <span class="flex items-center gap-2 text-sm font-medium text-[var(--mat-sys-primary)] bg-[var(--mat-sys-primary-container)] px-3 py-1 rounded-full border border-[var(--mat-sys-primary)]/20">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[var(--mat-sys-primary)] animate-pulse"></span>
                   {{ runningCount() }} Active
                 </span>
               }
@@ -199,7 +199,7 @@ interface RecentRun {
             <div class="card-header border-b border-[var(--theme-border)] bg-[var(--mat-sys-surface-variant)]">
               <div class="flex justify-between items-center w-full">
                 <h2 class="text-lg font-semibold text-sys-text-primary flex items-center gap-2">
-                  <mat-icon class="text-blue-400">history</mat-icon>
+                  <mat-icon class="text-[var(--mat-sys-tertiary)]">history</mat-icon>
                   Recent Activity
                 </h2>
                 <a mat-button class="!text-sys-text-secondary hover:!text-sys-text-primary" routerLink="/app/monitor">View All</a>
@@ -410,20 +410,20 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   getStatusClass(status: string): string {
     switch (status) {
-      case 'running': return '!bg-green-400/10 !text-green-400';
-      case 'completed': return '!bg-blue-400/10 !text-blue-400';
-      case 'failed': return '!bg-red-400/10 !text-red-400';
-      case 'pending': return '!bg-amber-400/10 !text-amber-400';
+      case 'running': return '!bg-[var(--mat-sys-primary-container)] !text-[var(--mat-sys-primary)]';
+      case 'completed': return '!bg-[var(--mat-sys-success-container)] !text-[var(--mat-sys-success)]';
+      case 'failed': return '!bg-[var(--mat-sys-error-container)] !text-[var(--mat-sys-error)]';
+      case 'pending': return '!bg-[var(--mat-sys-warning-container)] !text-[var(--mat-sys-warning)]';
       default: return '!bg-[var(--mat-sys-surface-variant)] !text-sys-text-primary';
     }
   }
 
   getStatusBgClass(status: string): string {
     switch (status) {
-      case 'running': return 'bg-green-400/20';
-      case 'completed': return 'bg-blue-400/20';
-      case 'failed': return 'bg-red-400/20';
-      case 'pending': return 'bg-amber-400/20';
+      case 'running': return 'bg-[var(--mat-sys-primary-container)]';
+      case 'completed': return 'bg-[var(--mat-sys-success-container)]';
+      case 'failed': return 'bg-[var(--mat-sys-error-container)]';
+      case 'pending': return 'bg-[var(--mat-sys-warning-container)]';
       default: return 'bg-[var(--mat-sys-surface-variant)]';
     }
   }

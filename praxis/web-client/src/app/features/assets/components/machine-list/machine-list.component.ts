@@ -161,11 +161,11 @@ import { AppStore } from '../../../../core/store/app.store';
                 
                 <div class="card-header">
                   <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center bg-primary/10 text-primary">
+                    <div class="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-primary)]">
                       <mat-icon>{{ machine.is_simulation_override ? 'computer' : 'precision_manufacturing' }}</mat-icon>
                     </div>
                     <div class="min-w-0">
-                      <h3 class="card-title group-hover:text-primary transition-colors">{{ machine.name }}</h3>
+                      <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors">{{ machine.name }}</h3>
                       <p class="card-subtitle">{{ machine.model || machine.machine_category }}</p>
                     </div>
                   </div>
@@ -195,7 +195,7 @@ import { AppStore } from '../../../../core/store/app.store';
             @for (machine of filteredMachines(); track machine.accession_id) {
               <div class="flex items-center gap-4 p-3 bg-[var(--mat-sys-surface)] border border-[var(--theme-border)] rounded-xl hover:bg-[var(--mat-sys-surface-container-highest)] cursor-pointer"
                    (click)="viewDetails(machine)">
-                <mat-icon class="text-primary">{{ machine.is_simulation_override ? 'computer' : 'precision_manufacturing' }}</mat-icon>
+                <mat-icon class="text-[var(--mat-sys-primary)]">{{ machine.is_simulation_override ? 'computer' : 'precision_manufacturing' }}</mat-icon>
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2">
                     <span class="font-bold truncate">{{ machine.name }}</span>
@@ -268,15 +268,15 @@ import { AppStore } from '../../../../core/store/app.store';
     .simulated-chip {
       --mdc-chip-container-height: 24px;
       font-size: 0.75rem;
-      background: rgba(59, 130, 246, 0.15);
-      color: rgb(59, 130, 246);
+      background: var(--mat-sys-tertiary-container);
+      color: var(--mat-sys-tertiary);
     }
 
     .physical-chip {
       --mdc-chip-container-height: 24px;
       font-size: 0.75rem;
-      background: rgba(34, 197, 94, 0.15);
-      color: rgb(34, 197, 94);
+      background: var(--mat-sys-success-container);
+      color: var(--mat-sys-success);
     }
 
     :host ::ng-deep .chip-icon {
