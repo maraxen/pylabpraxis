@@ -15,7 +15,7 @@ Central coordination hub for AI agents working on Praxis development.
 
 ## 📁 Directory Structure
 
-```
+```text
 .agents/
 ├── README.md                  # This file
 ├── DEVELOPMENT_MATRIX.md      # Central tracking table (priority, difficulty, status)
@@ -63,8 +63,8 @@ Central coordination hub for AI agents working on Praxis development.
 Central table with **Priority** and **Difficulty** for all items:
 
 | Priority | Difficulty | Item | Status |
-|:---------|:-----------|:-----|:-------|
-| P2 | 🔴 Complex | Example Item | 🟡 In Progress |
+| :------- | :----------- | :----------- | :-------------- |
+| P2       | 🔴 Complex    | Example Item | 🟡 In Progress  |
 
 **Difficulty levels** (for agent dispatch):
 
