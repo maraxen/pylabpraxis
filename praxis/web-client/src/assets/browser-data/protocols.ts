@@ -5,16 +5,16 @@
 export const MOCK_PROTOCOLS = [
     {
         accession_id: '11111111-1111-1111-1111-111111111111',
-        name: 'Simple Liquid Transfer',
-        description: 'Transfers liquid from a source plate to a destination plate using a liquid handler.',
+        name: 'PCR Prep (96-well)',
+        description: 'Transfers master mix and primers to a 96-well plate for PCR amplification.',
         version: '1.0.0',
         is_top_level: true,
-        category: 'Liquid Handling',
-        source_file_path: 'praxis/protocol/protocols/simple_transfer.py',
-        module_name: 'praxis.protocol.protocols.simple_transfer',
-        function_name: 'run_simple_transfer',
-        fqn: 'praxis.protocol.protocols.simple_transfer.run_simple_transfer',
-        tags: ['liquid-handling', 'basic'],
+        category: 'Molecular Biology',
+        source_file_path: 'praxis/protocol/protocols/pcr_prep.py',
+        module_name: 'praxis.protocol.protocols.pcr_prep',
+        function_name: 'run_pcr_prep',
+        fqn: 'praxis.protocol.protocols.pcr_prep.run_pcr_prep',
+        tags: ['pcr', 'molecular-biology', '96-well'],
         deprecated: false,
         parameters: [
             {
@@ -23,7 +23,7 @@ export const MOCK_PROTOCOLS = [
                 fqn: 'builtins.float',
                 is_deck_param: false,
                 optional: false,
-                default_value_repr: '100.0',
+                default_value_repr: '25.0',
                 description: 'Volume to transfer in microliters',
                 constraints: { min_value: 1, max_value: 1000 },
             }
@@ -53,67 +53,27 @@ export const MOCK_PROTOCOLS = [
     },
     {
         accession_id: '22222222-2222-2222-2222-222222222222',
-        name: 'Serial Dilution',
-        description: 'Performs a serial dilution across columns of a 96-well plate. Adds diluent to all wells, then transfers sample serially.',
+        name: 'Cell Culture Feed (24-well)',
+        description: 'Aspirates old media and adds fresh growth media to a 24-well cell culture plate.',
         version: '1.0.0',
         is_top_level: true,
-        category: 'Assay Prep',
-        source_file_path: 'praxis/protocol/protocols/serial_dilution.py',
-        module_name: 'praxis.protocol.protocols.serial_dilution',
-        function_name: 'serial_dilution',
-        fqn: 'praxis.protocol.protocols.serial_dilution.serial_dilution',
-        tags: ['browser-mode', 'dilution', 'assay'],
+        category: 'Cell Culture',
+        source_file_path: 'praxis/protocol/protocols/cell_feed.py',
+        module_name: 'praxis.protocol.protocols.cell_feed',
+        function_name: 'cell_culture_feed',
+        fqn: 'praxis.protocol.protocols.cell_feed.cell_culture_feed',
+        tags: ['cell-culture', 'maintenance', '24-well'],
         deprecated: false,
         parameters: [
             {
-                name: 'start_row',
-                type_hint: 'str',
-                fqn: 'builtins.str',
-                is_deck_param: false,
-                optional: true,
-                default_value_repr: "'A'",
-                description: 'Starting row letter (A-H)',
-                constraints: {},
-            },
-            {
-                name: 'num_dilutions',
-                type_hint: 'int',
-                fqn: 'builtins.int',
-                is_deck_param: false,
-                optional: true,
-                default_value_repr: '8',
-                description: 'Number of dilution steps',
-                constraints: { min_value: 1, max_value: 12 },
-            },
-            {
-                name: 'sample_volume_ul',
+                name: 'media_volume_ul',
                 type_hint: 'float',
                 fqn: 'builtins.float',
                 is_deck_param: false,
                 optional: true,
-                default_value_repr: '100.0',
-                description: 'Volume of sample to transfer between wells',
-                constraints: { min_value: 1, max_value: 1000 },
-            },
-            {
-                name: 'diluent_volume_ul',
-                type_hint: 'float',
-                fqn: 'builtins.float',
-                is_deck_param: false,
-                optional: true,
-                default_value_repr: '100.0',
-                description: 'Volume of diluent to add to each well',
-                constraints: { min_value: 1, max_value: 1000 },
-            },
-            {
-                name: 'dilution_factor',
-                type_hint: 'float',
-                fqn: 'builtins.float',
-                is_deck_param: false,
-                optional: true,
-                default_value_repr: '2.0',
-                description: 'Dilution factor per step (e.g., 2 for 1:2 dilution)',
-                constraints: { min_value: 1.1, max_value: 10 },
+                default_value_repr: '500.0',
+                description: 'Volume of fresh media per well',
+                constraints: { min_value: 100, max_value: 2000 },
             }
         ],
         assets: [
@@ -123,27 +83,7 @@ export const MOCK_PROTOCOLS = [
                 fqn: 'pylabrobot.resources.Plate',
                 type_hint_str: 'pylabrobot.resources.Plate',
                 optional: false,
-                description: 'Plate for serial dilution',
-                constraints: { required_methods: [], required_attributes: [], required_method_signatures: {}, required_method_args: {} },
-                location_constraints: { location_requirements: [], on_resource_type: '', stack: false, directly_position: false, position_condition: [] }
-            },
-            {
-                accession_id: 'asset-sd-tiprack',
-                name: 'tip_rack',
-                fqn: 'pylabrobot.resources.TipRack',
-                type_hint_str: 'pylabrobot.resources.TipRack',
-                optional: false,
-                description: 'Tip rack for liquid handling',
-                constraints: { required_methods: [], required_attributes: [], required_method_signatures: {}, required_method_args: {} },
-                location_constraints: { location_requirements: [], on_resource_type: '', stack: false, directly_position: false, position_condition: [] }
-            },
-            {
-                accession_id: 'asset-sd-trough',
-                name: 'diluent_trough',
-                fqn: 'pylabrobot.resources.Trough',
-                type_hint_str: 'pylabrobot.resources.Trough',
-                optional: false,
-                description: 'Trough containing diluent',
+                description: 'Plate for cell culture',
                 constraints: { required_methods: [], required_attributes: [], required_method_signatures: {}, required_method_args: {} },
                 location_constraints: { location_requirements: [], on_resource_type: '', stack: false, directly_position: false, position_condition: [] }
             }
@@ -151,16 +91,16 @@ export const MOCK_PROTOCOLS = [
     },
     {
         accession_id: '33333333-3333-3333-3333-333333333333',
-        name: 'Plate Preparation',
-        description: 'Prepares a 96-well plate with reagents for an assay, including washing and priming steps.',
+        name: 'Daily System Maintenance',
+        description: 'Standard maintenance protocol including tip-seal check and system priming.',
         version: '2.0.1',
         is_top_level: true,
-        category: 'Assay Prep',
-        source_file_path: 'praxis/protocol/protocols/plate_preparation.py',
-        module_name: 'praxis.protocol.protocols.plate_preparation',
-        function_name: 'run_plate_preparation',
-        fqn: 'praxis.protocol.protocols.plate_preparation.run_plate_preparation',
-        tags: ['plate-prep', 'assay', 'washing'],
+        category: 'Maintenance',
+        source_file_path: 'praxis/protocol/protocols/maintenance.py',
+        module_name: 'praxis.protocol.protocols.maintenance',
+        function_name: 'run_maintenance',
+        fqn: 'praxis.protocol.protocols.maintenance.run_maintenance',
+        tags: ['maintenance', 'calibration'],
         deprecated: false,
         parameters: [
             {
@@ -169,42 +109,11 @@ export const MOCK_PROTOCOLS = [
                 fqn: 'builtins.int',
                 is_deck_param: false,
                 optional: true,
-                default_value_repr: '3',
+                default_value_repr: '2',
                 description: 'Number of wash cycles',
-                constraints: { min_value: 1, max_value: 10 },
+                constraints: { min_value: 1, max_value: 5 },
             }
         ],
-        assets: [
-            {
-                accession_id: 'asset-4',
-                name: 'assay_plate',
-                fqn: 'pylabrobot.resources.Plate',
-                type_hint_str: 'pylabrobot.resources.Plate',
-                optional: false,
-                description: 'Target assay plate',
-                constraints: { required_methods: [], required_attributes: [], required_method_signatures: {}, required_method_args: {} },
-                location_constraints: { location_requirements: [], on_resource_type: '', stack: false, directly_position: false, position_condition: [] }
-            },
-            {
-                accession_id: 'asset-5',
-                name: 'wash_buffer',
-                fqn: 'pylabrobot.resources.Reservoir',
-                type_hint_str: 'pylabrobot.resources.Reservoir',
-                optional: false,
-                description: 'Wash buffer reservoir',
-                constraints: { required_methods: [], required_attributes: [], required_method_signatures: {}, required_method_args: {} },
-                location_constraints: { location_requirements: [], on_resource_type: '', stack: false, directly_position: false, position_condition: [] }
-            },
-            {
-                accession_id: 'asset-6',
-                name: 'reagent',
-                fqn: 'pylabrobot.resources.Reservoir',
-                type_hint_str: 'pylabrobot.resources.Reservoir',
-                optional: false,
-                description: 'Primary reagent reservoir',
-                constraints: { required_methods: [], required_attributes: [], required_method_signatures: {}, required_method_args: {} },
-                location_constraints: { location_requirements: [], on_resource_type: '', stack: false, directly_position: false, position_condition: [] }
-            }
-        ]
+        assets: []
     }
 ];

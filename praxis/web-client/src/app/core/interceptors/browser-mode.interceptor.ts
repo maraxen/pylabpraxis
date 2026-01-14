@@ -164,6 +164,12 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
         return sqliteService.createProtocolRun(newRun);
     }
 
+    // Transfer logs
+    const transferLogsMatch = url.match(/\/protocols\/runs\/([a-f0-9-]+)\/transfer-logs$/);
+    if (transferLogsMatch && method === 'GET') {
+        return sqliteService.getTransferLogs(transferLogsMatch[1]);
+    }
+
     // Workcell
     if (url.includes('/workcell') && method === 'GET') {
         return of({

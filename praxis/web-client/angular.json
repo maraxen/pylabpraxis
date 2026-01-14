@@ -53,6 +53,7 @@
               "node_modules/mermaid/dist/mermaid.min.js"
             ],
             "externalDependencies": [
+              "crypto",
               "node:crypto",
               "node:vm",
               "node:path",

@@ -24,6 +24,10 @@ export class ProtocolService {
     return this.apiWrapper.wrap(ProtocolsService.getMultiApiV1ProtocolsRunsGet());
   }
 
+  getTransferLogs(runId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.API_URL}/protocols/runs/${runId}/transfer-logs`);
+  }
+
   // If uploading a file
   // NOTE: This endpoint is not yet in the generated API client
   uploadProtocol(file: File): Observable<FunctionProtocolDefinitionRead> {
