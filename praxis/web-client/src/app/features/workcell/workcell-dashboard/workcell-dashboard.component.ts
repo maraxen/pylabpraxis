@@ -76,7 +76,7 @@ import { MachineWithRuntime } from '../models/workcell-view.models';
           } @else {
             @switch (viewMode()) {
               @case ('grid') {
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 fade-in">
                   @for (machine of allMachines(); track machine.accession_id) {
                     <app-machine-card 
                       [machine]="machine"
@@ -91,7 +91,7 @@ import { MachineWithRuntime } from '../models/workcell-view.models';
                 </div>
               }
               @case ('list') {
-                <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-4 fade-in">
                   @for (machine of allMachines(); track machine.accession_id) {
                     <app-machine-card-mini 
                       [machine]="machine"
@@ -111,7 +111,7 @@ import { MachineWithRuntime } from '../models/workcell-view.models';
                     (back)="setViewMode('grid')"
                   ></app-machine-focus-view>
                 } @else {
-                  <div class="flex flex-col items-center justify-center h-full text-slate-400">
+                  <div class="flex flex-col items-center justify-center h-full text-slate-400 fade-in">
                     <mat-icon class="text-6xl mb-4">select_all</mat-icon>
                     <p>Select a machine from the explorer to focus</p>
                   </div>
@@ -127,6 +127,13 @@ import { MachineWithRuntime } from '../models/workcell-view.models';
     :host {
       display: block;
       height: 100%;
+    }
+    .fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,

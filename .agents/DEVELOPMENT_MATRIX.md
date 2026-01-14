@@ -121,6 +121,10 @@
 | Workcell Hierarchical Explorer (P1.2)        | P2       | 2026-01-15 | Implemented hierarchical tree-based sidebar with search and persistence |
 | Machine Status Badge (K-05)                   | P2       | 2026-01-15 | Implemented reusable status badge with pulse animations and state source tags |
 | Machine Card Component (K-06)                 | P2       | 2026-01-15 | Implemented main machine status cards with mini-deck view and progress bars |
+| Machine Focus View (K-07)                     | P2       | 2026-01-15 | Implemented detailed single-machine view with protocol progress and resource inspector |
+| Simulated Deck States (K-08)                  | P2       | 2026-01-15 | Connected DeckView to live/simulated state with liquid and tip visualization |
+| Deck State Indicator (K-09)                   | P3       | 2026-01-15 | Implemented source indicator badge (Live/Sim/Offline) for focus views |
+| Workcell Polish & Animations (K-10)           | P3       | 2026-01-15 | Applied glassmorphism, animations, and micro-interactions |
 
 ---
 

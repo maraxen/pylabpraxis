@@ -20,9 +20,9 @@ import { DeckStateIndicatorComponent } from '../../../shared/components/workcell
     DeckStateIndicatorComponent
   ],
   template: `
-    <div class="flex flex-col h-full w-full bg-[var(--mat-sys-surface-container-low)] overflow-hidden">
+    <div class="flex flex-col h-full w-full glass-container overflow-hidden animate-in fade-in duration-300">
       <!-- Header -->
-      <header class="flex items-center justify-between px-6 py-4 bg-[var(--mat-sys-surface-container)] border-b border-[var(--mat-sys-outline-variant)] shrink-0">
+      <header class="flex items-center justify-between px-6 py-4 glass-header border-b border-[var(--mat-sys-outline-variant)] shrink-0 z-10">
         <div class="flex items-center gap-4">
           <button
             (click)="back.emit()"
@@ -87,7 +87,7 @@ import { DeckStateIndicatorComponent } from '../../../shared/components/workcell
 
         <!-- Floating Alerts (Optional) -->
         @if (machine.alerts.length > 0) {
-          <div class="absolute top-6 right-6 flex flex-col gap-2 max-w-sm pointer-events-none">
+          <div class="absolute top-6 right-6 flex flex-col gap-2 max-w-sm pointer-events-none z-20">
             @for (alert of machine.alerts; track alert.message) {
               <div
                 class="pointer-events-auto px-4 py-3 rounded-lg border shadow-lg flex gap-3 animate-in slide-in-from-right-4"
@@ -112,8 +112,8 @@ import { DeckStateIndicatorComponent } from '../../../shared/components/workcell
       </div>
 
       <!-- Footer Panels -->
-      <footer class="h-64 shrink-0 bg-[var(--mat-sys-surface-container)] border-t border-[var(--mat-sys-outline-variant)] grid grid-cols-12 overflow-hidden shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-        <div class="col-span-12 md:col-span-5 lg:col-span-4">
+      <footer class="h-64 shrink-0 glass-footer border-t border-[var(--mat-sys-outline-variant)] grid grid-cols-12 overflow-hidden shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-10">
+        <div class="col-span-12 md:col-span-5 lg:col-span-4 border-r border-[var(--mat-sys-outline-variant)]">
           <app-protocol-progress-panel [run]="machine.currentRun"></app-protocol-progress-panel>
         </div>
         <div class="col-span-12 md:col-span-7 lg:col-span-8">
@@ -131,6 +131,22 @@ import { DeckStateIndicatorComponent } from '../../../shared/components/workcell
     /* Ensure the deck view can be centered and scaled if needed */
     app-deck-view {
       transform-origin: center center;
+    }
+
+    .glass-container {
+      background: var(--mat-sys-surface-container-low);
+    }
+    
+    .glass-header {
+      background: color-mix(in srgb, var(--mat-sys-surface-container) 85%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .glass-footer {
+      background: color-mix(in srgb, var(--mat-sys-surface-container) 90%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -155,7 +171,7 @@ export class MachineFocusViewComponent {
     this.selectedResource.set(details);
   }
 
-  @HostListener('window:keydown.escape', ['$event'])
+  @HostListener('window:keydown.escape')
   onEscapePressed() {
     this.back.emit();
   }

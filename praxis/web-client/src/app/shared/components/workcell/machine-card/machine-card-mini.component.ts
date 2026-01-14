@@ -28,7 +28,7 @@ import { MachineStatusBadgeComponent } from '../machine-status-badge/machine-sta
         <mat-icon class="machine-icon">precision_manufacturing</mat-icon>
         <div class="name-container">
           <h4 class="machine-name">{{ machine.name }}</h4>
-          <span class="machine-type">{{ machine.type }}</span>
+          <span class="machine-type">{{ machine.machine_type }}</span>
         </div>
       </div>
 

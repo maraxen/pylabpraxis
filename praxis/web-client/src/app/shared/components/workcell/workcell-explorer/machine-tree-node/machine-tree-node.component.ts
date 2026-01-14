@@ -1,6 +1,6 @@
-import { Component, output, ChangeDetectionStrategy, Input, signal } from '@angular/core';
+import { Component, output, ChangeDetectionStrategy, Input, signal, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MachineWithRuntime } from '../../../../../../features/workcell/models/workcell-view.models';
+import { MachineWithRuntime } from '../../../../../features/workcell/models/workcell-view.models';
 
 @Component({
   selector: 'app-machine-tree-node',
@@ -35,21 +35,8 @@ import { MachineWithRuntime } from '../../../../../../features/workcell/models/w
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MachineTreeNodeComponent {
-  @Input({ required: true }) set machine(value: MachineWithRuntime) {
-    this.machineSignal.set(value);
-  }
-  get machine() {
-    return this.machineSignal;
-  }
-  private machineSignal = signal<MachineWithRuntime>(null!);
-
-  @Input() set isSelected(value: boolean) {
-    this.isSelectedSignal.set(value);
-  }
-  get isSelected() {
-    return this.isSelectedSignal;
-  }
-  private isSelectedSignal = signal<boolean>(false);
+  machine = input.required<MachineWithRuntime>();
+  isSelected = input<boolean>(false);
   
   machineSelect = output<MachineWithRuntime>();
 

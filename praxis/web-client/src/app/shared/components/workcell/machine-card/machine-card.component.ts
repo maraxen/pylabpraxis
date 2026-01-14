@@ -33,7 +33,7 @@ import { PlrResource, PlrState } from '@core/models/plr.models';
           <mat-icon class="machine-icon">precision_manufacturing</mat-icon>
           <div class="name-container">
             <h3 class="machine-name">{{ machine.name }}</h3>
-            <span class="machine-type">{{ machine.type }}</span>
+            <span class="machine-type">{{ machine.machine_type }}</span>
           </div>
         </div>
         <app-machine-status-badge 

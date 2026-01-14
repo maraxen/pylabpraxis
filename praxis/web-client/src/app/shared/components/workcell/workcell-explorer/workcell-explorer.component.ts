@@ -7,7 +7,7 @@ import { WorkcellGroupComponent } from './workcell-group/workcell-group.componen
   selector: 'app-workcell-explorer',
   imports: [CommonModule, WorkcellGroupComponent],
   template: `
-    <div class="flex flex-col h-full bg-[var(--mat-sys-surface-container-low)] border-r border-[var(--theme-border)]">
+    <div class="flex flex-col h-full glass-panel border-r border-[var(--theme-border)]">
       <!-- Search Header -->
       <div class="p-4 border-b border-[var(--theme-border)]">
         <div class="relative">
@@ -52,7 +52,14 @@ import { WorkcellGroupComponent } from './workcell-group/workcell-group.componen
       -->
     </div>
   `,
-  styles: [`:host { display: block; height: 100%; }`],
+  styles: [`
+    :host { display: block; height: 100%; }
+    .glass-panel {
+      background: color-mix(in srgb, var(--mat-sys-surface-container-low) 85%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WorkcellExplorerComponent {

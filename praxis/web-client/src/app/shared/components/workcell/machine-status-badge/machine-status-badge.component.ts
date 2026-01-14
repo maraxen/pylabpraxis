@@ -56,7 +56,7 @@ import { MachineStatus } from '../../../../features/assets/models/asset.models';
       }
       &.running { 
         border-color: rgba(250, 204, 21, 0.2); 
-        .status-dot { background: var(--mat-sys-warning, #facc15); }
+        .status-dot { background: var(--mat-sys-tertiary, #facc15); }
       }
       &.error { 
         border-color: rgba(239, 68, 68, 0.2); 
@@ -79,7 +79,7 @@ import { MachineStatus } from '../../../../features/assets/models/asset.models';
       flex-shrink: 0;
 
       &.pulse {
-        box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.4);
+        box-shadow: 0 0 0 0 var(--mat-sys-tertiary-container, rgba(250, 204, 21, 0.4));
         animation: pulse-animation 2s infinite;
       }
     }
@@ -110,7 +110,7 @@ import { MachineStatus } from '../../../../features/assets/models/asset.models';
     @keyframes pulse-animation {
       0% {
         transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7);
+        box-shadow: 0 0 0 0 var(--mat-sys-tertiary, rgba(250, 204, 21, 0.7));
       }
       70% {
         transform: scale(1);

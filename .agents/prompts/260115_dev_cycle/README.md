@@ -70,6 +70,8 @@ Implementation of the new Workcell Dashboard and Explorer.
 | K-06 | [Machine Card Component](K-06_machine_card.md) | ✅ Complete | K-04, K-05 |
 | K-07 | [Machine Focus View](K-07_machine_focus_view.md) | ✅ Complete | K-06 |
 | K-08 | [Simulated Deck States](K-08_simulated_deck_states.md) | ✅ Complete | K-07 |
+| K-09 | [Deck State Indicator](K-09_deck_state_indicator.md) | ✅ Complete | K-08 |
+| K-10 | [Workcell Polish & Animations](K-10_workcell_polish.md) | ✅ Complete | K-09 |
 
 ---
 
