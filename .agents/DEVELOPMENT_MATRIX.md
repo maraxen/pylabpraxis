@@ -121,6 +121,8 @@
 | Workcell UX Planning | P2 | 2026-01-14 | Completed comprehensive UX audit and redesign plan for the Workcell view |
 | Inventory/Asset Selector Design | P2 | 2026-01-14 | Planned unification of playground inventory and protocol asset selection |
 | Spatial View UX Analysis | P3 | 2026-01-14 | Analyzed purpose and value of Spatial View for future integration |
+| FilterChip Deprecation (A-05) | P2 | 2026-01-14 | Replaced `FilterChipComponent` with `PraxisSelect` in `ViewControlsComponent`, marked original as deprecated |
+| RunProtocol Fix | P2 | 2026-01-14 | Fixed critical `@Component` decorator error in `RunProtocolComponent` |
 
 ---
 

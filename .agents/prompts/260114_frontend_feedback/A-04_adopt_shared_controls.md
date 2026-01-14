@@ -66,7 +66,7 @@ export class SpatialViewComponent {
       {
         key: 'category',
         label: 'Category', 
-        type: 'chips',
+        type: 'multiselect',
         options: this.categoryOptions,
       },
     ],
@@ -108,7 +108,7 @@ viewConfig: ViewControlsConfig = {
   ],
   filters: [
     { key: 'status', label: 'Status', type: 'multiselect', options: this.statusOptions },
-    { key: 'category', label: 'Category', type: 'chips', options: this.categoryOptions },
+    { key: 'category', label: 'Category', type: 'multiselect', options: this.categoryOptions },
     { key: 'simulated', label: 'Simulated', type: 'select', options: [
       { label: 'All', value: null },
       { label: 'Real', value: false },

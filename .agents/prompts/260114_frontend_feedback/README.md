@@ -181,6 +181,7 @@ After review approval:
 | [A-02_add_dialog_unification.md](A-02_add_dialog_unification.md) | ✅ Completed | P2 Implementation: Unified Add Asset/Machine Dialog |
 | [A-03_quick_add_autocomplete.md](A-03_quick_add_autocomplete.md) | ✅ Completed | P2 Implementation: Quick Add Autocomplete |
 | [A-04_adopt_shared_controls.md](A-04_adopt_shared_controls.md) | 🟢 Ready | P2 Implementation: Adopt Shared Controls Across Tabs |
+| [A-05_deprecate_filter_chips.md](A-05_deprecate_filter_chips.md) | 🟢 Ready | P2 Implementation: Deprecate FilterChip for Praxis Select/Multiselect |
 | **Group B: UI/UX Consistency** | | |
 | *(Prompts pending A completion)* | ⏳ Blocked | B-01 and B-02 will be generated after Group A |
 | **Group C: Simulation Architecture** | | |

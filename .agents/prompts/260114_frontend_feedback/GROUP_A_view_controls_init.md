@@ -159,6 +159,7 @@ graph TD
 | A-02 | 🟢 Implementation  | Add Dialog Unification              | A-01       |
 | A-03 | 🟢 Implementation  | Quick Add Autocomplete              | A-02       |
 | A-04 | 🟢 Implementation  | Adopt Shared Controls Across Tabs   | A-01       |
+| A-05 | 🟢 Implementation  | Deprecate FilterChip for Praxis Select/Multiselect | A-01 |
 
 ---
 

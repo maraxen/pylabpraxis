@@ -74,7 +74,7 @@ export interface ViewControlsConfig {
 export interface FilterConfig {
   key: string;
   label: string;
-  type: 'multiselect' | 'select' | 'chips';
+  type: 'multiselect' | 'select' | 'toggle'; // 'chips' deprecated
   options: FilterOption[];
   allowInvert?: boolean;
 }

@@ -13,7 +13,12 @@ export type FilterOption = SelectOption;
 export interface FilterConfig {
     key: string;
     label: string;
-    type: 'multiselect' | 'select' | 'chips' | 'toggle';
+    /** 
+     * Filter type. 
+     * Note: 'chips' is deprecated and will be mapped to 'multiselect'
+     */
+    type: 'multiselect' | 'select' | 'toggle' | 'chips';
+
     options?: FilterOption[];
     allowInvert?: boolean;
     defaultValue?: any;

@@ -5,7 +5,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { FilterOption } from '../../services/filter-result.service';
 
+/**
+ * @deprecated Use PraxisSelectComponent or PraxisMultiselectComponent instead.
+ * This component will be removed in a future release.
+ */
 @Component({
+
     selector: 'app-filter-chip',
     standalone: true,
     imports: [

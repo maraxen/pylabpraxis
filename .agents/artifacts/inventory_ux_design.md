@@ -111,10 +111,11 @@ The user feedback identifies these core issues:
 
 | Issue | Root Cause |
 |:------|:-----------|
-| Categories not good for machines | Machine categories use raw PLR taxonomy instead of user-friendly groupings |
-| Categories not good for resources | Same problem - uses `plr_category` directly |
+| Categories not good for machines | **Display inconsistencies** - some places show raw backend names like "PlateReaderBackend" or "HeaterShakerBackend" as categories instead of user-friendly labels |
+| Categories not good for resources | **Same inconsistency problem** - mixing raw PLR taxonomy with processed labels creates confusion |
 | Components should be united | Two different UX patterns for conceptually similar operations |
 | Different logic needed | Playground adds to simulation; Protocol assigns to requirements |
+| Too many clicks required | Users have to navigate through menus repeatedly; back-and-forth friction is high |
 
 ### Key Insight: Shared Selection, Divergent Context
 
@@ -129,6 +130,37 @@ The difference is:
 
 - **Playground:** Select definitions → configure simulation backend → add to notebook
 - **Protocol:** Select inventory instances → assign to requirement → run protocol
+
+---
+
+## UX Design Principles
+
+> [!TIP]
+> **Core Principle: Minimize Friction**
+>
+> Users should not have to hassle going through menus repeatedly or click back and forth. Balance clear UI with ease of use.
+
+### Design Guidelines
+
+1. **Reduce Click Depth**
+   - Surfacing common items (recents, favorites) eliminates browsing for repeat use
+   - Inline configuration where possible (no separate configuration step for simple cases)
+   - "Add another" flow after adding an item avoids returning to start
+
+2. **Search-First for Power Users**
+   - Good quality search is sufficient—no need for separate "Quick Add" autocomplete
+   - Search should work across all asset types simultaneously
+   - Results should be immediately actionable (click to add)
+
+3. **Cart Pattern with Checkout**
+   - Persist "Current Items" queue until explicit checkout
+   - Show cart badge with count in header
+   - Allow editing items in cart before final confirmation
+
+4. **Smart Defaults**
+   - Auto-generate variable names
+   - Pre-select most common backend option
+   - Remember last-used settings per asset type
 
 ---
 
@@ -205,12 +237,23 @@ interface UnifiedSelectionResult {
 }
 ```
 
-### Unified Category System
+### Multi-Layered Categorization Strategy
 
-Replace the current category systems with a **user-centric hierarchy**:
+We will maintain a dual-layered approach using both **Functional Groupings** (for high-level browsing) and **PLR Categorization** (for technical precision).
+
+1. **Layer 1: Functional Super-Categories**
+   - User-centric, high-level groups (e.g., "Thermal Control", "Liquid Handling").
+   - Used for the primary navigation/tabs in the browser.
+
+2. **Layer 2: PLR Taxonomy**
+   - The processed PLR categories (e.g., "HeaterShaker", "Plate", "PlateReader").
+   - Displayed as semantic labels on cards.
+   - Available as secondary filters or "Group By" options.
+
+#### Categorization Config
 
 ```typescript
-enum AssetSuperCategory {
+enum FunctionalCategory {
   LIQUID_HANDLING = 'Liquid Handling',
   SAMPLE_PREP = 'Sample Preparation', 
   THERMAL = 'Thermal Control',
@@ -219,28 +262,28 @@ enum AssetSuperCategory {
   AUTOMATION = 'Automation & Transport'
 }
 
-interface CategoryNode {
-  id: string;
-  label: string;
-  icon: string;
-  superCategory: AssetSuperCategory;
-  // Machines that belong here
-  machineCategories?: string[];  // maps to machine_category
-  // Resources that belong here
-  plrCategories?: string[];      // maps to plr_category
+interface AssetCategoryMapping {
+  functional: FunctionalCategory;
+  plrCategories: string[]; // maps to processed PLR taxonomy
 }
 ```
 
-**Example Mapping:**
+**Mapping Examples:**
 
-| User Category | Super Category | PLR Categories | Machine Categories |
-|:--------------|:---------------|:---------------|:-------------------|
-| Plates | Labware | plate, well_plate, pcr_plate | - |
-| Tip Racks | Labware | tip_rack | - |
-| Liquid Handlers | Liquid Handling | - | HamiltonSTAR, Opentrons |
-| Plate Readers | Analysis | - | PlateReader |
-| Heater Shakers | Thermal | - | HeaterShaker |
-| Tubes | Labware | tube, tube_rack | - |
+| Functional Category | PLR Categories (Grouped Here) |
+|:--------------------|:------------------------------|
+| Labware             | plate, well_plate, pcr_plate, tip_rack, tube |
+| Liquid Handling     | HamiltonSTAR, Opentrons, LiquidHandler |
+| Analysis            | PlateReader, Camera |
+| Thermal             | HeaterShaker, ThermalCycler |
+
+### Unified Browsing Logic (Shared View Controls)
+
+The interface will adopt the `ViewControlsComponent` pattern to allow users to pivot their view:
+
+- **Filter By:** Multiselect for Vendor, Functional Category, or PLR Category.
+- **Group By:** Toggle between "Functional Grouping" and "PLR Taxonomy".
+- **Search:** Deep search across FQN, Name, and Category labels.
 
 ### Mode: Protocol Definition (Abstract Types)
 
@@ -268,19 +311,29 @@ When `mode === 'playground'`:
    - Mixed machine/resource grid based on selection
    - Quick search across all asset types
 
-2. **Selection Flow**
+2. **Recents & Frequently Used** (New!)
+   - Show recently added items at top for quick re-adding
+   - Track usage frequency per asset type
+   - One-click add for repeat items
+
+3. **Selection Flow**
    - Select from catalog (definitions)
    - Configure for simulation:
      - Variable name (Python identifier)
      - Backend selection (for machines)
      - Count (for resources)
 
-3. **Backend Configuration** (New!)
+4. **Backend Configuration**
    - Show available simulation backends
    - Allow selecting "SimulatedLiquidHandlerBackend" vs "ChatterboxBackend"
    - Store backend choice with inventory item
 
-4. **Output**
+5. **Cart/Queue with Checkout**
+   - Items persist in cart until "Insert into Notebook"
+   - Edit variable names inline in cart
+   - Remove items from cart easily
+
+6. **Output**
    - `InventoryItem[]` with full configuration
 
 ---
@@ -297,23 +350,20 @@ When `mode === 'playground'`:
 │ │ 🔍 Search machines and resources...                     │ │
 │ └─────────────────────────────────────────────────────────┘ │
 │                                                             │
-│ Categories:                                                 │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ Filters: [Vendor ▾] [Functional ▾] [PLR Category ▾]       │ │
+│ │ Group By: (*) Functional ( ) PLR Taxonomy                │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
 │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
 │ │ 🤖 All   │ │ 💧 Liquid│ │ 🧪 Sample│ │ 🌡️ Thermal│       │
 │ │          │ │ Handling │ │   Prep   │ │ Control  │       │
 │ └──────────┘ └──────────┘ └──────────┘ └──────────┘        │
-│ ┌──────────┐ ┌──────────┐ ┌──────────┐                     │
-│ │ 📊 Analy.│ │ 🧫 Labware│ │ 🔄 Autom.│                     │
-│ └──────────┘ └──────────┘ └──────────┘                     │
 │                                                             │
 │ ┌───────────────────┐ ┌───────────────────┐                │
 │ │ STAR              │ │ 96-Well Plate     │                │
 │ │ Liquid Handler    │ │ Labware           │                │
-│ │ 3 backends        │ │ Corning 3599      │                │
-│ └───────────────────┘ └───────────────────┘                │
-│ ┌───────────────────┐ ┌───────────────────┐                │
-│ │ Heater Shaker     │ │ 300µL Tip Rack    │                │
-│ │ Thermal Control   │ │ Labware           │                │
+│ │ [HamiltonSTAR]    │ │ [plate]           │                │
 │ └───────────────────┘ └───────────────────┘                │
 ├─────────────────────────────────────────────────────────────┤
 │                                      [Cart (2)] [Continue →]│
@@ -525,13 +575,14 @@ npm run e2e -- --spec=protocol-assets.spec.ts
 
 ---
 
-## Open Questions
+## Design Decisions (Resolved)
 
-1. **Quick Add behavior:** Should the unified selector preserve the "Quick Add" autocomplete, or is the search sufficient?
-
-2. **Cart/Queue pattern:** Current Playground uses a "Current Items" tab. Should this persist?
-
-3. **Protocol inline mode:** GuidedSetup can work inline (not dialog). Should unified selector support this?
+| Question | Decision | Rationale |
+|:---------|:---------|:----------|
+| Quick Add autocomplete | **No** - good search is sufficient | Reduces complexity; search handles power user needs |
+| Cart/Queue pattern | **Yes** - persist until checkout | Users expect to add multiple items before committing |
+| Add recents/frequently used | **Yes** | Reduces friction for repeat workflows |
+| Support inline mode | **Yes** | GuidedSetup works inline; unified component should too |
 
 ---
 

@@ -6,6 +6,22 @@
   <title>Praxis</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Import map to stub Node.js built-in modules that some libs try to import -->
+  <script type="importmap">
+    {
+      "imports": {
+        "crypto": "data:text/javascript,export default {};export const randomUUID=()=>crypto.randomUUID();export const createHmac=()=>({update:()=>({digest:()=>''})});",
+        "node:crypto": "data:text/javascript,export default {};export const randomUUID=()=>crypto.randomUUID();export const createHmac=()=>({update:()=>({digest:()=>''})});",
+        "node:vm": "data:text/javascript,export default {}",
+        "node:path": "data:text/javascript,export default {}",
+        "node:child_process": "data:text/javascript,export default {}",
+        "node:fs": "data:text/javascript,export default {}",
+        "node:url": "data:text/javascript,export default {}",
+        "node:os": "data:text/javascript,export default {}",
+        "ws": "data:text/javascript,export default {}"
+      }
+    }
+  </script>
   <link rel="icon" type="image/svg+xml" href="assets/logo/praxis_logo.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

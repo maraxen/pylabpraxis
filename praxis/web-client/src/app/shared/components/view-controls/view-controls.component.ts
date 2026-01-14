@@ -18,7 +18,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 
-import { FilterChipComponent } from '../filter-chip/filter-chip.component';
+import { PraxisSelectComponent } from '../praxis-select/praxis-select.component';
+import { PraxisMultiselectComponent } from '../praxis-multiselect/praxis-multiselect.component';
 import { ViewTypeToggleComponent } from './view-type-toggle.component';
 import { GroupBySelectComponent } from './group-by-select.component';
 import {
@@ -38,7 +39,8 @@ import {
     MatTooltipModule,
     MatSelectModule,
     MatFormFieldModule,
-    FilterChipComponent,
+    PraxisSelectComponent,
+    PraxisMultiselectComponent,
     ViewTypeToggleComponent,
     GroupBySelectComponent,
   ],
@@ -82,16 +84,46 @@ import {
     }
 
     <!-- Filters -->
-    <div class="filters-chips">
+    <div class="filters-row">
       @for (filterConfig of config.filters; track filterConfig.key) {
-        <app-filter-chip
-          [label]="filterConfig.label"
-          [options]="filterConfig.options || []"
-          [selectedValue]="state.filters[filterConfig.key]"
-          [multiple]="filterConfig.type === 'multiselect'"
-          [isToggle]="filterConfig.type === 'toggle'"
-          (selectionChange)="onFilterChange(filterConfig.key, $event)"
-        ></app-filter-chip>
+        @switch (filterConfig.type) {
+          @case ('multiselect') {
+            <app-praxis-multiselect
+              [label]="filterConfig.label"
+              [options]="filterConfig.options || []"
+              [value]="state.filters[filterConfig.key]"
+              (valueChange)="onFilterChange(filterConfig.key, $event)"
+            ></app-praxis-multiselect>
+          }
+          @case ('chips') {
+            <app-praxis-multiselect
+              [label]="filterConfig.label"
+              [options]="filterConfig.options || []"
+              [value]="state.filters[filterConfig.key]"
+              (valueChange)="onFilterChange(filterConfig.key, $event)"
+            ></app-praxis-multiselect>
+          }
+          @case ('select') {
+            <app-praxis-select
+              [placeholder]="filterConfig.label"
+              [options]="filterConfig.options || []"
+              [value]="state.filters[filterConfig.key]?.[0]"
+              (valueChange)="onFilterChange(filterConfig.key, [$event])"
+            ></app-praxis-select>
+          }
+          @case ('toggle') {
+            <button 
+              mat-stroked-button
+              class="filter-toggle-btn"
+              [class.active]="state.filters[filterConfig.key]"
+              (click)="onFilterChange(filterConfig.key, !state.filters[filterConfig.key])"
+              [matTooltip]="filterConfig.label"
+            >
+              <mat-icon>{{ state.filters[filterConfig.key] ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+              {{ filterConfig.label }}
+            </button>
+          }
+        }
       }
     </div>
 
@@ -203,10 +235,40 @@ import {
   flex-wrap: wrap;
 }
 
-.filters-chips {
+.filters-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  app-praxis-select, app-praxis-multiselect {
+    min-width: 140px;
+  }
+}
+
+.filter-toggle-btn {
+  height: 32px;
+  border-radius: 16px;
+  font-size: 13px;
+  padding: 0 12px;
+  border: 1px solid var(--theme-border);
+  background: transparent;
+  color: var(--theme-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  &.active {
+    background-color: var(--theme-surface-elevated);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+
+  .mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
 }
 
 .sort-controls {

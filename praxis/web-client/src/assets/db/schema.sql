@@ -202,7 +202,7 @@ CREATE TABLE function_protocol_definitions (
 	bytecode_cache_version VARCHAR, 
 	bytecode_cached_at DATETIME, 
 	commit_hash VARCHAR, 
-	tags TEXT, 
+	tags_json TEXT, 
 	hardware_requirements_json TEXT, 
 	data_views_json TEXT, 
 	computation_graph_json TEXT, 

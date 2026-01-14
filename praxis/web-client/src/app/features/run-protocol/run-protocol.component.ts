@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatBadgeModule } from '@angular/material/badge';
@@ -57,6 +58,7 @@ interface FilterCategory {
   selector: 'app-run-protocol',
   standalone: true,
   imports: [
+    CommonModule,
     MatStepperModule,
     MatButtonModule,
     MatIconModule,
@@ -66,7 +68,6 @@ interface FilterCategory {
     MatInputModule,
     MatExpansionModule,
     MatCheckboxModule,
-    MatBadgeModule,
     MatBadgeModule,
     MatProgressSpinnerModule,
     MatSlideToggleModule,

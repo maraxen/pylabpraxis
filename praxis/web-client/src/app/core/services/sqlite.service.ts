@@ -325,6 +325,13 @@ export class SqliteService {
                         )`);
                         d.run(`CREATE INDEX IF NOT EXISTS idx_transfer_logs_run ON transfer_logs (run_accession_id)`);
                     }
+                },
+                {
+                    version: 6,
+                    name: 'add_protocol_tags_json',
+                    run: (d: Database) => {
+                        this.safeAddColumn(d, 'function_protocol_definitions', 'tags_json', 'TEXT');
+                    }
                 }
             ];
 

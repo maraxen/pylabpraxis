@@ -10,6 +10,9 @@ export class ApiWrapperService {
     /**
      * Wraps a CancelablePromise from the generated API client into an RxJS Observable.
      * Handles cancellation when the Observable is unsubscribed.
+     * 
+     * NOTE: Browser-mode interception happens in the custom request handler
+     * (see api-generated/core/browser-request.ts), not here.
      */
     wrap<T>(promise: CancelablePromise<T>): Observable<T> {
         return new Observable<T>(observer => {
@@ -37,10 +40,9 @@ export class ApiWrapperService {
     private normalizeError(error: unknown): unknown {
         if (error instanceof ApiError) {
             console.error(`[API-ERROR] ${error.status} ${error.statusText}:`, error.body);
-            // You can further normalize the error message here
             return {
                 status: error.status,
-                message: (error.body as any)?.detail || error.message || 'API Error',
+                message: (error.body as Record<string, unknown>)?.['detail'] || error.message || 'API Error',
                 originalError: error
             };
         }
