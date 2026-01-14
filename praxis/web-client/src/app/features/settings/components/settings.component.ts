@@ -119,7 +119,16 @@ type Theme = 'light' | 'dark' | 'system';
                <div>
                  <h3 class="font-medium">Guided Tutorial</h3>
                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                   {{ hasTutorialProgress() ? 'Resume or restart the interactive tour' : 'Start the interactive tour of features' }}
+                   @if (hasTutorialProgress()) {
+                     Resume or restart the interactive tour
+                   } @else if (onboarding.hasCompletedTutorial()) {
+                     <span class="flex items-center text-green-600 dark:text-green-400">
+                       <mat-icon class="mr-1 text-sm h-4 w-4">check_circle</mat-icon>
+                       You have completed the tour. Feel free to restart it anytime.
+                     </span>
+                   } @else {
+                     Start the interactive tour of features
+                   }
                  </p>
                </div>
                <div class="flex gap-2">
@@ -127,11 +136,18 @@ type Theme = 'light' | 'dark' | 'system';
                    <button mat-stroked-button color="primary" (click)="resumeTutorial()">
                      <mat-icon class="mr-1">play_arrow</mat-icon> Resume
                    </button>
+                   <button mat-stroked-button color="accent" (click)="restartTutorial()">
+                     <mat-icon class="mr-1">restart_alt</mat-icon> Restart
+                   </button>
+                 } @else if (onboarding.hasCompletedTutorial()) {
+                   <button mat-flat-button color="accent" (click)="restartTutorial()">
+                     <mat-icon class="mr-1">restart_alt</mat-icon> Restart Tutorial
+                   </button>
+                 } @else {
+                   <button mat-stroked-button color="primary" (click)="restartTutorial()">
+                     <mat-icon class="mr-1">play_arrow</mat-icon> Start Tutorial
+                   </button>
                  }
-                 <button mat-stroked-button [color]="hasTutorialProgress() ? 'accent' : 'primary'" (click)="restartTutorial()">
-                   <mat-icon class="mr-1">{{ hasTutorialProgress() ? 'restart_alt' : 'play_arrow' }}</mat-icon> 
-                   {{ hasTutorialProgress() ? 'Restart' : 'Start Tutorial' }}
-                 </button>
                </div>
              </div>
           </mat-card-content>

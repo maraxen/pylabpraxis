@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SettingsComponent } from './settings.component';
 import { AppStore } from '../../../core/store/app.store';
-import { OnboardingService } from '@core/services/onboarding.service';
+import { OnboardingService, TutorialState } from '@core/services/onboarding.service';
 import { TutorialService } from '@core/services/tutorial.service';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { SqliteService } from '@core/services/sqlite.service';
@@ -25,8 +25,9 @@ describe('SettingsComponent', () => {
     };
 
     const onboardingMock = {
-        getTutorialState: vi.fn(() => null),
-        clearTutorialState: vi.fn()
+        getTutorialState: vi.fn((): TutorialState | null => null),
+        clearTutorialState: vi.fn(),
+        hasCompletedTutorial: vi.fn(() => false)
     };
 
     const tutorialMock = {
@@ -86,9 +87,22 @@ describe('SettingsComponent', () => {
     });
 
     it('should check for tutorial progress', () => {
-        const hasProgress = component.hasTutorialProgress();
+        onboardingMock.getTutorialState.mockReturnValue(null);
+        let hasProgress = component.hasTutorialProgress();
         expect(hasProgress).toBe(false);
-        expect(onboardingMock.getTutorialState).toHaveBeenCalled();
+
+        onboardingMock.getTutorialState.mockReturnValue({ sessionId: 123, stepId: 'intro' });
+        hasProgress = component.hasTutorialProgress();
+        expect(hasProgress).toBe(true);
+    });
+
+    it('should show completed state when hasCompletedTutorial is true', () => {
+        // hasTutorialProgress is false when completed (since state is cleared)
+        onboardingMock.getTutorialState.mockReturnValue(null);
+        onboardingMock.hasCompletedTutorial.mockReturnValue(true);
+
+        expect(component.hasTutorialProgress()).toBe(false);
+        expect(component.onboarding.hasCompletedTutorial()).toBe(true);
     });
 
     it('should resume tutorial', () => {
