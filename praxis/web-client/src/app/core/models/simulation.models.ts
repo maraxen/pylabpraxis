@@ -128,6 +128,8 @@ export interface StateSnapshot {
     liquids: Record<string, WellVolumeMap>;
     /** Resources currently on deck */
     on_deck: string[];
+    /** Raw PyLabRobot state for fallback visualization */
+    raw_plr_state?: Record<string, any>;
 }
 
 /**

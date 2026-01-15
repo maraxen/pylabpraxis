@@ -10,8 +10,8 @@ from sqlmodel import SQLModel
 from alembic import context
 from praxis.backend.utils.db import Base as PraxisBase
 # --- MODIFICATION FOR PRAXIS ---
-from praxis.backend.models import orm  # Ensure all models are loaded
-from praxis.backend.models import domain  # Ensure SQLModel models are loaded
+# from praxis.backend.models import orm  # Ensure all models are loaded
+import praxis.backend.models  # Ensure SQLModel models are loaded
 # --- END MODIFICATION ---
 
 # this is the Alembic Config object, which provides
@@ -68,6 +68,7 @@ def do_run_migrations(connection: Connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         compare_type=True,
+        render_as_batch=True,
     )
 
     with context.begin_transaction():

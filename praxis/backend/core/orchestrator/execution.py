@@ -143,6 +143,13 @@ class ExecutionMixin:
     await db_session.merge(protocol_run_model)
     await db_session.flush()
 
+    # Add state listener to broadcast real-time state updates
+    async def state_listener(state: dict[str, Any]) -> None:
+      if self.protocol_run_service:
+        self.protocol_run_service.set_active_run_state(run_accession_id, state)
+
+    self.workcell_runtime.add_state_listener(state_listener)
+
     # Load deck construction function if specified
     deck_construction_func = None
     if protocol_pydantic_def.deck_construction_function_fqn:
@@ -314,11 +321,11 @@ class ExecutionMixin:
           await db_session.commit()
           logger.info("ORCH: Final DB commit for run %s successful.", run_accession_id)
         except Exception:  # pylint: disable=broad-except
-          logger.exception(
-            "ORCH: CRITICAL - Failed to commit final updates for run %s",
-            run_accession_id,
-          )
           await db_session.rollback()
+
+        # Clean up active state cache
+        if self.protocol_run_service:
+          self.protocol_run_service.remove_active_run_state(run_accession_id)
 
       await db_session.refresh(protocol_run_db_obj)
       return protocol_run_db_obj
@@ -454,11 +461,11 @@ class ExecutionMixin:
           await db_session.commit()
           logger.info("ORCH: Final DB commit for run %s successful.", run_accession_id)
         except Exception:
-          logger.exception(
-            "ORCH: CRITICAL - Failed to commit final updates for run %s",
-            run_accession_id,
-          )
           await db_session.rollback()
+
+        # Clean up active state cache
+        if self.protocol_run_service:
+          self.protocol_run_service.remove_active_run_state(run_accession_id)
 
       await db_session.refresh(protocol_run_model)
       return protocol_run_model

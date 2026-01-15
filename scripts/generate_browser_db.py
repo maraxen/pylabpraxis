@@ -394,12 +394,12 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
                             param.is_optional,
                             str(param.default_value) if param.default_value is not None else None,
                             "", # description
-                            safe_json_dumps(param.constraints) if hasattr(param, "constraints") and param.constraints else safe_json_dumps({}),
-                            param.field_type.value if hasattr(param, "field_type") and param.field_type else None,
-                            1 if hasattr(param, "is_itemized") and param.is_itemized else 0,
-                            safe_json_dumps(param.itemized_spec.model_dump()) if hasattr(param, "itemized_spec") and param.itemized_spec else None,
-                            param.linked_to if hasattr(param, "linked_to") else None,
-                            safe_json_dumps({}), # ui_hint
+                            safe_json_dumps(param.constraints_json if hasattr(param, "constraints_json") else {}),
+                            param.field_type,
+                            1 if param.is_itemized else 0,
+                            safe_json_dumps(param.itemized_spec),
+                            param.linked_to,
+                            safe_json_dumps(param.ui_hint_json if hasattr(param, "ui_hint_json") else {}),
                             now,
                             now,
                         ),

@@ -1,6 +1,6 @@
 /**
  * Auto-generated TypeScript interfaces from SQLAlchemy ORM models
- * Generated at: 2026-01-14T13:43:14.952507
+ * Generated at: 2026-01-15T16:15:24.577051
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 
@@ -128,6 +128,8 @@ export interface FunctionCallLog {
   status: FunctionCallStatus | null;
   input_args_json: Record<string, unknown> | null;
   return_value_json: Record<string, unknown> | null;
+  state_before_json: Record<string, unknown> | null;
+  state_after_json: Record<string, unknown> | null;
   protocol_run_accession_id: string;
   function_protocol_definition_accession_id: string;
   parent_function_call_log_accession_id: string | null;

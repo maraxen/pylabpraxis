@@ -8,13 +8,13 @@ import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 
 # Import all ORM models to ensure they're registered
-from praxis.backend.models import orm  # noqa: F401 - models must be imported to register with Base
+import praxis.backend.models  # noqa: F401 - models must be imported to register with Base
 from praxis.backend.utils.db import Base
 
 
 async def create_tables():
   """Create all database tables."""
-  database_url = "postgresql+asyncpg://test_user:test_password@localhost:5433/test_db"
+  database_url = "sqlite+aiosqlite:///praxis.db"
   engine = create_async_engine(database_url, echo=True)
 
   async with engine.begin() as conn:

@@ -227,6 +227,14 @@ export class SqliteService {
             // Seed definition catalogs if empty (important for IndexedDB loaded DBs)
             this.seedDefinitionCatalogs(db);
 
+            // CLEANUP: Delete existing auto-seeded junk machines if they exist
+            try {
+                db.exec(`DELETE FROM machines WHERE properties_json LIKE '%"is_default":true%'`);
+                console.log('[SqliteService] Cleaned up auto-seeded default machines');
+            } catch (e) {
+                console.warn('[SqliteService] Cleanup failed (likely table does not exist yet)', e);
+            }
+
             // Seed defaults if needed (e.g. if definitions exist but no assets)
             this.seedDefaultAssets(db);
 
@@ -623,6 +631,9 @@ export class SqliteService {
                     VALUES (?, 'MACHINE', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `);
 
+                /* 
+                // [DEPRECATED] Machine auto-seeding is replaced by just-in-time factory patterns.
+                // We no longer clutter the inventory with ~70 simulated instances.
                 for (const row of machDefRows) {
                     const [defId, name, _defFqn, compatibleBackendsStr, category, isSimulatedFrontend] = row;
                     const assetId = generateUuid();
@@ -634,7 +645,7 @@ export class SqliteService {
                             const parsed = JSON.parse(compatibleBackendsStr as string);
                             if (Array.isArray(parsed)) backends = parsed;
                         }
-                    } catch { /* Ignore JSON parse error */ }
+                    } catch { / * Ignore JSON parse error * / }
 
                     const isNativeSim = backends.some(b => b.includes('Simulator') || b.includes('Chatterbox'));
 
@@ -664,6 +675,7 @@ export class SqliteService {
                         1 // maintenance_enabled
                     ]);
                 }
+                */
 
                 insertMachine.free();
 
@@ -687,7 +699,7 @@ export class SqliteService {
      */
     public createMachine(machine: {
         name: string;
-        plr_backend: string;
+        plr_backend?: string;
         connection_type?: string;
         connection_info?: any;
         configuration?: any;
@@ -714,10 +726,12 @@ export class SqliteService {
                         } finally { defQuery.free(); }
                     }
 
-                    if (!defRow && machine.plr_backend) {
+                    const plrBackend = (machine.plr_backend || machine.connection_info?.plr_backend || '').toLowerCase();
+
+                    if (!defRow && plrBackend) {
                         const defQuery = db.prepare("SELECT accession_id, machine_category, compatible_backends, manufacturer, description FROM machine_definitions WHERE fqn = ?");
                         try {
-                            defQuery.bind([machine.plr_backend]);
+                            defQuery.bind([plrBackend]);
                             if (defQuery.step()) {
                                 defRow = defQuery.get();
                             }
@@ -732,7 +746,6 @@ export class SqliteService {
                     const description = defRow ? `User registered instance of ${defRow[4] || machine.name}` : `Registered Machine: ${machine.name}`;
 
                     // 2. Insert Machine
-                    const plrBackend = (machine.plr_backend || '').toLowerCase();
                     const isSimulated = machine.is_simulated || plrBackend.includes('chatterbox') ||
                         plrBackend.includes('simulator') ||
                         plrBackend.includes('simulated') ||
@@ -757,7 +770,7 @@ export class SqliteService {
                         'IDLE',
                         JSON.stringify({
                             connection_type: machine.connection_type || 'serial',
-                            plr_backend: machine.plr_backend, // Store PLR backend FQN for REPL code generation
+                            plr_backend: plrBackend, // Store PLR backend FQN for REPL code generation
                             ...machine.connection_info
                         }),
                         description,

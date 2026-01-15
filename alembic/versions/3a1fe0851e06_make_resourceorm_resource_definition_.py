@@ -21,19 +21,19 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
   """Make resource_definition_accession_id nullable to work around MappedAsDataclass FK issue."""
-  op.alter_column(
-    "resources",
-    "resource_definition_accession_id",
-    nullable=True,
-    existing_type=sa.UUID(),
-  )
+  with op.batch_alter_table("resources") as batch_op:
+    batch_op.alter_column(
+      "resource_definition_accession_id",
+      nullable=True,
+      existing_type=sa.UUID(),
+    )
 
 
 def downgrade() -> None:
   """Revert resource_definition_accession_id to NOT NULL."""
-  op.alter_column(
-    "resources",
-    "resource_definition_accession_id",
-    nullable=False,
-    existing_type=sa.UUID(),
-  )
+  with op.batch_alter_table("resources") as batch_op:
+    batch_op.alter_column(
+      "resource_definition_accession_id",
+      nullable=False,
+      existing_type=sa.UUID(),
+    )
