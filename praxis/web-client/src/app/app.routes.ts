@@ -108,7 +108,6 @@ export const routes: Routes = [
   { path: 'assets', redirectTo: 'app/assets' },
   { path: 'protocols', redirectTo: 'app/protocols' },
   { path: 'run', redirectTo: 'app/run' },
-  { path: 'visualizer', redirectTo: 'app/workcell' },
   { path: 'workcell', redirectTo: 'app/workcell' },
   { path: 'data', redirectTo: 'app/data' },
   { path: 'settings', redirectTo: 'app/settings' },

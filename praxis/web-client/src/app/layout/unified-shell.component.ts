@@ -67,7 +67,7 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
         <div class="nav-divider"></div>
 
         <!-- Views -->
-        <a class="nav-item" data-tour-id="nav-visualizer" routerLink="/app/workcell" routerLinkActive="active" matTooltip="Workcell View" matTooltipPosition="right">
+        <a class="nav-item" data-tour-id="nav-workcell" routerLink="/app/workcell" routerLinkActive="active" matTooltip="Workcell View" matTooltipPosition="right">
           <mat-icon>view_in_ar</mat-icon>
           <span class="nav-label">Workcell</span>
         </a>
