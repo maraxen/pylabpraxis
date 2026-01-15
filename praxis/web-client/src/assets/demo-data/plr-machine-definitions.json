@@ -1,6 +1,6 @@
 [
   {
-    "accession_id": "plr-machine-085e2be6",
+    "accession_id": "plr-machine-1b219d1b",
     "name": "Machine",
     "fqn": "pylabrobot.machines.machine.Machine",
     "description": "Abstract base class for machine frontends.",

@@ -359,7 +359,9 @@ export class AssetsComponent implements OnInit, OnDestroy {
       filter(result => !!result),
       switchMap(result => {
         this.isLoading.set(true);
-        if (result.machine_definition_accession_id) {
+        const type = result.asset_type || (result.machine_definition_accession_id ? 'MACHINE' : 'RESOURCE');
+        
+        if (type === 'MACHINE') {
           return this.assetService.createMachine(result).pipe(
             finalize(() => {
               this.isLoading.set(false);

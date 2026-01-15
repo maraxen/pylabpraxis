@@ -340,11 +340,11 @@ interface FrontendType {
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
     .stepper { background: linear-gradient(90deg, var(--mat-sys-surface) 0%, var(--mat-sys-surface-container-low, #eef2f7) 100%); border-radius: 12px; padding: 12px 16px; border: 1px solid var(--mat-sys-outline-variant, #c4c7c5); }
-    .step-text-active { color: var(--primary-color, var(--mat-sys-primary, #ED7A9B)); }
-    .step-text-completed { color: var(--primary-color, var(--mat-sys-primary, #ED7A9B)); }
+    .step-text-active { color: var(--primary-color, var(--mat-sys-primary, var(--primary-color))); }
+    .step-text-completed { color: var(--primary-color, var(--mat-sys-primary, var(--primary-color))); }
     .step-text-inactive { color: var(--mat-sys-on-surface-variant, #9aa0a6); }
-    .step-circle-active { border-color: var(--primary-color, var(--mat-sys-primary, #ED7A9B)); background: var(--primary-color, var(--mat-sys-primary, #ED7A9B)); color: var(--theme-text-primary, #ffffff); }
-    .step-circle-completed { border-color: var(--primary-color, var(--mat-sys-primary, #ED7A9B)); background: var(--mat-sys-primary-container, #ffd9de); color: var(--primary-color, var(--mat-sys-primary, #ED7A9B)); }
+    .step-circle-active { border-color: var(--primary-color, var(--mat-sys-primary, var(--primary-color))); background: var(--primary-color, var(--mat-sys-primary, var(--primary-color))); color: var(--theme-text-primary, #ffffff); }
+    .step-circle-completed { border-color: var(--primary-color, var(--mat-sys-primary, var(--primary-color))); background: var(--mat-sys-primary-container, #ffd9de); color: var(--primary-color, var(--mat-sys-primary, var(--primary-color))); }
     .step-circle-inactive { border-color: var(--mat-sys-outline, #e0e0e0); color: var(--mat-sys-on-surface-variant, #9aa0a6); }
 
     .selection-card { border: 1px solid var(--theme-border, var(--mat-sys-outline-variant)); border-radius: 14px; padding: 12px 14px; background: linear-gradient(135deg, var(--mat-sys-surface) 0%, var(--mat-sys-surface-container-low, #f6f8fb) 100%); width: 100%; text-align: left; transition: all 0.18s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
@@ -365,7 +365,7 @@ interface FrontendType {
     .sys-text-tertiary { color: var(--mat-sys-on-surface-variant, #7a7f85); }
     .sys-border { border-color: var(--mat-sys-outline-variant, #c4c7c5); }
     .sys-divider { background-color: var(--mat-sys-outline-variant, #e0e0e0); }
-    .text-primary { color: var(--primary-color, var(--mat-sys-primary, #ED7A9B)); }
+    .text-primary { color: var(--primary-color, var(--mat-sys-primary, var(--primary-color))); }
 
     /* FQN text wrapping (replaced marquee) */
     .fqn-wrap { 

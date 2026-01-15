@@ -1,6 +1,6 @@
 [
   {
-    "accession_id": "plr-73ae31b1",
+    "accession_id": "plr-d7691ea5",
     "name": "Carrier",
     "fqn": "pylabrobot.resources.carrier.Carrier",
     "plr_category": "Carrier",
@@ -13,7 +13,7 @@
     }
   },
   {
-    "accession_id": "plr-f083d16f",
+    "accession_id": "plr-830322f4",
     "name": "Container",
     "fqn": "pylabrobot.resources.container.Container",
     "plr_category": "Resource",
@@ -24,7 +24,7 @@
     "properties_json": {}
   },
   {
-    "accession_id": "plr-5f911ce8",
+    "accession_id": "plr-090bfec2",
     "name": "Deck",
     "fqn": "pylabrobot.resources.deck.Deck",
     "plr_category": "Deck",
@@ -41,7 +41,7 @@
     }
   },
   {
-    "accession_id": "plr-10ed82c1",
+    "accession_id": "plr-24cee9e2",
     "name": "HamiltonSTARDeck",
     "fqn": "pylabrobot.resources.hamilton.hamilton_decks.HamiltonSTARDeck",
     "plr_category": "Deck",
@@ -59,7 +59,7 @@
     }
   },
   {
-    "accession_id": "plr-1af22940",
+    "accession_id": "plr-6c85bff7",
     "name": "ItemizedResource",
     "fqn": "pylabrobot.resources.itemized_resource.ItemizedResource",
     "plr_category": "Resource",
@@ -70,7 +70,7 @@
     "properties_json": {}
   },
   {
-    "accession_id": "plr-fed99703",
+    "accession_id": "plr-1179444f",
     "name": "Lid",
     "fqn": "pylabrobot.resources.plate.Lid",
     "plr_category": "Resource",
@@ -83,7 +83,7 @@
     }
   },
   {
-    "accession_id": "plr-e73895d5",
+    "accession_id": "plr-655d0be7",
     "name": "MFXCarrier",
     "fqn": "pylabrobot.resources.carrier.MFXCarrier",
     "plr_category": "Carrier",
@@ -96,7 +96,7 @@
     }
   },
   {
-    "accession_id": "plr-11ccf331",
+    "accession_id": "plr-b799d13a",
     "name": "NestedTipRack",
     "fqn": "pylabrobot.resources.tip_rack.NestedTipRack",
     "plr_category": "TipRack",
@@ -110,7 +110,7 @@
     }
   },
   {
-    "accession_id": "plr-b6cb3109",
+    "accession_id": "plr-b059a0d5",
     "name": "OTDeck",
     "fqn": "pylabrobot.resources.opentrons.deck.OTDeck",
     "plr_category": "Deck",
@@ -127,7 +127,7 @@
     }
   },
   {
-    "accession_id": "plr-8280f3cf",
+    "accession_id": "plr-bb983654",
     "name": "PetriDish",
     "fqn": "pylabrobot.resources.petri_dish.PetriDish",
     "plr_category": "Resource",
@@ -140,7 +140,7 @@
     }
   },
   {
-    "accession_id": "plr-b5beceae",
+    "accession_id": "plr-d0000e36",
     "name": "PetriDishHolder",
     "fqn": "pylabrobot.resources.petri_dish.PetriDishHolder",
     "plr_category": "Resource",
@@ -156,7 +156,7 @@
     }
   },
   {
-    "accession_id": "plr-bda9239e",
+    "accession_id": "plr-629857f6",
     "name": "Plate",
     "fqn": "pylabrobot.resources.plate.Plate",
     "plr_category": "Plate",
@@ -170,7 +170,7 @@
     }
   },
   {
-    "accession_id": "plr-a8feb08b",
+    "accession_id": "plr-debd417d",
     "name": "PlateAdapter",
     "fqn": "pylabrobot.resources.plate_adapter.PlateAdapter",
     "plr_category": "Resource",
@@ -185,7 +185,7 @@
     }
   },
   {
-    "accession_id": "plr-5a8d9690",
+    "accession_id": "plr-eb121aca",
     "name": "PlateCarrier",
     "fqn": "pylabrobot.resources.carrier.PlateCarrier",
     "plr_category": "Carrier",
@@ -198,7 +198,7 @@
     }
   },
   {
-    "accession_id": "plr-9d15c07b",
+    "accession_id": "plr-9acbcb6d",
     "name": "PlateHolder",
     "fqn": "pylabrobot.resources.carrier.PlateHolder",
     "plr_category": "Resource",
@@ -211,7 +211,7 @@
     }
   },
   {
-    "accession_id": "plr-01522d3a",
+    "accession_id": "plr-a9bc9f77",
     "name": "Resource",
     "fqn": "pylabrobot.resources.resource.Resource",
     "plr_category": "Resource",
@@ -222,7 +222,7 @@
     "properties_json": {}
   },
   {
-    "accession_id": "plr-a2911e00",
+    "accession_id": "plr-22a34368",
     "name": "ResourceHolder",
     "fqn": "pylabrobot.resources.resource_holder.ResourceHolder",
     "plr_category": "Resource",
@@ -235,7 +235,7 @@
     }
   },
   {
-    "accession_id": "plr-b6ba4cf5",
+    "accession_id": "plr-6c115100",
     "name": "ResourceStack",
     "fqn": "pylabrobot.resources.resource_stack.ResourceStack",
     "plr_category": "Resource",
@@ -246,7 +246,7 @@
     "properties_json": {}
   },
   {
-    "accession_id": "plr-5090dd17",
+    "accession_id": "plr-d071869f",
     "name": "TecanDeck",
     "fqn": "pylabrobot.resources.tecan.tecan_decks.TecanDeck",
     "plr_category": "Deck",
@@ -261,7 +261,7 @@
     }
   },
   {
-    "accession_id": "plr-ed300e9f",
+    "accession_id": "plr-6d1cb23f",
     "name": "TecanPlate",
     "fqn": "pylabrobot.resources.tecan.plates.TecanPlate",
     "plr_category": "Plate",
@@ -274,7 +274,7 @@
     }
   },
   {
-    "accession_id": "plr-e71fc132",
+    "accession_id": "plr-6d4bc35b",
     "name": "TecanPlateCarrier",
     "fqn": "pylabrobot.resources.tecan.plate_carriers.TecanPlateCarrier",
     "plr_category": "Carrier",
@@ -287,7 +287,7 @@
     }
   },
   {
-    "accession_id": "plr-a1d009c7",
+    "accession_id": "plr-5047b937",
     "name": "TecanResource",
     "fqn": "pylabrobot.resources.tecan.tecan_resource.TecanResource",
     "plr_category": "Resource",
@@ -301,7 +301,7 @@
     }
   },
   {
-    "accession_id": "plr-f15ac0bc",
+    "accession_id": "plr-87cf56b9",
     "name": "TecanTipCarrier",
     "fqn": "pylabrobot.resources.tecan.tip_carriers.TecanTipCarrier",
     "plr_category": "Carrier",
@@ -314,7 +314,7 @@
     }
   },
   {
-    "accession_id": "plr-213b4ab8",
+    "accession_id": "plr-f91fbf6a",
     "name": "TecanTipRack",
     "fqn": "pylabrobot.resources.tecan.tip_racks.TecanTipRack",
     "plr_category": "TipRack",
@@ -327,7 +327,7 @@
     }
   },
   {
-    "accession_id": "plr-b01666f2",
+    "accession_id": "plr-ef415355",
     "name": "TecanWashStation",
     "fqn": "pylabrobot.resources.tecan.wash.TecanWashStation",
     "plr_category": "Carrier",
@@ -340,7 +340,7 @@
     }
   },
   {
-    "accession_id": "plr-c4ae8da4",
+    "accession_id": "plr-4b243d1c",
     "name": "TipCarrier",
     "fqn": "pylabrobot.resources.carrier.TipCarrier",
     "plr_category": "Carrier",
@@ -353,7 +353,7 @@
     }
   },
   {
-    "accession_id": "plr-d10004db",
+    "accession_id": "plr-b68426d2",
     "name": "TipRack",
     "fqn": "pylabrobot.resources.tip_rack.TipRack",
     "plr_category": "TipRack",
@@ -367,7 +367,7 @@
     }
   },
   {
-    "accession_id": "plr-095c0cb9",
+    "accession_id": "plr-20cc3faa",
     "name": "TipSpot",
     "fqn": "pylabrobot.resources.tip_rack.TipSpot",
     "plr_category": "Resource",
@@ -381,7 +381,7 @@
     }
   },
   {
-    "accession_id": "plr-facdd377",
+    "accession_id": "plr-b8d81c14",
     "name": "Trash",
     "fqn": "pylabrobot.resources.trash.Trash",
     "plr_category": "Resource",
@@ -396,7 +396,7 @@
     }
   },
   {
-    "accession_id": "plr-0f4dcde1",
+    "accession_id": "plr-3b59dfb9",
     "name": "Trough",
     "fqn": "pylabrobot.resources.trough.Trough",
     "plr_category": "Reservoir",
@@ -410,7 +410,7 @@
     }
   },
   {
-    "accession_id": "plr-9a85be3b",
+    "accession_id": "plr-0073c2cf",
     "name": "TroughCarrier",
     "fqn": "pylabrobot.resources.carrier.TroughCarrier",
     "plr_category": "Carrier",
@@ -423,7 +423,7 @@
     }
   },
   {
-    "accession_id": "plr-aa1fc9c9",
+    "accession_id": "plr-d55fc9ff",
     "name": "Tube",
     "fqn": "pylabrobot.resources.tube.Tube",
     "plr_category": "Resource",
@@ -436,7 +436,7 @@
     }
   },
   {
-    "accession_id": "plr-973696d3",
+    "accession_id": "plr-fa81a9fa",
     "name": "TubeCarrier",
     "fqn": "pylabrobot.resources.carrier.TubeCarrier",
     "plr_category": "Carrier",
@@ -449,7 +449,7 @@
     }
   },
   {
-    "accession_id": "plr-e5c59039",
+    "accession_id": "plr-c7b40204",
     "name": "TubeRack",
     "fqn": "pylabrobot.resources.tube_rack.TubeRack",
     "plr_category": "Resource",
@@ -460,7 +460,7 @@
     "properties_json": {}
   },
   {
-    "accession_id": "plr-8bd08985",
+    "accession_id": "plr-f8b05b4c",
     "name": "VantageDeck",
     "fqn": "pylabrobot.resources.hamilton.vantage_decks.VantageDeck",
     "plr_category": "Deck",
@@ -475,7 +475,7 @@
     }
   },
   {
-    "accession_id": "plr-94cbf045",
+    "accession_id": "plr-807c11e5",
     "name": "Well",
     "fqn": "pylabrobot.resources.well.Well",
     "plr_category": "Resource",

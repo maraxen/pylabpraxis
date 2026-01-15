@@ -198,6 +198,7 @@ export class AddAssetDialogComponent implements OnInit, AfterViewInit {
 
       this.dialogRef.close({
         ...config,
+        asset_type: 'MACHINE',
         machine_definition_accession_id: mDef.accession_id,
         frontend_fqn: mDef.frontend_fqn,
         connection_info: connectionInfo,
@@ -209,6 +210,7 @@ export class AddAssetDialogComponent implements OnInit, AfterViewInit {
       const rDef = def as ResourceDefinition;
       this.dialogRef.close({
         ...config,
+        asset_type: 'RESOURCE',
         resource_definition_accession_id: rDef.accession_id
       });
     }
