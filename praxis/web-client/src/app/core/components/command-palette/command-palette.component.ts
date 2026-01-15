@@ -153,7 +153,7 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
           top: 0;
           bottom: 0;
           width: 4px;
-          background-color: var(--primary-color, #ED7A9B);
+          background-color: var(--primary-color);
           border-radius: 0 4px 4px 0;
         }
 
@@ -164,7 +164,7 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
         }
 
         mat-icon {
-          color: var(--primary-color, #ED7A9B) !important;
+          color: var(--primary-color) !important;
         }
 
         /* Description with good contrast */
@@ -175,8 +175,8 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
         /* Highlight shortcut badge */
         .shortcut-badge {
           background: rgba(237, 122, 155, 0.2) !important;
-          border-color: var(--primary-color, #ED7A9B) !important;
-          color: var(--primary-color, #ED7A9B) !important;
+          border-color: var(--primary-color) !important;
+          color: var(--primary-color) !important;
         }
       }
 

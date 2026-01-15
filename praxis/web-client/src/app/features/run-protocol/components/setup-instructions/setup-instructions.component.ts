@@ -148,7 +148,7 @@ import { SetupInstruction } from '../../../protocols/models/protocol.models';
     }
 
     .instruction-item.recommended {
-      border-left-color: var(--primary, #1976d2);
+      border-left-color: var(--primary, var(--status-info));
     }
 
     .instruction-item.info {
@@ -210,7 +210,7 @@ import { SetupInstruction } from '../../../protocols/models/protocol.models';
     }
 
     .legend-item.recommended {
-      color: var(--primary, #1976d2);
+      color: var(--primary, var(--status-info));
     }
 
     .legend-item.info {

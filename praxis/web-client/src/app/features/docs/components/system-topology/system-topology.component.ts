@@ -126,9 +126,9 @@ import { DiagramOverlayComponent } from '../../../../shared/components/diagram-o
       border: 2px solid;
     }
 
-    .dot.angular { border-color: #ed7a9b; background: rgba(237, 122, 155, 0.2); }
-    .dot.api { border-color: #73a9c2; background: rgba(115, 169, 194, 0.2); }
-    .dot.core { border-color: #ed7a9b; background: rgba(237, 122, 155, 0.2); }
+    .dot.angular { border-color: var(--primary-color); background: rgba(237, 122, 155, 0.2); }
+    .dot.api { border-color: var(--tertiary-color); background: rgba(115, 169, 194, 0.2); }
+    .dot.core { border-color: var(--primary-color); background: rgba(237, 122, 155, 0.2); }
 
     /* Fix mermaid container inside tab */
     :host ::ng-deep .mermaid {
@@ -182,16 +182,16 @@ export class SystemTopologyComponent {
         darkMode: true,
         background: 'transparent',
         mainBkg: 'transparent',
-        primaryColor: '#2a2a3c', primaryTextColor: '#ffffff', primaryBorderColor: '#ed7a9b',
-        secondaryColor: '#1a1a2e', secondaryTextColor: '#ffffff', secondaryBorderColor: '#73a9c2',
+        primaryColor: '#2a2a3c', primaryTextColor: '#ffffff', primaryBorderColor: 'var(--primary-color)',
+        secondaryColor: 'var(--mat-sys-surface-container-low)', secondaryTextColor: '#ffffff', secondaryBorderColor: 'var(--tertiary-color)',
         lineColor: 'rgba(255, 255, 255, 0.6)', textColor: '#ffffff'
       } : {
         ...common,
         darkMode: false,
         background: 'transparent',
         mainBkg: 'transparent',
-        primaryColor: '#fbf9e6', primaryTextColor: '#020617', primaryBorderColor: '#ed7a9b',
-        secondaryColor: '#ffffff', secondaryTextColor: '#020617', secondaryBorderColor: '#73a9c2',
+        primaryColor: '#fbf9e6', primaryTextColor: '#020617', primaryBorderColor: 'var(--primary-color)',
+        secondaryColor: '#ffffff', secondaryTextColor: '#020617', secondaryBorderColor: 'var(--tertiary-color)',
         lineColor: '#1e293b', textColor: '#020617'
       }
     };
@@ -205,13 +205,13 @@ graph TD
         Store[NgRx Store]
         Services[Frontend Services]
     end
-    style Frontend fill:transparent,stroke:#ed7a9b,stroke-width:2px
+    style Frontend fill:transparent,stroke:var(--primary-color),stroke-width:2px
 
     subgraph API ["API Layer"]
         Server[FastAPI Server]
         WS[WebSocket Handler]
     end
-    style API fill:transparent,stroke:#73a9c2,stroke-width:2px
+    style API fill:transparent,stroke:var(--tertiary-color),stroke-width:2px
 
     subgraph Core ["Core Engine"]
         Orch[Orchestrator]
@@ -219,20 +219,20 @@ graph TD
         Proto[Protocol Engine]
         Asset[Asset Manager]
     end
-    style Core fill:transparent,stroke:#ed7a9b,stroke-width:2px
+    style Core fill:transparent,stroke:var(--primary-color),stroke-width:2px
 
     subgraph Runtime ["Runtime"]
         WCR[WorkcellRuntime]
         PLR[PyLabRobot]
         Sim[Simulators]
     end
-    style Runtime fill:transparent,stroke:#73a9c2,stroke-width:2px
+    style Runtime fill:transparent,stroke:var(--tertiary-color),stroke-width:2px
 
     subgraph Data ["Data Layer"]
         PG[(PostgreSQL)]
         Redis[(Redis)]
     end
-    style Data fill:transparent,stroke:#73a9c2,stroke-width:2px
+    style Data fill:transparent,stroke:var(--tertiary-color),stroke-width:2px
 
     UI --> Server
     UI --> WS
@@ -256,29 +256,29 @@ graph TD
         UI_L[Web UI]
         Store_L[NgRx Store]
     end
-    style Frontend_Lite fill:transparent,stroke:#ed7a9b,stroke-width:2px
+    style Frontend_Lite fill:transparent,stroke:var(--primary-color),stroke-width:2px
 
     subgraph API_Lite ["Local API"]
         Server_L[FastAPI Process]
     end
-    style API_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px
+    style API_Lite fill:transparent,stroke:var(--tertiary-color),stroke-width:2px
 
     subgraph Core_Lite ["Core Engine"]
         Orch_L[Orchestrator]
         Asset_L[Asset Manager]
     end
-    style Core_Lite fill:transparent,stroke:#ed7a9b,stroke-width:2px
+    style Core_Lite fill:transparent,stroke:var(--primary-color),stroke-width:2px
 
     subgraph Runtime_Lite ["Runtime"]
         WCR_L[WorkcellRuntime]
         PLR_L[PyLabRobot]
     end
-    style Runtime_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px
+    style Runtime_Lite fill:transparent,stroke:var(--tertiary-color),stroke-width:2px
 
     subgraph Data_Lite ["Data Layer"]
         SQLite[(SQLite)]
     end
-    style Data_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px
+    style Data_Lite fill:transparent,stroke:var(--tertiary-color),stroke-width:2px
 
     UI_L --> Server_L
     Store_L --> Server_L
@@ -300,26 +300,26 @@ graph TD
         Store_B[NgRx Store]
         IO_Shim[IO Shim Service]
     end
-    style Frontend_Browser fill:transparent,stroke:#ed7a9b,stroke-width:2px
+    style Frontend_Browser fill:transparent,stroke:var(--primary-color),stroke-width:2px
 
     subgraph WebWorker ["Web Worker (Pyodide)"]
         PyBridge[Python Bridge]
         Core_B[Core Engine]
         PLR_B[PyLabRobot]
     end
-    style WebWorker fill:transparent,stroke:#73a9c2,stroke-width:2px
+    style WebWorker fill:transparent,stroke:var(--tertiary-color),stroke-width:2px
 
     subgraph BrowserData ["Browser Storage"]
         IDB[(IndexedDB)]
         LocalStorage[(LocalStorage)]
     end
-    style BrowserData fill:transparent,stroke:#ed7a9b,stroke-width:2px
+    style BrowserData fill:transparent,stroke:var(--primary-color),stroke-width:2px
 
     subgraph Hardware ["Physical Hardware"]
         USB[WebSerial / USB]
         Bluetooth[WebBluetooth]
     end
-    style Hardware fill:transparent,stroke:#73a9c2,stroke-width:2px
+    style Hardware fill:transparent,stroke:var(--tertiary-color),stroke-width:2px
 
     UI_B --> Store_B
     Store_B --> PyBridge

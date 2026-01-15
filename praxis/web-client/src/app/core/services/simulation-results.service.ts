@@ -19,6 +19,7 @@ import {
 } from '@core/models/simulation.models';
 
 import { ProtocolDefinitionsService } from '../api-generated/services/ProtocolDefinitionsService';
+import { OpenAPI } from '../api-generated/core/OpenAPI';
 import { ApiWrapperService } from './api-wrapper.service';
 
 @Injectable({ providedIn: 'root' })
@@ -90,9 +91,29 @@ export class SimulationResultsService {
             return this.getStateHistoryFromBrowserMode(runId);
         }
 
-        // TODO: Implement state-history endpoint in backend/OpenAPI
-        console.warn('[SimulationResults] getStateHistory not yet implemented in API mode');
-        return of(null);
+        // Call the new backend endpoint
+        // Since it's not in the generated service yet, we use a manual fetch wrapped in observable
+        return new Observable<StateHistory | null>(observer => {
+            fetch(`${OpenAPI.BASE}/api/v1/protocols/runs/${runId}/state-history`, {
+                headers: {
+                    'Accept': 'application/json',
+                    ...OpenAPI.HEADERS
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                observer.next(data as StateHistory);
+                observer.complete();
+            })
+            .catch(err => {
+                console.error('[SimulationResults] Error fetching state history:', err);
+                observer.next(null);
+                observer.complete();
+            });
+        });
     }
 
     /**

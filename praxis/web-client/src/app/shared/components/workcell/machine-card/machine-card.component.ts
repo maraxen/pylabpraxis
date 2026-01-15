@@ -203,7 +203,7 @@ import { PlrResource, PlrState } from '@core/models/plr.models';
 
     .deck-preview {
       height: 140px;
-      background: #1a1a2e;
+      background: var(--mat-sys-surface-container-low);
       border-radius: 8px;
       overflow: hidden;
       position: relative;

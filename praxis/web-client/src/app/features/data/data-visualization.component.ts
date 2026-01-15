@@ -425,15 +425,15 @@ interface MockRun {
     }
 
     .status-completed {
-      color: #4caf50;
+      color: var(--status-success);
     }
 
     .status-running {
-      color: #ff9800;
+      color: var(--status-warning);
     }
 
     .status-failed {
-      color: #f44336;
+      color: var(--status-error);
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush

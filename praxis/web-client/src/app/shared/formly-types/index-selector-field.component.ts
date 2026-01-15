@@ -79,7 +79,7 @@ import {
     }
 
     .required-indicator {
-      color: var(--mat-error, #f44336);
+      color: var(--mat-error, var(--status-error));
       margin-left: 4px;
     }
 
@@ -90,7 +90,7 @@ import {
     }
 
     .field-error {
-      color: var(--mat-error, #f44336);
+      color: var(--mat-error, var(--status-error));
       font-size: 0.85em;
       margin-top: 4px;
     }
