@@ -55,5 +55,5 @@
 
 ## On Completion
 
-- [ ] Mark this prompt complete in batch README and set status to 🟢 Completed
-- [ ] (Optional) Promote checklist to project root if approved.
+- [x] Mark this prompt complete in batch README and set status to 🟢 Completed
+- [x] (Optional) Promote checklist to project root if approved.
