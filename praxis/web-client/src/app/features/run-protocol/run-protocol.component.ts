@@ -67,7 +67,6 @@ interface FilterCategory {
     MatExpansionModule,
     MatCheckboxModule,
     MatBadgeModule,
-    MatBadgeModule,
     MatProgressSpinnerModule,
     MatSlideToggleModule,
     MatButtonToggleModule,
@@ -352,47 +351,49 @@ interface FilterCategory {
           </mat-step>
 
           <!-- Step 5: Well Selection (Conditional) -->
-          <mat-step [stepControl]="wellsFormGroup" *ngIf="wellSelectionRequired()">
-            <ng-template matStepLabel>
-              <span data-tour-id="run-step-label-wells">Select Wells</span>
-            </ng-template>
-            <div class="h-full flex flex-col p-6" data-tour-id="run-step-wells">
-              <div class="flex-1 overflow-y-auto">
-                <h3 class="text-xl font-bold text-sys-text-primary mb-6 flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
-                    <mat-icon>grid_on</mat-icon>
-                  </div>
-                  Well Selection
-                </h3>
-                
-                <p class="text-sys-text-secondary mb-6">
-                  This protocol requires you to specify which wells to use. Click each parameter below to select wells.
-                </p>
-                
-                @for (param of getWellParameters(); track param.name) {
-                  <div class="mb-6 p-4 bg-surface-variant rounded-xl">
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="font-medium">{{ param.name }}</span>
-                      <span class="text-sm text-sys-text-tertiary">{{ param.description }}</span>
+          @if (wellSelectionRequired()) {
+            <mat-step [stepControl]="wellsFormGroup">
+              <ng-template matStepLabel>
+                <span data-tour-id="run-step-label-wells">Select Wells</span>
+              </ng-template>
+              <div class="h-full flex flex-col p-6" data-tour-id="run-step-wells">
+                <div class="flex-1 overflow-y-auto">
+                  <h3 class="text-xl font-bold text-sys-text-primary mb-6 flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+                      <mat-icon>grid_on</mat-icon>
                     </div>
-                    <button mat-stroked-button (click)="openWellSelector(param)" class="w-full !justify-start">
-                      <mat-icon class="mr-2">grid_on</mat-icon>
-                      {{ getWellSelectionLabel(param.name) }}
-                    </button>
-                  </div>
-                }
+                    Well Selection
+                  </h3>
+                  
+                  <p class="text-sys-text-secondary mb-6">
+                    This protocol requires you to specify which wells to use. Click each parameter below to select wells.
+                  </p>
+                  
+                  @for (param of getWellParameters(); track param.name) {
+                    <div class="mb-6 p-4 bg-surface-variant rounded-xl">
+                      <div class="flex items-center justify-between mb-2">
+                        <span class="font-medium">{{ param.name }}</span>
+                        <span class="text-sm text-sys-text-tertiary">{{ param.description }}</span>
+                      </div>
+                      <button mat-stroked-button (click)="openWellSelector(param)" class="w-full !justify-start">
+                        <mat-icon class="mr-2">grid_on</mat-icon>
+                        {{ getWellSelectionLabel(param.name) }}
+                      </button>
+                    </div>
+                  }
+                </div>
+                
+                <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
+                  <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
+                  <button mat-flat-button color="primary" matStepperNext 
+                          [disabled]="!areWellSelectionsValid()" 
+                          class="!rounded-xl !px-8 !py-6">
+                    Continue
+                  </button>
+                </div>
               </div>
-              
-              <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
-                <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
-                <button mat-flat-button color="primary" matStepperNext 
-                        [disabled]="!areWellSelectionsValid()" 
-                        class="!rounded-xl !px-8 !py-6">
-                  Continue
-                </button>
-              </div>
-            </div>
-          </mat-step>
+            </mat-step>
+          }
 
           <!-- Step 6: Deck Setup (Inline Wizard) - Skipped for no-deck protocols -->
           <mat-step [stepControl]="deckFormGroup" [optional]="selectedProtocol()?.requires_deck === false">
