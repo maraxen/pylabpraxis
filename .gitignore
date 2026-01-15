@@ -105,3 +105,4 @@ praxis/web-client/test_output*.txt
 
 !.agent/archive/archive.tar.gz
 
+.agent/skills/loki-mode/benchmarks/*
