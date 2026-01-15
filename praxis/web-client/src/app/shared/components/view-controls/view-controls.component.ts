@@ -210,15 +210,15 @@ import {
 .view-controls-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 8px 0;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
 }
 
 .controls-row-primary {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
@@ -247,19 +247,19 @@ import {
 
   .search-input {
     width: 100%;
-    height: 36px;
-    padding: 0 40px;
-    border-radius: 18px;
+    height: 2.25rem;
+    padding: 0 2.5rem;
+    border-radius: 1.125rem;
     border: 1px solid var(--theme-border);
     background-color: var(--theme-surface-elevated);
     color: var(--theme-text-primary);
-    font-size: 14px;
+    font-size: 0.875rem;
     transition: all 0.2s ease;
 
     &:focus {
       outline: none;
       border-color: var(--primary-color);
-      box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
+      box-shadow: 0 0 0 2px var(--mat-sys-primary-container);
     }
 
     &::placeholder {
@@ -298,10 +298,10 @@ import {
 }
 
 .add-filter-btn {
-  height: 32px;
-  border-radius: 16px;
-  font-size: 13px;
-  padding: 0 12px;
+  height: 2rem;
+  border-radius: 1rem;
+  font-size: 0.8125rem;
+  padding: 0 0.75rem;
   border-style: dashed;
 }
 
@@ -371,11 +371,11 @@ import {
   animation: fadeIn 0.2s ease;
 
   .active-label {
-    font-size: 11px;
+    font-size: 0.6875rem;
     font-weight: 700;
     text-transform: uppercase;
     color: var(--theme-text-secondary);
-    letter-spacing: 0.5px;
+    letter-spacing: 0.03125rem;
   }
 }
 
@@ -395,13 +395,13 @@ import {
 .filter-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 24px;
-  padding: 0 8px;
+  gap: 0.375rem;
+  height: 1.5rem;
+  padding: 0 0.5rem;
   background: var(--theme-surface-elevated);
   border: 1px solid var(--theme-border);
-  border-radius: 12px;
-  font-size: 12px;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
   color: var(--theme-text-primary);
   white-space: nowrap;
   animation: slideIn 0.2s ease;
@@ -423,9 +423,9 @@ import {
 }
 
 .clear-all-link {
-  height: 24px;
-  padding: 0 8px;
-  font-size: 11px;
+  height: 1.5rem;
+  padding: 0 0.5rem;
+  font-size: 0.6875rem;
   color: var(--primary-color);
   font-weight: 600;
   &:hover {

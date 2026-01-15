@@ -48,7 +48,7 @@ import { KeycloakService } from '../../core/auth/keycloak.service';
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--theme-bg-gradient, linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%));
+      background: var(--theme-bg-gradient, linear-gradient(135deg, var(--mat-sys-surface-container-low) 0%, #16213e 50%, #0f3460 100%));
       padding: 2rem 1rem;
       box-sizing: border-box;
       position: relative;
@@ -93,7 +93,7 @@ import { KeycloakService } from '../../core/auth/keycloak.service';
       height: 70px;
       margin: 0 auto 1rem;
       padding: 1rem;
-      background: linear-gradient(135deg, var(--primary-color, #ED7A9B) 0%, var(--tertiary-color, #73A9C2) 100%);
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--tertiary-color) 100%);
       border-radius: 20px;
       box-shadow: 0 8px 32px rgba(237, 122, 155, 0.3);
     }

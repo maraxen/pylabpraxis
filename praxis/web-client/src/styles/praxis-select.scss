@@ -1,10 +1,10 @@
 /* praxis/web-client/src/styles/praxis-select.scss */
 
 // Theme Variables (Project Integrated)
-$primary-color: var(--primary-color, #ED7A9B);
-$border-color: var(--mat-sys-outline-variant, #ccc);
-$hover-bg: var(--mat-sys-surface-container-high, #f5f5f5);
-$text-color: var(--mat-sys-on-surface, rgba(0, 0, 0, 0.87));
+$primary-color: var(--primary-color);
+$border-color: var(--mat-sys-outline-variant);
+$hover-bg: var(--mat-sys-surface-container-high);
+$text-color: var(--mat-sys-on-surface);
 
 // Gradient text mixin
 @mixin gradient-text {
@@ -62,12 +62,12 @@ app-praxis-multiselect {
 
     // Hover state
     &:hover .mat-mdc-form-field-flex {
-        background: rgba(237, 122, 155, 0.1);
+        background: var(--aurora-primary);
     }
 
     // Focus state (when opened)
     &.mat-focused .mat-mdc-form-field-flex {
-        background: rgba(237, 122, 155, 0.15);
+        background: var(--mat-sys-primary-container);
         outline: 2px solid $primary-color;
         border-color: transparent;
     }

@@ -10,7 +10,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    color: var(--mat-warn-color, #f44336);
+    color: var(--mat-warn-color, var(--status-error));
 
     .title-icon {
         color: inherit;
@@ -57,7 +57,7 @@ section {
         display: flex;
         align-items: center;
         gap: 8px;
-        color: var(--mat-error-color, #f44336);
+        color: var(--mat-error-color, var(--status-error));
         background: rgba(244, 67, 54, 0.1);
         padding: 8px 12px;
         border-radius: 4px;

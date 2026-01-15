@@ -33,7 +33,7 @@ import { CommonModule } from '@angular/common';
       <div class="machine-card-header mb-3">
         <!-- Hardware Badge acting as status indicator -->
         <div class="status-indicator">
-          <app-hardware-badge [isSimulated]="isSimulated()" />
+          <app-hardware-badge [isSimulated]="isSimulated()" [isTemplate]="isTemplate()" />
         </div>
       </div>
 
@@ -161,6 +161,10 @@ export class MachineCardComponent {
       backend.includes('Simulator') ||
       backend.includes('Simulation') ||
       type.toLowerCase().includes('simulator');
+  }
+
+  isTemplate(): boolean {
+    return (this.getMachine() as any).is_template === true;
   }
 
   onClick() {

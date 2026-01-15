@@ -97,7 +97,7 @@
 
 .value-expected {
     background: rgba(33, 150, 243, 0.1);
-    color: var(--mat-primary-color, #1976d2);
+    color: var(--mat-primary-color, var(--status-info));
 }
 
 // Change indicators
@@ -118,17 +118,17 @@
 
     &.change-increase {
         background: rgba(76, 175, 80, 0.15);
-        color: #4caf50;
+        color: var(--status-success);
     }
 
     &.change-decrease {
         background: rgba(244, 67, 54, 0.15);
-        color: #f44336;
+        color: var(--status-error);
     }
 
     &.change-modified {
         background: rgba(255, 152, 0, 0.15);
-        color: #ff9800;
+        color: var(--status-warning);
     }
 
     &.change-none {
@@ -155,7 +155,7 @@
 
     &:focus {
         outline: none;
-        border-color: var(--mat-primary-color, #1976d2);
+        border-color: var(--mat-primary-color, var(--status-info));
         box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
     }
 
@@ -177,7 +177,7 @@
         font-size: 48px;
         height: 48px;
         width: 48px;
-        color: var(--mat-primary-color, #4caf50);
+        color: var(--mat-primary-color, var(--status-success));
         margin-bottom: 16px;
     }
 

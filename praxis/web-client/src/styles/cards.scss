@@ -5,8 +5,8 @@
 .praxis-card {
   @apply relative flex flex-col;
   // Use CSS variables for theming - fallback to reasonable defaults
-  background: var(--mat-sys-surface, #1e1e2d);
-  border: 1px solid var(--theme-border, rgba(255, 255, 255, 0.08));
+  background: var(--mat-sys-surface);
+  border: 1px solid var(--theme-border);
   border-radius: 16px; // rounded-2xl
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -25,7 +25,7 @@
       left: -50%;
       width: 200%;
       height: 200%;
-      background: radial-gradient(circle at center, var(--aurora-primary, rgba(237, 122, 155, 0.1)) 0%, transparent 70%);
+      background: radial-gradient(circle at center, var(--aurora-primary) 0%, transparent 70%);
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.5s ease;
@@ -35,7 +35,7 @@
     &:hover {
       transform: translateY(-4px);
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2); // Elevate
-      border-color: var(--mat-sys-primary, #ED7A9B);
+      border-color: var(--mat-sys-primary);
       
       &::before {
         opacity: 1;

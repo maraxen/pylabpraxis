@@ -183,13 +183,13 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
       display: flex;
       flex-direction: column;
       align-items: center;
-      width: 80px;
-      min-width: 80px;
+      width: 5rem;
+      min-width: 5rem;
       background: var(--mat-sys-surface-container);
       border-right: 1px solid var(--mat-sys-outline-variant);
       z-index: 100;
-      padding: 12px 0;
-      gap: 4px;
+      padding: 0.75rem 0;
+      gap: 0.25rem;
     }
 
     .nav-item {
@@ -319,21 +319,21 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
     }
 
     .mode-badge.good {
-      background: rgba(76, 175, 80, 0.15);
-      border-color: #4caf50;
-      color: #4caf50;
+      background: var(--mat-sys-success-container);
+      border-color: var(--status-success);
+      color: var(--status-success);
     }
 
     .mode-badge.attention {
-      background: rgba(255, 152, 0, 0.15);
-      border-color: #ff9800;
-      color: #ff9800;
+      background: var(--mat-sys-warning-container);
+      border-color: var(--status-warning);
+      color: var(--status-warning);
     }
 
     .mode-badge.problem {
-      background: rgba(244, 67, 54, 0.15);
-      border-color: #f44336;
-      color: #f44336;
+      background: var(--mat-sys-error-container);
+      border-color: var(--status-error);
+      color: var(--status-error);
     }
 
     .theme-toggle {
@@ -376,17 +376,17 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
 
     /* Footer */
     .app-footer {
-        height: 32px;
-        min-height: 32px;
+        height: 2rem;
+        min-height: 2rem;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 16px;
+        gap: 1rem;
         background: var(--mat-sys-surface-container);
         border-top: 1px solid var(--mat-sys-outline-variant);
-        padding: 0 16px;
+        padding: 0 1rem;
         z-index: 10;
-        font-size: 12px;
+        font-size: 0.75rem;
     }
 
     .footer-link {
@@ -397,8 +397,8 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
         align-items: center;
         justify-content: center;
         text-decoration: none;
-        width: 24px;
-        height: 24px;
+        width: 1.5rem;
+        height: 1.5rem;
         border-radius: 50%;
     }
 
@@ -409,14 +409,14 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
     }
 
     .footer-link mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
+        font-size: 1rem;
+        width: 1rem;
+        height: 1rem;
     }
 
     .footer-divider {
         width: 1px;
-        height: 16px;
+        height: 1rem;
         background: var(--mat-sys-outline-variant);
         opacity: 0.5;
     }
@@ -424,88 +424,21 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
     /* Responsive */
     @media (max-width: 768px) {
       .sidebar-rail {
-        width: 64px;
-        min-width: 64px;
+        width: 4rem;
+        min-width: 4rem;
       }
       
       .nav-item {
-        width: 52px;
-        height: 52px;
+        width: 3.25rem;
+        height: 3.25rem;
       }
 
       .nav-label {
-        font-size: 9px;
+        font-size: 0.55rem;
       }
 
       .nav-divider {
-        width: 32px;
-      }
-    }
-     /* Footer */
-    .app-footer {
-        height: 32px;
-        min-height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 16px;
-        background: var(--mat-sys-surface-container);
-        border-top: 1px solid var(--mat-sys-outline-variant);
-        padding: 0 16px;
-        z-index: 10;
-        font-size: 12px;
-    }
-
-    .footer-link {
-        color: var(--mat-sys-on-surface-variant);
-        opacity: 0.5;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-decoration: none;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-    }
-
-    .footer-link:hover {
-        opacity: 1;
-        background: var(--mat-sys-surface-variant);
-        color: var(--mat-sys-primary);
-    }
-
-    .footer-link mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
-    }
-
-    .footer-divider {
-        width: 1px;
-        height: 16px;
-        background: var(--mat-sys-outline-variant);
-        opacity: 0.5;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .sidebar-rail {
-        width: 64px;
-        min-width: 64px;
-      }
-      
-      .nav-item {
-        width: 52px;
-        height: 52px;
-      }
-
-      .nav-label {
-        font-size: 9px;
-      }
-
-      .nav-divider {
-        width: 32px;
+        width: 2rem;
       }
     }
   `]

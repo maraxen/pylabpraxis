@@ -128,7 +128,9 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
 :root {
   // Brand colors
   --primary-color: #{$rose-pompadour};
+  --primary-color-rgb: 237, 122, 155;
   --tertiary-color: #{$moonstone-blue};
+  --tertiary-color-rgb: 115, 169, 194;
   --mat-sys-primary: var(--primary-color);
   --mat-sys-tertiary: var(--tertiary-color);
 
@@ -150,6 +152,10 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --mat-sys-success-container: rgba(74, 222, 128, 0.15);
   --mat-sys-warning: #facc15;
   --mat-sys-warning-container: rgba(250, 204, 21, 0.15);
+  --status-info: #1976d2;
+  --status-success: var(--mat-sys-success);
+  --status-warning: var(--mat-sys-warning);
+  --status-error: var(--mat-sys-error);
 
   // Default to dark theme - Refined Gradient
   --theme-bg-gradient: linear-gradient(135deg, #12121e 0%, #1a1a2e 50%, #0f0f1a 100%);
@@ -197,6 +203,10 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --mat-sys-success-container: #dcfce7;
   --mat-sys-warning: #ca8a04;
   --mat-sys-warning-container: #fef9c3;
+  --status-info: #1976d2;
+  --status-success: var(--mat-sys-success);
+  --status-warning: var(--mat-sys-warning);
+  --status-error: var(--mat-sys-error);
 
   --theme-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f1f5f9 100%);
   --theme-surface: rgba(255, 255, 255, 0.7);
@@ -319,7 +329,7 @@ body {
 }
 
 .status-info {
-  color: var(--mat-sys-tertiary);
+  color: var(--status-info);
 }
 
 .status-neutral {
