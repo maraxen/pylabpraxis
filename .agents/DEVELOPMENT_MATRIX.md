@@ -31,7 +31,7 @@
 
 | Item                  | Difficulty | Backlog                                 | Description                                                          |
 |-----------------------|------------|-----------------------------------------|----------------------------------------------------------------------|
-| WebSerial "NameError" | Medium     | [playground.md](./backlog/playground.md) | Top blocker: WebSerial not correctly defined in Pyodide/REPL builtins |
+| (None currently)      | -          | -                                       | All top blockers resolved for now.                                   |
 
 ---
 
@@ -41,7 +41,7 @@
 
 | Item                           | Difficulty | Backlog                                                       | Description                                          |
 |--------------------------------|------------|---------------------------------------------------------------|------------------------------------------------------|
-| Unified Asset Selector         | Medium     | [inventory_ux_design.md](./artifacts/inventory_ux_design.md)   | Implement shared browsing for Playground and Protocol |
+| (None currently)               | -          | -                                                             | All identified redesigns started/completed           |
 
 ### Hardware Validation (Required for Alpha)
 
@@ -62,7 +62,6 @@
 
 | Item                       | Difficulty | Backlog                                                       | Description                                          |
 |----------------------------|------------|---------------------------------------------------------------|------------------------------------------------------|
-| Live Deck State Overlays   | Medium     | [workcell_ux_redesign.md](./artifacts/workcell_ux_redesign.md) | Render liquid and tips on deck view from `plr_state` |
 | Maintenance Tracking Tests | Medium     | [testing.md](./backlog/testing.md)                            | Test maintenance system                              |
 
 ### Agentic Infrastructure
@@ -87,6 +86,7 @@
 
 | Item                                                | Priority | Date       | Description                                                          |
 |-----------------------------------------------------|----------|------------|----------------------------------------------------------------------|
+| [Batch 260115 Review](./archive/BATCH_260115_SUMMARY.md) | -        | 2026-01-15 | Consolidated summary of archived backlog items                       |
 | [Historical Items (Jan 2026)](./archive/COMPLETED_ITEMS_ARCHIVE_JAN_2026.md) | -        | 2026-01-12 | Consolidated archive of previous completions                         |
 | Model Unification (SQLModel)                        | P2       | 2026-01-13 | Massive refactor to unified SQLModel domain models                   |
 | [Frontend Schema Sync](./archive/backlog/frontend_schema_sync.md) | P1 | 2026-01-13 | Aligned frontend with SQLModel backend                               |

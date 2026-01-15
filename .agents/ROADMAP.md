@@ -35,7 +35,7 @@
   - [x] Asset inventory integration functional
 - [ ] **Protocol Workflow Complete**
   - [x] Well selection triggering correctly
-  - Asset filtering to appropriate PLR classes
+  - [x] Asset filtering to appropriate PLR classes
   - [x] End-to-end protocol run flow
 - [x] **Model Unification (SQLModel)**
   - [x] Integrated SQLModel for unified domain models
@@ -53,11 +53,11 @@
 These issues from the development matrix must be resolved:
 
 - [x] Protocol well selection not triggering
-- [ ] Playground initialization flow (WebSerial error)
+- [x] Playground initialization flow (WebSerial error)
 - [x] Asset filtering to appropriate PLR class
 - [x] Simulated backend clarity / demo naming cleanup
 - [x] Asset management UX issues (backend selector, filters, registry)
-- [ ] Data visualization axis selects responding
+- [x] Data visualization axis selects responding
 - [x] Documentation accuracy (API docs, dead links, [x] Execution Flow Diagram)
 - [x] UI polish items ([x] Duplicate Clear Button, [x] filter styling, [x] name truncation)
 

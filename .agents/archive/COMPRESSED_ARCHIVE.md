@@ -1,13 +1,20 @@
 # Compressed Archive Index
 Last updated: 2026-01-14
-## Contents
-archive
-artifacts
-backlog
-prompts
-summaries
 
-.agents/archive/.temp_pack/archive:
+## Archive Summary
+- **Prompts**: Range from 250105 to 260115.
+- **Backlog**: Completed items for asset management, dataviz, docs, playground, protocol workflow, separation of concerns, simulation, and workcell.
+- **Artifacts**: Design docs, audit notes, plans, and screenshots.
+- **Summaries**: Batch summaries and completion reports.
+
+## Change Log
+### 2026-01-14
+- Merged 260115_dev_cycle prompts.
+- Archived completed backlog items: asset_management, dataviz, docs, playground, protocol workflow, separation of concerns, simulation, workcell.
+- Merged BATCH_260115_SUMMARY.md.
+- Consolidated existing archive into flat structure (removed archive/ nesting).
+
+## Detailed Contents
 2026-01-02_completed
 2026-01-05_completed
 2026-01-06_completed
@@ -16,21 +23,23 @@ summaries
 2026-01-09_cleanup
 2026-01-09_completed
 2026-01-09_reset
+artifacts
+backlog
 conductor-tracks
 other
 prompts
+summaries
 tasks_legacy
 
-.agents/archive/.temp_pack/archive/2026-01-02_completed:
+.agents/archive/.temp_pack/2026-01-02_completed:
 
-.agents/archive/.temp_pack/archive/2026-01-05_completed:
+.agents/archive/.temp_pack/2026-01-05_completed:
 README.md
 state_snapshot_tracing_completed.md
 tutorial_demo_mode_superseded.md
 visual_well_selection_completed.md
 
-.agents/archive/.temp_pack/archive/2026-01-06_completed:
-README.md
+.agents/archive/.temp_pack/2026-01-06_completed:
 browser_mode_defaults.md
 browser_mode_issues.md
 browser_sqlite_schema_sync.md
@@ -56,17 +65,18 @@ protocol_execution.md
 protocol_inspection.md
 protocol_setup_instructions.md
 protocol_simulation.md
-repl.md
+README.md
 repl_autocompletion.md
 repl_jupyterlite.md
 repl_polish.md
+repl.md
 state_snapshot_tracing.md
 tutorial_demo_mode.md
 tutorial_enhancements.md
-ui-ux.md
 ui_visual_tweaks.md
+ui-ux.md
 
-.agents/archive/.temp_pack/archive/2026-01-07_completed:
+.agents/archive/.temp_pack/2026-01-07_completed:
 01_plr_frontend_backend_schema.md
 02_serial_usb_driver_generalization.md
 03_state_delta_display.md
@@ -81,13 +91,13 @@ capability_tracking.md
 prompts_batch_README.md
 simulation_ui_integration.md
 
-.agents/archive/.temp_pack/archive/2026-01-08_completed:
+.agents/archive/.temp_pack/2026-01-08_completed:
 chip_filter_standardization.md
 hardware_driver_refactor.md
 prompts_260108_batch1.md
 ui_standardization_q1_2026.md
 
-.agents/archive/.temp_pack/archive/2026-01-09_cleanup:
+.agents/archive/.temp_pack/2026-01-09_cleanup:
 angular_aria_migration.md
 cleanup_finalization.md
 dataviz_well_selection.md
@@ -95,7 +105,7 @@ deck_view_investigation.md
 plate_reader_protocols.md
 visual_well_selection.md
 
-.agents/archive/.temp_pack/archive/2026-01-09_completed:
+.agents/archive/.temp_pack/2026-01-09_completed:
 01_protocol_analysis_status.md
 02_asset_autoselection_fix.md
 03_machine_backend_mismatch.md
@@ -136,17 +146,17 @@ visual_well_selection.md
 38_run_persistence_well_selection.md
 README.md
 
-.agents/archive/.temp_pack/archive/2026-01-09_reset:
+.agents/archive/.temp_pack/2026-01-09_reset:
+backlog
 DEVELOPMENT_MATRIX.md
+prompts
 ROADMAP.md
 TECHNICAL_DEBT.md
-backlog
-prompts
 
-.agents/archive/.temp_pack/archive/2026-01-09_reset/backlog:
+.agents/archive/.temp_pack/2026-01-09_reset/backlog:
 advanced_protocol_capabilities.md
-asset_management.md
 asset_management_ux.md
+asset_management.md
 backend.md
 browser_mode.md
 capability_future_work.md
@@ -159,14 +169,40 @@ run_protocol_workflow.md
 ui_consistency.md
 ux_issues_260109.md
 
-.agents/archive/.temp_pack/archive/2026-01-09_reset/prompts:
+.agents/archive/.temp_pack/2026-01-09_reset/prompts:
 260108
 
-.agents/archive/.temp_pack/archive/2026-01-09_reset/prompts/260108:
+.agents/archive/.temp_pack/2026-01-09_reset/prompts/260108:
 21_playground_enhancements.md
 README.md
 
-.agents/archive/.temp_pack/archive/conductor-tracks:
+.agents/archive/.temp_pack/artifacts:
+audit_notes_260114.md
+deck_view_ux_design.md
+inventory_ux_design.md
+playground_inspection_findings.md
+protocol_execution_ux_plan.md
+Screenshot 2026-01-14 at 11.27.12 AM.png
+settings_ux_design.md
+simulation_architecture_plan.md
+tutorial_audit_260114.md
+viewcontrols_inspection_findings.md
+workcell_implementation_plan.md
+workcell_ux_redesign.md
+
+.agents/archive/.temp_pack/backlog:
+asset_management.md
+dataviz.md
+docs.md
+frontend_schema_sync.md
+playground.md
+protocol_workflow.md
+separation_of_concerns.md
+simulation.md
+sqlmodel_codegen_refactor.md
+workcell.md
+
+.agents/archive/.temp_pack/conductor-tracks:
 browser_runtime_20251230
 data_insights_20251223
 deck_layout_optimization_20251223
@@ -179,59 +215,59 @@ plr_repl_20251229
 simulation_engine_20251222
 workflow_velocity_20251223
 
-.agents/archive/.temp_pack/archive/conductor-tracks/browser_runtime_20251230:
+.agents/archive/.temp_pack/conductor-tracks/browser_runtime_20251230:
 metadata.json
 plan.md
 spec.md
 
-.agents/archive/.temp_pack/archive/conductor-tracks/data_insights_20251223:
+.agents/archive/.temp_pack/conductor-tracks/data_insights_20251223:
 metadata.json
 plan.md
 spec.md
 
-.agents/archive/.temp_pack/archive/conductor-tracks/deck_layout_optimization_20251223:
+.agents/archive/.temp_pack/conductor-tracks/deck_layout_optimization_20251223:
 metadata.json
 plan.md
 spec.md
 
-.agents/archive/.temp_pack/archive/conductor-tracks/first_light_20251222:
+.agents/archive/.temp_pack/conductor-tracks/first_light_20251222:
 metadata.json
 plan.md
 prompt.md
 spec.md
 
-.agents/archive/.temp_pack/archive/conductor-tracks/golden_path_20251223:
+.agents/archive/.temp_pack/conductor-tracks/golden_path_20251223:
 DEMO_SCRIPT.md
 metadata.json
 plan.md
 spec.md
 
-.agents/archive/.temp_pack/archive/conductor-tracks/hardware_bridge_20251223:
+.agents/archive/.temp_pack/conductor-tracks/hardware_bridge_20251223:
 metadata.json
 plan.md
 spec.md
 
-.agents/archive/.temp_pack/archive/conductor-tracks/interactive_deck_20251223:
+.agents/archive/.temp_pack/conductor-tracks/interactive_deck_20251223:
 metadata.json
 plan.md
 spec.md
 
-.agents/archive/.temp_pack/archive/conductor-tracks/plr_repl_20251229:
+.agents/archive/.temp_pack/conductor-tracks/plr_repl_20251229:
 plan.md
 spec.md
 
-.agents/archive/.temp_pack/archive/conductor-tracks/simulation_engine_20251222:
+.agents/archive/.temp_pack/conductor-tracks/simulation_engine_20251222:
 metadata.json
 plan.md
 spec.md
 
-.agents/archive/.temp_pack/archive/conductor-tracks/workflow_velocity_20251223:
+.agents/archive/.temp_pack/conductor-tracks/workflow_velocity_20251223:
 metadata.json
 plan.md
 prompt.md
 spec.md
 
-.agents/archive/.temp_pack/archive/other:
+.agents/archive/.temp_pack/other:
 2025-12-29_demo_gaps.md
 2025-12-29_demo_mode_finalization.md
 2025-12-29_pluggable_storage_demo.md
@@ -239,6 +275,7 @@ ACTIVE_DEVELOPMENT_20251223.md
 AGENTS.md
 ANGULAR_FRONTEND_ROADMAP_COMPLETED_20251217.md
 BACKEND_STATUS_HISTORY_20251215.md
+completed_2025_12_30.md
 FRONTEND_COORDINATION_COMPLETED_20251217.md
 FRONTEND_DEV_20251220.md
 FRONTEND_DEV_FLUTTER_DEPRECATED.md
@@ -250,19 +287,24 @@ JULES_USE.md
 PRIORITY_ANALYSIS_20251213.md
 PRODUCTION_BUGS_RESOLVED_20251208.md
 PROMPT_NEXT_STEPS.md
-REFACTORING_STRATEGY_COMPLETED_20251209.md
-TEST_COVERAGE_SUMMARY.md
-completed_2025_12_30.md
 prompt_phase_4_mvp.md
+REFACTORING_STRATEGY_COMPLETED_20251209.md
 tasks_for_jules_20251215.json
+TEST_COVERAGE_SUMMARY.md
 
-.agents/archive/.temp_pack/archive/prompts:
+.agents/archive/.temp_pack/prompts:
 250105
 250107
 260104
 260107
 260108
 260109
+260110
+260112
+260112_2
+260113
+260114_frontend_feedback
+260115_dev_cycle
 backend_debug_stage_2.md
 backend_test_debug_staged_plan.md
 backend_test_debug_well_outputs.md
@@ -272,7 +314,7 @@ dispatcher.md
 plr-capability-update.md
 pluggable-storage-planning.md
 
-.agents/archive/.temp_pack/archive/prompts/250105:
+.agents/archive/.temp_pack/prompts/250105:
 01_protocol_warnings.md
 02_default_asset_population.md
 03_machine_adding_ux.md
@@ -295,7 +337,7 @@ pluggable-storage-planning.md
 20_setup_instructions_frontend.md
 README.md
 
-.agents/archive/.temp_pack/archive/prompts/250107:
+.agents/archive/.temp_pack/prompts/250107:
 01_filter_result_counts.md
 02_no_deck_protocols.md
 03_visual_well_linked_args.md
@@ -307,7 +349,7 @@ README.md
 10_sqliteservice_unit_tests.md
 README.md
 
-.agents/archive/.temp_pack/archive/prompts/260104:
+.agents/archive/.temp_pack/prompts/260104:
 00_index.md
 01_fix_add_resource.md
 02_visual_index_selection.md
@@ -318,17 +360,17 @@ README.md
 07_sharp_bits_docs.md
 08_final_visual_qa.md
 
-.agents/archive/.temp_pack/archive/prompts/260107:
+.agents/archive/.temp_pack/prompts/260107:
 01_e2e_tests_execution_flow.md
-02_skipped_tests_investigation.md
 02_skipped_tests_investigation_completion.md
+02_skipped_tests_investigation.md
 03_factory_orm_integration.md
 04_repl_rendering_stability.md
 05_ui_consistency_exec_monitor.md
 06_asset_management_ux.md
 README.md
 
-.agents/archive/.temp_pack/archive/prompts/260108:
+.agents/archive/.temp_pack/prompts/260108:
 01_schema_mismatch_fix.md
 02_e2e_tests_asset_management.md
 03_unique_name_parsing.md
@@ -351,47 +393,6 @@ README.md
 20_settings_stepper_polish.md
 22_deck_view_investigation.md
 
-.agents/archive/.temp_pack/archive/prompts/260109:
-11_aria_interactive_states.md
-
-.agents/archive/.temp_pack/archive/prompts/dispatch:
-api_docs_rendering_fix.md
-asset_manager_investigation_fix.md
-backend_integrity_verification.md
-data_views_rendering_fix.md
-deck_display_consistency.md
-execution_monitor_filters_container.md
-execution_start_browser_fix.md
-hardware_discovery_button_restoration.md
-machine_config_expansion.md
-machine_input_form_fix.md
-ot2_slot_inference_fix.md
-protocol_computation_graph.md
-protocol_workflow_machine_selection.md
-repl_easy_add_assets.md
-repl_error_messages_improvement.md
-repl_protocol_editor_disable.md
-repl_theming_fix.md
-ui_button_selector_cleanup.md
-
-.agents/archive/.temp_pack/archive/tasks_legacy:
-README.md
-fix-angular-build-errors.md
-
-.agents/archive/.temp_pack/artifacts:
-
-.agents/archive/.temp_pack/backlog:
-frontend_schema_sync.md
-sqlmodel_codegen_refactor.md
-
-.agents/archive/.temp_pack/prompts:
-260109
-260110
-260112
-260112_2
-260113
-260114_frontend_feedback
-
 .agents/archive/.temp_pack/prompts/260109:
 01_playground_initialization.md
 01_ui_duplicate_clear_button.md
@@ -405,6 +406,7 @@ sqlmodel_codegen_refactor.md
 08_assets_add_asset_prompt.md
 09_playground_inventory_filter_styling.md
 10_playground_category_structure.md
+11_aria_interactive_states.md
 11_testing_consumables.md
 12_testing_import_export.md
 13_protocol_well_selection_fix.md
@@ -451,13 +453,13 @@ P2_17_final_validation.md
 README.md
 
 .agents/archive/.temp_pack/prompts/260112:
+cleanup_aliases.md
 P1_test_orm_migration.md
 P2_test_pydantic_migration.md
 P3_test_services_migration.md
 P4_test_core_migration.md
 P5_conftest_migration.md
 README.md
-cleanup_aliases.md
 
 .agents/archive/.temp_pack/prompts/260112_2:
 AUDIT_REPORT.md
@@ -510,12 +512,80 @@ H-02_realistic_sim_data.md
 ISSUE_TABLE.md
 README.md
 
+.agents/archive/.temp_pack/prompts/260115_dev_cycle:
+A-01_simulation_frontend.md
+B-01_viewcontrols_polish.md
+B-02_viewcontrols_logic.md
+C-01_remove_breadcrumbs.md
+C-02_protocol_library_viewcontrols.md
+C-03_execution_monitor_viewcontrols.md
+C-04_dataviz_viewcontrols.md
+D-01_playground_kernel.md
+D-02_playground_theme.md
+D-03_playground_loading.md
+D-04_webserial_fix.md
+E-01_well_arguments.md
+E-02_well_selector_perf.md
+E-03_asset_autocomplete.md
+E-04_guided_deck_empty.md
+F-01_installation_docs.md
+F-02_mermaid_fix.md
+G-01_home_recent_activity.md
+H-01_card_polish.md
+H-02_settings_overhaul.md
+I-01_viewcontrols_inspection.md
+I-02_playground_inspection.md
+I-03_viewcontrols_adoption.md
+I-04_card_visual_audit.md
+I-05_docs_audit.md
+J-01_deck_view_implementation.md
+K-01_workcell_models.md
+K-02_workcell_service.md
+K-03_workcell_dashboard.md
+K-04_workcell_explorer.md
+K-05_machine_status_badge.md
+K-06_machine_card.md
+K-07_machine_focus_view.md
+K-08_simulated_deck_states.md
+K-09_deck_state_indicator.md
+K-10_workcell_polish.md
+K-11_workcell_route_migration.md
+P-01_settings_ux_planning.md
+P-02_deck_view_planning.md
+P-03_protocol_execution_planning.md
+README.md
+
+.agents/archive/.temp_pack/prompts/dispatch:
+api_docs_rendering_fix.md
+asset_manager_investigation_fix.md
+backend_integrity_verification.md
+data_views_rendering_fix.md
+deck_display_consistency.md
+execution_monitor_filters_container.md
+execution_start_browser_fix.md
+hardware_discovery_button_restoration.md
+machine_config_expansion.md
+machine_input_form_fix.md
+ot2_slot_inference_fix.md
+protocol_computation_graph.md
+protocol_workflow_machine_selection.md
+repl_easy_add_assets.md
+repl_error_messages_improvement.md
+repl_protocol_editor_disable.md
+repl_theming_fix.md
+ui_button_selector_cleanup.md
+
 .agents/archive/.temp_pack/summaries:
-COMPLETED_ITEMS_ARCHIVE_JAN_2026.md
+BATCH_260115_SUMMARY.md
 completed_260109.md
+COMPLETED_ITEMS_ARCHIVE_JAN_2026.md
 documentation_updates_jan_2026.md
 pylabpraxis_batch_260114.md
 sqlmodel_openapi_migration.md
 sqlmodel_unified_models_jan_2026.md
 ui_polish_260109.md
 ui_ux_improvements_jan_2026.md
+
+.agents/archive/.temp_pack/tasks_legacy:
+fix-angular-build-errors.md
+README.md
