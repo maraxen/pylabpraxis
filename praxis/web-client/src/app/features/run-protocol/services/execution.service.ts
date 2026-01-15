@@ -4,7 +4,7 @@ import { ModeService } from '@core/services/mode.service';
 import { PythonRuntimeService } from '@core/services/python-runtime.service';
 import { SqliteService } from '@core/services/sqlite.service';
 import { environment } from '@env/environment';
-import { Observable, Subject, of } from 'rxjs';
+import { Observable, Subject, of, firstValueFrom } from 'rxjs';
 import { catchError, retry, tap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
 import { ExecutionMessage, ExecutionState, ExecutionStatus } from '../models/execution.models';
@@ -156,11 +156,34 @@ export class ExecutionService {
         throw new Error(`Protocol not found: ${protocolId}`);
       }
 
+      // Resolve Asset Specs (Dimensions/Geometry)
+      const allResources = await firstValueFrom(this.sqliteService.getResources());
+      const allDefinitions = await firstValueFrom(this.sqliteService.getResourceDefinitions());
+      const assetSpecs: Record<string, any> = {};
+
+      if (parameters) {
+        for (const [key, value] of Object.entries(parameters)) {
+           if (typeof value === 'string') {
+             const res = allResources.find(r => r.accession_id === value);
+             if (res) {
+               const def = allDefinitions.find(d => d.accession_id === res.resource_definition_accession_id);
+               if (def) {
+                 assetSpecs[value] = {
+                   name: res.name,
+                   num_items: def.num_items,
+                   type: def.resource_type // e.g. 'plate', 'tip_rack'
+                 };
+               }
+             }
+           }
+        }
+      }
+
       this.addLog(`[Browser Mode] Executing: ${protocol.name}`);
       this.updateRunState({ progress: 10, currentStep: 'Initializing' });
 
       // Build Python code to execute the protocol
-      const code = this.buildProtocolExecutionCode(protocol, parameters);
+      const code = this.buildProtocolExecutionCode(protocol, parameters, assetSpecs);
 
       // Execute via PythonRuntimeService
       this.updateRunState({ progress: 20, currentStep: 'Running protocol' });
@@ -177,6 +200,19 @@ export class ExecutionService {
               hasError = true;
             } else if (output.type === 'result') {
               this.addLog(`[Result] ${output.content}`);
+            } else if (output.type === 'well_state_update') {
+              try {
+                const wellState = JSON.parse(output.content);
+                const currentState = this._currentRun();
+                if (currentState) {
+                  this._currentRun.set({
+                    ...currentState,
+                    wellState
+                  });
+                }
+              } catch (err) {
+                console.error('[ExecutionService] Error parsing browser state update:', err);
+              }
             }
           },
           error: (err) => {
@@ -224,18 +260,40 @@ export class ExecutionService {
    * Build Python code to execute a protocol
    */
   private buildProtocolExecutionCode(
-    protocol: { fqn: string; function_name?: string | null; module_name?: string | null },
-    parameters?: Record<string, unknown>
+    protocol: any, // ProtocolDefinition
+    parameters?: Record<string, unknown>,
+    assetSpecs?: Record<string, any>
   ): string {
     const moduleName = protocol.module_name || protocol.fqn.split('.').slice(0, -1).join('.');
     const functionName = protocol.function_name || protocol.fqn.split('.').pop() || 'run';
 
-    // Serialize parameters for Python
+    // Serialize parameters and metadata for Python
     const paramsStr = parameters ? JSON.stringify(parameters) : '{}';
+    const assetSpecsStr = assetSpecs ? JSON.stringify(assetSpecs) : '{}';
+
+    // Extract parameter metadata (name -> type_hint)
+    const metadata: Record<string, string> = {};
+    if (protocol.parameters) {
+      protocol.parameters.forEach((p: any) => {
+        metadata[p.name] = p.type_hint;
+      });
+    }
+
+    // Extract asset requirements (accession_id -> type_hint)
+    const assetRequirements: Record<string, string> = {};
+    if (protocol.assets) {
+      protocol.assets.forEach((a: any) => {
+        assetRequirements[a.accession_id] = a.type_hint_str;
+      });
+    }
+
+    const metadataStr = JSON.stringify(metadata);
+    const assetReqsStr = JSON.stringify(assetRequirements);
 
     return `
 # Browser mode protocol execution
 import json
+from web_bridge import resolve_parameters, patch_state_emission
 
 print("[Browser] Setting up simulation environment...")
 
@@ -249,17 +307,30 @@ except ImportError as e:
     # Simulation placeholder
     def ${functionName}(*args, **kwargs):
         print("[Simulation] Protocol started")
-        print("[Simulation] Step 1: Initialize")
-        print("[Simulation] Step 2: Execute")
-        print("[Simulation] Step 3: Complete")
-        return {"status": "simulated", "steps_executed": 3}
+        return {"status": "simulated"}
 
-# Parse parameters
+# Parse parameters and metadata
 params = json.loads('''${paramsStr}''')
+metadata = json.loads('''${metadataStr}''')
+asset_reqs = json.loads('''${assetReqsStr}''')
+asset_specs = json.loads('''${assetSpecsStr}''')
+
+# Resolve parameters (instantiate PLR objects for plates/etc)
+print("[Browser] Resolving parameters...")
+resolved_params = resolve_parameters(params, metadata, asset_reqs, asset_specs)
+
+# Patch for real-time state emission (searching for LiquidHandler in resolved_params)
+for p_value in resolved_params.values():
+    try:
+        from pylabrobot.liquid_handling import LiquidHandler
+        if isinstance(p_value, LiquidHandler):
+            patch_state_emission(p_value)
+    except ImportError:
+        pass
 
 # Execute the protocol
 print("[Browser] Executing protocol...")
-result = ${functionName}(**params) if params else ${functionName}()
+result = ${functionName}(**resolved_params) if resolved_params else ${functionName}()
 print(f"[Browser] Protocol finished with result: {result}")
 `;
   }
@@ -296,7 +367,7 @@ print(f"[Browser] Protocol finished with result: {result}")
   /**
    * Connect to WebSocket for real-time updates
    */
-  private connectWebSocket(runId: string) {
+  connectWebSocket(runId: string) {
     if (this.socket$) {
       this.socket$.complete();
     }
@@ -344,7 +415,8 @@ print(f"[Browser] Protocol finished with result: {result}")
         this._currentRun.set({
           ...currentState,
           status: message.payload.status,
-          currentStep: message.payload.step
+          currentStep: message.payload.step,
+          plr_definition: message.payload.plr_definition
         });
         break;
 

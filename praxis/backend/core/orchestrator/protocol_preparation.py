@@ -95,6 +95,7 @@ class ProtocolPreparationMixin:
       run_accession_id=protocol_run_model.accession_id,
       canonical_state=praxis_state,
       current_db_session=db_session,
+      runtime=self.workcell_runtime,
       current_call_log_db_accession_id=None,
     )
 

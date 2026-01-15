@@ -29,6 +29,7 @@ from praxis.backend.models.domain.protocol import (
 from praxis.backend.models.domain.protocol import (
   FunctionProtocolDefinitionRead as FunctionProtocolDefinitionResponse,
 )
+from praxis.backend.models.domain.simulation import StateHistory, OperationStateSnapshot, StateSnapshot, TipStateSnapshot
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
 
@@ -186,6 +187,73 @@ async def get_protocol_queue(
       )
       for run in runs
     ]
+
+
+@router.get(
+  "/runs/{run_id}/state-history",
+  response_model=StateHistory,
+  status_code=status.HTTP_200_OK,
+  tags=["Protocol Runs"],
+)
+async def get_run_state_history(
+  run_id: UUID,
+  execution_service: Annotated[ProtocolExecutionService, Depends(get_protocol_execution_service)],
+) -> StateHistory:
+  """Get granular state history for a protocol run."""
+  from sqlalchemy import select
+  from sqlalchemy.orm import selectinload
+  from praxis.backend.models.domain.protocol import FunctionCallLog
+
+  async with execution_service.db_session_factory() as db_session:
+    # 1. Fetch Run
+    run = await db_session.get(ProtocolRun, run_id)
+    if not run:
+      raise HTTPException(status_code=404, detail="Run not found")
+
+    # 2. Fetch Logs ordered by sequence
+    stmt = (
+      select(FunctionCallLog)
+      .where(FunctionCallLog.protocol_run_accession_id == run_id)
+      .order_by(FunctionCallLog.sequence_in_run.asc())
+    )
+    result = await db_session.execute(stmt)
+    logs = result.scalars().all()
+
+    # 3. Map to snapshots
+    operations = []
+    for log in logs:
+      # Helper to wrap PLR state in StateSnapshot
+      def wrap_state(plr_state):
+        if not plr_state: return None
+        # TODO: Implement proper transformation from PLR state to flattened volumes/tips
+        # For now, put in raw_plr_state and UI can adapt or we can flatten here
+        return StateSnapshot(
+          tips=TipStateSnapshot(),
+          liquids={},
+          on_deck=[],
+          raw_plr_state=plr_state
+        )
+
+      operations.append(OperationStateSnapshot(
+        operation_index=log.sequence_in_run,
+        operation_id=str(log.accession_id),
+        method_name=log.executed_function_definition.name if log.executed_function_definition else "unknown",
+        args=log.input_args_json.get("kwargs") if log.input_args_json else {},
+        state_before=wrap_state(log.state_before_json),
+        state_after=wrap_state(log.state_after_json),
+        timestamp=log.start_time.isoformat() if log.start_time else None,
+        duration_ms=float(log.duration_ms) if log.duration_ms else None,
+        status=log.status.value.lower() if log.status else "completed",
+        error_message=log.error_message_text
+      ))
+
+    return StateHistory(
+      run_id=str(run_id),
+      protocol_name=run.protocol_name,
+      operations=operations,
+      final_state=wrap_state(run.final_state_json),
+      total_duration_ms=float(run.duration_ms) if run.duration_ms else None
+    )
 
 
 router.include_router(

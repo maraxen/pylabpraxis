@@ -20,6 +20,189 @@ from typing import Any
 # Check if we're running in browser/Pyodide mode
 IS_BROWSER_MODE = "pyodide" in sys.modules
 
+
+def resolve_parameters(params, metadata, asset_reqs, asset_specs=None):
+  """
+  Resolves protocol parameters by instantiating PLR objects for resources.
+
+  Args:
+      params: Dictionary of parameter values (JSON-serialized)
+      metadata: Dictionary of parameter metadata (name -> type_hint)
+      asset_reqs: Dictionary of asset requirements (accession_id -> type_hint)
+      asset_specs: Dictionary of asset specifications (uuid -> {num_items, name, type})
+
+  Returns:
+      Dictionary of resolved parameters
+  """
+  try:
+    import pylabrobot.resources as res
+  except ImportError:
+    # If PLR is not available, just return the raw params
+    return params
+
+  if asset_specs is None:
+    asset_specs = {}
+
+  resolved = {}
+  for name, value in params.items():
+    type_hint = metadata.get(name, "").lower()
+    asset_type = asset_reqs.get(name, "").lower()
+
+    # Check if this parameter is a resource (Plate, TipRack, etc.)
+    effective_type = type_hint or asset_type
+    is_resource = any(t in effective_type for t in ["plate", "tiprack", "resource", "container"])
+
+    if is_resource:
+      # If value is a dict, it's likely a Resource object from the frontend
+      # (Legacy/direct passing support)
+      if isinstance(value, dict):
+        resource_fqn = value.get("fqn", "")
+        resource_name = value.get("name", name)
+        
+        # Simple heuristic fallback
+        if "plate" in resource_fqn.lower() or "plate" in effective_type:
+          resolved[name] = res.Plate(name=resource_name, size_x=12, size_y=8, lid=False)
+        elif "tiprack" in resource_fqn.lower() or "tiprack" in effective_type:
+          resolved[name] = res.TipRack(name=resource_name, size_x=12, size_y=8)
+        else:
+          resolved[name] = res.Resource(name=resource_name, size_x=0, size_y=0, size_z=0)
+      
+      else:
+        # Value is a string (UUID)
+        spec = asset_specs.get(value)
+        
+        if spec:
+          # Use specs from backend/DB
+          num_items = spec.get('num_items', 96)
+          r_name = spec.get('name', name)
+          
+          # Geometry heuristics
+          if num_items == 384:
+            sx, sy = 24, 16
+          elif num_items == 24:
+            sx, sy = 6, 4
+          elif num_items == 96:
+            sx, sy = 12, 8
+          else:
+            sx, sy = 12, 8 # Default fallback
+
+          if "plate" in effective_type:
+             resolved[name] = res.Plate(name=r_name, size_x=sx, size_y=sy, lid=False)
+          elif "tiprack" in effective_type:
+             resolved[name] = res.TipRack(name=r_name, size_x=sx, size_y=sy)
+          else:
+             # Generic Container/Resource
+             resolved[name] = res.Container(name=r_name, size_x=sx*9, size_y=sy*9, size_z=10)
+        
+        else:
+          # Fallback if no spec found
+          if "plate" in effective_type:
+            resolved[name] = res.Plate(name=name, size_x=12, size_y=8, lid=False)
+          elif "tiprack" in effective_type:
+            resolved[name] = res.TipRack(name=name, size_x=12, size_y=8)
+          else:
+            resolved[name] = value
+    else:
+      resolved[name] = value
+
+  return resolved
+
+
+def emit_well_state(lh: Any):
+  """
+  Serializes the current state of a LiquidHandler's deck and emits it
+  to the browser's main thread via postMessage.
+  """
+  if not IS_BROWSER_MODE:
+    return
+
+  try:
+    from pylabrobot.resources import Plate, TipRack
+  except ImportError:
+    return
+
+  state_update = {}
+
+  # Traverse deck to find plates and tip racks
+  # For each resource, we extract liquid levels and tip presence
+  for resource in lh.deck.get_all_resources():
+    res_name = resource.name
+
+    if isinstance(resource, Plate):
+      # Extract liquid mask and volumes
+      # Well state update format:
+      # { "resource_name": { "liquid_mask": "hex", "volumes": [...] } }
+      num_wells = resource.num_items
+      liquid_bits = 0
+      volumes = []
+
+      for i in range(num_wells):
+        well = resource.get_item(i)
+        volume = well.tracker.get_liquids_total()
+        if volume > 0:
+          liquid_bits |= 1 << i
+          volumes.append(volume)
+        else:
+          volumes.append(0)
+
+      if liquid_bits > 0:
+        state_update[res_name] = {"liquid_mask": hex(liquid_bits), "volumes": volumes}
+
+    elif isinstance(resource, TipRack):
+      # Extract tip mask
+      num_tips = resource.num_items
+      tip_bits = 0
+
+      for i in range(num_tips):
+        if resource.get_item(i).has_tip:
+          tip_bits |= 1 << i
+
+      state_update[res_name] = {"tip_mask": hex(tip_bits)}
+
+  if state_update:
+    postMessage(json.dumps({"type": "WELL_STATE_UPDATE", "payload": state_update}))
+
+
+def patch_state_emission(lh: Any):
+  """
+  Patches a LiquidHandler to automatically emit state updates after
+  any liquid handling operation.
+  """
+  if not IS_BROWSER_MODE:
+    return lh
+
+  original_methods = {}
+  methods_to_patch = [
+    "aspirate",
+    "dispense",
+    "pick_up_tips",
+    "drop_tips",
+    "aspirate96",
+    "dispense96",
+    "pick_up_tips96",
+    "drop_tips96",
+  ]
+
+  for method_name in methods_to_patch:
+    if hasattr(lh, method_name):
+      original_methods[method_name] = getattr(lh, method_name)
+
+      def create_patched_method(m_name, original):
+        async def patched(*args, **kwargs):
+          result = await original(*args, **kwargs)
+          emit_well_state(lh)
+          return result
+
+        return patched
+
+      setattr(lh, method_name, create_patched_method(method_name, original_methods[method_name]))
+
+  # Initial emission
+  emit_well_state(lh)
+
+  return lh
+
+
 if IS_BROWSER_MODE:
   from js import postMessage
 else:

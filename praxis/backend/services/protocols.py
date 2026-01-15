@@ -14,6 +14,7 @@ import enum
 import json
 import logging
 import uuid
+from typing import Any
 
 from sqlalchemy import desc, select
 from sqlalchemy import inspect as sa_inspect
@@ -22,15 +23,9 @@ from sqlalchemy.orm import joinedload, selectinload
 
 from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.protocol import (
-  FunctionCallLog as FunctionCallLog,
-)
-from praxis.backend.models.domain.protocol import (
-  FunctionProtocolDefinition as FunctionProtocolDefinition,
-)
-from praxis.backend.models.domain.protocol import (
-  ProtocolRun as ProtocolRun,
-)
-from praxis.backend.models.domain.protocol import (
+  FunctionCallLog,
+  FunctionProtocolDefinition,
+  ProtocolRun,
   ProtocolRunCreate,
   ProtocolRunUpdate,
 )
@@ -49,6 +44,20 @@ logger = logging.getLogger(__name__)
 
 class ProtocolRunService(CRUDBase[ProtocolRun, ProtocolRunCreate, ProtocolRunUpdate]):
   """Service for protocol run operations."""
+
+  _active_run_states: dict[uuid.UUID, dict[str, Any]] = {}
+
+  def set_active_run_state(self, run_id: uuid.UUID, state: dict[str, Any]) -> None:
+    """Set the real-time state for an active protocol run."""
+    self._active_run_states[run_id] = state
+
+  def get_active_run_state(self, run_id: uuid.UUID) -> dict[str, Any] | None:
+    """Get the real-time state for an active protocol run."""
+    return self._active_run_states.get(run_id)
+
+  def remove_active_run_state(self, run_id: uuid.UUID) -> None:
+    """Remove the real-time state for a completed/failed protocol run."""
+    self._active_run_states.pop(run_id, None)
 
   @handle_db_transaction
   async def create(self, db: AsyncSession, *, obj_in: ProtocolRunCreate) -> ProtocolRun:
@@ -114,6 +123,60 @@ class ProtocolRunService(CRUDBase[ProtocolRun, ProtocolRunCreate, ProtocolRunUpd
       db_protocol_run.start_time = db_protocol_run.start_time.replace(tzinfo=datetime.timezone.utc)
 
     return db_protocol_run
+
+  async def get_protocol_run_status(
+    self,
+    protocol_run_id: uuid.UUID,
+  ) -> dict[str, Any] | None:
+    """Get the current status of a protocol run, including real-time state."""
+    from praxis.backend.utils.db import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+      stmt = (
+        select(self.model)
+        .options(joinedload(self.model.top_level_protocol_definition))
+        .filter(self.model.accession_id == protocol_run_id)
+      )
+      result = await db.execute(stmt)
+      db_protocol_run = result.scalar_one_or_none()
+
+      if not db_protocol_run:
+        return None
+
+      status_info = {
+        "protocol_run_id": str(protocol_run_id),
+        "status": db_protocol_run.status.value.lower() if db_protocol_run.status else "unknown",
+        "created_at": db_protocol_run.created_at.isoformat()
+        if db_protocol_run.created_at
+        else None,
+        "start_time": db_protocol_run.start_time.isoformat()
+        if db_protocol_run.start_time
+        else None,
+        "end_time": db_protocol_run.end_time.isoformat() if db_protocol_run.end_time else None,
+        "duration_ms": db_protocol_run.duration_ms,
+        "protocol_name": db_protocol_run.top_level_protocol_definition.name
+        if db_protocol_run.top_level_protocol_definition
+        else "Unknown",
+        "logs": [],  # logs are fetched separately in websockets.py
+      }
+
+      # Include deck definition if available
+      if db_protocol_run.top_level_protocol_definition:
+        sim_result = db_protocol_run.top_level_protocol_definition.simulation_result_json
+        if sim_result and "deck_definition" in sim_result:
+          status_info["plr_definition"] = sim_result["deck_definition"]
+        elif db_protocol_run.top_level_protocol_definition.data_views_json:
+          # Fallback: check data views for deck info
+          for view in db_protocol_run.top_level_protocol_definition.data_views_json:
+            if isinstance(view, dict) and view.get("name") == "Deck View":
+              status_info["plr_definition"] = view.get("data")
+
+      # Add cached real-time state
+      cached_state = self.get_active_run_state(protocol_run_id)
+      if cached_state:
+        status_info["state"] = cached_state
+
+      return status_info
 
   async def get_multi(
     self,
@@ -377,6 +440,7 @@ async def log_function_call_start(
   sequence_in_run: int,
   input_args_json: str,
   parent_function_call_log_accession_id: uuid.UUID | None = None,
+  state_before_json: dict[str, Any] | None = None,
 ) -> FunctionCallLog:
   """Log the start of a function call."""
   call_id = uuid7()
@@ -388,6 +452,7 @@ async def log_function_call_start(
     input_args_json=json.loads(input_args_json),
     parent_function_call_log_accession_id=parent_function_call_log_accession_id,
     status=FunctionCallStatusEnum.SUCCESS,
+    state_before_json=state_before_json,
   )
   db_obj.accession_id = call_id
   db.add(db_obj)
@@ -405,6 +470,7 @@ async def log_function_call_end(
   error_message: str | None = None,
   error_traceback: str | None = None,
   duration_ms: float | None = None,
+  state_after_json: dict[str, Any] | None = None,
 ) -> FunctionCallLog | None:
   """Log the end of a function call."""
   stmt = select(FunctionCallLog).filter(
@@ -419,6 +485,7 @@ async def log_function_call_end(
       db_obj.return_value_json = json.loads(return_value_json)
     db_obj.error_message_text = error_message
     db_obj.error_traceback_text = error_traceback
+    db_obj.state_after_json = state_after_json
     if duration_ms:
       db_obj.duration_ms = int(duration_ms)
     await db.flush()

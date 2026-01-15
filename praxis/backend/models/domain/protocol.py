@@ -589,6 +589,12 @@ class FunctionCallLog(FunctionCallLogBase, table=True):
 
   input_args_json: dict[str, Any] | None = Field(default=None, sa_type=JsonVariant)
   return_value_json: dict[str, Any] | None = Field(default=None, sa_type=JsonVariant)
+  state_before_json: dict[str, Any] | None = Field(
+    default=None, sa_type=JsonVariant, description="State before execution"
+  )
+  state_after_json: dict[str, Any] | None = Field(
+    default=None, sa_type=JsonVariant, description="State after execution"
+  )
 
   protocol_run_accession_id: uuid.UUID = Field(foreign_key="protocol_runs.accession_id", index=True)
   function_protocol_definition_accession_id: uuid.UUID = Field(
@@ -629,6 +635,8 @@ class FunctionCallLogRead(FunctionCallLogBase):
   accession_id: uuid.UUID
   input_args_json: dict[str, Any] | None = None
   return_value_json: dict[str, Any] | None = None
+  state_before_json: dict[str, Any] | None = None
+  state_after_json: dict[str, Any] | None = None
 
 
 class FunctionCallLogUpdate(SQLModel):

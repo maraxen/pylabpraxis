@@ -88,6 +88,14 @@ async def _log_call_start(
   try:
     sequence_val = context.get_and_increment_sequence_val()
     serialized_input_args = serialize_arguments(args, kwargs)
+
+    state_before = None
+    if context.runtime:
+      try:
+        state_before = context.runtime.get_state_snapshot()
+      except Exception:  # pylint: disable=broad-except
+        logger.warning("Failed to capture state_before for function call logging.")
+
     call_log_entry_model = await log_function_call_start(
       db=context.current_db_session,
       protocol_run_orm_accession_id=context.run_accession_id,
@@ -95,6 +103,7 @@ async def _log_call_start(
       sequence_in_run=sequence_val,
       input_args_json=serialized_input_args,
       parent_function_call_log_accession_id=parent_log_id,
+      state_before_json=state_before,
     )
     return call_log_entry_model.accession_id
   except Exception:  # pylint: disable=broad-except
@@ -372,6 +381,13 @@ def protocol_function(
                 serialized_result = json.dumps(repr(result))
 
           if current_call_log_db_accession_id:
+            state_after = None
+            if context_for_this_call.runtime:
+              try:
+                state_after = context_for_this_call.runtime.get_state_snapshot()
+              except Exception:  # pylint: disable=broad-except
+                logger.warning("Failed to capture state_after for function call logging.")
+
             await log_function_call_end(
               db=context_for_this_call.current_db_session,
               function_call_log_accession_id=current_call_log_db_accession_id,
@@ -380,6 +396,7 @@ def protocol_function(
               error_message=str(error) if error else None,
               error_traceback=traceback.format_exc() if error else None,
               duration_ms=duration_ms,
+              state_after_json=state_after,
             )
         except Exception:  # pylint: disable=broad-except
           # Broad except is justified here as we must not let a logging failure
