@@ -14,7 +14,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatStepper, MatStepperModule } from '@angular/material/stepper';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
-import { finalize } from 'rxjs/operators';
+import { finalize, map, take, switchMap } from 'rxjs';
 
 import { MatDialog } from '@angular/material/dialog';
 import { ModeService } from '@core/services/mode.service';
@@ -23,7 +23,6 @@ import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 import { ProtocolService } from '@features/protocols/services/protocol.service';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 import { WellSelectorDialogComponent, WellSelectorDialogData, WellSelectorDialogResult } from '@shared/components/well-selector-dialog/well-selector-dialog.component';
-import { MachineStatus } from '../assets/models/asset.models';
 import { DeckSetupWizardComponent } from './components/deck-setup-wizard/deck-setup-wizard.component';
 import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component'; // Import added
 import { MachineCompatibility } from './models/machine-compatibility.models';
@@ -36,6 +35,9 @@ import { DeckGeneratorService } from './services/deck-generator.service';
 import { ExecutionService } from './services/execution.service';
 import { WizardStateService } from './services/wizard-state.service';
 import { ProtocolSummaryComponent } from './components/protocol-summary/protocol-summary.component';
+import { AssetService } from '@features/assets/services/asset.service';
+import { SimulationConfigDialogComponent } from './components/simulation-config-dialog/simulation-config-dialog.component';
+import { Machine, MachineDefinition, MachineStatus } from '@features/assets/models/asset.models';
 
 const RECENTS_KEY = 'praxis_recent_protocols';
 const MAX_RECENTS = 5;
@@ -625,6 +627,7 @@ export class RunProtocolComponent implements OnInit {
   private deckGenerator = inject(DeckGeneratorService);
   private dialog = inject(MatDialog);
   public modeService = inject(ModeService);
+  private assetService = inject(AssetService);
 
   // Signals
   protocols = signal<ProtocolDefinition[]>([]);
@@ -673,9 +676,9 @@ export class RunProtocolComponent implements OnInit {
   };
 
   constructor() {
-    // In browser mode we allow skipping asset/deck steps by default
+    // In browser mode we still want to pre-select the simulation machine
     if (this.isBrowserModeActive()) {
-      this.applyBrowserModeDefaults();
+      this.setupBrowserModeMachine();
     }
   }
 
@@ -744,10 +747,7 @@ export class RunProtocolComponent implements OnInit {
     return false;
   }
 
-  private applyBrowserModeDefaults() {
-    this.configuredAssets.set({});
-    this.assetsFormGroup.patchValue({ valid: true });
-    this.deckFormGroup.patchValue({ valid: true });
+  private setupBrowserModeMachine() {
     this.selectedMachine.set(this.browserModeMachine);
     this.compatibilityData.set([this.browserModeMachine]);
     this.machineFormGroup.patchValue({ machineId: this.browserModeMachine.machine.accession_id });
@@ -903,7 +903,7 @@ export class RunProtocolComponent implements OnInit {
   selectProtocol(protocol: ProtocolDefinition) {
     this.selectedProtocol.set(protocol);
     const browserMode = this.isBrowserModeActive();
-    this.configuredAssets.set(browserMode ? {} : null); // Reset deck config
+    this.configuredAssets.set(null); // Reset deck config
     this.parametersFormGroup = this._formBuilder.group({});
 
     // Auto-generate default run name
@@ -917,48 +917,137 @@ export class RunProtocolComponent implements OnInit {
       // so it remains empty as per the instruction's snippet.
     }
     this.protocolFormGroup.patchValue({ protocolId: protocol.accession_id });
-    if (browserMode) {
-      this.assetsFormGroup.patchValue({ valid: true });
-      this.deckFormGroup.patchValue({ valid: true });
-      this.applyBrowserModeDefaults();
-    } else {
-      this.assetsFormGroup.patchValue({ valid: false });
-      this.deckFormGroup.patchValue({ valid: protocol.requires_deck === false });
-    }
-    this.addToRecents(protocol.accession_id);
 
     if (browserMode) {
-      this.compatibilityData.set([this.browserModeMachine]);
-      this.onMachineSelect(this.browserModeMachine);
+      this.setupBrowserModeMachine();
+      // Even in browser mode, we want the user to go through asset selection
+      this.assetsFormGroup.patchValue({ valid: false });
+      this.deckFormGroup.patchValue({ valid: protocol.requires_deck === false });
       return;
     }
 
+    this.assetsFormGroup.patchValue({ valid: false });
+    this.deckFormGroup.patchValue({ valid: protocol.requires_deck === false });
     this.loadCompatibility(protocol.accession_id);
   }
 
   loadCompatibility(protocolId: string) {
     this.isLoadingCompatibility.set(true);
-    this.executionService.getCompatibility(protocolId)
-      .pipe(finalize(() => this.isLoadingCompatibility.set(false)))
-      .subscribe({
-        next: (data) => {
-          this.compatibilityData.set(data);
-          // Auto-select if only one compatible machine
-          const compatible = data.filter(d => d.compatibility.is_compatible);
-          if (compatible.length === 1) {
-            this.onMachineSelect(compatible[0]);
-          }
-        },
-        error: (err) => console.error('Failed to load compatibility', err)
-      });
+
+    // Fetch both compatibility and machine definitions to show "Templates"
+    this.executionService.getCompatibility(protocolId).pipe(
+      switchMap(compatData => {
+        return this.assetService.getMachineDefinitions().pipe(
+          map((definitions: MachineDefinition[]) => {
+            const existingIds = new Set(compatData.map(d => (d.machine as any).machine_definition_accession_id));
+
+            const templates: MachineCompatibility[] = definitions
+              .filter(def => !existingIds.has(def.accession_id))
+              .map(def => ({
+                machine: {
+                  accession_id: `template-${def.accession_id}`,
+                  name: def.name,
+                  machine_category: def.machine_category,
+                  is_simulation_override: true,
+                  simulation_backend_name: (def.available_simulation_backends?.[0]) || 'Chatterbox',
+                  description: def.description,
+                  machine_definition_accession_id: def.accession_id,
+                  is_template: true
+                } as any,
+                compatibility: {
+                  is_compatible: true,
+                  missing_capabilities: [],
+                  matched_capabilities: [],
+                  warnings: []
+                }
+              }));
+
+            return [...compatData, ...templates];
+          })
+        );
+      }),
+      finalize(() => this.isLoadingCompatibility.set(false))
+    ).subscribe({
+      next: (data) => {
+        this.compatibilityData.set(data as MachineCompatibility[]);
+        const active = (data as MachineCompatibility[]).filter(d =>
+          d.compatibility.is_compatible && !(d.machine as any).is_template
+        );
+        if (active.length === 1) {
+          this.onMachineSelect(active[0]);
+        }
+      },
+      error: (err) => console.error('Failed to load compatibility/definitions', err)
+    });
   }
 
-  onMachineSelect(machine: MachineCompatibility) {
-    this.selectedMachine.set(machine);
-    const machineId = machine.machine.accession_id;
+  onMachineSelect(machineCompat: MachineCompatibility) {
+    const machine = machineCompat.machine;
+
+    if ((machine as any).is_template) {
+      this.configureSimulationTemplate(machineCompat);
+      return;
+    }
+
+    this.selectedMachine.set(machineCompat);
+    const machineId = machine.accession_id;
     this.machineFormGroup.patchValue({ machineId });
-    // If machine selection made it valid, patch again to trigger status change
     this.machineFormGroup.get('machineId')?.updateValueAndValidity();
+  }
+
+  private configureSimulationTemplate(templateCompat: MachineCompatibility) {
+    // 1. Get the actual definition
+    this.assetService.getMachineDefinitions().pipe(take(1)).subscribe(defs => {
+      const def = (defs as any[]).find(d => d.accession_id === (templateCompat.machine as any).machine_definition_accession_id);
+      if (!def) return;
+
+      // 2. Open config dialog
+      const dialogRef = this.dialog.open(SimulationConfigDialogComponent, {
+        data: { definition: def },
+        disableClose: true
+      });
+
+      dialogRef.afterClosed().subscribe(result => {
+        if (result) {
+          // 3. Create the ephemeral machine
+          this.isStartingRun.set(true); // Show spinner during creation
+          this.assetService.createMachine({
+            name: result.name,
+            machine_definition_accession_id: def.accession_id,
+            is_simulation_override: true,
+            simulation_backend_name: result.simulation_backend_name,
+            connection_info: { 
+              backend: result.simulation_backend_name,
+              plr_backend: def.fqn || '' 
+            }
+          }).pipe(
+            finalize(() => this.isStartingRun.set(false))
+          ).subscribe({
+            next: (newMachine) => {
+              // 4. Set as selected machine
+              const newCompat: MachineCompatibility = {
+                machine: {
+                  ...newMachine,
+                  machine_category: def.machine_category,
+                  is_simulation_override: true
+                },
+                compatibility: {
+                  is_compatible: true,
+                  missing_capabilities: [],
+                  matched_capabilities: [],
+                  warnings: []
+                }
+              };
+
+              // Add to the list so it stays visible
+              this.compatibilityData.update(current => [newCompat, ...current]);
+              this.onMachineSelect(newCompat);
+            },
+            error: (err) => console.error('Failed to create simulation machine', err)
+          });
+        }
+      });
+    });
   }
 
   clearProtocol() {

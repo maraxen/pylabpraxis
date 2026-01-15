@@ -41,5 +41,7 @@ export interface ExecutionState {
   };
   /** Compressed well state updates */
   wellState?: WellStateUpdate;
+  /** Deck definition for visualization */
+  plr_definition?: any;
 }
 

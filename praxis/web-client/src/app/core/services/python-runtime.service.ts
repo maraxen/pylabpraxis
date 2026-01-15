@@ -196,6 +196,12 @@ export class PythonRuntimeService implements ReplRuntime {
       return;
     }
 
+    // Handle WELL_STATE_UPDATE messages from Python - forward as well_state_update
+    if (type === 'WELL_STATE_UPDATE' && id && payload) {
+      this.stdoutSubjects.get(id)?.next({ type: 'well_state_update', content: JSON.stringify(payload) });
+      return;
+    }
+
     // Handle RAW_IO messages from Python - route to HardwareDiscoveryService
     if (type === 'RAW_IO' && payload) {
       this.handleRawIO(payload as RawIOPayload);
