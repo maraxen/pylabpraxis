@@ -284,7 +284,6 @@ class FeatureFlags(BaseSettings):
     enable_scheduling: bool = True
     enable_hardware_discovery: bool = True
     enable_demo_data: bool = False
-    enable_experimental_visualizer: bool = False
 
     class Config:
         env_prefix = "FEATURE_"
