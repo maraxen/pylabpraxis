@@ -54,9 +54,8 @@ async def websocket_endpoint(websocket: WebSocket, run_id: str):
               "type": "status",
               "payload": {
                 "status": current_status,
-                "step": status_info.get(
-                  "current_step_name", "Initializing"
-                ),  # Assuming this field exists or similar
+                "step": status_info.get("current_step_name", "Initializing"),
+                "plr_definition": status_info.get("plr_definition"),
               },
               "timestamp": str(asyncio.get_event_loop().time()),  # Placeholder timestamp
             }
@@ -96,6 +95,17 @@ async def websocket_endpoint(websocket: WebSocket, run_id: str):
                 "timestamp": str(asyncio.get_event_loop().time()),
               }
             )
+
+        # 2.7 Send Real Well State Update (from WorkcellRuntime)
+        real_state = status_info.get("state")
+        if real_state:
+          await websocket.send_json(
+            {
+              "type": "well_state_update",
+              "payload": real_state,
+              "timestamp": str(asyncio.get_event_loop().time()),
+            }
+          )
 
         # 3. Send New Logs
         if len(all_logs) > last_log_count:

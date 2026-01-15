@@ -3,7 +3,7 @@
 import asyncio
 import contextlib
 import datetime
-import uuid
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -25,8 +25,15 @@ class StateSyncMixin:
   db_session_factory: async_sessionmaker[AsyncSession]
   workcell_svc: WorkcellService
   _main_workcell: "IWorkcell"
-  _workcell_db_accession_id: uuid.UUID | None
   _state_sync_task: asyncio.Task[None] | None
+  _state_listeners: list[Callable[[dict[str, Any]], Awaitable[None]]] = []
+  _background_tasks: set[asyncio.Task[None]] = set()
+
+  def add_state_listener(self, callback: Callable[[dict[str, Any]], Awaitable[None]]) -> None:
+    """Add a callback to be invoked when the workcell state is updated."""
+    if self._state_listeners is None:
+      self._state_listeners = []
+    self._state_listeners.append(callback)
 
   async def _link_workcell_to_db(self) -> None:
     """Links the in-memory Workcell to its persistent DB entry."""
@@ -81,6 +88,13 @@ class StateSyncMixin:
             current_state_json,
           )
           await db_session.commit()
+
+        # Emit state to listeners
+        for listener in self._state_listeners:
+          task = asyncio.create_task(listener(current_state_json))
+          self._background_tasks.add(task)
+          task.add_done_callback(self._background_tasks.discard)
+
         logger.debug(
           "Workcell state for ID %s updated in DB.",
           self._workcell_db_accession_id,

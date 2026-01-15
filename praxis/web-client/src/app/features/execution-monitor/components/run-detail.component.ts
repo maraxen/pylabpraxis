@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { Location } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -18,6 +18,8 @@ import { StateInspectorComponent } from './state-inspector';
 import { StateHistoryTimelineComponent } from './state-history-timeline';
 import { StateDeltaComponent } from './state-delta/state-delta.component';
 import { ParameterViewerComponent } from './parameter-viewer';
+import { DeckViewComponent } from '@shared/components/deck-view/deck-view.component';
+import { ExecutionService } from '../../run-protocol/services/execution.service';
 
 /**
  * Displays detailed information about a single protocol run.
@@ -38,7 +40,8 @@ import { ParameterViewerComponent } from './parameter-viewer';
     StateInspectorComponent,
     StateHistoryTimelineComponent,
     StateDeltaComponent,
-    ParameterViewerComponent
+    ParameterViewerComponent,
+    DeckViewComponent
   ],
   template: `
     <div class="p-6 max-w-screen-xl mx-auto">
@@ -300,6 +303,33 @@ import { ParameterViewerComponent } from './parameter-viewer';
               }
             </div>
           </mat-tab>
+
+          <!-- Live View Tab -->
+          <mat-tab label="Live View">
+            <div class="tab-content flex flex-col items-center justify-center min-h-[500px] p-6 bg-[var(--plr-bg)] rounded-b-xl border-x border-b border-[var(--theme-border)]">
+              @if (isLive()) {
+                @if (executionService.currentRun(); as runState) {
+                  @if (runState.plr_definition) {
+                    <app-deck-view 
+                      [resource]="runState.plr_definition"
+                      [state]="runState.wellState || {}">
+                    </app-deck-view>
+                  } @else {
+                    <div class="empty-state text-center py-12 text-sys-text-tertiary">
+                      <mat-icon class="!w-12 !h-12 !text-[48px] opacity-30 mb-4">view_quilt</mat-icon>
+                      <p>Deck layout not available for this run</p>
+                    </div>
+                  }
+                }
+              } @else {
+                <div class="empty-state text-center py-12 text-sys-text-tertiary">
+                  <mat-icon class="!w-12 !h-12 !text-[48px] opacity-30 mb-4">history</mat-icon>
+                  <p>Live view only available for active runs.</p>
+                  <p class="text-sm">This run is currently in terminal state: {{ run()?.status }}</p>
+                </div>
+              }
+            </div>
+          </mat-tab>
         </mat-tab-group>
       }
     </div>
@@ -335,7 +365,7 @@ import { ParameterViewerComponent } from './parameter-viewer';
     }
   `],
 })
-export class RunDetailComponent implements OnInit {
+export class RunDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly location = inject(Location);
   private readonly simulationService = inject(SimulationResultsService);
@@ -346,6 +376,13 @@ export class RunDetailComponent implements OnInit {
   readonly stateHistory = signal<StateHistory | null>(null);
   readonly isLoadingStateHistory = signal(false);
   readonly currentOperationIndex = signal(0);
+
+  readonly executionService = inject(ExecutionService);
+
+  readonly isLive = computed(() => {
+    const r = this.run();
+    return r && ['RUNNING', 'PAUSED', 'PREPARING'].includes(r.status);
+  });
   readonly timelineSteps = computed(() => {
     const run = this.run();
     if (!run) return [];
@@ -397,12 +434,19 @@ export class RunDetailComponent implements OnInit {
     }
   }
 
+  ngOnDestroy(): void {
+    this.executionService.disconnect();
+  }
+
   loadRunDetail(): void {
     this.isLoading.set(true);
     this.runHistoryService.getRunDetail(this.runId).subscribe({
       next: (detail) => {
         this.run.set(detail);
         this.isLoading.set(false);
+        if (this.isLive()) {
+          this.executionService.connectWebSocket(this.runId);
+        }
       },
       error: (err) => {
         console.error('[RunDetail] Error loading run:', err);

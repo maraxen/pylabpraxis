@@ -50,6 +50,8 @@ class PraxisRunContext:
   """Canonical state of the protocol run, shared across all calls."""
   current_db_session: AsyncSession
   """Current database session for the run, shared across all calls."""
+  runtime: Any | None = None
+  """Reference to the WorkcellRuntime instance for capturing snapshots."""
   current_call_log_db_accession_id: uuid.UUID | None = None
   """ID of the current function call log entry, if any.
   This is set to the ID of the FunctionCallLog entry for the currently executing function
@@ -96,6 +98,7 @@ class PraxisRunContext:
       run_accession_id=self.run_accession_id,
       canonical_state=self.canonical_state,
       current_db_session=self.current_db_session,
+      runtime=self.runtime,
       current_call_log_db_accession_id=new_parent_call_log_db_accession_id,
     )
     nested_ctx._call_sequence_next_val = self._call_sequence_next_val
