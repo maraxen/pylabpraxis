@@ -1,6 +1,6 @@
 ---
 name: pylabpraxis-planning
-description: Project-specific planning workflows for Pylabpraxis. Handles backlog archiving, prompt generation, and development matrix updates.
+description: Project-specific planning workflows for Pylabpraxis. Handles backlog archiving, task generation, and development matrix updates.
 ---
 
 # Pylabpraxis Planning
@@ -10,8 +10,8 @@ This skill encapsulates the planning and project management workflows specific t
 ## Tools & Context
 
 - **Master Matrix**: `.agent/DEVELOPMENT_MATRIX.md`
+- **Tasks**: `.agent/tasks/`
 - **Backlog**: `.agent/backlog/*.md`
-- **Prompts**: `.agent/prompts/`
 
 ## Workflows
 
@@ -20,14 +20,14 @@ This skill encapsulates the planning and project management workflows specific t
 **Trigger**: "Archive backlog", "Cleanup sprint", "Consolidate tasks"
 
 1. **Review**: Check `DEVELOPMENT_MATRIX.md` for ✅ Completed items.
-2. **Verify**: Ensure corresponding `backlog/*.md` file has all checkboxes checked.
+2. **Verify**: Ensure corresponding task directory in `.agent/tasks/` is finalized.
 3. **Archive**:
-   - Move file to `.agent/archive/`.
+   - Move task directory to `.agent/archive/tasks/`.
    - Update `DEVELOPMENT_MATRIX.md` (move row to "Completed").
    - Update `ROADMAP.md` if milestone complete.
 4. **Consolidate**: If multiple items form a feature, create a summary doc in archive.
 
-### 2. Prompt Generation
+### 2. Task Generation (Unified I-P-E-T)
 
 **Trigger**: "Generate prompts", "Prepare next batch", "Scaffold tasks"
 
@@ -35,9 +35,10 @@ This skill encapsulates the planning and project management workflows specific t
 2. **Reconnaissance**: **CRITICAL**. Audit the codebase for *each* item.
    - Find actual paths (e.g. `praxis/web-client/...`).
    - Identify patterns to copy.
-3. **Generate**: Create `.agent/prompts/{YYMMDD}_dev_cycle/{Priority}_{Slug}.md`.
-   - Use template `.agent/templates/agent_prompt.md`.
-   - **Must** include: exact file paths, verification commands, and architectural nuance.
+3. **Generate**: Create `.agent/tasks/{YYMMDD}_batch/{Slug}/README.md`.
+   - Use template `.agent/templates/unified_task.md`.
+   - **Structure**: Create a directory per task with `tracking/` and `artifacts/` subdirectories.
+   - **Content**: Must include exact file paths, verification commands, and phased I-P-E-T sections.
 
 ### 3. Matrix Update
 

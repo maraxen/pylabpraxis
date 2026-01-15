@@ -23,33 +23,18 @@ Central coordination hub for AI agents working on Praxis development.
 ├── TECHNICAL_DEBT.md          # Issues and temporary patches
 ├── NOTES.md                   # Lessons learned, gotchas
 ├── status.json                # Browser subagent coordination
-├── backlog/                   # Detailed plans per development item
+├── tasks/                     # Unified Task Units (Unified I-P-E-T)
+│   └── YYMMDD/                # Dated task batches
+│       └── [task_name]/       # Isolated task directory
+│           ├── README.md      # Unified Task Prompt & Status
+│           ├── tracking/      # Incremental progress logs
+│           └── artifacts/     # Generated designs/discovery docs
+├── backlog/                   # Detailed work items (legacy/persistent)
 ├── codestyles/                # Language-specific code style guides
-│   ├── python.md
-│   ├── typescript.md
-│   ├── javascript.md
-│   ├── html-css.md
-│   └── general.md
-├── prompts/                   # Agent prompts
-│   ├── reuse/                 # Reusable prompt templates
-│   │   └── maintenance/       # Health audit prompts (linting, type checking, etc.)
-│   └── YYMMDD/                # Dated prompt batches
 ├── templates/                 # Document templates
-│   ├── agent_prompt.md        # Detailed agent dispatch
-│   ├── backlog_item.md        # Work item tracking
-│   ├── prompt_batch.md        # Dated batch README
-│   ├── reusable_prompt.md     # Parameterized prompts
-│   ├── health_audit_backend.md   # Backend health audit template
-│   ├── health_audit_frontend.md  # Frontend health audit template
-│   └── reference_document.md  # External reference template
+│   ├── unified_task.md        # Unified I-P-E-T task template
+│   └── ...
 ├── references/                # External references and best practices
-│   ├── README.md              # References guide
-│   ├── testing/               # Testing strategies
-│   ├── backend/               # FastAPI, SQLAlchemy, PyLabRobot patterns
-│   ├── frontend/              # Angular, RxJS patterns
-│   └── architecture/          # System design decisions
-├── reference/                 # Product specs (legacy)
-│   └── hardware_matrix.md     # PLR hardware communication protocols
 ├── skills/                    # Agent skill definitions
 └── archive/                   # Completed work
 ```
@@ -60,11 +45,7 @@ Central coordination hub for AI agents working on Praxis development.
 
 ### DEVELOPMENT_MATRIX.md
 
-Central table with **Priority** and **Difficulty** for all items:
-
-| Priority | Difficulty | Item | Status |
-| :------- | :----------- | :----------- | :-------------- |
-| P2       | 🔴 Complex    | Example Item | 🟡 In Progress  |
+Central table with **Priority** and **Difficulty** for all items.
 
 **Difficulty levels** (for agent dispatch):
 
@@ -74,37 +55,25 @@ Central table with **Priority** and **Difficulty** for all items:
 
 **Agents must update this matrix** when completing work or changing status.
 
-### ROADMAP.md
-
-High-level milestones. Update at major milestone completions.
-
-### NOTES.md
-
-Captures lessons learned, specialized knowledge, and "gotchas" discovered during development. Periodically distill patterns into [codestyles/](codestyles/).
-
 ---
 
 ## 💻 Agent Workflow
 
 ### Before Work
 
-1. Check `status.json` - mark browser_subagent as in-use if needed
-2. Review `DEVELOPMENT_MATRIX.md` for priorities
-3. Review relevant `backlog/` item for context
+1. Review `DEVELOPMENT_MATRIX.md` for priorities.
+2. Select or create a task in `tasks/YYMMDD/[task_name]/`.
+3. Review `README.md` in the task directory for unified context.
 
 ### During Work
 
-- Follow [codestyles/](codestyles/) for language conventions
-- **Frontend Styling**: Always use theme variables (CSS variables) rather than hardcoded values unless explicitly justified.
-- **Frontend Testing**: Run tests using `npx vitest [target] --run` within `praxis/web-client` to ensure non-interactive execution.
-- Use `uv run` for all Python commands
-- Wrap long commands with `timeout`
-
-### After Work
-
-1. Update `DEVELOPMENT_MATRIX.md` with progress
-2. Update `status.json` - release browser_subagent if held
-3. Update backlog item with notes/completions
+- Follow [codestyles/](codestyles/) for language conventions.
+- **Unified I-P-E-T**: Follow the Inspect -> Plan -> Execute -> Test flow within the task document.
+- **State Management**: Update the `README.md` status and tracking elements frequently so work can resume seamlessly.
+- **Frontend Styling**: Always use theme variables (CSS variables).
+- **Frontend Testing**: Run tests using `npx vitest [target] --run` within `praxis/web-client`.
+- Use `uv run` for all Python commands.
+- Wrap long commands with `timeout`.
 
 ---
 
@@ -128,24 +97,27 @@ See [.agent/skills/jules-remote/SKILL.md](skills/jules-remote/SKILL.md) for full
 
 ---
 
-## 📝 Prompts System
+## 📝 Unified Task System
 
-### Reusable Prompts
+### Layout
 
-Store reusable prompt templates in `prompts/reuse/`:
+Tasks are housed in `.agent/tasks/YYMMDD/[task_name]/`.
 
-- Fill placeholders like `{FILE}`, `{COMPONENT}`
-- Use for common recurring tasks
+Each task directory contains:
 
-### Dated Prompt Batches
+- **README.md**: The primary command center. Contains the I-P-E-T phases, Current Status, and Definition of Done.
+- **tracking/**: Files for logging incremental data (e.g., large grep results, temporary thought blocks).
+- **artifacts/**: Persistent outputs like design specs, audit reports, or generated diagrams.
 
-Staged execution of prompt sets in `prompts/YYMMDD/`:
+### Phase Gates
 
-- Each folder has a `README.md` listing prompts with status (use [templates/prompt_batch.md](templates/prompt_batch.md))
-- Individual prompts should follow the [templates/agent_prompt.md](templates/agent_prompt.md) structure
-- Mark prompts complete as they're executed
-- When all complete, mark README status as "✅ All Complete"
-- Archive-ready folders can be moved to `archive/`
+1. **Inspect (I)**: Gather information. No code edits.
+2. **Plan (P)**: Draft implementation strategy. Get verification.
+3. **Execute (E)**: Apply changes.
+4. **Test (T)**: Verify and document results.
+
+Mark phases as complete in the `README.md` before proceeding.
+Summary: This structure ensures that even if an agent session is interrupted, the next agent has a clear state of mind and knows exactly where to pick up.
 
 ### Maintenance Prompts
 

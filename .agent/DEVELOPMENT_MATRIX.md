@@ -126,6 +126,7 @@
 | Deck State Indicator (K-09)                   | P3       | 2026-01-15 | Implemented source indicator badge (Live/Sim/Offline) for focus views |
 | Workcell Polish & Animations (K-10)           | P3       | 2026-01-15 | Applied glassmorphism, animations, and micro-interactions |
 | Workcell Route Migration (K-11)               | P3       | 2026-01-15 | Migrated /visualizer to /workcell and updated navigation |
+| Machine Simulation Architecture Refactor      | P2       | 2026-01-15 | Refactored simulation to use Factory Pattern and runtime configuration |
 
 ---
 

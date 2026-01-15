@@ -1,7 +1,5 @@
 # Agent Prompt: [Item Name]
 
-Examine `.agent/README.md` for development context.
-
 **Status:** 🟢 Not Started
 **Priority:** [P1/P2/P3]
 **Batch:** [YYMMDD](../YYMMDD/README.md)

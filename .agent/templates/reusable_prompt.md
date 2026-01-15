@@ -1,6 +1,5 @@
 # Reusable Prompt: [Name]
 
-Examine `.agent/README.md` for development context.
 
 **Purpose:** [What this prompt accomplishes]  
 **Use when:** [Conditions for using this prompt]

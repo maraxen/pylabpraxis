@@ -47,6 +47,10 @@ This document tracks known issues, temporary patches, and required follow-up wor
     3. **Planning**: Use discovery artifacts to spawn in-depth planning prompts.
     4. **Implementation**: Planning prompts spawn implementation prompts (leveraging templates like `agent_prompt.md`). It is from these prompts that issues are resolved.
     - **Action Item**: Create an artifact template (`.agent/templates/artifact.md`) as we currently lack one.
+- [ ] **.agent folder optimization and workflow redesign**: Consolidate the I-P-E-T (Inspect-Plan-Execute-Test) workflow into unified task directories/prompts and remove redundant context instructions. <!-- id: 504 -->
+  - Reason: The current multi-file I-P-E structure is becoming fragmented. Moving to a directory-based "Task" structure with unified prompts improves traceability and allows for better state management across start/stop cycles.
+  - Priority: Medium
+  - Notes: Redefine prompt templates to include all phases (Inspect/Plan/Execute/Test) in a single document with clear stage-gates. Transition from flat `.agent/prompts/YYMMDD/` to `.agent/tasks/task_name/` or similar.
 - [ ] **Project Management Separation of Concerns**: Establish single sources of truth for items at each scale (Roadmap, Matrix, Backlog, Artifacts, Prompts). <!-- id: 503 -->
   - Reason: Prevent desyncing between different levels of project tracking.
   - Priority: Low
@@ -75,3 +79,31 @@ This document tracks known issues, temporary patches, and required follow-up wor
   - Reason: Heuristics are brittle. Logic needs to be explicit in `ProtocolDefinition` (e.g. `requires_linked_indices: boolean`).
   - Priority: Low
   - Notes: See `protocol_execution_ux_plan.md` for context.
+
+- [ ] **(Backend/Python)**: Replace hardcoded geometry heuristics in `web_bridge.py` with database-driven lookups via `resolved_assets_spec`. <!-- id: 702 -->
+  - Reason: Currently `web_bridge.py` assumes all plates are 96-well. We implemented a heuristic workaround in the factory pattern refactor, but it should read dimensions from the definition database.
+  - Priority: Medium
+  - Notes: See `web_bridge.py` lines 70-100.
+
+- [ ] **(Backend/Python)**: Audit and replace hardcoded simulation values in `web_bridge.py` and `ExecutionService`. <!-- id: 703 -->
+  - Reason: Several places in the browser execution bridge rely on hardcoded defaults/mocks rather than reading from the configured definitions.
+  - Priority: Low
+
+- [ ] **(Backend/Python)**: Audit and replace hardcoded simulation values across the codebase. <!-- id: 704 -->
+  - Reason: Several places in the rely on hardcoded defaults/mocks rather than reading from the configured definitions in the database.
+  - Priority: Low
+
+## State Inspection & Reporting
+
+- [ ] **State History Storage Optimization**: Current backend state inspection stores full JSON snapshots for every decorated function call. <!-- id: 801 -->
+  - Reason: For long protocols, this will cause database bloat.
+  - Priority: Medium
+  - Notes: Implement state delta compression (diffing) or optional "trace mode" flags.
+- [ ] **PLR to UI State Transformation**: The backend currently passes raw `serialize_state()` from PyLabRobot objects directly to the UI. <!-- id: 802 -->
+  - Reason: `DeckViewComponent` expects a specific format (e.g. `volumes` array), while PLR might provide lists of tuples.
+  - Priority: Medium
+  - Notes: Implement a formal transformation layer in `WorkcellRuntime` or `ExecutionMixin` to ensure consistent data structures for the frontend.
+- [ ] **Interactive Timeline Updates**: The "Operation Timeline" in the Run Detail view is currently static (loaded after the run or periodically). <!-- id: 803 -->
+  - Reason: It should ideally update via WebSockets as operations complete.
+  - Priority: Low
+  - Notes: Emit `operation_complete` events with step details over the execution WebSocket.
