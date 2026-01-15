@@ -9,6 +9,7 @@ import {
     CarrierDefinition
 } from '../models/deck-layout.models';
 import { Machine } from '../../assets/models/asset.models';
+import { PlrResource } from '@core/models/plr.models';
 
 /**
  * Service for fetching deck and carrier specifications.
@@ -189,6 +190,51 @@ export class DeckCatalogService {
                 depth: 900
             }
         };
+    }
+
+    /**
+     * Create a PlrResource (PyLabRobot tree) from a specification.
+     * Useful for synthesizing deck layouts when full state is not available.
+     */
+    createPlrResourceFromSpec(spec: DeckDefinitionSpec): PlrResource {
+        const deck: PlrResource = {
+            name: "deck",
+            type: spec.fqn,
+            location: { x: 0, y: 0, z: 0, type: "Coordinate" },
+            size_x: spec.dimensions.width,
+            size_y: spec.dimensions.height,
+            size_z: spec.dimensions.depth,
+            children: []
+        };
+
+        if (spec.numRails) {
+            deck.num_rails = spec.numRails;
+        }
+
+        // If slot-based, add slots as children (as trash or modules)
+        if (spec.layoutType === 'slot-based' && spec.slots) {
+            spec.slots.forEach(slot => {
+                if (slot.slotType === 'trash' || slot.slotType === 'module') {
+                    deck.children.push({
+                        name: slot.label,
+                        type: slot.slotType === 'trash' ? 'Trash' : 'Resource',
+                        location: {
+                            x: slot.position.x,
+                            y: slot.position.y,
+                            z: slot.position.z,
+                            type: "Coordinate"
+                        },
+                        size_x: slot.dimensions.width,
+                        size_y: slot.dimensions.height,
+                        size_z: 10,
+                        children: [],
+                        slot_id: slot.slotNumber.toString()
+                    });
+                }
+            });
+        }
+
+        return deck;
     }
 
     /**

@@ -68,7 +68,7 @@ import { DeckStateIndicatorComponent } from '../../../shared/components/workcell
       </header>
 
       <!-- Main Content Area (Deck View) -->
-      <div class="flex-grow relative bg-[#1a1a2e] overflow-hidden">
+      <div class="flex-grow relative bg-[var(--mat-sys-surface-container-low)] overflow-hidden">
         @if (machine.plr_definition) {
           <div class="absolute inset-0 flex items-center justify-center p-8 overflow-auto">
             <app-deck-view

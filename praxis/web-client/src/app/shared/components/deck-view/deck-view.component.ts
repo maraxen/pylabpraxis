@@ -129,7 +129,7 @@ interface TooltipState {
       display: block;
       overflow: auto;
       /* PLR-style dark background */
-      background: var(--plr-bg, #1a1a2e);
+      background: var(--plr-bg, var(--mat-sys-surface-container-low));
       padding: 20px;
     }
 
@@ -145,7 +145,7 @@ interface TooltipState {
 
     /* Dark theme (default) */
     :host {
-      --plr-bg: #1a1a2e;
+      --plr-bg: var(--mat-sys-surface-container-low);
       --plr-deck-bg: #2d2d44;
       --plr-deck-border: #4a4a6a;
       --plr-rail: rgba(255, 255, 255, 0.06);

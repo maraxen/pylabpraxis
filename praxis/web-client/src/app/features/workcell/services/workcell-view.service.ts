@@ -3,12 +3,14 @@ import { forkJoin, Observable, map } from 'rxjs';
 import { AssetService } from '../../assets/services/asset.service';
 import { Machine, Workcell, MachineStatus } from '../../assets/models/asset.models';
 import { WorkcellGroup, MachineWithRuntime, MachineAlert } from '../models/workcell-view.models';
+import { DeckCatalogService } from '../../run-protocol/services/deck-catalog.service';
 
 @Injectable({
     providedIn: 'root'
 })
 export class WorkcellViewService {
     private assetService = inject(AssetService);
+    private deckCatalog = inject(DeckCatalogService);
 
     // Signal-based state
     workcellGroups = signal<WorkcellGroup[]>([]);
@@ -77,8 +79,21 @@ export class WorkcellViewService {
      * Map raw machine data to MachineWithRuntime
      */
     private mapToMachineWithRuntime(machine: Machine): MachineWithRuntime {
+        // Synthesize plr_definition if missing but we know the deck type
+        let plrDefinition = machine.plr_definition;
+        if (!plrDefinition) {
+            const deckType = this.deckCatalog.getDeckTypeForMachine(machine);
+            if (deckType) {
+                const spec = this.deckCatalog.getDeckDefinition(deckType);
+                if (spec) {
+                    plrDefinition = this.deckCatalog.createPlrResourceFromSpec(spec);
+                }
+            }
+        }
+
         return {
             ...machine,
+            plr_definition: plrDefinition,
             connectionState: this.deriveConnectionState(machine.status),
             stateSource: machine.is_simulation_override ? 'simulated' : 'live',
             alerts: this.computeAlerts(machine),
