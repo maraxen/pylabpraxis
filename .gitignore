@@ -103,5 +103,5 @@ praxis/web-client/playwright-report/
 praxis/web-client/test_output*.txt
 
 
-!.agents/archive/archive.tar.gz
+!.agent/archive/archive.tar.gz
 

@@ -23,14 +23,14 @@ Some VSCode Extensions I'd recommend:
 
 ## Agentic Development Workflow
 
-This project uses the `.agents/` directory for AI-assisted development:
+This project uses the `.agent/` directory for AI-assisted development:
 
 - **DEVELOPMENT_MATRIX.md**: Central priority/status tracking
 - **backlog/**: Detailed work item specifications
 - **prompts/**: Agent dispatch prompts organized by date
 - **codestyles/**: Language-specific conventions
 
-See `.agents/README.md` for full documentation.
+See `.agent/README.md` for full documentation.
 
 ## Running Tests
 
