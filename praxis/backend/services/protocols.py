@@ -59,6 +59,39 @@ class ProtocolRunService(CRUDBase[ProtocolRun, ProtocolRunCreate, ProtocolRunUpd
     """Remove the real-time state for a completed/failed protocol run."""
     self._active_run_states.pop(run_id, None)
 
+  async def get(self, db: AsyncSession, accession_id: uuid.UUID) -> ProtocolRun | None:
+    """Get a single protocol run by ID with eager loading of relationships.
+
+    Overrides CRUDBase.get to eager load top_level_protocol_definition,
+    preventing MissingGreenlet errors when accessing protocol_name property.
+    """
+    statement = (
+      select(self.model)
+      .where(self.model.accession_id == accession_id)
+      .options(selectinload(self.model.top_level_protocol_definition))
+    )
+    result = await db.execute(statement)
+    return result.scalars().first()
+
+  async def update(
+    self,
+    db: AsyncSession,
+    *,
+    db_obj: ProtocolRun,
+    obj_in: ProtocolRunUpdate,
+  ) -> ProtocolRun:
+    """Update a protocol run with eager loading of relationships.
+
+    Overrides CRUDBase.update to re-query with eager loading after update,
+    preventing MissingGreenlet errors when accessing protocol_name property.
+    """
+    # First call parent update
+    updated_obj = await super().update(db, db_obj=db_obj, obj_in=obj_in)
+
+    # Re-query with eager loading to prevent MissingGreenlet errors
+    result = await self.get(db, updated_obj.accession_id)
+    return result if result is not None else updated_obj
+
   @handle_db_transaction
   async def create(self, db: AsyncSession, *, obj_in: ProtocolRunCreate) -> ProtocolRun:
     """Create a new protocol run instance."""
