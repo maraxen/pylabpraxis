@@ -202,6 +202,12 @@ export class PythonRuntimeService implements ReplRuntime {
       return;
     }
 
+    // Handle FUNCTION_CALL_LOG messages from Python - forward as function_call_log
+    if (type === 'FUNCTION_CALL_LOG' && id && payload) {
+      this.stdoutSubjects.get(id)?.next({ type: 'function_call_log', content: JSON.stringify(payload) });
+      return;
+    }
+
     // Handle RAW_IO messages from Python - route to HardwareDiscoveryService
     if (type === 'RAW_IO' && payload) {
       this.handleRawIO(payload as RawIOPayload);

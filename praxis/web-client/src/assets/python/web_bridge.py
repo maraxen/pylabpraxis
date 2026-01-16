@@ -58,7 +58,7 @@ def resolve_parameters(params, metadata, asset_reqs, asset_specs=None):
       if isinstance(value, dict):
         resource_fqn = value.get("fqn", "")
         resource_name = value.get("name", name)
-        
+
         # Simple heuristic fallback
         if "plate" in resource_fqn.lower() or "plate" in effective_type:
           resolved[name] = res.Plate(name=resource_name, size_x=12, size_y=8, lid=False)
@@ -66,16 +66,16 @@ def resolve_parameters(params, metadata, asset_reqs, asset_specs=None):
           resolved[name] = res.TipRack(name=resource_name, size_x=12, size_y=8)
         else:
           resolved[name] = res.Resource(name=resource_name, size_x=0, size_y=0, size_z=0)
-      
+
       else:
         # Value is a string (UUID)
         spec = asset_specs.get(value)
-        
+
         if spec:
           # Use specs from backend/DB
-          num_items = spec.get('num_items', 96)
-          r_name = spec.get('name', name)
-          
+          num_items = spec.get("num_items", 96)
+          r_name = spec.get("name", name)
+
           # Geometry heuristics
           if num_items == 384:
             sx, sy = 24, 16
@@ -84,16 +84,16 @@ def resolve_parameters(params, metadata, asset_reqs, asset_specs=None):
           elif num_items == 96:
             sx, sy = 12, 8
           else:
-            sx, sy = 12, 8 # Default fallback
+            sx, sy = 12, 8  # Default fallback
 
           if "plate" in effective_type:
-             resolved[name] = res.Plate(name=r_name, size_x=sx, size_y=sy, lid=False)
+            resolved[name] = res.Plate(name=r_name, size_x=sx, size_y=sy, lid=False)
           elif "tiprack" in effective_type:
-             resolved[name] = res.TipRack(name=r_name, size_x=sx, size_y=sy)
+            resolved[name] = res.TipRack(name=r_name, size_x=sx, size_y=sy)
           else:
-             # Generic Container/Resource
-             resolved[name] = res.Container(name=r_name, size_x=sx*9, size_y=sy*9, size_z=10)
-        
+            # Generic Container/Resource
+            resolved[name] = res.Container(name=r_name, size_x=sx * 9, size_y=sy * 9, size_z=10)
+
         else:
           # Fallback if no spec found
           if "plate" in effective_type:
@@ -209,6 +209,186 @@ else:
   # Mock for local testing
   def postMessage(msg):
     pass
+
+
+import time
+
+
+# =============================================================================
+# Function Call Logging - Time Travel Debugging
+# =============================================================================
+
+# Global sequence counter for ordering
+_function_call_sequence = 0
+
+
+def patch_function_call_logging(lh: Any, run_id: str):
+  """
+  Patches a LiquidHandler to emit function call logs with state before/after.
+
+  Unlike patch_state_emission() which only emits well state updates,
+  this captures full serialized state for time-travel debugging.
+  """
+  global _function_call_sequence
+  _function_call_sequence = 0  # Reset for new run
+
+  if not IS_BROWSER_MODE:
+    return lh
+
+  methods_to_log = [
+    "aspirate",
+    "dispense",
+    "pick_up_tips",
+    "drop_tips",
+    "aspirate96",
+    "dispense96",
+    "pick_up_tips96",
+    "drop_tips96",
+    "move_plate",
+    "move_lid",
+  ]
+
+  original_methods = {}
+
+  for method_name in methods_to_log:
+    if hasattr(lh, method_name):
+      original_methods[method_name] = getattr(lh, method_name)
+
+      def create_logged_method(m_name, original):
+        async def logged_method(*args, **kwargs):
+          global _function_call_sequence
+
+          # Capture state before
+          state_before = None
+          try:
+            state_before = lh.deck.serialize_all_state()
+          except Exception as e:
+            print(f"[web_bridge] State capture failed: {e}")
+
+          call_id = str(uuid.uuid4())
+          start_time = time.time()
+          error_message = None
+
+          # Log start
+          _emit_function_call_log(
+            call_id=call_id,
+            run_id=run_id,
+            sequence=_function_call_sequence,
+            method_name=m_name,
+            args=_serialize_args(args, kwargs),
+            state_before=state_before,
+            state_after=None,
+            status="running",
+            start_time=start_time,
+          )
+
+          try:
+            # Execute actual method
+            result = await original(*args, **kwargs)
+            status = "completed"
+          except Exception as e:
+            error_message = str(e)
+            status = "failed"
+            raise
+          finally:
+            # Capture state after
+            state_after = None
+            try:
+              state_after = lh.deck.serialize_all_state()
+            except Exception:
+              pass
+
+            end_time = time.time()
+            duration_ms = (end_time - start_time) * 1000
+
+            # Log completion
+            _emit_function_call_log(
+              call_id=call_id,
+              run_id=run_id,
+              sequence=_function_call_sequence,
+              method_name=m_name,
+              args=_serialize_args(args, kwargs),
+              state_before=state_before,
+              state_after=state_after,
+              status=status,
+              start_time=start_time,
+              end_time=end_time,
+              duration_ms=duration_ms,
+              error_message=error_message,
+            )
+
+            _function_call_sequence += 1
+
+          return result
+
+        return logged_method
+
+      setattr(lh, method_name, create_logged_method(method_name, original_methods[method_name]))
+
+  return lh
+
+
+def _emit_function_call_log(
+  call_id: str,
+  run_id: str,
+  sequence: int,
+  method_name: str,
+  args: dict,
+  state_before: dict | None,
+  state_after: dict | None,
+  status: str,
+  start_time: float,
+  end_time: float | None = None,
+  duration_ms: float | None = None,
+  error_message: str | None = None,
+):
+  """Emit a function call log message to the browser."""
+  payload = {
+    "call_id": call_id,
+    "run_id": run_id,
+    "sequence": sequence,
+    "method_name": method_name,
+    "args": args,
+    "state_before": state_before,
+    "state_after": state_after,
+    "status": status,
+    "start_time": start_time,
+    "end_time": end_time,
+    "duration_ms": duration_ms,
+    "error_message": error_message,
+  }
+  postMessage(json.dumps({"type": "FUNCTION_CALL_LOG", "payload": payload}))
+
+
+def _serialize_args(args: tuple, kwargs: dict) -> dict:
+  """Serialize function arguments for logging."""
+  result = {}
+
+  # Positional args
+  for i, arg in enumerate(args):
+    try:
+      if hasattr(arg, "name"):
+        result[f"arg_{i}"] = f"<{type(arg).__name__}: {arg.name}>"
+      elif hasattr(arg, "__dict__"):
+        result[f"arg_{i}"] = f"<{type(arg).__name__}>"
+      else:
+        result[f"arg_{i}"] = repr(arg)[:100]
+    except Exception:
+      result[f"arg_{i}"] = "<unserializable>"
+
+  # Keyword args
+  for key, value in kwargs.items():
+    try:
+      if hasattr(value, "name"):
+        result[key] = f"<{type(value).__name__}: {value.name}>"
+      elif hasattr(value, "__dict__"):
+        result[key] = f"<{type(value).__name__}>"
+      else:
+        result[key] = repr(value)[:100]
+    except Exception:
+      result[key] = "<unserializable>"
+
+  return result
 
 
 # =============================================================================

@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs';
 
 export interface ReplOutput {
-    type: 'stdout' | 'stderr' | 'result' | 'error' | 'well_state_update';
+    type: 'stdout' | 'stderr' | 'result' | 'error' | 'well_state_update' | 'function_call_log';
     content: string;
 }
 

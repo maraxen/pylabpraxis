@@ -6,7 +6,7 @@ let pyodide: PyodideInterface;
 let pyConsole: any; // PyodideConsole instance
 
 interface PythonMessage {
-  type: 'INIT' | 'PUSH' | 'EXEC' | 'INSTALL' | 'COMPLETE' | 'SIGNATURES' | 'PLR_COMMAND' | 'RAW_IO' | 'RAW_IO_RESPONSE' | 'WELL_STATE_UPDATE';
+  type: 'INIT' | 'PUSH' | 'EXEC' | 'INSTALL' | 'COMPLETE' | 'SIGNATURES' | 'PLR_COMMAND' | 'RAW_IO' | 'RAW_IO_RESPONSE' | 'WELL_STATE_UPDATE' | 'FUNCTION_CALL_LOG';
   id?: string;
   payload?: any;
 }
@@ -70,6 +70,10 @@ addEventListener('message', async (event) => {
 
       case 'WELL_STATE_UPDATE':
         postMessage({ type: 'WELL_STATE_UPDATE', id: currentExecutionId, payload });
+        break;
+
+      case 'FUNCTION_CALL_LOG':
+        postMessage({ type: 'FUNCTION_CALL_LOG', id: currentExecutionId, payload });
         break;
 
       case 'INSTALL':
