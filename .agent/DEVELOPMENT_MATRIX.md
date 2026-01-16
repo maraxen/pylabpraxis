@@ -43,7 +43,6 @@
 |--------------------------------|------------|---------------------------------------------------------------|------------------------------------------------------|
 | State Inspection Backend       | Hard       | [tasks/260115_feature_enhancements/state_inspection_backend](./tasks/260115_feature_enhancements/state_inspection_backend/) | Post-run "time travel" for backend executions |
 | Browser Resources Init         | Easy       | [tasks/260115_feature_enhancements/browser_resources_init](./tasks/260115_feature_enhancements/browser_resources_init/) | Seed 1-of-each labware in browser mode |
-| View Controls Filter Chips     | Medium     | [tasks/260115_feature_enhancements/view_controls_chips](./tasks/260115_feature_enhancements/view_controls_chips/) | Unified filter chip bar with icons |
 | Simulation Machine Visibility  | Hard       | [tasks/260115_feature_enhancements/sim_machines_visibility](./tasks/260115_feature_enhancements/sim_machines_visibility/) | Frontend-only sim until instantiation |
 
 ### Technical Debt (Batch 260115)
@@ -145,6 +144,7 @@
 | Workcell Polish & Animations (K-10)           | P3       | 2026-01-15 | Applied glassmorphism, animations, and micro-interactions |
 | Workcell Route Migration (K-11)               | P3       | 2026-01-15 | Migrated /visualizer to /workcell and updated navigation |
 | Machine Simulation Architecture Refactor      | P2       | 2026-01-15 | Refactored simulation to use Factory Pattern and runtime configuration |
+| View Controls Filter Chips (FE-03)           | P2       | 2026-01-16 | Unified filter chip bar with icons and tooltips                      |
 
 ---
 
@@ -153,8 +153,8 @@
 | Priority | Count | Focus                                |
 |----------|-------|--------------------------------------|
 | **P1**   | 0     | All top blockers resolved            |
-| **P2**   | 14    | Features + Tech Debt + Hardware      |
+| **P2**   | 13    | Features + Tech Debt + Hardware      |
 | **P3**   | 2     | Maintenance & Agentic Workflow       |
 | **P4**   | 1     | Long-term validation                 |
 
-**Total Active Items**: 17
+**Total Active Items**: 16
