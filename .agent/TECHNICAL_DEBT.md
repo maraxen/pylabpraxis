@@ -95,15 +95,15 @@ This document tracks known issues, temporary patches, and required follow-up wor
 
 ## State Inspection & Reporting
 
-- [x] **State History Storage Optimization**: Current backend state inspection stores full JSON snapshots for every decorated function call. <!-- id: 801 --> *(Migrated to `.agent/prompts/260115_feature_enhancements/01_state_inspection_backend_*.md` - noted as risk mitigation)*
+- [x] **State History Storage Optimization**: Current backend state inspection stores full JSON snapshots for every decorated function call. <!-- id: 801 --> *(Migrated to `.agent/tasks/260115_feature_enhancements/state_inspection_backend/` - noted as risk mitigation)*
   - Reason: For long protocols, this will cause database bloat.
   - Priority: Medium
   - Notes: Implement state delta compression (diffing) or optional "trace mode" flags.
-- [x] **PLR to UI State Transformation**: The backend currently passes raw `serialize_state()` from PyLabRobot objects directly to the UI. <!-- id: 802 --> *(Migrated to `.agent/prompts/260115_feature_enhancements/01_state_inspection_backend_*.md` - noted as risk mitigation)*
+- [x] **PLR to UI State Transformation**: The backend currently passes raw `serialize_state()` from PyLabRobot objects directly to the UI. <!-- id: 802 --> *(Migrated to `.agent/tasks/260115_feature_enhancements/state_inspection_backend/` - noted as risk mitigation)*
   - Reason: `DeckViewComponent` expects a specific format (e.g. `volumes` array), while PLR might provide lists of tuples.
   - Priority: Medium
   - Notes: Implement a formal transformation layer in `WorkcellRuntime` or `ExecutionMixin` to ensure consistent data structures for the frontend.
-- [x] **Interactive Timeline Updates**: The "Operation Timeline" in the Run Detail view is currently static (loaded after the run or periodically). <!-- id: 803 --> *(Migrated to `.agent/prompts/260115_feature_enhancements/01_state_inspection_backend_*.md` - future enhancement)*
+- [x] **Interactive Timeline Updates**: The "Operation Timeline" in the Run Detail view is currently static (loaded after the run or periodically). <!-- id: 803 --> *(Migrated to `.agent/tasks/260115_feature_enhancements/state_inspection_backend/` - future enhancement)*
   - Reason: It should ideally update via WebSockets as operations complete.
   - Priority: Low
   - Notes: Emit `operation_complete` events with step details over the execution WebSocket.

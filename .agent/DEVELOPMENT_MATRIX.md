@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-01-15 (Tech Debt Migration)
 **Purpose**: Current iteration work items with priority and difficulty ratings.
-**Current Batch**: [260115_feature_enhancements](prompts/260115_feature_enhancements/README.md)
+**Current Batch**: [260115_feature_enhancements](tasks/260115_feature_enhancements/README.md)
 
 ---
 
@@ -39,12 +39,12 @@
 
 ### Feature Enhancements (Batch 260115)
 
-| Item                           | Difficulty | Task/Prompt                                                   | Description                                          |
+| Item                           | Difficulty | Task                                                          | Description                                          |
 |--------------------------------|------------|---------------------------------------------------------------|------------------------------------------------------|
-| State Inspection Backend       | Hard       | [prompts/260115_feature_enhancements](./prompts/260115_feature_enhancements/README.md) | Post-run "time travel" for backend executions |
-| Browser Resources Init         | Easy       | [prompts/260115_feature_enhancements](./prompts/260115_feature_enhancements/README.md) | Seed 1-of-each labware in browser mode |
-| View Controls Filter Chips     | Medium     | [prompts/260115_feature_enhancements](./prompts/260115_feature_enhancements/README.md) | Unified filter chip bar with icons |
-| Simulation Machine Visibility  | Hard       | [prompts/260115_feature_enhancements](./prompts/260115_feature_enhancements/README.md) | Frontend-only sim until instantiation |
+| State Inspection Backend       | Hard       | [tasks/260115_feature_enhancements/state_inspection_backend](./tasks/260115_feature_enhancements/state_inspection_backend/) | Post-run "time travel" for backend executions |
+| Browser Resources Init         | Easy       | [tasks/260115_feature_enhancements/browser_resources_init](./tasks/260115_feature_enhancements/browser_resources_init/) | Seed 1-of-each labware in browser mode |
+| View Controls Filter Chips     | Medium     | [tasks/260115_feature_enhancements/view_controls_chips](./tasks/260115_feature_enhancements/view_controls_chips/) | Unified filter chip bar with icons |
+| Simulation Machine Visibility  | Hard       | [tasks/260115_feature_enhancements/sim_machines_visibility](./tasks/260115_feature_enhancements/sim_machines_visibility/) | Frontend-only sim until instantiation |
 
 ### Technical Debt (Batch 260115)
 
