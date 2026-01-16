@@ -105,6 +105,42 @@ This document tracks known issues, temporary patches, and required follow-up wor
     - Track "consumed count" separately from "available instances" for analytics
   - Notes: This would eliminate need for creating multiple tip rack instances and improve browser mode UX
 
+## Development Process & Tooling
+
+- [ ] **Alembic Migration Workflow Without Live Database**: Improve workflow for generating Alembic migrations when PostgreSQL infrastructure is unavailable. <!-- id: 1001 -->
+  - Reason: `alembic revision --autogenerate` requires active database connection, blocking schema development when infrastructure isn't running.
+  - Priority: Medium
+  - Current Blockers:
+    - Autogenerate requires connecting to PostgreSQL (configured in alembic.ini)
+    - `--sql` flag incompatible with `--autogenerate`
+    - Using SQLite via `DATABASE_URL="sqlite+aiosqlite:///./test.db"` requires existing migrations to be applied first
+    - Batch operations on non-existent tables cause reflection errors
+  - What Worked (2026-01-16 - TD-601 implementation):
+    - Manual migration creation following existing migration patterns
+    - Using `scripts/generate_browser_schema.py` for browser schema (works without DB)
+    - Creating SQLite test DB then upgrading with existing migrations before autogenerate (partially successful)
+  - What Didn't Work:
+    - `alembic revision --autogenerate --sql` (flags incompatible)
+    - Direct autogenerate without database (no 'script_location' error when run from wrong directory)
+    - Fresh SQLite DB with autogenerate (tables don't exist for batch reflection)
+  - Lessons Learned:
+    - Alembic env.py tries to connect even for autogenerate (not offline mode)
+    - Manual migrations are reliable but require understanding of SQLAlchemy column types
+    - Browser schema generation is decoupled and works independently
+  - Proposed Solutions:
+    1. Document manual migration workflow in developer docs
+    2. Create helper script: `scripts/create_migration.py` that:
+       - Accepts model diffs as input
+       - Generates migration file from template
+       - Auto-increments revision IDs
+    3. Add offline mode support to alembic env.py for autogenerate
+    4. Use SQLite in-memory DB for autogenerate when PostgreSQL unavailable
+    5. Set up lightweight PostgreSQL container for development (docker-compose)
+  - Files:
+    - `alembic/env.py` - Migration environment config
+    - `alembic.ini` - Database URL configuration
+    - `scripts/generate_browser_schema.py` - Working offline schema generator
+
 ## State Inspection & Reporting
 
 - [x] **State History Storage Optimization**: Current backend state inspection stores full JSON snapshots for every decorated function call. <!-- id: 801 --> *(Migrated to `.agent/tasks/260115_feature_enhancements/state_inspection_backend/` - noted as risk mitigation)*
