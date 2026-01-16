@@ -1,6 +1,5 @@
-
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal, ViewChild } from '@angular/core';
+import { Component, computed, inject, signal, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatBadgeModule } from '@angular/material/badge';
@@ -24,6 +23,8 @@ import { getMachineCategoryIcon, getResourceCategoryIcon } from '@shared/constan
 import { FilterHeaderComponent } from '../../../assets/components/filter-header/filter-header.component';
 import { Machine, Resource } from '../../../assets/models/asset.models';
 import { AssetService } from '../../../assets/services/asset.service';
+import { DeckCatalogService } from '../../../run-protocol/services/deck-catalog.service';
+import { DeckConfiguration } from '../../../run-protocol/models/deck-layout.models';
 
 export interface InventoryItem {
   type: 'machine' | 'resource';
@@ -32,6 +33,7 @@ export interface InventoryItem {
   variableName: string;
   count?: number;
   backend?: string;
+  deckConfigId?: string;
 }
 
 @Component({
@@ -233,6 +235,25 @@ export interface InventoryItem {
                           <mat-option value="simulated">Simulated (Default)</mat-option>
                         </mat-select>
                       </mat-form-field>
+
+                      <!-- Deck Config Section -->
+                      @if ( specsForm.get('backend')?.value === 'simulated' && availableDeckConfigs().length > 0 ) {
+                          <mat-form-field appearance="outline" class="full-width">
+                            <mat-label>Deck Configuration</mat-label>
+                            <mat-select formControlName="deckConfigId">
+                              <mat-option [value]="''">Default (Standard)</mat-option>
+                              <mat-divider></mat-divider>
+                              <mat-optgroup label="User Configurations">
+                                @for (config of availableDeckConfigs(); track config.id) {
+                                  <mat-option [value]="config.id">
+                                    {{ config.name || 'Unnamed Config' }}
+                                  </mat-option>
+                                }
+                              </mat-optgroup>
+                            </mat-select>
+                            <mat-hint>Select a saved simulation deck layout</mat-hint>
+                          </mat-form-field>
+                      }
                     }
 
                     @if (currentType === 'resource') {
@@ -282,6 +303,9 @@ export interface InventoryItem {
                       </div>
                       <div matListItemLine>
                         {{ item.asset.name }} • <span class="category-badge">{{ formatCategory(item.category) }}</span>
+                      </div>
+                      <div matListItemLine *ngIf="item.deckConfigId" class="text-xs text-slate-500">
+                         Config: {{ getDeckConfigName(item.deckConfigId) }}
                       </div>
                       <button mat-icon-button matListItemMeta (click)="removeItem($index)" color="warn">
                         <mat-icon>remove_circle_outline</mat-icon>
@@ -517,17 +541,20 @@ export interface InventoryItem {
       color: var(--mat-sys-on-surface-variant);
       font-style: italic;
     }
-  `]
+  `],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class InventoryDialogComponent {
   @ViewChild('stepper') stepper!: MatStepper;
 
   private fb = inject(FormBuilder);
   private assetService = inject(AssetService);
+  private deckService = inject(DeckCatalogService);
   private dialogRef = inject(MatDialogRef<InventoryDialogComponent>);
 
   addedItems = signal<InventoryItem[]>([]);
   activeTab = signal(0);
+  availableDeckConfigs = signal<{ id: string, name: string, config: DeckConfiguration }[]>([]);
 
   // Data sources
   machines = toSignal(this.assetService.getMachines(), { initialValue: [] as Machine[] });
@@ -549,7 +576,8 @@ export class InventoryDialogComponent {
   specsForm = this.fb.group({
     variableName: ['', [Validators.required, Validators.pattern(/^[a-zA-Z_][a-zA-Z0-9_]*$/)]],
     count: [1],
-    backend: ['simulated']
+    backend: ['simulated'],
+    deckConfigId: ['']
   });
 
   // Quick Add Filters
@@ -626,14 +654,14 @@ export class InventoryDialogComponent {
   currentCategory = '';
 
   constructor() {
-    // Sync theme if needed
     // Reset forms when type changes
     this.typeControl.valueChanges.subscribe(val => {
       if (val) {
         this.currentType = val;
         this.categoryControl.reset();
         this.selectionForm.reset();
-        this.specsForm.reset({ count: 1, backend: 'simulated' });
+        this.specsForm.reset({ count: 1, backend: 'simulated', deckConfigId: '' });
+        this.availableDeckConfigs.set([]);
       }
     });
 
@@ -649,6 +677,21 @@ export class InventoryDialogComponent {
     this.selectionForm.get('asset')?.valueChanges.subscribe((val: Machine | Resource | null) => {
       if (val) {
         this.generateVariableName(val);
+
+        // Load compatible deck configurations if it is a machine
+        if ('machine_category' in val) {
+          const machine = val as Machine;
+          this.deckService.getUserDeckConfigurations().subscribe(configs => {
+            const compatible = configs.filter(c => {
+              // Check compatibility against the CONFIG object inside the wrapper
+              if (machine.name.toLowerCase().includes('star') && c.config.deckType.includes('STAR')) return true;
+              if (machine.name.toLowerCase().includes('ot') && c.config.deckType.includes('OT')) return true;
+              // Very lenient fallback for now:
+              return true;
+            });
+            this.availableDeckConfigs.set(compatible);
+          });
+        }
       }
     });
 
@@ -765,6 +808,45 @@ export class InventoryDialogComponent {
     }
   }
 
+  // Update onAssetSelect to just trigger check
+  onAssetSelect(event: MatSelectionListChange) {
+    // Logic handled by valueChanges subscription
+    // But we can double check here if needed
+  }
+
+  addToList() {
+    if (this.currentType === 'machine') {
+      const asset = this.selectionForm.get('asset')?.value as Machine;
+      if (asset) {
+        const item: InventoryItem = {
+          type: 'machine',
+          asset: asset,
+          category: this.getCategory(asset),
+          variableName: this.specsForm.get('variableName')?.value || this.deriveSafeVariableName(asset),
+          count: 1,
+          backend: this.specsForm.get('backend')?.value || 'simulated',
+          deckConfigId: this.specsForm.get('deckConfigId')?.value || undefined
+        };
+        this.addItem(item);
+      }
+    } else {
+      const asset = this.selectionForm.get('asset')?.value as Resource;
+      if (asset) {
+        const item: InventoryItem = {
+          type: 'resource',
+          asset: asset,
+          category: this.getCategory(asset),
+          variableName: this.specsForm.get('variableName')?.value || this.deriveSafeVariableName(asset),
+          count: this.specsForm.get('count')?.value || 1
+        };
+        this.addItem(item);
+      }
+    }
+
+    // Reset after add
+    this.activeTab.set(2);
+  }
+
   quickAdd(asset: Machine | Resource) {
     const type = 'machine_category' in asset ? 'machine' : 'resource';
     const item: InventoryItem = {
@@ -776,15 +858,34 @@ export class InventoryDialogComponent {
       backend: type === 'machine' ? 'simulated' : undefined
     };
 
+    this.addItem(item);
+    this.activeTab.set(2); // Switch to Current Items
+  }
+
+  private addItem(item: InventoryItem) {
     // Check for duplicates in variable name
     let finalItem = item;
     const existing = this.addedItems().some(i => i.variableName === item.variableName);
     if (existing) {
       finalItem = { ...item, variableName: item.variableName + '_' + (this.addedItems().length + 1) };
     }
-
     this.addedItems.update(items => [...items, finalItem]);
-    this.activeTab.set(2); // Switch to Current Items
+  }
+
+  removeItem(index: number) {
+    this.addedItems.update(items => items.filter((_, i) => i !== index));
+  }
+
+  clearAll() {
+    this.addedItems.set([]);
+  }
+
+  confirm() {
+    this.dialogRef.close(this.addedItems());
+  }
+
+  close() {
+    this.dialogRef.close();
   }
 
   getAssetIcon(item: Machine | Resource): string {
@@ -798,78 +899,40 @@ export class InventoryDialogComponent {
   }
 
   getCategoryIcon(cat: string): string {
-    const type = this.typeValue();
-    if (type === 'machine') return getMachineCategoryIcon(cat);
-    return getResourceCategoryIcon(cat);
-  }
-
-  getResourceCategory(r: Resource): string {
-    return r.plr_definition?.plr_category || r.asset_type || 'Other';
-  }
-
-  onAssetSelect(event: MatSelectionListChange) {
-    const selected = event.options[0].value;
-    this.selectionForm.get('asset')?.setValue(selected);
-  }
-
-  private generateVariableName(val: Machine | Resource) {
-    const safeName = this.deriveSafeVariableName(val);
-    this.specsForm.patchValue({ variableName: safeName });
-  }
-
-  private deriveSafeVariableName(val: Machine | Resource): string {
-    return val.name.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_');
-  }
-
-  addToList() {
-    if (this.specsForm.valid && this.selectionForm.value.asset) {
-      const item: InventoryItem = {
-        type: this.currentType as 'machine' | 'resource',
-        asset: this.selectionForm.value.asset,
-        category: this.currentCategory,
-        variableName: this.specsForm.value.variableName!,
-        count: this.specsForm.value.count || 1,
-        backend: this.specsForm.value.backend || undefined
-      };
-
-      this.addedItems.update(items => [...items, item]);
-
-      // Reset for next item
-      this.stepper.reset();
-      this.activeTab.set(2); // Show items
-    }
-  }
-
-  removeItem(index: number) {
-    this.addedItems.update(items => items.filter((_, i) => i !== index));
-  }
-
-  clearAll() {
-    this.addedItems.set([]);
-  }
-
-  close() {
-    this.dialogRef.close();
-  }
-
-  confirm() {
-    this.dialogRef.close(this.addedItems());
+    return getMachineCategoryIcon(cat) || getResourceCategoryIcon(cat) || 'category';
   }
 
   getAssetDescription(item: Machine | Resource): string {
-    if ('description' in item && item.description) {
-      return item.description;
+    if ('machine_category' in item) {
+      const m = item as Machine;
+      return `${m.manufacturer || 'Unknown Manufacturer'} • ${m.status}`;
     }
-    if (item.plr_definition?.description) {
-      return item.plr_definition.description;
-    }
-    return 'No description';
+    const r = item as any;
+    return `${r.vendor || 'Unknown Vendor'} • ${r.description || ''}`;
   }
 
   formatCategory(cat: string): string {
-    if (!cat) return '';
-    return cat
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase());
+    return cat.replace(/_/g, ' ');
+  }
+
+  deriveSafeVariableName(asset: Machine | Resource): string {
+    return asset.name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/^_+|_+$/g, '');
+  }
+
+  generateVariableName(asset: Machine | Resource) {
+    const name = this.deriveSafeVariableName(asset);
+    this.specsForm.patchValue({ variableName: name });
+  }
+
+  private getResourceCategory(r: Resource): string {
+    // Simplified category inference
+    const res = r as any;
+    if (res.type) return res.type;
+    return 'Unknown';
+  }
+
+  getDeckConfigName(id: string): string {
+    const wrapper = this.availableDeckConfigs().find(c => c.id === id);
+    return wrapper ? (wrapper.name || 'Unnamed') : id;
   }
 }

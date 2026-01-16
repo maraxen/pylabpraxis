@@ -66,7 +66,7 @@ export default async function globalSetup(config: FullConfig) {
 
             // 1. Seed Resources
             const insertResDef = db.prepare(`
-            INSERT OR IGNORE INTO resource_definition_catalog 
+            INSERT OR IGNORE INTO resource_definitions 
             (accession_id, name, fqn, resource_type, vendor, description, properties_json, is_consumable, num_items)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
@@ -81,7 +81,7 @@ export default async function globalSetup(config: FullConfig) {
 
             // 2. Seed Machines
             const insertMachDef = db.prepare(`
-            INSERT OR IGNORE INTO machine_definition_catalog 
+            INSERT OR IGNORE INTO machine_definitions 
             (accession_id, name, fqn, machine_category, manufacturer, description, has_deck, properties_json, compatible_backends, capabilities_config, frontend_fqn)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);

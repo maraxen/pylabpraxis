@@ -1,20 +1,27 @@
-import { Component, OnInit, inject, signal, ChangeDetectionStrategy, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy, computed, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
+import { MatDialog } from '@angular/material/dialog';
 import { WorkcellViewService } from '../services/workcell-view.service';
 import { WorkcellExplorerComponent } from '../../../shared/components/workcell/workcell-explorer/workcell-explorer.component';
 import { MachineCardComponent } from '../../../shared/components/workcell/machine-card/machine-card.component';
 import { MachineCardMiniComponent } from '../../../shared/components/workcell/machine-card/machine-card-mini.component';
 import { MachineFocusViewComponent } from '../machine-focus-view/machine-focus-view.component';
 import { MachineWithRuntime } from '../models/workcell-view.models';
+import { DeckSimulationDialogComponent } from '../../run-protocol/components/simulation-config-dialog/deck-simulation-dialog.component';
 
 @Component({
   selector: 'app-workcell-dashboard',
+  standalone: true,
   imports: [
-    CommonModule, 
+    CommonModule,
     MatIconModule,
-    WorkcellExplorerComponent, 
-    MachineCardComponent, 
+    MatButtonModule,
+    MatMenuModule,
+    WorkcellExplorerComponent,
+    MachineCardComponent,
     MachineCardMiniComponent,
     MachineFocusViewComponent
   ],
@@ -33,7 +40,16 @@ import { MachineWithRuntime } from '../models/workcell-view.models';
       </aside>
 
       <!-- Main Canvas -->
-      <main class="flex flex-col flex-grow relative overflow-hidden">
+      <main class="flex flex-col flex-grow relative overflow-hidden" 
+            (contextmenu)="onContextMenu($event)">
+        
+        <!-- Context Menu Trigger -->
+        <div style="visibility: hidden; position: fixed"
+             [style.left]="contextMenuPosition.x"
+             [style.top]="contextMenuPosition.y"
+             [matMenuTriggerFor]="contextMenu">
+        </div>
+
         <!-- Header/Controls - Hidden in Focus Mode -->
         @if (viewMode() !== 'focus') {
           <header class="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 dark:bg-slate-950 dark:border-slate-800">
@@ -44,25 +60,35 @@ import { MachineWithRuntime } from '../models/workcell-view.models';
               }
             </div>
 
-            <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-              <button
-                (click)="setViewMode('grid')"
-                [class.bg-white]="viewMode() === 'grid'"
-                [class.shadow-sm]="viewMode() === 'grid'"
-                [class.dark:bg-slate-700]="viewMode() === 'grid'"
-                class="px-3 py-1 text-sm rounded-md transition-all"
-              >
-                Grid
+            <div class="flex items-center gap-3">
+              <!-- Simulate Button -->
+              <button mat-stroked-button color="primary" (click)="openSimulationDialog()">
+                <mat-icon>science</mat-icon>
+                Simulate
               </button>
-              <button
-                (click)="setViewMode('list')"
-                [class.bg-white]="viewMode() === 'list'"
-                [class.shadow-sm]="viewMode() === 'list'"
-                [class.dark:bg-slate-700]="viewMode() === 'list'"
-                class="px-3 py-1 text-sm rounded-md transition-all"
-              >
-                List
-              </button>
+
+              <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
+              <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                <button
+                  (click)="setViewMode('grid')"
+                  [class.bg-white]="viewMode() === 'grid'"
+                  [class.shadow-sm]="viewMode() === 'grid'"
+                  [class.dark:bg-slate-700]="viewMode() === 'grid'"
+                  class="px-3 py-1 text-sm rounded-md transition-all"
+                >
+                  Grid
+                </button>
+                <button
+                  (click)="setViewMode('list')"
+                  [class.bg-white]="viewMode() === 'list'"
+                  [class.shadow-sm]="viewMode() === 'list'"
+                  [class.dark:bg-slate-700]="viewMode() === 'list'"
+                  class="px-3 py-1 text-sm rounded-md transition-all"
+                >
+                  List
+                </button>
+              </div>
             </div>
           </header>
         }
@@ -86,6 +112,9 @@ import { MachineWithRuntime } from '../models/workcell-view.models';
                     <div class="col-span-full flex flex-col items-center justify-center py-20 text-slate-400">
                       <mat-icon class="text-6xl mb-4 text-slate-300">precision_manufacturing</mat-icon>
                       <p>No machines found</p>
+                      <button mat-button color="primary" class="mt-4" (click)="openSimulationDialog()">
+                        Create Simulation
+                      </button>
                     </div>
                   }
                 </div>
@@ -98,8 +127,8 @@ import { MachineWithRuntime } from '../models/workcell-view.models';
                       (machineSelected)="onMachineSelected($event)">
                     </app-machine-card-mini>
                   } @empty {
-                    <div class="flex flex-col items-center justify-center py-20 text-slate-400">
-                      <p>No machines found</p>
+                    <div class="flex flex-col items-center justify-center py-10 text-slate-400">
+                       <p>No machines found</p>
                     </div>
                   }
                 </div>
@@ -108,7 +137,7 @@ import { MachineWithRuntime } from '../models/workcell-view.models';
                 @if (selectedMachine(); as machine) {
                   <app-machine-focus-view 
                     [machine]="machine"
-                    (back)="setViewMode('grid')"
+                    (back)="clearSelection()"
                   ></app-machine-focus-view>
                 } @else {
                   <div class="flex flex-col items-center justify-center h-full text-slate-400 fade-in">
@@ -121,6 +150,18 @@ import { MachineWithRuntime } from '../models/workcell-view.models';
           }
         </div>
       </main>
+
+      <!-- Context Menu -->
+      <mat-menu #contextMenu="matMenu">
+        <button mat-menu-item (click)="openSimulationDialog()">
+          <mat-icon>add_box</mat-icon>
+          <span>Add Simulated Deck</span>
+        </button>
+        <button mat-menu-item disabled>
+          <mat-icon>refresh</mat-icon>
+          <span>Refresh View</span>
+        </button>
+      </mat-menu>
     </div>
   `,
   styles: [`
@@ -129,7 +170,7 @@ import { MachineWithRuntime } from '../models/workcell-view.models';
       height: 100%;
     }
     .fade-in {
-      animation: fadeIn 0.3s ease-out;
+      animation: fadeIn 0.3s ease-in;
     }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
@@ -139,23 +180,28 @@ import { MachineWithRuntime } from '../models/workcell-view.models';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WorkcellDashboardComponent implements OnInit {
-  private workcellService = inject(WorkcellViewService);
+  private viewService = inject(WorkcellViewService);
+  private dialog = inject(MatDialog);
 
-  // Layout state
+  // Local State
   viewMode = signal<'grid' | 'list' | 'focus'>('grid');
   isLoading = signal<boolean>(true);
 
-  // Access service state for template
-  workcellGroups = this.workcellService.workcellGroups;
-  selectedMachine = this.workcellService.selectedMachine;
+  // Service State Alias
+  workcellGroups = this.viewService.workcellGroups;
+  selectedMachine = this.viewService.selectedMachine;
 
-  // Flattened machines for grid/list views
+  // Derived Data
   allMachines = computed(() => {
-    return this.workcellGroups().flatMap(group => group.machines);
+    return this.workcellGroups().flatMap(g => g.machines);
   });
 
-  ngOnInit(): void {
-    this.workcellService.loadWorkcellGroups().subscribe({
+  // Context Menu
+  @ViewChild(MatMenuTrigger) contextMenuTrigger!: MatMenuTrigger;
+  contextMenuPosition = { x: '0px', y: '0px' };
+
+  ngOnInit() {
+    this.viewService.loadWorkcellGroups().subscribe({
       next: () => this.isLoading.set(false),
       error: (err) => {
         console.error('Failed to load workcells', err);
@@ -169,10 +215,33 @@ export class WorkcellDashboardComponent implements OnInit {
   }
 
   onMachineSelected(machine: MachineWithRuntime) {
-    this.workcellService.selectedMachine.set(machine);
+    this.selectedMachine.set(machine);
     this.viewMode.set('focus');
   }
+
+  clearSelection() {
+    this.selectedMachine.set(null);
+    this.viewMode.set('grid');
+  }
+
+  onContextMenu(event: MouseEvent) {
+    event.preventDefault();
+    this.contextMenuPosition.x = event.clientX + 'px';
+    this.contextMenuPosition.y = event.clientY + 'px';
+    this.contextMenuTrigger.openMenu();
+  }
+
+  openSimulationDialog() {
+    this.dialog.open(DeckSimulationDialogComponent, {
+      width: '90vw',
+      maxWidth: '1400px',
+      height: '85vh',
+      panelClass: 'simulation-dialog-panel'
+    }).afterClosed().subscribe(result => {
+      if (result) {
+        // Reload workcells to ensure any new state is reflected
+        this.viewService.loadWorkcellGroups().subscribe();
+      }
+    });
+  }
 }
-
-
-  

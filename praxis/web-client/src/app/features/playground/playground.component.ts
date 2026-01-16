@@ -14,6 +14,7 @@ import {
 import { AppStore } from '../../core/store/app.store';
 
 import { FormsModule } from '@angular/forms';
+import { DeckCatalogService } from '../run-protocol/services/deck-catalog.service';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -434,6 +435,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   private snackBar = inject(MatSnackBar);
   private cdr = inject(ChangeDetectorRef);
   private assetService = inject(AssetService);
+  private deckService = inject(DeckCatalogService);
   private sanitizer = inject(DomSanitizer);
   private dialog = inject(MatDialog);
 
@@ -545,7 +547,8 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
         item.type,
         item.asset,
         item.variableName,
-        item.backend
+        item.backend,
+        item.deckConfigId
       );
     }
   }
@@ -871,7 +874,7 @@ except Exception as e:
   /**
    * Generate Python code to instantiate a machine.
    */
-  private generateMachineCode(machine: Machine, variableName?: string, backendOverride?: string): string {
+  private async generateMachineCode(machine: Machine, variableName?: string, backendOverride?: string, deckConfigId?: string): Promise<string> {
     const varName = variableName || this.assetToVarName(machine);
     const category = machine.machine_category?.toLowerCase() || 'machine';
     const plrBackendFqn = machine.plr_definition?.fqn || machine.connection_info?.['plr_backend'];
@@ -884,6 +887,36 @@ except Exception as e:
     const frontendFqn = machine.plr_definition?.frontend_fqn;
     const backendFqn = plrBackendFqn;
 
+    // Deck Configuration Handling
+    let deckCode = '';
+    let deckArg = '';
+
+    if (isSimulated && deckConfigId) {
+      // Look up the configuration
+      // We need to subscribe to the service to get the list, then find it
+      const configs = await new Promise<{ id: string, name: string, config: any }[]>((resolve) => {
+        this.deckService.getUserDeckConfigurations().subscribe(c => resolve(c));
+      });
+      const wrapper = configs.find(c => c.id === deckConfigId);
+
+      if (wrapper) {
+        const plrDeck = this.deckService.createPlrResourceFromConfig(wrapper.config);
+        // Serialize to JSON string for Python
+        const jsonStr = JSON.stringify(plrDeck);
+
+        deckCode = [
+          `# Load Custom Deck Configuration: ${wrapper.name}`,
+          `import json`,
+          `from pylabrobot.resources import Deck`,
+          `_deck_data = json.loads('${jsonStr}')`,
+          `_deck_inst = Deck.deserialize(_deck_data)`,
+          `print(f"Loaded deck: {_deck_inst.name}")`
+        ].join('\n');
+
+        deckArg = `, deck=_deck_inst`;
+      }
+    }
+
     // If we have both FQNs, generate clean code using them
     if (frontendFqn && backendFqn) {
       const frontendClass = frontendFqn.split('.').pop()!;
@@ -895,12 +928,13 @@ except Exception as e:
         if (frontendClass === 'LiquidHandler') {
           return [
             `# Machine: ${machine.name} (simulation mode)`,
+            deckCode,
             `from ${frontendModule} import ${frontendClass}`,
             `from pylabrobot.liquid_handling.backends.simulation import SimulatorBackend`,
-            `${varName} = ${frontendClass}(backend=SimulatorBackend())`,
+            `${varName} = ${frontendClass}(backend=SimulatorBackend()${deckArg})`,
             `await ${varName}.setup()`,
             `print(f"Created: {${varName}} (simulation mode)")`,
-          ].join('\n');
+          ].filter(Boolean).join('\n');
         }
         return [
           `# Machine: ${machine.name} (simulation mode)`,
@@ -955,13 +989,14 @@ except Exception as e:
       if (isSimulated) {
         return [
           `# Machine: ${machine.name} (simulation mode)`,
+          deckCode,
           `from pylabrobot.liquid_handling import LiquidHandler`,
           `from pylabrobot.liquid_handling.backends.simulation import SimulatorBackend`,
-          `${varName} = LiquidHandler(backend=SimulatorBackend())`,
+          `${varName} = LiquidHandler(backend=SimulatorBackend()${deckArg})`,
           `print(f"Created: {${varName}} (simulation mode)")`,
           `print("Use variable: ${varName}")`,
           `print("Call 'await ${varName}.setup()' to initialize")`
-        ].join('\n');
+        ].filter(Boolean).join('\n');
       } else {
         const backendClass = plrBackendFqn?.split('.').pop() || 'STAR';
         const backendModule = plrBackendFqn?.replace(`.${backendClass}`, '') || 'pylabrobot.liquid_handling.backends.hamilton';
@@ -998,7 +1033,7 @@ except Exception as e:
         `    except Exception as e:`,
         `        print(f"❌ Setup failed: {e}")`,
         ``,
-        `asyncio.create_task(_auto_setup_${varName}())`
+        `asyncio.create_task(_auto_setup_${varName}())`,
       ].join('\n');
     } else {
       return [
@@ -1026,7 +1061,8 @@ except Exception as e:
     type: 'machine' | 'resource',
     asset: Machine | Resource,
     variableName?: string,
-    backendOverride?: string
+    backendOverride?: string,
+    deckConfigId?: string
   ) {
     const varName = variableName || this.assetToVarName(asset);
 
@@ -1047,7 +1083,7 @@ except Exception as e:
     // Generate appropriate Python code
     let code: string;
     if (type === 'machine') {
-      code = this.generateMachineCode(asset as Machine, varName, backendOverride);
+      code = await this.generateMachineCode(asset as Machine, varName, backendOverride, deckConfigId);
     } else {
       code = this.generateResourceCode(asset as Resource, varName);
     }
