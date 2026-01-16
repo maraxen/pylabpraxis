@@ -8,6 +8,7 @@ import {
     inferWellId,
     transformPlrState
 } from './state-transform';
+import { describe, it, expect } from 'vitest';
 
 describe('State Transformation Utils', () => {
 
@@ -24,7 +25,7 @@ describe('State Transformation Utils', () => {
             };
 
             const result = extractTipState(plrState);
-            expect(result.tips_loaded).toBeTrue();
+            expect(result.tips_loaded).toBe(true);
             expect(result.tips_count).toBe(1);
         });
 
@@ -40,7 +41,7 @@ describe('State Transformation Utils', () => {
             };
 
             const result = extractTipState(plrState);
-            expect(result.tips_loaded).toBeFalse();
+            expect(result.tips_loaded).toBe(false);
             expect(result.tips_count).toBe(0);
         });
     });
@@ -90,7 +91,7 @@ describe('State Transformation Utils', () => {
 
             expect(result).toBeTruthy();
             if (result) {
-                expect(result.tips.tips_loaded).toBeTrue();
+                expect(result.tips.tips_loaded).toBe(true);
                 expect(result.liquids['plate']['A1']).toBe(100);
                 expect(result.on_deck).toContain('head');
                 expect(result.on_deck).toContain('plate_A1');
