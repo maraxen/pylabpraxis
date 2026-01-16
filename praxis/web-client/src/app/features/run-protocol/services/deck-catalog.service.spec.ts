@@ -1,11 +1,28 @@
 import { DeckCatalogService } from './deck-catalog.service';
 import { describe, it, expect, beforeEach } from 'vitest';
+import { TestBed } from '@angular/core/testing';
+import { SqliteService } from '@core/services/sqlite.service';
+import { of } from 'rxjs';
 
 describe('DeckCatalogService', () => {
     let service: DeckCatalogService;
+    let mockSqlite: any;
 
     beforeEach(() => {
-        service = new DeckCatalogService();
+        mockSqlite = {
+            deckDefinitions: of({
+                findAll: () => [],
+                create: (val: any) => val
+            })
+        };
+
+        TestBed.configureTestingModule({
+            providers: [
+                DeckCatalogService,
+                { provide: SqliteService, useValue: mockSqlite }
+            ]
+        });
+        service = TestBed.inject(DeckCatalogService);
     });
 
     it('should be created', () => {
@@ -203,6 +220,54 @@ describe('DeckCatalogService', () => {
                 };
                 expect(service.getDeckTypeForMachine(machine)).toBeNull();
             });
+        });
+    });
+
+    describe('PlrResource Synthesis', () => {
+        it('should create PlrResource from spec', () => {
+            const spec = service.getHamiltonSTARSpec();
+            const res = service.createPlrResourceFromSpec(spec);
+
+            expect(res.name).toBe('deck');
+            expect(res.type).toBe(spec.fqn);
+            expect(res.size_x).toBe(spec.dimensions.width);
+            expect(res.num_rails).toBe(30);
+        });
+
+        it('should create PlrResource from config with carriers', () => {
+            const spec = service.getHamiltonSTARSpec();
+            const config = service.createDeckConfiguration(spec);
+
+            // Add a carrier
+            const carriers = service.getCompatibleCarriers('Hamilton');
+            const plateCarrierDef = carriers.find(c => c.type === 'plate')!;
+            const carrier = service.createCarrierFromDefinition(plateCarrierDef, 'c1', 5);
+
+            // Add labware to slot 0
+            carrier.slots[0].resource = {
+                name: 'p1',
+                type: 'Plate',
+                location: { x: 0, y: 0, z: 0, type: 'Coordinate' },
+                size_x: 127.76,
+                size_y: 85.48,
+                size_z: 15,
+                children: []
+            };
+
+            config.carriers.push(carrier);
+
+            const res = service.createPlrResourceFromConfig(config);
+
+            expect(res.children.length).toBe(1);
+            const carrierRes = res.children[0];
+            expect(carrierRes.name).toBe('c1');
+            expect(carrierRes.type).toBe(plateCarrierDef.fqn);
+
+            // Check slot and resource
+            const slotRes = carrierRes.children[0];
+            expect(slotRes.type).toBe('Site');
+            expect(slotRes.children[0].name).toBe('p1');
+            expect(slotRes.children[0].size_z).toBe(15);
         });
     });
 });

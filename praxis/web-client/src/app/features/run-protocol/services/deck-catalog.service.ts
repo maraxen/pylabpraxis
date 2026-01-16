@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import {
     DeckConfiguration,
     DeckRail,
@@ -10,17 +10,22 @@ import {
 } from '../models/deck-layout.models';
 import { Machine } from '../../assets/models/asset.models';
 import { PlrResource } from '@core/models/plr.models';
+import { SqliteService } from '@core/services/sqlite.service';
+import { DeckDefinitionCatalog } from '@core/db/schema';
+import { map, switchMap, take } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
 
 /**
  * Service for fetching deck and carrier specifications.
  * 
- * Currently provides hardcoded Hamilton STAR specifications.
- * Future: Will integrate with SqliteService/API for dynamic deck definitions.
+ * Provides hardcoded specifications for standard decks and
+ * integrates with SqliteService for persisting user-defined deck configurations.
  */
 @Injectable({
     providedIn: 'root'
 })
 export class DeckCatalogService {
+    private sqlite = inject(SqliteService);
 
     // ========================================================================
     // Hamilton STAR Constants
@@ -115,6 +120,93 @@ export class DeckCatalogService {
 
         return [];
     }
+
+    // ========================================================================
+    // Persistence API
+    // ========================================================================
+
+    /**
+     * Save a user-defined deck configuration to SQLite.
+     * Uses 'deck_definition_catalog' table.
+     */
+    saveUserDeckConfiguration(config: DeckConfiguration, name: string): Observable<DeckDefinitionCatalog> {
+        return this.sqlite.deckDefinitions.pipe(
+            take(1),
+            map(repo => {
+                const now = new Date().toISOString();
+                const entity: Partial<DeckDefinitionCatalog> = {
+                    accession_id: crypto.randomUUID(),
+                    name: name,
+                    fqn: `deck_config.user.${name.replace(/\s+/g, '_').toLowerCase()}`,
+                    description: `User defined deck configuration for ${config.deckName}`,
+                    created_at: now,
+                    updated_at: now,
+                    properties_json: {
+                        is_user_config: true,
+                        base_deck_fqn: config.deckType,
+                        configuration: config
+                    }
+                };
+                return repo.create(entity as any);
+            })
+        );
+    }
+
+    /**
+     * Get all user-defined deck configurations.
+     */
+    getUserDeckConfigurations(): Observable<{ id: string, name: string, config: DeckConfiguration }[]> {
+        return this.sqlite.deckDefinitions.pipe(
+            take(1),
+            map(repo => {
+                const all = repo.findAll();
+                // Filter for user configs in memory (could be optimized with a query info logic exists)
+                return all
+                    .filter(def => {
+                        const props = def.properties_json as any;
+                        return props && props.is_user_config === true;
+                    })
+                    .map(def => ({
+                        id: def.accession_id!,
+                        name: def.name!,
+                        config: (def.properties_json as any).configuration as DeckConfiguration
+                    }));
+            })
+        );
+    }
+
+    /**
+     * Get user configurations compatible with a specific machine definition.
+     */
+    getUserConfigsForMachine(machineDefFqn: string): Observable<{ id: string, name: string, config: DeckConfiguration }[]> {
+        return this.sqlite.deckDefinitions.pipe(
+            take(1),
+            map(repo => {
+                const all = repo.findAll();
+                return all
+                    .filter(def => {
+                        const props = def.properties_json as any;
+                        if (!props || !props.is_user_config) return false;
+
+                        // Compatibility check
+                        const baseFqn = props.base_deck_fqn;
+                        if (machineDefFqn.includes('Hamilton') && baseFqn.includes('Hamilton')) return true;
+                        if (machineDefFqn.includes('OT') && baseFqn.includes('OT')) return true;
+
+                        return false;
+                    })
+                    .map(def => ({
+                        id: def.accession_id!,
+                        name: def.name!,
+                        config: (def.properties_json as any).configuration as DeckConfiguration
+                    }));
+            })
+        );
+    }
+
+    // ========================================================================
+    // Spec Generators
+    // ========================================================================
 
     /**
      * Get Hamilton STAR deck specification.
@@ -233,6 +325,90 @@ export class DeckCatalogService {
                 }
             });
         }
+
+        return deck;
+    }
+
+    /**
+     * Synthesize a PlrResource tree from a saved DeckConfiguration.
+     * This allows rendering user-designed layouts in the Workcell View.
+     */
+    createPlrResourceFromConfig(config: DeckConfiguration): PlrResource {
+        // Start with the base deck definition
+        const spec = this.getDeckDefinition(config.deckType);
+        const deck = spec ? this.createPlrResourceFromSpec(spec) : {
+            name: config.deckName,
+            type: config.deckType,
+            location: { x: 0, y: 0, z: 0, type: "Coordinate" },
+            size_x: config.dimensions.width,
+            size_y: config.dimensions.height,
+            size_z: config.dimensions.depth,
+            children: []
+        };
+
+        config.carriers.forEach(carrier => {
+            let x = 0;
+            let y = 63.0; // Default Y offset for STAR
+            let z = 100.0; // Default Z height
+
+            // Calculate position based on rail/slot
+            if (spec?.layoutType === 'rail-based') {
+                const rail = config.rails.find(r => r.index === carrier.railPosition);
+                if (rail) {
+                    x = rail.xPosition;
+                } else {
+                    x = this.HAMILTON_STAR_RAIL_OFFSET + (carrier.railPosition * this.HAMILTON_STAR_RAIL_SPACING);
+                }
+            } else if (spec?.layoutType === 'slot-based' && spec.slots) {
+                const slot = spec.slots.find(s => s.slotNumber === carrier.railPosition);
+                if (slot) {
+                    x = slot.position.x;
+                    y = slot.position.y;
+                    z = slot.position.z;
+                }
+            }
+
+            const carrierRes: PlrResource = {
+                name: carrier.id,
+                type: carrier.fqn,
+                location: { x, y, z, type: "Coordinate" },
+                size_x: carrier.dimensions.width,
+                size_y: carrier.dimensions.height,
+                size_z: carrier.dimensions.depth,
+                children: []
+            };
+
+            // Add Slots/Sites
+            carrier.slots.forEach(slot => {
+                const siteRes: PlrResource = {
+                    name: slot.id,
+                    type: 'Site',
+                    location: slot.position,
+                    size_x: slot.dimensions.width,
+                    size_y: slot.dimensions.height,
+                    size_z: 10,
+                    children: []
+                };
+
+                // Add Labware/Resource if present
+                if (slot.resource) {
+                    const labwareRes: PlrResource = {
+                        name: slot.resource.name,
+                        type: slot.resource.type,
+                        location: { x: 0, y: 0, z: 0, type: "Coordinate" },
+                        size_x: slot.dimensions.width,
+                        size_y: slot.dimensions.height,
+                        size_z: slot.resource.size_z || 15,
+                        children: []
+                    };
+                    siteRes.children.push(labwareRes);
+                }
+
+                carrierRes.children.push(siteRes);
+            });
+
+            deck.children.push(carrierRes);
+        });
 
         return deck;
     }
