@@ -1,6 +1,6 @@
 /**
  * Auto-generated TypeScript interfaces from SQLAlchemy ORM models
- * Generated at: 2026-01-15T16:15:24.577051
+ * Generated at: 2026-01-16T00:18:30.259582
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 
@@ -389,6 +389,7 @@ export interface ResourceDefinition {
   plr_category: string | null;
   resource_type: string | null;
   is_consumable: boolean | null;
+  is_reusable: boolean | null;
   nominal_volume_ul: number | null;
   material: string | null;
   manufacturer: string | null;

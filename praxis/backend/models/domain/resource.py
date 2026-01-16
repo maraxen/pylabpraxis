@@ -35,6 +35,7 @@ class ResourceDefinitionBase(PraxisBase):
   plr_category: str | None = Field(default=None, description="PyLabRobot category")
   resource_type: str | None = Field(default=None, description="Human-readable type of the resource")
   is_consumable: bool = Field(default=False)
+  is_reusable: bool = Field(default=True, description="Whether the resource can be reused (e.g., plates are reusable, tips are not)")
   nominal_volume_ul: float | None = Field(default=None, description="Nominal volume in microliters")
   material: str | None = Field(default=None, description="Material (polypropylene, glass, etc.)")
   manufacturer: str | None = Field(default=None)
@@ -117,6 +118,7 @@ class ResourceDefinitionUpdate(SQLModel):
   plr_category: str | None = None
   resource_type: str | None = None
   is_consumable: bool | None = None
+  is_reusable: bool | None = None
   nominal_volume_ul: float | None = None
   material: str | None = None
   manufacturer: str | None = None

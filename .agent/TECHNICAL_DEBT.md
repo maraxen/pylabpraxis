@@ -93,6 +93,18 @@ This document tracks known issues, temporary patches, and required follow-up wor
   - Reason: Several places in the rely on hardcoded defaults/mocks rather than reading from the configured definitions in the database.
   - Priority: Low
 
+## Browser Mode & Resource Management
+
+- [ ] **Infinite Consumables Implementation**: The `infiniteConsumables` flag currently only affects UI display (∞ symbol), not actual resource behavior. <!-- id: 901 -->
+  - Reason: When enabled, consumables should auto-replenish or allow on-the-fly instantiation during protocol execution/asset selection.
+  - Priority: Medium
+  - Current State: UI shows ∞, but users still need actual resource instances
+  - Proposed Behavior:
+    - During asset selection: Allow custom-named instances to be created on-the-fly
+    - During execution: Auto-replenish consumed instances (browser mode) or don't track depletion
+    - Track "consumed count" separately from "available instances" for analytics
+  - Notes: This would eliminate need for creating multiple tip rack instances and improve browser mode UX
+
 ## State Inspection & Reporting
 
 - [x] **State History Storage Optimization**: Current backend state inspection stores full JSON snapshots for every decorated function call. <!-- id: 801 --> *(Migrated to `.agent/tasks/260115_feature_enhancements/state_inspection_backend/` - noted as risk mitigation)*

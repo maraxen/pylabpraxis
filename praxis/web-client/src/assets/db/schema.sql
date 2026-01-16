@@ -1,5 +1,5 @@
 -- Auto-generated SQLite schema from SQLAlchemy ORM models
--- Generated at: 2026-01-15T16:15:24.571530
+-- Generated at: 2026-01-16T00:18:30.248991
 -- DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
 
 -- Enable foreign key support
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS _schema_metadata (
     value TEXT NOT NULL
 );
 
-INSERT OR REPLACE INTO _schema_metadata (key, value) VALUES ('generated_at', '2026-01-15T16:15:24.571537');
+INSERT OR REPLACE INTO _schema_metadata (key, value) VALUES ('generated_at', '2026-01-16T00:18:30.249001');
 INSERT OR REPLACE INTO _schema_metadata (key, value) VALUES ('schema_version', '1.0.0');
 
 -- Table: file_system_protocol_sources
@@ -28,8 +28,8 @@ CREATE TABLE file_system_protocol_sources (
 	UNIQUE (name)
 );
 
-CREATE INDEX ix_file_system_protocol_sources_name ON file_system_protocol_sources (name);
 CREATE INDEX ix_file_system_protocol_sources_accession_id ON file_system_protocol_sources (accession_id);
+CREATE INDEX ix_file_system_protocol_sources_name ON file_system_protocol_sources (name);
 
 -- Table: protocol_source_repositories
 CREATE TABLE protocol_source_repositories (
@@ -71,9 +71,9 @@ CREATE TABLE workcells (
 	UNIQUE (name)
 );
 
-CREATE INDEX ix_workcells_name ON workcells (name);
 CREATE INDEX ix_workcells_fqn ON workcells (fqn);
 CREATE INDEX ix_workcells_accession_id ON workcells (accession_id);
+CREATE INDEX ix_workcells_name ON workcells (name);
 
 -- Table: deck_position_definitions
 CREATE TABLE deck_position_definitions (
@@ -220,18 +220,18 @@ CREATE TABLE function_protocol_definitions (
 	FOREIGN KEY(file_system_source_accession_id) REFERENCES file_system_protocol_sources (accession_id)
 );
 
-CREATE INDEX ix_function_protocol_definitions_fqn ON function_protocol_definitions (fqn);
-CREATE INDEX ix_function_protocol_definitions_source_repository_accession_id ON function_protocol_definitions (source_repository_accession_id);
 CREATE INDEX ix_function_protocol_definitions_accession_id ON function_protocol_definitions (accession_id);
 CREATE INDEX ix_function_protocol_definitions_category ON function_protocol_definitions (category);
 CREATE INDEX ix_function_protocol_definitions_module_name ON function_protocol_definitions (module_name);
 CREATE INDEX ix_function_protocol_definitions_commit_hash ON function_protocol_definitions (commit_hash);
 CREATE INDEX ix_function_protocol_definitions_name ON function_protocol_definitions (name);
 CREATE INDEX ix_function_protocol_definitions_is_top_level ON function_protocol_definitions (is_top_level);
+CREATE INDEX ix_function_protocol_definitions_source_repository_accession_id ON function_protocol_definitions (source_repository_accession_id);
 CREATE INDEX ix_function_protocol_definitions_source_file_path ON function_protocol_definitions (source_file_path);
 CREATE INDEX ix_function_protocol_definitions_deprecated ON function_protocol_definitions (deprecated);
 CREATE INDEX ix_function_protocol_definitions_function_name ON function_protocol_definitions (function_name);
 CREATE INDEX ix_function_protocol_definitions_file_system_source_accession_id ON function_protocol_definitions (file_system_source_accession_id);
+CREATE INDEX ix_function_protocol_definitions_fqn ON function_protocol_definitions (fqn);
 
 -- Table: protocol_runs
 CREATE TABLE protocol_runs (
@@ -258,11 +258,11 @@ CREATE TABLE protocol_runs (
 	FOREIGN KEY(previous_accession_id) REFERENCES protocol_runs (accession_id)
 );
 
-CREATE INDEX ix_protocol_runs_name ON protocol_runs (name);
 CREATE INDEX ix_protocol_runs_top_level_protocol_definition_accession_id ON protocol_runs (top_level_protocol_definition_accession_id);
 CREATE INDEX ix_protocol_runs_status ON protocol_runs (status);
 CREATE INDEX ix_protocol_runs_accession_id ON protocol_runs (accession_id);
 CREATE INDEX ix_protocol_runs_previous_accession_id ON protocol_runs (previous_accession_id);
+CREATE INDEX ix_protocol_runs_name ON protocol_runs (name);
 
 -- Table: resource_definitions
 CREATE TABLE resource_definitions (
@@ -276,6 +276,7 @@ CREATE TABLE resource_definitions (
 	plr_category VARCHAR, 
 	resource_type VARCHAR, 
 	is_consumable INTEGER NOT NULL, 
+	is_reusable INTEGER NOT NULL, 
 	nominal_volume_ul FLOAT, 
 	material VARCHAR, 
 	manufacturer VARCHAR, 
@@ -301,13 +302,13 @@ CREATE TABLE resource_definitions (
 CREATE INDEX ix_resource_definitions_accession_id ON resource_definitions (accession_id);
 CREATE INDEX ix_resource_definitions_deck_definition_accession_id ON resource_definitions (deck_definition_accession_id);
 CREATE INDEX ix_resource_definitions_name ON resource_definitions (name);
-CREATE INDEX ix_resource_definitions_plate_type ON resource_definitions (plate_type);
-CREATE INDEX ix_resource_definitions_well_volume_ul ON resource_definitions (well_volume_ul);
-CREATE INDEX ix_resource_definitions_vendor ON resource_definitions (vendor);
-CREATE INDEX ix_resource_definitions_asset_requirement_accession_id ON resource_definitions (asset_requirement_accession_id);
 CREATE INDEX ix_resource_definitions_num_items ON resource_definitions (num_items);
-CREATE UNIQUE INDEX ix_resource_definitions_fqn ON resource_definitions (fqn);
 CREATE INDEX ix_resource_definitions_tip_volume_ul ON resource_definitions (tip_volume_ul);
+CREATE INDEX ix_resource_definitions_well_volume_ul ON resource_definitions (well_volume_ul);
+CREATE INDEX ix_resource_definitions_asset_requirement_accession_id ON resource_definitions (asset_requirement_accession_id);
+CREATE INDEX ix_resource_definitions_plate_type ON resource_definitions (plate_type);
+CREATE UNIQUE INDEX ix_resource_definitions_fqn ON resource_definitions (fqn);
+CREATE INDEX ix_resource_definitions_vendor ON resource_definitions (vendor);
 
 -- Table: state_resolution_log
 CREATE TABLE state_resolution_log (
@@ -447,9 +448,9 @@ CREATE TABLE machine_definitions (
 	FOREIGN KEY(asset_requirement_accession_id) REFERENCES protocol_asset_requirements (accession_id)
 );
 
-CREATE UNIQUE INDEX ix_machine_definitions_fqn ON machine_definitions (fqn);
 CREATE INDEX ix_machine_definitions_accession_id ON machine_definitions (accession_id);
 CREATE INDEX ix_machine_definitions_name ON machine_definitions (name);
+CREATE UNIQUE INDEX ix_machine_definitions_fqn ON machine_definitions (fqn);
 
 -- Table: well_data_outputs
 CREATE TABLE well_data_outputs (
@@ -477,13 +478,13 @@ CREATE TABLE well_data_outputs (
 	FOREIGN KEY(plate_resource_accession_id) REFERENCES resources (accession_id)
 );
 
-CREATE INDEX ix_well_data_outputs_measurement_type ON well_data_outputs (measurement_type);
 CREATE INDEX ix_well_data_outputs_well_position ON well_data_outputs (well_position);
 CREATE INDEX ix_well_data_outputs_accession_id ON well_data_outputs (accession_id);
 CREATE INDEX ix_well_data_outputs_plate_resource_accession_id ON well_data_outputs (plate_resource_accession_id);
 CREATE INDEX ix_well_data_outputs_resource_accession_id ON well_data_outputs (resource_accession_id);
 CREATE INDEX ix_well_data_outputs_function_data_output_accession_id ON well_data_outputs (function_data_output_accession_id);
 CREATE INDEX ix_well_data_outputs_name ON well_data_outputs (name);
+CREATE INDEX ix_well_data_outputs_measurement_type ON well_data_outputs (measurement_type);
 
 -- Table: decks
 CREATE TABLE decks (
@@ -513,10 +514,10 @@ CREATE TABLE decks (
 	FOREIGN KEY(resource_definition_accession_id) REFERENCES resource_definitions (accession_id)
 );
 
-CREATE UNIQUE INDEX ix_decks_name ON decks (name);
 CREATE INDEX ix_decks_location ON decks (location);
 CREATE INDEX ix_decks_fqn ON decks (fqn);
 CREATE INDEX ix_decks_accession_id ON decks (accession_id);
+CREATE UNIQUE INDEX ix_decks_name ON decks (name);
 
 -- Table: function_data_outputs
 CREATE TABLE function_data_outputs (
@@ -556,6 +557,8 @@ CREATE TABLE function_data_outputs (
 	FOREIGN KEY(derived_from_data_output_accession_id) REFERENCES function_data_outputs (accession_id)
 );
 
+CREATE INDEX ix_function_data_outputs_data_key ON function_data_outputs (data_key);
+CREATE INDEX ix_function_data_outputs_accession_id ON function_data_outputs (accession_id);
 CREATE INDEX ix_function_data_outputs_name ON function_data_outputs (name);
 CREATE INDEX ix_function_data_outputs_derived_from_data_output_accession_id ON function_data_outputs (derived_from_data_output_accession_id);
 CREATE INDEX ix_function_data_outputs_deck_accession_id ON function_data_outputs (deck_accession_id);
@@ -563,8 +566,6 @@ CREATE INDEX ix_function_data_outputs_resource_accession_id ON function_data_out
 CREATE INDEX ix_function_data_outputs_machine_accession_id ON function_data_outputs (machine_accession_id);
 CREATE INDEX ix_function_data_outputs_protocol_run_accession_id ON function_data_outputs (protocol_run_accession_id);
 CREATE INDEX ix_function_data_outputs_function_call_log_accession_id ON function_data_outputs (function_call_log_accession_id);
-CREATE INDEX ix_function_data_outputs_data_key ON function_data_outputs (data_key);
-CREATE INDEX ix_function_data_outputs_accession_id ON function_data_outputs (accession_id);
 
 -- Table: machines
 CREATE TABLE machines (
@@ -610,12 +611,12 @@ CREATE TABLE machines (
 	FOREIGN KEY(machine_definition_accession_id) REFERENCES machine_definitions (accession_id)
 );
 
-CREATE INDEX ix_machines_location ON machines (location);
 CREATE INDEX ix_machines_accession_id ON machines (accession_id);
 CREATE UNIQUE INDEX ix_machines_serial_number ON machines (serial_number);
 CREATE UNIQUE INDEX ix_machines_name ON machines (name);
 CREATE INDEX ix_machines_last_seen_online ON machines (last_seen_online);
 CREATE INDEX ix_machines_fqn ON machines (fqn);
+CREATE INDEX ix_machines_location ON machines (location);
 
 -- Table: resources
 CREATE TABLE resources (
@@ -648,7 +649,7 @@ CREATE TABLE resources (
 	FOREIGN KEY(workcell_accession_id) REFERENCES workcells (accession_id)
 );
 
-CREATE INDEX ix_resources_fqn ON resources (fqn);
 CREATE UNIQUE INDEX ix_resources_name ON resources (name);
 CREATE INDEX ix_resources_accession_id ON resources (accession_id);
 CREATE INDEX ix_resources_location ON resources (location);
+CREATE INDEX ix_resources_fqn ON resources (fqn);
