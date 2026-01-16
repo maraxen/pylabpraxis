@@ -29,6 +29,7 @@ from praxis.backend.models.domain.protocol import (
 from praxis.backend.models.domain.protocol import (
   FunctionProtocolDefinitionRead as FunctionProtocolDefinitionResponse,
 )
+from praxis.backend.core.state_transform import transform_plr_state
 from praxis.backend.models.domain.simulation import StateHistory, OperationStateSnapshot, StateSnapshot, TipStateSnapshot
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
@@ -224,14 +225,16 @@ async def get_run_state_history(
     for log in logs:
       # Helper to wrap PLR state in StateSnapshot
       def wrap_state(plr_state):
-        if not plr_state: return None
-        # TODO: Implement proper transformation from PLR state to flattened volumes/tips
-        # For now, put in raw_plr_state and UI can adapt or we can flatten here
+        if not plr_state:
+          return None
+        transformed = transform_plr_state(plr_state)
+        if not transformed:
+          return None
         return StateSnapshot(
-          tips=TipStateSnapshot(),
-          liquids={},
-          on_deck=[],
-          raw_plr_state=plr_state
+          tips=TipStateSnapshot(**transformed["tips"]),
+          liquids=transformed["liquids"],
+          on_deck=transformed["on_deck"],
+          raw_plr_state=transformed["raw_plr_state"]
         )
 
       operations.append(OperationStateSnapshot(
