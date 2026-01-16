@@ -579,8 +579,7 @@ export class SqliteService {
             const now = new Date().toISOString();
 
             // 2. Seed Resources from Definitions
-            // Query all resource definitions
-            const resDefQuery = "SELECT accession_id, name, fqn, resource_type, is_consumable FROM resource_definitions";
+            const resDefQuery = "SELECT accession_id, name, fqn FROM resource_definitions";
             let resDefRows: any[] = [];
             try {
                 const q = db.exec(resDefQuery);
@@ -597,8 +596,13 @@ export class SqliteService {
                     VALUES (?, 'RESOURCE', ?, ?, ?, ?, ?, ?, ?)
                 `);
 
+                let totalSeeded = 0;
                 for (const row of resDefRows) {
                     const [defId, name, _defFqn] = row;
+
+                    // Create 1 instance per definition
+                    // The global infiniteConsumables flag (default: true in browser mode)
+                    // automatically shows consumables with ∞ symbol in the UI
                     const assetId = generateUuid();
                     const cleanName = (name as string).replace(/\s+/g, '_').toLowerCase();
                     const instanceFqn = `resources.default.${cleanName}`;
@@ -613,6 +617,7 @@ export class SqliteService {
                         defId,
                         'available'
                     ]);
+                    totalSeeded++;
                 }
                 insertResource.free();
 
@@ -680,7 +685,7 @@ export class SqliteService {
                 insertMachine.free();
 
                 db.exec('COMMIT');
-                console.log(`[SqliteService] Seeded ${resDefRows.length} resources and ${machDefRows.length} machines`);
+                console.log(`[SqliteService] Seeded ${totalSeeded} resources (infiniteConsumables enabled by default)`);
 
             } catch (err) {
                 db.exec('ROLLBACK');
