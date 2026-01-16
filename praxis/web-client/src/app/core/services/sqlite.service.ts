@@ -77,6 +77,9 @@ export class SqliteService {
             }),
             shareReplay(1)
         );
+        if (typeof window !== 'undefined') {
+            (window as any).sqliteService = this;
+        }
     }
 
     /**
@@ -553,28 +556,25 @@ export class SqliteService {
 
     /**
      * Seed default assets if none exist
-     * Creates 1 instance of every resource and machine definition
+     * Creates 1 instance of every resource (but NOT machines anymore)
      */
     public seedDefaultAssets(db: Database): void {
         try {
-            // 1. Check if we already have machines or resources (user data)
-            let machCount = 0;
+            // 1. Check if we already have resources (user data)
             let resCount = 0;
             try {
-                const countRes = db.exec("SELECT COUNT(*) FROM machines");
-                machCount = countRes.length > 0 ? (countRes[0].values[0][0] as number) : 0;
                 const countRes2 = db.exec("SELECT COUNT(*) FROM resources");
                 resCount = countRes2.length > 0 ? (countRes2[0].values[0][0] as number) : 0;
             } catch (e) {
                 // Tables might not exist
             }
 
-            if (machCount > 0 || resCount > 0) {
-                console.log('[SqliteService] Assets already exist, skipping default seeding');
+            if (resCount > 0) {
+                console.log('[SqliteService] Resources already exist, skipping default seeding');
                 return;
             }
 
-            console.log('[SqliteService] Seeding default assets from definitions...');
+            console.log('[SqliteService] Seeding default resources from definitions...');
             const generateUuid = () => crypto.randomUUID();
             const now = new Date().toISOString();
 
@@ -621,71 +621,12 @@ export class SqliteService {
                 }
                 insertResource.free();
 
-                // 3. Seed Machines from Definitions
-                const machDefQuery = "SELECT accession_id, name, fqn, compatible_backends, machine_category, is_simulated_frontend FROM machine_definitions";
-                let machDefRows: any[] = [];
-                try {
-                    const q = db.exec(machDefQuery);
-                    if (q.length > 0) machDefRows = q[0].values;
-                } catch (e) {
-                    console.warn('[SqliteService] Could not query machine definitions for seeding', e);
-                }
-
-                const insertMachine = db.prepare(`
-                    INSERT OR IGNORE INTO machines (accession_id, asset_type, name, fqn, created_at, updated_at, properties_json, machine_category, status, is_simulation_override, connection_info, description, simulation_backend_name, machine_definition_accession_id, maintenance_enabled)
-                    VALUES (?, 'MACHINE', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `);
-
-                /* 
-                // [DEPRECATED] Machine auto-seeding is replaced by just-in-time factory patterns.
-                // We no longer clutter the inventory with ~70 simulated instances.
-                for (const row of machDefRows) {
-                    const [defId, name, _defFqn, compatibleBackendsStr, category, isSimulatedFrontend] = row;
-                    const assetId = generateUuid();
-
-                    // Logic to check simulation
-                    let backends: string[] = [];
-                    try {
-                        if (compatibleBackendsStr) {
-                            const parsed = JSON.parse(compatibleBackendsStr as string);
-                            if (Array.isArray(parsed)) backends = parsed;
-                        }
-                    } catch { / * Ignore JSON parse error * / }
-
-                    const isNativeSim = backends.some(b => b.includes('Simulator') || b.includes('Chatterbox'));
-
-                    let simName = `${name} (Sim)`;
-                    // For explicitly 'Simulated' definitions, don't append (Sim)
-                    if (name.includes('Simulated')) {
-                        simName = name;
-                    }
-
-                    const cleanName = (name as string).replace(/\s+/g, '_').toLowerCase();
-                    const instanceFqn = `machines.default.${cleanName}`;
-
-                    insertMachine.run([
-                        assetId,
-                        simName,
-                        instanceFqn,
-                        now,
-                        now,
-                        JSON.stringify({ is_default: true }),
-                        category,
-                        'IDLE',
-                        1, // is_simulation_override = true
-                        JSON.stringify({ backend: isNativeSim ? 'native_simulator' : 'patched_io' }),
-                        `Default simulated instance of ${name}`,
-                        null, // simulation_backend_name
-                        defId, // machine_definition_accession_id
-                        1 // maintenance_enabled
-                    ]);
-                }
-                */
-
-                insertMachine.free();
+                // Machine Auto-Seeding Removed:
+                // We now rely on the "Catalog" model where users instantiate machines from definitions.
+                // No machines are seeded by default.
 
                 db.exec('COMMIT');
-                console.log(`[SqliteService] Seeded ${totalSeeded} resources (infiniteConsumables enabled by default)`);
+                console.log(`[SqliteService] Seeded ${totalSeeded} resources`);
 
             } catch (err) {
                 db.exec('ROLLBACK');

@@ -17,6 +17,7 @@
 - [ ] Understand consumable vs discrete labware distinction
 
 **Findings**:
+>
 > - Current seeding: `seedDefaultAssets()` creates 1 instance per definition (lines 600-616)
 > - Resources are individual instances (no quantity field)
 > - Available labware: 17 plates, 9 tip racks, reservoirs from `plr-definitions.ts`
@@ -57,6 +58,7 @@
 **Objective**: Implement browser mode resource seeding.
 
 - [ ] Define labware list in `SqliteService`:
+
   ```typescript
   private readonly DEFAULT_LABWARE = [
     { definitionId: 'corning_96_wellplate', isConsumable: false },
@@ -64,7 +66,9 @@
     // ...
   ];
   ```
+
 - [ ] Implement `seedDefaultLabware()`:
+
   ```typescript
   private async seedDefaultLabware(): Promise<void> {
     for (const def of this.DEFAULT_LABWARE) {
@@ -73,6 +77,7 @@
     }
   }
   ```
+
 - [ ] Add idempotency flag or check
 - [ ] Call from `initializeDatabase()` or appropriate init
 
@@ -98,6 +103,7 @@
 - [ ] Test using resources in protocol setup
 
 **Results**:
+>
 > - Implementation complete (simplified from initial approach)
 > - Expected: ~26 resource instances (1 per definition)
 > - Consumables display ∞ symbol via existing infiniteConsumables flag
