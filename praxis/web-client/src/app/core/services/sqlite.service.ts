@@ -33,13 +33,16 @@ import {
     type WorkcellRepository,
 } from '../db/repositories';
 import type {
-    FunctionProtocolDefinition
+    FunctionProtocolDefinition,
+    FunctionCallLog
 } from '../db/schema';
 
 // Legacy mock data imports (for fallback seeding)
 import { OFFLINE_CAPABILITY_OVERRIDES, PLR_MACHINE_DEFINITIONS, PLR_RESOURCE_DEFINITIONS } from '../../../assets/browser-data/plr-definitions';
 import { MOCK_PROTOCOL_RUNS } from '../../../assets/browser-data/protocol-runs';
 import { MOCK_PROTOCOLS } from '../../../assets/browser-data/protocols';
+import { transformPlrState } from '../utils/state-transform';
+import type { StateHistory, OperationStateSnapshot, StateSnapshot } from '../models/simulation.models';
 
 
 export interface SqliteStatus {
@@ -1129,111 +1132,6 @@ export class SqliteService {
         );
     }
 
-    /**
-     * Get state history for a protocol run (time travel debugging).
-     * In browser mode, state history is stored in the protocol_runs table.
-     */
-    public getRunStateHistory(runId: string): Observable<any | null> {
-        return this.db$.pipe(
-            map(db => {
-                try {
-                    // Check if state_history_json column exists
-                    const res = db.exec(
-                        `SELECT state_history_json, name
-                         FROM protocol_runs
-                         WHERE accession_id = '${runId}'`
-                    );
-
-                    if (res.length === 0 || res[0].values.length === 0) {
-                        return null;
-                    }
-
-                    const row = res[0].values[0];
-                    const stateHistoryJson = row[0];
-                    const protocolName = row[1] as string || 'Unknown';
-
-                    if (!stateHistoryJson) {
-                        // Return mock state history for browser mode purposes
-                        return this.createMockStateHistory(runId, protocolName);
-                    }
-
-                    return JSON.parse(stateHistoryJson as string);
-                } catch (error) {
-                    console.warn('[SqliteService] State history not available, using mock:', error);
-                    // Return mock for browser mode
-                    return this.createMockStateHistory(runId, 'Browser Protocol');
-                }
-            })
-        );
-    }
-
-    /**
-     * Create a mock state history for simulated/testing purposes.
-     */
-    private createMockStateHistory(runId: string, protocolName: string): any {
-        const operations = [];
-        let tipsLoaded = false;
-        let tipsCount = 0;
-        const wellVolumes: Record<string, number> = { A1: 500, A2: 500, A3: 500 };
-
-        const methodSequence = [
-            { method: 'pick_up_tips', resource: 'tip_rack' },
-            { method: 'aspirate', resource: 'source_plate' },
-            { method: 'dispense', resource: 'dest_plate' },
-            { method: 'aspirate', resource: 'source_plate' },
-            { method: 'dispense', resource: 'dest_plate' },
-            { method: 'drop_tips', resource: 'tip_rack' },
-        ];
-
-        for (let i = 0; i < methodSequence.length; i++) {
-            const { method, resource } = methodSequence[i];
-
-            const stateBefore = {
-                tips: { tips_loaded: tipsLoaded, tips_count: tipsCount },
-                liquids: { source_plate: { ...wellVolumes } },
-                on_deck: ['tip_rack', 'source_plate', 'dest_plate'],
-            };
-
-            // Update state based on operation
-            if (method === 'pick_up_tips') {
-                tipsLoaded = true;
-                tipsCount = 8;
-            } else if (method === 'drop_tips') {
-                tipsLoaded = false;
-                tipsCount = 0;
-            } else if (method === 'aspirate') {
-                wellVolumes['A1'] = Math.max(0, wellVolumes['A1'] - 50);
-            }
-
-            const stateAfter = {
-                tips: { tips_loaded: tipsLoaded, tips_count: tipsCount },
-                liquids: { source_plate: { ...wellVolumes } },
-                on_deck: ['tip_rack', 'source_plate', 'dest_plate'],
-            };
-
-            operations.push({
-                operation_index: i,
-                operation_id: `op_${i}`,
-                method_name: method,
-                resource,
-                state_before: stateBefore,
-                state_after: stateAfter,
-                timestamp: new Date(Date.now() + i * 1000).toISOString(),
-                duration_ms: 500 + Math.random() * 1000,
-                status: 'completed',
-            });
-        }
-
-        return {
-            run_id: runId,
-            protocol_name: protocolName,
-            operations,
-            final_state: operations.length > 0
-                ? operations[operations.length - 1].state_after
-                : { tips: { tips_loaded: false, tips_count: 0 }, liquids: {}, on_deck: [] },
-            total_duration_ms: operations.reduce((sum: number, op: any) => sum + (op.duration_ms || 0), 0),
-        };
-    }
 
     // ============================================
     // Database Export/Import
@@ -1570,6 +1468,156 @@ export class SqliteService {
                 }
             })
         );
+    }
+
+    /**
+     * Create a function call log entry.
+     */
+    public createFunctionCallLog(record: Partial<FunctionCallLog>): Observable<void> {
+        return this.db$.pipe(
+            map(db => {
+                const columns = Object.keys(record);
+                const values = Object.values(record);
+                const placeholders = columns.map(() => '?').join(', ');
+
+                const sql = `INSERT INTO function_call_logs (${columns.join(', ')}) VALUES (${placeholders})`;
+                try {
+                    db.run(sql, values as any[]);
+                    // Auto-save not strictly required for every log but good for safety
+                    // this.saveToStore(db); 
+                } catch (err) {
+                    console.error('[SqliteService] Failed to insert function call log:', err);
+                    // Squelch errors to avoid breaking execution flow for logging
+                }
+            })
+        );
+    }
+
+    public getRunStateHistory(runId: string): Observable<StateHistory | null> {
+        return this.db$.pipe(
+            map(db => {
+                try {
+                    // Get protocol run info
+                    const runResult = db.exec(
+                        `SELECT name FROM protocol_runs WHERE accession_id = ?`,
+                        [runId]
+                    );
+
+                    const protocolName = runResult.length > 0 && runResult[0].values.length > 0
+                        ? (runResult[0].values[0][0] as string) || 'Unknown'
+                        : 'Unknown';
+
+                    // Get function call logs for this run
+                    const logsResult = db.exec(
+                        `SELECT
+                            accession_id,
+                            sequence_in_run,
+                            name,
+                            status,
+                            input_args_json,
+                            state_before_json,
+                            state_after_json,
+                            start_time,
+                            end_time,
+                            duration_ms,
+                            error_message_text
+                         FROM function_call_logs
+                         WHERE protocol_run_accession_id = ?
+                         ORDER BY sequence_in_run ASC`,
+                        [runId]
+                    );
+
+                    if (logsResult.length === 0 || logsResult[0].values.length === 0) {
+                        return null;
+                    }
+
+                    const operations: OperationStateSnapshot[] = [];
+                    let finalState: StateSnapshot | null = null;
+                    let totalDurationMs = 0;
+
+                    for (const row of logsResult[0].values) {
+                        const [
+                            accessionId,
+                            sequenceInRun,
+                            name,
+                            status,
+                            inputArgsJson,
+                            stateBeforeJson,
+                            stateAfterJson,
+                            startTime,
+                            endTime,
+                            durationMs,
+                            errorMessage,
+                        ] = row;
+
+                        // Parse and transform states
+                        const rawStateBefore = stateBeforeJson
+                            ? JSON.parse(stateBeforeJson as string)
+                            : null;
+                        const rawStateAfter = stateAfterJson
+                            ? JSON.parse(stateAfterJson as string)
+                            : null;
+
+                        const stateBefore = transformPlrState(rawStateBefore);
+                        const stateAfter = transformPlrState(rawStateAfter);
+
+                        // Parse args
+                        const args = inputArgsJson
+                            ? JSON.parse(inputArgsJson as string)
+                            : undefined;
+
+                        // Map status
+                        const opStatus: 'completed' | 'failed' | 'skipped' =
+                            status === 'COMPLETED' ? 'completed' :
+                                status === 'FAILED' ? 'failed' : 'skipped';
+
+                        // Create operation snapshot
+                        const operation: OperationStateSnapshot = {
+                            operation_index: sequenceInRun as number,
+                            operation_id: accessionId as string,
+                            method_name: name as string,
+                            args,
+                            state_before: stateBefore || this.getEmptyState(),
+                            state_after: stateAfter || this.getEmptyState(),
+                            timestamp: startTime as string,
+                            duration_ms: durationMs as number,
+                            status: opStatus,
+                            error_message: errorMessage as string | undefined,
+                        };
+
+                        operations.push(operation);
+
+                        // Track final state and duration
+                        if (stateAfter) {
+                            finalState = stateAfter;
+                        }
+                        if (typeof durationMs === 'number') {
+                            totalDurationMs += durationMs;
+                        }
+                    }
+
+                    return {
+                        run_id: runId,
+                        protocol_name: protocolName,
+                        operations,
+                        final_state: finalState || this.getEmptyState(),
+                        total_duration_ms: totalDurationMs,
+                    } as StateHistory;
+
+                } catch (error) {
+                    console.warn('[SqliteService] State history retrieval failed:', error);
+                    return null;
+                }
+            })
+        );
+    }
+
+    private getEmptyState(): StateSnapshot {
+        return {
+            tips: { tips_loaded: false, tips_count: 0 },
+            liquids: {},
+            on_deck: [],
+        };
     }
 
 }

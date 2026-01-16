@@ -163,19 +163,19 @@ export class ExecutionService {
 
       if (parameters) {
         for (const [key, value] of Object.entries(parameters)) {
-           if (typeof value === 'string') {
-             const res = allResources.find(r => r.accession_id === value);
-             if (res) {
-               const def = allDefinitions.find(d => d.accession_id === res.resource_definition_accession_id);
-               if (def) {
-                 assetSpecs[value] = {
-                   name: res.name,
-                   num_items: def.num_items,
-                   type: def.resource_type // e.g. 'plate', 'tip_rack'
-                 };
-               }
-             }
-           }
+          if (typeof value === 'string') {
+            const res = allResources.find(r => r.accession_id === value);
+            if (res) {
+              const def = allDefinitions.find(d => d.accession_id === res.resource_definition_accession_id);
+              if (def) {
+                assetSpecs[value] = {
+                  name: res.name,
+                  num_items: def.num_items,
+                  type: def.resource_type // e.g. 'plate', 'tip_rack'
+                };
+              }
+            }
+          }
         }
       }
 
@@ -183,7 +183,7 @@ export class ExecutionService {
       this.updateRunState({ progress: 10, currentStep: 'Initializing' });
 
       // Build Python code to execute the protocol
-      const code = this.buildProtocolExecutionCode(protocol, parameters, assetSpecs);
+      const code = this.buildProtocolExecutionCode(protocol, parameters, assetSpecs, runId);
 
       // Execute via PythonRuntimeService
       this.updateRunState({ progress: 20, currentStep: 'Running protocol' });
@@ -212,6 +212,13 @@ export class ExecutionService {
                 }
               } catch (err) {
                 console.error('[ExecutionService] Error parsing browser state update:', err);
+              }
+            } else if (output.type === 'function_call_log') {
+              try {
+                const logData = JSON.parse(output.content);
+                this.handleFunctionCallLog(runId, logData);
+              } catch (err) {
+                console.error('[ExecutionService] Error parsing function call log:', err);
               }
             }
           },
@@ -262,7 +269,8 @@ export class ExecutionService {
   private buildProtocolExecutionCode(
     protocol: any, // ProtocolDefinition
     parameters?: Record<string, unknown>,
-    assetSpecs?: Record<string, any>
+    assetSpecs?: Record<string, any>,
+    runId?: string
   ): string {
     const moduleName = protocol.module_name || protocol.fqn.split('.').slice(0, -1).join('.');
     const functionName = protocol.function_name || protocol.fqn.split('.').pop() || 'run';
@@ -293,7 +301,8 @@ export class ExecutionService {
     return `
 # Browser mode protocol execution
 import json
-from web_bridge import resolve_parameters, patch_state_emission
+import time
+from web_bridge import resolve_parameters, patch_state_emission, patch_function_call_logging
 
 print("[Browser] Setting up simulation environment...")
 
@@ -325,6 +334,7 @@ for p_value in resolved_params.values():
         from pylabrobot.liquid_handling import LiquidHandler
         if isinstance(p_value, LiquidHandler):
             patch_state_emission(p_value)
+            patch_function_call_logging(p_value, '${runId}')
     except ImportError:
         pass
 
@@ -511,5 +521,47 @@ print(f"[Browser] Protocol finished with result: {result}")
   clearRun() {
     this._currentRun.set(null);
     this.disconnect();
+  }
+
+  /**
+   * Persist a function call log entry to browser SQLite.
+   */
+  private handleFunctionCallLog(runId: string, logData: {
+    call_id: string;
+    run_id: string;
+    sequence: number;
+    method_name: string;
+    args: Record<string, unknown>;
+    state_before: Record<string, unknown> | null;
+    state_after: Record<string, unknown> | null;
+    status: string;
+    start_time: number;
+    end_time?: number;
+    duration_ms?: number;
+    error_message?: string;
+  }): void {
+    // Only persist completed entries (with state_after) or failures
+    if (logData.status !== 'running') {
+      const record = {
+        accession_id: logData.call_id,
+        protocol_run_accession_id: runId,
+        function_protocol_definition_accession_id: 'browser_execution',
+        sequence_in_run: logData.sequence,
+        name: logData.method_name,
+        status: logData.status === 'completed' ? 'COMPLETED' : 'FAILED',
+        start_time: new Date(logData.start_time * 1000).toISOString(),
+        end_time: logData.end_time ? new Date(logData.end_time * 1000).toISOString() : null,
+        duration_ms: logData.duration_ms ?? null,
+        input_args_json: JSON.stringify(logData.args),
+        state_before_json: logData.state_before ? JSON.stringify(logData.state_before) : null,
+        state_after_json: logData.state_after ? JSON.stringify(logData.state_after) : null,
+        error_message_text: logData.error_message ?? null,
+      };
+
+      // Cast to any because the partial match is looser than strict type checking
+      this.sqliteService.createFunctionCallLog(record as any).subscribe({
+        error: (err: any) => console.warn('[ExecutionService] Failed to persist function call log:', err)
+      });
+    }
   }
 }
