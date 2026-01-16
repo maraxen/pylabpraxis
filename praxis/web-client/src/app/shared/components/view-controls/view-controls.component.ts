@@ -190,7 +190,7 @@ import {
   <!-- Active Filter Chips (Row 2) -->
   <app-filter-chip-bar
     [filters]="activeFilters()"
-    (remove)="removeFilter($event)"
+    (removeValue)="removeFilterValue($event)"
     (clearAll)="clearAll()"
   ></app-filter-chip-bar>
 </div>
@@ -584,6 +584,23 @@ export class ViewControlsComponent implements OnInit, OnDestroy {
   removeFilter(filterId: string) {
     const newFilters = { ...this.state.filters };
     delete newFilters[filterId];
+    this.updateState({ filters: newFilters });
+    this.filtersChange.emit(newFilters);
+  }
+
+  /** Remove a specific value from a filter (keeps other values in that filter) */
+  removeFilterValue(event: { filterId: string; value: unknown }) {
+    const currentValues = this.state.filters[event.filterId] || [];
+    const newValues = currentValues.filter(v => v !== event.value);
+
+    const newFilters = { ...this.state.filters };
+    if (newValues.length === 0) {
+      // If no values left, remove the filter entirely
+      delete newFilters[event.filterId];
+    } else {
+      newFilters[event.filterId] = newValues;
+    }
+
     this.updateState({ filters: newFilters });
     this.filtersChange.emit(newFilters);
   }

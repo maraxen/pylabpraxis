@@ -3,6 +3,7 @@ import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { ModeService } from '@core/services/mode.service';
 import { SqliteService } from '@core/services/sqlite.service';
+import { ProtocolRun } from '@core/db/schema';
 import {
     RunSummary,
     RunDetail,
@@ -29,7 +30,11 @@ export class RunHistoryService {
         if (this.modeService.isBrowserMode()) {
             return this.sqliteService.getProtocolRuns().pipe(
                 map(runs => {
-                    let filtered = runs as RunSummary[];
+                    let filtered = (runs as unknown as ProtocolRun[]).map(run => ({
+                        ...run,
+                        protocol_accession_id: run.top_level_protocol_definition_accession_id,
+                        status: run.status as unknown as RunStatus
+                    } as unknown as RunSummary));
 
                     // Apply status filter
                     if (params?.status && params.status.length > 0) {
@@ -104,7 +109,11 @@ export class RunHistoryService {
         if (this.modeService.isBrowserMode()) {
             const activeStatuses: RunStatus[] = ['PENDING', 'PREPARING', 'QUEUED', 'RUNNING', 'PAUSED'];
             return this.sqliteService.getProtocolRuns().pipe(
-                map(runs => (runs as RunSummary[]).filter(r => activeStatuses.includes(r.status as RunStatus))),
+                map(runs => (runs as unknown as ProtocolRun[]).map(run => ({
+                    ...run,
+                    protocol_accession_id: run.top_level_protocol_definition_accession_id,
+                    status: run.status as unknown as RunStatus
+                } as unknown as RunSummary)).filter(r => activeStatuses.includes(r.status as RunStatus))),
                 catchError(err => {
                     console.error('[RunHistoryService] Browser mode getActiveRuns error:', err);
                     return of([]);
@@ -128,7 +137,14 @@ export class RunHistoryService {
         // Browser mode: use SqliteService
         if (this.modeService.isBrowserMode()) {
             return this.sqliteService.getProtocolRun(runId).pipe(
-                map(run => run as RunDetail | null),
+                map(run => {
+                    if (!run) return null;
+                    return {
+                        ...run,
+                        protocol_accession_id: run.top_level_protocol_definition_accession_id,
+                        status: run.status as unknown as RunStatus
+                    } as unknown as RunDetail;
+                }),
                 catchError(err => {
                     console.error('[RunHistoryService] Browser mode getRunDetail error:', err);
                     return of(null);

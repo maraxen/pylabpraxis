@@ -3,12 +3,15 @@
 import { loadPyodide, PyodideInterface } from 'pyodide';
 
 let pyodide: PyodideInterface;
-let pyConsole: any; // PyodideConsole instance
+let pyConsole: {
+  push: (code: string) => any;
+  complete: (code: string) => any;
+};
 
 interface PythonMessage {
   type: 'INIT' | 'PUSH' | 'EXEC' | 'INSTALL' | 'COMPLETE' | 'SIGNATURES' | 'PLR_COMMAND' | 'RAW_IO' | 'RAW_IO_RESPONSE' | 'WELL_STATE_UPDATE' | 'FUNCTION_CALL_LOG';
   id?: string;
-  payload?: any;
+  payload?: unknown;
 }
 
 let currentExecutionId: string | undefined;
@@ -38,6 +41,7 @@ addEventListener('message', async (event) => {
     if (pyodide) {
       try {
         const bridge = pyodide.pyimport('web_bridge');
+        const payload = data.payload as { request_id: string; data: any };
         bridge.handle_io_response(payload.request_id, payload.data);
       } catch (err) {
         console.error('Error routing IO response to Python:', err);
@@ -58,22 +62,23 @@ addEventListener('message', async (event) => {
         if (!pyodide || !pyConsole) throw new Error('Pyodide not initialized');
         currentExecutionId = id;
         try {
-          await executePush(id!, payload.code);
+          const { code: runCode } = payload as { code: string };
+          await executePush(id!, runCode);
         } finally {
           currentExecutionId = undefined;
         }
         break;
 
       case 'PLR_COMMAND':
-        postMessage({ type: 'PLR_COMMAND', id: currentExecutionId, payload });
+        postMessage({ type: 'PLR_COMMAND', id: currentExecutionId, payload: payload as any });
         break;
 
       case 'WELL_STATE_UPDATE':
-        postMessage({ type: 'WELL_STATE_UPDATE', id: currentExecutionId, payload });
+        postMessage({ type: 'WELL_STATE_UPDATE', id: currentExecutionId, payload: payload as any });
         break;
 
       case 'FUNCTION_CALL_LOG':
-        postMessage({ type: 'FUNCTION_CALL_LOG', id: currentExecutionId, payload });
+        postMessage({ type: 'FUNCTION_CALL_LOG', id: currentExecutionId, payload: payload as any });
         break;
 
       case 'INSTALL':
@@ -81,7 +86,8 @@ addEventListener('message', async (event) => {
         currentExecutionId = id;
         try {
           const micropip = pyodide.pyimport('micropip');
-          await micropip.install(payload.packages);
+          const packages = (payload as { packages: string[] }).packages;
+          await micropip.install(packages);
           postMessage({ type: 'INSTALL_COMPLETE', id });
         } finally {
           currentExecutionId = undefined;
@@ -92,7 +98,8 @@ addEventListener('message', async (event) => {
         if (!pyodide || !pyConsole) throw new Error('Pyodide not initialized');
         try {
           // Use Console.complete() - returns (completions: list[str], start: int)
-          const resultProxy = pyConsole.complete(payload.code);
+          const { code: completeCode } = payload as { code: string };
+          const resultProxy = pyConsole.complete(completeCode);
           const result = resultProxy.toJs();
           resultProxy.destroy();
 
@@ -104,7 +111,7 @@ addEventListener('message', async (event) => {
             description: ''
           }));
           postMessage({ type: 'COMPLETE_RESULT', id, payload: { matches } });
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error('Completion error:', err);
           postMessage({ type: 'COMPLETE_RESULT', id, payload: { matches: [] } });
         }
@@ -116,21 +123,22 @@ addEventListener('message', async (event) => {
         if (!pyodide) throw new Error('Pyodide not initialized');
         try {
           const bridge = pyodide.pyimport('web_bridge');
-          const signaturesProxy = bridge.get_signatures(payload.code);
+          const { code: sigCode } = payload as { code: string };
+          const signaturesProxy = bridge.get_signatures(sigCode);
           const signatures = signaturesProxy.toJs();
           signaturesProxy.destroy();
           postMessage({ type: 'SIGNATURE_RESULT', id, payload: { signatures } });
-        } catch (err: any) {
+        } catch (err: unknown) {
           // Signature help is optional, just return empty
           postMessage({ type: 'SIGNATURE_RESULT', id, payload: { signatures: [] } });
         }
         break;
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     postMessage({
       type: 'ERROR',
       id,
-      payload: error.message || String(error)
+      payload: (error as Error).message || String(error)
     });
   }
 });

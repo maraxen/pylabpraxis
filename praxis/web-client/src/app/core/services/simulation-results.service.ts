@@ -38,7 +38,7 @@ export class SimulationResultsService {
         }
 
         return this.apiWrapper.wrap(ProtocolDefinitionsService.getApiV1ProtocolsDefinitionsAccessionIdGet(protocolId)).pipe(
-            map(response => ((response as any).inferred_requirements_json as InferredRequirement[]) || []),
+            map(response => (response.properties_json?.['inferred_requirements'] as InferredRequirement[]) || []),
             catchError(err => {
                 console.error('[SimulationResults] Error fetching requirements:', err);
                 return of([]);
@@ -56,7 +56,7 @@ export class SimulationResultsService {
         }
 
         return this.apiWrapper.wrap(ProtocolDefinitionsService.getApiV1ProtocolsDefinitionsAccessionIdGet(protocolId)).pipe(
-            map(response => ((response as any).failure_modes_json as FailureMode[]) || []),
+            map(response => (response.properties_json?.['failure_modes'] as FailureMode[]) || []),
             catchError(err => {
                 console.error('[SimulationResults] Error fetching failure modes:', err);
                 return of([]);
@@ -74,7 +74,7 @@ export class SimulationResultsService {
         }
 
         return this.apiWrapper.wrap(ProtocolDefinitionsService.getApiV1ProtocolsDefinitionsAccessionIdGet(protocolId)).pipe(
-            map(response => ((response as any).simulation_result_json as unknown as SimulationResult) || null),
+            map(response => (response.properties_json?.['simulation_result'] as unknown as SimulationResult) || null),
             catchError(err => {
                 console.error('[SimulationResults] Error fetching simulation result:', err);
                 return of(null);
@@ -100,19 +100,19 @@ export class SimulationResultsService {
                     ...OpenAPI.HEADERS
                 }
             })
-            .then(response => {
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                return response.json();
-            })
-            .then(data => {
-                observer.next(data as StateHistory);
-                observer.complete();
-            })
-            .catch(err => {
-                console.error('[SimulationResults] Error fetching state history:', err);
-                observer.next(null);
-                observer.complete();
-            });
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    observer.next(data as StateHistory);
+                    observer.complete();
+                })
+                .catch(err => {
+                    console.error('[SimulationResults] Error fetching state history:', err);
+                    observer.next(null);
+                    observer.complete();
+                });
         });
     }
 
@@ -135,7 +135,7 @@ export class SimulationResultsService {
             switchMap(isReady => {
                 if (!isReady) return of([]);
                 return this.sqliteService.getProtocolSimulationData(protocolId).pipe(
-                    map(data => (data as any)?.inferred_requirements_json || [])
+                    map(data => data?.inferred_requirements || [])
                 );
             }),
             catchError(() => of([]))
@@ -147,7 +147,7 @@ export class SimulationResultsService {
             switchMap(isReady => {
                 if (!isReady) return of([]);
                 return this.sqliteService.getProtocolSimulationData(protocolId).pipe(
-                    map(data => (data as any)?.failure_modes_json || [])
+                    map(data => data?.failure_modes || [])
                 );
             }),
             catchError(() => of([]))
@@ -159,7 +159,7 @@ export class SimulationResultsService {
             switchMap(isReady => {
                 if (!isReady) return of(null);
                 return this.sqliteService.getProtocolSimulationData(protocolId).pipe(
-                    map(data => (data as any)?.simulation_result_json || null)
+                    map(data => data?.simulation_result || null)
                 );
             }),
             catchError(() => of(null))

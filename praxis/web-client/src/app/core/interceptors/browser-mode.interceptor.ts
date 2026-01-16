@@ -155,11 +155,28 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
 
     // POST protocol run - simulate creation
     if (url.includes('/protocols/runs') && method === 'POST') {
-        const newRun = {
+        const newRun: any = {
             accession_id: crypto.randomUUID(),
+            protocol_definition_accession_id: (req.body as any)?.protocol_definition_accession_id || 'unknown',
+            name: (req.body as any)?.name || 'Run',
             status: 'QUEUED',
             created_at: new Date().toISOString(),
-            ...(req.body as object),
+            updated_at: new Date().toISOString(),
+            properties_json: {},
+            input_parameters_json: (req.body as any)?.parameters || {},
+            top_level_protocol_definition_accession_id: (req.body as any)?.protocol_definition_accession_id || 'unknown',
+            start_time: null,
+            end_time: null,
+            duration_ms: null,
+            data_directory_path: null,
+            resolved_assets_json: null,
+            output_data_json: null,
+            initial_state_json: null,
+            final_state_json: null,
+            created_by_user: null,
+            previous_accession_id: null,
+            status_details: null,
+            worker_id: null
         };
         return sqliteService.createProtocolRun(newRun);
     }

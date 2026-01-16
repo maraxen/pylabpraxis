@@ -16,6 +16,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, of, map, forkJoin } from 'rxjs';
 import { SqliteService } from '../services/sqlite.service';
+import { ProtocolRun, Machine, Resource } from '../db/schema';
 
 // Singleton instance for non-DI contexts
 let _sqliteServiceInstance: SqliteService | null = null;
@@ -57,14 +58,14 @@ export class BrowserMockRouter {
         if (url.includes('/protocols/runs/queue') && method === 'GET') {
             return db.getProtocolRuns().pipe(
                 map(runs => {
-                    return runs.filter((r: any) =>
-                        ['PENDING', 'PREPARING', 'QUEUED', 'RUNNING'].includes(r.status)
-                    ).map((r: any) => ({
+                    return runs.filter((r: ProtocolRun) =>
+                        ['PENDING', 'PREPARING', 'QUEUED', 'RUNNING'].includes(r.status || '')
+                    ).map((r: ProtocolRun) => ({
                         accession_id: r.accession_id,
-                        name: r.name || r.protocol_name,
+                        name: r.name,
                         status: r.status,
                         created_at: r.created_at,
-                        protocol_name: r.name || r.protocol_name,
+                        protocol_name: r.name,
                     }));
                 })
             ) as Observable<T>;
@@ -80,16 +81,16 @@ export class BrowserMockRouter {
                         if (run) {
                             return {
                                 ...run,
-                                name: run.name || run.protocol_name,
+                                name: run.name,
                                 start_time: run.created_at, // Approximation if started_at missing
                                 end_time: run.updated_at,
-                                duration_ms: run.status === 'COMPLETED' ? 262000 : null,
+                                duration_ms: (run.status as string) === 'COMPLETED' ? 262000 : null,
                                 logs: [
                                     'Starting protocol execution...',
                                     'Initializing liquid handler...',
                                     'Loading deck configuration...',
-                                    `Executing ${run.name || run.protocol_name}...`,
-                                    run.status === 'COMPLETED' ? 'Protocol completed successfully.' : 'Protocol execution in progress...',
+                                    `Executing ${run.name}...`,
+                                    (run.status as string) === 'COMPLETED' ? 'Protocol completed successfully.' : 'Protocol execution in progress...',
                                 ],
                             };
                         }
@@ -99,16 +100,16 @@ export class BrowserMockRouter {
             }
             // Return list with consistent field names
             return db.getProtocolRuns().pipe(
-                map(runs => runs.map((r: any) => ({
+                map(runs => runs.map((r: ProtocolRun) => ({
                     accession_id: r.accession_id,
-                    name: r.name || r.protocol_name,
+                    name: r.name,
                     status: r.status,
                     created_at: r.created_at,
                     start_time: r.created_at,
                     end_time: r.updated_at,
-                    duration_ms: r.status === 'COMPLETED' ? 262000 : null,
-                    protocol_name: r.name || r.protocol_name,
-                    protocol_accession_id: r.top_level_protocol_definition_accession_id,
+                    duration_ms: (r.status as string) === 'COMPLETED' ? 262000 : null,
+                    protocol_name: r.name,
+                    protocol_accession_id: (r as any).top_level_protocol_definition_accession_id,
                 })))
             ) as Observable<T>;
         }
@@ -127,10 +128,10 @@ export class BrowserMockRouter {
                     if (run) {
                         return {
                             ...run,
-                            name: run.name || run.protocol_name,
+                            name: run.name,
                             start_time: run.created_at,
                             end_time: run.updated_at,
-                            duration_ms: run.status === 'COMPLETED' ? 262000 : null,
+                            duration_ms: (run.status as string) === 'COMPLETED' ? 262000 : null,
                         };
                     }
                     return null;
@@ -200,8 +201,8 @@ export class BrowserMockRouter {
         if (url.includes('/facets')) {
             return db.getResourceDefinitions().pipe(
                 map(defs => {
-                    const categories = [...new Set(defs.map((r: any) => r.plr_category))];
-                    const vendors = [...new Set(defs.map((r: any) => r.vendor).filter(Boolean))];
+                    const categories = [...new Set(defs.map(r => r.plr_category))];
+                    const vendors = [...new Set(defs.map(r => r.vendor).filter((v): v is string => !!v))];
                     return {
                         category: categories,
                         brand: vendors,
@@ -224,12 +225,15 @@ export class BrowserMockRouter {
 
         // POST protocol run - simulate creation
         if (url.includes('/protocols/runs') && method === 'POST') {
-            const newRun = {
+            const newRun: ProtocolRun & { protocol_definition_accession_id: string } = {
                 accession_id: crypto.randomUUID(),
-                status: 'QUEUED',
+                status: 'queued',
                 created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                name: (body as any)?.name || 'New Run',
+                protocol_definition_accession_id: (body as any)?.protocol_definition_accession_id || '',
                 ...(body as object),
-            };
+            } as any;
             return db.createProtocolRun(newRun) as Observable<T>;
         }
 
@@ -344,8 +348,8 @@ export class BrowserMockRouter {
         if (url.match(/\/protocols\/[a-f0-9-]+\/compatibility$/) && method === 'GET') {
             return db.getMachines().pipe(
                 map(machines => {
-                    const liquidHandlers = machines.filter((m: any) => m.asset_type === 'liquid_handler' || m.asset_type === 'machine'); // Broaden filer
-                    return liquidHandlers.map((machine: any) => ({
+                    const liquidHandlers = machines.filter((m: Machine) => m.asset_type === 'MACHINE' || m.asset_type === 'GENERIC_ASSET'); // Broaden filer
+                    return liquidHandlers.map((machine: Machine) => ({
                         machine: {
                             accession_id: machine.accession_id,
                             name: machine.name,

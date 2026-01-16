@@ -17,9 +17,7 @@ describe('State Transformation Utils', () => {
             const plrState = {
                 'head': {
                     head_state: {
-                        'channels': {
-                            '0': { tip: { has_tip: true }, tip_state: {}, pending_tip: null }
-                        }
+                        '0': { tip: { has_tip: true }, tip_state: {}, pending_tip: null }
                     }
                 }
             };
@@ -33,9 +31,7 @@ describe('State Transformation Utils', () => {
             const plrState = {
                 'head': {
                     head_state: {
-                        'channels': {
-                            '0': { tip: null, tip_state: {}, pending_tip: null }
-                        }
+                        '0': { tip: null, tip_state: {}, pending_tip: null }
                     }
                 }
             };
@@ -79,9 +75,7 @@ describe('State Transformation Utils', () => {
             const plrState = {
                 'head': {
                     head_state: {
-                        'channels': {
-                            '0': { tip: {}, tip_state: {}, pending_tip: null }
-                        }
+                        '0': { tip: {}, tip_state: {}, pending_tip: null }
                     }
                 },
                 'plate_A1': { volume: 100 }

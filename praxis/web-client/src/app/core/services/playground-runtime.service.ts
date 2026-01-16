@@ -7,6 +7,52 @@ import { BehaviorSubject, filter } from 'rxjs';
 import { ReplService } from '../api-generated/services/ReplService';
 import { ApiWrapperService } from './api-wrapper.service';
 
+interface ReplMessage {
+    type: string;
+    id?: string;
+    payload?: any;
+}
+
+interface ReplVarsUpdateMessage extends ReplMessage {
+    type: 'VARS_UPDATE';
+    payload: {
+        variables: ReplacementVariable[];
+    };
+}
+
+interface ReplResultMessage extends ReplMessage {
+    type: 'RESULT';
+    id: string;
+    payload: {
+        output: string;
+        more: boolean;
+    };
+}
+
+interface ReplErrorMessage extends ReplMessage {
+    type: 'ERROR';
+    id: string;
+    payload: {
+        error: string;
+    };
+}
+
+interface ReplCompletionMessage extends ReplMessage {
+    type: 'COMPLETION_RESULT';
+    id: string;
+    payload: {
+        matches: Array<string | CompletionItem>;
+    };
+}
+
+interface ReplSignatureMessage extends ReplMessage {
+    type: 'SIGNATURE_RESULT';
+    id: string;
+    payload: {
+        signatures: SignatureInfo[];
+    };
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -39,9 +85,10 @@ export class PlaygroundRuntimeService implements ReplRuntime {
         // Note: Creating a subscription here might consume messages intended for execute()
         // if execute() uses multiplexing. However, webSocket subject multicasts.
         this.socket$.subscribe(msg => {
-            const m = msg as any;
+            const m = msg as ReplMessage;
             if (m.type === 'VARS_UPDATE') {
-                this.variablesSubject.next(m.payload.variables);
+                const update = m as ReplVarsUpdateMessage;
+                this.variablesSubject.next(update.payload.variables);
             }
         });
 
@@ -68,19 +115,21 @@ export class PlaygroundRuntimeService implements ReplRuntime {
         });
 
         return this.socket$.asObservable().pipe(
-            filter(msg => (msg as any).id === commandId),
+            filter(msg => (msg as ReplMessage).id === commandId),
             map(msg => {
-                const m = msg as any;
+                const m = msg as ReplMessage;
                 if (m.type === 'RESULT') {
+                    const res = m as ReplResultMessage;
                     return {
                         type: 'result' as const,
-                        content: m.payload.output,
-                        more: m.payload.more // backend push() returns more
+                        content: res.payload.output,
+                        more: res.payload.more // backend push() returns more
                     };
                 } else if (m.type === 'ERROR') {
+                    const err = m as ReplErrorMessage;
                     return {
                         type: 'error' as const,
-                        content: m.payload.error
+                        content: err.payload.error
                     };
                 }
                 return { type: 'error' as const, content: 'Unknown response' };
@@ -95,7 +144,7 @@ export class PlaygroundRuntimeService implements ReplRuntime {
         this.socket$.next({ type: 'RESTART', id });
 
         return this.socket$.asObservable().pipe(
-            filter(msg => (msg as any).id === id),
+            filter(msg => (msg as ReplMessage).id === id),
             map(() => void 0)
         );
     }
@@ -116,13 +165,14 @@ export class PlaygroundRuntimeService implements ReplRuntime {
         const id = crypto.randomUUID();
         return new Promise((resolve) => {
             const subscription = this.socket$?.asObservable().subscribe(msg => {
-                const m = msg as any;
+                const m = msg as ReplMessage;
                 if (m.id === id && m.type === 'COMPLETION_RESULT') {
                     subscription?.unsubscribe();
+                    const completion = m as ReplCompletionMessage;
                     // Backend may return either string[] or CompletionItem[]
-                    const matches = m.payload.matches || [];
-                    const items = matches.map((m: string | CompletionItem) =>
-                        typeof m === 'string' ? { name: m, type: 'unknown' } : m
+                    const matches = completion.payload.matches || [];
+                    const items = matches.map((item: string | CompletionItem) =>
+                        typeof item === 'string' ? { name: item, type: 'unknown' } : item
                     );
                     resolve(items);
                 }
@@ -148,10 +198,11 @@ export class PlaygroundRuntimeService implements ReplRuntime {
         const id = crypto.randomUUID();
         return new Promise((resolve) => {
             const subscription = this.socket$?.asObservable().subscribe(msg => {
-                const m = msg as any;
+                const m = msg as ReplMessage;
                 if (m.id === id && m.type === 'SIGNATURE_RESULT') {
                     subscription?.unsubscribe();
-                    resolve(m.payload.signatures || []);
+                    const sig = m as ReplSignatureMessage;
+                    resolve(sig.payload.signatures || []);
                 }
             });
 

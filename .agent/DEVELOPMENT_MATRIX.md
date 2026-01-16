@@ -50,9 +50,11 @@
 | Item                           | Difficulty | Task                                                          | Description                                          |
 |--------------------------------|------------|---------------------------------------------------------------|------------------------------------------------------|
 | Database & Models Cleanup      | Medium     | [tasks/260115_tech_debt/database_models](./tasks/260115_tech_debt/database_models/) | PostgreSQL verification, SQLModel warnings |
-| Backend Test Sync              | Medium     | [tasks/260115_tech_debt/backend_sync](./tasks/260115_tech_debt/backend_sync/) | Sync tests with schema changes |
-| Frontend Type Safety           | Medium     | [tasks/260115_tech_debt/frontend_type_safety](./tasks/260115_tech_debt/frontend_type_safety/) | Audit and replace `as any` usage |
-| Schema Alignment (is_reusable) | Easy       | [tasks/260115_tech_debt/schema_alignment](./tasks/260115_tech_debt/schema_alignment/) | Add is_reusable to ResourceDefinition |
+| Backend Test Sync              | Medium     | [tasks/260115_tech_debt/backend_sync](./tasks/260115_tech_debt/backend_sync/)         | Sync tests with schema changes                       |
+| Frontend Type Safety           | Medium     | [tasks/260115_tech_debt/frontend_type_safety](./tasks/260115_tech_debt/frontend_type_safety/) | Audit and replace `as any` usage                     |
+| Schema Alignment (is_reusable) | Easy       | [tasks/260115_tech_debt/schema_alignment](./tasks/260115_tech_debt/schema_alignment/) | Add is_reusable to ResourceDefinition                |
+| Deck Config UX & Validation    | Medium     | [tasks/260115_tech_debt/deck_config_ux](./tasks/260115_tech_debt/deck_config_ux/)     | Validation, Vantage deck, and UX improvements        |
+| Missing Production Docs        | Easy       | [tasks/260115_tech_debt/docs_stability](./tasks/260115_tech_debt/docs_stability/)     | Silence 404 snackbar and add missing docs            |
 
 ### UI/UX Implementation (from Redesign Artifacts)
 

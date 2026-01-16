@@ -34,7 +34,14 @@ import {
 } from '../db/repositories';
 import type {
     FunctionProtocolDefinition,
-    FunctionCallLog
+    FunctionCallLog,
+    ProtocolRun,
+    Machine,
+    Resource,
+    MachineDefinition,
+    ResourceDefinition,
+    ParameterDefinition,
+    ProtocolAssetRequirement
 } from '../db/schema';
 
 // Legacy mock data imports (for fallback seeding)
@@ -42,7 +49,7 @@ import { OFFLINE_CAPABILITY_OVERRIDES, PLR_MACHINE_DEFINITIONS, PLR_RESOURCE_DEF
 import { MOCK_PROTOCOL_RUNS } from '../../../assets/browser-data/protocol-runs';
 import { MOCK_PROTOCOLS } from '../../../assets/browser-data/protocols';
 import { transformPlrState } from '../utils/state-transform';
-import type { StateHistory, OperationStateSnapshot, StateSnapshot } from '../models/simulation.models';
+import type { StateHistory, OperationStateSnapshot, StateSnapshot, InferredRequirement, FailureMode, SimulationResult } from '../models/simulation.models';
 
 
 export interface SqliteStatus {
@@ -232,14 +239,6 @@ export class SqliteService {
 
             // Seed definition catalogs if empty (important for IndexedDB loaded DBs)
             this.seedDefinitionCatalogs(db);
-
-            // CLEANUP: Delete existing auto-seeded junk machines if they exist
-            try {
-                db.exec(`DELETE FROM machines WHERE properties_json LIKE '%"is_default":true%'`);
-                console.log('[SqliteService] Cleaned up auto-seeded default machines');
-            } catch (e) {
-                console.warn('[SqliteService] Cleanup failed (likely table does not exist yet)', e);
-            }
 
             // Seed defaults if needed (e.g. if definitions exist but no assets)
             this.seedDefaultAssets(db);
@@ -815,22 +814,22 @@ export class SqliteService {
                     const protocols = this.resultToObjects(res[0]);
 
                     // Fetch Parameters
-                    let parameters: any[] = [];
+                    let parameters: ParameterDefinition[] = [];
                     try {
                         const paramRes = db.exec("SELECT * FROM parameter_definitions");
                         if (paramRes.length > 0) {
-                            parameters = this.resultToObjects(paramRes[0]);
+                            parameters = this.resultToObjects(paramRes[0]) as unknown as ParameterDefinition[];
                         }
                     } catch (e) {
                         console.warn('[SqliteService] Failed to fetch parameters', e);
                     }
 
                     // Fetch Assets
-                    let assets: any[] = [];
+                    let assets: ProtocolAssetRequirement[] = [];
                     try {
                         const assetRes = db.exec("SELECT * FROM protocol_asset_requirements");
                         if (assetRes.length > 0) {
-                            assets = this.resultToObjects(assetRes[0]);
+                            assets = this.resultToObjects(assetRes[0]) as unknown as ProtocolAssetRequirement[];
                         }
                     } catch (e) {
                         console.warn('[SqliteService] Failed to fetch assets', e);
@@ -842,9 +841,9 @@ export class SqliteService {
                             .filter(param => param['protocol_definition_accession_id'] === p['accession_id'])
                             .map(param => ({
                                 ...param,
-                                constraints: param['constraints_json'] ? JSON.parse(param['constraints_json'] as string) : {},
-                                ui_hint: param['ui_hint_json'] ? JSON.parse(param['ui_hint_json'] as string) : {},
-                                itemized_spec: param['itemized_spec_json'] ? JSON.parse(param['itemized_spec_json'] as string) : undefined
+                                constraints: param['constraints_json'] as Record<string, unknown>,
+                                ui_hint: param['ui_hint_json'] as Record<string, unknown>,
+                                itemized_spec: param['itemized_spec_json'] as Record<string, unknown>
                             }));
 
                         // Join Assets
@@ -852,8 +851,8 @@ export class SqliteService {
                             .filter(asset => asset['protocol_definition_accession_id'] === p['accession_id'])
                             .map(asset => ({
                                 ...asset,
-                                constraints: asset['constraints_json'] ? JSON.parse(asset['constraints_json'] as string) : {},
-                                location_constraints: asset['location_constraints_json'] ? JSON.parse(asset['location_constraints_json'] as string) : undefined
+                                constraints: asset['constraints_json'] as Record<string, unknown>,
+                                location_constraints: asset['location_constraints_json'] as Record<string, unknown>
                             }));
 
                         return {
@@ -862,11 +861,11 @@ export class SqliteService {
                             parameters: protocolParams,
                             assets: protocolAssets,
                             tags: p['tags'] ? (typeof p['tags'] === 'string' ? p['tags'].split(',') : p['tags']) : [],
-                            hardware_requirements: p['hardware_requirements_json'] ? JSON.parse(p['hardware_requirements_json'] as string) : {},
-                            computation_graph: p['computation_graph_json'] ? JSON.parse(p['computation_graph_json'] as string) : undefined,
-                            simulation_result: p['simulation_result_json'] ? JSON.parse(p['simulation_result_json'] as string) : undefined,
-                            inferred_requirements: p['inferred_requirements_json'] ? JSON.parse(p['inferred_requirements_json'] as string) : undefined,
-                            failure_modes: p['failure_modes_json'] ? JSON.parse(p['failure_modes_json'] as string) : undefined,
+                            hardware_requirements_json: p['hardware_requirements_json'] ? JSON.parse(p['hardware_requirements_json'] as string) : {},
+                            computation_graph_json: p['computation_graph_json'] ? JSON.parse(p['computation_graph_json'] as string) : undefined,
+                            simulation_result_json: p['simulation_result_json'] ? JSON.parse(p['simulation_result_json'] as string) : undefined,
+                            inferred_requirements_json: p['inferred_requirements_json'] ? JSON.parse(p['inferred_requirements_json'] as string) : undefined,
+                            failure_modes_json: p['failure_modes_json'] ? JSON.parse(p['failure_modes_json'] as string) : undefined,
                         } as unknown as FunctionProtocolDefinition;
                     });
                 } catch (e) {
@@ -895,7 +894,7 @@ export class SqliteService {
                     const protocol = this.resultToObjects(res[0])[0];
 
                     // Fetch Parameters
-                    let protocolParams: any[] = [];
+                    let protocolParams: ParameterDefinition[] = [];
                     try {
                         const paramRes = db.exec(
                             `SELECT * FROM parameter_definitions WHERE protocol_definition_accession_id = '${accessionId}'`
@@ -903,17 +902,17 @@ export class SqliteService {
                         if (paramRes.length > 0) {
                             protocolParams = this.resultToObjects(paramRes[0]).map(param => ({
                                 ...param,
-                                constraints: param['constraints'] ? JSON.parse(param['constraints'] as string) : {},
-                                ui_hint: param['ui_hint'] ? JSON.parse(param['ui_hint'] as string) : {},
-                                itemized_spec: param['itemized_spec'] ? JSON.parse(param['itemized_spec'] as string) : undefined
-                            }));
+                                constraints_json: param['constraints_json'] ? JSON.parse(param['constraints_json'] as string) : {},
+                                ui_hint_json: param['ui_hint_json'] ? JSON.parse(param['ui_hint_json'] as string) : {},
+                                itemized_spec_json: param['itemized_spec_json'] ? JSON.parse(param['itemized_spec_json'] as string) : undefined
+                            } as unknown as ParameterDefinition));
                         }
                     } catch (error) {
                         console.warn('[SqliteService] Failed to fetch parameters for protocol', error);
                     }
 
                     // Fetch Assets
-                    let protocolAssets: any[] = [];
+                    let protocolAssets: ProtocolAssetRequirement[] = [];
                     try {
                         const assetRes = db.exec(
                             `SELECT * FROM protocol_asset_requirements WHERE protocol_definition_accession_id = '${accessionId}'`
@@ -921,9 +920,9 @@ export class SqliteService {
                         if (assetRes.length > 0) {
                             protocolAssets = this.resultToObjects(assetRes[0]).map(asset => ({
                                 ...asset,
-                                constraints: asset['constraints'] ? JSON.parse(asset['constraints'] as string) : {},
-                                location_constraints: asset['location_constraints'] ? JSON.parse(asset['location_constraints'] as string) : undefined
-                            }));
+                                constraints_json: asset['constraints_json'] ? JSON.parse(asset['constraints_json'] as string) : {},
+                                location_constraints_json: asset['location_constraints_json'] ? JSON.parse(asset['location_constraints_json'] as string) : undefined
+                            } as unknown as ProtocolAssetRequirement));
                         }
                     } catch (error) {
                         console.warn('[SqliteService] Failed to fetch assets for protocol', error);
@@ -934,11 +933,11 @@ export class SqliteService {
                         is_top_level: protocol['is_top_level'] === 1 || protocol['is_top_level'] === true,
                         parameters: protocolParams,
                         assets: protocolAssets,
-                        hardware_requirements: protocol['hardware_requirements_json'] ? JSON.parse(protocol['hardware_requirements_json'] as string) : {},
-                        computation_graph: protocol['computation_graph_json'] ? JSON.parse(protocol['computation_graph_json'] as string) : undefined,
-                        simulation_result: protocol['simulation_result_json'] ? JSON.parse(protocol['simulation_result_json'] as string) : undefined,
-                        inferred_requirements: protocol['inferred_requirements_json'] ? JSON.parse(protocol['inferred_requirements_json'] as string) : undefined,
-                        failure_modes: protocol['failure_modes_json'] ? JSON.parse(protocol['failure_modes_json'] as string) : undefined,
+                        hardware_requirements_json: protocol['hardware_requirements_json'] ? JSON.parse(protocol['hardware_requirements_json'] as string) : {},
+                        computation_graph_json: protocol['computation_graph_json'] ? JSON.parse(protocol['computation_graph_json'] as string) : undefined,
+                        simulation_result_json: protocol['simulation_result_json'] ? JSON.parse(protocol['simulation_result_json'] as string) : undefined,
+                        inferred_requirements_json: protocol['inferred_requirements_json'] ? JSON.parse(protocol['inferred_requirements_json'] as string) : undefined,
+                        failure_modes_json: protocol['failure_modes_json'] ? JSON.parse(protocol['failure_modes_json'] as string) : undefined,
                     } as unknown as FunctionProtocolDefinition;
 
                     resolve(result);
@@ -950,7 +949,7 @@ export class SqliteService {
         });
     }
 
-    public getProtocolRuns(): Observable<any[]> {
+    public getProtocolRuns(): Observable<ProtocolRun[]> {
         return this.db$.pipe(
             map(db => {
                 const res = db.exec("SELECT * FROM protocol_runs");
@@ -958,20 +957,20 @@ export class SqliteService {
                 return this.resultToObjects(res[0]).map(r => ({
                     ...r,
                     parameters: r['parameters_json'] ? JSON.parse(r['parameters_json'] as string) : null,
-                    user_params: r['user_params_json'] ? JSON.parse(r['user_params_json'] as string) : null,
-                    protocol: { accession_id: r['protocol_accession_id'] || r['top_level_protocol_definition_accession_id'], name: 'Unknown' }
-                }));
+                    user_params_json: r['user_params_json'] ? JSON.parse(r['user_params_json'] as string) : null,
+                    protocol: { accession_id: r['protocol_accession_id'] || r['top_level_protocol_definition_accession_id'] }
+                } as unknown as ProtocolRun));
             })
         );
     }
 
-    public getTransferLogs(runId: string): Observable<any[]> {
+    public getTransferLogs(runId: string): Observable<FunctionCallLog[]> {
         return this.db$.pipe(
             map(db => {
                 try {
                     const res = db.exec(`SELECT * FROM function_call_logs WHERE protocol_run_accession_id = '${runId}' ORDER BY sequence_in_run ASC`);
                     if (res.length === 0) return [];
-                    return this.resultToObjects(res[0]);
+                    return this.resultToObjects(res[0]) as unknown as FunctionCallLog[];
                 } catch (e) {
                     console.warn('[SqliteService] Failed to fetch transfer logs', e);
                     return [];
@@ -980,13 +979,13 @@ export class SqliteService {
         );
     }
 
-    public getProtocolRun(id: string): Observable<any> {
+    public getProtocolRun(id: string): Observable<ProtocolRun | undefined> {
         return this.getProtocolRuns().pipe(
             map(runs => runs.find(r => r.accession_id === id))
         );
     }
 
-    public createProtocolRun(run: any): Observable<any> {
+    public createProtocolRun(run: ProtocolRun & { protocol_definition_accession_id: string }): Observable<ProtocolRun> {
         return this.db$.pipe(
             map(db => {
                 const stmt = db.prepare(`
@@ -1003,8 +1002,8 @@ export class SqliteService {
                     run.status || 'QUEUED',
                     run.created_at || now,
                     now,
-                    JSON.stringify(run.input_parameters || run.input_parameters_json || {}),
-                    JSON.stringify(run.properties || run.properties_json || {})
+                    JSON.stringify(run.input_parameters_json || {}),
+                    JSON.stringify(run.properties_json || {})
                 ]);
                 stmt.free();
                 this.saveToStore(db);  // Persist to IndexedDB
@@ -1013,7 +1012,7 @@ export class SqliteService {
         );
     }
 
-    public getResources(): Observable<any[]> {
+    public getResources(): Observable<Resource[]> {
         return this.db$.pipe(
             map(db => {
                 try {
@@ -1021,8 +1020,8 @@ export class SqliteService {
                     if (res.length === 0) return [];
                     return this.resultToObjects(res[0]).map(r => ({
                         ...r,
-                        properties: r['properties_json'] ? JSON.parse(r['properties_json'] as string) : {}
-                    }));
+                        properties_json: r['properties_json'] ? JSON.parse(r['properties_json'] as string) : {}
+                    } as unknown as Resource));
                 } catch (e) {
                     console.warn('[SqliteService] Failed to fetch resources', e);
                     return [];
@@ -1031,7 +1030,7 @@ export class SqliteService {
         );
     }
 
-    public getMachines(): Observable<any[]> {
+    public getMachines(): Observable<Machine[]> {
         return this.db$.pipe(
             map(db => {
                 try {
@@ -1039,9 +1038,9 @@ export class SqliteService {
                     if (res.length === 0) return [];
                     return this.resultToObjects(res[0]).map(m => ({
                         ...m,
-                        properties: m['properties_json'] ? JSON.parse(m['properties_json'] as string) : {},
-                        connection_info: m['connection_info_json'] ? JSON.parse(m['connection_info_json'] as string) : (m['connection_info'] || {})
-                    }));
+                        properties_json: m['properties_json'] ? JSON.parse(m['properties_json'] as string) : {},
+                        connection_info_json: m['connection_info_json'] ? JSON.parse(m['connection_info_json'] as string) : (m['connection_info'] || {})
+                    } as unknown as Machine));
                 } catch (e) {
                     console.warn('[SqliteService] Failed to fetch machines', e);
                     return [];
@@ -1052,13 +1051,13 @@ export class SqliteService {
 
 
 
-    public getResourceDefinitions(): Observable<any[]> {
+    public getResourceDefinitions(): Observable<ResourceDefinition[]> {
         return this.db$.pipe(
             map(db => {
                 try {
                     const res = db.exec("SELECT * FROM resource_definitions");
                     if (res.length === 0) return [];
-                    return this.resultToObjects(res[0]);
+                    return this.resultToObjects(res[0]) as unknown as ResourceDefinition[];
                 } catch (e) {
                     console.warn('[SqliteService] Failed to fetch resource definitions', e);
                     return [];
@@ -1067,13 +1066,13 @@ export class SqliteService {
         );
     }
 
-    public getMachineDefinitions(): Observable<any[]> {
+    public getMachineDefinitions(): Observable<MachineDefinition[]> {
         return this.db$.pipe(
             map(db => {
                 try {
                     const res = db.exec("SELECT * FROM machine_definitions");
                     if (res.length === 0) return [];
-                    return this.resultToObjects(res[0]);
+                    return this.resultToObjects(res[0]) as unknown as MachineDefinition[];
                 } catch (e) {
                     console.warn('[SqliteService] Failed to fetch machine definitions', e);
                     return [];
@@ -1101,9 +1100,9 @@ export class SqliteService {
      * Returns inferred requirements, failure modes, and simulation result.
      */
     public getProtocolSimulationData(protocolId: string): Observable<{
-        inferred_requirements: any[];
-        failure_modes: any[];
-        simulation_result: any | null;
+        inferred_requirements: InferredRequirement[];
+        failure_modes: FailureMode[];
+        simulation_result: SimulationResult | null;
     } | null> {
         return this.db$.pipe(
             map(db => {
@@ -1406,7 +1405,7 @@ export class SqliteService {
     // Deck State Management
     // ============================================
 
-    public getDeckState(machineId: string): Observable<any> {
+    public getDeckState(machineId: string): Observable<Record<string, unknown> | null> {
         return this.db$.pipe(
             map(db => {
                 try {
@@ -1434,7 +1433,7 @@ export class SqliteService {
         );
     }
 
-    public saveDeckState(machineId: string, state: any): Observable<void> {
+    public saveDeckState(machineId: string, state: Record<string, unknown>): Observable<void> {
         return this.db$.pipe(
             map(db => {
                 try {

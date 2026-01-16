@@ -86,13 +86,15 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
               <button 
                 mat-icon-button 
                 (click)="reloadNotebook()"
-                matTooltip="Restart Kernel (reload notebook)">
+                matTooltip="Restart Kernel (reload notebook)"
+                aria-label="Restart Kernel (reload notebook)">
                 <mat-icon>restart_alt</mat-icon>
               </button>
               <button 
                 mat-icon-button 
                 (click)="openInventory()"
                 matTooltip="Open Inventory Dialog"
+                aria-label="Open Inventory Dialog"
                 color="primary">
                 <mat-icon>inventory_2</mat-icon>
               </button>

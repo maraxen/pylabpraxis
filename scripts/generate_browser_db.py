@@ -90,13 +90,17 @@ def discover_resources_static(conn: sqlite3.Connection) -> int:
                 if res.capabilities.modules:
                     props["modules"] = res.capabilities.modules
 
+            # Determine consumable/reusable based on category
+            is_consumable = category in ["TipRack", "Trough", "Reservoir"]
+            is_reusable = category in ["Plate", "Carrier", "Deck"]
+
             conn.execute(
                 """
                 INSERT OR REPLACE INTO resource_definitions (
                     accession_id, fqn, name, description, plr_category,
-                    is_consumable, vendor, manufacturer,
+                    is_consumable, is_reusable, vendor, manufacturer,
                     properties_json, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     accession_id,
@@ -104,7 +108,8 @@ def discover_resources_static(conn: sqlite3.Connection) -> int:
                     res.name,
                     res.docstring or "",
                     category,
-                    category in ["TipRack", "Plate", "Trough"],
+                    1 if is_consumable else 0,
+                    1 if is_reusable else 0,
                     res.vendor,
                     res.manufacturer,
                     safe_json_dumps(props),
@@ -113,10 +118,11 @@ def discover_resources_static(conn: sqlite3.Connection) -> int:
                 ),
             )
             count += 1
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  [WARN] Failed to insert resource {res.name}: {e}")
 
     conn.commit()
+    print(f"[generate_browser_db] Inserted {count} resource definitions")
     return count
 
 
@@ -199,42 +205,16 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
                 ),
             )
             
-            # Seed a sample instance for this definition to demo maintenance
-            instance_id = generate_uuid_from_fqn(f"instance:{machine.fqn}")
-            instance_name = f"Demo {machine.name}"
-            
-            # Insert directly into machines table (includes Asset fields)
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO machines (
-                    accession_id, name, asset_type, fqn,
-                    machine_category, status, machine_definition_accession_id, 
-                    maintenance_enabled, maintenance_schedule_json, 
-                    location_label, is_simulation_override, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    instance_id,
-                    instance_name,
-                    "machine",
-                    machine.fqn,
-                    category,
-                    "available",
-                    accession_id,
-                    1,
-                    safe_json_dumps(maintenance_schedule),
-                    "Main Lab, Bench 1",
-                    1,  # All browser-mode machines are simulated
-                    now,
-                    now,
-                )
-            )
+            # NOTE: We intentionally do NOT seed machine instances.
+            # Users should instantiate machines from definitions via the UI.
+            # This keeps the inventory clean and follows the catalog model.
 
             count += 1
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  [WARN] Failed to insert machine {machine.name}: {e}")
 
     conn.commit()
+    print(f"[generate_browser_db] Inserted {count} machine definitions")
     return count
 
 
@@ -278,14 +258,11 @@ def discover_decks_static(conn: sqlite3.Connection) -> int:
                 ),
             )
             count += 1
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  [WARN] Failed to insert deck {deck.name}: {e}")
 
     conn.commit()
-    return count
-
-
-    conn.commit()
+    print(f"[generate_browser_db] Inserted {count} deck definitions")
     return count
 
 
@@ -352,9 +329,9 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
                         category,
                         safe_json_dumps(["demo", category.lower().replace(" ", "-")]),
                         safe_json_dumps(definition.hardware_requirements or {}),
-                        safe_json_dumps([]), # Inferred requirements (simulation step)
-                        safe_json_dumps([]), # Failure modes (simulation step)
-                        safe_json_dumps(None), # Simulation result
+                        safe_json_dumps([]), # Inferred requirements (empty = no issues found)
+                        safe_json_dumps([]), # Failure modes (empty = simulation passed)
+                        safe_json_dumps({"status": "ready", "simulated": True}), # Simulation result (non-null = analyzed)
                         safe_json_dumps(definition.computation_graph),
                         definition.source_hash,
                         1 if definition.requires_deck else 0,
@@ -436,10 +413,10 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
                 count += 1
 
         except Exception as e:
-            print(f"Failed to process {protocol_file.name}: {e}")
-            pass
+            print(f"  [WARN] Failed to process {protocol_file.name}: {e}")
 
     conn.commit()
+    print(f"[generate_browser_db] Inserted {count} protocol definitions")
     return count
 
 
@@ -535,48 +512,15 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
                 ),
             )
 
-            # Seed a simulated instance for this backend
-            from praxis.backend.models.pydantic_internals.maintenance import MAINTENANCE_DEFAULTS
-            
-            # Use 'category' for maintenance (mapped from class_type)
-            maintenance_schedule = MAINTENANCE_DEFAULTS.get(category, MAINTENANCE_DEFAULTS["DEFAULT"]).model_dump()
-            
-            instance_id = generate_uuid_from_fqn(f"instance:{backend.fqn}")
-            instance_name = f"{backend.name} (Simulated)"
-            
-            # Insert directly into machines table (includes Asset fields)
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO machines (
-                    accession_id, name, asset_type, fqn,
-                    machine_category, status, machine_definition_accession_id, 
-                    maintenance_enabled, maintenance_schedule_json, 
-                    location_label, connection_info, is_simulation_override, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    instance_id,
-                    instance_name,
-                    "machine",
-                    backend.fqn,
-                    category,
-                    "available",
-                    accession_id,
-                    1,
-                    safe_json_dumps(maintenance_schedule),
-                    "Virtual Lab",
-                    safe_json_dumps({"backend": "simulated"}),
-                    1,  # All browser-mode machines are simulated
-                    now,
-                    now,
-                )
-            )
+            # NOTE: We intentionally do NOT seed machine instances from backends.
+            # Users should instantiate machines from definitions via the UI.
 
             count += 1
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  [WARN] Failed to insert backend {backend.name}: {e}")
 
     conn.commit()
+    print(f"[generate_browser_db] Inserted {count} backend definitions")
     return count
 
 
@@ -643,37 +587,8 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
                 ),
             )
             
-            # Seed an instance for it too
-            instance_id = generate_uuid_from_fqn(f"instance:{fqn}")
-            instance_name = f"Simulated {short_name}"
-            
-            # Insert directly into machines table (includes Asset fields)
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO machines (
-                    accession_id, name, asset_type, fqn,
-                    machine_category, status, machine_definition_accession_id, 
-                    maintenance_enabled, maintenance_schedule_json, 
-                    location_label, connection_info, is_simulation_override, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    instance_id,
-                    instance_name,
-                    "machine",
-                    fqn,
-                    short_name,
-                    "available",
-                    accession_id,
-                    1,
-                    "{}",
-                    "Virtual Lab",
-                    safe_json_dumps({"backend": "simulated"}),
-                    1,  # All browser-mode machines are simulated
-                    now,
-                    now,
-                )
-            )
+            # NOTE: We intentionally do NOT seed machine instances.
+            # Users should instantiate machines from definitions via the UI.
 
 
 def insert_metadata(conn: sqlite3.Connection) -> None:

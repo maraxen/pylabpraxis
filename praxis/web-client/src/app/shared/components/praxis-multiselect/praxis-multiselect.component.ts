@@ -74,19 +74,6 @@ import { FilterOption } from '../../services/filter-result.service';
           }
         </mat-select>
       </mat-form-field>
-
-      <div class="praxis-chip-grid">
-        @if (_currentValues().length > 0) {
-          @for (val of _currentValues(); track val) {
-            <span class="selection-chip">
-              <span class="chip-label">{{ getOptionLabel(val) }}</span>
-              <mat-icon class="remove-icon" (click)="removeValue(val, $event)">close</mat-icon>
-            </span>
-          }
-        } @else {
-          <span class="chip-none">None</span>
-        }
-      </div>
     </div>
   `,
   styleUrls: [], // Sourced from praxis-select.scss

@@ -11,6 +11,8 @@ import { ExecutionMessage, ExecutionState, ExecutionStatus } from '../models/exe
 import { MachineCompatibility } from '../models/machine-compatibility.models';
 import { ProtocolsService } from '../../../core/api-generated/services/ProtocolsService';
 import { ApiWrapperService } from '../../../core/services/api-wrapper.service';
+import { ProtocolRun } from '../../../core/db/schema';
+import { ProtocolRunStatus, ProtocolSourceStatus } from '../../../core/db/enums';
 
 @Injectable({
   providedIn: 'root'
@@ -115,14 +117,26 @@ export class ExecutionService {
     });
 
     // Persist run to IndexedDB
-    const runRecord = {
+    const runRecord: ProtocolRun & { protocol_definition_accession_id: string } = {
       accession_id: runId,
       protocol_definition_accession_id: protocolId,
       name: runName,
-      status: 'QUEUED',
+      status: 'queued',
       created_at: new Date().toISOString(),
-      input_parameters_json: JSON.stringify(parameters || {}),
-      properties_json: JSON.stringify({ notes, simulation_mode: true })
+      updated_at: new Date().toISOString(),
+      start_time: null,
+      end_time: null,
+      data_directory_path: null,
+      input_parameters_json: (parameters || {}) as Record<string, unknown>,
+      properties_json: { notes, simulation_mode: true } as Record<string, unknown>,
+      top_level_protocol_definition_accession_id: protocolId,
+      duration_ms: null,
+      resolved_assets_json: null,
+      output_data_json: null,
+      initial_state_json: null,
+      final_state_json: null,
+      created_by_user: null,
+      previous_accession_id: null
     };
 
     this.sqliteService.createProtocolRun(runRecord).subscribe({

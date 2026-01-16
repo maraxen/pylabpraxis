@@ -1,9 +1,18 @@
-import { Component, ChangeDetectionStrategy, Input, Output, EventEmitter } from '@angular/core';
+import { Component, ChangeDetectionStrategy, Input, Output, EventEmitter, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActiveFilter } from '../view-controls/view-controls.types';
+
+/** Flattened chip representing a single filter value */
+export interface FilterChip {
+    filterId: string;
+    filterLabel: string;
+    value: unknown;
+    displayValue: string;
+    icon: string;
+}
 
 @Component({
     selector: 'app-filter-chip-bar',
@@ -15,19 +24,17 @@ import { ActiveFilter } from '../view-controls/view-controls.types';
         MatTooltipModule
     ],
     template: `
-    <div class="filter-chip-bar" [class.has-filters]="filters.length > 0">
-      @if (filters.length > 0) {
+    <div class="filter-chip-bar" [class.has-filters]="chips().length > 0">
+      @if (chips().length > 0) {
         <span class="active-label">Active:</span>
         <div class="chips-scroll-container">
-          @for (filter of filters; track filter.filterId) {
-            <div class="filter-chip" 
-                 [matTooltip]="filter.displayText"
+          @for (chip of chips(); track chip.filterId + '-' + chip.displayValue) {
+            <div class="filter-chip"
+                 [matTooltip]="chip.filterLabel + ': ' + chip.displayValue"
                  matTooltipPosition="above">
-              <mat-icon class="filter-icon">{{ getIcon(filter.filterId) }}</mat-icon>
-              <span class="chip-content">{{ getShortLabel(filter) }}</span>
-              <button mat-icon-button class="chip-remove" (click)="onRemove(filter.filterId)">
-                <mat-icon>close</mat-icon>
-              </button>
+              <mat-icon class="filter-icon">{{ chip.icon }}</mat-icon>
+              <span class="chip-label">{{ chip.displayValue }}</span>
+              <mat-icon class="chip-remove" (click)="onRemoveValue(chip)">close</mat-icon>
             </div>
           }
           <button mat-button class="clear-all-link" (click)="onClearAll()">Clear all</button>
@@ -47,9 +54,9 @@ import { ActiveFilter } from '../view-controls/view-controls.types';
       padding: 4px 8px;
       border-radius: 8px;
       min-height: 32px;
-      
+
       &.has-filters {
-        background: var(--theme-surface-subtle);
+        background: var(--theme-surface-subtle, rgba(0,0,0,0.02));
         animation: fadeIn 0.2s ease;
       }
     }
@@ -66,69 +73,74 @@ import { ActiveFilter } from '../view-controls/view-controls.types';
     .chips-scroll-container {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       overflow-x: auto;
       flex: 1;
-      padding-bottom: 2px; // for scrollbar offset
-      
+      padding-bottom: 2px;
+
       &::-webkit-scrollbar {
-        height: 0;
+        height: 4px;
+      }
+      &::-webkit-scrollbar-thumb {
+        background-color: var(--mat-sys-outline-variant);
+        border-radius: 4px;
       }
     }
 
     .filter-chip {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      height: 26px;
-      padding: 0 4px 0 8px;
-      background: var(--theme-surface-elevated);
-      border: 1px solid var(--theme-border);
-      border-radius: 13px;
-      font-size: 0.75rem;
-      color: var(--theme-text-primary);
+      gap: 4px;
+      height: 24px;
+      padding: 2px 6px;
+      background: var(--mat-sys-surface-container-high);
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
       white-space: nowrap;
-      animation: slideIn 0.2s ease;
+      animation: slideIn 0.15s ease;
       user-select: none;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
 
       &:hover {
         border-color: var(--primary-color);
-        background: var(--theme-surface-container-high);
+        background: var(--mat-sys-surface-container-highest);
       }
 
       .filter-icon {
         font-size: 14px;
         width: 14px;
         height: 14px;
-        color: var(--theme-text-tertiary);
+        color: var(--primary-color);
+        flex-shrink: 0;
       }
 
-      .chip-content {
-        font-weight: 500;
-        max-width: 150px;
+      .chip-label {
+        // Gradient text styling matching praxis-select
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        max-width: 120px;
         overflow: hidden;
         text-overflow: ellipsis;
       }
 
       .chip-remove {
-        width: 18px;
-        height: 18px;
-        line-height: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        
-        .mat-icon {
-          font-size: 14px;
-          width: 14px;
-          height: 14px;
-        }
-
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+        cursor: pointer;
         color: var(--theme-text-secondary);
+        opacity: 0.6;
+        flex-shrink: 0;
+        transition: all 0.15s ease;
+
         &:hover {
+          opacity: 1;
           color: var(--mat-sys-error);
-          background: rgba(var(--mat-sys-error-rgb), 0.1);
         }
       }
     }
@@ -140,7 +152,8 @@ import { ActiveFilter } from '../view-controls/view-controls.types';
       color: var(--primary-color);
       font-weight: 600;
       min-width: auto;
-      
+      flex-shrink: 0;
+
       &:hover {
         text-decoration: underline;
         background: transparent;
@@ -153,15 +166,25 @@ import { ActiveFilter } from '../view-controls/view-controls.types';
     }
 
     @keyframes slideIn {
-      from { transform: translateX(-10px); opacity: 0; }
+      from { transform: translateX(-8px); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
   `],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FilterChipBarComponent {
-    @Input() filters: ActiveFilter[] = [];
+    private _filters = signal<ActiveFilter[]>([]);
+
+    @Input() set filters(value: ActiveFilter[]) {
+        this._filters.set(value || []);
+    }
+
+    /** Emits { filterId, value } when a specific value is removed */
+    @Output() removeValue = new EventEmitter<{ filterId: string; value: unknown }>();
+
+    /** Emits filterId when the entire filter group should be removed (legacy support) */
     @Output() remove = new EventEmitter<string>();
+
     @Output() clearAll = new EventEmitter<void>();
 
     // Icon mapping for known filter types
@@ -174,11 +197,36 @@ export class FilterChipBarComponent {
         'date': 'calendar_today',
         'user': 'person',
         'tag': 'label',
-        'priority': 'priority_high'
+        'priority': 'priority_high',
+        'vendor': 'store',
+        'manufacturer': 'factory',
+        'plr_category': 'science'
     };
 
-    getIcon(filterId: string): string {
+    /** Flatten filters into individual chips - one per value */
+    chips = computed<FilterChip[]>(() => {
+        const result: FilterChip[] = [];
+
+        for (const filter of this._filters()) {
+            const icon = this.getIcon(filter.filterId);
+
+            for (const value of filter.values) {
+                result.push({
+                    filterId: filter.filterId,
+                    filterLabel: filter.label,
+                    value: value,
+                    displayValue: String(value),
+                    icon
+                });
+            }
+        }
+
+        return result;
+    });
+
+    private getIcon(filterId: string): string {
         const key = filterId.toLowerCase();
+
         // Check exact match
         if (this.iconMap[key]) return this.iconMap[key];
 
@@ -190,21 +238,11 @@ export class FilterChipBarComponent {
         return 'filter_alt'; // Default icon
     }
 
-    getShortLabel(filter: ActiveFilter): string {
-        // If values are displayed, just show values, otherwise show label: values
-        // We want a compact representation
-        const values = filter.values.join(', ');
-        if (values.length > 20) {
-            return `${filter.label}: ${values.substring(0, 18)}...`;
-        }
-        return `${filter.label}: ${values}`;
+    onRemoveValue(chip: FilterChip): void {
+        this.removeValue.emit({ filterId: chip.filterId, value: chip.value });
     }
 
-    onRemove(filterId: string) {
-        this.remove.emit(filterId);
-    }
-
-    onClearAll() {
+    onClearAll(): void {
         this.clearAll.emit();
     }
 }
