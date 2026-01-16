@@ -124,10 +124,27 @@ After detailed analysis, the optimal architecture is:
 
 **Objective**: Verify browser mode state inspection works end-to-end.
 
-- [ ] Unit tests for TypeScript transformation functions
-- [ ] Integration test: run protocol in browser mode, verify state captured
-- [ ] E2E test: State Inspector shows real data in browser mode
-- [ ] Compare browser mode and backend mode state output for consistency
+**Unit Tests (state-transform.spec.ts)**:
+- [ ] Test `extractTipState()` with various head_state configurations
+- [ ] Test `extractLiquidVolumes()` with multiple plates
+- [ ] Test `inferParentName()` with different naming patterns
+- [ ] Test `inferWellId()` extraction
+- [ ] Test `transformPlrState()` full transformation
+
+**Integration Tests**:
+- [ ] Verify function call logs are persisted during protocol execution
+- [ ] Verify `getRunStateHistory()` returns real data instead of mock
+- [ ] Verify state transformation produces correct StateSnapshot format
+
+**E2E Tests**:
+- [ ] Run protocol in browser mode, open State Inspector
+- [ ] Verify timeline shows actual operations (not mock data)
+- [ ] Verify tip counts update correctly during pick_up_tips/drop_tips
+- [ ] Verify liquid volumes update during aspirate/dispense
+
+**Comparison Tests**:
+- [ ] Run same protocol in backend mode and browser mode
+- [ ] Compare state history output for consistency
 
 **Results**:
 > [To be captured]
@@ -138,11 +155,17 @@ After detailed analysis, the optimal architecture is:
 
 - **Parent Task**: FE-01 (State Inspection Backend) - COMPLETE
 - **Related Technical Debt**: TD-802 (resolved for backend, open for browser)
-- **Files**:
-  - `praxis/web-client/src/app/core/services/sqlite.service.ts`
-  - `praxis/web-client/src/app/core/services/simulation-results.service.ts`
-  - `praxis/web-client/src/app/core/services/pyodide.service.ts`
-  - `scripts/generate_browser_schema.py`
+- **Planning Documents**:
+  - [INVESTIGATION_SUMMARY.md](./INVESTIGATION_SUMMARY.md) - Analysis of current state
+  - [PLANNING_SUMMARY.md](./PLANNING_SUMMARY.md) - Detailed implementation plan
+- **Files to Create**:
+  - `praxis/web-client/src/app/core/utils/state-transform.ts` - TypeScript transformation
+  - `praxis/web-client/src/app/core/utils/state-transform.spec.ts` - Unit tests
+- **Files to Modify**:
+  - `praxis/web-client/src/assets/python/web_bridge.py` - State capture hooks
+  - `praxis/web-client/src/app/core/workers/python.worker.ts` - Message handling
+  - `praxis/web-client/src/app/features/run-protocol/services/execution.service.ts` - Persistence
+  - `praxis/web-client/src/app/core/services/sqlite.service.ts` - Retrieval implementation
 
 ---
 
