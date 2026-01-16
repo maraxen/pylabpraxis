@@ -10,3 +10,7 @@
 
 - [ ] **Unit Tests for Protocol Execution** (Priority: P2)
 - [ ] **Integration Tests for Deck Setup** (Priority: P3)
+- [ ] **REPL Tests Migration** (Priority: P3, TD-201)
+  - Migrate `tests/core/test_repl_session.py` to frontend/integration test suite
+  - Requires Docker-based integration job with PyLabRobot + hardware simulation backends
+  - Currently skipped in backend CI due to interactive import requirements

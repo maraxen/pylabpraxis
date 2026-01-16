@@ -1,8 +1,8 @@
 # Praxis Development Matrix
 
-**Last Updated**: 2026-01-15 (Batch 260115 Planning)
+**Last Updated**: 2026-01-15 (Tech Debt Migration)
 **Purpose**: Current iteration work items with priority and difficulty ratings.
-**Current Batch**: [260115_dev_cycle](prompts/260115_dev_cycle/README.md)
+**Current Batch**: [260115_feature_enhancements](prompts/260115_feature_enhancements/README.md)
 
 ---
 
@@ -36,6 +36,24 @@
 ---
 
 ## P2 - High Priority (Alpha Quality)
+
+### Feature Enhancements (Batch 260115)
+
+| Item                           | Difficulty | Task/Prompt                                                   | Description                                          |
+|--------------------------------|------------|---------------------------------------------------------------|------------------------------------------------------|
+| State Inspection Backend       | Hard       | [prompts/260115_feature_enhancements](./prompts/260115_feature_enhancements/README.md) | Post-run "time travel" for backend executions |
+| Browser Resources Init         | Easy       | [prompts/260115_feature_enhancements](./prompts/260115_feature_enhancements/README.md) | Seed 1-of-each labware in browser mode |
+| View Controls Filter Chips     | Medium     | [prompts/260115_feature_enhancements](./prompts/260115_feature_enhancements/README.md) | Unified filter chip bar with icons |
+| Simulation Machine Visibility  | Hard       | [prompts/260115_feature_enhancements](./prompts/260115_feature_enhancements/README.md) | Frontend-only sim until instantiation |
+
+### Technical Debt (Batch 260115)
+
+| Item                           | Difficulty | Task                                                          | Description                                          |
+|--------------------------------|------------|---------------------------------------------------------------|------------------------------------------------------|
+| Database & Models Cleanup      | Medium     | [tasks/260115_tech_debt/database_models](./tasks/260115_tech_debt/database_models/) | PostgreSQL verification, SQLModel warnings |
+| Backend Test Sync              | Medium     | [tasks/260115_tech_debt/backend_sync](./tasks/260115_tech_debt/backend_sync/) | Sync tests with schema changes |
+| Frontend Type Safety           | Medium     | [tasks/260115_tech_debt/frontend_type_safety](./tasks/260115_tech_debt/frontend_type_safety/) | Audit and replace `as any` usage |
+| Schema Alignment (is_reusable) | Easy       | [tasks/260115_tech_debt/schema_alignment](./tasks/260115_tech_debt/schema_alignment/) | Add is_reusable to ResourceDefinition |
 
 ### UI/UX Implementation (from Redesign Artifacts)
 
@@ -134,9 +152,9 @@
 
 | Priority | Count | Focus                                |
 |----------|-------|--------------------------------------|
-| **P1**   | 1     | Alpha blockers (WebSerial)           |
-| **P2**   | 8     | Implementation & Hardware validation |
-| **P3**   | 3     | UI Enhancements & Maintenance        |
+| **P1**   | 0     | All top blockers resolved            |
+| **P2**   | 14    | Features + Tech Debt + Hardware      |
+| **P3**   | 2     | Maintenance & Agentic Workflow       |
 | **P4**   | 1     | Long-term validation                 |
 
-**Total Active Items**: 13
+**Total Active Items**: 17
