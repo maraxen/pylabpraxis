@@ -28,6 +28,7 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { PraxisMultiselectComponent } from '../praxis-multiselect/praxis-multiselect.component';
 import { ViewTypeToggleComponent } from './view-type-toggle.component';
 import { GroupBySelectComponent } from './group-by-select.component';
+import { FilterChipBarComponent } from '../filter-chip-bar/filter-chip-bar.component';
 import { ViewControlsMobileSheetComponent } from './view-controls-mobile-sheet.component';
 import {
   ViewControlsState,
@@ -53,6 +54,7 @@ import {
     PraxisMultiselectComponent,
     ViewTypeToggleComponent,
     GroupBySelectComponent,
+    FilterChipBarComponent,
   ],
   template: `
 <div class="view-controls-container" [class.mobile]="isMobile()">
@@ -186,20 +188,11 @@ import {
   }
 
   <!-- Active Filter Chips (Row 2) -->
-  @if (activeFilters().length > 0) {
-    <div class="active-filters-row">
-      <span class="active-label">Active:</span>
-      <div class="chips-scroll-container">
-        @for (filter of activeFilters(); track filter.filterId) {
-          <span class="filter-chip">
-            <span class="chip-content">{{ filter.displayText }}</span>
-            <mat-icon class="chip-remove" (click)="removeFilter(filter.filterId)">close</mat-icon>
-          </span>
-        }
-        <button mat-button class="clear-all-link" (click)="clearAll()">Clear all</button>
-      </div>
-    </div>
-  }
+  <app-filter-chip-bar
+    [filters]="activeFilters()"
+    (remove)="removeFilter($event)"
+    (clearAll)="clearAll()"
+  ></app-filter-chip-bar>
 </div>
   `,
   styles: [`
@@ -361,77 +354,6 @@ import {
   font-weight: 500;
 }
 
-.active-filters-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 8px;
-  background: var(--theme-surface-subtle);
-  border-radius: 8px;
-  animation: fadeIn 0.2s ease;
-
-  .active-label {
-    font-size: 0.6875rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: var(--theme-text-secondary);
-    letter-spacing: 0.03125rem;
-  }
-}
-
-.chips-scroll-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-  flex: 1;
-  padding-bottom: 2px; // for scrollbar offset
-  
-  &::-webkit-scrollbar {
-    height: 0;
-  }
-}
-
-.filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  height: 1.5rem;
-  padding: 0 0.5rem;
-  background: var(--theme-surface-elevated);
-  border: 1px solid var(--theme-border);
-  border-radius: 0.75rem;
-  font-size: 0.75rem;
-  color: var(--theme-text-primary);
-  white-space: nowrap;
-  animation: slideIn 0.2s ease;
-
-  .chip-content {
-    font-weight: 500;
-  }
-
-  .chip-remove {
-    font-size: 14px;
-    width: 14px;
-    height: 14px;
-    cursor: pointer;
-    color: var(--theme-text-secondary);
-    &:hover {
-      color: var(--mat-sys-error);
-    }
-  }
-}
-
-.clear-all-link {
-  height: 1.5rem;
-  padding: 0 0.5rem;
-  font-size: 0.6875rem;
-  color: var(--primary-color);
-  font-weight: 600;
-  &:hover {
-    text-decoration: underline;
-  }
-}
 
 .controls-row-mobile {
   display: flex;
@@ -464,16 +386,6 @@ import {
     justify-content: center;
     font-weight: 700;
   }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideIn {
-  from { transform: translateX(-10px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
 }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
