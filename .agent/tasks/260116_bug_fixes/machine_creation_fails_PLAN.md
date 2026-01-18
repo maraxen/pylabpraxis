@@ -26,8 +26,10 @@ Fix the "Machine Creation Fails - NOT NULL constraint" issue where adding a new 
 - Update `createMachine` method in `AssetService`.
 - When creating the `newMachine` object for Browser Mode, add default values:
   - `maintenance_enabled: false`
-  - `maintenance_schedule_json: '{}'`
+  - `maintenance_schedule_json: '{}'` (empty JSON object as string, for SQLite TEXT column)
 - This satisfies the `NOT NULL` constraint in the SQLite schema.
+
+**Note**: Verify that `maintenance_schedule_json` is stored as a JSON string (TEXT column in SQLite). If the ORM/repository layer expects a parsed object, use `{}` instead of `'{}'`.
 
 ## Verification Plan
 

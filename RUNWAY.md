@@ -29,6 +29,14 @@
 
 ---
 
+## Phase 1.5: Hardware Verification
+
+- [ ] **Physical Hardware Checks**
+    - [ ] Test on physical robot (if available).
+    - [ ] Verify Serial/USB connectivity.
+
+---
+
 ## Phase 2: The Rename (GitHub)
 
 > ⚠️ **Warning**: This action will change the remote URL.
@@ -51,6 +59,10 @@
 - [ ] **Update Documentation References**
   - [ ] Grep for `pylabpraxis` and replace with `praxis` in `README.md`, `pyproject.toml`, `mkdocs.yml`, etc.
   - [ ] `git commit -am "chore: rename references to praxis"`
+
+- [ ] **Documentation Review**
+  - [ ] Review all docs for broken links.
+  - [ ] Verify screenshots match the new UI (post-polish).
 
 ---
 

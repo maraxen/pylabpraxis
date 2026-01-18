@@ -30,10 +30,58 @@ Fix the "Missing Deck Definitions" bug where only 2 deck definitions are found i
 
 #### [MODIFY] [generate_browser_db.py](file:///Users/mar/Projects/pylabpraxis/scripts/generate_browser_db.py)
 
-- Update `discover_decks_static` function:
-  - Call `parser.discover_resource_factories()` in addition to `parser.discover_resource_classes()`.
-  - Filter the discovered factories for `class_type == PLRClassType.DECK`.
-  - Combine both lists (classes and factories) before iterating and inserting.
+**Implement Hybrid Approach**: Static analysis with manual fallback registry.
+
+```python
+# Define critical decks that must always be included
+CRITICAL_DECKS = [
+    {
+        'name': 'STARDeck',
+        'fqn': 'pylabrobot.liquid_handling.backends.hamilton.STAR.STARDeck',
+        'category': 'Deck',
+        'brand': 'Hamilton'
+    },
+    {
+        'name': 'STARLetDeck',
+        'fqn': 'pylabrobot.liquid_handling.backends.hamilton.STARlet.STARLetDeck',
+        'category': 'Deck',
+        'brand': 'Hamilton'
+    },
+    {
+        'name': 'VantageDeck',
+        'fqn': 'pylabrobot.liquid_handling.backends.hamilton.Vantage.VantageDeck',
+        'category': 'Deck',
+        'brand': 'Hamilton'
+    },
+    # Add Opentrons and Tecan as needed
+]
+
+def discover_decks_static(parser: PLRSourceParser) -> list:
+    """Discover deck definitions using static analysis + manual fallback"""
+    
+    # Attempt static analysis
+    discovered_classes = parser.discover_resource_classes()
+    discovered_factories = parser.discover_resource_factories()
+    
+    # Filter for decks
+    deck_classes = [r for r in discovered_classes if r.class_type == PLRClassType.DECK]
+    deck_factories = [r for r in discovered_factories if r.class_type == PLRClassType.DECK]
+    
+    # Combine and deduplicate by FQN
+    all_decks = {d.fqn: d for d in deck_classes + deck_factories}
+    
+    # Add critical decks if missing (fallback)
+    for critical in CRITICAL_DECKS:
+        if critical['fqn'] not in all_decks:
+            logger.warning(f"Static analysis missed {critical['name']}, adding from manual registry")
+            # Create a ResourceInfo object from the critical deck dict
+            all_decks[critical['fqn']] = create_resource_info_from_dict(critical)
+    
+    return list(all_decks.values())
+```
+
+- Update `discover_decks_static` function to use this hybrid approach
+- Log warnings when falling back to manual registry (indicates static analysis needs improvement)
 
 ## Verification Plan
 

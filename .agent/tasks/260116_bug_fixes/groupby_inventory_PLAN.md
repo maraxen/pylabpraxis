@@ -40,27 +40,55 @@ Modify the `computed` config in the following files to remove `{ label: 'None', 
 
 Modify `praxis/web-client/src/app/features/assets/components/resource-accordion/resource-accordion.component.ts`:
 
-* Add a `flatResources` computed signal (or equivalent logic) to get a flat list of `ResourceDefinitionGroup` items when not grouping.
-  * Currently `filteredGroups` returns `ResourceGroup[]`.
-  * We can compute a flat list similar to `filteredGroups` but without the category wrapping.
-* Update Template:
+**Add `filteredFlatDefinitions` computed signal**:
 
-    ```html
-    @if (viewState().viewType === 'accordion') {
-      @if (viewState().groupBy) {
-        <mat-accordion multi="true">
-          @for (group of filteredGroups(); track group.category) { ... }
-        </mat-accordion>
-      } @else {
-        <!-- Flat List Logic -->
-        <div class="definition-list">
-          @for (defGroup of filteredFlatDefinitions(); track defGroup.definition.accession_id) {
-             <!-- Reuse the definition-item template -->
+```typescript
+/**
+ * Flat list of definitions when groupBy is null
+ * Flattens the grouped structure while preserving all filters
+ */
+readonly filteredFlatDefinitions = computed(() => {
+  // Get the already-filtered groups
+  const groups = this.filteredGroups();
+  
+  // Flatten: extract items from each group and combine
+  return groups
+    .map(group => group.items)  // Extract items arrays
+    .flat();                     // Flatten into single array
+});
+```
+
+**Update Template**:
+
+```html
+@if (viewState().viewType === 'accordion') {
+  @if (viewState().groupBy) {
+    <!-- Grouped Accordion View -->
+    <mat-accordion multi="true">
+      @for (group of filteredGroups(); track group.category) {
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>{{ group.category }} ({{ group.count }})</mat-panel-title>
+          </mat-expansion-panel-header>
+          @for (item of group.items; track item.definition.accession_id) {
+            <!-- definition-item template -->
           }
-        </div>
+        </mat-expansion-panel>
       }
-    }
-    ```
+    </mat-accordion>
+  } @else {
+    <!-- Flat List View (groupBy: null) -->
+    <div class="definition-list">
+      @for (item of filteredFlatDefinitions(); track item.definition.accession_id) {
+        <!-- Reuse the same definition-item template/component -->
+        <app-resource-definition-item [item]="item"></app-resource-definition-item>
+      }
+    </div>
+  }
+}
+```
+
+**Note**: If the definition-item markup is currently inline, consider extracting it to a separate Angular component (`ResourceDefinitionItemComponent`) for better reusability.
 
 ### 3. Verify Defensive Checks
 

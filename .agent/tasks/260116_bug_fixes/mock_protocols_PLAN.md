@@ -37,12 +37,28 @@ The current Browser Mode database is seeded with "Mock Protocols" (e.g., "Daily 
 - **Refactor `/protocols/runs/queue` handler**:
   - Replace mock array filtering with `sqliteService.getProtocolRuns()`.
   - Filter using RxJS (e.g., `status` in `['PENDING', 'PREPARING', 'QUEUED', 'RUNNING']`).
+  - **Return proper empty paginated response** when no runs exist:
+
+    ```typescript
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        items: [],
+        total: 0,
+        page: 1,
+        size: 50
+      }
+    }));
+    ```
+
   - Enrich the response with `protocol_name` (fetched from `sqliteService.getProtocols()` or by joining data) if required by the UI.
 - **Refactor `/protocols/runs/records` handler**:
   - Replace mock array mapping with `sqliteService.getProtocolRuns()`.
   - Ensure the response format matches the expected schemas (including `duration_ms` calculation if needed).
+  - Return proper empty paginated response structure (same as above).
 - **Refactor `/protocols/runs/records/:id` handler**:
   - Use `sqliteService.getProtocolRun(id)` instead of searching the mock array.
+  - Return 404 if run not found.
 
 ### assets/browser-data
 
@@ -67,11 +83,23 @@ The current Browser Mode database is seeded with "Mock Protocols" (e.g., "Daily 
 2. **Verify Protocol Library**:
    - Confirm "Daily System Maintenance" and "Cell Culture Feed" are **NOT** present.
    - Confirm real protocols (e.g., `PCR Prep`) are present.
-3. **Verify Recent Runs**:
-   - Confirm "Recent Runs" list is empty on fresh load.
-4. **Create Verification Run**:
+3. **Verify Empty State UI**:
+   - Navigate to **Run History** or "Recent Runs" widget.
+   - **Verify proper empty state is displayed**:
+     - Should show an empty state component with icon and message (e.g., "No Runs Yet")
+     - Should include helpful description (e.g., "Start a protocol simulation to see your history here")
+     - Should NOT show loading spinner indefinitely
+     - Should NOT show console errors or undefined data warnings
+4. **Verify Analytics/Metrics**:
+   - Check that any dashboard metrics (avg runtime, success rate, etc.) handle zero runs gracefully
+   - Should display "N/A" or "0" instead of errors or NaN
+5. **Create Verification Run**:
    - Start a new run of a real protocol (e.g., `Generic Liquid Handling`).
    - Verify it appears in the "queue" (Running) tab.
    - Wait for completion.
    - Verify it appears in the "history" (Run Records) list with correct name and status.
    - Click the run to ensure the Detail View loads correctly (verifying `getProtocolRun(id)` logic).
+6. **Verify Response Structure**:
+   - Open browser DevTools Network tab
+   - Check `/protocols/runs/queue` response when empty
+   - Verify it returns `{items: [], total: 0, page: 1, size: 50}` not `null` or `[]`

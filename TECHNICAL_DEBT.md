@@ -41,3 +41,14 @@
   - [ ] Planning Workflow (e.g., `/plan`)
   - [ ] Execution Workflow (e.g., `/execute`)
   - [ ] Testing & Verification Workflow (e.g., `/verify`)
+
+## Asset Selection UI
+
+- **Expand Asset Selection**: Add a button next to the current selection dropdown that triggers a full Dialog Series (similar to Inventory Dialog) to handle complex asset filtering and simulation configuration more gracefully. This should complement, not replace, the existing quick-select functionality.
+
+## Protocol Logic & Indices
+
+- **Complex Index Mapping (1:1)**: Currently, the Well Selector logic for selective transfers attempts 1:1 mapping between source and destination indices, which is brittle and complex to maintain.
+  - [ ] Refactor protocols to use a single index argument where possible.
+  - [ ] Revisit 1:1 mapping logic when the simulation engine can robustly infer indices from the tracers.
+  - [ ] Indices inference from simulation mode inspection and tracers should be formalized.
