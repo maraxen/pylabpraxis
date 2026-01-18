@@ -41,7 +41,7 @@ type Theme = 'light' | 'dark' | 'system';
     <div class="p-6">
       <h1 class="text-3xl font-bold mb-6">Settings</h1>
 
-      <div class="max-w-3xl space-y-6">
+      <div class="max-w-5xl mx-auto space-y-6">
         <!-- Appearance -->
         <mat-card class="glass-panel">
           <mat-card-header>
@@ -91,7 +91,7 @@ type Theme = 'light' | 'dark' | 'system';
               </mat-slide-toggle>
             </div>
             
-            <mat-divider class="my-3"></mat-divider>
+            <mat-divider class="settings-divider"></mat-divider>
 
             <div class="flex items-center justify-between">
               <div>
@@ -247,7 +247,7 @@ type Theme = 'light' | 'dark' | 'system';
                 </div>
              </div>
 
-             <mat-divider class="my-4"></mat-divider>
+             <mat-divider class="settings-divider"></mat-divider>
 
              <div class="flex items-center justify-between">
                <div>
@@ -272,11 +272,17 @@ type Theme = 'light' | 'dark' | 'system';
     }
 
     .glass-panel {
-      background: var(--glass-bg);
-      backdrop-filter: var(--glass-blur);
-      -webkit-backdrop-filter: var(--glass-blur);
-      border: var(--glass-border);
-      box-shadow: var(--glass-shadow);
+      background: rgba(30, 30, 45, 0.7) !important; /* Darker, more opaque */
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      border-radius: 16px;
+    }
+
+    .settings-divider {
+      margin: 1.5rem 0;
+      opacity: 0.3;
     }
     
     /* Fix for icon cutoff due to scaling */

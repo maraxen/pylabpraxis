@@ -35,9 +35,9 @@ import { isBrowserModeEnv } from '../../core/services/mode.service';
             }
     
             @if (error) {
-              <div class="error-content" style="text-align: center; color: #ff6b6b;">
-                <p>{{ error }}</p>
-                <button mat-button (click)="retryLogin()" style="color: white; border: 1px solid white; padding: 0.5rem 1rem; margin-top: 1rem; cursor: pointer; background: transparent; border-radius: 4px;">
+              <div class="error-content">
+                <p class="error-message">{{ error }}</p>
+                <button mat-button (click)="retryLogin()" class="retry-button">
                   Retry Login
                 </button>
               </div>
@@ -135,9 +135,9 @@ import { isBrowserModeEnv } from '../../core/services/mode.service';
 
     .glass-card {
       width: 100%;
-      background: rgba(255, 255, 255, 0.08) !important;
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      background: rgba(20, 20, 30, 0.8) !important;
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 24px !important;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
@@ -156,9 +156,41 @@ import { isBrowserModeEnv } from '../../core/services/mode.service';
     }
 
     .loading-text {
-      color: rgba(255, 255, 255, 0.7);
+      color: rgba(255, 255, 255, 0.9);
       font-size: 1rem;
       margin: 0;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      font-weight: 500;
+    }
+
+    .error-content {
+      text-align: center;
+      color: var(--mat-sys-error);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .error-message {
+      font-weight: 500;
+      margin: 0;
+    }
+
+    .retry-button {
+      background: rgba(255, 255, 255, 0.1) !important;
+      border: 1px solid rgba(255, 255, 255, 0.3) !important;
+      color: white !important;
+      padding: 0.5rem 1.5rem !important;
+      cursor: pointer;
+      border-radius: 8px !important;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .retry-button:hover {
+      background: rgba(255, 255, 255, 0.2) !important;
     }
 
     @media (max-width: 480px) {
@@ -191,17 +223,38 @@ export class LoginComponent implements OnInit {
   private isBrowserMode = isBrowserModeEnv();
 
   async ngOnInit() {
+    // Check for simulation parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceLogin = urlParams.get('forceLogin') === 'true';
+    const mockError = urlParams.get('mockError');
+    const mockLoading = urlParams.get('mockLoading') === 'true';
+
     // Browser mode: redirect directly to home without auth
-    if (this.isBrowserMode) {
+    // Skip this check if forceLogin or mock parameters are present
+    if (this.isBrowserMode && !forceLogin && !mockError && !mockLoading) {
       console.log('[Browser Mode] Bypassing login, redirecting to home');
       window.location.href = '/app/home';
+      return;
+    }
+
+    // Handle Mock Error State
+    if (mockError) {
+      this.loading = false;
+      this.error = mockError === 'true' ? 'Simulated Login Error' : mockError;
+      return;
+    }
+
+    // Handle Mock Loading State
+    if (mockLoading) {
+      this.loading = true;
       return;
     }
 
     this.loading = true;
     try {
       // If already authenticated, redirect to home
-      if (this.keycloakService.isAuthenticated()) {
+      // Skip this check if forceLogin is true
+      if (this.keycloakService.isAuthenticated() && !forceLogin) {
         window.location.href = '/app/home';
         return;
       }

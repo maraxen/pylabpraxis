@@ -236,16 +236,7 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
     }
 
     .nav-label {
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 0.3px;
-      text-transform: uppercase;
-      opacity: 0.8;
-    }
-
-    .nav-item.active .nav-label {
-      opacity: 1;
-      font-weight: 700;
+      display: none; /* Hidden in rail mode - rely on tooltips */
     }
 
     /* Logo */
@@ -340,21 +331,10 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
       height: 48px;
     }
 
-    .nav-label.small {
-      font-size: 8px;
-      opacity: 0.6;
-    }
-
     .mode-badge mat-icon {
       font-size: 20px;
       width: 20px;
       height: 20px;
-    }
-
-    .mode-badge .nav-label {
-      font-size: 9px;
-      font-weight: 600;
-      text-transform: uppercase;
     }
 
   /* Main Content */

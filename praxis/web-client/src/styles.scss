@@ -177,10 +177,23 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --aurora-primary: rgba(237, 122, 155, 0.1);
   --aurora-secondary: rgba(115, 169, 194, 0.1);
 
+  // Surface and Overlays
+  --mat-sys-surface: #1e1e2d;
+  --mdc-bottom-sheet-container-color: #1e1e2d;
+  --mdc-dialog-container-color: #1e1e2d;
+  --mat-menu-container-color: #1e1e2d;
+
   // Gradient text
   --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, #ff8fa8 50%, var(--tertiary-color) 100%);
+}
 
+/* Default Theme (Dark) */
+:root {
   @include mat.all-component-themes($dark-theme);
+}
+
+.dark-theme {
+  @include mat.all-component-colors($dark-theme);
 }
 
 // Light theme class (toggled via JS)
@@ -226,10 +239,50 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --aurora-primary: rgba(237, 122, 155, 0.15);
   --aurora-secondary: rgba(115, 169, 194, 0.15);
 
+  // Surface and Overlays
+  --mat-sys-surface: #ffffff;
+  --mdc-bottom-sheet-container-color: #fffdf5;
+  --mdc-dialog-container-color: #fffdf5;
+  --mat-menu-container-color: #fffdf5;
+
   // Gradient text for light theme
   --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, #ff8fa8 50%, var(--tertiary-color) 100%);
 
   @include mat.all-component-themes($light-theme);
+
+  /* Force Surface Colors for Light Theme */
+  --mat-sys-surface: #ffffff !important;
+  --mat-sys-surface-container-lowest: #ffffff !important;
+  --mat-sys-surface-container-low: #ffffff !important;
+  --mat-sys-surface-container: #fffdf5 !important;
+  --mat-sys-surface-container-high: #fbf9e6 !important;
+  --mat-sys-surface-container-highest: #f5f2d1 !important;
+
+  /* Explicit Overlay Overrides */
+  --mat-bottom-sheet-container-background-color: #fffdf5 !important;
+  --mdc-bottom-sheet-container-color: #fffdf5 !important;
+  --mdc-dialog-container-color: #fffdf5 !important;
+  --mat-menu-container-color: #fffdf5 !important;
+
+  /* Ensure Overlays inherit correct variables */
+  &.cdk-overlay-container,
+  .cdk-overlay-container {
+    --mat-sys-surface-container-low: #ffffff !important;
+    --mat-bottom-sheet-container-background-color: #fffdf5 !important;
+    --mdc-bottom-sheet-container-color: #fffdf5 !important;
+    --mat-sys-on-surface: #020617 !important;
+    --mat-sys-on-surface-variant: #1e293b !important;
+  }
+
+  /* Force Bottom Sheet & Menus to Light Background */
+  &.mat-mdc-bottom-sheet-container,
+  .mat-mdc-bottom-sheet-container,
+  .mat-bottom-sheet-container,
+  &.mat-mdc-menu-panel,
+  .mat-mdc-menu-panel {
+    background-color: #fffdf5 !important;
+    color: #020617 !important;
+  }
 }
 
 // Dark theme class (for explicit toggle)
@@ -460,5 +513,67 @@ body {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+  }
+}
+
+/* Bottom Sheet Theme Sync */
+.mat-mdc-bottom-sheet-container {
+  background-color: var(--mdc-bottom-sheet-container-color) !important;
+  color: var(--theme-text-primary) !important;
+  border-top: 1px solid var(--theme-border) !important;
+  border-radius: 16px 16px 0 0 !important;
+
+  /* Ensure all nested elements inherit correctly if needed */
+  * {
+    --mat-sys-on-surface: var(--theme-text-primary);
+    --mat-sys-on-surface-variant: var(--theme-text-secondary);
+  }
+}
+
+/* Ensure Light Theme class works for overlays when applied to the overlay container */
+.light-theme.cdk-overlay-container .mat-mdc-bottom-sheet-container,
+.light-theme .mat-mdc-bottom-sheet-container,
+.light-theme.mat-mdc-bottom-sheet-container {
+  background-color: #fffdf5 !important;
+  color: #020617 !important;
+  --mdc-bottom-sheet-container-color: #fffdf5 !important;
+}
+
+/* Menu Theme Sync (Add Filter Popover) */
+.mat-mdc-menu-panel {
+  background-color: var(--mat-menu-container-color) !important;
+  color: var(--theme-text-primary) !important;
+  border: 1px solid var(--theme-border) !important;
+
+  .mat-mdc-menu-content {
+    background-color: transparent !important;
+  }
+}
+
+/* Material Select Customizations within themed overlays */
+.light-theme {
+  --mat-select-panel-background-color: #fbf9e6;
+  --mat-standard-button-state-layer-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Snackbar Overrides for Visibility */
+.mat-mdc-snack-bar-container {
+  /* Ensure it sits above bottom bars */
+  margin-bottom: 48px !important; 
+  z-index: 2000 !important;
+  
+  .mdc-snackbar__surface {
+    background-color: #323232 !important; /* Solid dark background */
+    box-shadow: 0 3px 5px -1px rgba(0,0,0,.2), 0 6px 10px 0 rgba(0,0,0,.14), 0 1px 18px 0 rgba(0,0,0,.12);
+  }
+
+  .mdc-snackbar__label {
+    color: rgba(255, 255, 255, 0.95) !important; /* High contrast text */
+    font-weight: 500;
+  }
+
+  .mat-mdc-snack-bar-action {
+    color: #ff4081 !important; /* High contrast pink for action */
+    font-weight: 700;
   }
 }

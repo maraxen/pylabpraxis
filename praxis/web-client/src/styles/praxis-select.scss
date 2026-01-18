@@ -2,9 +2,10 @@
 
 // Theme Variables (Project Integrated)
 $primary-color: var(--primary-color);
-$border-color: var(--mat-sys-outline-variant);
-$hover-bg: var(--mat-sys-surface-container-high);
-$text-color: var(--mat-sys-on-surface);
+$border-color: var(--theme-border);
+$hover-bg: var(--theme-surface-elevated);
+$text-color: var(--theme-text-primary);
+$placeholder-color: var(--theme-text-secondary);
 
 // Gradient text mixin
 @mixin gradient-text {

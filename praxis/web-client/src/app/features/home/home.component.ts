@@ -94,9 +94,9 @@ interface RecentRun {
             <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-[var(--mat-sys-tertiary-container)] shrink-0">
               <mat-icon class="text-[var(--mat-sys-tertiary)]">precision_manufacturing</mat-icon>
             </div>
-            <div class="flex flex-col items-end ml-auto opacity-60">
+            <div class="flex flex-col items-end ml-auto">
               <span class="text-sm font-bold text-sys-text-secondary">{{ simulatedOnlineMachines() }}/{{ simulatedMachinesCount() }}</span>
-              <span class="text-[8px] uppercase font-bold tracking-tighter">Simulated</span>
+              <span class="text-[8px] uppercase font-bold tracking-tighter text-sys-text-tertiary">Simulated</span>
             </div>
           </div>
           <div class="card-content">
@@ -184,7 +184,7 @@ interface RecentRun {
                 </div>
               }
             } @else {
-              <div class="flex flex-col items-center justify-center py-12 text-sys-text-tertiary opacity-60">
+              <div class="flex flex-col items-center justify-center py-12 empty-state-text">
                 <mat-icon class="!w-16 !h-16 !text-[64px] mb-4">science</mat-icon>
                 <p class="mb-4 text-center">No experiments running right now</p>
                 <a mat-stroked-button class="!border-primary !text-primary hover:!bg-primary/10" routerLink="/app/run">Start a Protocol</a>
@@ -223,14 +223,9 @@ interface RecentRun {
                     <mat-icon class="!text-sys-text-tertiary !w-4 !h-4 !text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</mat-icon>
                   </a>
                 }
-                <div class="px-1 pt-3">
-                  <button mat-stroked-button (click)="clearDemoRuns()" class="!rounded-xl w-full !text-sys-text-tertiary hover:!text-sys-text-primary transition-colors">
-                    <mat-icon class="!w-4 !h-4 !text-[16px]">delete_sweep</mat-icon>
-                    Clear Demo Runs
-                  </button>
-                </div>
+
               } @else {
-                <div class="p-8 text-center text-sys-text-tertiary opacity-60">
+                <div class="p-8 text-center empty-state-text">
                   <mat-icon class="!w-12 !h-12 !text-[48px] mb-2">history</mat-icon>
                   <p>No recent activity</p>
                 </div>
@@ -242,14 +237,54 @@ interface RecentRun {
     </div>
   `,
   styles: [`
-    /* Custom utility overrides requiring specificity can go here, but mostly empty now */
     :host {
       display: block;
       width: 100%;
     }
-    
-    .border-green-500-30 {
-      border-color: rgba(74, 222, 128, 0.3);
+
+    /* Improve card visibility in dark mode */
+    .praxis-card {
+      background: var(--mat-sys-surface-container-low);
+      border: 1px solid var(--mat-sys-outline-variant) !important;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Premium cards with gradient and enhanced aurora glow */
+    .praxis-card.premium {
+      background: linear-gradient(135deg, var(--mat-sys-surface-container-low) 0%, var(--mat-sys-surface-container) 100%) !important;
+    }
+
+    .praxis-card.premium::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at 20% 20%, var(--mat-sys-primary-container) 0%, transparent 40%),
+                  radial-gradient(circle at 80% 80%, var(--mat-sys-secondary-container) 0%, transparent 40%);
+      opacity: 0.15;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Better empty state visibility */
+    .empty-state-text {
+      color: var(--mat-sys-on-surface-variant) !important;
+      opacity: 1 !important;
+    }
+
+    /* Improve secondary text contrast */
+    .text-sys-text-secondary {
+      color: var(--mat-sys-on-surface-variant) !important;
+    }
+
+    .card-subtitle {
+      color: var(--mat-sys-on-surface-variant);
+      font-size: 0.875rem;
+      font-weight: 500;
     }
   `]
 })
@@ -319,48 +354,11 @@ export class HomeComponent implements OnInit, OnDestroy {
     );
   }
 
-  clearDemoRuns() {
-    this.recentRuns.set([]);
-    localStorage.setItem('praxis_demo_runs_cleared', 'true');
-  }
+
 
   private loadRuns() {
-    if (localStorage.getItem('praxis_demo_runs_cleared') === 'true') {
-      this.recentRuns.set([]);
-      return;
-    }
-
-    // Simulated recent runs for browser mode
-    // Using realistic names from bundled protocols
-    this.recentRuns.set([
-      {
-        id: '1',
-        name: 'PCR Prep Run #12',
-        protocolName: 'PCR Prep (96-well)',
-        status: 'completed',
-        progress: 100,
-        startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        duration: '45 min'
-      },
-      {
-        id: '2',
-        name: 'Cell Culture Feed Batch A',
-        protocolName: 'Cell Culture Feed (24-well)',
-        status: 'completed',
-        progress: 100,
-        startedAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
-        duration: '32 min'
-      },
-      {
-        id: '3',
-        name: 'System Calibration',
-        protocolName: 'Daily System Maintenance',
-        status: 'failed',
-        progress: 67,
-        startedAt: new Date(Date.now() - 8 * 60 * 60 * 1000),
-        duration: '18 min'
-      }
-    ]);
+    // Start with empty recent runs - real runs will be populated by the application state
+    this.recentRuns.set([]);
   }
 
   private subscribeToExecution() {

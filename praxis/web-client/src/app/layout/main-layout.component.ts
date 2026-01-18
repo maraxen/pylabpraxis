@@ -40,35 +40,35 @@ import { toSignal } from '@angular/core/rxjs-interop';
 
         <!-- Navigation Items -->
         <div class="nav-items">
-          <a class="nav-item" routerLink="/app/home" routerLinkActive="active">
+          <a class="nav-item" routerLink="/app/home" routerLinkActive="active" matTooltip="Home" matTooltipPosition="right">
             <mat-icon>dashboard</mat-icon>
             <span class="nav-label">Home</span>
           </a>
-          <a class="nav-item" routerLink="/app/assets" routerLinkActive="active">
+          <a class="nav-item" routerLink="/app/assets" routerLinkActive="active" matTooltip="Assets" matTooltipPosition="right">
             <mat-icon>science</mat-icon>
             <span class="nav-label">Assets</span>
           </a>
-          <a class="nav-item" routerLink="/app/protocols" routerLinkActive="active">
+          <a class="nav-item" routerLink="/app/protocols" routerLinkActive="active" matTooltip="Protocols" matTooltipPosition="right">
             <mat-icon>assignment</mat-icon>
             <span class="nav-label">Protocols</span>
           </a>
-          <a class="nav-item" routerLink="/app/run" routerLinkActive="active">
+          <a class="nav-item" routerLink="/app/run" routerLinkActive="active" matTooltip="Run Protocol" matTooltipPosition="right">
             <mat-icon>play_circle</mat-icon>
             <span class="nav-label">Run</span>
           </a>
-          <a class="nav-item" routerLink="/app/workcell" routerLinkActive="active">
+          <a class="nav-item" routerLink="/app/workcell" routerLinkActive="active" matTooltip="Workcell View" matTooltipPosition="right">
             <mat-icon>view_in_ar</mat-icon>
             <span class="nav-label">Workcell</span>
           </a>
-          <a class="nav-item" routerLink="/app/playground" routerLinkActive="active">
+          <a class="nav-item" routerLink="/app/playground" routerLinkActive="active" matTooltip="Playground" matTooltipPosition="right">
             <mat-icon>terminal</mat-icon>
             <span class="nav-label">Playground</span>
           </a>
-          <a class="nav-item" routerLink="/app/data" routerLinkActive="active">
+          <a class="nav-item" routerLink="/app/data" routerLinkActive="active" matTooltip="Data Analysis" matTooltipPosition="right">
             <mat-icon>bar_chart</mat-icon>
             <span class="nav-label">Data</span>
           </a>
-          <a class="nav-item" routerLink="/app/settings" routerLinkActive="active">
+          <a class="nav-item" routerLink="/app/settings" routerLinkActive="active" matTooltip="Settings" matTooltipPosition="right">
             <mat-icon>settings</mat-icon>
             <span class="nav-label">Settings</span>
           </a>
@@ -134,10 +134,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
       flex-direction: column;
       width: 72px;
       min-width: 72px;
-      background: rgba(30, 30, 45, 0.6); /* Semi-transparent dark */
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--mat-sys-surface-container);
+      border-right: 1px solid var(--mat-sys-outline-variant);
       padding: 8px 0;
       overflow: hidden;
       z-index: 50;
@@ -155,8 +153,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
       font-size: 32px;
       width: 32px;
       height: 32px;
-      color: var(--primary-color);
-      filter: drop-shadow(0 0 8px rgba(237, 122, 155, 0.4));
+      color: var(--mat-sys-primary);
+      filter: drop-shadow(0 0 8px var(--mat-sys-primary-fixed-dim));
     }
 
     .nav-items {
@@ -172,50 +170,44 @@ import { toSignal } from '@angular/core/rxjs-interop';
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 12px 0;
+      padding: 16px 0;
       border-radius: 16px;
       text-decoration: none;
-      color: rgba(255, 255, 255, 0.5);
-      transition: all 0.2s ease;
+      color: var(--mat-sys-on-surface-variant);
+      transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s ease;
       cursor: pointer;
-      border: 1px solid transparent;
+      border: 2px solid transparent;
     }
 
     .nav-item mat-icon {
       font-size: 24px;
       width: 24px;
       height: 24px;
-      margin-bottom: 4px;
       transition: transform 0.2s ease;
     }
 
     .nav-label {
-      font-size: 11px;
-      font-weight: 500;
-      text-align: center;
-      line-height: 1.2;
+      display: none;
     }
 
     .nav-item:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: white;
-      transform: translateY(-1px);
+      background: var(--mat-sys-surface-variant);
+      transform: scale(1.02);
     }
     
     .nav-item:hover mat-icon {
-      transform: scale(1.1);
-      color: var(--primary-color);
+      color: var(--mat-sys-primary);
     }
 
     .nav-item.active {
-      background: rgba(237, 122, 155, 0.15); /* Primary low opacity */
-      color: white;
-      border-color: rgba(237, 122, 155, 0.3);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+      border-width: 2px;
+      border-color: var(--mat-sys-primary);
     }
 
     .nav-item.active mat-icon {
-      color: var(--primary-color);
+      color: var(--mat-sys-primary);
     }
 
     /* Bottom Controls */
@@ -223,10 +215,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
       display: flex;
       flex-direction: column;
       gap: 4px;
-      padding: 8px;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 16px 8px;
       margin-top: auto;
-      background: rgba(0, 0, 0, 0.1);
+      background: transparent;
     }
 
     .nav-control-btn {
@@ -234,38 +225,33 @@ import { toSignal } from '@angular/core/rxjs-interop';
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 8px 0;
+      padding: 12px 0;
       border-radius: 12px;
       background: transparent;
       border: none;
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--mat-sys-on-surface-variant);
       cursor: pointer;
       transition: all 0.2s ease;
     }
 
     .nav-control-btn mat-icon {
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
-      margin-bottom: 2px;
-    }
-
-    .nav-control-btn .nav-label {
-      font-size: 10px;
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
     }
 
     .nav-control-btn:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: white;
+      background: var(--mat-sys-surface-variant);
+      color: var(--mat-sys-on-surface);
     }
 
     .nav-control-btn.active {
-      background: rgba(237, 122, 155, 0.15);
-      color: white;
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
     }
 
     .nav-control-btn.active mat-icon {
-      color: var(--primary-color);
+      color: var(--mat-sys-primary);
     }
 
     /* Main Content */
@@ -289,18 +275,6 @@ import { toSignal } from '@angular/core/rxjs-interop';
       .nav-rail {
         width: 56px;
         min-width: 56px;
-      }
-
-      .nav-label {
-        display: none;
-      }
-
-      .nav-item {
-        padding: 16px 0;
-      }
-
-      .nav-control-btn {
-        padding: 12px 0;
       }
     }
 
