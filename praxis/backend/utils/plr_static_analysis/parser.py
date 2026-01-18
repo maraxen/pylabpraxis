@@ -176,6 +176,16 @@ class PLRSourceParser:
     ]
     return self._backend_classes
 
+  def discover_frontend_classes(self) -> list[DiscoveredClass]:
+    """Discover frontend classes only.
+
+    Returns:
+      List of discovered frontend classes (non-abstract).
+
+    """
+    all_classes = self.discover_all_classes()
+    return [c for c in all_classes if c.class_type in MACHINE_FRONTEND_TYPES and not c.is_abstract]
+
   def discover_deck_classes(self) -> list[DiscoveredClass]:
     """Discover deck classes.
 

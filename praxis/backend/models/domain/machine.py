@@ -20,6 +20,8 @@ from praxis.backend.utils.db import JsonVariant
 
 if TYPE_CHECKING:
   from praxis.backend.models.domain.deck import Deck, DeckDefinition
+  from praxis.backend.models.domain.machine_backend import MachineBackendDefinition
+  from praxis.backend.models.domain.machine_frontend import MachineFrontendDefinition
   from praxis.backend.models.domain.outputs import FunctionDataOutput
   from praxis.backend.models.domain.protocol import AssetRequirement, ProtocolRun
   from praxis.backend.models.domain.resource import Resource, ResourceDefinition
@@ -256,6 +258,22 @@ class Machine(MachineBase, Asset, table=True):
     description="Reference to machine definition catalog",
     foreign_key="machine_definitions.accession_id",
   )
+  # NEW: Explicit frontend/backend definition references
+  frontend_definition_accession_id: uuid.UUID | None = Field(
+    default=None,
+    description="Reference to frontend definition (new separation)",
+    foreign_key="machine_frontend_definitions.accession_id",
+  )
+  backend_definition_accession_id: uuid.UUID | None = Field(
+    default=None,
+    description="Reference to backend definition (new separation)",
+    foreign_key="machine_backend_definitions.accession_id",
+  )
+  backend_config: dict[str, Any] | None = Field(
+    default=None,
+    sa_type=JsonVariant,
+    description="Backend-specific configuration (port, IP, baud rate, etc.)",
+  )
 
   # Relationships
   decks: list["Deck"] = Relationship(
@@ -306,6 +324,9 @@ class Machine(MachineBase, Asset, table=True):
   deck_child_definition: Optional["DeckDefinition"] = Relationship()
   current_protocol_run: Optional["ProtocolRun"] = Relationship()
   machine_definition: Optional["MachineDefinition"] = Relationship()
+  # NEW: Frontend/backend definition relationships
+  frontend_definition: Optional["MachineFrontendDefinition"] = Relationship()
+  backend_definition: Optional["MachineBackendDefinition"] = Relationship()
 
 
 class MachineCreate(MachineBase):
@@ -316,6 +337,10 @@ class MachineCreate(MachineBase):
   resource_properties_json: dict[str, Any] | None = None
   resource_initial_status: str | None = None
   resource_counterpart_accession_id: uuid.UUID | None = None
+  # NEW: Frontend/backend definition references
+  frontend_definition_accession_id: uuid.UUID | None = None
+  backend_definition_accession_id: uuid.UUID | None = None
+  backend_config: dict[str, Any] | None = None
 
 
 from praxis.backend.models.domain.asset import AssetUpdate
@@ -347,6 +372,10 @@ class MachineUpdate(AssetUpdate):
   maintenance_enabled: bool | None = None
   maintenance_schedule_json: dict[str, Any] | None = None
   last_maintenance_json: dict[str, Any] | None = None
+  # NEW: Frontend/backend definition references
+  frontend_definition_accession_id: uuid.UUID | None = None
+  backend_definition_accession_id: uuid.UUID | None = None
+  backend_config: dict[str, Any] | None = None
 
   resource_def_name: str | None = None
   resource_properties_json: dict[str, Any] | None = None

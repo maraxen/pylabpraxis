@@ -27,6 +27,30 @@ from .domain.machine import (
 from .domain.machine import (
   MachineDefinition as MachineDefinition,
 )
+from .domain.machine_backend import (
+  MachineBackendDefinition as MachineBackendDefinition,
+)
+from .domain.machine_backend import (
+  MachineBackendDefinitionCreate as MachineBackendDefinitionCreate,
+)
+from .domain.machine_backend import (
+  MachineBackendDefinitionRead as MachineBackendDefinitionRead,
+)
+from .domain.machine_backend import (
+  MachineBackendDefinitionUpdate as MachineBackendDefinitionUpdate,
+)
+from .domain.machine_frontend import (
+  MachineFrontendDefinition as MachineFrontendDefinition,
+)
+from .domain.machine_frontend import (
+  MachineFrontendDefinitionCreate as MachineFrontendDefinitionCreate,
+)
+from .domain.machine_frontend import (
+  MachineFrontendDefinitionRead as MachineFrontendDefinitionRead,
+)
+from .domain.machine_frontend import (
+  MachineFrontendDefinitionUpdate as MachineFrontendDefinitionUpdate,
+)
 from .domain.outputs import (
   FunctionDataOutput as FunctionDataOutput,
 )
@@ -77,6 +101,7 @@ from .domain.workcell import Workcell as Workcell
 from .enums import (
   AssetReservationStatusEnum,
   AssetType,
+  BackendTypeEnum,
   DataOutputTypeEnum,
   FunctionCallStatusEnum,
   MachineCategoryEnum,
@@ -193,11 +218,20 @@ __all__ = [
   "FunctionProtocolDefinition",
   "LocationConstraintsModel",
   "MachineBase",
+  "MachineBackendDefinition",
+  "MachineBackendDefinitionCreate",
+  "MachineBackendDefinitionRead",
+  "MachineBackendDefinitionUpdate",
   "MachineCategoryEnum",
   "MachineCreate",
+  "MachineFrontendDefinition",
+  "MachineFrontendDefinitionCreate",
+  "MachineFrontendDefinitionRead",
+  "MachineFrontendDefinitionUpdate",
   "MachineResponse",
   "MachineStatusEnum",
   "MachineUpdate",
+  "BackendTypeEnum",
   "ParameterConstraintsModel",
   "ParameterDefinition",
   "ParameterMetadataModel",

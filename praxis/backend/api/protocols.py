@@ -30,7 +30,13 @@ from praxis.backend.models.domain.protocol import (
   FunctionProtocolDefinitionRead as FunctionProtocolDefinitionResponse,
 )
 from praxis.backend.core.state_transform import transform_plr_state
-from praxis.backend.models.domain.simulation import StateHistory, OperationStateSnapshot, StateSnapshot, TipStateSnapshot
+from praxis.backend.core.utils.state_diff import apply_diff
+from praxis.backend.models.domain.simulation import (
+  StateHistory,
+  OperationStateSnapshot,
+  StateSnapshot,
+  TipStateSnapshot,
+)
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
 
@@ -220,10 +226,26 @@ async def get_run_state_history(
     result = await db_session.execute(stmt)
     logs = result.scalars().all()
 
-    # 3. Map to snapshots
+    # 3. Reconstruct and Map to snapshots
     operations = []
+    current_full_state = run.initial_state_json or {}
+
+    def reconstruct(current, stored):
+      if not stored:
+        return current
+      if isinstance(stored, dict) and stored.get("_is_diff"):
+        return apply_diff(current, stored.get("diff"))
+      return stored
+
     for log in logs:
-      # Helper to wrap PLR state in StateSnapshot
+      # Reconstruct full states before transformation
+      full_state_before = reconstruct(current_full_state, log.state_before_json)
+      current_full_state = full_state_before
+
+      full_state_after = reconstruct(current_full_state, log.state_after_json)
+      current_full_state = full_state_after
+
+      # Helper to wrap full PLR state in StateSnapshot
       def wrap_state(plr_state):
         if not plr_state:
           return None
@@ -234,28 +256,32 @@ async def get_run_state_history(
           tips=TipStateSnapshot(**transformed["tips"]),
           liquids=transformed["liquids"],
           on_deck=transformed["on_deck"],
-          raw_plr_state=transformed["raw_plr_state"]
+          raw_plr_state=transformed["raw_plr_state"],
         )
 
-      operations.append(OperationStateSnapshot(
-        operation_index=log.sequence_in_run,
-        operation_id=str(log.accession_id),
-        method_name=log.executed_function_definition.name if log.executed_function_definition else "unknown",
-        args=log.input_args_json.get("kwargs") if log.input_args_json else {},
-        state_before=wrap_state(log.state_before_json),
-        state_after=wrap_state(log.state_after_json),
-        timestamp=log.start_time.isoformat() if log.start_time else None,
-        duration_ms=float(log.duration_ms) if log.duration_ms else None,
-        status=log.status.value.lower() if log.status else "completed",
-        error_message=log.error_message_text
-      ))
+      operations.append(
+        OperationStateSnapshot(
+          operation_index=log.sequence_in_run,
+          operation_id=str(log.accession_id),
+          method_name=log.executed_function_definition.name
+          if log.executed_function_definition
+          else "unknown",
+          args=log.input_args_json.get("kwargs") if log.input_args_json else {},
+          state_before=wrap_state(full_state_before),
+          state_after=wrap_state(full_state_after),
+          timestamp=log.start_time.isoformat() if log.start_time else None,
+          duration_ms=float(log.duration_ms) if log.duration_ms else None,
+          status=log.status.value.lower() if log.status else "completed",
+          error_message=log.error_message_text,
+        )
+      )
 
     return StateHistory(
       run_id=str(run_id),
       protocol_name=run.protocol_name,
       operations=operations,
       final_state=wrap_state(run.final_state_json),
-      total_duration_ms=float(run.duration_ms) if run.duration_ms else None
+      total_duration_ms=float(run.duration_ms) if run.duration_ms else None,
     )
 
 

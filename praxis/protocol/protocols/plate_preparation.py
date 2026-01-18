@@ -6,6 +6,7 @@ Demonstrates plate-wide operations and well iteration.
 
 from typing import Any
 
+from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.resources import Plate, TipRack, Trough
 
 from praxis.backend.core.decorators import protocol_function
@@ -19,6 +20,10 @@ from praxis.backend.core.decorators import protocol_function
     tags=["demo", "preparation", "fill"],
     is_top_level=True,
     param_metadata={
+        "liquid_handler": {
+            "description": "Liquid handler",
+            "plr_type": "LiquidHandler",
+        },
         "plate": {
             "description": "Plate to prepare",
             "plr_type": "Plate",
@@ -47,6 +52,7 @@ from praxis.backend.core.decorators import protocol_function
 )
 async def plate_preparation(
     state: dict[str, Any],
+    liquid_handler: LiquidHandler,
     plate: Plate,
     tip_rack: TipRack,
     reagent_trough: Trough,
@@ -65,6 +71,7 @@ async def plate_preparation(
 
     Args:
         state: Protocol state dictionary
+        liquid_handler: Liquid handler
         plate: Plate to prepare
         tip_rack: Tip rack for dispensing
         reagent_trough: Trough containing the reagent
@@ -122,14 +129,26 @@ async def plate_preparation(
                 if (i + j) % 2 == 0:
                     wells_to_fill.append(f"{row}{col}")
 
+    # Pick up tips once for the batch dispense
+    await liquid_handler.pick_up_tips(tip_rack["A1"])
+
     # Record dispensing operations
     dispense_operations = []
     for well in wells_to_fill:
+        # Aspirate new reagent if needed? 
+        # For simplicity, assuming trough has infinite volume or we aspirate per dispense for single-channel
+        # Real optimization would aspirate large vol then multi-dispense.
+        # Here: simple asp/disp cycle per well.
+        await liquid_handler.aspirate(reagent_trough["A1"], vols=[volume_ul])
+        await liquid_handler.dispense(plate[well], vols=[volume_ul])
+
         dispense_operations.append({
             "well": well,
             "volume_ul": volume_ul,
             "source": reagent_trough.name,
         })
+        
+    await liquid_handler.return_tips()
 
     # Update state
     state["dispense_operations"] = dispense_operations

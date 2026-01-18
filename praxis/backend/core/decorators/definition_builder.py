@@ -161,8 +161,13 @@ def _create_protocol_definition(
       for param_obj in sig.parameters.values()
     )
 
+  protocol_accession_id = uuid7()
+
+  for asset in assets_list:
+    asset.protocol_definition_accession_id = protocol_accession_id
+
   protocol_definition = FunctionProtocolDefinitionCreate(
-    accession_id=uuid7(),
+    accession_id=protocol_accession_id,
     name=resolved_name,
     version=data.version,
     description=(data.description or inspect.getdoc(data.func) or "No description provided."),

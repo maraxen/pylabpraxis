@@ -86,10 +86,19 @@ class ProtocolPreparationMixin:
       "workcell_last_successful_snapshot",
       current_workcell_snapshot,
     )
+
+    # Use current snapshot as initial state if not provided
+    if not protocol_run_model.initial_state_json:
+      protocol_run_model.initial_state_json = current_workcell_snapshot
+      # We don't commit here, but it will be flushed/committed later by the caller
+
     logger.debug(
       "Workcell state snapshot captured and stored in PraxisState for run %s.",
       protocol_run_model.accession_id,
     )
+
+    # Initialize shared run data for diffing
+    shared_run_data = {"last_logged_state": current_workcell_snapshot}
 
     return PraxisRunContext(
       run_accession_id=protocol_run_model.accession_id,
@@ -97,6 +106,7 @@ class ProtocolPreparationMixin:
       current_db_session=db_session,
       runtime=self.workcell_runtime,
       current_call_log_db_accession_id=None,
+      _shared_run_data=shared_run_data,
     )
 
   def _process_input_parameters(

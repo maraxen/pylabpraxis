@@ -60,6 +60,14 @@ class PraxisRunContext:
   If this is None, it indicates that the context is not currently associated with a specific
   function call log entry.
   """
+  last_logged_state: dict[str, Any] | None = None
+  """The last state snapshot that was logged (either before or after a call).
+  Used to calculate diffs for subsequent logging entries.
+  """
+  _shared_run_data: dict[str, Any] = None  # type: ignore[assignment]
+  """Internal dictionary shared across all nested contexts in a run.
+  Used to hold mutable run-global data like the last logged state.
+  """
   _call_sequence_next_val: int = 1
   """Internal counter for call sequence numbers.
   This is used to assign a unique sequence number to each function call within the run.
@@ -68,6 +76,10 @@ class PraxisRunContext:
   It is not part of the public API and should not be modified directly.
   It is used internally to assign sequence numbers to function calls.
   """
+
+  def __post_init__(self) -> None:
+    if self._shared_run_data is None:
+      self._shared_run_data = {}
 
   def get_and_increment_sequence_val(self) -> int:
     """Return the current sequence value and then increment it for the next call."""
@@ -100,6 +112,7 @@ class PraxisRunContext:
       current_db_session=self.current_db_session,
       runtime=self.runtime,
       current_call_log_db_accession_id=new_parent_call_log_db_accession_id,
+      _shared_run_data=self._shared_run_data,
     )
     nested_ctx._call_sequence_next_val = self._call_sequence_next_val
     return nested_ctx

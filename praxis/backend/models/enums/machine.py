@@ -64,3 +64,19 @@ class MachineCategoryEnum(str, enum.Enum):
       cls.ARM,
       cls.GENERAL_AUTOMATION_DEVICE,
     ]
+
+
+class BackendTypeEnum(str, enum.Enum):
+  """Type of machine backend implementation.
+
+  Used to distinguish between different types of backends:
+  - REAL_HARDWARE: Connects to a physical device
+  - SIMULATOR: PLR visualizer/simulator
+  - CHATTERBOX: Print-only, no hardware connection
+  - MOCK: For testing purposes only
+  """
+
+  REAL_HARDWARE = "real_hardware"
+  SIMULATOR = "simulator"
+  CHATTERBOX = "chatterbox"
+  MOCK = "mock"

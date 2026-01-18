@@ -27,6 +27,7 @@ from praxis.backend.services.protocols import (
   log_function_call_start,
   protocol_run_service,
 )
+from praxis.backend.core.utils.state_diff import calculate_diff
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.run_control import (
   ALLOWED_COMMANDS,
@@ -92,7 +93,16 @@ async def _log_call_start(
     state_before = None
     if context.runtime:
       try:
-        state_before = context.runtime.get_state_snapshot()
+        current_state = context.runtime.get_state_snapshot()
+        last_state = context._shared_run_data.get("last_logged_state")
+
+        # Calculate diff relative to last logged state
+        diff = calculate_diff(last_state, current_state)
+        if diff is not None:
+          state_before = {"_is_diff": True, "diff": diff}
+
+        # Update last logged state baseline
+        context._shared_run_data["last_logged_state"] = current_state
       except Exception:  # pylint: disable=broad-except
         logger.warning("Failed to capture state_before for function call logging.")
 
@@ -384,7 +394,16 @@ def protocol_function(
             state_after = None
             if context_for_this_call.runtime:
               try:
-                state_after = context_for_this_call.runtime.get_state_snapshot()
+                current_state = context_for_this_call.runtime.get_state_snapshot()
+                last_state = context_for_this_call._shared_run_data.get("last_logged_state")
+
+                # Calculate diff relative to last logged state
+                diff = calculate_diff(last_state, current_state)
+                if diff is not None:
+                  state_after = {"_is_diff": True, "diff": diff}
+
+                # Update last logged state baseline
+                context_for_this_call._shared_run_data["last_logged_state"] = current_state
               except Exception:  # pylint: disable=broad-except
                 logger.warning("Failed to capture state_after for function call logging.")
 

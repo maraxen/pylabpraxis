@@ -38,14 +38,14 @@ from praxis.backend.core.decorators import protocol_function
       "plr_type": "TipRack",
     },
     "source_wells": {
-      "description": "Source wells to aspirate from (use grid selector)",
+      "description": "Source well positions (e.g. A1, B2)",
       "ui_hint": "well_selector",
-      "plate_ref": "source_plate",  # Links to source plate for UI
+      "plate_ref": "source_plate",
     },
     "dest_wells": {
-      "description": "Destination wells to dispense to (use grid selector)",
+      "description": "Destination well positions (e.g. A1, B2)",
       "ui_hint": "well_selector",
-      "plate_ref": "dest_plate",  # Links to destination plate for UI
+      "plate_ref": "dest_plate",
     },
     "transfer_volume_ul": {
       "description": "Volume to transfer per well in microliters",
@@ -78,17 +78,6 @@ async def selective_transfer(
 ) -> dict[str, Any]:
   """Transfer liquid between selected wells with various patterns.
 
-  This protocol demonstrates rich well selection scenarios:
-
-  **1:1 Pattern**: Each source well maps to exactly one destination well.
-  Source and destination must have the same number of wells.
-
-  **Replicate Pattern**: Each source well is distributed to N destination wells.
-  Useful for creating technical replicates.
-
-  **Pool Pattern**: All source wells are pooled into each destination well.
-  Useful for combining samples or creating pools.
-
   Args:
       state: Protocol state dictionary
       liquid_handler: Liquid handler for transfers
@@ -103,100 +92,149 @@ async def selective_transfer(
 
   Returns:
       Updated state with transfer records
-
   """
   # Parse well selections
-  src_wells = _parse_wells(source_wells)
-  dst_wells = _parse_wells(dest_wells)
+  src_well_names = _parse_wells(source_wells)
+  dst_well_names = _parse_wells(dest_wells)
 
-  # Validate based on pattern
   transfers = []
 
+  # Calculate operations based on pattern
   if transfer_pattern == "1:1":
-    if len(src_wells) != len(dst_wells):
+    if len(src_well_names) != len(dst_well_names):
       msg = (
         f"1:1 pattern requires equal well counts: "
-        f"{len(src_wells)} sources vs {len(dst_wells)} destinations"
+        f"{len(src_well_names)} sources vs {len(dst_well_names)} destinations"
       )
       raise ValueError(msg)
 
-    for src, dst in zip(src_wells, dst_wells, strict=True):
-      transfers.append(
-        {
+    # Use single index for 1:1 mapping (Technical Debt: Simplify indexing)
+    for i in range(len(src_well_names)):
+      src = src_well_names[i]
+      dst = dst_well_names[i]
+      
+      # Perform transfer
+      await _perform_transfer(
+        liquid_handler, 
+        source_plate, 
+        src, 
+        dest_plate, 
+        dst, 
+        transfer_volume_ul, 
+        tip_rack, 
+        i
+      )
+
+      transfers.append({
+        "source_plate": source_plate.name,
+        "source_well": src,
+        "dest_plate": dest_plate.name,
+        "dest_well": dst,
+        "volume_ul": transfer_volume_ul,
+        "pattern": "1:1",
+      })
+
+  elif transfer_pattern == "replicate":
+    expected_dst = len(src_well_names) * replicate_count
+    if len(dst_well_names) < expected_dst:
+      msg = (
+        f"Replicate pattern with {len(src_well_names)} sources x "
+        f"{replicate_count} replicates requires {expected_dst} destinations, "
+        f"but only {len(dst_well_names)} provided"
+      )
+      raise ValueError(msg)
+
+    dst_idx = 0
+    for src in src_well_names:
+      for rep in range(replicate_count):
+        dst = dst_well_names[dst_idx]
+        
+        await _perform_transfer(
+          liquid_handler, 
+          source_plate, 
+          src, 
+          dest_plate, 
+          dst, 
+          transfer_volume_ul, 
+          tip_rack, 
+          dst_idx
+        )
+
+        transfers.append({
           "source_plate": source_plate.name,
           "source_well": src,
           "dest_plate": dest_plate.name,
           "dest_well": dst,
           "volume_ul": transfer_volume_ul,
-          "pattern": "1:1",
-        }
-      )
-
-  elif transfer_pattern == "replicate":
-    expected_dst = len(src_wells) * replicate_count
-    if len(dst_wells) < expected_dst:
-      msg = (
-        f"Replicate pattern with {len(src_wells)} sources x "
-        f"{replicate_count} replicates requires {expected_dst} destinations, "
-        f"but only {len(dst_wells)} provided"
-      )
-      raise ValueError(msg)
-
-    dst_idx = 0
-    for src in src_wells:
-      for rep in range(replicate_count):
-        transfers.append(
-          {
-            "source_plate": source_plate.name,
-            "source_well": src,
-            "dest_plate": dest_plate.name,
-            "dest_well": dst_wells[dst_idx],
-            "volume_ul": transfer_volume_ul,
-            "pattern": "replicate",
-            "replicate_number": rep + 1,
-          }
-        )
+          "pattern": "replicate",
+          "replicate_number": rep + 1,
+        })
         dst_idx += 1
 
   elif transfer_pattern == "pool":
     # Pool all sources into each destination
-    for dst in dst_wells:
-      for src in src_wells:
-        transfers.append(
-          {
-            "source_plate": source_plate.name,
-            "source_well": src,
-            "dest_plate": dest_plate.name,
-            "dest_well": dst,
-            "volume_ul": transfer_volume_ul,
-            "pattern": "pool",
-          }
+    op_idx = 0
+    for dst in dst_well_names:
+      for src in src_well_names:
+        await _perform_transfer(
+          liquid_handler, 
+          source_plate, 
+          src, 
+          dest_plate, 
+          dst, 
+          transfer_volume_ul, 
+          tip_rack, 
+          op_idx
         )
+        
+        transfers.append({
+          "source_plate": source_plate.name,
+          "source_well": src,
+          "dest_plate": dest_plate.name,
+          "dest_well": dst,
+          "volume_ul": transfer_volume_ul,
+          "pattern": "pool",
+        })
+        op_idx += 1
 
   else:
     msg = f"Unknown transfer pattern: {transfer_pattern}"
     raise ValueError(msg)
 
-  # Record results
+  # Update state
   state["transfers"] = transfers
   state["transfer_count"] = len(transfers)
   state["total_volume_ul"] = transfer_volume_ul * len(transfers)
-  state["source_wells"] = src_wells
-  state["dest_wells"] = dst_wells
-  state["pattern"] = transfer_pattern
   state["status"] = "completed"
 
   return state
 
 
-def _parse_wells(selection: str) -> list[str]:
-  """Parse a well selection string into a list of well positions.
+async def _perform_transfer(
+  lh: LiquidHandler, 
+  src_plate: Plate, 
+  src_well: str, 
+  dst_plate: Plate, 
+  dst_well: str, 
+  vol: float, 
+  tip_rack: TipRack,
+  tip_idx: int
+) -> None:
+  """Execute a single transfer operation with tip handling."""
+  # Simple tip tracking: Wrap around tip rack if needed
+  # Note: In a real protocol, we'd use a TipTracker or similar
+  num_tips = 96 # Assumed standard 96 tip rack for simplicity
+  tip_spot = tip_rack.get_item(tip_idx % num_tips)
+  
+  if tip_spot: # Should always be true for standard rack
+      await lh.pick_up_tips(tip_spot)
+      await lh.aspirate(src_plate[src_well], vols=[vol])
+      await lh.dispense(dst_plate[dst_well], vols=[vol])
+      await lh.return_tips() # Return to save simulation tips/avoid trash config issues
 
-  Supports formats:
-  - Range: 'A1:A4' or 'A1:H1' (row/column ranges)
-  - Rectangle: 'A1:B4' (rectangular selection)
-  - List: 'A1,B2,C3' (specific wells)
-  """
+
+def _parse_wells(selection: str) -> list[str]:
+  """Parse a well selection string into a list of well positions."""
   wells = []
 
   if ":" in selection and "," not in selection:

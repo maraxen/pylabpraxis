@@ -14,6 +14,8 @@ from praxis.backend.api import (
   decks,
   discovery,
   hardware,
+  machine_backends,
+  machine_frontends,
   machines,
   outputs,
   protocols,
@@ -319,6 +321,12 @@ app.include_router(workcell.router, prefix="/api/v1/workcell", tags=["Workcell"]
 app.include_router(resources.router, prefix="/api/v1/resources", tags=["Assets"])
 app.include_router(decks.router, prefix="/api/v1/decks", tags=["Decks"])
 app.include_router(machines.router, prefix="/api/v1/machines", tags=["Machines"])
+app.include_router(
+  machine_frontends.router, prefix="/api/v1/machine-frontends", tags=["Machine Frontends"]
+)
+app.include_router(
+  machine_backends.router, prefix="/api/v1/machine-backends", tags=["Machine Backends"]
+)
 app.include_router(hardware.router, prefix="/api/v1/hardware", tags=["Hardware"])
 app.include_router(discovery.router, prefix="/api/v1/discovery", tags=["Discovery"])
 app.include_router(scheduler.router, prefix="/api/v1/scheduler", tags=["Scheduler"])

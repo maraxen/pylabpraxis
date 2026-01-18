@@ -1,7 +1,7 @@
 """Enumerated types for various model attributes."""
 
 from .asset import AssetReservationStatusEnum, AssetType
-from .machine import MachineCategoryEnum, MachineStatusEnum
+from .machine import BackendTypeEnum, MachineCategoryEnum, MachineStatusEnum
 from .outputs import DataOutputTypeEnum, SpatialContextEnum
 from .plr_category import PLRCategory, get_category_from_class, infer_category_from_name
 from .protocol import FunctionCallStatusEnum, ProtocolRunStatusEnum, ProtocolSourceStatusEnum
@@ -13,6 +13,7 @@ from .workcell import WorkcellStatusEnum
 __all__ = [
   "AssetReservationStatusEnum",
   "AssetType",
+  "BackendTypeEnum",
   "DataOutputTypeEnum",
   "FunctionCallStatusEnum",
   "MachineCategoryEnum",

@@ -37,6 +37,11 @@ RESOURCE_RETURN_TYPES: frozenset[str] = frozenset(
     "Tube",
     "Well",
     "Resource",
+    "HamiltonSTARDeck",
+    "STARLetDeck",
+    "VantageDeck",
+    "Deck",
+    "HamiltonDeck",
   }
 )
 
@@ -56,6 +61,11 @@ RETURN_TYPE_TO_CATEGORY: dict[str, str] = {
   "Tube": "Tube",
   "Well": "Well",
   "Resource": "Resource",
+  "HamiltonSTARDeck": "Deck",
+  "STARLetDeck": "Deck",
+  "VantageDeck": "Deck",
+  "Deck": "Deck",
+  "HamiltonDeck": "Deck",
 }
 
 
@@ -107,13 +117,18 @@ class ResourceFactoryVisitor(cst.CSTVisitor):
     # Extract additional metadata from the return statement
     extra_metadata = self._extract_return_metadata(node)
 
+    # Determine class type
+    class_type = PLRClassType.RESOURCE
+    if category == "Deck":
+      class_type = PLRClassType.DECK
+
     # Create discovered class
     discovered = DiscoveredClass(
       fqn=fqn,
       name=func_name,
       module_path=self.module_path,
       file_path=self.file_path,
-      class_type=PLRClassType.RESOURCE,
+      class_type=class_type,
       base_classes=[return_type],
       is_abstract=False,
       docstring=docstring,

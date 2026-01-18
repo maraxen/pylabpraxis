@@ -92,8 +92,50 @@ class MachineManagerMixin:
         machine_model.fqn,
       )
       try:
-        target_class = get_class_from_fqn(machine_model.fqn)
-        machine_config = machine_model.properties_json or {}
+        # NEW: Support frontend/backend separation if definitions are set
+        if (
+          machine_model.frontend_definition_accession_id
+          and machine_model.backend_definition_accession_id
+        ):
+          # New pattern: instantiate backend, then frontend with backend
+          logger.info(
+            "WorkcellRuntime: Using new frontend/backend separation for machine '%s'.",
+            machine_model.name,
+          )
+          # Load definitions if not already loaded
+          if machine_model.frontend_definition is None or machine_model.backend_definition is None:
+            async with runtime.db_session_factory() as db_session:
+              from sqlalchemy import select
+              from sqlalchemy.orm import selectinload
+
+              from praxis.backend.models import Machine as MachineModel
+
+              stmt = (
+                select(MachineModel)
+                .options(selectinload(MachineModel.frontend_definition))
+                .options(selectinload(MachineModel.backend_definition))
+                .where(MachineModel.accession_id == machine_model.accession_id)
+              )
+              result = await db_session.execute(stmt)
+              loaded_machine = result.scalar_one()
+              machine_model = loaded_machine
+
+          backend_fqn = machine_model.backend_definition.fqn
+          frontend_fqn = machine_model.frontend_definition.fqn
+          backend_config = machine_model.backend_config or {}
+
+          # Instantiate backend
+          backend_class = get_class_from_fqn(backend_fqn)
+          backend_instance = backend_class(**backend_config)
+
+          # Instantiate frontend with backend
+          target_class = get_class_from_fqn(frontend_fqn)
+          machine_config = machine_model.properties_json or {}
+          machine_config["backend"] = backend_instance
+        else:
+          # Legacy pattern: use fqn directly (backwards compatibility)
+          target_class = get_class_from_fqn(machine_model.fqn)
+          machine_config = machine_model.properties_json or {}
         instance_name = machine_model.name
 
         init_params = machine_config.copy()

@@ -67,6 +67,7 @@ async def simple_transfer(
 
   Args:
       state: Protocol state dictionary
+      liquid_handler: Liquid handler
       source_plate: Plate containing the source liquid
       dest_plate: Plate to receive the liquid
       tip_rack: Tip rack for the transfer
@@ -90,9 +91,22 @@ async def simple_transfer(
     )
     raise ValueError(msg)
 
-  # Record the transfer operation in state
   transfers = []
-  for src, dst in zip(source_well_list, dest_well_list, strict=True):
+  
+  # Execute transfers
+  for i in range(len(source_well_list)):
+    src = source_well_list[i]
+    dst = dest_well_list[i]
+    
+    # Simple tip management: 1 tip per transfer
+    # In a real protocol, you might reuse tips or batch transfers
+    await liquid_handler.pick_up_tips(tip_rack[f"A{i+1}"])
+    
+    await liquid_handler.aspirate(source_plate[src], vols=[volume_ul])
+    await liquid_handler.dispense(dest_plate[dst], vols=[volume_ul])
+    
+    await liquid_handler.return_tips()
+
     transfer_record = {
       "source_plate": source_plate.name,
       "source_well": src,
@@ -103,7 +117,7 @@ async def simple_transfer(
     }
     transfers.append(transfer_record)
 
-  # In simulation mode, we log the operations rather than executing hardware calls
+  # Update state
   state["transfers"] = transfers
   state["transfer_count"] = len(transfers)
   state["total_volume_ul"] = volume_ul * len(transfers)
