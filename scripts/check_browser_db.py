@@ -29,8 +29,8 @@ print()
 
 # Special queries for key tables
 key_tables = {
-    "resource_definition_catalog": "Resources",
-    "machine_definition_catalog": "Machines + Backends",
+    "resource_definitions": "Resources",
+    "machine_definitions": "Machines + Backends",
     "deck_definition_catalog": "Decks",
     "function_protocol_definitions": "Protocols",
     "parameter_definitions": "Parameters",
@@ -47,13 +47,13 @@ for table, label in key_tables.items():
         count = count_cursor.fetchone()[0]
         print(f"  {label:30} {count:>6} rows")
 
-# Breakdown machine_definition_catalog by category
+# Breakdown machine_definitions by category
 print()
 print("MACHINE DEFINITION BREAKDOWN:")
 print("-" * 80)
 cursor = conn.execute("""
     SELECT plr_category, COUNT(*) 
-    FROM machine_definition_catalog 
+    FROM machine_definitions 
     GROUP BY plr_category 
     ORDER BY plr_category
 """)

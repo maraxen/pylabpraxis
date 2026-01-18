@@ -26,6 +26,8 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
+import importlib
+import sys
 
 # Project paths
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -185,8 +187,8 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
                 INSERT OR REPLACE INTO machine_definitions (
                     accession_id, fqn, name, description, plr_category,
                     machine_category, has_deck, manufacturer,
-                    capabilities, compatible_backends, properties_json, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    capabilities, compatible_backends, available_simulation_backends, properties_json, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     accession_id,
@@ -199,6 +201,7 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
                     machine.manufacturer,
                     safe_json_dumps(caps_dict),
                     safe_json_dumps(machine.compatible_backends),
+                    safe_json_dumps(getattr(machine, "available_simulation_backends", [])),
                     safe_json_dumps({}),
                     now,
                     now,
@@ -218,24 +221,101 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
     return count
 
 
+# Define critical decks that must always be included
+CRITICAL_DECKS = [
+    {
+        "name": "STARDeck",
+        "fqn": "pylabrobot.liquid_handling.backends.hamilton.STAR.STARDeck",
+        "category": "Deck",
+        "vendor": "Hamilton",
+        "manufacturer": "Hamilton",
+        "docstring": "Hamilton STAR Deck definition",
+    },
+    {
+        "name": "STARLetDeck",
+        "fqn": "pylabrobot.liquid_handling.backends.hamilton.STARlet.STARLetDeck",
+        "category": "Deck",
+        "vendor": "Hamilton",
+        "manufacturer": "Hamilton",
+        "docstring": "Hamilton STARLet Deck definition",
+    },
+    {
+        "name": "VantageDeck",
+        "fqn": "pylabrobot.liquid_handling.backends.hamilton.Vantage.VantageDeck",
+        "category": "Deck",
+        "vendor": "Hamilton",
+        "manufacturer": "Hamilton",
+        "docstring": "Hamilton Vantage Deck definition",
+    },
+    {
+        "name": "OT2Deck",
+        "fqn": "pylabrobot.liquid_handling.backends.opentrons.deck.OT2Deck",
+        "category": "Deck",
+        "vendor": "Opentrons",
+        "manufacturer": "Opentrons",
+        "docstring": "Opentrons OT-2 Deck definition",
+    },
+]
+
+
+def create_discovered_class_from_dict(d: dict) -> DiscoveredClass:
+    """Create a DiscoveredClass object from a dictionary (fallback)."""
+    from praxis.backend.utils.plr_static_analysis.models import (
+        DiscoveredCapabilities,
+        DiscoveredClass,
+        PLRClassType,
+    )
+
+    return DiscoveredClass(
+        fqn=d["fqn"],
+        name=d["name"],
+        module_path=d["fqn"].rsplit(".", 1)[0],
+        file_path="manual_fallback",
+        class_type=PLRClassType.DECK,
+        category=d.get("category", "Deck"),
+        vendor=d.get("vendor"),
+        manufacturer=d.get("manufacturer"),
+        docstring=d.get("docstring"),
+        capabilities=DiscoveredCapabilities(),
+    )
+
+
 def discover_decks_static(conn: sqlite3.Connection) -> int:
-    """Discover and insert all PLR deck definitions using static analysis."""
+    """Discover and insert all PLR deck definitions using static analysis + fallback."""
     from praxis.backend.utils.plr_static_analysis import (
+        DiscoveredClass,
         PLRClassType,
         PLRSourceParser,
         find_plr_source_root,
     )
 
     parser = PLRSourceParser(find_plr_source_root())
-    all_resources = parser.discover_resource_classes()
 
-    # Filter to deck classes only
-    decks = [r for r in all_resources if r.class_type == PLRClassType.DECK]
+    # Get class-based resources
+    discovered_classes = parser.discover_resource_classes()
+
+    # Get factory function-based resources
+    discovered_factories = parser.discover_resource_factories()
+
+    # Filter for decks and combine
+    deck_classes = [r for r in discovered_classes if r.class_type == PLRClassType.DECK]
+    deck_factories = [r for r in discovered_factories if r.class_type == PLRClassType.DECK]
+
+    # Combine and deduplicate by FQN
+    all_decks: dict[str, DiscoveredClass] = {d.fqn: d for d in deck_classes + deck_factories}
+
+    # Add critical decks if missing (fallback)
+    for critical in CRITICAL_DECKS:
+        if critical["fqn"] not in all_decks:
+            print(
+                f"  [INFO] Static analysis missed {critical['name']}, adding from manual registry"
+            )
+            all_decks[critical["fqn"]] = create_discovered_class_from_dict(critical)
 
     now = datetime.now().isoformat()
     count = 0
 
-    for deck in decks:
+    for deck in all_decks.values():
         try:
             accession_id = generate_uuid_from_fqn(f"deck:{deck.fqn}")
 
@@ -271,11 +351,14 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
     from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
         ProtocolFunctionVisitor,
     )
+    from praxis.backend.core.simulation.simulator import ProtocolSimulator
     import libcst as cst
 
     protocols_dir = PROJECT_ROOT / "praxis" / "protocol" / "protocols"
     now = datetime.now().isoformat()
     count = 0
+    
+    simulator = ProtocolSimulator()
 
     if not protocols_dir.exists():
         return 0
@@ -306,6 +389,41 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
                 elif "kinetic" in name_lower or "reader" in name_lower:
                     category = "Plate Reading"
 
+                # Run real simulation analysis
+                print(f"  [simulation] Analyzing {definition.fqn}...")
+                try:
+                    # Import the protocol module
+                    # Ensure path is in sys.path
+                    if str(PROJECT_ROOT) not in sys.path:
+                        sys.path.append(str(PROJECT_ROOT))
+                    
+                    module = importlib.import_module(module_name)
+                    func = getattr(module, definition.name)
+                    
+                    parameter_types = {p.name: p.type_hint for p in definition.parameters}
+                    
+                    # Run analysis
+                    sim_result = simulator.analyze_protocol_sync(
+                        protocol_func=func,
+                        parameter_types=parameter_types
+                    )
+                    
+                    simulation_result_json = safe_json_dumps(sim_result.to_cache_dict())
+                    inferred_requirements_json = safe_json_dumps(sim_result.inferred_requirements)
+                    failure_modes_json = safe_json_dumps(sim_result.failure_modes)
+                except Exception as e:
+                    print(f"  [simulation] ERROR: Protocol analysis failed for {definition.fqn}: {e}")
+                    # Fallback to a marked-as-failed or minimal result if needed?
+                    # For now, we'll keep the mock structure but with an error state if it fails
+                    simulation_result_json = safe_json_dumps({
+                        "passed": False,
+                        "level_completed": "none",
+                        "violations": [{"type": "error", "message": str(e)}],
+                        "simulated_at": now
+                    })
+                    inferred_requirements_json = safe_json_dumps([])
+                    failure_modes_json = safe_json_dumps([])
+
                 conn.execute(
                     """
                     INSERT OR REPLACE INTO function_protocol_definitions (
@@ -329,9 +447,9 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
                         category,
                         safe_json_dumps(["demo", category.lower().replace(" ", "-")]),
                         safe_json_dumps(definition.hardware_requirements or {}),
-                        safe_json_dumps([]), # Inferred requirements (empty = no issues found)
-                        safe_json_dumps([]), # Failure modes (empty = simulation passed)
-                        safe_json_dumps({"status": "ready", "simulated": True}), # Simulation result (non-null = analyzed)
+                        inferred_requirements_json,
+                        failure_modes_json,
+                        simulation_result_json,
                         safe_json_dumps(definition.computation_graph),
                         definition.source_hash,
                         1 if definition.requires_deck else 0,
@@ -565,9 +683,9 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
                 INSERT OR REPLACE INTO machine_definitions (
                     accession_id, fqn, name, description, plr_category,
                     machine_category, has_deck, manufacturer,
-                    capabilities, compatible_backends, properties_json, created_at, updated_at,
+                    capabilities, compatible_backends, available_simulation_backends, properties_json, created_at, updated_at,
                     frontend_fqn
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     accession_id,
@@ -580,6 +698,7 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
                     "PyLabRobot",
                     "{}",
                     "[]",
+                    safe_json_dumps(["Simulator", "Chatterbox"]),
                     "{}",
                     now,
                     now,
@@ -693,8 +812,7 @@ def main() -> None:
         for (table_name,) in cursor.fetchall():
             count_cursor = conn.execute(f"SELECT COUNT(*) FROM {table_name}")
             count = count_cursor.fetchone()[0]
-            if count > 0:
-                pass
+            print(f"  {table_name:30}: {count}")
 
     except Exception:
         raise

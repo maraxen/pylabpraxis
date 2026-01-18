@@ -101,6 +101,7 @@ debug_*.py
 praxis/web-client/test-results/
 praxis/web-client/playwright-report/
 praxis/web-client/test_output*.txt
+praxis/web-client/e2e/screenshot/
 
 
 !.agent/archive/archive.tar.gz
