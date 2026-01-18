@@ -1,43 +1,42 @@
 import { chromium, type FullConfig } from '@playwright/test';
-import { SEED_RESOURCES, SEED_MACHINES } from './fixtures/seed-data';
 
 /**
  * Global setup for Playwright tests.
- * Launches a browser, navigates to the app, and seeds the SQLite database
- * with test fixtures using the exposed SqliteService.
+ * Launches a browser to verify the application loads and SqliteService initializes.
+ * 
+ * NOTE: Tests use resetdb=1 which wipes the database, so global seeding here 
+ * would be lost. This setup serves as a smoke test to ensure the environment is ready.
  */
 export default async function globalSetup(config: FullConfig) {
     const { baseURL } = config.projects[0].use;
     const targetUrl = baseURL || 'http://localhost:4200';
 
-    console.log(`[Global Setup] Launching browser to seed database at ${targetUrl}...`);
+    console.log(`[Global Setup] Verifying application readiness at ${targetUrl}...`);
     const browser = await chromium.launch();
     const page = await browser.newPage();
 
     try {
-        // Navigate to app home to ensure services load and reduce redirect likelihood
-        // Note: in browser mode, auth should be bypassed or mocked
-        await page.goto(targetUrl + '/app/home');
+        // Navigate to app home with browser mode param to ensure services load
+        // Increased timeout to 60s for CI environments
+        await page.goto(targetUrl + '/app/home?mode=browser', { 
+            waitUntil: 'networkidle', 
+            timeout: 60000 
+        });
 
         // Wait for the application to be stable and SqliteService to be available
         console.log('[Global Setup] Waiting for SqliteService...');
-        // Poll for window.sqliteService
         try {
-            await page.waitForFunction(() => (window as any).sqliteService !== undefined, null, { timeout: 15000 });
+            await page.waitForFunction(() => (window as any).sqliteService !== undefined, null, { timeout: 30000 });
         } catch (e) {
-            console.warn('[Global Setup] SqliteService not found within timeout! Seeding might fail or be skipped.');
-            // Optional: dump page content or check if we are on error page
-            // const title = await page.title();
-            // console.log('Current page title:', title);
-            // If we continue, the next step (accessing service) will fail.
-            // We should probably return/throw here unless we want to assume data exists.
-            // Throwing is better to be explicit.
-            throw new Error('SqliteService not found on window object. Ensure app is loaded and exposing service.');
+            throw new Error('[Global Setup] CRITICAL: SqliteService not found! The application failed to initialize properly.');
         }
 
         // Wait for DB initialization (isReady$)
-        await page.evaluate(async () => {
+        console.log('[Global Setup] Waiting for database initialization...');
+        const isReady = await page.evaluate(async () => {
             const service = (window as any).sqliteService;
+            if (!service) return false;
+            
             return new Promise((resolve) => {
                 const sub = service.isReady$.subscribe((ready: boolean) => {
                     if (ready) {
@@ -45,73 +44,25 @@ export default async function globalSetup(config: FullConfig) {
                         resolve(true);
                     }
                 });
+                
+                // Timeout fallback within evaluate
+                setTimeout(() => {
+                    sub.unsubscribe();
+                    resolve(false);
+                }, 25000);
             });
         });
 
-        console.log('[Global Setup] SqliteService ready. Seeding data...');
+        if (!isReady) {
+            throw new Error('[Global Setup] CRITICAL: SqliteService failed to reach ready state within timeout.');
+        }
 
-        // Seed data
-        await page.evaluate(async (data) => {
-            const service = (window as any).sqliteService;
-
-            // Helper to get DB
-            const getDb = () => new Promise<any>((resolve) => {
-                service.getDatabase().subscribe((db: any) => resolve(db));
-            });
-
-            const db = await getDb();
-
-            // Define seed logic
-            db.exec('BEGIN TRANSACTION');
-
-            // 1. Seed Resources
-            const insertResDef = db.prepare(`
-            INSERT OR IGNORE INTO resource_definitions 
-            (accession_id, name, fqn, resource_type, vendor, description, properties_json, is_consumable, num_items)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-
-            for (const r of data.resources) {
-                insertResDef.run([
-                    r.accession_id, r.name, r.fqn, r.resource_type, r.vendor, r.description,
-                    JSON.stringify(r.properties_json), r.is_consumable ? 1 : 0, null
-                ]);
-            }
-            insertResDef.free();
-
-            // 2. Seed Machines
-            const insertMachDef = db.prepare(`
-            INSERT OR IGNORE INTO machine_definitions 
-            (accession_id, name, fqn, machine_category, manufacturer, description, has_deck, properties_json, compatible_backends, capabilities_config, frontend_fqn)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-
-            for (const m of data.machines) {
-                insertMachDef.run([
-                    m.accession_id, m.name, m.fqn, m.machine_category, m.manufacturer, m.description,
-                    m.has_deck ? 1 : 0, JSON.stringify(m.properties_json), JSON.stringify(m.compatible_backends),
-                    null, null
-                ]);
-            }
-            insertMachDef.free();
-
-            db.exec('COMMIT');
-
-            // Explicitly trigger persistence
-            // Accessing private method via loose typing
-            if (typeof service.saveToStore === 'function') {
-                console.log('[Global Setup - Browser] Saving to store...');
-                await service.saveToStore(db);
-            } else {
-                console.warn('[Global Setup - Browser] saveToStore method not found!');
-            }
-
-        }, { resources: SEED_RESOURCES, machines: SEED_MACHINES });
-
-        console.log('[Global Setup] Seeding complete.');
+        console.log('[Global Setup] Success: Application and database are ready.');
 
     } catch (error) {
-        console.error('[Global Setup] Failed to seed database:', error);
+        console.error('[Global Setup] FATAL ERROR during environment setup:');
+        console.error(error);
+        // Throw error to ensure Playwright aborts the test run
         throw error;
     } finally {
         await browser.close();

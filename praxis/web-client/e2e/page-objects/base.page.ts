@@ -10,13 +10,34 @@ export abstract class BasePage {
     }
 
     async goto() {
-        const hasQuery = this.url.includes('?');
         const hasModeParam = this.url.includes('mode=');
-        const targetUrl = hasModeParam
-            ? this.url
-            : `${this.url}${hasQuery ? '&' : '?'}mode=browser`;
+        const hasResetDbParam = this.url.includes('resetdb=');
+        
+        let targetUrl = this.url;
+        
+        if (!hasModeParam) {
+            targetUrl += `${targetUrl.includes('?') ? '&' : '?'}mode=browser`;
+        }
+        
+        if (!hasResetDbParam) {
+            targetUrl += `${targetUrl.includes('?') ? '&' : '?'}resetdb=1`;
+        }
 
         await this.page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
+
+        // Wait for SqliteService to be ready before returning
+        // This is crucial for browser mode where DB init takes time
+        if (targetUrl.includes('mode=browser')) {
+            await this.page.waitForFunction(
+                () => {
+                    const sqliteService = (window as any).sqliteService;
+                    // Check if service exists and isReady$ has emitted true
+                    return sqliteService && sqliteService.isReady$?.getValue() === true;
+                },
+                null,
+                { timeout: 30000 }
+            );
+        }
     }
 
     async getTitle(): Promise<string> {
