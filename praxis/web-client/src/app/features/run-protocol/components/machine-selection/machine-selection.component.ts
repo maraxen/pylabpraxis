@@ -68,11 +68,19 @@ export class MachineSelectionComponent {
 
   // Helper also used internally for logic check
   private isSimulated(machine: Machine): boolean {
+    // NEW: Check backend_definition.backend_type
+    if (machine.backend_definition?.backend_type === 'simulator') {
+      return true;
+    }
+
     const connectionInfo = machine.connection_info || {};
     const backend = (connectionInfo['backend'] || '').toString();
 
+    // Legacy fallback
     return machine.is_simulation_override === true ||
       (machine as any).is_simulated === true ||
-      backend.includes('Simulator');
+      backend.includes('Simulator') ||
+      backend.includes('simulation') ||
+      backend.includes('Chatterbox');
   }
 }

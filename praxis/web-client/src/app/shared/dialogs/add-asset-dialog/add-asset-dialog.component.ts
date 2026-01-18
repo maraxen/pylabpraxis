@@ -24,7 +24,7 @@ import { MachineDefinition, ResourceDefinition } from '../../../features/assets/
     ConfigurationStepComponent
   ],
   template: `
-    <div class="h-full flex flex-col max-h-[90vh] min-w-[700px]">
+    <div class="h-full flex flex-col max-h-[90vh] min-w-[600px] max-w-[850px] w-[70vw]">
       <div class="flex items-center justify-between px-6 pt-6 pb-2">
         <h2 class="text-2xl font-bold">Add New Asset</h2>
         <button mat-icon-button mat-dialog-close><mat-icon>close</mat-icon></button>
@@ -87,9 +87,18 @@ import { MachineDefinition, ResourceDefinition } from '../../../features/assets/
   styles: [`
     :host { display: block; height: 100%; }
     ::ng-deep .mat-horizontal-stepper-header-container { padding: 0 24px; }
-    ::ng-deep .mat-horizontal-content-container { padding: 0 !important; flex-grow: 1; overflow-y: auto; }
+    ::ng-deep .mat-horizontal-content-container { 
+      padding: 0 !important; 
+      flex-grow: 1; 
+      overflow-y: auto;
+      opacity: 1 !important;
+    }
+    ::ng-deep .mat-stepper-horizontal {
+      background: transparent !important;
+    }
     .sys-border { border-color: var(--mat-sys-outline-variant); }
-    .sys-text-secondary { color: var(--mat-sys-on-surface-variant); }
+    .sys-text-secondary { color: var(--mat-sys-on-surface-variant) !important; }
+    .sys-text-primary { color: var(--mat-sys-on-surface) !important; }
   `]
 })
 export class AddAssetDialogComponent implements OnInit, AfterViewInit {
@@ -175,7 +184,7 @@ export class AddAssetDialogComponent implements OnInit, AfterViewInit {
     const config = this.configData();
 
     if (type === 'machine' && def) {
-      const mDef = def as MachineDefinition;
+      const mDef = def as any;
       const isSimulated = this.isSimulated(mDef);
 
       let connectionInfo: any = {};
@@ -199,12 +208,17 @@ export class AddAssetDialogComponent implements OnInit, AfterViewInit {
       this.dialogRef.close({
         ...config,
         asset_type: 'MACHINE',
+        frontend_definition_accession_id: mDef.frontend_definition_accession_id,
+        backend_definition_accession_id: mDef.accession_id,
+        backend_config: config.backend_config || connectionInfo,
+        
+        // Legacy/Compatibility fields
         machine_definition_accession_id: mDef.accession_id,
-        frontend_fqn: mDef.frontend_fqn,
+        frontend_fqn: mDef.frontend_fqn || config.frontend_fqn,
         connection_info: connectionInfo,
         user_configured_capabilities: userConfiguredCapabilities,
         is_simulated: isSimulated,
-        machine_type: mDef.machine_category // Ensure machine_type is set for legacy compatibility
+        machine_type: mDef.machine_category || mDef.machine_type
       });
     } else if (type === 'resource' && def) {
       const rDef = def as ResourceDefinition;
@@ -216,7 +230,8 @@ export class AddAssetDialogComponent implements OnInit, AfterViewInit {
     }
   }
 
-  private isSimulated(def: MachineDefinition): boolean {
+  private isSimulated(def: any): boolean {
+    if (def.backend_type === 'simulator') return true;
     const fqnLower = (def.fqn || '').toLowerCase();
     const nameLower = (def.name || '').toLowerCase();
     return fqnLower.includes('chatterbox') || fqnLower.includes('simulator') || nameLower.includes('simulated');

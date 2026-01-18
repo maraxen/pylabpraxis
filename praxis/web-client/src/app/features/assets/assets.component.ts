@@ -50,7 +50,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
           <span class="flex-1 sm:flex-initial" [matTooltip]="selectedIndex === 4 ? (modeService.isBrowserMode() ? 'Resource definitions are loaded from bundled data in Browser Mode.' : 'Sync all hardware and protocol definitions from the backend.') : ''">
             <button 
               mat-flat-button 
-              class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-3 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto" 
+              class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-full !px-6 !py-3 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto" 
               (click)="openAddAsset()" 
               [disabled]="isLoading() || isSyncing()"
               data-tour-id="add-asset-btn"
@@ -157,7 +157,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
     /* Custom Mat Tab Styling */
     ::ng-deep .custom-tabs .mat-mdc-tab-header {
-      border-bottom: 1px solid var(--theme-border);
+      border-bottom: none !important;
       background: var(--mat-sys-surface-variant); /* Slightly lighter header */
     }
 
@@ -169,9 +169,14 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
       color: var(--theme-text-secondary) !important;
       font-family: inherit !important;
       letter-spacing: normal !important;
-      min-width: 120px !important;
+      min-width: 80px !important;
+      padding: 0 20px !important;
       height: 56px !important;
       opacity: 1 !important;
+    }
+
+    ::ng-deep .custom-tabs .mdc-tab__content {
+      flex: 0 1 auto !important;
     }
 
     ::ng-deep .custom-tabs .mdc-tab--active {
@@ -346,7 +351,9 @@ export class AssetsComponent implements OnInit, OnDestroy {
 
   private openUnifiedDialog(type: 'machine' | 'resource' | null = null) {
     const dialogRef = this.dialog.open(AddAssetDialogComponent, {
-      width: '800px',
+      minWidth: '600px',
+      maxWidth: '850px',
+      width: '70vw',
       data: type ? { initialAssetType: type } : {}
     });
 
@@ -360,7 +367,7 @@ export class AssetsComponent implements OnInit, OnDestroy {
       switchMap(result => {
         this.isLoading.set(true);
         const type = result.asset_type || (result.machine_definition_accession_id ? 'MACHINE' : 'RESOURCE');
-        
+
         if (type === 'MACHINE') {
           return this.assetService.createMachine(result).pipe(
             finalize(() => {
@@ -384,7 +391,7 @@ export class AssetsComponent implements OnInit, OnDestroy {
 
   openHardwareDiscovery() {
     this.dialog.open(HardwareDiscoveryDialogComponent, {
-      width: '800px',
+      width: '1000px',
       maxHeight: '90vh'
     });
   }

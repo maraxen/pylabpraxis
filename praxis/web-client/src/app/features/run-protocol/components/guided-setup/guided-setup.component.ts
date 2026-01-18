@@ -660,11 +660,7 @@ export class GuidedSetupComponent implements OnInit {
 
     // Emit change if inline
     if (this.isInline) {
-      if (this.isValid()) {
-        this.selectionChange.emit(this.selectedAssets() as Record<string, Resource>);
-      } else {
-        // Optionally emit partial or handle invalid state
-      }
+      this.selectionChange.emit(this.selectedAssets() as Record<string, Resource>);
     }
 
     // If manually changed, remove from autofilled set

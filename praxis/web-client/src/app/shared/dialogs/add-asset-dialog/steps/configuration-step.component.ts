@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MachineDefinition, ResourceDefinition, MachineStatus, ResourceStatus } from '../../../../features/assets/models/asset.models';
 import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
 import { DynamicCapabilityFormComponent } from '../../../../features/assets/components/dynamic-capability-form.component';
@@ -19,6 +20,7 @@ import { DynamicCapabilityFormComponent } from '../../../../features/assets/comp
         MatIconModule,
         MatInputModule,
         MatFormFieldModule,
+        MatTooltipModule,
         PraxisSelectComponent,
         DynamicCapabilityFormComponent
     ],
@@ -29,9 +31,9 @@ import { DynamicCapabilityFormComponent } from '../../../../features/assets/comp
           <mat-icon>{{ assetType === 'machine' ? 'precision_manufacturing' : 'science' }}</mat-icon>
         </div>
         <div class="flex flex-col min-w-0">
-          <span class="text-xs font-bold uppercase tracking-wider text-sys-text-secondary">Selected Definition</span>
+          <span class="text-xs font-bold uppercase tracking-wider text-sys-text-primary">Selected Definition</span>
           <span class="font-medium truncate">{{ definition?.name }}</span>
-          <span class="text-[10px] sys-text-secondary truncate">{{ definition?.fqn }}</span>
+          <span class="text-[10px] sys-text-secondary truncate font-mono" [matTooltip]="definition?.fqn || ''">{{ getShortFqn(definition?.fqn || '') }}</span>
         </div>
       </div>
 
@@ -121,7 +123,8 @@ import { DynamicCapabilityFormComponent } from '../../../../features/assets/comp
       color: var(--mat-sys-on-surface-variant);
     }
 
-    .sys-text-secondary { color: var(--mat-sys-on-surface-variant); }
+    .sys-text-secondary { color: var(--mat-sys-on-surface-variant) !important; }
+    .sys-text-primary { color: var(--mat-sys-on-surface) !important; }
   `]
 })
 export class ConfigurationStepComponent implements OnInit {
@@ -184,6 +187,16 @@ export class ConfigurationStepComponent implements OnInit {
 
     onValidityChanged(isValid: boolean) {
         this.validityChanged.emit(isValid);
+    }
+
+    /**
+     * Returns the last segment of a Python fully-qualified name.
+     * e.g. "pylabrobot.fans.Fan" -> "Fan"
+     */
+    getShortFqn(fqn: string): string {
+        if (!fqn) return '';
+        const parts = fqn.split('.');
+        return parts[parts.length - 1];
     }
 
     updateConnectionInfo(val: Record<string, any>) {

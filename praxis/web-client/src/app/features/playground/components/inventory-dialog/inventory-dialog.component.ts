@@ -3,6 +3,7 @@ import { Component, computed, inject, signal, ViewChild, ChangeDetectionStrategy
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatBadgeModule } from '@angular/material/badge';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -21,7 +22,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
 import { getMachineCategoryIcon, getResourceCategoryIcon } from '@shared/constants/asset-icons';
 import { FilterHeaderComponent } from '../../../assets/components/filter-header/filter-header.component';
-import { Machine, Resource } from '../../../assets/models/asset.models';
+import { Machine, Resource, MachineDefinition, ResourceDefinition, MachineStatus, ResourceStatus, MachineFrontendDefinition, MachineBackendDefinition } from '../../../assets/models/asset.models';
 import { AssetService } from '../../../assets/services/asset.service';
 import { DeckCatalogService } from '../../../run-protocol/services/deck-catalog.service';
 import { DeckConfiguration } from '../../../run-protocol/models/deck-layout.models';
@@ -32,7 +33,6 @@ export interface InventoryItem {
   category: string;
   variableName: string;
   count?: number;
-  backend?: string;
   deckConfigId?: string;
 }
 
@@ -60,13 +60,14 @@ export interface InventoryItem {
     MatBadgeModule,
     MatTooltipModule,
     PraxisSelectComponent,
-    FilterHeaderComponent
+    FilterHeaderComponent,
+    MatProgressSpinnerModule
   ],
   template: `
     <h2 mat-dialog-title>Playground Inventory</h2>
     <mat-dialog-content class="inventory-dialog-content">
       <mat-tab-group (selectedIndexChange)="onTabChange($event)" [selectedIndex]="activeTab()">
-        <!-- Tab 1: Quick Add -->
+        <!-- Tab 0: Quick Add -->
         <mat-tab label="Quick Add">
           <div class="tab-padding">
             <div class="quick-add-container">
@@ -107,6 +108,9 @@ export interface InventoryItem {
                       <div matListItemTitle class="flex items-center gap-2">
                         {{ item.name }}
                         <span class="category-badge">{{ formatCategory(getCategory(item)) }}</span>
+                        @if (isTemplate(item)) {
+                          <span class="template-badge">Template</span>
+                        }
                       </div>
                       <div matListItemLine>{{ getAssetDescription(item) }}</div>
                       <button mat-stroked-button color="primary" matListItemMeta (click)="quickAdd(item)">
@@ -123,11 +127,10 @@ export interface InventoryItem {
           </div>
         </mat-tab>
 
-        <!-- Tab 2: Browse & Add -->
+        <!-- Tab 1: Browse & Add -->
         <mat-tab label="Browse & Add">
           <div class="tab-padding">
             <mat-stepper #stepper [linear]="true" class="polished-stepper">
-              <!-- Step icons -->
               <ng-template matStepperIcon="edit"><mat-icon>edit</mat-icon></ng-template>
               <ng-template matStepperIcon="done"><mat-icon>check_circle</mat-icon></ng-template>
               <ng-template matStepperIcon="number" let-index="index">
@@ -138,7 +141,6 @@ export interface InventoryItem {
                 @else { {{index + 1}} }
               </ng-template>
 
-              <!-- Step 1: Asset Type -->
               <mat-step [stepControl]="typeForm" [completed]="typeForm.valid">
                 <ng-template matStepLabel>Type</ng-template>
                 <div class="step-wrapper">
@@ -160,7 +162,6 @@ export interface InventoryItem {
                 </div>
               </mat-step>
 
-              <!-- Step 2: Category -->
               <mat-step [stepControl]="categoryForm" [completed]="categoryForm.valid">
                 <ng-template matStepLabel>Category</ng-template>
                 <div class="step-wrapper">
@@ -188,7 +189,6 @@ export interface InventoryItem {
                 </div>
               </mat-step>
 
-              <!-- Step 3: Selection -->
               <mat-step [stepControl]="selectionForm" [completed]="selectionForm.valid">
                 <ng-template matStepLabel>Selection</ng-template>
                 <div class="step-wrapper">
@@ -203,7 +203,12 @@ export interface InventoryItem {
                       @for (item of filteredAssets(); track item.accession_id) {
                         <mat-list-option [value]="item" [selected]="selectionForm.get('asset')?.value === item">
                           <mat-icon matListItemIcon>{{ getCategoryIcon(currentCategory) }}</mat-icon>
-                          <h3 matListItemTitle>{{ item.name }}</h3>
+                          <h3 matListItemTitle class="flex items-center gap-2">
+                            {{ item.name }}
+                            @if (isTemplate(item)) {
+                              <span class="template-badge small">Template</span>
+                            }
+                          </h3>
                           <p matListItemLine>{{ getAssetDescription(item) }}</p>
                         </mat-list-option>
                       }
@@ -217,7 +222,6 @@ export interface InventoryItem {
                 </div>
               </mat-step>
 
-              <!-- Step 4: Specifications -->
               <mat-step [stepControl]="specsForm">
                 <ng-template matStepLabel>Specs</ng-template>
                 <div class="step-wrapper">
@@ -229,15 +233,7 @@ export interface InventoryItem {
                     </mat-form-field>
 
                     @if (currentType === 'machine') {
-                      <mat-form-field appearance="outline" class="full-width">
-                        <mat-label>Backend</mat-label>
-                        <mat-select formControlName="backend">
-                          <mat-option value="simulated">Simulated (Default)</mat-option>
-                        </mat-select>
-                      </mat-form-field>
-
-                      <!-- Deck Config Section -->
-                      @if ( specsForm.get('backend')?.value === 'simulated' && availableDeckConfigs().length > 0 ) {
+                      @if ( availableDeckConfigs().length > 0 ) {
                           <mat-form-field appearance="outline" class="full-width">
                             <mat-label>Deck Configuration</mat-label>
                             <mat-select formControlName="deckConfigId">
@@ -273,7 +269,7 @@ export interface InventoryItem {
           </div>
         </mat-tab>
 
-        <!-- Tab 3: Current Items -->
+        <!-- Tab 2: Current Items -->
         <mat-tab label="Current Items">
           <ng-template matTabLabel>
             <span [matBadge]="addedItems().length" [matBadgeHidden]="addedItems().length === 0" matBadgeOverlap="false" matBadgeColor="accent">
@@ -303,6 +299,9 @@ export interface InventoryItem {
                       </div>
                       <div matListItemLine>
                         {{ item.asset.name }} • <span class="category-badge">{{ formatCategory(item.category) }}</span>
+                        @if (isTemplate(item.asset)) {
+                          <span class="template-badge small ml-2">Template</span>
+                        }
                       </div>
                       <div matListItemLine *ngIf="item.deckConfigId" class="text-xs text-slate-500">
                          Config: {{ getDeckConfigName(item.deckConfigId) }}
@@ -333,29 +332,48 @@ export interface InventoryItem {
   styles: [`
     .inventory-dialog-content {
       padding: 0 !important;
-      height: 650px;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      flex: 1;
     }
 
     .tab-padding {
       padding: 24px;
-      height: 550px;
       overflow-y: auto;
+      flex: 1;
     }
 
-    /* Quick Add Styles */
+    mat-tab-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    :host ::ng-deep .mat-mdc-tab-body-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    :host ::ng-deep .mat-mdc-tab-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    :host ::ng-deep .mat-mdc-tab-body-content {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
     .quick-add-container {
       display: flex;
       flex-direction: column;
       gap: 16px;
-    }
-
-    .filter-panel {
-      box-shadow: none;
-      border: 1px solid var(--mat-sys-outline-variant);
-      border-radius: 8px !important;
     }
 
     .filters-grid {
@@ -389,158 +407,66 @@ export interface InventoryItem {
       font-weight: 600;
     }
 
-    /* Stepper Polish */
+    .template-badge {
+      font-size: 10px;
+      background: var(--mat-sys-tertiary-container);
+      color: var(--mat-sys-on-tertiary-container);
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    
+    .template-badge.small {
+      font-size: 9px;
+      padding: 1px 4px;
+    }
+
     .polished-stepper {
       background: transparent;
       height: 100%;
       display: flex;
       flex-direction: column;
-
       --mat-stepper-container-color: transparent;
-      --mat-stepper-header-label-text-color: var(--mat-sys-on-surface-variant);
-      --mat-stepper-header-selected-state-label-text-color: var(--mat-sys-primary);
-      --mat-stepper-header-done-state-icon-background-color: var(--mat-sys-primary);
-      --mat-stepper-header-edit-state-icon-background-color: var(--mat-sys-primary);
-      --mat-stepper-header-line-color: var(--mat-sys-outline-variant);
     }
 
     :host ::ng-deep {
-      .mat-horizontal-stepper-header-container {
-        padding: 0 16px;
-      }
-      .mat-horizontal-content-container {
-        padding: 0 !important;
-        flex-grow: 1;
-        overflow-y: auto;
-      }
-      .mat-step-header .mat-step-icon-selected {
-        background-color: var(--mat-sys-primary);
-        color: var(--mat-sys-on-primary);
-      }
+      .mat-horizontal-stepper-header-container { padding: 0 16px; }
+      .mat-horizontal-content-container { padding: 0 !important; flex-grow: 1; overflow-y: auto; }
+      .mat-step-header .mat-step-icon-selected { background-color: var(--mat-sys-primary); color: var(--mat-sys-on-primary); }
     }
 
-    .step-wrapper {
-      padding: 16px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    .type-cards {
-      display: flex;
-      gap: 20px;
-    }
-
+    .step-wrapper { padding: 16px 24px; display: flex; flex-direction: column; gap: 20px; }
+    .type-cards { display: flex; gap: 20px; }
     .type-card {
-      flex: 1;
-      padding: 24px;
-      text-align: center;
-      cursor: pointer;
-      border: 2px solid transparent;
+      flex: 1; padding: 24px; text-align: center; cursor: pointer; border: 2px solid transparent;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      
-      &:hover {
-        background-color: var(--mat-sys-surface-container-high);
-        transform: translateY(-2px);
-      }
-
-      &.selected {
-        border-color: var(--mat-sys-primary);
-        background-color: var(--mat-sys-primary-container);
-        color: var(--mat-sys-on-primary-container);
-      }
-
-      .large-icon {
-        font-size: 48px;
-        width: 48px;
-        height: 48px;
-        margin-bottom: 12px;
-        color: var(--mat-sys-primary);
-      }
-
+      &:hover { background-color: var(--mat-sys-surface-container-high); transform: translateY(-2px); }
+      &.selected { border-color: var(--mat-sys-primary); background-color: var(--mat-sys-primary-container); }
+      .large-icon { font-size: 48px; width: 48px; height: 48px; margin-bottom: 12px; color: var(--mat-sys-primary); }
       h3 { margin: 0 0 4px 0; font-size: 1.1rem; }
       p { margin: 0; font-size: 0.85rem; opacity: 0.7; }
     }
 
-    .chip-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .asset-selection-list {
-      max-height: 250px;
-      overflow-y: auto;
-      border: 1px solid var(--mat-sys-outline-variant);
-      border-radius: 8px;
-    }
-
-    .step-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-      margin-top: 8px;
-    }
-
-    /* Current Items Styles */
-    .current-items-container {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-    }
-
-    .items-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      h3 { margin: 0; font-size: 1rem; font-weight: 500; }
-    }
-
-    .inventory-list-scroll {
-      flex: 1;
-      overflow-y: auto;
-      margin-top: 12px;
-    }
-
-    .inventory-card-item {
-      border-radius: 8px;
-      margin-bottom: 8px;
-      background: var(--mat-sys-surface-container-low);
-      border: 1px solid var(--mat-sys-outline-variant);
-    }
-
-    .item-title-field {
-      display: flex;
-      align-items: center;
-      .compact-field {
-        width: 200px;
-        margin-top: 8px;
-      }
-    }
-
-    :host ::ng-deep .compact-field {
-      .mat-mdc-form-field-subscript-wrapper { display: none; }
-      .mat-mdc-text-field-wrapper { height: 36px; padding: 0 8px; }
-      .mat-mdc-form-field-flex { height: 36px; }
-      input { font-family: monospace; font-size: 0.9rem; }
-    }
-
-    .confirm-actions {
-      padding-top: 24px;
-      margin-top: auto;
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-    }
-
+    .chip-container { display: flex; flex-wrap: wrap; gap: 8px; }
+    .asset-selection-list { max-height: 250px; overflow-y: auto; border: 1px solid var(--mat-sys-outline-variant); border-radius: 8px; }
+    .step-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
+    .current-items-container { display: flex; flex-direction: column; height: 100%; }
+    .items-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .inventory-list-scroll { flex: 1; overflow-y: auto; margin-top: 12px; }
+    .inventory-card-item { border-radius: 8px; margin-bottom: 8px; background: var(--mat-sys-surface-container-low); border: 1px solid var(--mat-sys-outline-variant); }
+    .item-title-field { display: flex; align-items: center; .compact-field { width: 200px; margin-top: 8px; } }
+    :host ::ng-deep .compact-field { .mat-mdc-form-field-subscript-wrapper { display: none; } .mat-mdc-text-field-wrapper { height: 36px; padding: 0 8px; } input { font-family: monospace; font-size: 0.9rem; } }
+    .confirm-actions { padding-top: 24px; margin-top: auto; display: flex; justify-content: flex-end; gap: 12px; }
     .full-width { width: 100%; }
-    .empty-state {
-      padding: 40px;
-      text-align: center;
-      color: var(--mat-sys-on-surface-variant);
-      font-style: italic;
-    }
+    .empty-state { padding: 40px; text-align: center; color: var(--mat-sys-on-surface-variant); font-style: italic; }
+
+    .catalog-container { display: flex; flex-direction: column; gap: 16px; }
+    .catalog-header { margin-bottom: 8px; h3 { margin: 0; font-size: 1.25rem; } p { margin: 0; color: var(--mat-sys-on-surface-variant); } }
+    .definitions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; padding: 16px 0; }
+    .definition-card { border: 1px solid var(--mat-sys-outline-variant); box-shadow: none !important; mat-card-title { font-size: 1rem !important; margin-bottom: 0 !important; } mat-card-header { padding: 16px 16px 0 16px; } }
+    .category-panel { box-shadow: none !important; border: 1px solid var(--mat-sys-outline-variant); margin-bottom: 8px; border-radius: 8px !important; &.mat-expanded { margin-bottom: 16px; } }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -559,6 +485,8 @@ export class InventoryDialogComponent {
   // Data sources
   machines = toSignal(this.assetService.getMachines(), { initialValue: [] as Machine[] });
   resources = toSignal(this.assetService.getResources(), { initialValue: [] as Resource[] });
+  machineDefinitions = toSignal(this.assetService.getMachineDefinitions(), { initialValue: [] as MachineDefinition[] });
+  resourceDefinitions = toSignal(this.assetService.getResourceDefinitions(), { initialValue: [] as ResourceDefinition[] });
 
   // Control for stepper
   typeControl = new FormControl<'machine' | 'resource' | ''>('', { nonNullable: true, validators: [Validators.required] });
@@ -576,7 +504,6 @@ export class InventoryDialogComponent {
   specsForm = this.fb.group({
     variableName: ['', [Validators.required, Validators.pattern(/^[a-zA-Z_][a-zA-Z0-9_]*$/)]],
     count: [1],
-    backend: ['simulated'],
     deckConfigId: ['']
   });
 
@@ -600,19 +527,31 @@ export class InventoryDialogComponent {
   categoryValue = toSignal(this.categoryControl.valueChanges, { initialValue: '' });
   searchValue = toSignal(this.searchControl.valueChanges, { initialValue: '' });
 
+  isCreating = signal(false);
+
   machineCategories = computed(() => {
     const cats = new Set<string>();
+    // Instances
     this.machines()?.forEach(m => {
       if (m.machine_category) cats.add(m.machine_category);
+    });
+    // Definitions
+    this.machineDefinitions()?.forEach(d => {
+      if (d.machine_category) cats.add(d.machine_category);
     });
     return Array.from(cats).sort();
   });
 
   resourceCategories = computed(() => {
     const cats = new Set<string>();
+    // Instances
     this.resources()?.forEach(r => {
       const cat = this.getResourceCategory(r);
       if (cat) cats.add(cat);
+    });
+    // Definitions
+    this.resourceDefinitions()?.forEach(d => {
+      if (d.plr_category) cats.add(d.plr_category);
     });
     return Array.from(cats).sort();
   });
@@ -620,19 +559,11 @@ export class InventoryDialogComponent {
   categoryOptions = computed<SelectOption[]>(() => {
     const type = this.quickFilterTypeValue();
     const allLabel: SelectOption = { label: 'All Categories', value: 'all' };
-
-    // Helper to map string[] to SelectOption[]
     const mapCats = (cats: string[]) => cats.map(c => ({ label: this.formatCategory(c), value: c }));
 
-    if (type === 'machine') {
-      return [allLabel, ...mapCats(this.machineCategories())];
-    }
+    if (type === 'machine') return [allLabel, ...mapCats(this.machineCategories())];
+    if (type === 'resource') return [allLabel, ...mapCats(this.resourceCategories())];
 
-    if (type === 'resource') {
-      return [allLabel, ...mapCats(this.resourceCategories())];
-    }
-
-    // If 'all', return grouped with separators
     return [
       allLabel,
       { label: '── Machines ──', value: 'HEADER_MACHINES', disabled: true },
@@ -649,23 +580,20 @@ export class InventoryDialogComponent {
     return count;
   });
 
-  // Computed
   currentType = '';
   currentCategory = '';
 
   constructor() {
-    // Reset forms when type changes
     this.typeControl.valueChanges.subscribe(val => {
       if (val) {
         this.currentType = val;
         this.categoryControl.reset();
         this.selectionForm.reset();
-        this.specsForm.reset({ count: 1, backend: 'simulated', deckConfigId: '' });
+        this.specsForm.reset({ count: 1, deckConfigId: '' });
         this.availableDeckConfigs.set([]);
       }
     });
 
-    // Reset selection when category changes
     this.categoryControl.valueChanges.subscribe(val => {
       if (val) {
         this.currentCategory = val;
@@ -673,20 +601,15 @@ export class InventoryDialogComponent {
       }
     });
 
-    // Auto-generate variable name when asset selected
     this.selectionForm.get('asset')?.valueChanges.subscribe((val: Machine | Resource | null) => {
       if (val) {
         this.generateVariableName(val);
-
-        // Load compatible deck configurations if it is a machine
         if ('machine_category' in val) {
           const machine = val as Machine;
           this.deckService.getUserDeckConfigurations().subscribe(configs => {
             const compatible = configs.filter(c => {
-              // Check compatibility against the CONFIG object inside the wrapper
               if (machine.name.toLowerCase().includes('star') && c.config.deckType.includes('STAR')) return true;
               if (machine.name.toLowerCase().includes('ot') && c.config.deckType.includes('OT')) return true;
-              // Very lenient fallback for now:
               return true;
             });
             this.availableDeckConfigs.set(compatible);
@@ -695,7 +618,6 @@ export class InventoryDialogComponent {
       }
     });
 
-    // Reset quick filter category when quick filter type changes
     this.quickFilterType.valueChanges.subscribe(() => {
       this.quickFilterCategory.setValue('all');
     });
@@ -707,39 +629,48 @@ export class InventoryDialogComponent {
       value: { type: 'machine', asset: m },
       icon: 'precision_manufacturing'
     })) || [];
+    
+    // Add virtual machines from definitions
+    const virtualMachines = this.machineDefinitions()?.map(d => ({
+      label: d.name,
+      value: { type: 'machine', asset: this.mapMachineDefinitionToVirtualMachine(d) },
+      icon: 'precision_manufacturing'
+    })) || [];
+
     const res = this.resources()?.map(r => ({
       label: r.name,
       value: { type: 'resource', asset: r },
       icon: 'category'
     })) || [];
-    return [...machinery, ...res] as SelectOption[];
+
+    // Add virtual resources from definitions
+    const virtualResources = this.resourceDefinitions()?.map(d => ({
+      label: d.name,
+      value: { type: 'resource', asset: this.mapResourceDefinitionToVirtualResource(d) },
+      icon: 'category'
+    })) || [];
+
+    return [...machinery, ...virtualMachines, ...res, ...virtualResources] as SelectOption[];
   });
 
   allCategories = computed(() => {
     const cats = new Set<string>();
-    this.machines()?.forEach(m => {
-      if (m.machine_category) cats.add(m.machine_category);
-    });
-    this.resources()?.forEach(r => {
-      const cat = this.getResourceCategory(r);
-      if (cat) cats.add(cat);
-    });
+    this.machines()?.forEach(m => { if (m.machine_category) cats.add(m.machine_category); });
+    this.machineDefinitions()?.forEach(d => { if (d.machine_category) cats.add(d.machine_category); });
+    this.resources()?.forEach(r => { const cat = this.getResourceCategory(r); if (cat) cats.add(cat); });
+    this.resourceDefinitions()?.forEach(d => { if (d.plr_category) cats.add(d.plr_category); });
     return Array.from(cats).sort();
   });
 
   availableCategories = computed(() => {
     const type = this.typeValue();
     const cats = new Set<string>();
-
     if (type === 'machine') {
-      this.machines()?.forEach(m => {
-        if (m.machine_category) cats.add(m.machine_category);
-      });
+      this.machines()?.forEach(m => { if (m.machine_category) cats.add(m.machine_category); });
+      this.machineDefinitions()?.forEach(d => { if (d.machine_category) cats.add(d.machine_category); });
     } else if (type === 'resource') {
-      this.resources()?.forEach(r => {
-        const cat = this.getResourceCategory(r);
-        if (cat) cats.add(cat);
-      });
+      this.resources()?.forEach(r => { const cat = this.getResourceCategory(r); if (cat) cats.add(cat); });
+      this.resourceDefinitions()?.forEach(d => { if (d.plr_category) cats.add(d.plr_category); });
     }
     return Array.from(cats).sort();
   });
@@ -748,20 +679,33 @@ export class InventoryDialogComponent {
     const type = this.typeValue();
     const category = this.categoryValue();
     const search = this.searchValue()?.toLowerCase() || '';
-
     if (!type || !category) return [];
-
+    
     let list: (Machine | Resource)[] = [];
+    
     if (type === 'machine') {
-      list = (this.machines() || []).filter(m => m.machine_category === category);
-    } else {
-      list = (this.resources() || []).filter(r => this.getResourceCategory(r) === category);
+      // Instances
+      const instances = (this.machines() || []).filter(m => m.machine_category === category);
+      // Definitions mapped to virtual instances
+      // Filter out definitions that already have an instance if desired? 
+      // User requested "always allow adding simulation machines", so we show them as templates.
+      const templates = (this.machineDefinitions() || [])
+        .filter(d => d.machine_category === category)
+        .map(d => this.mapMachineDefinitionToVirtualMachine(d));
+      
+      list = [...instances, ...templates];
+    }
+    else {
+      // Resources
+      const instances = (this.resources() || []).filter(r => this.getResourceCategory(r) === category);
+      const templates = (this.resourceDefinitions() || [])
+        .filter(d => d.plr_category === category)
+        .map(d => this.mapResourceDefinitionToVirtualResource(d));
+        
+      list = [...instances, ...templates];
     }
 
-    if (search) {
-      list = list.filter(item => item.name.toLowerCase().includes(search));
-    }
-
+    if (search) list = list.filter(item => item.name.toLowerCase().includes(search));
     return list;
   });
 
@@ -769,25 +713,25 @@ export class InventoryDialogComponent {
     const typeFilter = this.quickFilterTypeValue();
     const catFilter = this.quickFilterCategoryValue();
     const search = this.quickSearch().toLowerCase();
+    
+    // Build combined list
+    const machines = [
+      ...(this.machines() || []),
+      ...(this.machineDefinitions() || []).map(d => this.mapMachineDefinitionToVirtualMachine(d))
+    ];
+    
+    const resources = [
+      ...(this.resources() || []),
+      ...(this.resourceDefinitions() || []).map(d => this.mapResourceDefinitionToVirtualResource(d))
+    ];
 
-    let all: (Machine | Resource)[] = [...(this.machines() || []), ...(this.resources() || [])];
-
-    if (search) {
-      all = all.filter(a => a.name.toLowerCase().includes(search));
-    }
-
+    let all: (Machine | Resource)[] = [...machines, ...resources];
+    
+    if (search) all = all.filter(a => a.name.toLowerCase().includes(search));
     if (typeFilter !== 'all') {
-      all = all.filter(a => {
-        if (typeFilter === 'machine') return 'machine_category' in a;
-        return !('machine_category' in a);
-      });
+      all = all.filter(a => typeFilter === 'machine' ? 'machine_category' in a : !('machine_category' in a));
     }
-
-    if (catFilter !== 'all') {
-      all = all.filter(a => this.getCategory(a) === catFilter);
-    }
-
-    // Limit to 10 results for performance/UX
+    if (catFilter !== 'all') all = all.filter(a => this.getCategory(a) === catFilter);
     return all.slice(0, 10);
   });
 
@@ -797,142 +741,141 @@ export class InventoryDialogComponent {
     this.quickSearch.set('');
   }
 
-  onTabChange(index: number) {
-    this.activeTab.set(index);
-  }
-
+  onTabChange(index: number) { this.activeTab.set(index); }
   onQuickSelect(selected: unknown) {
     const val = selected as { type: string; asset: Machine | Resource };
-    if (val && val.asset) {
-      this.quickAdd(val.asset);
-    }
+    if (val && val.asset) this.quickAdd(val.asset);
   }
 
-  // Update onAssetSelect to just trigger check
   onAssetSelect(event: MatSelectionListChange) {
-    // Logic handled by valueChanges subscription
-    // But we can double check here if needed
+    const asset = event.options[0]?.value;
+    if (asset) {
+      this.selectionForm.patchValue({ asset });
+    }
   }
 
   addToList() {
     if (this.currentType === 'machine') {
       const asset = this.selectionForm.get('asset')?.value as Machine;
       if (asset) {
-        const item: InventoryItem = {
+        this.addItem({
           type: 'machine',
           asset: asset,
           category: this.getCategory(asset),
           variableName: this.specsForm.get('variableName')?.value || this.deriveSafeVariableName(asset),
           count: 1,
-          backend: this.specsForm.get('backend')?.value || 'simulated',
           deckConfigId: this.specsForm.get('deckConfigId')?.value || undefined
-        };
-        this.addItem(item);
+        });
       }
     } else {
       const asset = this.selectionForm.get('asset')?.value as Resource;
       if (asset) {
-        const item: InventoryItem = {
+        this.addItem({
           type: 'resource',
           asset: asset,
           category: this.getCategory(asset),
           variableName: this.specsForm.get('variableName')?.value || this.deriveSafeVariableName(asset),
           count: this.specsForm.get('count')?.value || 1
-        };
-        this.addItem(item);
+        });
       }
     }
-
-    // Reset after add
     this.activeTab.set(2);
   }
 
   quickAdd(asset: Machine | Resource) {
     const type = 'machine_category' in asset ? 'machine' : 'resource';
-    const item: InventoryItem = {
+    this.addItem({
       type,
       asset,
       category: this.getCategory(asset),
       variableName: this.deriveSafeVariableName(asset),
-      count: 1,
-      backend: type === 'machine' ? 'simulated' : undefined
-    };
-
-    this.addItem(item);
-    this.activeTab.set(2); // Switch to Current Items
+      count: 1
+    });
+    this.activeTab.set(2);
   }
 
   private addItem(item: InventoryItem) {
-    // Check for duplicates in variable name
     let finalItem = item;
-    const existing = this.addedItems().some(i => i.variableName === item.variableName);
-    if (existing) {
+    if (this.addedItems().some(i => i.variableName === item.variableName)) {
       finalItem = { ...item, variableName: item.variableName + '_' + (this.addedItems().length + 1) };
     }
     this.addedItems.update(items => [...items, finalItem]);
   }
 
-  removeItem(index: number) {
-    this.addedItems.update(items => items.filter((_, i) => i !== index));
-  }
+  removeItem(index: number) { this.addedItems.update(items => items.filter((_, i) => i !== index)); }
+  clearAll() { this.addedItems.set([]); }
+  close() { this.dialogRef.close(); }
+  confirm() { this.dialogRef.close(this.addedItems()); }
 
-  clearAll() {
-    this.addedItems.set([]);
-  }
-
-  confirm() {
-    this.dialogRef.close(this.addedItems());
-  }
-
-  close() {
-    this.dialogRef.close();
-  }
-
+  // Helpers
   getAssetIcon(item: Machine | Resource): string {
-    if ('machine_category' in item) return 'precision_manufacturing';
-    return 'category';
+    return 'machine_category' in item ? getMachineCategoryIcon(item.machine_category || '') : getResourceCategoryIcon(this.getResourceCategory(item as Resource));
   }
-
-  getCategory(item: Machine | Resource): string {
-    if ('machine_category' in item) return (item as Machine).machine_category ?? 'Unknown';
-    return this.getResourceCategory(item as Resource);
-  }
-
   getCategoryIcon(cat: string): string {
-    return getMachineCategoryIcon(cat) || getResourceCategoryIcon(cat) || 'category';
+    return this.typeValue() === 'machine' ? getMachineCategoryIcon(cat) : getResourceCategoryIcon(cat);
+  }
+  formatCategory(cat: string): string { return cat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()); }
+  getCategory(item: Machine | Resource): string {
+    return 'machine_category' in item ? (item.machine_category || 'Other') : this.getResourceCategory(item as Resource);
+  }
+  private getResourceCategory(r: Resource): string { return r.plr_definition?.category || 'Other'; }
+  getAssetDescription(item: Machine | Resource): string { return 'description' in item ? item.description || '' : ''; }
+  getDeckConfigName(id: string): string { return this.availableDeckConfigs().find(c => c.id === id)?.name || 'Default'; }
+
+  private generateVariableName(asset: Machine | Resource) {
+    this.specsForm.patchValue({ variableName: this.deriveSafeVariableName(asset) });
+  }
+  private deriveSafeVariableName(asset: Machine | Resource): string {
+    return asset.name.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^([0-9])/, '_$1').replace(/_+/g, '_').replace(/_$/, '');
   }
 
-  getAssetDescription(item: Machine | Resource): string {
+  // Definition Mappers
+  private mapMachineDefinitionToVirtualMachine(def: MachineDefinition): Machine {
+    return {
+      accession_id: crypto.randomUUID(),
+      name: `${def.name} ${Math.floor(Math.random() * 100)}`,
+      status: MachineStatus.IDLE,
+      machine_category: def.machine_category,
+      // NEW: Add frontend/backend definition references
+      frontend_definition_accession_id: def.frontend_definition_accession_id,
+      backend_definition_accession_id: def.accession_id,
+      backend_config: {},
+      // Keep legacy fields
+      machine_type: def.machine_category,
+      is_simulation_override: def.backend_type === 'simulator',
+
+      description: def.description,
+      manufacturer: def.manufacturer,
+      model: def.model,
+      connection_info: { backend: 'Simulator', plr_backend: def.fqn },
+      plr_definition: def,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  }
+
+  private mapResourceDefinitionToVirtualResource(def: ResourceDefinition): Resource {
+    return {
+      accession_id: crypto.randomUUID(),
+      name: def.name,
+      description: def.description,
+      status: ResourceStatus.AVAILABLE,
+      resource_definition_accession_id: def.accession_id,
+      plr_definition: { 
+        ...def, 
+        category: def.plr_category || 'Other' 
+      },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  }
+
+  isTemplate(item: Machine | Resource): boolean {
     if ('machine_category' in item) {
-      const m = item as Machine;
-      return `${m.manufacturer || 'Unknown Manufacturer'} • ${m.status}`;
+      const machine = item as Machine;
+      return machine.backend_definition?.backend_type === 'simulator' ||
+             machine.is_simulation_override === true;
     }
-    const r = item as any;
-    return `${r.vendor || 'Unknown Vendor'} • ${r.description || ''}`;
-  }
-
-  formatCategory(cat: string): string {
-    return cat.replace(/_/g, ' ');
-  }
-
-  deriveSafeVariableName(asset: Machine | Resource): string {
-    return asset.name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/^_+|_+$/g, '');
-  }
-
-  generateVariableName(asset: Machine | Resource) {
-    const name = this.deriveSafeVariableName(asset);
-    this.specsForm.patchValue({ variableName: name });
-  }
-
-  private getResourceCategory(r: Resource): string {
-    // Simplified category inference
-    const res = r as any;
-    if (res.type) return res.type;
-    return 'Unknown';
-  }
-
-  getDeckConfigName(id: string): string {
-    const wrapper = this.availableDeckConfigs().find(c => c.id === id);
-    return wrapper ? (wrapper.name || 'Unnamed') : id;
+    return item.accession_id.startsWith('template-');
   }
 }

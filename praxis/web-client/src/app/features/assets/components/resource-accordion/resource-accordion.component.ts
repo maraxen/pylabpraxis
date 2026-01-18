@@ -1,4 +1,5 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,7 +8,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { AssetService } from '../../services/asset.service';
 import { Resource, ResourceStatus, ResourceDefinition, Machine } from '../../models/asset.models';
 import { ResourceInstancesDialogComponent } from './resource-instances-dialog.component';
@@ -54,7 +55,8 @@ export interface ResourceDefinitionGroup {
     ReactiveFormsModule,
     AssetStatusChipComponent,
     ResourceChipsComponent,
-    ViewControlsComponent
+    ViewControlsComponent,
+    NgTemplateOutlet
   ],
   template: `
     <div class="resource-accordion-container">
@@ -68,80 +70,93 @@ export interface ResourceDefinitionGroup {
       </div>
 
       @if (viewState().viewType === 'accordion') {
-        <mat-accordion multi="true">
-        @for (group of filteredGroups(); track group.category) {
-          <mat-expansion-panel class="category-panel">
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                <mat-icon class="category-icon" [matTooltip]="getCategoryTooltip(group.category)">{{ getCategoryIcon(group.category) }}</mat-icon>
-                <span [matTooltip]="getCategoryTooltip(group.category)">{{ group.category }}</span>
-              </mat-panel-title>
-              <mat-panel-description>
-                <span class="count-badge">{{ group.totalCount }} types</span>
-                @if (group.consumableStatus !== 'none') {
-                  <mat-chip
-                    class="consumable-chip"
-                    [class.mixed]="group.consumableStatus === 'mixed'"
-                    [matTooltip]="group.consumableStatus === 'mixed'
-                      ? 'Some items in this category are consumable (used up during protocols)'
-                      : getPropertyTooltip('consumable')"
-                  >
-                    Consumable
-                  </mat-chip>
+        <ng-template #definitionItem let-defGroup="defGroup">
+          <div class="definition-item" (click)="openInstancesDialog(defGroup)">
+            <div class="def-info">
+              <span class="def-name">{{ getDisplayLabel(defGroup.definition) }}</span>
+              <!-- Prioritized chip ordering: Status (if itemized) → Count → Type flags → Vendor -->
+              <div class="def-chips">
+                @if (defGroup.isConsumable && defGroup.primaryStatus) {
+                  <app-asset-status-chip [status]="defGroup.primaryStatus" [showLabel]="true" />
                 }
-              </mat-panel-description>
-            </mat-expansion-panel-header>
+                
+                <app-resource-chips 
+                  [definition]="defGroup.definition" 
+                  [showVendor]="true"
+                  [showDisplayName]="false">
+                </app-resource-chips>
 
-            <div class="definition-list">
-              @for (defGroup of group.definitions; track defGroup.definition.accession_id) {
-                <div class="definition-item" (click)="openInstancesDialog(defGroup)">
-                  <div class="def-info">
-                    <span class="def-name">{{ getDisplayLabel(defGroup.definition) }}</span>
-                    <!-- Prioritized chip ordering: Status (if itemized) → Count → Type flags → Vendor -->
-                    <div class="def-chips">
-                      @if (defGroup.isConsumable && defGroup.primaryStatus) {
-                        <app-asset-status-chip [status]="defGroup.primaryStatus" [showLabel]="true" />
-                      }
-                      
-                      <app-resource-chips 
-                        [definition]="defGroup.definition" 
-                        [showVendor]="true"
-                        [showDisplayName]="false">
-                      </app-resource-chips>
-
-                      @if (defGroup.isConsumable) {
-                        <mat-chip class="info-chip consumable" [matTooltip]="getPropertyTooltip('consumable')">Consumable</mat-chip>
-                      }
-                    </div>
-                  </div>
-                  <div class="def-counts">
-                    @if (defGroup.isConsumable && defGroup.isInfinite) {
-                      <span class="count infinite" [matTooltip]="getPropertyTooltip('infinite')">∞</span>
-                    } @else {
-                      <span
-                        class="count"
-                        [class.low]="defGroup.activeCount < 3"
-                        [matTooltip]="defGroup.activeCount < 3 ? getPropertyTooltip('low-stock') : 'Available quantity'"
-                      >
-                        {{ defGroup.isConsumable ? defGroup.activeCount : 1 }}
-                      </span>
-                    }
-                    @if (viewState().filters['show_discarded']?.includes(true) && defGroup.discardedCount > 0) {
-                      <span class="count discarded" [matTooltip]="getPropertyTooltip('depleted')">
-                        ({{ defGroup.discardedCount }} discarded)
-                      </span>
-                    }
-                    @if (defGroup.isReusable) {
-                      <mat-icon class="reusable-icon" [matTooltip]="getPropertyTooltip('reusable')">refresh</mat-icon>
-                    }
-                  </div>
-                  <mat-icon class="chevron">chevron_right</mat-icon>
-                </div>
+                @if (defGroup.isConsumable) {
+                  <mat-chip class="info-chip consumable" [matTooltip]="getPropertyTooltip('consumable')">Consumable</mat-chip>
+                }
+              </div>
+            </div>
+            <div class="def-counts">
+              @if (defGroup.isConsumable && defGroup.isInfinite) {
+                <span class="count infinite" [matTooltip]="getPropertyTooltip('infinite')">∞</span>
+              } @else {
+                <span
+                  class="count"
+                  [class.low]="defGroup.activeCount < 3"
+                  [matTooltip]="defGroup.activeCount < 3 ? getPropertyTooltip('low-stock') : 'Available quantity'"
+                >
+                  {{ defGroup.isConsumable ? defGroup.activeCount : 1 }}
+                </span>
+              }
+              @if (viewState().filters['show_discarded']?.includes(true) && defGroup.discardedCount > 0) {
+                <span class="count discarded" [matTooltip]="getPropertyTooltip('depleted')">
+                  ({{ defGroup.discardedCount }} discarded)
+                </span>
+              }
+              @if (defGroup.isReusable) {
+                <mat-icon class="reusable-icon" [matTooltip]="getPropertyTooltip('reusable')">refresh</mat-icon>
               }
             </div>
-          </mat-expansion-panel>
+            <mat-icon class="chevron">chevron_right</mat-icon>
+          </div>
+        </ng-template>
+
+        @if (viewState().groupBy) {
+          <mat-accordion multi="true">
+          @for (group of filteredGroups(); track group.category) {
+            <mat-expansion-panel class="category-panel">
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  <mat-icon class="category-icon" [matTooltip]="getCategoryTooltip(group.category)">{{ getCategoryIcon(group.category) }}</mat-icon>
+                  <span [matTooltip]="getCategoryTooltip(group.category)">{{ group.category }}</span>
+                </mat-panel-title>
+                <mat-panel-description>
+                  <span class="count-badge">{{ group.totalCount }} types</span>
+                  @if (group.consumableStatus !== 'none') {
+                    <mat-chip
+                      class="consumable-chip"
+                      [class.mixed]="group.consumableStatus === 'mixed'"
+                      [matTooltip]="group.consumableStatus === 'mixed'
+                        ? 'Some items in this category are consumable (used up during protocols)'
+                        : getPropertyTooltip('consumable')"
+                    >
+                      Consumable
+                    </mat-chip>
+                  }
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+
+              <div class="definition-list">
+                @for (defGroup of group.definitions; track defGroup.definition.accession_id) {
+                  <ng-container *ngTemplateOutlet="definitionItem; context: {defGroup: defGroup}"></ng-container>
+                }
+              </div>
+            </mat-expansion-panel>
+          }
+          </mat-accordion>
+        } @else {
+          <!-- Flat List View (groupBy: null) -->
+          <div class="definition-list flat-list">
+            @for (defGroup of filteredFlatDefinitions(); track defGroup.definition.accession_id) {
+              <ng-container *ngTemplateOutlet="definitionItem; context: {defGroup: defGroup}"></ng-container>
+            }
+          </div>
         }
-        </mat-accordion>
       }
 
       @if (viewState().viewType === 'list') {
@@ -376,7 +391,6 @@ export class ResourceAccordionComponent implements OnInit {
     viewTypes: ['accordion', 'list'],
     groupByOptions: [
       { label: 'Category', value: 'category' },
-      { label: 'None', value: null },
     ],
     filters: [
       {
@@ -547,6 +561,17 @@ export class ResourceAccordionComponent implements OnInit {
       const idxB = UI_GROUP_ORDER.indexOf(b.category as ResourceUiGroup);
       return idxA - idxB;
     });
+  });
+
+  // Flat list of definitions when groupBy is null
+  filteredFlatDefinitions = computed(() => {
+    // Get the already-filtered groups
+    const groups = this.filteredGroups();
+
+    // Flatten: extract definitions from each group and combine
+    return groups
+      .map(group => group.definitions)  // Extract definitions arrays
+      .flat();                          // Flatten into single array
   });
 
   // Filtered groups based on all filters
@@ -730,7 +755,7 @@ export class ResourceAccordionComponent implements OnInit {
 
   openInstancesDialog(defGroup: ResourceDefinitionGroup) {
     this.dialog.open(ResourceInstancesDialogComponent, {
-      width: '600px',
+      width: '900px',
       data: {
         definition: defGroup.definition,
         instances: defGroup.instances,

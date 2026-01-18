@@ -214,8 +214,7 @@ export class DefinitionsListComponent {
     viewTypes: ['accordion'],
     groupByOptions: [
       { label: 'Category', value: 'category' },
-      { label: 'Manufacturer', value: 'manufacturer' },
-      { label: 'None', value: null }
+      { label: 'Manufacturer', value: 'manufacturer' }
     ],
     sortOptions: [
       { label: 'Name', value: 'name' },

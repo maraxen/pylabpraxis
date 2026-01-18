@@ -1,18 +1,19 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { MOCK_PROTOCOLS } from '@assets/browser-data/protocols';
+
 import { ModeService } from '@core/services/mode.service';
 import { PythonRuntimeService } from '@core/services/python-runtime.service';
 import { SqliteService } from '@core/services/sqlite.service';
 import { environment } from '@env/environment';
 import { Observable, Subject, of, firstValueFrom } from 'rxjs';
-import { catchError, retry, tap } from 'rxjs/operators';
+import { catchError, map, retry, tap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
 import { ExecutionMessage, ExecutionState, ExecutionStatus } from '../models/execution.models';
 import { MachineCompatibility } from '../models/machine-compatibility.models';
 import { ProtocolsService } from '../../../core/api-generated/services/ProtocolsService';
+import { calculateDiff } from '@core/utils/state-diff';
 import { ApiWrapperService } from '../../../core/services/api-wrapper.service';
 import { ProtocolRun } from '../../../core/db/schema';
-import { ProtocolRunStatus, ProtocolSourceStatus } from '../../../core/db/enums';
+import { MachineDefinition } from '../../assets/models/asset.models';
 
 @Injectable({
   providedIn: 'root'
@@ -25,12 +26,13 @@ export class ExecutionService {
   private readonly WS_URL = environment.wsUrl;
   private readonly API_URL = environment.apiUrl;
 
-  private socket$: WebSocketSubject<ExecutionMessage> | null = null;
+  private socket$: WebSocketSubject<any> | null = null;
   private messagesSubject = new Subject<ExecutionMessage>();
 
   // Use signals for reactive state
   private _currentRun = signal<ExecutionState | null>(null);
-  private _isConnected = signal(false);
+  private _isConnected = signal<boolean>(false);
+  private lastSavedState: any = null;
 
   // Public computed signals
   readonly currentRun = this._currentRun.asReadonly();
@@ -46,16 +48,30 @@ export class ExecutionService {
    */
   getCompatibility(protocolId: string): Observable<MachineCompatibility[]> {
     // In browser mode, return mock compatibility data
+    // In browser mode, return all definitions as templates
     if (this.modeService.isBrowserMode()) {
-      return of([{
-        machine: {
-          accession_id: 'sim-machine-1',
-          name: 'Simulation Machine',
-          status: 'IDLE' as unknown as any,
-          machine_category: 'HamiltonSTAR'
-        },
-        compatibility: { is_compatible: true, missing_capabilities: [], matched_capabilities: [], warnings: [] }
-      } as MachineCompatibility]);
+      return this.sqliteService.machineDefinitions.pipe(
+        map(repo => repo.findAll() as unknown as MachineDefinition[]),
+        map((definitions: MachineDefinition[]) => definitions.map(def => ({
+          machine: {
+            accession_id: `template-${def.accession_id}`,
+            name: def.name,
+            machine_category: def.machine_category,
+            is_simulation_override: true,
+            // Use backend from definition or default
+            simulation_backend_name: (def.available_simulation_backends?.[0]) || 'Chatterbox',
+            description: def.description,
+            machine_definition_accession_id: def.accession_id,
+            is_template: true
+          } as any,
+          compatibility: {
+            is_compatible: true,
+            missing_capabilities: [],
+            matched_capabilities: [],
+            warnings: []
+          }
+        } as MachineCompatibility)))
+      );
     }
     return this.apiWrapper.wrap(ProtocolsService.getProtocolCompatibilityApiV1ProtocolsAccessionIdCompatibilityGet(protocolId)) as Observable<MachineCompatibility[]>;
   }
@@ -163,8 +179,7 @@ export class ExecutionService {
       this.addLog('[Browser Mode] Loading protocol...');
 
       // Get protocol definition from SQLite
-      const protocol = await this.sqliteService.getProtocolById(protocolId) ||
-        MOCK_PROTOCOLS.find(p => p.accession_id === protocolId) || null;
+      const protocol = await this.sqliteService.getProtocolById(protocolId);
 
       if (!protocol) {
         throw new Error(`Protocol not found: ${protocolId}`);
@@ -534,6 +549,7 @@ print(f"[Browser] Protocol finished with result: {result}")
    */
   clearRun() {
     this._currentRun.set(null);
+    this.lastSavedState = null;
     this.disconnect();
   }
 
@@ -556,6 +572,33 @@ print(f"[Browser] Protocol finished with result: {result}")
   }): void {
     // Only persist completed entries (with state_after) or failures
     if (logData.status !== 'running') {
+      // 1. Capture initial state if not already done
+      if (!this.lastSavedState && logData.state_before) {
+        this.sqliteService.updateProtocolRun(runId, {
+          initial_state_json: JSON.stringify(logData.state_before) as any
+        }).subscribe();
+        this.lastSavedState = logData.state_before;
+      }
+
+      // 2. Calculate diffs relative to lastSavedState
+      let state_before_json: string | null = null;
+      if (logData.state_before) {
+        const diff = calculateDiff(this.lastSavedState, logData.state_before);
+        if (diff) {
+          state_before_json = JSON.stringify({ _is_diff: true, diff });
+        }
+        this.lastSavedState = logData.state_before;
+      }
+
+      let state_after_json: string | null = null;
+      if (logData.state_after) {
+        const diff = calculateDiff(this.lastSavedState, logData.state_after);
+        if (diff) {
+          state_after_json = JSON.stringify({ _is_diff: true, diff });
+        }
+        this.lastSavedState = logData.state_after;
+      }
+
       const record = {
         accession_id: logData.call_id,
         protocol_run_accession_id: runId,
@@ -567,8 +610,8 @@ print(f"[Browser] Protocol finished with result: {result}")
         end_time: logData.end_time ? new Date(logData.end_time * 1000).toISOString() : null,
         duration_ms: logData.duration_ms ?? null,
         input_args_json: JSON.stringify(logData.args),
-        state_before_json: logData.state_before ? JSON.stringify(logData.state_before) : null,
-        state_after_json: logData.state_after ? JSON.stringify(logData.state_after) : null,
+        state_before_json,
+        state_after_json,
         error_message_text: logData.error_message ?? null,
       };
 

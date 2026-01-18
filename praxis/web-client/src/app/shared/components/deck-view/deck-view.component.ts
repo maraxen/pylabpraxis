@@ -146,8 +146,8 @@ interface TooltipState {
     /* Dark theme (default) */
     :host {
       --plr-bg: var(--mat-sys-surface-container-low);
-      --plr-deck-bg: #2d2d44;
-      --plr-deck-border: #4a4a6a;
+      --plr-deck-bg: var(--mat-sys-surface-container, #2d2d44);
+      --plr-deck-border: var(--mat-sys-outline-variant, rgba(255,255,255,0.1));
       --plr-rail: rgba(255, 255, 255, 0.06);
       --plr-label: rgba(255, 255, 255, 0.7);
       --plr-hover-glow: rgba(237, 122, 155, 0.5);
@@ -166,7 +166,8 @@ interface TooltipState {
 
     .resource-node {
       position: absolute;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
       box-sizing: border-box;
       transition: all 0.15s ease;
       display: flex;
@@ -243,7 +244,7 @@ interface TooltipState {
     }
 
     .resource-label {
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 500;
       color: var(--plr-label);
       pointer-events: none;
@@ -253,7 +254,9 @@ interface TooltipState {
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: 100%;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      text-shadow: none;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 2px;
       letter-spacing: 0.3px;
     }
 
@@ -456,8 +459,9 @@ interface TooltipState {
     }
 
     :host-context(.light-theme) .resource-label {
-      text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+      text-shadow: none;
       color: #1e293b;
+      background: rgba(255, 255, 255, 0.6);
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,

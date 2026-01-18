@@ -16,7 +16,7 @@ import { HardwareDiscoveryDialogComponent } from '../hardware-discovery-dialog/h
     MatIconModule,
     MatTooltipModule,
     MatProgressSpinnerModule
-],
+  ],
   template: `
     <button mat-icon-button 
             (click)="triggerDiscovery()" 
@@ -45,7 +45,7 @@ export class HardwareDiscoveryButtonComponent {
 
   triggerDiscovery() {
     this.dialog.open(HardwareDiscoveryDialogComponent, {
-      width: '800px',
+      width: '1000px',
       maxHeight: '90vh'
     });
 

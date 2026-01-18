@@ -47,13 +47,38 @@ export class DeckCatalogService {
     /**
      * Get deck definition specification by FQN or type name.
      */
+    /**
+     * Get deck definition specification by FQN or type name.
+     */
     getDeckDefinition(fqn: string): DeckDefinitionSpec | null {
+        if (!fqn) return null;
+
         // Hamilton STAR detection
         if (fqn === 'pylabrobot.resources.hamilton.HamiltonSTARDeck' ||
             fqn === 'HamiltonSTARDeck' ||
-            fqn.includes('STAR')) {
+            fqn.includes('HamiltonSTARDeck')) {
             return this.getHamiltonSTARSpec();
         }
+
+        // Hamilton STARLet detection
+        if (fqn === 'pylabrobot.resources.hamilton.STARlet.STARLetDeck' ||
+            fqn === 'STARLetDeck' ||
+            fqn.includes('STARLet')) {
+            return this.getHamiltonSTARLetSpec();
+        }
+
+        // Hamilton Vantage detection
+        if (fqn === 'pylabrobot.resources.hamilton.Vantage.VantageDeck' ||
+            fqn === 'VantageDeck' ||
+            fqn.includes('Vantage')) {
+            return this.getVantageSpec();
+        }
+
+        // Catch-all for other Hamiltons
+        if (fqn.includes('Hamilton') || fqn.includes('STAR')) {
+            return this.getHamiltonSTARSpec();
+        }
+
         // Opentrons OT-2 detection
         if (fqn === 'pylabrobot.resources.opentrons.deck.OTDeck' ||
             fqn === 'OTDeck' ||
@@ -71,7 +96,20 @@ export class DeckCatalogService {
     getDeckTypeForMachine(machine: Machine | null | undefined): string | null {
         if (!machine) return null;
 
-        // 1. Check machine definition/category
+        // 1. Check backend definition (new architecture)
+        const backendName = machine.backend_definition?.name?.toLowerCase() || '';
+        const backendFqn = machine.backend_definition?.fqn?.toLowerCase() || '';
+
+        if (backendName.includes('ot-2') || backendName.includes('ot2') ||
+            backendFqn.includes('opentrons.ot2')) {
+            return 'pylabrobot.resources.opentrons.deck.OTDeck';
+        }
+
+        if (backendName.includes('flex') || backendFqn.includes('opentrons.flex')) {
+            return 'pylabrobot.resources.opentrons.deck.OTDeck'; // Or FlexDeck if available
+        }
+
+        // 2. Check machine definition/category (legacy)
         const category = machine.machine_category || machine.machine_type || '';
         const model = machine.model || '';
         const manufacturer = (machine.manufacturer || '').toLowerCase();
@@ -88,7 +126,7 @@ export class DeckCatalogService {
             return 'pylabrobot.resources.opentrons.deck.OTDeck';
         }
 
-        // 2. Check connection info (fallback for simulators)
+        // 3. Check connection info (fallback for simulators)
         const connectionInfo = machine.connection_info || {};
         const backend = (connectionInfo['backend'] || '').toString();
 
@@ -105,11 +143,14 @@ export class DeckCatalogService {
     /**
      * Get all available carriers compatible with a deck type.
      */
+    /**
+     * Get all available carriers compatible with a deck type.
+     */
     getCompatibleCarriers(deckFqn: string): CarrierDefinition[] {
         if (!deckFqn) return [];
 
         // Hamilton STAR Deck (legacy check + FQN check)
-        if (deckFqn.includes('Hamilton') || deckFqn.includes('STAR')) {
+        if (deckFqn.includes('Hamilton') || deckFqn.includes('STAR') || deckFqn.includes('Vantage')) {
             return this.getHamiltonCarriers();
         }
 
@@ -119,6 +160,25 @@ export class DeckCatalogService {
         // For now, returning empty array is correct as OT-2 doesn't use "carriers" in the same way.
 
         return [];
+    }
+
+    /**
+     * Load all discovered deck definitions from the database.
+     */
+    loadDeckDefinitions(): Observable<{ fqn: string, name: string }[]> {
+        return this.sqlite.deckDefinitions.pipe(
+            take(1),
+            map(repo => {
+                const all = repo.findAll();
+                return all
+                    .filter(def => def.fqn && def.name)
+                    .map(def => ({
+                        fqn: def.fqn!,
+                        name: def.name!
+                    }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+            })
+        );
     }
 
     // ========================================================================
@@ -208,9 +268,6 @@ export class DeckCatalogService {
     // Spec Generators
     // ========================================================================
 
-    /**
-     * Get Hamilton STAR deck specification.
-     */
     getHamiltonSTARSpec(): DeckDefinitionSpec {
         const numRails = 30;
         const railPositions: number[] = [];
@@ -218,6 +275,9 @@ export class DeckCatalogService {
         for (let i = 0; i < numRails; i++) {
             railPositions.push(this.HAMILTON_STAR_RAIL_OFFSET + (i * this.HAMILTON_STAR_RAIL_SPACING));
         }
+
+        // Calculate width: last rail pos + offset (approx) = 100 + 29*22.5 + ~100 = ~850mm active area.
+        // Dimensions below are physical bounds.
 
         return {
             fqn: 'pylabrobot.resources.hamilton.HamiltonSTARDeck',
@@ -236,6 +296,79 @@ export class DeckCatalogService {
                 width: 1200,
                 height: 653.5,
                 depth: 500
+            }
+        };
+    }
+
+    /**
+     * Get Hamilton STARLet deck specification.
+     * STARLet is essentially a smaller STAR (approx 20 rails?)
+     */
+    getHamiltonSTARLetSpec(): DeckDefinitionSpec {
+        // STARLet typically has fewer rails, traditionally around 30 tracks like STAR but width is smaller? 
+        // Actually STARLet has 30 tracks available but physical width is smaller.  
+        // Wait, standard STAR has 54 tracks? 
+        // Let's assume for simulation purposes:
+        // STAR: ~30 visualized rails for now (as per existing code)
+        // STARLet: ~20 visualized rails (arbitrary reduction to show difference)
+
+        const numRails = 20;
+        const railPositions: number[] = [];
+
+        for (let i = 0; i < numRails; i++) {
+            railPositions.push(this.HAMILTON_STAR_RAIL_OFFSET + (i * this.HAMILTON_STAR_RAIL_SPACING));
+        }
+
+        return {
+            fqn: 'pylabrobot.resources.hamilton.STARlet.STARLetDeck',
+            name: 'Hamilton STARLet Deck',
+            manufacturer: 'Hamilton',
+            layoutType: 'rail-based',
+            numRails: numRails,
+            railSpacing: this.HAMILTON_STAR_RAIL_SPACING,
+            railPositions: railPositions,
+            compatibleCarriers: [
+                'pylabrobot.resources.ml_star.plt_car_l5ac',
+                'pylabrobot.resources.ml_star.tip_car_480',
+                'pylabrobot.resources.ml_star.rgt_car_3r'
+            ],
+            dimensions: {
+                width: 800, // Smaller than STAR
+                height: 653.5,
+                depth: 500
+            }
+        };
+    }
+
+    /**
+     * Get Hamilton Vantage deck specification.
+     * Vantage uses a similar track system but different naming. For now, we simulate as a large STAR.
+     */
+    getVantageSpec(): DeckDefinitionSpec {
+        const numRails = 40; // Vantage is essentially infinite/large
+        const railPositions: number[] = [];
+
+        for (let i = 0; i < numRails; i++) {
+            railPositions.push(this.HAMILTON_STAR_RAIL_OFFSET + (i * this.HAMILTON_STAR_RAIL_SPACING));
+        }
+
+        return {
+            fqn: 'pylabrobot.resources.hamilton.Vantage.VantageDeck',
+            name: 'Hamilton Vantage Deck',
+            manufacturer: 'Hamilton',
+            layoutType: 'rail-based',
+            numRails: numRails,
+            railSpacing: this.HAMILTON_STAR_RAIL_SPACING,
+            railPositions: railPositions,
+            compatibleCarriers: [
+                // Assume STAR carriers are somewhat compatible for simulation
+                'pylabrobot.resources.ml_star.plt_car_l5ac',
+                'pylabrobot.resources.ml_star.tip_car_480'
+            ],
+            dimensions: {
+                width: 1600, // Wider than STAR
+                height: 750,
+                depth: 600
             }
         };
     }

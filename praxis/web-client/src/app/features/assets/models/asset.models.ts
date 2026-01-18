@@ -45,6 +45,7 @@ export interface AssetBase {
   location?: string;
   location_label?: string; // e.g. "Room 101, Bench A"
   asset_type?: string;
+  description?: string;
   plr_state?: any;
   plr_definition?: any;
   created_at?: string;
@@ -70,6 +71,13 @@ export interface Machine extends AssetBase {
   maintenance_schedule_json?: MaintenanceSchedule;
   last_maintenance_json?: Record<string, MaintenanceRecord>;
   workcell_accession_id?: string;
+  frontend_definition_accession_id?: string;
+  backend_definition_accession_id?: string;
+  backend_config?: Record<string, any>;
+  
+  // Joined fields
+  frontend_definition?: MachineFrontendDefinition;
+  backend_definition?: MachineBackendDefinition;
 }
 
 export interface MachineCreate {
@@ -86,6 +94,9 @@ export interface MachineCreate {
   user_configured_capabilities?: Record<string, any>;
   simulation_backend_name?: string;
   machine_definition_accession_id?: string;
+  frontend_definition_accession_id?: string;
+  backend_definition_accession_id?: string;
+  backend_config?: Record<string, any>;
   maintenance_enabled?: boolean;
   maintenance_schedule_json?: MaintenanceSchedule;
   last_maintenance_json?: Record<string, MaintenanceRecord>;
@@ -124,6 +135,34 @@ export interface MachineDefinition {
   frontend_fqn?: string;
   is_simulated_frontend?: boolean;
   available_simulation_backends?: string[];
+  frontend_definition_accession_id?: string;
+  backend_type?: 'hardware' | 'simulator' | 'mock';
+}
+
+export interface MachineFrontendDefinition {
+  accession_id: string;
+  name?: string;
+  fqn: string;
+  description?: string;
+  machine_category?: string;
+  has_deck?: boolean;
+  capabilities?: Record<string, any>;
+  capabilities_config?: Record<string, any>;
+  manufacturer?: string;
+  model?: string;
+}
+
+export interface MachineBackendDefinition {
+  accession_id: string;
+  name?: string;
+  fqn: string;
+  description?: string;
+  backend_type?: 'hardware' | 'simulator' | 'mock';
+  connection_config?: Record<string, any>;
+  manufacturer?: string;
+  model?: string;
+  is_deprecated?: boolean;
+  frontend_definition_accession_id: string;
 }
 
 export interface MachineCapabilityConfigSchema {

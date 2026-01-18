@@ -70,13 +70,13 @@ import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protoco
               <table mat-table [dataSource]="filteredProtocols()" class="!bg-transparent w-full" data-tour-id="protocol-table">
                 <!-- Name Column -->
                 <ng-container matColumnDef="name">
-                  <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Name </th>
+                  <th mat-header-cell *matHeaderCellDef class="px-6 py-4"> Name </th>
                   <td mat-cell *matCellDef="let protocol" class="!text-sys-text-primary border-b !border-[var(--theme-border)] px-6 py-4">
                     <div class="flex flex-col">
                       <div class="flex items-center gap-2">
                         <span class="font-medium text-base">{{ protocol.name }}</span>
                         @if (protocol.is_top_level) {
-                          <span class="px-2 py-0.5 rounded-md bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider border border-primary/20">Top Level</span>
+                          <span class="top-level-badge">Top Level</span>
                         }
                       </div>
                     </div>
@@ -85,7 +85,7 @@ import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protoco
 
                 <!-- Version Column -->
                 <ng-container matColumnDef="version">
-                  <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Version </th>
+                  <th mat-header-cell *matHeaderCellDef class="px-6 py-4"> Version </th>
                   <td mat-cell *matCellDef="let protocol" class="!text-sys-text-secondary border-b !border-[var(--theme-border)] px-6 py-4"> 
                     <span class="font-mono text-xs bg-[var(--theme-surface-elevated)] px-2 py-1 rounded text-sys-text-secondary">{{ protocol.version }}</span>
                   </td>
@@ -93,13 +93,13 @@ import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protoco
 
                 <!-- Description Column -->
                 <ng-container matColumnDef="description">
-                  <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Description </th>
+                  <th mat-header-cell *matHeaderCellDef class="px-6 py-4"> Description </th>
                   <td mat-cell *matCellDef="let protocol" class="!text-sys-text-secondary opacity-70 border-b !border-[var(--theme-border)] px-6 py-4 max-w-md truncate"> {{ protocol.description || 'No description' }} </td>
                 </ng-container>
 
                 <!-- Category Column -->
                 <ng-container matColumnDef="category">
-                  <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Category </th>
+                  <th mat-header-cell *matHeaderCellDef class="px-6 py-4"> Category </th>
                   <td mat-cell *matCellDef="let protocol" class="!text-sys-text-secondary border-b !border-[var(--theme-border)] px-6 py-4">
                     @if (protocol.category) {
                       <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-400/10 text-blue-300 border border-blue-400/20">
@@ -113,9 +113,9 @@ import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protoco
 
                 <!-- Actions Column -->
                 <ng-container matColumnDef="actions">
-                  <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4 text-right"> Actions </th>
+                  <th mat-header-cell *matHeaderCellDef class="px-6 py-4 text-center"> Actions </th>
                   <td mat-cell *matCellDef="let protocol" class="border-b !border-[var(--theme-border)] px-6 py-4">
-                    <div class="flex justify-end gap-2">
+                    <div class="actions-cell">
                       <button mat-icon-button class="!text-green-400 hover:!bg-green-400/20 transition-all" matTooltip="Run Protocol" (click)="$event.stopPropagation(); runProtocol(protocol)">
                         <mat-icon>play_arrow</mat-icon>
                       </button>
@@ -138,9 +138,13 @@ import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protoco
             }
           } @else {
             <div class="flex flex-col items-center justify-center h-full text-sys-text-tertiary py-20">
-              <mat-icon class="!w-16 !h-16 !text-[64px] opacity-20 mb-4">science</mat-icon>
+              <mat-icon class="!w-16 !h-16 !text-[64px] opacity-40 mb-4">science</mat-icon>
               <p class="text-lg font-medium">No protocols found</p>
-              <p class="text-sm opacity-60">Try adjusting your search or upload a new protocol</p>
+              <p class="text-sm opacity-60 mb-6">Try adjusting your search or upload a new protocol</p>
+              <button mat-flat-button class="!bg-primary/10 !text-primary !rounded-xl !px-6 !py-6 !font-semibold hover:!bg-primary/20 transition-all" (click)="uploadProtocol()">
+                <mat-icon>upload</mat-icon>
+                Upload Protocol
+              </button>
             </div>
           }
         </div>
@@ -156,6 +160,33 @@ import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protoco
     /* Mat Table Overrides for Transparency */
     ::ng-deep .mat-mdc-table {
       background: transparent !important;
+    }
+
+    /* Better table header visibility in dark mode */
+    ::ng-deep th.mat-header-cell, ::ng-deep .mat-mdc-header-cell {
+      background: var(--mat-sys-surface-container-high) !important;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+    }
+
+    /* Fix badge appearance */
+    .top-level-badge {
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    /* Center action icons */
+    .actions-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,

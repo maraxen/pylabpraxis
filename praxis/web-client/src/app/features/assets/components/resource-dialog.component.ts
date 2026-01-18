@@ -243,8 +243,18 @@ interface GroupedDefinitions {
     }
     `,
   styles: [`
-    :host { display: block; height: 100%; max-height: 80vh; }
-    mat-dialog-content { height: calc(80vh - 120px); min-width: 600px; }
+    :host { 
+      display: block; 
+      height: 100%; 
+      min-width: 600px;
+      max-width: 800px;
+      width: 70vw;
+      max-height: 80vh; 
+    }
+    mat-dialog-content { 
+      height: calc(80vh - 120px); 
+      min-width: 600px; 
+    }
     .selection-shell { display: flex; flex-direction: column; gap: 16px; }
     .search-field { flex: 0 0 auto; }
 

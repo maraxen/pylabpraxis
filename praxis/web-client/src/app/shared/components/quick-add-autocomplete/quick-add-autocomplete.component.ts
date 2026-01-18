@@ -6,6 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AssetService } from '../../../features/assets/services/asset.service';
 import { MachineDefinition, ResourceDefinition } from '../../../features/assets/models/asset.models';
 
@@ -24,7 +25,8 @@ export interface QuickAddResult {
         MatInputModule,
         MatFormFieldModule,
         MatIconModule,
-        MatButtonModule
+        MatButtonModule,
+        MatTooltipModule
     ],
     template: `
     <mat-form-field appearance="outline" class="w-full no-label" subscriptSizing="dynamic">
@@ -49,8 +51,8 @@ export interface QuickAddResult {
               </div>
               <div class="flex flex-col min-w-0">
                 <span class="font-medium truncate">{{ item.definition.name }}</span>
-                <span class="text-[10px] sys-text-secondary truncate">
-                  {{ item.type | titlecase }} • {{ item.definition.fqn }}
+                <span class="text-[10px] sys-text-secondary truncate font-mono" [matTooltip]="item.definition.fqn">
+                  {{ item.type | titlecase }} • {{ getShortFqn(item.definition.fqn) || 'Unknown' }}
                 </span>
               </div>
             </div>
@@ -137,6 +139,16 @@ export class QuickAddAutocompleteComponent {
         this.definitionSelected.emit(result);
         // Do not clear search yet, let the parent handle the jump first if needed, 
         // or clear it if we stay on same step (but here we jump).
+    }
+
+    /**
+     * Returns the last segment of a Python fully-qualified name.
+     * e.g. "pylabrobot.fans.Fan" -> "Fan"
+     */
+    getShortFqn(fqn: string | undefined): string {
+        if (!fqn) return '';
+        const parts = fqn.split('.');
+        return parts[parts.length - 1] || fqn;
     }
 
     clearSearch(event: Event) {

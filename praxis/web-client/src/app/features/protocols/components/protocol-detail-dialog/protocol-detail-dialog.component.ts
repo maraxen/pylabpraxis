@@ -152,48 +152,56 @@ import { ProtocolDefinition } from '../../models/protocol.models';
     .dialog-container {
       display: flex;
       flex-direction: column;
-      max-height: 80vh;
+      max-height: 90vh;
       overflow: hidden;
-      background: var(--theme-surface);
+      background: #1a1b1e;
+      backdrop-filter: blur(12px);
       color: var(--theme-text-primary);
+      border-radius: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
     }
 
     .dialog-header {
-      padding: 1.5rem 1.5rem 1rem;
+      padding: 2rem 2rem 1.5rem;
       border-bottom: 1px solid var(--theme-border);
-      background: var(--theme-surface-elevated);
+      background: rgba(255, 255, 255, 0.03);
       margin: 0 !important;
     }
 
     .header-content {
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
+      gap: 1rem;
     }
 
     .title-row {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 1.25rem;
     }
 
     .protocol-icon {
-      width: 32px;
-      height: 32px;
-      font-size: 32px;
+      width: 36px;
+      height: 36px;
+      font-size: 36px;
       color: var(--primary-color);
     }
 
     .protocol-name {
       margin: 0;
-      font-size: 1.5rem;
+      font-size: 1.75rem;
       font-weight: 700;
       line-height: 1.2;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .metadata-chips {
       display: flex;
-      gap: 0.5rem;
+      gap: 0.75rem;
       flex-wrap: wrap;
     }
 
@@ -213,7 +221,7 @@ import { ProtocolDefinition } from '../../models/protocol.models';
     .chip.param-type { background: var(--theme-surface-variant); color: var(--theme-text-tertiary); font-size: 0.65rem; margin-left: 0.5rem; }
 
     .dialog-content {
-      padding: 1.5rem !important;
+      padding: 2rem !important;
       overflow-y: auto;
     }
 
@@ -239,6 +247,7 @@ import { ProtocolDefinition } from '../../models/protocol.models';
       line-height: 1.6;
       color: var(--theme-text-primary);
       margin: 0;
+      white-space: pre-wrap;
     }
 
     .grid-section {
@@ -301,7 +310,9 @@ import { ProtocolDefinition } from '../../models/protocol.models';
     }
 
     .dialog-actions {
-      padding: 1rem 1.5rem !important;
+      display: flex;
+      gap: 24px;
+      padding: 1rem 2rem !important;
       border-top: 1px solid var(--theme-border);
       background: var(--theme-surface-elevated);
       margin: 0 !important;

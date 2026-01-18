@@ -270,7 +270,7 @@ interface FilterCategory {
                 </div>
               </div>
 
-              <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
+              <div class="wizard-footer mt-6 flex justify-between">
                 <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
                 <button mat-flat-button color="primary" matStepperNext [disabled]="parametersFormGroup.invalid" class="!rounded-xl !px-8 !py-6">Continue</button>
               </div>
@@ -316,7 +316,7 @@ interface FilterCategory {
                 }
               </div>
 
-              <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
+              <div class="wizard-footer mt-6 flex justify-between">
                  <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
                  <button mat-flat-button color="primary" matStepperNext [disabled]="!selectedMachine() || showMachineError()" class="!rounded-xl !px-8 !py-6">Continue</button>
               </div>
@@ -345,7 +345,7 @@ interface FilterCategory {
                  }
                </div>
 
-               <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
+               <div class="wizard-footer mt-6 flex justify-between">
                   <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
                   <button mat-flat-button color="primary" matStepperNext [disabled]="assetsFormGroup.invalid" class="!rounded-xl !px-8 !py-6">Continue</button>
                </div>
@@ -385,7 +385,7 @@ interface FilterCategory {
                   }
                 </div>
                 
-                <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
+                <div class="wizard-footer mt-6 flex justify-between">
                   <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
                   <button mat-flat-button color="primary" matStepperNext 
                           [disabled]="!areWellSelectionsValid()" 
@@ -489,7 +489,7 @@ interface FilterCategory {
                               placeholder="Document experimental conditions, operator notes, etc."></textarea>
                   </mat-form-field>
                 </div>
-               <div class="flex gap-4 w-full justify-center">
+               <div class="wizard-footer flex gap-4 w-full justify-center mt-auto">
                   <button mat-button matStepperPrevious class="!border-[var(--theme-border)] !text-sys-text-secondary !rounded-xl !px-8 !py-6 w-40 border">Back</button>
                   
                   <!-- Schedule Button -->
@@ -584,19 +584,38 @@ interface FilterCategory {
     ::ng-deep .mat-step-header {
       border-radius: 12px;
       transition: background 0.2s;
-      height: auto !important; /* Allow growing for wrapped text */
-      padding: 8px 16px !important; /* Reduced padding */
-      align-items: flex-start !important; /* Align top when wrapped */
+      padding: 12px 24px !important;
     }
     ::ng-deep .mat-step-header:hover {
       background: var(--mat-sys-surface-variant);
     }
     ::ng-deep .mat-step-label {
       color: var(--theme-text-secondary) !important;
-      font-size: 0.85rem !important; /* Smaller labels */
-      white-space: normal !important; /* Allow wrapping */
-      overflow: visible !important;
+      font-size: 0.85rem !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
       line-height: 1.3 !important;
+    }
+
+    /* Sticky action bar for wizard footer */
+    .wizard-footer {
+      position: sticky;
+      bottom: 0;
+      background: var(--mat-sys-surface);
+      border-top: 1px solid var(--mat-sys-outline-variant);
+      padding: 16px;
+      z-index: 20;
+    }
+
+    /* Better focus state for form controls in dark mode */
+    ::ng-deep .mat-mdc-form-field.mat-focused {
+      .mdc-notched-outline__leading,
+      .mdc-notched-outline__notch,
+      .mdc-notched-outline__trailing {
+        border-color: var(--mat-sys-primary) !important;
+        border-width: 2px !important;
+      }
     }
     ::ng-deep .mat-step-label-selected {
       color: var(--theme-text-primary) !important;
@@ -663,23 +682,7 @@ export class RunProtocolComponent implements OnInit {
   });
   wellSelections = signal<Record<string, string[]>>({});
 
-  private readonly browserModeMachine: MachineCompatibility = {
-    machine: {
-      accession_id: 'sim-machine-1',
-      name: 'Simulation Machine',
-      status: MachineStatus.IDLE,
-      machine_category: 'HamiltonSTAR',
-      connection_info: { backend: 'Simulator' },
-      is_simulation_override: true
-    },
-    compatibility: { is_compatible: true, missing_capabilities: [], matched_capabilities: [], warnings: [] }
-  };
-
   constructor() {
-    // In browser mode we still want to pre-select the simulation machine
-    if (this.isBrowserModeActive()) {
-      this.setupBrowserModeMachine();
-    }
   }
 
   /** Helper to check if a machine is simulated */
@@ -688,12 +691,21 @@ export class RunProtocolComponent implements OnInit {
     if (!selection) return false;
 
     const machine = selection.machine;
+
+    // NEW: Check backend_definition.backend_type
+    if (machine.backend_definition?.backend_type === 'simulator') {
+      return true;
+    }
+
     const connectionInfo = machine.connection_info || {};
     const backend = (connectionInfo['backend'] || '').toString();
 
+    // Legacy fallback
     return machine.is_simulation_override === true ||
       (machine as any).is_simulated === true ||
-      backend.includes('Simulator');
+      backend.includes('Simulator') ||
+      backend.includes('simulation') ||
+      backend.includes('Chatterbox');
   });
 
   /** Whether to show the machine validation error */
@@ -745,13 +757,6 @@ export class RunProtocolComponent implements OnInit {
     }
 
     return false;
-  }
-
-  private setupBrowserModeMachine() {
-    this.selectedMachine.set(this.browserModeMachine);
-    this.compatibilityData.set([this.browserModeMachine]);
-    this.machineFormGroup.patchValue({ machineId: this.browserModeMachine.machine.accession_id });
-    this.machineFormGroup.get('machineId')?.updateValueAndValidity();
   }
 
   // Inject global store for simulation mode
@@ -902,7 +907,6 @@ export class RunProtocolComponent implements OnInit {
 
   selectProtocol(protocol: ProtocolDefinition) {
     this.selectedProtocol.set(protocol);
-    const browserMode = this.isBrowserModeActive();
     this.configuredAssets.set(null); // Reset deck config
     this.parametersFormGroup = this._formBuilder.group({});
 
@@ -918,16 +922,10 @@ export class RunProtocolComponent implements OnInit {
     }
     this.protocolFormGroup.patchValue({ protocolId: protocol.accession_id });
 
-    if (browserMode) {
-      this.setupBrowserModeMachine();
-      // Even in browser mode, we want the user to go through asset selection
-      this.assetsFormGroup.patchValue({ valid: false });
-      this.deckFormGroup.patchValue({ valid: protocol.requires_deck === false });
-      return;
-    }
-
     this.assetsFormGroup.patchValue({ valid: false });
     this.deckFormGroup.patchValue({ valid: protocol.requires_deck === false });
+    
+    // Always load compatibility to show templates or machines
     this.loadCompatibility(protocol.accession_id);
   }
 
@@ -969,8 +967,50 @@ export class RunProtocolComponent implements OnInit {
       finalize(() => this.isLoadingCompatibility.set(false))
     ).subscribe({
       next: (data) => {
-        this.compatibilityData.set(data as MachineCompatibility[]);
-        const active = (data as MachineCompatibility[]).filter(d =>
+        let allCompat = data as MachineCompatibility[];
+        const protocol = this.selectedProtocol();
+
+        // Filter based on protocol requirements (Frontend filtering)
+        if (protocol) {
+          // Identify required machine categories from assets
+          const requiredCategories = new Set<string>();
+          const machineAssets = protocol.assets?.filter(a => a.required_plr_category && !a.required_plr_category.includes('plate') && !a.required_plr_category.includes('tip_rack')) || [];
+          
+          machineAssets.forEach(a => {
+             // Extract simple category from type_hint or category
+             if (a.required_plr_category) requiredCategories.add(a.required_plr_category);
+             // Also add common aliases
+             if (a.type_hint_str?.includes('LiquidHandler')) requiredCategories.add('LiquidHandler');
+             if (a.type_hint_str?.includes('PlateReader')) requiredCategories.add('PlateReader');
+          });
+
+          // Default to LiquidHandler if nothing specific found but deck is required
+          if (requiredCategories.size === 0 && protocol.requires_deck !== false) {
+             requiredCategories.add('LiquidHandler');
+          }
+
+          if (requiredCategories.size > 0) {
+             allCompat = allCompat.filter(d => {
+                const cat = d.machine.machine_category;
+                return cat && (requiredCategories.has(cat) || requiredCategories.has('LiquidHandler') && cat === 'HamiltonSTAR');
+             });
+          }
+        }
+
+        // Filter based on deck requirement
+        if (protocol?.requires_deck === false) {
+          // If deck not required, hide LiquidHandlers (unless they are specifically capable - logic can be improved)
+          allCompat = allCompat.filter(d =>
+            d.machine.machine_category !== 'LiquidHandler' &&
+            d.machine.machine_category !== 'HamiltonSTAR'
+          );
+        }
+
+        this.compatibilityData.set(allCompat);
+        
+        // Only auto-select if exactly one option and it's a real machine (not template)
+        // We want users to click templates to configure them
+        const active = allCompat.filter(d =>
           d.compatibility.is_compatible && !(d.machine as any).is_template
         );
         if (active.length === 1) {
@@ -1011,16 +1051,40 @@ export class RunProtocolComponent implements OnInit {
         if (result) {
           // 3. Create the ephemeral machine
           this.isStartingRun.set(true); // Show spinner during creation
-          this.assetService.createMachine({
-            name: result.name,
-            machine_definition_accession_id: def.accession_id,
-            is_simulation_override: true,
-            simulation_backend_name: result.simulation_backend_name,
-            connection_info: { 
-              backend: result.simulation_backend_name,
-              plr_backend: def.fqn || '' 
-            }
-          }).pipe(
+
+          // Find appropriate frontend/backend IDs
+          // In a real implementation, these would come from the definition's associations
+          // For now, we'll try to find them by FQN or use the definition's own accession_id if it's acting as a combined template
+          
+          this.assetService.getMachineFrontendDefinitions().pipe(
+            switchMap(frontends => {
+              const frontend = frontends.find(f => f.fqn === def.frontend_fqn || f.fqn === def.fqn);
+              const frontendId = frontend?.accession_id || def.accession_id;
+              
+              return this.assetService.getBackendsForFrontend(frontendId).pipe(
+                map(backends => {
+                  const backend = backends.find(b => b.backend_type === 'simulator' && (b.name === result.simulation_backend_name || b.fqn.includes(result.simulation_backend_name.toLowerCase())));
+                  return {
+                    frontendId,
+                    backendId: backend?.accession_id
+                  };
+                })
+              );
+            }),
+            switchMap(ids => {
+              return this.assetService.createMachine({
+                name: result.name,
+                frontend_definition_accession_id: ids.frontendId,
+                backend_definition_accession_id: ids.backendId,
+                backend_config: {},
+                is_simulation_override: true,
+                simulation_backend_name: result.simulation_backend_name,
+                connection_info: {
+                  backend: result.simulation_backend_name,
+                  plr_backend: def.fqn || ''
+                }
+              } as any);
+            }),
             finalize(() => this.isStartingRun.set(false))
           ).subscribe({
             next: (newMachine) => {

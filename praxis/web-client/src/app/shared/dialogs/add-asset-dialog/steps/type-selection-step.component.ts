@@ -28,7 +28,7 @@ import { QuickAddAutocompleteComponent, QuickAddResult } from '../../../componen
 
         <div class="relative flex items-center mb-8">
           <div class="flex-grow border-t sys-border"></div>
-          <span class="flex-shrink mx-4 text-xs font-bold uppercase tracking-widest text-sys-text-secondary">or browse by category</span>
+          <span class="flex-shrink mx-4 text-xs font-bold uppercase tracking-widest text-sys-text-primary">or browse by category</span>
           <div class="flex-grow border-t sys-border"></div>
         </div>
         
@@ -86,7 +86,10 @@ Index-based paging - skipping lines...
       color: var(--mat-sys-primary);
     }
     .sys-text-secondary {
-      color: var(--mat-sys-on-surface-variant);
+      color: var(--mat-sys-on-surface-variant) !important;
+    }
+    .sys-text-primary {
+      color: var(--mat-sys-on-surface) !important;
     }
     .sys-border {
       border-color: var(--mat-sys-outline-variant);

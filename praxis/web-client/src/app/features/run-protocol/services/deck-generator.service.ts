@@ -120,13 +120,27 @@ export class DeckGeneratorService {
     private detectDeckType(machine?: Machine): string {
         if (!machine) return 'HamiltonSTARDeck';
 
-        // Direct check on machine type/model
-        // This should align with what DeckCatalogService expects
-        if (machine.machine_category?.includes('OT-2') || machine.machine_type?.includes('OT-2') || machine.model?.includes('OT-2')) {
+        // NEW: Check backend definition name/fqn first
+        const backendName = machine.backend_definition?.name?.toLowerCase() || '';
+        const backendFqn = machine.backend_definition?.fqn?.toLowerCase() || '';
+
+        if (backendName.includes('ot-2') || backendName.includes('ot2') ||
+            backendFqn.includes('opentrons.ot2')) {
             return 'OT2Deck';
         }
 
-        return 'HamiltonSTARDeck'; // Default
+        if (backendName.includes('flex') || backendFqn.includes('opentrons.flex')) {
+            return 'OT2Deck'; // or 'FlexDeck' if we have one
+        }
+
+        // Fallback to legacy detection
+        if (machine.machine_category?.includes('OT-2') ||
+            machine.machine_type?.includes('OT-2') ||
+            machine.model?.includes('OT-2')) {
+            return 'OT2Deck';
+        }
+
+        return 'HamiltonSTARDeck';
     }
 
     private generateSlotBasedDeck(

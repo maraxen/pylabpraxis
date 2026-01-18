@@ -1,4 +1,5 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,22 +17,22 @@ import { DeckConfiguration, CarrierDefinition } from '../../models/deck-layout.m
 import { PlrDeckData } from '@core/models/plr.models';
 
 @Component({
-    selector: 'app-deck-simulation-dialog',
-    standalone: true,
-    imports: [
-        CommonModule,
-        MatDialogModule,
-        MatButtonModule,
-        MatIconModule,
-        MatSelectModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatTabsModule,
-        MatListModule,
-        ReactiveFormsModule,
-        DeckVisualizerComponent
-    ],
-    template: `
+  selector: 'app-deck-simulation-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatIconModule,
+    MatSelectModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatTabsModule,
+    MatListModule,
+    ReactiveFormsModule,
+    DeckVisualizerComponent
+  ],
+  template: `
     <div class="h-full flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
       <!-- Header -->
       <div class="px-6 py-4 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
@@ -60,8 +61,9 @@ import { PlrDeckData } from '@core/models/plr.models';
               <mat-form-field appearance="outline" class="w-full">
                 <mat-label>Deck Type</mat-label>
                 <mat-select formControlName="deckType" (selectionChange)="onDeckTypeChange()">
-                  <mat-option value="HamSTAR">Hamilton STAR</mat-option>
-                  <mat-option value="OT2">Opentrons OT-2</mat-option>
+                  @for (deck of availableDecks(); track deck.fqn) {
+                    <mat-option [value]="deck.fqn">{{ deck.name }}</mat-option>
+                  }
                 </mat-select>
               </mat-form-field>
             </form>
@@ -152,7 +154,7 @@ import { PlrDeckData } from '@core/models/plr.models';
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     :host {
       display: block;
       height: 85vh;
@@ -160,142 +162,137 @@ import { PlrDeckData } from '@core/models/plr.models';
       max-width: 1400px;
     }
   `],
-    changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DeckSimulationDialogComponent {
-    private fb = inject(FormBuilder);
-    private dialogRef = inject(MatDialogRef<DeckSimulationDialogComponent>);
-    private deckService = inject(DeckCatalogService);
+  private fb = inject(FormBuilder);
+  private dialogRef = inject(MatDialogRef<DeckSimulationDialogComponent>);
+  private deckService = inject(DeckCatalogService);
 
-    configForm = this.fb.group({
-        name: ['', Validators.required],
-        deckType: ['', Validators.required]
+  configForm = this.fb.group({
+    name: ['', Validators.required],
+    deckType: ['', Validators.required]
+  });
+
+  targetRailControl = this.fb.control(10, [Validators.min(1), Validators.max(30)]);
+
+  // State
+  currentDeckConfig = signal<DeckConfiguration | null>(null);
+  availableCarriers = signal<CarrierDefinition[]>([]);
+  availableDecks = toSignal(this.deckService.loadDeckDefinitions(), { initialValue: [] });
+
+  // Computed visualization data for the DeckVisualizer
+  visualizationData = computed<PlrDeckData | null>(() => {
+    const config = this.currentDeckConfig();
+    if (!config) return null;
+
+    // We need to synthesize a PlrResource tree from the configuration
+    const deckDef = this.deckService.getDeckDefinition(config.deckType);
+    if (!deckDef) return null;
+
+    // Start with base deck
+    const rootRes = this.deckService.createPlrResourceFromSpec(deckDef);
+
+    // Add configured carriers
+    // NOTE: This logic mimics runtime state generation, simplified for preview
+    config.carriers.forEach(carrier => {
+      // Find x position based on rail
+      const rail = config.rails.find(r => r.index === carrier.railPosition - 1); // 1-based to 0-based
+      const xPos = rail ? rail.xPosition : 100;
+
+      const carrierRes = {
+        name: carrier.name,
+        type: carrier.fqn.split('.').pop() || 'Carrier',
+        location: { x: xPos, y: 0, z: 0, type: "Coordinate" },
+        size_x: carrier.dimensions.width,
+        size_y: carrier.dimensions.height,
+        size_z: carrier.dimensions.depth,
+        children: [] as any[],
+        rotation: { x: 0, y: 0, z: 0 }
+      };
+
+      // Add dummy children for slots to make them visible
+      carrier.slots.forEach(slot => {
+        carrierRes.children.push({
+          name: slot.name,
+          type: "Container", // Generic
+          location: slot.position,
+          size_x: slot.dimensions.width,
+          size_y: slot.dimensions.height,
+          size_z: 10,
+          children: []
+        });
+      });
+
+      rootRes.children.push(carrierRes);
     });
 
-    targetRailControl = this.fb.control(10, [Validators.min(1), Validators.max(30)]);
+    return {
+      resource: rootRes,
+      state: {} // No live state
+    };
+  });
 
-    // State
-    currentDeckConfig = signal<DeckConfiguration | null>(null);
-    availableCarriers = signal<CarrierDefinition[]>([]);
+  isSlotBased = computed(() => {
+    const type = this.configForm.get('deckType')?.value;
+    return type?.includes('OT') || type?.includes('Opentrons');
+  });
 
-    // Computed visualization data for the DeckVisualizer
-    visualizationData = computed<PlrDeckData | null>(() => {
-        const config = this.currentDeckConfig();
-        if (!config) return null;
+  onDeckTypeChange() {
+    const fqn = this.configForm.get('deckType')?.value;
+    if (!fqn) {
+      this.currentDeckConfig.set(null);
+      return;
+    }
 
-        // We need to synthesize a PlrResource tree from the configuration
-        const deckDef = this.deckService.getDeckDefinition(config.deckType);
-        if (!deckDef) return null;
+    const spec = this.deckService.getDeckDefinition(fqn);
+    if (spec) {
+      const config = this.deckService.createDeckConfiguration(spec);
+      this.currentDeckConfig.set(config);
 
-        // Start with base deck
-        const rootRes = this.deckService.createPlrResourceFromSpec(deckDef);
+      // Load carriers
+      if (spec.layoutType === 'rail-based') {
+        this.availableCarriers.set(this.deckService.getCompatibleCarriers(fqn));
+        this.targetRailControl.setValue(10); // Default good placement
+      } else {
+        this.availableCarriers.set([]);
+      }
+    }
+  }
 
-        // Add configured carriers
-        // NOTE: This logic mimics runtime state generation, simplified for preview
-        config.carriers.forEach(carrier => {
-            // Find x position based on rail
-            const rail = config.rails.find(r => r.index === carrier.railPosition - 1); // 1-based to 0-based
-            const xPos = rail ? rail.xPosition : 100;
+  addCarrier(def: CarrierDefinition) {
+    const current = this.currentDeckConfig();
+    const railIdx = (this.targetRailControl.value || 1);
 
-            const carrierRes = {
-                name: carrier.name,
-                type: carrier.fqn.split('.').pop() || 'Carrier',
-                location: { x: xPos, y: 0, z: 0, type: "Coordinate" },
-                size_x: carrier.dimensions.width,
-                size_y: carrier.dimensions.height,
-                size_z: carrier.dimensions.depth,
-                children: [] as any[],
-                rotation: { x: 0, y: 0, z: 0 }
-            };
+    if (!current || !def) return;
 
-            // Add dummy children for slots to make them visible
-            carrier.slots.forEach(slot => {
-                carrierRes.children.push({
-                    name: slot.name,
-                    type: "Container", // Generic
-                    location: slot.position,
-                    size_x: slot.dimensions.width,
-                    size_y: slot.dimensions.height,
-                    size_z: 10,
-                    children: []
-                });
-            });
+    // Create new carrier instance
+    const id = `carrier_${Date.now()}`; // Simple ID
+    const newCarrier = this.deckService.createCarrierFromDefinition(def, id, railIdx);
 
-            rootRes.children.push(carrierRes);
-        });
-
-        return {
-            resource: rootRes,
-            state: {} // No live state
-        };
+    // Update immutable state
+    this.currentDeckConfig.set({
+      ...current,
+      carriers: [...current.carriers, newCarrier]
     });
+  }
 
-    isSlotBased = computed(() => {
-        return this.configForm.get('deckType')?.value === 'OT2';
+  save() {
+    if (this.configForm.invalid || !this.currentDeckConfig()) return;
+
+    const name = this.configForm.get('name')?.value || 'Untitled Configuration';
+    const config = this.currentDeckConfig()!;
+
+    this.deckService.saveUserDeckConfiguration(config, name).subscribe({
+      next: (res) => {
+        console.log('Deck configuration saved', res);
+        this.dialogRef.close(res);
+      },
+      error: (err) => console.error('Failed to save config', err)
     });
+  }
 
-    onDeckTypeChange() {
-        const type = this.configForm.get('deckType')?.value;
-        if (!type) {
-            this.currentDeckConfig.set(null);
-            return;
-        }
-
-        let fqn = '';
-        if (type === 'HamSTAR') {
-            fqn = 'pylabrobot.resources.hamilton.HamiltonSTARDeck';
-        } else if (type === 'OT2') {
-            fqn = 'pylabrobot.resources.opentrons.deck.OTDeck';
-        }
-
-        const spec = this.deckService.getDeckDefinition(fqn);
-        if (spec) {
-            const config = this.deckService.createDeckConfiguration(spec);
-            this.currentDeckConfig.set(config);
-
-            // Load carriers
-            if (spec.layoutType === 'rail-based') {
-                this.availableCarriers.set(this.deckService.getCompatibleCarriers(fqn));
-                this.targetRailControl.setValue(10); // Default good placement
-            } else {
-                this.availableCarriers.set([]);
-            }
-        }
-    }
-
-    addCarrier(def: CarrierDefinition) {
-        const current = this.currentDeckConfig();
-        const railIdx = (this.targetRailControl.value || 1);
-
-        if (!current || !def) return;
-
-        // Create new carrier instance
-        const id = `carrier_${Date.now()}`; // Simple ID
-        const newCarrier = this.deckService.createCarrierFromDefinition(def, id, railIdx);
-
-        // Update immutable state
-        this.currentDeckConfig.set({
-            ...current,
-            carriers: [...current.carriers, newCarrier]
-        });
-    }
-
-    save() {
-        if (this.configForm.invalid || !this.currentDeckConfig()) return;
-
-        const name = this.configForm.get('name')?.value || 'Untitled Configuration';
-        const config = this.currentDeckConfig()!;
-
-        this.deckService.saveUserDeckConfiguration(config, name).subscribe({
-            next: (res) => {
-                console.log('Deck configuration saved', res);
-                this.dialogRef.close(res);
-            },
-            error: (err) => console.error('Failed to save config', err)
-        });
-    }
-
-    close() {
-        this.dialogRef.close();
-    }
+  close() {
+    this.dialogRef.close();
+  }
 }

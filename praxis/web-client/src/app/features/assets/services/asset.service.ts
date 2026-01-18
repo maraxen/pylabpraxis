@@ -4,7 +4,8 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import {
   Machine, MachineCreate, Resource, ResourceCreate,
-  MachineDefinition, ResourceDefinition, ActiveFilters,
+  MachineDefinition, MachineFrontendDefinition, MachineBackendDefinition,
+  ResourceDefinition, ActiveFilters,
   MachineStatus, ResourceStatus, Workcell
 } from '../models/asset.models';
 import { ModeService } from '../../../core/services/mode.service';
@@ -14,6 +15,8 @@ import { inferCategory } from '../utils/category-inference';
 
 // API Generated imports
 import { MachinesService } from '../../../core/api-generated/services/MachinesService';
+import { MachineFrontendsService } from '../../../core/api-generated/services/MachineFrontendsService';
+import { MachineBackendsService } from '../../../core/api-generated/services/MachineBackendsService';
 import { ResourcesService } from '../../../core/api-generated/services/ResourcesService';
 import { AssetsService } from '../../../core/api-generated/services/AssetsService';
 import { DiscoveryService } from '../../../core/api-generated/services/DiscoveryService';
@@ -83,15 +86,26 @@ export class AssetService {
       console.debug('[ASSET-DEBUG] createMachine: Browser mode, creating via SqliteService');
       return this.sqliteService.machines.pipe(
         switchMap(async repo => {
+          const defaults = {
+            status: MachineStatus.IDLE,
+            location: 'Unknown',
+            maintenance_enabled: false,
+            maintenance_schedule_json: { intervals: [], enabled: false },
+            is_simulated: false,
+            serial_number: 'N/A',
+            firmware_version: '0.0.0'
+          };
+
           const newMachine: Machine = {
+            ...defaults,
             ...machine,
             accession_id: crypto.randomUUID(),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            status: MachineStatus.IDLE,
             asset_type: 'MACHINE',
             // Simple FQN generation
             fqn: `machines.${machine.name.replace(/\s+/g, '_').toLowerCase()}`,
+            machine_category: machine.machine_category || machine.machine_type || 'unknown'
           };
           console.debug('[ASSET-DEBUG] createMachine: Calling repo.create with:', newMachine);
           repo.create(newMachine as any);
@@ -227,6 +241,57 @@ export class AssetService {
     }
     return this.apiWrapper.wrap(MachinesService.getMultiApiV1MachinesDefinitionsGet(100)).pipe(
       map(defs => defs.map(d => d as unknown as MachineDefinition))
+    );
+  }
+
+  getMachineFrontendDefinitions(): Observable<MachineFrontendDefinition[]> {
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.machineFrontendDefinitions.pipe(
+        map(repo => {
+          const defs = repo.findAll();
+          return defs.map(d => ({
+            ...d,
+            name: (d as any).name || 'Unknown Frontend'
+          }) as unknown as MachineFrontendDefinition);
+        })
+      );
+    }
+    return this.apiWrapper.wrap(MachineFrontendsService.listFrontendDefinitionsApiV1MachineFrontendsGet(0, 100)).pipe(
+      map(defs => defs.map(d => d as unknown as MachineFrontendDefinition))
+    );
+  }
+
+  getMachineBackendDefinitions(): Observable<MachineBackendDefinition[]> {
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.machineBackendDefinitions.pipe(
+        map(repo => {
+          const defs = repo.findAll();
+          return defs.map(d => ({
+            ...d,
+            name: (d as any).name || 'Unknown Backend'
+          }) as unknown as MachineBackendDefinition);
+        })
+      );
+    }
+    return this.apiWrapper.wrap(MachineBackendsService.listBackendDefinitionsApiV1MachineBackendsGet(0, 100)).pipe(
+      map(defs => defs.map(d => d as unknown as MachineBackendDefinition))
+    );
+  }
+
+  getBackendsForFrontend(frontendAccessionId: string): Observable<MachineBackendDefinition[]> {
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.machineBackendDefinitions.pipe(
+        map(repo => {
+          const defs = repo.findByFrontend(frontendAccessionId);
+          return defs.map(d => ({
+            ...d,
+            name: (d as any).name || 'Unknown Backend'
+          }) as unknown as MachineBackendDefinition);
+        })
+      );
+    }
+    return this.apiWrapper.wrap(MachineFrontendsService.getCompatibleBackendsApiV1MachineFrontendsAccessionIdBackendsGet(frontendAccessionId)).pipe(
+      map(defs => defs.map(d => d as unknown as MachineBackendDefinition))
     );
   }
 

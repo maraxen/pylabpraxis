@@ -255,6 +255,8 @@ describe('AssetService', () => {
         expect(result.name).toBe(newMachine.name);
         expect(result.status).toBe('AVAILABLE'); // Service overrides status on create
         expect(result.asset_type).toBe('MACHINE');
+        expect(result.maintenance_enabled).toBe(false);
+        expect(result.maintenance_schedule_json).toEqual({ intervals: [], enabled: false });
         expect(mockMachineRepo.create).toHaveBeenCalled();
       });
 

@@ -15,7 +15,7 @@ import { MatStepperModule } from '@angular/material/stepper';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
 import { ModeService } from '../../../core/services/mode.service';
-import { MachineDefinition, MachineStatus } from '../models/asset.models';
+import { MachineBackendDefinition, MachineDefinition, MachineFrontendDefinition, MachineStatus } from '../models/asset.models';
 import { AssetService } from '../services/asset.service';
 import { DynamicCapabilityFormComponent } from './dynamic-capability-form.component';
 
@@ -109,16 +109,16 @@ interface FrontendType {
                 <h3 class="text-lg font-medium mb-3">Choose Machine Type</h3>
                 <p class="text-sm sys-text-secondary mb-4">Select the type of machine you want to add.</p>
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  @for (ft of frontendTypes; track ft.fqn) {
+                  @for (frontend of frontendDefinitions; track frontend.accession_id) {
                     <button type="button"
                       class="selection-card"
-                      [class.card-selected]="selectedFrontendFqn === ft.fqn"
-                      (click)="selectFrontendType(ft.fqn)">
+                      [class.card-selected]="selectedFrontendId === frontend.accession_id"
+                      (click)="selectFrontend(frontend)">
                       <div class="flex items-center gap-3 w-full">
-                        <div class="icon-chip"><mat-icon>{{ ft.icon }}</mat-icon></div>
-                        <div class="flex flex-col items-start">
-                          <span class="font-medium">{{ ft.label }}</span>
-                          <span class="text-xs sys-text-secondary">{{ ft.backendCount }} backend(s)</span>
+                        <div class="icon-chip"><mat-icon>{{ getFrontendIcon(frontend) }}</mat-icon></div>
+                        <div class="flex flex-col items-start min-w-0">
+                          <span class="font-medium truncate w-full">{{ getFrontendLabel(frontend) }}</span>
+                          <span class="text-[10px] sys-text-secondary truncate w-full">{{ frontend.fqn }}</span>
                         </div>
                       </div>
                     </button>
@@ -131,7 +131,7 @@ interface FrontendType {
           <!-- STEP 2: Backend Selection -->
           @if (currentStep === 1) {
             <div class="fade-in flex flex-col gap-4">
-              @if (!selectedFrontendFqn) {
+              @if (!selectedFrontendId) {
                 <div class="muted-box text-center py-8 flex flex-col items-center justify-center gap-2">
                   <mat-icon class="!text-4xl opacity-20 mb-2">arrow_back</mat-icon>
                   <p>Please select a machine type first</p>
@@ -145,38 +145,38 @@ interface FrontendType {
                 <p class="text-sm sys-text-secondary">Choose the hardware driver for your {{ getSelectedFrontendLabel() }}. Simulator backends are available for testing without hardware.</p>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
-                  @for (def of filteredBackends; track def.accession_id) {
+                  @for (backend of compatibleBackends; track backend.accession_id) {
                     <button type="button"
                       class="selection-card definition-card"
-                      [class.card-selected]="selectedDefinition?.accession_id === def.accession_id"
-                      (click)="selectBackend(def)">
+                      [class.card-selected]="selectedBackend?.accession_id === backend.accession_id"
+                      (click)="selectBackend(backend)">
                       <div class="flex items-start gap-3 w-full">
                         <div class="icon-chip subtle">
-                          <mat-icon>memory</mat-icon>
+                          <mat-icon>{{ isSimulatedBackend(backend) ? 'terminal' : 'memory' }}</mat-icon>
                         </div>
                         <div class="flex flex-col items-start min-w-0">
                           <div class="flex items-center gap-2 w-full">
                             <span class="font-medium truncate" 
-                                  [matTooltip]="def.name" 
-                                  matTooltipShowDelay="300">{{ getTruncatedName(def.name) }}</span>
-                            @if (isSimulatedDefinition(def)) {
+                                   [matTooltip]="backend.name || ''" 
+                                   matTooltipShowDelay="300">{{ getTruncatedName(backend.name || '') }}</span>
+                            @if (isSimulatedBackend(backend)) {
                               <span class="simulated-chip">Simulated</span>
                             }
-                            @if (selectedDefinition?.accession_id === def.accession_id) {
+                            @if (selectedBackend?.accession_id === backend.accession_id) {
                               <mat-icon class="text-primary !text-sm ml-auto">check_circle</mat-icon>
                             }
                           </div>
                           <span class="text-xs sys-text-secondary truncate">
-                            {{ def.manufacturer || 'Unknown vendor' }}
+                            {{ backend.manufacturer || 'Unknown vendor' }}
                           </span>
                           <span class="text-[11px] text-sys-text-tertiary fqn-wrap"
-                                [matTooltip]="def.fqn"
-                                matTooltipShowDelay="300">{{ getShortFqn(def.fqn || '') }}</span>
+                                [matTooltip]="backend.fqn"
+                                matTooltipShowDelay="300">{{ getShortFqn(backend.fqn || '') }}</span>
                         </div>
                       </div>
                     </button>
                   }
-                  @if (filteredBackends.length === 0) {
+                  @if (compatibleBackends.length === 0) {
                     <div class="muted-box col-span-2">No backends available for this machine type.</div>
                   }
                 </div>
@@ -219,21 +219,11 @@ interface FrontendType {
                   <div class="section-header">Connection</div>
                   @if (shouldShowConnectionConfig()) {
                     <app-dynamic-capability-form
-                      [config]="selectedDefinition!.connection_config"
+                      [config]="$any(selectedBackend!.connection_config)"
                       (valueChange)="updateConnectionInfo($event)">
                     </app-dynamic-capability-form>
                   } @else if (form.get('backend_driver')?.value !== 'sim') {
                     <div class="muted-box mb-3">No structured connection schema; enter JSON if required.</div>
-                  } @else if (shouldShowSimulationPicker()) {
-                    <div class="mb-3">
-                      <label class="text-xs font-medium text-sys-text-secondary mb-1 block">Simulation Backend</label>
-                      <app-praxis-select
-                        placeholder="Select simulation backend"
-                        formControlName="simulation_backend_name"
-                        [options]="getSimulationBackendOptions()"
-                      ></app-praxis-select>
-                      <p class="text-xs text-sys-text-tertiary mt-1 px-1">Select the specific simulation driver.</p>
-                    </div>
                   } @else {
                     <div class="muted-box">Simulated mode — no connection required.</div>
                   }
@@ -258,13 +248,13 @@ interface FrontendType {
 
               <div class="section-card">
                 <div class="section-header">Capabilities</div>
-                @if (selectedDefinition?.capabilities_config) {
+                @if (selectedFrontend?.capabilities_config) {
                   <app-dynamic-capability-form
-                    [config]="selectedDefinition!.capabilities_config"
+                    [config]="$any(selectedFrontend!.capabilities_config)"
                     (valueChange)="updateCapabilities($event)">
                   </app-dynamic-capability-form>
-                } @else if (selectedDefinition) {
-                  <div class="muted-box mb-3">No capability schema for this backend. Use generic fields or JSON override.</div>
+                } @else if (selectedFrontend) {
+                  <div class="muted-box mb-3">No capability schema for this frontend. Use generic fields or JSON override.</div>
                   <div class="flex flex-col gap-2">
                     <div class="flex items-center justify-between">
                       <span class="text-sm font-medium">Generic capability flags</span>
@@ -292,7 +282,7 @@ interface FrontendType {
                   <div class="muted-box">Simulated mode — default capabilities used.</div>
                 }
 
-                @if (selectedDefinition) {
+                @if (selectedFrontend) {
                   <button mat-stroked-button type="button" class="w-full justify-between mt-3" (click)="showAdvancedCapabilitiesJson = !showAdvancedCapabilitiesJson">
                     <span>Advanced JSON</span>
                     <mat-icon>{{ showAdvancedCapabilitiesJson ? 'expand_less' : 'expand_more' }}</mat-icon>
@@ -403,16 +393,14 @@ export class MachineDialogComponent implements OnInit {
     { label: 'Idle', value: MachineStatus.IDLE }
   ];
 
-  // All definitions (backends have frontend_fqn set)
-  allDefinitions: MachineDefinition[] = [];
+  // Frontend types derived from MachineFrontendDefinition
+  frontendDefinitions: MachineFrontendDefinition[] = [];
+  selectedFrontendId: string | null = null;
+  selectedFrontend: MachineFrontendDefinition | null = null;
 
-  // Frontend types derived from unique frontend_fqn values
-  frontendTypes: FrontendType[] = [];
-  selectedFrontendFqn: string | null = null;
-
-  // Backends filtered by selected frontend type
-  filteredBackends: MachineDefinition[] = [];
-  selectedDefinition: MachineDefinition | null = null;
+  // Backends filtered by selected frontend
+  compatibleBackends: MachineBackendDefinition[] = [];
+  selectedBackend: MachineBackendDefinition | null = null;
 
   // Step State - Now 3 steps
   currentStep = 0;
@@ -434,8 +422,11 @@ export class MachineDialogComponent implements OnInit {
     backend_driver: ['sim'],
     simulation_backend_name: [''],
     connection_info: ['', jsonValidator],
+    backend_config: [null as any], // New field
     user_configured_capabilities: ['', jsonValidator],
     machine_definition_accession_id: [null as string | null],
+    frontend_definition_accession_id: [null as string | null], // New field
+    backend_definition_accession_id: [null as string | null], // New field
     machine_category: [''],
     location_label: [''],
     generic_capabilities: this.fb.array([])
@@ -445,7 +436,7 @@ export class MachineDialogComponent implements OnInit {
     return this.form.get('generic_capabilities') as FormArray<FormGroup>;
   }
 
-  // Mapping from frontend FQN to user-friendly labels
+  // Mapping from frontend FQN to user-friendly labels/icons
   private frontendFqnToLabel: Record<string, { label: string; icon: string }> = {
     'pylabrobot.liquid_handling.LiquidHandler': { label: 'Liquid Handler', icon: 'water_drop' },
     'pylabrobot.plate_reading.PlateReader': { label: 'Plate Reader', icon: 'visibility' },
@@ -466,49 +457,45 @@ export class MachineDialogComponent implements OnInit {
 
   ngOnInit() {
     console.debug('[ASSET-DEBUG] MachineDialogComponent: ngOnInit started');
-    this.assetService.getMachineDefinitions().subscribe(defs => {
-      console.debug('[ASSET-DEBUG] MachineDialogComponent: Received definitions', defs.length);
-
-      // Store all definitions (backends have frontend_fqn set)
-      this.allDefinitions = defs.filter(d => d.frontend_fqn);
-
-      // Build unique frontend types from frontend_fqn
-      const fqnCounts = new Map<string, number>();
-      this.allDefinitions.forEach(d => {
-        if (d.frontend_fqn) {
-          fqnCounts.set(d.frontend_fqn, (fqnCounts.get(d.frontend_fqn) || 0) + 1);
-        }
-      });
-
-      // Show ALL known frontend types so users can select "Simulated" even if no backends exist
-      this.frontendTypes = Object.entries(this.frontendFqnToLabel).map(([fqn, mapping]) => ({
-        fqn,
-        label: mapping.label,
-        icon: mapping.icon,
-        backendCount: fqnCounts.get(fqn) || 0
-      })).sort((a, b) => a.label.localeCompare(b.label));
-
-      console.debug('[ASSET-DEBUG] MachineDialogComponent: Frontend types', this.frontendTypes);
-
-      if (this.genericCapabilities.length === 0) {
-        this.addCapabilityPair();
-      }
-
+    
+    // Fetch frontend definitions
+    this.assetService.getMachineFrontendDefinitions().subscribe(frontends => {
+      console.debug('[ASSET-DEBUG] MachineDialogComponent: Received frontends', frontends.length);
+      this.frontendDefinitions = frontends.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       this.cdr.markForCheck();
     });
+
+    if (this.genericCapabilities.length === 0) {
+      this.addCapabilityPair();
+    }
   }
 
-  selectFrontendType(fqn: string) {
-    if (this.selectedFrontendFqn === fqn) {
-      this.selectedFrontendFqn = null;
-      this.filteredBackends = [];
+  getFrontendIcon(frontend: MachineFrontendDefinition): string {
+    return this.frontendFqnToLabel[frontend.fqn]?.icon || 'settings';
+  }
+
+  getFrontendLabel(frontend: MachineFrontendDefinition): string {
+    return frontend.name || this.frontendFqnToLabel[frontend.fqn]?.label || frontend.fqn;
+  }
+
+  selectFrontend(frontend: MachineFrontendDefinition) {
+    if (this.selectedFrontendId === frontend.accession_id) {
+      this.selectedFrontendId = null;
+      this.selectedFrontend = null;
+      this.compatibleBackends = [];
       this.steps[0].completed = false;
       return;
     }
-    this.selectedFrontendFqn = fqn;
-    this.filteredBackends = this.allDefinitions.filter(d => d.frontend_fqn === fqn);
-    this.selectedDefinition = null;
-    this.form.patchValue({ backend_driver: 'sim', simulation_backend_name: '' });
+    
+    this.selectedFrontendId = frontend.accession_id;
+    this.selectedFrontend = frontend;
+    this.selectedBackend = null;
+    
+    // Fetch compatible backends
+    this.assetService.getBackendsForFrontend(frontend.accession_id).subscribe(backends => {
+      this.compatibleBackends = backends;
+      this.cdr.markForCheck();
+    });
 
     // Reset downstream steps
     this.steps[1].completed = false;
@@ -516,59 +503,55 @@ export class MachineDialogComponent implements OnInit {
   }
 
   getSelectedFrontendLabel(): string {
-    if (!this.selectedFrontendFqn) return 'machine';
-    const ft = this.frontendTypes.find(f => f.fqn === this.selectedFrontendFqn);
-    return ft?.label || 'machine';
-  }
-
-  selectSimulated() {
-    this.selectedDefinition = null;
-    this.form.patchValue({
-      backend_driver: 'sim',
-      machine_definition_accession_id: null,
-      connection_info: '',
-      user_configured_capabilities: '',
-      simulation_backend_name: '',
-      name: `Simulated ${this.getSelectedFrontendLabel()} ${Math.floor(Math.random() * 100) + 1}`
-    });
-    // Reset downstream step
-    this.steps[2].completed = false;
+    return this.selectedFrontend ? this.getFrontendLabel(this.selectedFrontend) : 'machine';
   }
 
   /** Check if a backend definition is a simulation backend */
-  isSimulatedDefinition(def: MachineDefinition): boolean {
-    if (def.is_simulated_frontend) return true;
-
-    const fqnLower = (def.fqn || '').toLowerCase();
-    const nameLower = (def.name || '').toLowerCase();
-    return fqnLower.includes('chatterbox') ||
-      fqnLower.includes('simulator') ||
-      nameLower.includes('simulated');
+  isSimulatedBackend(backend: MachineBackendDefinition): boolean {
+    return backend.backend_type === 'simulator' || 
+           (backend.fqn || '').toLowerCase().includes('chatterbox') ||
+           (backend.name || '').toLowerCase().includes('simulator');
   }
 
-  selectBackend(def: MachineDefinition) {
-    this.selectedDefinition = def;
+  /** Truncate name for display */
+  getTruncatedName(name: string, maxLength = 30): string {
+    if (!name) return '';
+    return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
+  }
 
-    const isSimulatedBackend = this.isSimulatedDefinition(def);
-    let defaultSimBackend = '';
+  /** Get short FQN for display (last 2 segments) */
+  getShortFqn(fqn: string): string {
+    if (!fqn) return '';
+    const parts = fqn.split('.');
+    return parts.length > 2 ? '...' + parts.slice(-2).join('.') : fqn;
+  }
 
-    if (isSimulatedBackend && def.available_simulation_backends?.length) {
-      // Prefer chatterbox if available
-      const hasChatterbox = def.available_simulation_backends.some(b => b.toLowerCase().includes('chatterbox'));
-      defaultSimBackend = hasChatterbox
-        ? def.available_simulation_backends.find(b => b.toLowerCase().includes('chatterbox'))!
-        : def.available_simulation_backends[0];
-    }
+  /** Update capabilities from dynamic form */
+  updateCapabilities(val: any) {
+    this.form.patchValue({
+      user_configured_capabilities: JSON.stringify(val, null, 2)
+    });
+  }
+
+  selectBackend(backend: MachineBackendDefinition) {
+    this.selectedBackend = backend;
+
+    const isSimulated = this.isSimulatedBackend(backend);
+    
+    // Generate instance name
+    const randomNum = Math.floor(Math.random() * 100) + 1;
+    const name = `${backend.name || 'Machine'} ${randomNum}`;
 
     this.form.patchValue({
-      model: def.model || def.name,
-      manufacturer: def.manufacturer || '',
-      description: def.description || '',
-      machine_definition_accession_id: def.accession_id,
-      machine_category: def.machine_category || 'unknown',
-      backend_driver: isSimulatedBackend ? 'sim' : (def.fqn || def.name),
-      simulation_backend_name: defaultSimBackend,
-      name: `${def.name} ${Math.floor(Math.random() * 100) + 1}`,
+      name: name,
+      model: backend.model || '',
+      manufacturer: backend.manufacturer || '',
+      description: backend.description || '',
+      backend_definition_accession_id: backend.accession_id,
+      frontend_definition_accession_id: this.selectedFrontendId,
+      machine_category: this.selectedFrontend?.machine_category || 'unknown',
+      backend_driver: isSimulated ? 'sim' : backend.fqn,
+      backend_config: {},
       connection_info: '',
       user_configured_capabilities: ''
     });
@@ -578,21 +561,14 @@ export class MachineDialogComponent implements OnInit {
   }
 
   shouldShowConnectionConfig(): boolean {
-    return !!this.selectedDefinition?.connection_config && this.form.get('backend_driver')?.value !== 'sim';
+    return !!this.selectedBackend?.connection_config && this.form.get('backend_driver')?.value !== 'sim';
   }
 
-  shouldShowSimulationPicker(): boolean {
-    return !!this.selectedDefinition?.is_simulated_frontend &&
-      !!this.selectedDefinition?.available_simulation_backends?.length;
-  }
-
-  getSimulationBackendOptions(): SelectOption[] {
-    if (!this.selectedDefinition?.available_simulation_backends) return [];
-    return this.selectedDefinition.available_simulation_backends.map(fqn => ({
-      label: this.getShortFqn(fqn),
-      value: fqn,
-      description: fqn
-    }));
+  updateConnectionInfo(val: any) {
+    this.form.patchValue({
+      backend_config: val,
+      connection_info: JSON.stringify(val, null, 2)
+    });
   }
 
   nextStep() {
@@ -606,23 +582,16 @@ export class MachineDialogComponent implements OnInit {
 
   goBack() {
     if (this.currentStep > 0) {
-      // When going back, we don't necessarily want to mark the current step as incomplete,
-      // but we do want to allow the user to change their selection.
       this.currentStep--;
     }
   }
 
   goToStep(index: number) {
-    // If clicking current step, do nothing
     if (index === this.currentStep) return;
-
-    // Going back is always allowed
     if (index < this.currentStep) {
       this.currentStep = index;
       return;
     }
-
-    // Going forward requires all intermediate steps to be valid
     for (let i = this.currentStep; i < index; i++) {
       if (!this.isStepValid(i)) return;
       this.steps[i].completed = true;
@@ -631,13 +600,9 @@ export class MachineDialogComponent implements OnInit {
   }
 
   isStepValid(stepIndex: number): boolean {
-    if (stepIndex === 0) return !!this.selectedFrontendFqn;
-    if (stepIndex === 1) return !!this.selectedDefinition;
+    if (stepIndex === 0) return !!this.selectedFrontendId;
+    if (stepIndex === 1) return !!this.selectedBackend;
     if (stepIndex === 2) {
-      // If simulated frontend, require simulation backend selection if available
-      if (this.shouldShowSimulationPicker() && !this.form.get('simulation_backend_name')?.value) {
-        return false;
-      }
       return !!this.form.get('name')?.valid;
     }
     return false;
@@ -645,28 +610,6 @@ export class MachineDialogComponent implements OnInit {
 
   canProceed(): boolean {
     return this.isStepValid(this.currentStep);
-  }
-
-  getShortFqn(fqn: string): string {
-    const parts = fqn.split('.');
-    return parts.length > 2 ? parts.slice(-2).join('.') : fqn;
-  }
-
-  getTruncatedName(name: string, maxLength: number = 25): string {
-    if (name.length <= maxLength) return name;
-    return name.substring(0, maxLength - 3) + '...';
-  }
-
-  updateCapabilities(val: any) {
-    this.form.patchValue({
-      user_configured_capabilities: JSON.stringify(val, null, 2)
-    });
-  }
-
-  updateConnectionInfo(val: any) {
-    this.form.patchValue({
-      connection_info: JSON.stringify(val, null, 2)
-    });
   }
 
   createCapabilityPair(): FormGroup {
@@ -712,20 +655,7 @@ export class MachineDialogComponent implements OnInit {
   save() {
     if (this.form.valid) {
       const value = this.form.value;
-      let connectionInfo: any = {};
-
-      if (value.connection_info) {
-        try {
-          connectionInfo = JSON.parse(value.connection_info);
-        } catch (e) { console.error(e); }
-      }
-
-      const isSimulated = value.backend_driver === 'sim';
-
-      if (value.backend_driver && value.backend_driver !== 'sim') {
-        connectionInfo['backend_fqn'] = value.backend_driver;
-      }
-
+      
       let userConfiguredCapabilities: any = null;
       if (value.user_configured_capabilities) {
         try {
@@ -738,10 +668,9 @@ export class MachineDialogComponent implements OnInit {
 
       this.dialogRef.close({
         ...value,
-        frontend_fqn: this.selectedFrontendFqn,
-        connection_info: connectionInfo,
+        frontend_fqn: this.selectedFrontend?.fqn,
         user_configured_capabilities: userConfiguredCapabilities,
-        is_simulated: isSimulated
+        is_simulated: this.selectedBackend ? this.isSimulatedBackend(this.selectedBackend) : true
       });
     }
   }

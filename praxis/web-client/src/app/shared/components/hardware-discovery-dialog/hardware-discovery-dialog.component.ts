@@ -545,7 +545,8 @@ export class HardwareDiscoveryDialogComponent {
     readonly filteredDevices = computed(() => {
         return this.hardwareService.discoveredDevices().filter(d =>
             d.connectionType !== 'simulator' &&
-            !(d.plrBackend && d.plrBackend.toLowerCase().includes('simulator'))
+            !(d.plrBackend && d.plrBackend.toLowerCase().includes('simulator')) &&
+            !d.plrMachineDefinition?.is_simulated_frontend
         );
     });
 

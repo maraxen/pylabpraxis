@@ -8,16 +8,16 @@ import { PraxisMultiselectComponent } from '../praxis-multiselect/praxis-multise
 import { ViewControlsConfig, ViewControlsState } from './view-controls.types';
 
 @Component({
-    selector: 'app-view-controls-mobile-sheet',
-    standalone: true,
-    imports: [
-        CommonModule,
-        MatButtonModule,
-        MatIconModule,
-        MatDividerModule,
-        PraxisMultiselectComponent,
-    ],
-    template: `
+  selector: 'app-view-controls-mobile-sheet',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatIconModule,
+    MatDividerModule,
+    PraxisMultiselectComponent,
+  ],
+  template: `
     <div class="mobile-filter-sheet">
       <div class="sheet-header">
         <h3>Filters</h3>
@@ -49,24 +49,26 @@ import { ViewControlsConfig, ViewControlsState } from './view-controls.types';
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .mobile-filter-sheet {
       display: flex;
       flex-direction: column;
       max-height: 80vh;
-      background: var(--theme-surface);
+      background: transparent;
+      color: var(--theme-text-primary);
     }
 
     .sheet-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 16px;
+      padding: 12px 16px;
       
       h3 {
         margin: 0;
         font-size: 18px;
         font-weight: 600;
+        color: var(--theme-text-primary);
       }
     }
 
@@ -107,47 +109,47 @@ import { ViewControlsConfig, ViewControlsState } from './view-controls.types';
   `]
 })
 export class ViewControlsMobileSheetComponent {
-    localState = signal<ViewControlsState>({
-        viewType: 'card',
-        groupBy: null,
-        filters: {},
-        sortBy: '',
-        sortOrder: 'asc',
-        search: ''
+  localState = signal<ViewControlsState>({
+    viewType: 'card',
+    groupBy: null,
+    filters: {},
+    sortBy: '',
+    sortOrder: 'asc',
+    search: ''
+  });
+
+  constructor(
+    @Inject(MAT_BOTTOM_SHEET_DATA) public data: { config: ViewControlsConfig, state: ViewControlsState },
+    private bottomSheetRef: MatBottomSheetRef<ViewControlsMobileSheetComponent>
+  ) {
+    this.localState.set({ ...this.data.state });
+  }
+
+  onFilterChange(key: string, value: unknown[]) {
+    this.localState.set({
+      ...this.localState(),
+      filters: {
+        ...this.localState().filters,
+        [key]: value
+      }
     });
+  }
 
-    constructor(
-        @Inject(MAT_BOTTOM_SHEET_DATA) public data: { config: ViewControlsConfig, state: ViewControlsState },
-        private bottomSheetRef: MatBottomSheetRef<ViewControlsMobileSheetComponent>
-    ) {
-        this.localState.set({ ...this.data.state });
-    }
+  clearAll() {
+    const clearedFilters: Record<string, unknown[]> = {};
+    this.data.config.filters?.forEach(f => clearedFilters[f.key] = []);
 
-    onFilterChange(key: string, value: unknown[]) {
-        this.localState.set({
-            ...this.localState(),
-            filters: {
-                ...this.localState().filters,
-                [key]: value
-            }
-        });
-    }
+    this.localState.set({
+      ...this.localState(),
+      filters: clearedFilters
+    });
+  }
 
-    clearAll() {
-        const clearedFilters: Record<string, unknown[]> = {};
-        this.data.config.filters?.forEach(f => clearedFilters[f.key] = []);
+  apply() {
+    this.bottomSheetRef.dismiss(this.localState());
+  }
 
-        this.localState.set({
-            ...this.localState(),
-            filters: clearedFilters
-        });
-    }
-
-    apply() {
-        this.bottomSheetRef.dismiss(this.localState());
-    }
-
-    close() {
-        this.bottomSheetRef.dismiss();
-    }
+  close() {
+    this.bottomSheetRef.dismiss();
+  }
 }

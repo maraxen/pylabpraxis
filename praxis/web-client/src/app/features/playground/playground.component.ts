@@ -530,9 +530,11 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
   openInventory() {
     const dialogRef = this.dialog.open(InventoryDialogComponent, {
-      width: '900px',
+      width: '1200px',
+      minWidth: '500px',
       height: 'auto',
-      maxHeight: '90vh',
+      minHeight: '400px',
+      maxHeight: '70vh',
       panelClass: 'praxis-dialog-no-padding'
     });
 
@@ -549,7 +551,6 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
         item.type,
         item.asset,
         item.variableName,
-        item.backend,
         item.deckConfigId
       );
     }
@@ -876,14 +877,12 @@ except Exception as e:
   /**
    * Generate Python code to instantiate a machine.
    */
-  private async generateMachineCode(machine: Machine, variableName?: string, backendOverride?: string, deckConfigId?: string): Promise<string> {
+  private async generateMachineCode(machine: Machine, variableName?: string, deckConfigId?: string): Promise<string> {
     const varName = variableName || this.assetToVarName(machine);
     const category = machine.machine_category?.toLowerCase() || 'machine';
     const plrBackendFqn = machine.plr_definition?.fqn || machine.connection_info?.['plr_backend'];
 
-    // Override simulation if backendOverride ('simulated') is passed
-    // Or if default is simulated
-    const isSimulated = backendOverride === 'simulated' || machine.is_simulation_override;
+    const isSimulated = machine.is_simulation_override;
 
     // Get FQNs from definition
     const frontendFqn = machine.plr_definition?.frontend_fqn;
@@ -1063,7 +1062,6 @@ except Exception as e:
     type: 'machine' | 'resource',
     asset: Machine | Resource,
     variableName?: string,
-    backendOverride?: string,
     deckConfigId?: string
   ) {
     const varName = variableName || this.assetToVarName(asset);
@@ -1085,7 +1083,7 @@ except Exception as e:
     // Generate appropriate Python code
     let code: string;
     if (type === 'machine') {
-      code = await this.generateMachineCode(asset as Machine, varName, backendOverride, deckConfigId);
+      code = await this.generateMachineCode(asset as Machine, varName, deckConfigId);
     } else {
       code = this.generateResourceCode(asset as Resource, varName);
     }

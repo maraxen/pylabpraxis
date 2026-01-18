@@ -301,7 +301,6 @@ export class MachineListComponent implements OnInit {
   viewConfig = computed<ViewControlsConfig>(() => ({
     viewTypes: ['table', 'card', 'list'],
     groupByOptions: [
-      { label: 'None', value: null },
       { label: 'Status', value: 'status' },
       { label: 'Category', value: 'machine_category' },
     ],

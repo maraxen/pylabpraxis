@@ -444,9 +444,10 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
 
   openDialog() {
     const dialogRef = this.dialog.open(ResourceDialogComponent, {
-      width: '800px',
-      maxWidth: '95vw',
-      maxHeight: '90vh'
+      minWidth: '600px',
+      maxWidth: '800px',
+      width: '70vw',
+      maxHeight: '80vh'
     });
 
     dialogRef.afterClosed().pipe(

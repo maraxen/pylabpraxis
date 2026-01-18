@@ -26,7 +26,7 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
       <!-- Stats Cards -->
       <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Machine Health Card -->
-        <div class="group relative bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all cursor-pointer" 
+        <div class="group relative bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-6 flex items-center gap-4 hover:bg-surface-elevated transition-all cursor-pointer" 
              (click)="navigateTo('machine')">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
             <mat-icon class="text-blue-400">precision_manufacturing</mat-icon>
@@ -36,10 +36,10 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
               @if (isLoading()) {
                  <ngx-skeleton-loader count="1" appearance="line" [theme]="{ width: '40px', height: '24px', 'margin-bottom': '0' }"></ngx-skeleton-loader>
               } @else {
-                 {{ physicalOnlineMachinesCount() }}<span class="text-lg font-normal text-sys-text-tertiary">/{{ physicalMachinesCount() }}</span>
+                 {{ physicalOnlineMachinesCount() }}<span class="text-lg font-normal text-sys-text-secondary">/{{ physicalMachinesCount() }}</span>
               }
             </span>
-            <span class="text-[10px] font-medium text-sys-text-tertiary uppercase tracking-wide">Physical Machines Online</span>
+            <span class="text-xs font-semibold text-sys-text-secondary uppercase tracking-wider leading-tight">Physical Machines Online</span>
           </div>
           <!-- Simulated Counter Mini -->
           <div class="ml-auto flex flex-col items-end opacity-60">
@@ -48,7 +48,7 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
                 {{ simulatedOnlineMachinesCount() }}/{{ simulatedMachinesCount() }}
               }
             </span>
-            <span class="text-[8px] uppercase font-bold tracking-tighter">Simulated</span>
+            <span class="text-[10px] uppercase font-bold tracking-tight">Simulated</span>
           </div>
           @if (machinesAttentionCount() > 0) {
             <div class="absolute -top-2 -right-2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-400/10 border border-red-400/20 backdrop-blur-md shadow-lg">
@@ -59,7 +59,7 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
         </div>
 
         <!-- Resource Inventory Card -->
-        <div class="group relative bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all cursor-pointer"
+        <div class="group relative bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-6 flex items-center gap-4 hover:bg-surface-elevated transition-all cursor-pointer"
              (click)="navigateTo('resource')">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-orange-500/20 to-amber-500/20">
             <mat-icon class="text-orange-400">inventory_2</mat-icon>
@@ -72,7 +72,7 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
                  {{ totalResourcesCount() }}
                }
             </span>
-            <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Total Items</span>
+            <span class="text-xs font-semibold text-sys-text-secondary uppercase tracking-wider leading-tight">Total Items</span>
           </div>
           @if (lowStockCount() > 0) {
             <div class="absolute top-4 right-4 flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-400/10 border border-amber-400/20">
@@ -83,7 +83,7 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
         </div>
 
         <!-- Registry Card -->
-        <div class="group relative bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all cursor-pointer"
+        <div class="group relative bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-6 flex items-center gap-4 hover:bg-surface-elevated transition-all cursor-pointer"
              (click)="navigateTo('registry')">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-purple-500/20 to-pink-500/20">
             <mat-icon class="text-purple-400">inventory_2</mat-icon>
@@ -96,9 +96,9 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
                  {{ totalDefinitionsCount() }}
                }
             </span>
-            <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Registry Types</span>
+            <span class="text-xs font-semibold text-sys-text-secondary uppercase tracking-wider leading-tight">Registry Types</span>
           </div>
-          <div class="absolute top-4 right-4 text-[10px] font-medium text-sys-text-tertiary bg-[var(--mat-sys-surface-variant)] px-2 py-0.5 rounded border border-[var(--theme-border)]">
+          <div class="absolute top-4 right-4 text-xs font-semibold text-sys-text-secondary bg-[var(--mat-sys-surface-variant)] px-2 py-1 rounded border border-[var(--theme-border)]">
             Hardware Definitions
           </div>
         </div>
@@ -106,9 +106,9 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
 
       <!-- Section Labels -->
       <div class="flex items-center gap-4 px-1">
-        <span class="text-xs font-bold text-sys-text-tertiary uppercase tracking-wider">Inventory</span>
+        <span class="text-lg font-semibold text-sys-text-secondary">Inventory</span>
         <div class="flex-1 h-px bg-[var(--theme-border)]"></div>
-        <span class="text-[10px] text-sys-text-tertiary">What you have</span>
+        <span class="text-xs font-medium text-sys-text-secondary">What you have</span>
       </div>
 
       <!-- Main Content Grid -->
@@ -123,19 +123,19 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
             </h3>
           </div>
           <div class="p-4 grid grid-cols-2 gap-3">
-             <button mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-secondary !justify-start !px-4 !py-6 hover:!bg-[var(--mat-sys-surface-variant)] hover:!border-primary/50 hover:!text-primary transition-all group" (click)="triggerAction('add-machine')">
+             <button mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-secondary !justify-start !px-4 !py-4 hover:!bg-[var(--mat-sys-surface-variant)] hover:!border-primary/50 hover:!text-primary transition-all group flex items-center" (click)="triggerAction('add-machine')">
                <mat-icon class="mr-2 group-hover:text-primary transition-colors">add_circle</mat-icon>
                Add Machine
              </button>
-             <button mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-secondary !justify-start !px-4 !py-6 hover:!bg-[var(--mat-sys-surface-variant)] hover:!border-primary/50 hover:!text-primary transition-all group" (click)="triggerAction('add-resource')">
+             <button mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-secondary !justify-start !px-4 !py-4 hover:!bg-[var(--mat-sys-surface-variant)] hover:!border-primary/50 hover:!text-primary transition-all group flex items-center" (click)="triggerAction('add-resource')">
                <mat-icon class="mr-2 group-hover:text-primary transition-colors">add_box</mat-icon>
                Add Resource
              </button>
-             <button mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-secondary !justify-start !px-4 !py-6 hover:!bg-[var(--mat-sys-surface-variant)] hover:!border-primary/50 hover:!text-primary transition-all group" (click)="triggerAction('discover')">
+             <button mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-secondary !justify-start !px-4 !py-4 hover:!bg-[var(--mat-sys-surface-variant)] hover:!border-primary/50 hover:!text-primary transition-all group flex items-center" (click)="triggerAction('discover')">
                <mat-icon class="mr-2 group-hover:text-primary transition-colors">usb</mat-icon>
                Discover Hardware
              </button>
-             <button mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-secondary !justify-start !px-4 !py-6 hover:!bg-[var(--mat-sys-surface-variant)] hover:!border-primary/50 hover:!text-primary transition-all group" (click)="navigateTo('registry')">
+             <button mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-secondary !justify-start !px-4 !py-4 hover:!bg-[var(--mat-sys-surface-variant)] hover:!border-primary/50 hover:!text-primary transition-all group flex items-center" (click)="navigateTo('registry')">
                <mat-icon class="mr-2 group-hover:text-primary transition-colors">search</mat-icon>
                Browse Registry
              </button>
@@ -175,17 +175,17 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
                         <span class="font-medium text-sys-text-primary truncate max-w-[70%] group-hover:text-primary transition-colors">{{ alert.name }}</span>
                         <span class="text-xs uppercase font-bold tracking-wider opacity-60 ml-2">{{ alert.type }}</span>
                       </div>
-                      <p class="text-xs text-sys-text-tertiary truncate">{{ alert.message }}</p>
+                      <p class="text-xs text-sys-text-secondary truncate">{{ alert.message }}</p>
                     </div>
 
-                    <mat-icon class="text-sys-text-tertiary group-hover:text-sys-text-secondary">chevron_right</mat-icon>
+                    <mat-icon class="text-sys-text-secondary group-hover:text-sys-text-primary">chevron_right</mat-icon>
                   </div>
                 }
               </div>
             } @else {
-              <div class="h-full flex flex-col items-center justify-center text-sys-text-tertiary p-8">
-                <mat-icon class="text-4xl mb-2 opacity-50">check_circle</mat-icon>
-                <p>All systems operational</p>
+              <div class="h-full flex flex-col items-center justify-center text-sys-text-secondary p-8">
+                <mat-icon class="!w-12 !h-12 !text-[48px] mb-4 text-green-500/30">check_circle</mat-icon>
+                <p class="text-lg font-semibold">All systems operational</p>
               </div>
             }
           </div>

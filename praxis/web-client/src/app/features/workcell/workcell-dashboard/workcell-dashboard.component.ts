@@ -94,7 +94,7 @@ import { DeckSimulationDialogComponent } from '../../run-protocol/components/sim
         }
 
         <!-- Canvas Content -->
-        <div class="flex-grow overflow-auto" [class.p-6]="viewMode() !== 'focus'">
+        <div class="flex flex-col flex-grow overflow-auto" [class.p-6]="viewMode() !== 'focus'">
           @if (isLoading()) {
             <div class="flex items-center justify-center h-full">
                <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -110,9 +110,9 @@ import { DeckSimulationDialogComponent } from '../../run-protocol/components/sim
                     </app-machine-card>
                   } @empty {
                     <div class="col-span-full flex flex-col items-center justify-center py-20 text-slate-400">
-                      <mat-icon class="text-6xl mb-4 text-slate-300">precision_manufacturing</mat-icon>
+                      <mat-icon class="mb-4 text-slate-400 !w-16 !h-16 !text-[64px]">precision_manufacturing</mat-icon>
                       <p>No machines found</p>
-                      <button mat-button color="primary" class="mt-4" (click)="openSimulationDialog()">
+                      <button mat-flat-button color="primary" class="mt-4" (click)="openSimulationDialog()">
                         Create Simulation
                       </button>
                     </div>

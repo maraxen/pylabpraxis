@@ -84,43 +84,55 @@ import { finalize } from 'rxjs/operators'; // Import finalize
     `,
   styles: [`
     .protocol-detail-container {
-      padding: 16px;
+      padding: 32px;
       height: 100%;
       display: flex;
       flex-direction: column;
+      background: var(--mat-sys-surface);
+      border-radius: 24px;
     }
 
     .header {
       display: flex;
       align-items: center;
-      margin-bottom: 16px;
-      gap: 16px;
+      margin-bottom: 24px;
+      gap: 24px;
+      border-bottom: 1px solid var(--theme-border);
+      padding-bottom: 16px;
     }
 
     h1 {
       margin: 0;
-      font-size: 1.5rem;
-      font-weight: 500;
+      font-size: 1.75rem;
+      font-weight: 600;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .spacer {
-      flex: 1;
+      display: none; /* Replaced by flex: 1 on h1 */
     }
 
     .content {
       flex: 1;
       overflow-y: auto;
+      padding-top: 8px;
     }
 
     .info-card {
-      margin-bottom: 16px;
+      margin-bottom: 24px;
+      border-radius: 16px;
+      border: 1px solid var(--mat-sys-outline-variant);
+      background: var(--mat-sys-surface-container-low);
     }
 
     .info-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 24px;
+      margin-bottom: 32px;
     }
 
     .info-item {
@@ -129,19 +141,35 @@ import { finalize } from 'rxjs/operators'; // Import finalize
     }
 
     .label {
-      font-size: 0.8em;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
       color: var(--mat-sys-color-on-surface-variant);
-      margin-bottom: 4px;
+      margin-bottom: 6px;
+      opacity: 0.8;
     }
 
     .value {
       font-weight: 500;
+      font-size: 1rem;
     }
 
     .description-section h3 {
-      font-size: 1em;
-      margin-bottom: 8px;
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
       color: var(--mat-sys-color-on-surface-variant);
+    }
+
+    .description-section p {
+      white-space: pre-wrap;
+      line-height: 1.6;
+      font-size: 1rem;
+      margin: 0;
+      color: var(--mat-sys-on-surface);
     }
 
     .loading-container, .no-protocol-found {
