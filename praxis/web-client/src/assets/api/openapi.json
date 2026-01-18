@@ -1293,6 +1293,51 @@
         }
       }
     },
+    "/api/v1/protocols/runs/{run_id}/state-history": {
+      "get": {
+        "tags": [
+          "Protocols",
+          "Protocol Runs"
+        ],
+        "summary": "Get Run State History",
+        "description": "Get granular state history for a protocol run.",
+        "operationId": "get_run_state_history_api_v1_protocols_runs__run_id__state_history_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StateHistory"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/protocols/runs": {
       "post": {
         "tags": [
@@ -4547,6 +4592,512 @@
         }
       }
     },
+    "/api/v1/machine-frontends/": {
+      "get": {
+        "tags": [
+          "Machine Frontends"
+        ],
+        "summary": "List Frontend Definitions",
+        "description": "List all machine frontend definitions.",
+        "operationId": "list_frontend_definitions_api_v1_machine_frontends__get",
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MachineFrontendDefinitionRead"
+                  },
+                  "title": "Response List Frontend Definitions Api V1 Machine Frontends  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Machine Frontends"
+        ],
+        "summary": "Create Frontend Definition",
+        "description": "Create a new machine frontend definition.",
+        "operationId": "create_frontend_definition_api_v1_machine_frontends__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineFrontendDefinitionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineFrontendDefinitionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machine-frontends/{accession_id}": {
+      "get": {
+        "tags": [
+          "Machine Frontends"
+        ],
+        "summary": "Get Frontend Definition",
+        "description": "Get a machine frontend definition by accession ID.",
+        "operationId": "get_frontend_definition_api_v1_machine_frontends__accession_id__get",
+        "parameters": [
+          {
+            "name": "accession_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Accession Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineFrontendDefinitionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Machine Frontends"
+        ],
+        "summary": "Update Frontend Definition",
+        "description": "Update a machine frontend definition.",
+        "operationId": "update_frontend_definition_api_v1_machine_frontends__accession_id__put",
+        "parameters": [
+          {
+            "name": "accession_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Accession Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineFrontendDefinitionUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineFrontendDefinitionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Machine Frontends"
+        ],
+        "summary": "Delete Frontend Definition",
+        "description": "Delete a machine frontend definition.",
+        "operationId": "delete_frontend_definition_api_v1_machine_frontends__accession_id__delete",
+        "parameters": [
+          {
+            "name": "accession_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Accession Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machine-frontends/{accession_id}/backends": {
+      "get": {
+        "tags": [
+          "Machine Frontends"
+        ],
+        "summary": "Get Compatible Backends",
+        "description": "Get compatible backend definitions for a frontend definition.",
+        "operationId": "get_compatible_backends_api_v1_machine_frontends__accession_id__backends_get",
+        "parameters": [
+          {
+            "name": "accession_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Accession Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MachineBackendDefinitionRead"
+                  },
+                  "title": "Response Get Compatible Backends Api V1 Machine Frontends  Accession Id  Backends Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machine-backends/": {
+      "get": {
+        "tags": [
+          "Machine Backends"
+        ],
+        "summary": "List machine backend definitions",
+        "description": "Retrieve a list of machine backend definitions.",
+        "operationId": "list_backend_definitions_api_v1_machine_backends__get",
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MachineBackendDefinitionRead"
+                  },
+                  "title": "Response List Backend Definitions Api V1 Machine Backends  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Machine Backends"
+        ],
+        "summary": "Create machine backend definition",
+        "description": "Create a new machine backend definition.",
+        "operationId": "create_backend_definition_api_v1_machine_backends__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineBackendDefinitionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineBackendDefinitionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machine-backends/{accession_id}": {
+      "get": {
+        "tags": [
+          "Machine Backends"
+        ],
+        "summary": "Get machine backend definition by ID",
+        "description": "Retrieve a specific machine backend definition by its accession ID.",
+        "operationId": "get_backend_definition_api_v1_machine_backends__accession_id__get",
+        "parameters": [
+          {
+            "name": "accession_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Accession Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineBackendDefinitionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Machine Backends"
+        ],
+        "summary": "Update machine backend definition",
+        "description": "Update an existing machine backend definition.",
+        "operationId": "update_backend_definition_api_v1_machine_backends__accession_id__put",
+        "parameters": [
+          {
+            "name": "accession_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Accession Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineBackendDefinitionUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineBackendDefinitionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Machine Backends"
+        ],
+        "summary": "Delete machine backend definition",
+        "description": "Delete a machine backend definition.",
+        "operationId": "delete_backend_definition_api_v1_machine_backends__accession_id__delete",
+        "parameters": [
+          {
+            "name": "accession_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Accession Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/hardware/discover": {
       "get": {
         "tags": [
@@ -5777,6 +6328,79 @@
   },
   "components": {
     "schemas": {
+      "AssetConstraintsModel": {
+        "properties": {
+          "min_volume_ul": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Volume Ul"
+          },
+          "max_volume_ul": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Volume Ul"
+          },
+          "dead_volume_ul": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dead Volume Ul"
+          },
+          "min_quantity": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Quantity"
+          },
+          "max_quantity": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Quantity"
+          },
+          "allow_partial": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allow Partial"
+          }
+        },
+        "type": "object",
+        "title": "AssetConstraintsModel",
+        "description": "Model for asset constraints."
+      },
       "AssetRequirementCreate": {
         "properties": {
           "accession_id": {
@@ -5905,6 +6529,149 @@
         ],
         "title": "AssetRequirementCreate",
         "description": "Schema for creating an AssetRequirement."
+      },
+      "AssetRequirementRead": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "The name of the asset requirement",
+            "default": ""
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
+          },
+          "type_hint_str": {
+            "type": "string",
+            "title": "Type Hint Str",
+            "description": "Type hint",
+            "default": ""
+          },
+          "fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn",
+            "description": "Fully qualified name",
+            "default": ""
+          },
+          "actual_type_str": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Type Str",
+            "description": "Actual type",
+            "default": ""
+          },
+          "optional": {
+            "type": "boolean",
+            "title": "Optional",
+            "default": false
+          },
+          "default_value_repr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Value Repr"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "required_plr_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Plr Category"
+          },
+          "constraints": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssetConstraintsModel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "location_constraints": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocationConstraintsModel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "accession_id"
+        ],
+        "title": "AssetRequirementRead",
+        "description": "Schema for reading an AssetRequirement."
       },
       "AssetReservationCreate": {
         "properties": {
@@ -6110,6 +6877,17 @@
         ],
         "title": "AssetType",
         "description": "Enum for the different types of assets."
+      },
+      "BackendTypeEnum": {
+        "type": "string",
+        "enum": [
+          "real_hardware",
+          "simulator",
+          "chatterbox",
+          "mock"
+        ],
+        "title": "BackendTypeEnum",
+        "description": "Type of machine backend implementation.\n\nUsed to distinguish between different types of backends:\n- REAL_HARDWARE: Connects to a physical device\n- SIMULATOR: PLR visualizer/simulator\n- CHATTERBOX: Print-only, no hardware connection\n- MOCK: For testing purposes only"
       },
       "Body_get_multi_api_v1_data_outputs_outputs_get": {
         "properties": {
@@ -9312,6 +10090,88 @@
               }
             ],
             "title": "Commit Hash"
+          },
+          "parameters": {
+            "items": {
+              "$ref": "#/components/schemas/ParameterDefinitionRead"
+            },
+            "type": "array",
+            "title": "Parameters",
+            "default": []
+          },
+          "assets": {
+            "items": {
+              "$ref": "#/components/schemas/AssetRequirementRead"
+            },
+            "type": "array",
+            "title": "Assets",
+            "default": []
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "hardware_requirements_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hardware Requirements Json"
+          },
+          "inferred_requirements_json": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inferred Requirements Json"
+          },
+          "failure_modes_json": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Modes Json"
+          },
+          "simulation_result_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simulation Result Json"
           }
         },
         "type": "object",
@@ -9426,6 +10286,53 @@
         "title": "HeartbeatResponse",
         "description": "Response after heartbeat."
       },
+      "LocationConstraintsModel": {
+        "properties": {
+          "allowed_decks": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Decks"
+          },
+          "allowed_slots": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Slots"
+          },
+          "required_capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Capabilities"
+          }
+        },
+        "type": "object",
+        "title": "LocationConstraintsModel",
+        "description": "Model for location constraints."
+      },
       "LoginRequest": {
         "properties": {
           "username": {
@@ -9467,6 +10374,369 @@
         ],
         "title": "LoginResponse",
         "description": "Login response model with user data and token."
+      },
+      "MachineBackendDefinitionCreate": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
+          },
+          "fqn": {
+            "type": "string",
+            "title": "Fqn",
+            "description": "Fully qualified name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Description of the backend"
+          },
+          "backend_type": {
+            "$ref": "#/components/schemas/BackendTypeEnum",
+            "description": "Type of backend (hardware, simulator, etc.)",
+            "default": "real_hardware"
+          },
+          "connection_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Config",
+            "description": "JSON schema for connection parameters"
+          },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "is_deprecated": {
+            "type": "boolean",
+            "title": "Is Deprecated",
+            "default": false
+          },
+          "frontend_definition_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Frontend Definition Accession Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fqn",
+          "frontend_definition_accession_id"
+        ],
+        "title": "MachineBackendDefinitionCreate",
+        "description": "Schema for creating a MachineBackendDefinition."
+      },
+      "MachineBackendDefinitionRead": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
+          },
+          "fqn": {
+            "type": "string",
+            "title": "Fqn",
+            "description": "Fully qualified name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Description of the backend"
+          },
+          "backend_type": {
+            "$ref": "#/components/schemas/BackendTypeEnum",
+            "description": "Type of backend (hardware, simulator, etc.)",
+            "default": "real_hardware"
+          },
+          "connection_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Config",
+            "description": "JSON schema for connection parameters"
+          },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "is_deprecated": {
+            "type": "boolean",
+            "title": "Is Deprecated",
+            "default": false
+          },
+          "frontend_definition_accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Frontend Definition Accession Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accession_id",
+          "fqn",
+          "frontend_definition_accession_id"
+        ],
+        "title": "MachineBackendDefinitionRead",
+        "description": "Schema for reading a MachineBackendDefinition (API response)."
+      },
+      "MachineBackendDefinitionUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "backend_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BackendTypeEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "connection_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Config"
+          },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "is_deprecated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Deprecated"
+          },
+          "frontend_definition_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frontend Definition Accession Id"
+          }
+        },
+        "type": "object",
+        "title": "MachineBackendDefinitionUpdate",
+        "description": "Schema for updating a MachineBackendDefinition (partial update)."
       },
       "MachineCategoryEnum": {
         "type": "string",
@@ -9730,6 +11000,18 @@
             "title": "Last Maintenance Json",
             "description": "Record of last maintenance"
           },
+          "simulation_backend_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simulation Backend Name",
+            "description": "Selected simulation backend name (when is_simulated_frontend = True)"
+          },
           "resource_def_name": {
             "anyOf": [
               {
@@ -9775,6 +11057,42 @@
               }
             ],
             "title": "Resource Counterpart Accession Id"
+          },
+          "frontend_definition_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frontend Definition Accession Id"
+          },
+          "backend_definition_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend Definition Accession Id"
+          },
+          "backend_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend Config"
           }
         },
         "type": "object",
@@ -10075,6 +11393,33 @@
             ],
             "title": "Connection Config",
             "description": "Connection parameters schema"
+          },
+          "is_simulated_frontend": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Simulated Frontend",
+            "description": "True if this is a generic simulated frontend (not a real backend)"
+          },
+          "available_simulation_backends": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available Simulation Backends",
+            "description": "FQNs of simulation backends available for this frontend type"
           }
         },
         "type": "object",
@@ -10371,6 +11716,33 @@
             ],
             "title": "Connection Config",
             "description": "Connection parameters schema"
+          },
+          "is_simulated_frontend": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Simulated Frontend",
+            "description": "True if this is a generic simulated frontend (not a real backend)"
+          },
+          "available_simulation_backends": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available Simulation Backends",
+            "description": "FQNs of simulation backends available for this frontend type"
           }
         },
         "type": "object",
@@ -10629,6 +12001,432 @@
         "title": "MachineDefinitionUpdate",
         "description": "Schema for updating a MachineDefinition (partial update)."
       },
+      "MachineFrontendDefinitionCreate": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id",
+            "description": "The unique accession ID of the record."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
+          },
+          "fqn": {
+            "type": "string",
+            "title": "Fqn",
+            "description": "Fully qualified name of the frontend class"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Description of the machine interface"
+          },
+          "plr_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Category",
+            "description": "PyLabRobot category"
+          },
+          "machine_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MachineCategoryEnum"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Category of the machine"
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities",
+            "description": "Hardware capabilities (channels, modules)"
+          },
+          "capabilities_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities Config",
+            "description": "User-configurable capabilities schema"
+          },
+          "has_deck": {
+            "type": "boolean",
+            "title": "Has Deck",
+            "description": "Whether this machine has a deck",
+            "default": false
+          },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fqn"
+        ],
+        "title": "MachineFrontendDefinitionCreate",
+        "description": "Schema for creating a MachineFrontendDefinition."
+      },
+      "MachineFrontendDefinitionRead": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "An optional name for the record."
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
+          },
+          "fqn": {
+            "type": "string",
+            "title": "Fqn",
+            "description": "Fully qualified name of the frontend class"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Description of the machine interface"
+          },
+          "plr_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Category",
+            "description": "PyLabRobot category"
+          },
+          "machine_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MachineCategoryEnum"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Category of the machine"
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities",
+            "description": "Hardware capabilities (channels, modules)"
+          },
+          "capabilities_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities Config",
+            "description": "User-configurable capabilities schema"
+          },
+          "has_deck": {
+            "type": "boolean",
+            "title": "Has Deck",
+            "description": "Whether this machine has a deck",
+            "default": false
+          },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accession_id",
+          "fqn"
+        ],
+        "title": "MachineFrontendDefinitionRead",
+        "description": "Schema for reading a MachineFrontendDefinition (API response)."
+      },
+      "MachineFrontendDefinitionUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "fqn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fqn"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "plr_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plr Category"
+          },
+          "machine_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MachineCategoryEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities"
+          },
+          "capabilities_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities Config"
+          },
+          "has_deck": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Deck"
+          },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          }
+        },
+        "type": "object",
+        "title": "MachineFrontendDefinitionUpdate",
+        "description": "Schema for updating a MachineFrontendDefinition (partial update)."
+      },
       "MachineRead": {
         "properties": {
           "accession_id": {
@@ -10864,6 +12662,18 @@
             ],
             "title": "Last Maintenance Json",
             "description": "Record of last maintenance"
+          },
+          "simulation_backend_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simulation Backend Name",
+            "description": "Selected simulation backend name (when is_simulated_frontend = True)"
           },
           "plr_state": {
             "anyOf": [
@@ -11205,6 +13015,42 @@
             ],
             "title": "Last Maintenance Json"
           },
+          "frontend_definition_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frontend Definition Accession Id"
+          },
+          "backend_definition_accession_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend Definition Accession Id"
+          },
+          "backend_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend Config"
+          },
           "resource_def_name": {
             "anyOf": [
               {
@@ -11243,6 +13089,240 @@
         "type": "object",
         "title": "MachineUpdate",
         "description": "Schema for updating a Machine (partial update)."
+      },
+      "OperationStateSnapshot-Input": {
+        "properties": {
+          "operation_index": {
+            "type": "integer",
+            "title": "Operation Index"
+          },
+          "operation_id": {
+            "type": "string",
+            "title": "Operation Id"
+          },
+          "method_name": {
+            "type": "string",
+            "title": "Method Name"
+          },
+          "resource": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource"
+          },
+          "args": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Args"
+          },
+          "state_before": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StateSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state_after": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StateSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "completed"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "state_delta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Delta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation_index",
+          "operation_id",
+          "method_name"
+        ],
+        "title": "OperationStateSnapshot",
+        "description": "State snapshot at a specific operation during execution."
+      },
+      "OperationStateSnapshot-Output": {
+        "properties": {
+          "operation_index": {
+            "type": "integer",
+            "title": "Operation Index"
+          },
+          "operation_id": {
+            "type": "string",
+            "title": "Operation Id"
+          },
+          "method_name": {
+            "type": "string",
+            "title": "Method Name"
+          },
+          "resource": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource"
+          },
+          "args": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Args"
+          },
+          "state_before": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StateSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state_after": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StateSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "completed"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "state_delta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Delta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation_index",
+          "operation_id",
+          "method_name"
+        ],
+        "title": "OperationStateSnapshot",
+        "description": "State snapshot at a specific operation during execution."
       },
       "ParameterConstraintsModel": {
         "properties": {
@@ -11295,6 +13375,133 @@
         "type": "object",
         "title": "ParameterConstraintsModel",
         "description": "Model for parameter constraints."
+      },
+      "ParameterDefinitionRead": {
+        "properties": {
+          "accession_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Accession Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The time the record was created."
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "The time the record was last updated."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "The name of the parameter",
+            "default": ""
+          },
+          "properties_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties Json",
+            "description": "Arbitrary metadata."
+          },
+          "type_hint": {
+            "type": "string",
+            "title": "Type Hint",
+            "description": "The type hint of the parameter",
+            "default": ""
+          },
+          "fqn": {
+            "type": "string",
+            "title": "Fqn",
+            "description": "The fully qualified name of the parameter",
+            "default": ""
+          },
+          "is_deck_param": {
+            "type": "boolean",
+            "title": "Is Deck Param",
+            "default": false
+          },
+          "optional": {
+            "type": "boolean",
+            "title": "Optional",
+            "description": "Whether the parameter is optional",
+            "default": false
+          },
+          "default_value_repr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Value Repr",
+            "description": "String representation of default value"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Description of the parameter"
+          },
+          "field_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Type"
+          },
+          "is_itemized": {
+            "type": "boolean",
+            "title": "Is Itemized",
+            "default": false
+          },
+          "linked_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accession_id"
+        ],
+        "title": "ParameterDefinitionRead",
+        "description": "Schema for reading a ParameterDefinition."
       },
       "ParameterMetadataModel": {
         "properties": {
@@ -12441,6 +14648,12 @@
             "title": "Is Consumable",
             "default": false
           },
+          "is_reusable": {
+            "type": "boolean",
+            "title": "Is Reusable",
+            "description": "Whether the resource can be reused (e.g., plates are reusable, tips are not)",
+            "default": true
+          },
           "nominal_volume_ul": {
             "anyOf": [
               {
@@ -12727,6 +14940,12 @@
             "title": "Is Consumable",
             "default": false
           },
+          "is_reusable": {
+            "type": "boolean",
+            "title": "Is Reusable",
+            "description": "Whether the resource can be reused (e.g., plates are reusable, tips are not)",
+            "default": true
+          },
           "nominal_volume_ul": {
             "anyOf": [
               {
@@ -12980,6 +15199,17 @@
               }
             ],
             "title": "Is Consumable"
+          },
+          "is_reusable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Reusable"
           },
           "nominal_volume_ul": {
             "anyOf": [
@@ -14350,6 +16580,129 @@
         ],
         "title": "StartRunResponse",
         "description": "Response body for starting a protocol run."
+      },
+      "StateHistory": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "protocol_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protocol Name"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/OperationStateSnapshot-Output"
+            },
+            "type": "array",
+            "title": "Operations"
+          },
+          "final_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StateSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_duration_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Duration Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id"
+        ],
+        "title": "StateHistory",
+        "description": "Complete state history for a protocol run."
+      },
+      "StateSnapshot": {
+        "properties": {
+          "tips": {
+            "$ref": "#/components/schemas/TipStateSnapshot"
+          },
+          "liquids": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Liquids"
+          },
+          "on_deck": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "On Deck"
+          },
+          "raw_plr_state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Plr State"
+          }
+        },
+        "type": "object",
+        "title": "StateSnapshot",
+        "description": "Complete state snapshot at a point in time."
+      },
+      "TipStateSnapshot": {
+        "properties": {
+          "tips_loaded": {
+            "type": "boolean",
+            "title": "Tips Loaded",
+            "default": false
+          },
+          "tips_count": {
+            "type": "integer",
+            "title": "Tips Count",
+            "default": 0
+          },
+          "tip_usage": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tip Usage"
+          }
+        },
+        "type": "object",
+        "title": "TipStateSnapshot",
+        "description": "Snapshot of tip state."
       },
       "UserRead": {
         "properties": {

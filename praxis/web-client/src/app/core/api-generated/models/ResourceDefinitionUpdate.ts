@@ -12,6 +12,7 @@ export type ResourceDefinitionUpdate = {
     plr_category?: (string | null);
     resource_type?: (string | null);
     is_consumable?: (boolean | null);
+    is_reusable?: (boolean | null);
     nominal_volume_ul?: (number | null);
     material?: (string | null);
     manufacturer?: (string | null);

@@ -24,6 +24,8 @@ import {
     type DeckPositionRepository,
     type DeckRepository,
     type MachineDefinitionRepository,
+    type MachineFrontendDefinitionRepository,
+    type MachineBackendDefinitionRepository,
     type MachineRepository,
     type ProtocolDefinitionRepository,
     type ProtocolRunRepository,
@@ -45,10 +47,16 @@ import type {
 } from '../db/schema';
 
 // Legacy mock data imports (for fallback seeding)
-import { OFFLINE_CAPABILITY_OVERRIDES, PLR_MACHINE_DEFINITIONS, PLR_RESOURCE_DEFINITIONS } from '../../../assets/browser-data/plr-definitions';
-import { MOCK_PROTOCOL_RUNS } from '../../../assets/browser-data/protocol-runs';
-import { MOCK_PROTOCOLS } from '../../../assets/browser-data/protocols';
+import {
+    OFFLINE_CAPABILITY_OVERRIDES,
+    PLR_MACHINE_DEFINITIONS,
+    PLR_RESOURCE_DEFINITIONS,
+    PLR_FRONTEND_DEFINITIONS,
+    PLR_BACKEND_DEFINITIONS
+} from '../../../assets/browser-data/plr-definitions';
+
 import { transformPlrState } from '../utils/state-transform';
+import { applyDiff } from '../utils/state-diff';
 import type { StateHistory, OperationStateSnapshot, StateSnapshot, InferredRequirement, FailureMode, SimulationResult } from '../models/simulation.models';
 
 
@@ -75,9 +83,7 @@ export class SqliteService {
     public readonly status$ = this.statusSubject.asObservable();
 
     /** Observable that emits true when the database is ready to use */
-    public readonly isReady$ = this.statusSubject.pipe(
-        map(status => status.initialized)
-    );
+    public readonly isReady$ = new BehaviorSubject<boolean>(false);
 
     constructor() {
         this.db$ = from(this.initDbWithOptionalReset()).pipe(
@@ -90,6 +96,11 @@ export class SqliteService {
         if (typeof window !== 'undefined') {
             (window as any).sqliteService = this;
         }
+
+        // Sync isReady$ with statusSubject
+        this.statusSubject.subscribe(status => {
+            this.isReady$.next(status.initialized);
+        });
     }
 
     /**
@@ -159,6 +170,14 @@ export class SqliteService {
         return this.getRepositories().pipe(map(r => r.machineDefinitions));
     }
 
+    public get machineFrontendDefinitions(): Observable<MachineFrontendDefinitionRepository> {
+        return this.getRepositories().pipe(map(r => r.machineFrontendDefinitions));
+    }
+
+    public get machineBackendDefinitions(): Observable<MachineBackendDefinitionRepository> {
+        return this.getRepositories().pipe(map(r => r.machineBackendDefinitions));
+    }
+
     public get resources(): Observable<ResourceRepository> {
         return this.getRepositories().pipe(map(r => r.resources));
     }
@@ -190,7 +209,7 @@ export class SqliteService {
     private async initDb(): Promise<Database> {
         try {
             const SQL = await initSqlJs({
-                locateFile: file => `./assets/wasm/${file}`
+                locateFile: file => `/assets/wasm/${file}`
             });
 
             // Try loading prebuilt database first
@@ -277,7 +296,7 @@ export class SqliteService {
     private async tryLoadPrebuiltDb(SQL: SqlJsStatic): Promise<Database | null> {
         try {
             // Try enabling prebuilt database loading
-            const response = await fetch('./assets/db/praxis.db');
+            const response = await fetch('/assets/db/praxis.db');
             if (!response.ok) {
                 console.log('[SqliteService] Prebuilt database (praxis.db) not found, falling back to schema.sql');
                 return null;
@@ -318,7 +337,7 @@ export class SqliteService {
      */
     private async tryLoadSchemaDb(SQL: SqlJsStatic): Promise<Database | null> {
         try {
-            const response = await fetch('./assets/db/schema.sql');
+            const response = await fetch('/assets/db/schema.sql');
             if (!response.ok) {
                 console.log('[SqliteService] schema.sql not available');
                 return null;
@@ -376,89 +395,10 @@ export class SqliteService {
      * Seed default protocols and runs if none exist
      */
     private seedDefaultRuns(db: Database): void {
-        try {
-            // Check if runs exist
-            let runCount = 0;
-            try {
-                const countRes = db.exec("SELECT COUNT(*) FROM protocol_runs");
-                runCount = countRes.length > 0 ? (countRes[0].values[0][0] as number) : 0;
-            } catch (e) {
-                // Table might not exist yet
-                return;
-            }
-
-            if (runCount > 0) return;
-
-            console.log('[SqliteService] Seeding default protocols and runs...');
-            db.exec('BEGIN TRANSACTION');
-
-            // 1. Seed Protocols
-            // Check if protocols exist first to avoid duplicates/errors if partially seeded
-            // FIXED: Added missing NOT NULL columns (solo_execution, preconfigure_deck, requires_deck)
-            const insertProtocol = db.prepare(`
-                INSERT OR IGNORE INTO function_protocol_definitions 
-                (accession_id, name, description, version, is_top_level, category, source_file_path, 
-                 module_name, function_name, fqn, tags, deprecated, 
-                 hardware_requirements_json, inferred_requirements_json, failure_modes_json,
-                 solo_execution, preconfigure_deck, requires_deck)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-
-            for (const p of MOCK_PROTOCOLS) {
-                insertProtocol.run([
-                    p.accession_id,
-                    p.name,
-                    p.description,
-                    p.version,
-                    p.is_top_level ? 1 : 0,
-                    p.category,
-                    p.source_file_path,
-                    p.module_name,
-                    p.function_name,
-                    p.fqn,
-                    JSON.stringify(p.tags || []),
-                    p.deprecated ? 1 : 0,
-                    JSON.stringify({}), // hardware_requirements
-                    JSON.stringify([]), // inferred_requirements
-                    JSON.stringify([]),  // failure_modes
-                    0, // solo_execution
-                    0, // preconfigure_deck
-                    0  // requires_deck
-                ]);
-            }
-            insertProtocol.free();
-
-            // 2. Seed Runs
-            const insertRun = db.prepare(`
-                INSERT INTO protocol_runs 
-                (accession_id, top_level_protocol_definition_accession_id, name, status, 
-                 created_at, updated_at, input_parameters_json, properties_json, start_time, end_time)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-
-            for (const r of MOCK_PROTOCOL_RUNS) {
-                insertRun.run([
-                    r.accession_id,
-                    r.protocol_definition_accession_id,
-                    r.protocol_name,
-                    r.status,
-                    r.created_at,
-                    r.completed_at || r.created_at, // updated_at
-                    JSON.stringify(r.input_parameters_json),
-                    JSON.stringify({}),
-                    (r as any).started_at || null, // Map started_at -> start_time
-                    (r as any).completed_at || null // Map completed_at -> end_time
-                ]);
-            }
-            insertRun.free();
-
-            db.exec('COMMIT');
-            console.log(`[SqliteService] Seeded ${MOCK_PROTOCOL_RUNS.length} default runs`);
-
-        } catch (e) {
-            try { db.exec('ROLLBACK'); } catch { /* ignore */ }
-            console.error('[SqliteService] Failed to seed default runs', e);
-        }
+        // Mock seeding removed.
+        // We now rely on generate_browser_db.py to seed real protocols.
+        // Runs will be created by the user.
+        return;
     }
 
     /**
@@ -469,24 +409,32 @@ export class SqliteService {
             // Check if catalogs table exists and has data
             let machCount = 0;
             let resCount = 0;
+            let frontendCount = 0;
+            let backendCount = 0;
             try {
                 // UPDATE: Use Correct Table Names (machine_definitions, resource_definitions)
                 const machCountRes = db.exec("SELECT COUNT(*) FROM machine_definitions");
                 machCount = machCountRes.length > 0 ? (machCountRes[0].values[0][0] as number) : 0;
                 const resCountRes = db.exec("SELECT COUNT(*) FROM resource_definitions");
                 resCount = resCountRes.length > 0 ? (resCountRes[0].values[0][0] as number) : 0;
+                const frontCountRes = db.exec("SELECT COUNT(*) FROM machine_frontend_definitions");
+                frontendCount = frontCountRes.length > 0 ? (frontCountRes[0].values[0][0] as number) : 0;
+                const backCountRes = db.exec("SELECT COUNT(*) FROM machine_backend_definitions");
+                backendCount = backCountRes.length > 0 ? (backCountRes[0].values[0][0] as number) : 0;
             } catch (tableCheck) {
                 console.warn('[SqliteService] Definition tables may not exist yet:', tableCheck);
                 // Tables don't exist - this is fine, they should be created by schema
                 return;
             }
 
-            if (machCount > 0 && resCount > 0) {
-                console.log(`[SqliteService] Definition catalogs already populated (${resCount} resources, ${machCount} machines)`);
-                return;
-            }
+            // if (machCount > 0 && resCount > 0 && frontendCount > 0 && backendCount > 0) {
+            //     console.log(`[SqliteService] Definition catalogs already populated (${resCount} resources, ${machCount} machines, ${frontendCount} frontends, ${backendCount} backends)`);
+            //     return;
+            // }
 
-            console.log('[SqliteService] Seeding definition catalogs...');
+            // Always try to seed/update definitions to ensure code and DB are in sync
+            // INSERT OR IGNORE will skip existing entries, effectively adding only missing ones.
+            console.log('[SqliteService] Seeding definition catalogs (merging with existing)...');
             db.exec('BEGIN TRANSACTION');
 
             // Seed Resources
@@ -546,8 +494,49 @@ export class SqliteService {
             }
             insertMachDef.free();
 
+            // Seed Frontend Definitions
+            const insertFrontendDef = db.prepare(`
+                INSERT OR IGNORE INTO machine_frontend_definitions
+                (accession_id, name, fqn, machine_category, description, has_deck, capabilities, capabilities_config)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+            for (const def of PLR_FRONTEND_DEFINITIONS) {
+                insertFrontendDef.run([
+                    def.accession_id,
+                    def.name,
+                    def.fqn,
+                    def.machine_category,
+                    def.description || null,
+                    def.has_deck ? 1 : 0,
+                    def.capabilities ? JSON.stringify(def.capabilities) : null,
+                    def.capabilities_config ? JSON.stringify(def.capabilities_config) : null
+                ]);
+            }
+            insertFrontendDef.free();
+
+            // Seed Backend Definitions
+            const insertBackendDef = db.prepare(`
+                INSERT OR IGNORE INTO machine_backend_definitions
+                (accession_id, fqn, name, description, backend_type, connection_config, manufacturer, model, frontend_definition_accession_id, is_deprecated)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+            `);
+            for (const def of PLR_BACKEND_DEFINITIONS) {
+                insertBackendDef.run([
+                    def.accession_id,
+                    def.fqn,
+                    def.name,
+                    def.description || null,
+                    def.backend_type,
+                    def.connection_config ? JSON.stringify(def.connection_config) : null,
+                    def.manufacturer || null,
+                    def.model || null,
+                    def.frontend_definition_accession_id
+                ]);
+            }
+            insertBackendDef.free();
+
             db.exec('COMMIT');
-            console.log(`[SqliteService] Seeded ${PLR_RESOURCE_DEFINITIONS.length} resource definitions and ${PLR_MACHINE_DEFINITIONS.length} machine definitions`);
+            console.log(`[SqliteService] Seeded ${PLR_RESOURCE_DEFINITIONS.length} resource definitions, ${PLR_MACHINE_DEFINITIONS.length} machine definitions, ${PLR_FRONTEND_DEFINITIONS.length} frontends and ${PLR_BACKEND_DEFINITIONS.length} backends`);
 
         } catch (err) {
             try { db.exec('ROLLBACK'); } catch { /* ignore rollback errors */ }
@@ -861,11 +850,12 @@ export class SqliteService {
                             parameters: protocolParams,
                             assets: protocolAssets,
                             tags: p['tags'] ? (typeof p['tags'] === 'string' ? p['tags'].split(',') : p['tags']) : [],
-                            hardware_requirements_json: p['hardware_requirements_json'] ? JSON.parse(p['hardware_requirements_json'] as string) : {},
-                            computation_graph_json: p['computation_graph_json'] ? JSON.parse(p['computation_graph_json'] as string) : undefined,
-                            simulation_result_json: p['simulation_result_json'] ? JSON.parse(p['simulation_result_json'] as string) : undefined,
-                            inferred_requirements_json: p['inferred_requirements_json'] ? JSON.parse(p['inferred_requirements_json'] as string) : undefined,
-                            failure_modes_json: p['failure_modes_json'] ? JSON.parse(p['failure_modes_json'] as string) : undefined,
+                            // Correctly map detailed JSON fields to domain model properties
+                            hardware_requirements: p['hardware_requirements_json'] ? JSON.parse(p['hardware_requirements_json'] as string) : {}, // Mapped to hardware_requirements (internal use)
+                            computation_graph: p['computation_graph_json'] ? JSON.parse(p['computation_graph_json'] as string) : undefined,
+                            simulation_result: p['simulation_result_json'] ? JSON.parse(p['simulation_result_json'] as string) : undefined,
+                            inferred_requirements: p['inferred_requirements_json'] ? JSON.parse(p['inferred_requirements_json'] as string) : undefined,
+                            failure_modes: p['failure_modes_json'] ? JSON.parse(p['failure_modes_json'] as string) : undefined,
                         } as unknown as FunctionProtocolDefinition;
                     });
                 } catch (e) {
@@ -985,32 +975,6 @@ export class SqliteService {
         );
     }
 
-    public createProtocolRun(run: ProtocolRun & { protocol_definition_accession_id: string }): Observable<ProtocolRun> {
-        return this.db$.pipe(
-            map(db => {
-                const stmt = db.prepare(`
-                    INSERT INTO protocol_runs 
-                    (accession_id, top_level_protocol_definition_accession_id, name, status, 
-                     created_at, updated_at, input_parameters_json, properties_json)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                `);
-                const now = new Date().toISOString();
-                stmt.run([
-                    run.accession_id,
-                    run.protocol_definition_accession_id,
-                    run.name,
-                    run.status || 'QUEUED',
-                    run.created_at || now,
-                    now,
-                    JSON.stringify(run.input_parameters_json || {}),
-                    JSON.stringify(run.properties_json || {})
-                ]);
-                stmt.free();
-                this.saveToStore(db);  // Persist to IndexedDB
-                return run;
-            })
-        );
-    }
 
     public getResources(): Observable<Resource[]> {
         return this.db$.pipe(
@@ -1164,7 +1128,7 @@ export class SqliteService {
         const data = new Uint8Array(buffer);
 
         const SQL = await initSqlJs({
-            locateFile: file => `./assets/wasm/${file}`
+            locateFile: file => `/assets/wasm/${file}`
         });
 
         // Close current database
@@ -1210,21 +1174,34 @@ export class SqliteService {
             const request = indexedDB.open('praxis_db', 1);
 
             request.onupgradeneeded = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result;
-                if (!db.objectStoreNames.contains('sqlite')) {
-                    db.createObjectStore('sqlite');
+                const idb = (event.target as IDBOpenDBRequest).result;
+                if (!idb.objectStoreNames.contains('sqlite')) {
+                    idb.createObjectStore('sqlite');
                 }
             };
 
             return new Promise((resolve, reject) => {
                 request.onsuccess = (event) => {
-                    const db = (event.target as IDBOpenDBRequest).result;
-                    const transaction = db.transaction('sqlite', 'readwrite');
+                    const idb = (event.target as IDBOpenDBRequest).result;
+
+                    if (!idb.objectStoreNames.contains('sqlite')) {
+                        idb.close();
+                        resolve();
+                        return;
+                    }
+
+                    const transaction = idb.transaction('sqlite', 'readwrite');
                     const store = transaction.objectStore('sqlite');
                     store.put(data, 'db_dump');
 
-                    transaction.oncomplete = () => resolve();
-                    transaction.onerror = (e) => reject(e);
+                    transaction.oncomplete = () => {
+                        idb.close();
+                        resolve();
+                    };
+                    transaction.onerror = (e) => {
+                        idb.close();
+                        reject(e);
+                    };
                 };
                 request.onerror = (e) => reject(e);
             });
@@ -1241,27 +1218,39 @@ export class SqliteService {
             const request = indexedDB.open('praxis_db', 1);
 
             request.onupgradeneeded = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result;
-                if (!db.objectStoreNames.contains('sqlite')) {
-                    db.createObjectStore('sqlite');
+                const idb = (event.target as IDBOpenDBRequest).result;
+                if (!idb.objectStoreNames.contains('sqlite')) {
+                    idb.createObjectStore('sqlite');
                 }
             };
 
             request.onsuccess = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result;
-                const transaction = db.transaction('sqlite', 'readonly');
+                const idb = (event.target as IDBOpenDBRequest).result;
+
+                if (!idb.objectStoreNames.contains('sqlite')) {
+                    idb.close();
+                    resolve(null);
+                    return;
+                }
+
+                const transaction = idb.transaction('sqlite', 'readonly');
                 const store = transaction.objectStore('sqlite');
                 const getReq = store.get('db_dump');
 
+                let data: Uint8Array | null = null;
                 getReq.onsuccess = () => {
-                    if (getReq.result) {
-                        resolve(getReq.result);
-                    } else {
-                        resolve(null);
-                    }
+                    data = getReq.result || null;
                 };
 
-                getReq.onerror = () => resolve(null);
+                transaction.oncomplete = () => {
+                    idb.close();
+                    resolve(data);
+                };
+
+                transaction.onerror = () => {
+                    idb.close();
+                    resolve(null);
+                };
             };
 
             request.onerror = () => resolve(null);
@@ -1272,14 +1261,46 @@ export class SqliteService {
      * Clear the persisted database
      */
     public async clearStore(): Promise<void> {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const request = indexedDB.open('praxis_db', 1);
+
+            request.onupgradeneeded = (event) => {
+                const idb = (event.target as IDBOpenDBRequest).result;
+                if (!idb.objectStoreNames.contains('sqlite')) {
+                    idb.createObjectStore('sqlite');
+                }
+            };
+
             request.onsuccess = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result;
-                const transaction = db.transaction('sqlite', 'readwrite');
-                const store = transaction.objectStore('sqlite');
-                store.clear();
-                transaction.oncomplete = () => resolve();
+                const idb = (event.target as IDBOpenDBRequest).result;
+                
+                if (!idb.objectStoreNames.contains('sqlite')) {
+                    idb.close();
+                    resolve();
+                    return;
+                }
+
+                try {
+                    const transaction = idb.transaction('sqlite', 'readwrite');
+                    const store = transaction.objectStore('sqlite');
+                    store.clear();
+
+                    transaction.oncomplete = () => {
+                        idb.close();
+                        resolve();
+                    };
+                    transaction.onerror = (event) => {
+                        idb.close();
+                        reject((event.target as IDBRequest).error);
+                    };
+                } catch (e) {
+                    idb.close();
+                    reject(e);
+                }
+            };
+
+            request.onerror = (event) => {
+                reject((event.target as IDBOpenDBRequest).error);
             };
         });
     }
@@ -1470,6 +1491,48 @@ export class SqliteService {
     }
 
     /**
+     * Create a new protocol run (Browser Mode specific)
+     */
+    public createProtocolRun(run: Partial<ProtocolRun>): Observable<void> {
+        return this.db$.pipe(
+            map(db => {
+                const columns = Object.keys(run);
+                const values = Object.values(run);
+                const placeholders = columns.map(() => '?').join(', ');
+
+                const sql = `INSERT INTO protocol_runs (${columns.join(', ')}) VALUES (${placeholders})`;
+                try {
+                    db.run(sql, values as any[]);
+                    this.saveToStore(db);
+                } catch (err) {
+                    console.error('[SqliteService] Failed to create protocol run:', err);
+                }
+            })
+        );
+    }
+
+    /**
+     * Update an existing protocol run (Browser Mode specific)
+     */
+    public updateProtocolRun(accessionId: string, run: Partial<ProtocolRun>): Observable<void> {
+        return this.db$.pipe(
+            map(db => {
+                const columns = Object.keys(run);
+                const values = Object.values(run);
+                const setClause = columns.map(col => `${col} = ?`).join(', ');
+
+                const sql = `UPDATE protocol_runs SET ${setClause} WHERE accession_id = ?`;
+                try {
+                    db.run(sql, [...values, accessionId] as any[]);
+                    this.saveToStore(db);
+                } catch (err) {
+                    console.error('[SqliteService] Failed to update protocol run:', err);
+                }
+            })
+        );
+    }
+
+    /**
      * Create a function call log entry.
      */
     public createFunctionCallLog(record: Partial<FunctionCallLog>): Observable<void> {
@@ -1492,123 +1555,143 @@ export class SqliteService {
         );
     }
 
-    public getRunStateHistory(runId: string): Observable<StateHistory | null> {
+
+    /**
+     * Get state history for a run, reconstructing from diffs if necessary.
+     */
+    public getRunStateHistory(runId: string): Observable<StateHistory> {
         return this.db$.pipe(
             map(db => {
+                // 1. Fetch Run (for initial state)
+                const runStmt = db.prepare("SELECT accession_id, initial_state_json FROM protocol_runs WHERE accession_id = ?");
+                let runRow: any = null;
                 try {
-                    // Get protocol run info
-                    const runResult = db.exec(
-                        `SELECT name FROM protocol_runs WHERE accession_id = ?`,
-                        [runId]
-                    );
+                    runStmt.bind([runId]);
+                    if (runStmt.step()) runRow = runStmt.getAsObject();
+                } finally { runStmt.free(); }
 
-                    const protocolName = runResult.length > 0 && runResult[0].values.length > 0
-                        ? (runResult[0].values[0][0] as string) || 'Unknown'
-                        : 'Unknown';
+                if (!runRow) throw new Error(`Run not found: ${runId}`);
 
-                    // Get function call logs for this run
-                    const logsResult = db.exec(
-                        `SELECT
-                            accession_id,
-                            sequence_in_run,
-                            name,
-                            status,
-                            input_args_json,
-                            state_before_json,
-                            state_after_json,
-                            start_time,
-                            end_time,
-                            duration_ms,
-                            error_message_text
-                         FROM function_call_logs
-                         WHERE protocol_run_accession_id = ?
-                         ORDER BY sequence_in_run ASC`,
-                        [runId]
-                    );
+                // 2. Fetch Logs
+                const logsStmt = db.prepare(`
+                    SELECT accession_id, sequence_in_run, name, input_args_json, state_before_json, state_after_json, status, start_time, duration_ms, error_message_text
+                    FROM function_call_logs
+                    WHERE protocol_run_accession_id = ?
+                    ORDER BY sequence_in_run ASC
+                `);
 
-                    if (logsResult.length === 0 || logsResult[0].values.length === 0) {
-                        return null;
+                const logs: any[] = [];
+                try {
+                    logsStmt.bind([runId]);
+                    while (logsStmt.step()) {
+                        logs.push(logsStmt.getAsObject());
                     }
+                } finally { logsStmt.free(); }
 
-                    const operations: OperationStateSnapshot[] = [];
-                    let finalState: StateSnapshot | null = null;
-                    let totalDurationMs = 0;
+                let currentFullState = runRow.initial_state_json ? JSON.parse(runRow.initial_state_json) : {};
 
-                    for (const row of logsResult[0].values) {
-                        const [
-                            accessionId,
-                            sequenceInRun,
-                            name,
-                            status,
-                            inputArgsJson,
-                            stateBeforeJson,
-                            stateAfterJson,
-                            startTime,
-                            endTime,
-                            durationMs,
-                            errorMessage,
-                        ] = row;
-
-                        // Parse and transform states
-                        const rawStateBefore = stateBeforeJson
-                            ? JSON.parse(stateBeforeJson as string)
-                            : null;
-                        const rawStateAfter = stateAfterJson
-                            ? JSON.parse(stateAfterJson as string)
-                            : null;
-
-                        const stateBefore = transformPlrState(rawStateBefore);
-                        const stateAfter = transformPlrState(rawStateAfter);
-
-                        // Parse args
-                        const args = inputArgsJson
-                            ? JSON.parse(inputArgsJson as string)
-                            : undefined;
-
-                        // Map status
-                        const opStatus: 'completed' | 'failed' | 'skipped' =
-                            status === 'COMPLETED' ? 'completed' :
-                                status === 'FAILED' ? 'failed' : 'skipped';
-
-                        // Create operation snapshot
-                        const operation: OperationStateSnapshot = {
-                            operation_index: sequenceInRun as number,
-                            operation_id: accessionId as string,
-                            method_name: name as string,
-                            args,
-                            state_before: stateBefore || this.getEmptyState(),
-                            state_after: stateAfter || this.getEmptyState(),
-                            timestamp: startTime as string,
-                            duration_ms: durationMs as number,
-                            status: opStatus,
-                            error_message: errorMessage as string | undefined,
-                        };
-
-                        operations.push(operation);
-
-                        // Track final state and duration
-                        if (stateAfter) {
-                            finalState = stateAfter;
+                const reconstruct = (current: any, storedJson: string | null) => {
+                    if (!storedJson) return current;
+                    try {
+                        const stored = JSON.parse(storedJson);
+                        if (stored && stored._is_diff) {
+                            return applyDiff(current, stored.diff);
                         }
-                        if (typeof durationMs === 'number') {
-                            totalDurationMs += durationMs;
-                        }
+                        return stored;
+                    } catch (e) {
+                        console.warn('[SqliteService] Error parsing state json:', e);
+                        return current;
                     }
+                };
+
+                const operations: OperationStateSnapshot[] = logs.map(log => {
+                    const fullStateBefore = reconstruct(currentFullState, log.state_before_json);
+                    currentFullState = fullStateBefore;
+
+                    const fullStateAfter = reconstruct(currentFullState, log.state_after_json);
+                    currentFullState = fullStateAfter;
 
                     return {
-                        run_id: runId,
-                        protocol_name: protocolName,
-                        operations,
-                        final_state: finalState || this.getEmptyState(),
-                        total_duration_ms: totalDurationMs,
-                    } as StateHistory;
+                        operation_index: log.sequence_in_run,
+                        operation_id: log.accession_id,
+                        method_name: log.name || 'unknown',
+                        args: log.input_args_json ? JSON.parse(log.input_args_json) : {},
+                        state_before: this.wrapStateSnapshot(fullStateBefore) || this.getEmptyState(),
+                        state_after: this.wrapStateSnapshot(fullStateAfter) || this.getEmptyState(),
+                        timestamp: log.start_time,
+                        duration_ms: log.duration_ms,
+                        status: (log.status || 'COMPLETED').toLowerCase() as any,
+                        error_message: log.error_message_text
+                    };
+                });
 
-                } catch (error) {
-                    console.warn('[SqliteService] State history retrieval failed:', error);
-                    return null;
+                return {
+                    run_id: runId,
+                    protocol_name: 'Browser Run',
+                    operations,
+                    final_state: this.wrapStateSnapshot(currentFullState) || this.getEmptyState()
+                };
+            })
+        );
+    }
+
+    /**
+     * Prune old run history to keep DB size manageable.
+     */
+    public pruneRunHistory(keepCount: number = 5): Observable<void> {
+        return this.db$.pipe(
+            map(db => {
+                console.log(`[SqliteService] Pruning run history (keeping last ${keepCount})...`);
+                try {
+                    db.exec('BEGIN TRANSACTION');
+
+                    // 1. Identify runs to delete
+                    const staleRunsStmt = db.prepare(`
+                        SELECT accession_id FROM protocol_runs 
+                        ORDER BY created_at DESC 
+                        LIMIT -1 OFFSET ?
+                    `);
+
+                    const runIdsToDelete: string[] = [];
+                    try {
+                        staleRunsStmt.bind([keepCount]);
+                        while (staleRunsStmt.step()) {
+                            runIdsToDelete.push(staleRunsStmt.get()[0] as string);
+                        }
+                    } finally { staleRunsStmt.free(); }
+
+                    if (runIdsToDelete.length > 0) {
+                        const idList = runIdsToDelete.map(id => `'${id}'`).join(',');
+
+                        // 2. Delete logs first
+                        db.run(`DELETE FROM function_call_logs WHERE protocol_run_accession_id IN (${idList})`);
+
+                        // 3. Delete runs
+                        db.run(`DELETE FROM protocol_runs WHERE accession_id IN (${idList})`);
+
+                        console.log(`[SqliteService] Pruned ${runIdsToDelete.length} stale runs and their logs.`);
+                    }
+
+                    db.exec('COMMIT');
+                    this.saveToStore(db);
+                } catch (err) {
+                    db.run('ROLLBACK');
+                    console.warn('[SqliteService] Failed to prune history:', err);
                 }
             })
         );
+    }
+
+    private wrapStateSnapshot(plrState: any): StateSnapshot | null {
+        if (!plrState) return null;
+        const transformed = transformPlrState(plrState);
+        if (!transformed) return null;
+        return {
+            tips: transformed.tips as any,
+            liquids: transformed.liquids,
+            on_deck: transformed.on_deck,
+            raw_plr_state: transformed.raw_plr_state
+        };
     }
 
     private getEmptyState(): StateSnapshot {
@@ -1618,5 +1701,4 @@ export class SqliteService {
             on_deck: [],
         };
     }
-
 }

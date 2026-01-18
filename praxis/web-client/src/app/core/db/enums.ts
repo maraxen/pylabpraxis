@@ -1,6 +1,6 @@
 /**
  * Auto-generated TypeScript enums from Python enums
- * Generated at: 2026-01-16T00:18:30.260889
+ * Generated at: 2026-01-17T12:17:19.275048
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 
@@ -40,6 +40,29 @@ export const AssetTypeValues = {
   MACHINE_RESOURCE: 'MACHINE_RESOURCE' as const,
   DECK: 'DECK' as const,
   ASSET: 'GENERIC_ASSET' as const,
+} as const;
+
+/**
+ * Type of machine backend implementation.
+
+Used to distinguish between different types of backends:
+- REAL_HARDWARE: Connects to a physical device
+- SIMULATOR: PLR visualizer/simulator
+- CHATTERBOX: Print-only, no hardware connection
+- MOCK: For testing purposes only
+
+ */
+export type BackendType =
+  | 'real_hardware'
+  | 'simulator'
+  | 'chatterbox'
+  | 'mock';
+
+export const BackendTypeValues = {
+  REAL_HARDWARE: 'real_hardware' as const,
+  SIMULATOR: 'simulator' as const,
+  CHATTERBOX: 'chatterbox' as const,
+  MOCK: 'mock' as const,
 } as const;
 
 /**

@@ -1,11 +1,12 @@
 import { HttpRequest, HttpHandlerFn, HttpEvent, HttpResponse } from '@angular/common/http';
-import { Observable, of, delay, switchMap } from 'rxjs';
+import { Observable, of, delay, switchMap, map } from 'rxjs';
 import { inject } from '@angular/core';
 import { ModeService } from '../services/mode.service';
 import { SqliteService } from '../services/sqlite.service';
+import { ProtocolRun } from '../db/schema';
 
 // Import mock data for fallback
-import { MOCK_PROTOCOL_RUNS } from '../../../assets/browser-data/protocol-runs';
+
 import { MOCK_RESOURCES, MOCK_RESOURCE_DEFINITIONS } from '../../../assets/browser-data/resources';
 import { MOCK_MACHINES } from '../../../assets/browser-data/machines';
 import { PLR_RESOURCE_DEFINITIONS, PLR_MACHINE_DEFINITIONS } from '../../../assets/browser-data/plr-definitions';
@@ -26,55 +27,73 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
 
     // Protocol run queue - return active/running runs
     if (url.includes('/protocols/runs/queue') && method === 'GET') {
-        const activeRuns = MOCK_PROTOCOL_RUNS.filter(r =>
-            ['PENDING', 'PREPARING', 'QUEUED', 'RUNNING'].includes(r.status)
-        ).map(r => ({
-            accession_id: r.accession_id,
-            name: r.protocol_name,
-            status: r.status,
-            created_at: r.created_at,
-            protocol_name: r.protocol_name,
-        }));
-        return of(activeRuns);
+        return sqliteService.getProtocolRuns().pipe(
+            map((runs: ProtocolRun[]) => {
+                const activeRuns = runs.filter((r: ProtocolRun) =>
+                    r.status && ['pending', 'preparing', 'queued', 'running'].includes(r.status.toLowerCase() as any)
+                ).map(r => ({
+                    accession_id: r.accession_id,
+                    name: r.name,
+                    status: r.status,
+                    created_at: r.created_at,
+                    protocol_name: r.name, // Using run name as protocol name for now as they are usually same or similar
+                }));
+
+                return {
+                    items: activeRuns,
+                    total: activeRuns.length,
+                    page: 1,
+                    size: 50
+                };
+            })
+        );
     }
 
     // Protocol run records (history) - return all runs for pagination
     if (url.includes('/protocols/runs/records') && method === 'GET') {
-        // Check if this is a single record request
         const recordMatch = url.match(/\/protocols\/runs\/records\/([a-f0-9-]+)$/);
         if (recordMatch) {
             const runId = recordMatch[1];
-            const run = MOCK_PROTOCOL_RUNS.find(r => r.accession_id === runId);
-            if (run) {
-                return of({
-                    ...run,
-                    name: run.protocol_name,
-                    start_time: (run as any).started_at,
-                    end_time: (run as any).completed_at,
-                    duration_ms: run.status === 'COMPLETED' ? 262000 : null,
-                    logs: [
-                        'Starting protocol execution...',
-                        'Initializing liquid handler...',
-                        'Loading deck configuration...',
-                        `Executing ${run.protocol_name}...`,
-                        run.status === 'COMPLETED' ? 'Protocol completed successfully.' : 'Protocol execution in progress...',
-                    ],
-                });
-            }
-            return of(null);
+            return sqliteService.getProtocolRun(runId).pipe(
+                map(run => {
+                    if (run) {
+                        return {
+                            ...run,
+                            // Ensure fields match expectation
+                            name: run.name,
+                            protocol_name: run.name,
+                            start_time: run.start_time,
+                            end_time: run.end_time,
+                            duration_ms: run.duration_ms, // Should be in DB or calculated
+                            logs: [] // Logs populated separately via /transfer-logs usually
+                        };
+                    }
+                    // Return explicit 404 if not found
+                    throw new HttpResponse({ status: 404, statusText: 'Not Found' });
+                })
+            );
         }
-        // Return list with consistent field names
-        return of(MOCK_PROTOCOL_RUNS.map(r => ({
-            accession_id: r.accession_id,
-            name: r.protocol_name,
-            status: r.status,
-            created_at: r.created_at,
-            start_time: (r as any).started_at,
-            end_time: (r as any).completed_at,
-            duration_ms: r.status === 'COMPLETED' ? 262000 : null,
-            protocol_name: r.protocol_name,
-            protocol_accession_id: r.protocol_definition_accession_id,
-        })));
+
+        return sqliteService.getProtocolRuns().pipe(
+            map((runs: ProtocolRun[]) => {
+                return {
+                    items: runs.map((r: ProtocolRun) => ({
+                        accession_id: r.accession_id,
+                        name: r.name,
+                        status: r.status,
+                        created_at: r.created_at,
+                        start_time: r.start_time,
+                        end_time: r.end_time,
+                        duration_ms: r.duration_ms,
+                        protocol_name: r.name,
+                        protocol_accession_id: r.top_level_protocol_definition_accession_id
+                    })),
+                    total: runs.length,
+                    page: 1,
+                    size: 50
+                };
+            })
+        );
     }
 
     // Protocol runs - return array from SQLite (legacy fallback)

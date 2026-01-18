@@ -2,6 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { AssetRequirementRead } from './AssetRequirementRead';
+import type { ParameterDefinitionRead } from './ParameterDefinitionRead';
 /**
  * Schema for reading a FunctionProtocolDefinition.
  */
@@ -53,5 +55,12 @@ export type FunctionProtocolDefinitionRead = {
     bytecode_cache_version?: (string | null);
     bytecode_cached_at?: (string | null);
     commit_hash?: (string | null);
+    parameters?: Array<ParameterDefinitionRead>;
+    assets?: Array<AssetRequirementRead>;
+    tags?: (Record<string, any> | Array<string> | null);
+    hardware_requirements_json?: (Record<string, any> | null);
+    inferred_requirements_json?: null;
+    failure_modes_json?: null;
+    simulation_result_json?: (Record<string, any> | null);
 };
 

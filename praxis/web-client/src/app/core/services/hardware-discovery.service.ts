@@ -7,7 +7,7 @@
 
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { PLR_MACHINE_DEFINITIONS, PlrMachineDefinition } from '@assets/browser-data/plr-definitions';
+import { PLR_MACHINE_DEFINITIONS, PlrMachineDefinition, PLR_BACKEND_DEFINITIONS, PlrBackendDefinition } from '@assets/browser-data/plr-definitions';
 
 export type ConnectionType = 'serial' | 'usb' | 'network' | 'simulator';
 export type DeviceStatus = 'available' | 'connected' | 'connecting' | 'disconnected' | 'busy' | 'error' | 'requires_config' | 'unknown';
@@ -26,6 +26,9 @@ export interface DiscoveredDevice {
     productId?: number;
     plrBackend?: string;
     plrMachineDefinition?: PlrMachineDefinition;
+    plrBackendDefinition?: PlrBackendDefinition;
+    frontendDefinitionAccessionId?: string;
+    backendDefinitionAccessionId?: string;
     requiresConfiguration?: boolean;
     configurationSchema?: Record<string, ConfigurationField>;
     configuration?: Record<string, unknown>;
@@ -266,22 +269,26 @@ export class HardwareDiscoveryService {
         const info = port.getInfo();
         const deviceKey = this.formatDeviceKey(info.usbVendorId, info.usbProductId);
         const knownDevice = KNOWN_DEVICES[deviceKey];
-        const plrDef = this.inferPlrDefinition(knownDevice?.plrBackend, info.usbVendorId, info.usbProductId);
+        const backendDef = this.inferBackendDefinition(knownDevice?.plrBackend);
+        const plrDef = backendDef ? PLR_MACHINE_DEFINITIONS.find(m => m.fqn === backendDef.fqn) : undefined;
 
         const hasConfig = !!(knownDevice?.configSchema && Object.keys(knownDevice.configSchema).length > 0);
 
         return {
             id,
-            name: knownDevice?.model || plrDef?.name || 'Serial Device',
+            name: knownDevice?.model || backendDef?.name || plrDef?.name || 'Serial Device',
             connectionType: 'serial',
             status: hasConfig ? 'requires_config' : 'available',
             port,
             vendorId: info.usbVendorId,
             productId: info.usbProductId,
-            manufacturer: knownDevice?.manufacturer || plrDef?.vendor,
-            productName: knownDevice?.model || plrDef?.name,
-            plrBackend: knownDevice?.plrBackend || plrDef?.fqn,
+            manufacturer: knownDevice?.manufacturer || backendDef?.manufacturer || plrDef?.vendor,
+            productName: knownDevice?.model || backendDef?.name || plrDef?.name,
+            plrBackend: knownDevice?.plrBackend || backendDef?.fqn || plrDef?.fqn,
+            plrBackendDefinition: backendDef,
             plrMachineDefinition: plrDef,
+            frontendDefinitionAccessionId: backendDef?.frontend_definition_accession_id,
+            backendDefinitionAccessionId: backendDef?.accession_id,
             requiresConfiguration: hasConfig,
             configurationSchema: knownDevice?.configSchema,
         };
@@ -293,23 +300,27 @@ export class HardwareDiscoveryService {
     private createDeviceFromUSB(usbDevice: USBDevice, id: string): DiscoveredDevice {
         const deviceKey = this.formatDeviceKey(usbDevice.vendorId, usbDevice.productId);
         const knownDevice = KNOWN_DEVICES[deviceKey];
-        const plrDef = this.inferPlrDefinition(knownDevice?.plrBackend, usbDevice.vendorId, usbDevice.productId);
+        const backendDef = this.inferBackendDefinition(knownDevice?.plrBackend);
+        const plrDef = backendDef ? PLR_MACHINE_DEFINITIONS.find(m => m.fqn === backendDef.fqn) : undefined;
 
         const hasConfig = !!(knownDevice?.configSchema && Object.keys(knownDevice.configSchema).length > 0);
 
         return {
             id,
-            name: usbDevice.productName || knownDevice?.model || plrDef?.name || 'USB Device',
+            name: usbDevice.productName || knownDevice?.model || backendDef?.name || plrDef?.name || 'USB Device',
             connectionType: 'usb',
             status: hasConfig ? 'requires_config' : 'available',
             usbDevice,
             vendorId: usbDevice.vendorId,
             productId: usbDevice.productId,
-            manufacturer: usbDevice.manufacturerName || knownDevice?.manufacturer || plrDef?.vendor,
-            productName: usbDevice.productName || knownDevice?.model || plrDef?.name,
+            manufacturer: usbDevice.manufacturerName || knownDevice?.manufacturer || backendDef?.manufacturer || plrDef?.vendor,
+            productName: usbDevice.productName || knownDevice?.model || backendDef?.name || plrDef?.name,
             serialNumber: usbDevice.serialNumber,
-            plrBackend: knownDevice?.plrBackend || plrDef?.fqn,
+            plrBackend: knownDevice?.plrBackend || backendDef?.fqn || plrDef?.fqn,
+            plrBackendDefinition: backendDef,
             plrMachineDefinition: plrDef,
+            frontendDefinitionAccessionId: backendDef?.frontend_definition_accession_id,
+            backendDefinitionAccessionId: backendDef?.accession_id,
             requiresConfiguration: hasConfig,
             configurationSchema: knownDevice?.configSchema,
         };
@@ -324,13 +335,12 @@ export class HardwareDiscoveryService {
     }
 
     /**
-     * Infer PLR machine definition from backend class or VID/PID
+     * Infer PLR backend definition from FQN
      */
-    private inferPlrDefinition(plrBackend?: string, _vendorID?: number, _productID?: number): PlrMachineDefinition | undefined {
+    private inferBackendDefinition(plrBackend?: string): PlrBackendDefinition | undefined {
         if (plrBackend) {
-            return PLR_MACHINE_DEFINITIONS.find(m => m.fqn === plrBackend);
+            return PLR_BACKEND_DEFINITIONS.find(b => b.fqn === plrBackend);
         }
-        // Could extend to match by vendor name or other heuristics
         return undefined;
     }
 
@@ -424,6 +434,9 @@ export class HardwareDiscoveryService {
             if (!response?.devices) return [];
 
             return (response.devices as Array<DiscoveredDeviceResponse>).map(d => {
+                const backendDef = d.plr_backend
+                    ? PLR_BACKEND_DEFINITIONS.find(b => b.fqn === d.plr_backend)
+                    : undefined;
                 const plrDef = d.plr_backend
                     ? PLR_MACHINE_DEFINITIONS.find(m => m.fqn === d.plr_backend)
                     : undefined;
@@ -437,7 +450,10 @@ export class HardwareDiscoveryService {
                     productName: d.model ?? undefined,
                     serialNumber: d.serial_number ?? undefined,
                     plrBackend: d.plr_backend ?? undefined,
+                    plrBackendDefinition: backendDef,
                     plrMachineDefinition: plrDef,
+                    frontendDefinitionAccessionId: backendDef?.frontend_definition_accession_id,
+                    backendDefinitionAccessionId: backendDef?.accession_id,
                 };
             });
         } catch (error) {
@@ -484,6 +500,8 @@ export class HardwareDiscoveryService {
                     plr_backend: device.plrBackend,
                     connection_type: device.connectionType,
                     configuration: device.configuration as Record<string, unknown>,
+                    // NOTE: frontend/backend definition IDs are tracked on the device object
+                    // but not sent in the API request (API uses plr_backend to infer these)
                 }))
             );
             return response;

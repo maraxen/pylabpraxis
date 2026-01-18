@@ -44,6 +44,10 @@ export type ResourceDefinitionRead = {
     resource_type?: (string | null);
     is_consumable?: boolean;
     /**
+     * Whether the resource can be reused (e.g., plates are reusable, tips are not)
+     */
+    is_reusable?: boolean;
+    /**
      * Nominal volume in microliters
      */
     nominal_volume_ul?: (number | null);

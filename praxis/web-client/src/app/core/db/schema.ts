@@ -1,6 +1,6 @@
 /**
  * Auto-generated TypeScript interfaces from SQLAlchemy ORM models
- * Generated at: 2026-01-16T00:18:30.259582
+ * Generated at: 2026-01-17T12:17:19.273064
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 
@@ -8,6 +8,7 @@
 
 import type {
   AssetType,
+  BackendType,
   DataOutputType,
   FunctionCallStatus,
   MachineCategory,
@@ -215,6 +216,25 @@ export interface FunctionProtocolDefinition {
 }
 
 /**
+ * Interface for the 'machine_backend_definitions' table
+ */
+export interface MachineBackendDefinition {
+  accession_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  name: string | null;
+  properties_json: Record<string, unknown> | null;
+  fqn: string;
+  description: string | null;
+  connection_config: Record<string, unknown> | null;
+  manufacturer: string | null;
+  model: string | null;
+  is_deprecated: boolean | null;
+  backend_type: BackendType | null;
+  frontend_definition_accession_id: string;
+}
+
+/**
  * Interface for the 'machine_definitions' table
  */
 export interface MachineDefinition {
@@ -248,6 +268,27 @@ export interface MachineDefinition {
   resource_definition_accession_id: string | null;
   deck_definition_accession_id: string | null;
   asset_requirement_accession_id: string | null;
+}
+
+/**
+ * Interface for the 'machine_frontend_definitions' table
+ */
+export interface MachineFrontendDefinition {
+  accession_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  name: string | null;
+  properties_json: Record<string, unknown> | null;
+  fqn: string;
+  description: string | null;
+  plr_category: string | null;
+  capabilities: Record<string, unknown> | null;
+  capabilities_config: Record<string, unknown> | null;
+  has_deck: boolean | null;
+  manufacturer: string | null;
+  model: string | null;
+  machine_category: MachineCategory | null;
+  deck_definition_accession_id: string | null;
 }
 
 /**
@@ -287,6 +328,9 @@ export interface Machine {
   deck_child_definition_accession_id: string | null;
   current_protocol_run_accession_id: string | null;
   machine_definition_accession_id: string | null;
+  frontend_definition_accession_id: string | null;
+  backend_definition_accession_id: string | null;
+  backend_config: Record<string, unknown> | null;
 }
 
 /**

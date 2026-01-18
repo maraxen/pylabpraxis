@@ -60,6 +60,10 @@ export type MachineRead = {
      * Record of last maintenance
      */
     last_maintenance_json?: (Record<string, any> | null);
+    /**
+     * Selected simulation backend name (when is_simulated_frontend = True)
+     */
+    simulation_backend_name?: (string | null);
     plr_state?: (Record<string, any> | null);
     plr_definition?: (Record<string, any> | null);
 };

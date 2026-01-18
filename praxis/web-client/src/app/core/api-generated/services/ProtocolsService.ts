@@ -16,6 +16,7 @@ import type { SimulationRequest } from '../models/SimulationRequest';
 import type { SimulationResponse } from '../models/SimulationResponse';
 import type { StartRunRequest } from '../models/StartRunRequest';
 import type { StartRunResponse } from '../models/StartRunResponse';
+import type { StateHistory } from '../models/StateHistory';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -211,6 +212,27 @@ export class ProtocolsService {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/protocols/runs/queue',
+        });
+    }
+    /**
+     * Get Run State History
+     * Get granular state history for a protocol run.
+     * @param runId
+     * @returns StateHistory Successful Response
+     * @throws ApiError
+     */
+    public static getRunStateHistoryApiV1ProtocolsRunsRunIdStateHistoryGet(
+        runId: string,
+    ): CancelablePromise<StateHistory> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/protocols/runs/{run_id}/state-history',
+            path: {
+                'run_id': runId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**

@@ -78,9 +78,16 @@ export type MachineCreate = {
      * Record of last maintenance
      */
     last_maintenance_json?: (Record<string, any> | null);
+    /**
+     * Selected simulation backend name (when is_simulated_frontend = True)
+     */
+    simulation_backend_name?: (string | null);
     resource_def_name?: (string | null);
     resource_properties_json?: (Record<string, any> | null);
     resource_initial_status?: (string | null);
     resource_counterpart_accession_id?: (string | null);
+    frontend_definition_accession_id?: (string | null);
+    backend_definition_accession_id?: (string | null);
+    backend_config?: (Record<string, any> | null);
 };
 

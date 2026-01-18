@@ -351,7 +351,8 @@ export class SqliteRepository<T extends BaseEntity> {
             'is_simulation_override',
             'accepts_tips',
             'accepts_plates',
-            'accepts_tubes'
+            'accepts_tubes',
+            'maintenance_enabled'
         ];
         return booleanColumns.includes(columnName);
     }

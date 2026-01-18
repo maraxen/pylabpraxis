@@ -98,5 +98,13 @@ export type MachineDefinitionCreate = {
      * Connection parameters schema
      */
     connection_config?: (Record<string, any> | null);
+    /**
+     * True if this is a generic simulated frontend (not a real backend)
+     */
+    is_simulated_frontend?: (boolean | null);
+    /**
+     * FQNs of simulation backends available for this frontend type
+     */
+    available_simulation_backends?: (Array<string> | null);
 };
 

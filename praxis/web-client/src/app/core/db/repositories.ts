@@ -13,6 +13,8 @@ import type {
     FunctionCallLog,
     Machine,
     MachineDefinitionCatalog,
+    MachineFrontendDefinition,
+    MachineBackendDefinition,
     Resource,
     ResourceDefinitionCatalog,
     Deck,
@@ -22,6 +24,7 @@ import type {
     FunctionDataOutput,
 } from './schema';
 import type { ProtocolRunStatus, MachineStatus, ResourceStatus } from './enums';
+import type { ProtocolDefinition, SimulationResult } from '../../features/protocols/models/protocol.models';
 
 // Re-type interfaces with index signature for repository compatibility
 type WithIndex<T> = T & BaseEntity;
@@ -85,6 +88,62 @@ export class ProtocolRunRepository extends SqliteRepository<WithIndex<ProtocolRu
     }
 }
 
+
+/**
+ * Maps raw SQLite protocol row to ProtocolDefinition domain object
+ * Handles JSON deserialization and field name normalization
+ */
+function mapProtocolEntity(row: any): ProtocolDefinition {
+    // Parse simulation_result_json if it's a string (SQLite TEXT column)
+    let simulationResult: SimulationResult | undefined = undefined;
+
+    if (row.simulation_result_json) {
+        try {
+            // Check if already parsed (some ORMs auto-deserialize)
+            simulationResult = typeof row.simulation_result_json === 'string'
+                ? JSON.parse(row.simulation_result_json)
+                : row.simulation_result_json;
+        } catch (e) {
+            console.error('Failed to parse simulation_result_json', e);
+        }
+    }
+
+    // Inferred requirements and failure modes
+    let inferredRequirements: any[] = [];
+    if (row.inferred_requirements_json) {
+        try {
+            inferredRequirements = typeof row.inferred_requirements_json === 'string'
+                ? JSON.parse(row.inferred_requirements_json)
+                : row.inferred_requirements_json;
+        } catch (e) {
+            console.error('Failed to parse inferred_requirements_json', e);
+        }
+    }
+
+    let failureModes: any[] = [];
+    if (row.failure_modes_json) {
+        try {
+            failureModes = typeof row.failure_modes_json === 'string'
+                ? JSON.parse(row.failure_modes_json)
+                : row.failure_modes_json;
+        } catch (e) {
+            console.error('Failed to parse failure_modes_json', e);
+        }
+    }
+
+    return {
+        ...row,
+        // Map JSON columns to domain properties
+        simulation_result: simulationResult,
+        inferred_requirements: inferredRequirements,
+        failure_modes: failureModes,
+        // Remove raw DB fields to prevent confusion
+        simulation_result_json: undefined,
+        inferred_requirements_json: undefined,
+        failure_modes_json: undefined
+    } as ProtocolDefinition;
+}
+
 /**
  * Repository for Protocol Definitions
  */
@@ -96,35 +155,49 @@ export class ProtocolDefinitionRepository extends SqliteRepository<WithIndex<Fun
     /**
      * Find top-level (executable) protocols
      */
-    findTopLevel(): FunctionProtocolDefinition[] {
-        return this.findBy({ is_top_level: true } as Partial<FunctionProtocolDefinition>);
+    findTopLevel(): ProtocolDefinition[] {
+        const rows = this.findBy({ is_top_level: true } as Partial<FunctionProtocolDefinition>);
+        return rows.map(mapProtocolEntity);
     }
 
     /**
      * Find protocols by category
      */
-    findByCategory(category: string): FunctionProtocolDefinition[] {
-        return this.findBy({ category } as Partial<FunctionProtocolDefinition>);
+    findByCategory(category: string): ProtocolDefinition[] {
+        const rows = this.findBy({ category } as Partial<FunctionProtocolDefinition>);
+        return rows.map(mapProtocolEntity);
     }
 
     /**
      * Find active (non-deprecated) protocols
      */
-    findActive(): FunctionProtocolDefinition[] {
-        return this.findBy({ deprecated: false } as Partial<FunctionProtocolDefinition>);
+    findActive(): ProtocolDefinition[] {
+        const rows = this.findBy({ deprecated: false } as Partial<FunctionProtocolDefinition>);
+        return rows.map(mapProtocolEntity);
     }
 
     /**
      * Search protocols by name or description
      */
-    search(query: string): FunctionProtocolDefinition[] {
+    search(query: string): ProtocolDefinition[] {
         const sql = `
             SELECT * FROM ${this.tableName}
             WHERE name LIKE ? OR description LIKE ? OR fqn LIKE ?
             ORDER BY name ASC
         `;
         const pattern = `%${query}%`;
-        return this.executeQuery(sql, [pattern, pattern, pattern]);
+        const rows = this.executeQuery(sql, [pattern, pattern, pattern]);
+        return rows.map(mapProtocolEntity);
+    }
+
+    override findAll(options?: QueryOptions<WithIndex<FunctionProtocolDefinition>>): WithIndex<FunctionProtocolDefinition>[] {
+        const rows = super.findAll(options);
+        return rows.map(mapProtocolEntity) as unknown as WithIndex<FunctionProtocolDefinition>[];
+    }
+
+    override findById(id: string): WithIndex<FunctionProtocolDefinition> | null {
+        const row = super.findById(id);
+        return row ? (mapProtocolEntity(row) as unknown as WithIndex<FunctionProtocolDefinition>) : null;
     }
 }
 
@@ -236,7 +309,8 @@ export class MachineRepository extends SqliteRepository<WithIndex<Machine>> {
             'connection_info', 'is_simulation_override', 'user_configured_capabilities',
             'workcell_accession_id', 'resource_counterpart_accession_id',
             'deck_child_accession_id', 'deck_child_definition_accession_id',
-            'last_seen_online', 'current_protocol_run_accession_id'
+            'last_seen_online', 'current_protocol_run_accession_id',
+            'maintenance_enabled', 'maintenance_schedule_json'
         ];
 
         const machineData: Record<string, any> = {};
@@ -285,6 +359,52 @@ export class MachineDefinitionRepository extends SqliteRepository<WithIndex<Mach
      */
     findWithDecks(): MachineDefinitionCatalog[] {
         return this.findBy({ has_deck: true } as Partial<MachineDefinitionCatalog>);
+    }
+}
+
+/**
+ * Repository for Machine Frontend Definitions (catalog)
+ */
+export class MachineFrontendDefinitionRepository extends SqliteRepository<WithIndex<MachineFrontendDefinition>> {
+    constructor(db: Database) {
+        super(db, 'machine_frontend_definitions', 'accession_id');
+    }
+
+    /**
+     * Find by fully qualified name
+     */
+    findByFqn(fqn: string): MachineFrontendDefinition | null {
+        return this.findOneBy({ fqn } as Partial<MachineFrontendDefinition>);
+    }
+
+    /**
+     * Find by category
+     */
+    findByCategory(category: string): MachineFrontendDefinition[] {
+        return this.findBy({ machine_category: category } as Partial<MachineFrontendDefinition>);
+    }
+}
+
+/**
+ * Repository for Machine Backend Definitions (catalog)
+ */
+export class MachineBackendDefinitionRepository extends SqliteRepository<WithIndex<MachineBackendDefinition>> {
+    constructor(db: Database) {
+        super(db, 'machine_backend_definitions', 'accession_id');
+    }
+
+    /**
+     * Find by fully qualified name
+     */
+    findByFqn(fqn: string): MachineBackendDefinition | null {
+        return this.findOneBy({ fqn } as Partial<MachineBackendDefinition>);
+    }
+
+    /**
+     * Find by frontend definition
+     */
+    findByFrontend(frontendId: string): MachineBackendDefinition[] {
+        return this.findBy({ frontend_definition_accession_id: frontendId } as Partial<MachineBackendDefinition>);
     }
 }
 
@@ -536,6 +656,8 @@ export interface Repositories {
     functionCallLogs: FunctionCallLogRepository;
     machines: MachineRepository;
     machineDefinitions: MachineDefinitionRepository;
+    machineFrontendDefinitions: MachineFrontendDefinitionRepository;
+    machineBackendDefinitions: MachineBackendDefinitionRepository;
     resources: ResourceRepository;
     resourceDefinitions: ResourceDefinitionRepository;
     decks: DeckRepository;
@@ -555,6 +677,8 @@ export function createRepositories(db: Database): Repositories {
         functionCallLogs: new FunctionCallLogRepository(db),
         machines: new MachineRepository(db),
         machineDefinitions: new MachineDefinitionRepository(db),
+        machineFrontendDefinitions: new MachineFrontendDefinitionRepository(db),
+        machineBackendDefinitions: new MachineBackendDefinitionRepository(db),
         resources: new ResourceRepository(db),
         resourceDefinitions: new ResourceDefinitionRepository(db),
         decks: new DeckRepository(db),

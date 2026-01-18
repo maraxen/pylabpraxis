@@ -1,6 +1,7 @@
 
 import { patchState, signalStore, withMethods, withState, withComputed, withHooks } from '@ngrx/signals';
 import { computed, inject } from '@angular/core';
+import { OverlayContainer } from '@angular/cdk/overlay';
 import { KeycloakService } from '../auth/keycloak.service';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -75,6 +76,7 @@ export const AppStore = signalStore(
   }),
   withMethods((store) => {
     const keycloakService = inject(KeycloakService);
+    const overlayContainer = inject(OverlayContainer);
 
     return {
       toggleSidebar() {
@@ -86,12 +88,18 @@ export const AppStore = signalStore(
           localStorage.setItem('theme', theme);
           // Apply theme immediately
           const applyThemeClass = (t: Theme) => {
-            document.body.classList.remove('light-theme', 'dark-theme');
+            const containerElement = overlayContainer.getContainerElement();
+            const rootElements = [document.body, document.documentElement, containerElement];
+
+            rootElements.forEach(el => el.classList.remove('light-theme', 'dark-theme'));
+
             if (t === 'system') {
               const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-              document.body.classList.add(systemDark ? 'dark-theme' : 'light-theme');
+              const effectiveTheme = systemDark ? 'dark-theme' : 'light-theme';
+              rootElements.forEach(el => el.classList.add(effectiveTheme));
             } else {
-              document.body.classList.add(`${t}-theme`);
+              const themeClass = `${t}-theme`;
+              rootElements.forEach(el => el.classList.add(themeClass));
             }
           };
 
