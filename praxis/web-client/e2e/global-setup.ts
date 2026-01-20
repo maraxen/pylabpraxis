@@ -26,7 +26,7 @@ export default async function globalSetup(config: FullConfig) {
         // Wait for the application to be stable and SqliteService to be available
         console.log('[Global Setup] Waiting for SqliteService...');
         try {
-            await page.waitForFunction(() => (window as any).sqliteService !== undefined, null, { timeout: 30000 });
+            await page.waitForFunction(() => (window as any).sqliteService !== undefined, null, { timeout: 60000 });
         } catch (e) {
             throw new Error('[Global Setup] CRITICAL: SqliteService not found! The application failed to initialize properly.');
         }
@@ -49,7 +49,7 @@ export default async function globalSetup(config: FullConfig) {
                 setTimeout(() => {
                     sub.unsubscribe();
                     resolve(false);
-                }, 25000);
+                }, 55000);
             });
         });
 

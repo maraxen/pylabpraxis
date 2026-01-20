@@ -5,6 +5,7 @@ import { ExecutionService } from './services/execution.service';
 import { DeckGeneratorService } from './services/deck-generator.service';
 import { WizardStateService } from './services/wizard-state.service';
 import { ModeService } from '@core/services/mode.service';
+import { SqliteService } from '@core/services/sqlite.service'; // Import SqliteService
 import { AppStore } from '@core/store/app.store';
 import { ActivatedRoute } from '@angular/router';
 import { of } from 'rxjs';
@@ -46,6 +47,11 @@ describe('RunProtocolComponent', () => {
             isBrowserMode: () => false
         };
 
+        const mockSqliteService = {
+            initDb: vi.fn(),
+            // Add other methods as needed
+        };
+
         await TestBed.configureTestingModule({
             imports: [
                 RunProtocolComponent,
@@ -59,6 +65,7 @@ describe('RunProtocolComponent', () => {
                 { provide: DeckGeneratorService, useValue: mockDeckGenerator },
                 { provide: WizardStateService, useValue: mockWizardState },
                 { provide: ModeService, useValue: mockModeService },
+                { provide: SqliteService, useValue: mockSqliteService }, // Provide mock SqliteService
                 { provide: AppStore, useValue: mockStore },
                 {
                     provide: ActivatedRoute,

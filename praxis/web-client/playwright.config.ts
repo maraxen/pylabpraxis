@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test';
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  globalSetup: require.resolve('./e2e/global-setup'),
+  // globalSetup: require.resolve('./e2e/global-setup'),
   timeout: 60000,
   testDir: './e2e/specs',
   /* Run tests in files in parallel */

@@ -3,7 +3,11 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideHttpClient } from '@angular/common/http';
 import { ExecutionService } from './execution.service';
 import { ExecutionStatus } from '../models/execution.models';
-import { Subject } from 'rxjs';
+import { ModeService } from '@core/services/mode.service';
+import { SqliteService } from '@core/services/sqlite.service';
+import { PythonRuntimeService } from '@core/services/python-runtime.service';
+import { ApiWrapperService } from '@core/services/api-wrapper.service';
+import { Subject, of } from 'rxjs';
 import { vi, describe, beforeEach, afterEach, it, expect } from 'vitest';
 
 // Mock rxjs/webSocket
@@ -14,9 +18,21 @@ vi.mock('rxjs/webSocket', () => ({
 
 import { webSocket } from 'rxjs/webSocket';
 
+// Mock ProtocolsService
+vi.mock('../../../core/api-generated/services/ProtocolsService', () => ({
+  ProtocolsService: {
+    startProtocolRunApiV1ProtocolsRunsActionsStartPost: vi.fn().mockReturnValue(Promise.resolve({ run_id: 'run-123' })),
+    getProtocolCompatibilityApiV1ProtocolsAccessionIdCompatibilityGet: vi.fn().mockReturnValue(Promise.resolve([])),
+    cancelProtocolRunApiV1ProtocolsRunsRunIdCancelPost: vi.fn().mockReturnValue(Promise.resolve({})),
+  }
+}));
+
 describe('ExecutionService', () => {
   let service: ExecutionService;
   let httpMock: HttpTestingController;
+  let modeService: ModeService;
+  let sqliteService: SqliteService;
+  let pythonRuntime: PythonRuntimeService;
   let mockWebSocketSubject: Subject<any>;
   const API_URL = '/api/v1/protocols';
 
@@ -34,16 +50,43 @@ describe('ExecutionService', () => {
     // Configure webSocket mock to return our fresh subject
     vi.mocked(webSocket).mockReturnValue(mockWebSocketSubject as any);
 
+    const mockModeService = {
+      isBrowserMode: vi.fn().mockReturnValue(false)
+    };
+
+    const mockSqliteService = {
+      createProtocolRun: vi.fn().mockReturnValue(of({})),
+      updateProtocolRunStatus: vi.fn().mockReturnValue(of({})),
+      machineDefinitions: of({
+        findAll: vi.fn().mockReturnValue([])
+      })
+    };
+
+    const mockPythonRuntime = {
+      executeBlob: vi.fn().mockReturnValue(of({ type: 'stdout', content: 'test' }))
+    };
+
+    const mockApiWrapper = {
+      wrap: vi.fn().mockImplementation((obs) => of(obs))
+    };
+
     TestBed.configureTestingModule({
       providers: [
         ExecutionService,
         provideHttpClient(),
-        provideHttpClientTesting()
+        provideHttpClientTesting(),
+        { provide: ModeService, useValue: mockModeService },
+        { provide: SqliteService, useValue: mockSqliteService },
+        { provide: PythonRuntimeService, useValue: mockPythonRuntime },
+        { provide: ApiWrapperService, useValue: mockApiWrapper }
       ]
     });
 
     service = TestBed.inject(ExecutionService);
     httpMock = TestBed.inject(HttpTestingController);
+    modeService = TestBed.inject(ModeService);
+    sqliteService = TestBed.inject(SqliteService);
+    pythonRuntime = TestBed.inject(PythonRuntimeService);
   });
 
   afterEach(() => {
@@ -415,6 +458,58 @@ describe('ExecutionService', () => {
       const req = httpMock.expectOne(`${API_URL}/runs`);
       expect(req.request.body.parameters).toBeUndefined();
       req.flush({ run_id: 'run-null-params' });
+    });
+  });
+
+  describe('Browser Mode', () => {
+    beforeEach(() => {
+      vi.mocked(modeService.isBrowserMode).mockReturnValue(true);
+    });
+
+    it('should fetch protocol blob from assets when in browser mode', () => {
+      const protocolId = 'proto-123';
+      service.fetchProtocolBlob(protocolId).subscribe();
+
+      const req = httpMock.expectOne(`/assets/protocols/${protocolId}.pkl`);
+      expect(req.request.method).toBe('GET');
+      expect(req.request.responseType).toBe('arraybuffer');
+    });
+
+    it('should call pythonRuntime.executeBlob when starting a run in browser mode', async () => {
+      const protocolId = 'proto-123';
+      const runName = 'Browser Run';
+      const mockBlob = new ArrayBuffer(8);
+
+      service.startRun(protocolId, runName).subscribe();
+
+      const req = httpMock.expectOne(`/assets/protocols/${protocolId}.pkl`);
+      req.flush(mockBlob);
+
+      // Wait for the async executeBrowserProtocol to reach executeBlob
+      await vi.waitFor(() => {
+        expect(pythonRuntime.executeBlob).toHaveBeenCalledWith(expect.any(ArrayBuffer), expect.any(String));
+      });
+      
+      expect(sqliteService.createProtocolRun).toHaveBeenCalled();
+    });
+
+    it('should fetch compatibility from sqliteService in browser mode', () => {
+      const protocolId = 'proto-123';
+      const mockDefinitions = [
+        { accession_id: 'def-1', name: 'Machine 1', machine_category: 'cat1' }
+      ];
+      
+      // Setup the mock for machineDefinitions observable
+      const mockRepo = {
+        findAll: vi.fn().mockReturnValue(mockDefinitions)
+      };
+      (sqliteService.machineDefinitions as any) = of(mockRepo);
+
+      service.getCompatibility(protocolId).subscribe(data => {
+        expect(data.length).toBe(1);
+        expect(data[0].machine.backend_definition_accession_id).toBe('def-1');
+        expect(data[0].compatibility.is_compatible).toBe(true);
+      });
     });
   });
 });

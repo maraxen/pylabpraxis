@@ -69,10 +69,10 @@ describe('FilterChipBarComponent', () => {
 
     it('should map icons correctly', () => {
         // category -> category
-        expect(component.getIcon('category')).toBe('category');
+        expect((component as any).getIcon('category')).toBe('category');
         // status -> flag
-        expect(component.getIcon('status')).toBe('flag');
+        expect((component as any).getIcon('status')).toBe('flag');
         // unknown -> filter_alt
-        expect(component.getIcon('unknown')).toBe('filter_alt');
+        expect((component as any).getIcon('unknown')).toBe('filter_alt');
     });
 });

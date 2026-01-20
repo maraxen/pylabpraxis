@@ -64,7 +64,7 @@ describe('AuthService', () => {
   describe('logout', () => {
     it('should send logout request', () => {
       service.logout().subscribe(response => {
-        expect(response.message).toBe('Logged out successfully');
+        expect((response as any).message).toBe('Logged out successfully');
       });
 
       const req = httpMock.expectOne(`${API_URL}/logout`);
