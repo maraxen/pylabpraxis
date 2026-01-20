@@ -9,7 +9,7 @@ let pyConsole: {
 };
 
 interface PythonMessage {
-  type: 'INIT' | 'PUSH' | 'EXEC' | 'INSTALL' | 'COMPLETE' | 'SIGNATURES' | 'PLR_COMMAND' | 'RAW_IO' | 'RAW_IO_RESPONSE' | 'WELL_STATE_UPDATE' | 'FUNCTION_CALL_LOG';
+  type: 'INIT' | 'PUSH' | 'EXEC' | 'INSTALL' | 'COMPLETE' | 'SIGNATURES' | 'PLR_COMMAND' | 'RAW_IO' | 'RAW_IO_RESPONSE' | 'WELL_STATE_UPDATE' | 'FUNCTION_CALL_LOG' | 'EXECUTE_BLOB' | 'USER_INTERACTION' | 'USER_INTERACTION_RESPONSE';
   id?: string;
   payload?: unknown;
 }
@@ -50,6 +50,20 @@ addEventListener('message', async (event) => {
     return;
   }
 
+  // Handle USER_INTERACTION_RESPONSE from Angular (route back to Python)
+  if (type === 'USER_INTERACTION_RESPONSE') {
+    if (pyodide) {
+      try {
+        const bridge = pyodide.pyimport('web_bridge');
+        const payload = data.payload as { request_id: string; value: any };
+        bridge.handle_interaction_response(payload.request_id, payload.value);
+      } catch (err) {
+        console.error('Error routing interaction response to Python:', err);
+      }
+    }
+    return;
+  }
+
   try {
     switch (type) {
       case 'INIT':
@@ -79,6 +93,10 @@ addEventListener('message', async (event) => {
 
       case 'FUNCTION_CALL_LOG':
         postMessage({ type: 'FUNCTION_CALL_LOG', id: currentExecutionId, payload: payload as any });
+        break;
+
+      case 'USER_INTERACTION':
+        postMessage({ type: 'USER_INTERACTION', id: currentExecutionId, payload: payload as any });
         break;
 
       case 'INSTALL':
@@ -133,6 +151,81 @@ addEventListener('message', async (event) => {
           postMessage({ type: 'SIGNATURE_RESULT', id, payload: { signatures: [] } });
         }
         break;
+
+      case 'EXECUTE_BLOB':
+        if (!pyodide) throw new Error('Pyodide not initialized');
+        currentExecutionId = id;
+        try {
+          const { blob, machine_config, deck_setup_script } = payload as { blob: ArrayBuffer, machine_config: any, deck_setup_script?: string };
+          (self as any).protocol_bytes = new Uint8Array(blob);
+          (self as any).machine_config = machine_config;
+          (self as any).deck_setup_script = deck_setup_script || '';
+          
+          await pyodide.runPythonAsync(`
+import cloudpickle
+import js
+import inspect
+import sys
+from web_bridge import create_configured_backend, create_browser_deck
+
+# Load function from bytes
+protocol_bytes = bytes(js.protocol_bytes)
+protocol_func = cloudpickle.loads(protocol_bytes)
+
+# Inspect signature to inject arguments
+sig = inspect.signature(protocol_func)
+kwargs = {}
+
+# Get config from JS
+config_proxy = js.machine_config
+
+if 'backend' in sig.parameters:
+    # Pass the proxy directly, the python function handles conversion
+    kwargs['backend'] = create_configured_backend(config_proxy)
+
+# Setup Deck
+deck = None
+try:
+    if js.deck_setup_script:
+        # Run the serialized deck setup script
+        print("[Browser] Running deck setup script...")
+        setup_ns = {}
+        exec(js.deck_setup_script, setup_ns)
+        if 'deck' in setup_ns:
+            deck = setup_ns['deck']
+        else:
+            print("Warning: 'deck' variable not found in setup script.", file=sys.stderr)
+            deck = create_browser_deck()
+    else:
+        # Fallback to default empty deck
+        deck = create_browser_deck()
+except Exception as e:
+    print(f"Error during deck setup: {e}", file=sys.stderr)
+    deck = create_browser_deck()
+
+if 'deck' in sig.parameters:
+    if deck is not None:
+        kwargs['deck'] = deck
+    else:
+        print("Warning: 'deck' argument requested but Deck could not be instantiated.", file=sys.stderr)
+
+# Execute
+async def run_wrapper():
+    if inspect.iscoroutinefunction(protocol_func):
+        await protocol_func(**kwargs)
+    else:
+        # Check if it returns a coroutine (e.g. if it was decorated)
+        result = protocol_func(**kwargs)
+        if inspect.isawaitable(result):
+            await result
+
+await run_wrapper()
+          `);
+        } finally {
+          currentExecutionId = undefined;
+          postMessage({ type: 'EXEC_COMPLETE', id, payload: null });
+        }
+        break;
     }
   } catch (error: unknown) {
     postMessage({
@@ -145,16 +238,14 @@ addEventListener('message', async (event) => {
 
 // Expose callbacks for Python to call
 (self as any).handlePythonOutput = (type: string, content: string) => {
+  // Always log to console for debugging/testing visibility
+  console.log(`[Python ${type}]: ${content}`);
+
   if (currentExecutionId) {
     postMessage({ type, id: currentExecutionId, payload: content });
   } else {
     // Output without an ID (e.g. background logs)
-    // Send as 'stdout'/'stderr' event or log?
-    // For specific testability, let's log to console which shows in browser console
-    console.log(`[Python ${type}]: ${content}`);
-
-    // Also try to send to main thread if it accepts global messages (optional)
-    // But our service maps by ID, so it might be dropped.
+    // Already logged above
   }
 };
 
@@ -172,7 +263,7 @@ async function initializePyodide(id?: string) {
   // Note: We use a try-catch for pylabrobot as it might have complex deps
   try {
     const micropip = pyodide.pyimport('micropip');
-    await micropip.install(['jedi', 'pylabrobot']);
+    await micropip.install(['jedi', 'pylabrobot', 'cloudpickle']);
     console.log('PyLabRobot and Jedi installed successfully');
   } catch (err) {
     console.error('Failed to install PyLabRobot/Jedi:', err);
@@ -205,6 +296,23 @@ async function initializePyodide(id?: string) {
   const response = await fetch('assets/python/web_bridge.py');
   const bridgeCode = await response.text();
   pyodide.FS.writeFile('web_bridge.py', bridgeCode);
+
+  // Load praxis package
+  try {
+    pyodide.FS.mkdir('praxis');
+    
+    const initResponse = await fetch('assets/python/praxis/__init__.py');
+    const initCode = await initResponse.text();
+    pyodide.FS.writeFile('praxis/__init__.py', initCode);
+
+    const interactiveResponse = await fetch('assets/python/praxis/interactive.py');
+    const interactiveCode = await interactiveResponse.text();
+    pyodide.FS.writeFile('praxis/interactive.py', interactiveCode);
+    
+    console.log('Praxis package loaded successfully');
+  } catch (err) {
+    console.error('Error loading praxis package:', err);
+  }
 
   // Create PyodideConsole with stream callbacks
   const consoleCode = `

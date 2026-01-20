@@ -389,4 +389,92 @@ export class WizardStateService {
 
         return map;
     }
+
+    /**
+     * Serialize the current deck state into a Python script.
+     * This script rebuilds the deck layout in the worker.
+     */
+    serializeToPython(): string {
+        const assignments = this._slotAssignments();
+        const deckType = this._deckType();
+
+        // Start building the Python script
+        let code = 'import pylabrobot.resources as res\n';
+        
+        // Import deck class
+        if (deckType.includes('HamiltonSTAR')) {
+            code += 'from pylabrobot.resources.hamilton import HamiltonSTARDeck\n';
+            code += 'from pylabrobot.resources.hamilton import *\n';
+        } else if (deckType.includes('OTDeck')) {
+            code += 'from pylabrobot.resources.opentrons import OTDeck\n';
+        }
+
+        code += '\ndef setup_deck():\n';
+        
+        // Instantiate Deck
+        if (deckType.includes('HamiltonSTAR')) {
+            code += '    deck = HamiltonSTARDeck()\n';
+        } else if (deckType.includes('OTDeck')) {
+            code += '    deck = OTDeck()\n';
+        } else {
+            code += '    deck = res.Deck()\n';
+        }
+
+        // Track placed carriers
+        const carrierVarNames = new Map<string, string>();
+        const uniqueCarriers = new Map<string, any>();
+        
+        assignments.forEach(a => {
+            if (a.placed && a.carrier) {
+                uniqueCarriers.set(a.carrier.id, a.carrier);
+            }
+        });
+
+        // Instantiate Carriers
+        uniqueCarriers.forEach((carrier, id) => {
+            const varName = id.replace(/[^a-zA-Z0-9_]/g, '_');
+            carrierVarNames.set(id, varName);
+            
+            // Heuristic for class name from FQN
+            const className = carrier.fqn.split('.').pop()?.toUpperCase() || 'Carrier';
+            
+            code += `    ${varName} = ${className}(name="${carrier.name}")\n`;
+            
+            if (carrier.railPosition !== undefined) {
+                code += `    deck.assign_child_resource(${varName}, rails=${carrier.railPosition})\n`;
+            }
+        });
+
+        // Instantiate Labware
+        assignments.forEach((assign, index) => {
+            if (assign.placed) {
+                const varName = `labware_${index}`;
+                const carrierVar = carrierVarNames.get(assign.carrier.id);
+                
+                if (carrierVar) {
+                    // Map resource types to PLR classes
+                    let className = 'Resource';
+                    if (assign.resource.type === 'Plate' || assign.resource.type === 'Trough' || assign.resource.type === 'Reservoir') {
+                        className = 'Plate';
+                    } else if (assign.resource.type === 'TipRack') {
+                        className = 'TipRack';
+                    }
+                    
+                    code += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
+                    code += `    ${carrierVar}[${assign.slot.index}] = ${varName}\n`;
+                } else if (deckType.includes('OTDeck')) {
+                    // OT-2 direct placement
+                    let className = 'Resource';
+                    if (assign.resource.type === 'Plate') className = 'Plate';
+                    else if (assign.resource.type === 'TipRack') className = 'TipRack';
+                    
+                    code += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
+                    code += `    deck.assign_child_at_slot(${varName}, ${assign.slot.index + 1})\n`;
+                }
+            }
+        });
+
+        code += '    return deck\n\ndeck = setup_deck()\n';
+        return code;
+    }
 }

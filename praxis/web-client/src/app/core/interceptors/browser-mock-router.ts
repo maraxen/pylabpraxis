@@ -46,6 +46,7 @@ export class BrowserMockRouter {
         body: unknown,
         sqliteService: SqliteService | null
     ): Observable<T> | null {
+        console.log('[BrowserMockRouter] Routing:', method, url);
         // Lazy-load SqliteService if not provided
         const db = sqliteService ?? getSqliteService();
 
@@ -195,6 +196,20 @@ export class BrowserMockRouter {
                     machines
                 }))
             ) as Observable<T>;
+        }
+
+        // Machine facets
+        if (url.includes('/machines/definitions/facets') && method === 'GET') {
+            return of({
+                machine_category: [
+                    { value: 'Liquid Handler', count: 1 },
+                    { value: 'Plate Reader', count: 1 }
+                ],
+                manufacturer: [
+                    { value: 'Hamilton', count: 1 },
+                    { value: 'Opentrons', count: 1 }
+                ]
+            }) as Observable<T>;
         }
 
         // Resource facets

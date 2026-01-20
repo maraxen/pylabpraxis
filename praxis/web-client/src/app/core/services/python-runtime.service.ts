@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Observable, Subject, from, of } from 'rxjs';
 import { ReplOutput, ReplRuntime, CompletionItem, SignatureInfo } from './repl-runtime.interface';
 import { HardwareDiscoveryService } from './hardware-discovery.service';
+import { InteractionService } from './interaction.service';
 
 interface WorkerResponse {
   type: string;
@@ -29,6 +30,7 @@ export class PythonRuntimeService implements ReplRuntime {
   private stdoutSubjects = new Map<string, Subject<ReplOutput>>();
 
   private hardwareService = inject(HardwareDiscoveryService);
+  private interactionService = inject(InteractionService);
 
   isReady = signal(false);
 
@@ -88,6 +90,42 @@ export class PythonRuntimeService implements ReplRuntime {
         subject.next({ type: 'error', content: error });
         subject.complete();
         this.cleanupMaps(id);
+      });
+    });
+
+    return subject.asObservable();
+  }
+
+  executeBlob(blob: ArrayBuffer, id?: string, machineConfig?: any, deckSetupScript?: string): Observable<ReplOutput> {
+    const runId = id || crypto.randomUUID();
+    const subject = new Subject<ReplOutput>();
+    this.stdoutSubjects.set(runId, subject);
+
+    this.ensureReady().then(() => {
+      if (!this.worker) {
+        subject.error('Worker not active');
+        return;
+      }
+      this.worker.postMessage({ 
+        type: 'EXECUTE_BLOB', 
+        id: runId, 
+        payload: { 
+          blob, 
+          machine_config: machineConfig,
+          deck_setup_script: deckSetupScript
+        } 
+      });
+
+      this.responseMap.set(runId, (result) => {
+        subject.next({ type: 'result', content: result });
+        subject.complete();
+        this.cleanupMaps(runId);
+      });
+
+      this.errorMap.set(runId, (error) => {
+        subject.next({ type: 'error', content: error });
+        subject.complete();
+        this.cleanupMaps(runId);
       });
     });
 
@@ -214,6 +252,12 @@ export class PythonRuntimeService implements ReplRuntime {
       return;
     }
 
+    // Handle USER_INTERACTION messages from Python
+    if (type === 'USER_INTERACTION' && payload) {
+      this.handleUserInteraction(payload);
+      return;
+    }
+
     if (type === 'ERROR' && id) {
       const reject = this.errorMap.get(id);
       if (reject) {
@@ -288,6 +332,21 @@ export class PythonRuntimeService implements ReplRuntime {
         });
       }
     }
+  }
+
+  /**
+   * Handle USER_INTERACTION requests from Python and show UI dialogs
+   */
+  private async handleUserInteraction(payload: any) {
+    const result = await this.interactionService.handleInteraction({
+      interaction_type: payload.interaction_type,
+      payload: payload.payload
+    });
+
+    this.worker?.postMessage({
+      type: 'USER_INTERACTION_RESPONSE',
+      payload: { request_id: payload.id, value: result }
+    });
   }
 
   private cleanupMaps(id: string) {

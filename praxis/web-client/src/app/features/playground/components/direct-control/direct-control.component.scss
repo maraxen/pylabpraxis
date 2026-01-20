@@ -1,0 +1,85 @@
+.direct-control-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+  box-sizing: border-box;
+
+  .header {
+    margin-bottom: 16px;
+    h3 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 500;
+    }
+  }
+
+  .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .method-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .method-doc {
+      padding: 8px;
+      background-color: var(--mat-sys-surface-variant);
+      color: var(--mat-sys-on-surface-variant);
+      border-radius: 4px;
+      font-size: 0.875rem;
+      
+      p {
+        margin: 0;
+      }
+    }
+  }
+
+  .args-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+    overflow-y: auto;
+
+    .args-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .checkbox-field {
+      padding: 8px 0;
+    }
+
+    .type-hint {
+      font-size: 0.75rem;
+      color: var(--mat-sys-outline);
+      margin-left: 4px;
+    }
+
+    .actions {
+      margin-top: auto;
+      padding-top: 16px;
+      display: flex;
+      justify-content: flex-end;
+    }
+  }
+
+  .empty-state {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+    color: var(--mat-sys-outline);
+    font-style: italic;
+  }
+
+  .w-full {
+    width: 100%;
+  }
+}

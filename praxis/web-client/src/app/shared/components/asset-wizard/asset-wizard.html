@@ -1,0 +1,206 @@
+<div class="asset-wizard-container">
+  <mat-stepper orientation="horizontal" [linear]="true" #stepper>
+    <!-- Step 1: Type & Category -->
+    <mat-step [stepControl]="typeStepFormGroup">
+      <form [formGroup]="typeStepFormGroup">
+        <ng-template matStepLabel>Type & Category</ng-template>
+        
+        <div class="step-content">
+          <h3>Select Asset Type</h3>
+          <mat-radio-group formControlName="assetType" class="type-selection">
+            <mat-card class="type-card" [class.selected]="typeStepFormGroup.get('assetType')?.value === 'MACHINE'">
+              <mat-card-content (click)="typeStepFormGroup.get('assetType')?.setValue('MACHINE')">
+                <mat-radio-button value="MACHINE">
+                  <mat-icon>settings</mat-icon>
+                  <span>Machine</span>
+                </mat-radio-button>
+                <p>Instruments, robots, and automated hardware.</p>
+              </mat-card-content>
+            </mat-card>
+
+            <mat-card class="type-card" [class.selected]="typeStepFormGroup.get('assetType')?.value === 'RESOURCE'">
+              <mat-card-content (click)="typeStepFormGroup.get('assetType')?.setValue('RESOURCE')">
+                <mat-radio-button value="RESOURCE">
+                  <mat-icon>inventory_2</mat-icon>
+                  <span>Resource</span>
+                </mat-radio-button>
+                <p>Labware, tips, reagents, and consumables.</p>
+              </mat-card-content>
+            </mat-card>
+          </mat-radio-group>
+
+          <div class="category-selection" *ngIf="typeStepFormGroup.get('assetType')?.value">
+            <h3>Select Category</h3>
+            <mat-form-field appearance="outline">
+              <mat-label>Category</mat-label>
+              <mat-select formControlName="category">
+                <mat-option *ngFor="let cat of categories$ | async" [value]="cat">
+                  {{ cat }}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="typeStepFormGroup.get('category')?.hasError('required')">
+                Category is required
+              </mat-error>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button mat-flat-button color="primary" matStepperNext [disabled]="typeStepFormGroup.invalid">Next</button>
+        </div>
+      </form>
+    </mat-step>
+
+    <!-- Step 2: Definition -->
+    <mat-step [stepControl]="definitionStepFormGroup">
+      <form [formGroup]="definitionStepFormGroup">
+        <ng-template matStepLabel>Definition</ng-template>
+        <div class="step-content">
+          <div class="search-container">
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-label>Search Definitions</mat-label>
+              <mat-icon matPrefix>search</mat-icon>
+              <input matInput (input)="searchDefinitions($any($event.target).value)" placeholder="e.g. Hamilton, Plate, Tip...">
+            </mat-form-field>
+          </div>
+
+          <div class="results-grid" *ngIf="searchResults$ | async as results">
+            <mat-card *ngFor="let def of results" 
+                      class="result-card" 
+                      [class.selected]="selectedDefinition?.accession_id === def.accession_id"
+                      (click)="selectDefinition(def)">
+              <mat-card-header>
+                <mat-card-title>{{ def.name }}</mat-card-title>
+                <mat-card-subtitle>{{ def.fqn }}</mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-content>
+                <p class="description">{{ def.description }}</p>
+                <div class="chip-list">
+                  <mat-chip-set>
+                    <mat-chip *ngIf="def.manufacturer || def.vendor">{{ def.manufacturer || def.vendor }}</mat-chip>
+                    <ng-container *ngIf="typeStepFormGroup.get('assetType')?.value === 'MACHINE'">
+                      <mat-chip class="sim-chip" *ngIf="def.available_simulation_backends?.length">Simulated</mat-chip>
+                      <mat-chip class="real-chip" *ngIf="!def.available_simulation_backends?.length">Real</mat-chip>
+                    </ng-container>
+                  </mat-chip-set>
+                </div>
+              </mat-card-content>
+            </mat-card>
+            
+            <div *ngIf="results.length === 0" class="no-results">
+              <p>No definitions found matching your search.</p>
+            </div>
+          </div>
+        </div>
+        <div class="step-actions">
+          <button mat-button matStepperPrevious>Back</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="definitionStepFormGroup.invalid">Next</button>
+        </div>
+      </form>
+    </mat-step>
+
+    <!-- Step 3: Configuration -->
+    <mat-step [stepControl]="configStepFormGroup">
+      <form [formGroup]="configStepFormGroup">
+        <ng-template matStepLabel>Configuration</ng-template>
+        <div class="step-content">
+          <h3>Configure {{ typeStepFormGroup.get('assetType')?.value === 'MACHINE' ? 'Machine' : 'Resource' }}</h3>
+          
+          <div class="form-grid">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Instance Name</mat-label>
+              <input matInput formControlName="name" placeholder="e.g. Primary Hamilton, Plate Bench 1">
+              <mat-error *ngIf="configStepFormGroup.get('name')?.hasError('required')">Name is required</mat-error>
+            </mat-form-field>
+
+            <ng-container *ngIf="typeStepFormGroup.get('assetType')?.value === 'MACHINE'">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Backend (Driver)</mat-label>
+                <mat-select formControlName="backend">
+                  <mat-option *ngFor="let backend of availableBackends" [value]="backend">
+                    {{ backend }}
+                    <span class="backend-type-hint" *ngIf="isSimulatedBackend(backend)">(Simulated)</span>
+                  </mat-option>
+                </mat-select>
+                <mat-hint *ngIf="modeService.isBrowserMode()">Browser mode defaults to simulated backends</mat-hint>
+              </mat-form-field>
+
+              <div class="connection-settings" *ngIf="configStepFormGroup.get('backend')?.value && !isSimulatedBackend(configStepFormGroup.get('backend')?.value)">
+                <h4>Connection Settings</h4>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Serial Port / USB / IP</mat-label>
+                  <input matInput formControlName="connection_info" placeholder="e.g. COM3, /dev/ttyUSB0, 192.168.1.10">
+                </mat-form-field>
+              </div>
+            </ng-container>
+
+            <ng-container *ngIf="typeStepFormGroup.get('assetType')?.value === 'RESOURCE'">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Initial Location (Optional)</mat-label>
+                <input matInput formControlName="location" placeholder="e.g. Deck Slot A1, Storage Rack B">
+              </mat-form-field>
+            </ng-container>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Description (Optional)</mat-label>
+              <textarea matInput formControlName="description" rows="3"></textarea>
+            </mat-form-field>
+          </div>
+        </div>
+        <div class="step-actions">
+          <button mat-button matStepperPrevious>Back</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="configStepFormGroup.invalid">Next</button>
+        </div>
+      </form>
+    </mat-step>
+
+    <!-- Step 4: Review -->
+    <mat-step>
+      <ng-template matStepLabel>Review</ng-template>
+      <div class="step-content">
+        <h3>Summary</h3>
+        <p>Review your asset details before saving.</p>
+        
+        <mat-card class="review-card">
+          <mat-card-content>
+            <div class="review-row">
+              <span class="label">Type:</span>
+              <span class="value">{{ typeStepFormGroup.get('assetType')?.value | titlecase }}</span>
+            </div>
+            <div class="review-row">
+              <span class="label">Category:</span>
+              <span class="value">{{ typeStepFormGroup.get('category')?.value }}</span>
+            </div>
+            <div class="review-row">
+              <span class="label">Definition:</span>
+              <span class="value">{{ selectedDefinition?.name }}</span>
+            </div>
+            <div class="review-row">
+              <span class="label">Instance Name:</span>
+              <span class="value">{{ configStepFormGroup.get('name')?.value }}</span>
+            </div>
+            <div class="review-row" *ngIf="typeStepFormGroup.get('assetType')?.value === 'MACHINE'">
+              <span class="label">Backend:</span>
+              <span class="value">{{ configStepFormGroup.get('backend')?.value }}</span>
+            </div>
+            <div class="review-row" *ngIf="configStepFormGroup.get('description')?.value">
+              <span class="label">Description:</span>
+              <span class="value">{{ configStepFormGroup.get('description')?.value }}</span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <div class="creation-status" *ngIf="isLoading()">
+          <mat-spinner diameter="40"></mat-spinner>
+          <p>Creating asset...</p>
+        </div>
+      </div>
+      <div class="step-actions">
+        <button mat-button matStepperPrevious [disabled]="isLoading()">Back</button>
+        <button mat-flat-button color="primary" (click)="createAsset()" [disabled]="isLoading()">
+          {{ isLoading() ? 'Creating...' : 'Create Asset' }}
+        </button>
+      </div>
+    </mat-step>
+  </mat-stepper>
+</div>

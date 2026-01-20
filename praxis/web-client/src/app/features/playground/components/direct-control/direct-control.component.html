@@ -1,0 +1,69 @@
+<div class="direct-control-container">
+  <div class="header">
+    <h3>Direct Control: {{ machine?.name }}</h3>
+  </div>
+
+  <div class="content" *ngIf="machine">
+    <div class="method-selector">
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Select Method</mat-label>
+        <mat-select [value]="selectedMethod" (selectionChange)="onMethodSelected($event.value)">
+          <mat-option *ngFor="let method of methods" [value]="method">
+            {{ method.name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <div class="method-doc" *ngIf="selectedMethod?.doc">
+        <p>{{ selectedMethod?.doc }}</p>
+      </div>
+    </div>
+
+    <form [formGroup]="form" *ngIf="selectedMethod" class="args-form">
+      <div class="args-list">
+        <ng-container *ngFor="let arg of selectedMethod.args">
+          <div class="arg-item">
+            <ng-container [ngSwitch]="getArgType(arg)">
+              
+              <!-- Checkbox for Booleans -->
+              <div *ngSwitchCase="'checkbox'" class="checkbox-field">
+                <mat-checkbox [formControlName]="arg.name">
+                  {{ arg.name }} <span class="type-hint">({{ arg.type }})</span>
+                </mat-checkbox>
+              </div>
+
+              <!-- Number Input -->
+              <mat-form-field *ngSwitchCase="'number'" appearance="outline" class="w-full">
+                <mat-label>{{ arg.name }}</mat-label>
+                <input matInput type="number" [formControlName]="arg.name" [placeholder]="'' + (arg.default !== undefined ? arg.default : '')">
+                <mat-hint *ngIf="arg.type">{{ arg.type }}</mat-hint>
+              </mat-form-field>
+
+              <!-- Text Input (Default) -->
+              <mat-form-field *ngSwitchDefault appearance="outline" class="w-full">
+                <mat-label>{{ arg.name }}</mat-label>
+                <input matInput type="text" [formControlName]="arg.name" [placeholder]="'' + (arg.default !== undefined ? arg.default : '')">
+                <mat-hint *ngIf="arg.type">{{ arg.type }}</mat-hint>
+              </mat-form-field>
+
+            </ng-container>
+          </div>
+        </ng-container>
+      </div>
+
+      <div class="actions">
+        <button mat-raised-button color="primary" (click)="runCommand()" [disabled]="!form.valid">
+          Execute {{ selectedMethod.name }}
+        </button>
+      </div>
+    </form>
+
+    <div *ngIf="!selectedMethod && methods.length > 0" class="empty-state">
+      <p>Select a method to configure arguments.</p>
+    </div>
+
+    <div *ngIf="methods.length === 0" class="empty-state">
+      <p>No methods available for this machine definition.</p>
+    </div>
+  </div>
+</div>

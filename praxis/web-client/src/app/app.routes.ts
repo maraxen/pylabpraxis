@@ -112,6 +112,7 @@ export const routes: Routes = [
   { path: 'data', redirectTo: 'app/data' },
   { path: 'settings', redirectTo: 'app/settings' },
   { path: 'stress-test', redirectTo: 'app/stress-test' },
+  { path: 'playground', redirectTo: 'app/playground' },
 
   // Fallback
   { path: '**', redirectTo: '' }

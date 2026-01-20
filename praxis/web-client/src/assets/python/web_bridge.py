@@ -398,6 +398,9 @@ def _serialize_args(args: tuple, kwargs: dict) -> dict:
 # Global registry for pending read requests (used by worker to route responses)
 _pending_reads: dict[str, asyncio.Future] = {}
 
+# Global registry for pending user interactions
+_pending_interactions: dict[str, asyncio.Future] = {}
+
 
 class WebBridgeIO:
   """A PLR-compatible IO transport that routes raw bytes through the WebWorker
@@ -560,6 +563,51 @@ def handle_io_response(request_id: str, data: list) -> None:
     pass
 
 
+async def request_user_interaction(interaction_type: str, payload: dict) -> Any:
+  """Requests user interaction from the browser (pause, confirm, input)."""
+  if not IS_BROWSER_MODE:
+    print(f"[web_bridge] Mock interaction: {interaction_type} {payload}")
+    return None
+
+  request_id = str(uuid.uuid4())
+  loop = asyncio.get_event_loop()
+  future = loop.create_future()
+  _pending_interactions[request_id] = future
+
+  message_dict = {
+    "type": "USER_INTERACTION",
+    "payload": {"id": request_id, "interaction_type": interaction_type, "payload": payload},
+  }
+
+  # Try using BroadcastChannel if available (Playground mode)
+  try:
+    import js
+
+    if hasattr(js, "_praxis_channel"):
+      from pyodide.ffi import to_js
+
+      js_msg = to_js(message_dict, dict_converter=js.Object.fromEntries)
+      js._praxis_channel.postMessage(js_msg)
+    else:
+      postMessage(json.dumps(message_dict))
+  except Exception:
+    postMessage(json.dumps(message_dict))
+
+  try:
+    # Interactions can take a long time (user waiting), so we don't set a short timeout here.
+    # The frontend is responsible for providing a way to cancel if needed.
+    return await future
+  finally:
+    _pending_interactions.pop(request_id, None)
+
+
+def handle_interaction_response(request_id: str, value: Any) -> None:
+  """Called by the worker when JS sends back the user's interaction response."""
+  future = _pending_interactions.get(request_id)
+  if future and not future.done():
+    future.set_result(value)
+
+
 # =============================================================================
 # Machine Patcher - Patch any PLR machine for browser mode
 # =============================================================================
@@ -610,6 +658,21 @@ def patch_io_for_browser(machine: Any, port_id: str, baudrate: int = 9600) -> An
   return machine
 
 
+def create_browser_backend():
+  """Returns an instance of WebBridgeBackend for browser-based simulation/execution."""
+  return WebBridgeBackend()
+
+
+def create_browser_deck():
+  """Returns a default Deck for browser-based execution."""
+  try:
+    from pylabrobot.resources import Deck
+
+    return Deck()
+  except ImportError:
+    return None
+
+
 def create_browser_machine(
   machine_class, backend_class, port_id: str, baudrate: int = 9600, **kwargs
 ):
@@ -633,6 +696,67 @@ def create_browser_machine(
   backend = backend_class(**kwargs)
   machine = machine_class(backend=backend)
   return patch_io_for_browser(machine, port_id, baudrate)
+
+
+def create_configured_backend(config):
+  """
+  Creates a PLR backend instance based on configuration.
+  Supports dynamic loading of backends and patching them for WebBridgeIO.
+
+  Args:
+      config: Dictionary with keys:
+          - backend_fqn: Fully qualified name of the backend class
+          - port_id: WebSerial port ID (optional)
+          - baudrate: Baud rate for serial (default: 9600)
+          - is_simulated: Whether to use simulation (default: False)
+
+  Returns:
+      A PLR backend instance
+  """
+  # config might be a JsProxy if coming directly from JS, so we convert if needed
+  if hasattr(config, "to_py"):
+    config = config.to_py()
+
+  fqn = config.get("backend_fqn", "pylabrobot.liquid_handling.backends.LiquidHandlerBackend")
+
+  # Dynamic Import
+  try:
+    module_path, class_name = fqn.rsplit(".", 1)
+    module = __import__(module_path, fromlist=[class_name])
+    BackendClass = getattr(module, class_name)
+  except (ImportError, ValueError, AttributeError) as e:
+    print(f"Error importing backend {fqn}: {e}")
+    # Fallback to simulation
+    return WebBridgeBackend()
+
+  # Instantiate
+  # Note: Some backends might take args. For now assume default constructor.
+  try:
+    backend = BackendClass()
+  except Exception as e:
+    print(f"Error instantiating backend {fqn}: {e}")
+    # Fallback to default constructor attempt or WebBridgeBackend
+    try:
+      backend = BackendClass()
+    except Exception:
+      return WebBridgeBackend()
+
+  # Patch IO if needed
+  if not config.get("is_simulated", False):
+    port_id = config.get("port_id")
+    baudrate = config.get("baudrate", 9600)
+    if port_id:
+      # Create a WebBridgeIO
+      web_io = WebBridgeIO(port_id=port_id, baudrate=baudrate)
+
+      # Inject it - try known IO attribute names
+      io_attrs = ["io", "_io", "connection", "_connection", "ser", "_ser"]
+      for attr in io_attrs:
+        if hasattr(backend, attr):
+          setattr(backend, attr, web_io)
+          break
+
+  return backend
 
 
 # =============================================================================
@@ -737,8 +861,14 @@ def bootstrap_playground(namespace=None):
                  If None, temporarily injects into __main__ (legacy behavior).
 
   """
-  sys.stdout = StdoutRedirector("STDOUT")
-  sys.stderr = StdoutRedirector("STDERR")
+  # sys.stdout = StdoutRedirector("STDOUT")
+  # sys.stderr = StdoutRedirector("STDERR")
+  try:
+    import sys
+
+    print(f"DEBUG: sys.stdout is {sys.stdout}", file=sys.stderr)
+  except Exception as e:
+    pass
 
   target = namespace if namespace is not None else {}
 

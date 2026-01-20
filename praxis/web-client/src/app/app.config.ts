@@ -15,6 +15,7 @@ import { AssetSelectorComponent } from './shared/formly-types/asset-selector.com
 import { RepeatTypeComponent } from './shared/formly-types/repeat-section.component';
 import { ChipsTypeComponent } from './shared/formly-types/chips.component';
 import { IndexSelectorFieldComponent } from './shared/formly-types/index-selector-field.component';
+import { DictInputComponent } from './shared/formly-types/dict-input.component';
 import { KeycloakService } from './core/auth/keycloak.service';
 import { KeyboardService } from './core/services/keyboard.service';
 import { ModeService } from './core/services/mode.service';
@@ -112,6 +113,7 @@ export const appConfig: ApplicationConfig = {
           { name: 'chips', component: ChipsTypeComponent },
           { name: 'repeat', component: RepeatTypeComponent },
           { name: 'index-selector', component: IndexSelectorFieldComponent },
+          { name: 'dict-input', component: DictInputComponent },
         ],
         wrappers: [
           // { name: 'section', component: SectionWrapperComponent }

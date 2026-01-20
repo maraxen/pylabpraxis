@@ -1,0 +1,43 @@
+.review-card {
+  margin-top: 20px;
+  background-color: #fafafa;
+  
+  .review-row {
+    display: flex;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+
+    &:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .label {
+      font-weight: 500;
+      width: 140px;
+      color: #666;
+    }
+
+    .value {
+      flex: 1;
+      color: #333;
+    }
+  }
+}
+
+.creation-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 30px;
+  padding: 20px;
+  
+  p {
+    margin: 0;
+    font-weight: 500;
+    color: #3f51b5;
+  }
+}
