@@ -92,6 +92,44 @@ class MachineManagerMixin:
         machine_model.fqn,
       )
       try:
+        # Load definitions if not already loaded
+        if (
+          (
+            machine_model.frontend_definition_accession_id
+            and machine_model.frontend_definition is None
+          )
+          or (
+            machine_model.backend_definition_accession_id
+            and machine_model.backend_definition is None
+          )
+          or (
+            machine_model.machine_definition_accession_id
+            and machine_model.machine_definition is None
+          )
+        ):
+          async with runtime.db_session_factory() as db_session:
+            from sqlalchemy import select
+            from sqlalchemy.orm import selectinload
+
+            from praxis.backend.models import Machine as MachineModel
+            from praxis.backend.models import MachineDefinition
+
+            stmt = (
+              select(MachineModel)
+              .options(selectinload(MachineModel.frontend_definition))
+              .options(selectinload(MachineModel.backend_definition))
+              .options(
+                selectinload(MachineModel.machine_definition).selectinload(
+                  MachineDefinition.deck_definition
+                )
+              )
+              .options(selectinload(MachineModel.deck_child_definition))
+              .where(MachineModel.accession_id == machine_model.accession_id)
+            )
+            result = await db_session.execute(stmt)
+            loaded_machine = result.scalar_one()
+            machine_model = loaded_machine
+
         # NEW: Support frontend/backend separation if definitions are set
         if (
           machine_model.frontend_definition_accession_id
@@ -102,23 +140,6 @@ class MachineManagerMixin:
             "WorkcellRuntime: Using new frontend/backend separation for machine '%s'.",
             machine_model.name,
           )
-          # Load definitions if not already loaded
-          if machine_model.frontend_definition is None or machine_model.backend_definition is None:
-            async with runtime.db_session_factory() as db_session:
-              from sqlalchemy import select
-              from sqlalchemy.orm import selectinload
-
-              from praxis.backend.models import Machine as MachineModel
-
-              stmt = (
-                select(MachineModel)
-                .options(selectinload(MachineModel.frontend_definition))
-                .options(selectinload(MachineModel.backend_definition))
-                .where(MachineModel.accession_id == machine_model.accession_id)
-              )
-              result = await db_session.execute(stmt)
-              loaded_machine = result.scalar_one()
-              machine_model = loaded_machine
 
           backend_fqn = machine_model.backend_definition.fqn
           frontend_fqn = machine_model.frontend_definition.fqn
@@ -136,6 +157,30 @@ class MachineManagerMixin:
           # Legacy pattern: use fqn directly (backwards compatibility)
           target_class = get_class_from_fqn(machine_model.fqn)
           machine_config = machine_model.properties_json or {}
+
+        # AUTO-DECK LOGIC: If the machine definition specifies a deck and none is provided
+        # in properties_json, we auto-initialize it.
+        if "deck" not in machine_config:
+          deck_definition = None
+          if machine_model.machine_definition and machine_model.machine_definition.deck_definition:
+            deck_definition = machine_model.machine_definition.deck_definition
+          elif (
+            hasattr(machine_model, "deck_child_definition") and machine_model.deck_child_definition
+          ):
+            deck_definition = machine_model.deck_child_definition
+
+          if deck_definition:
+            logger.info(
+              "WorkcellRuntime: Auto-initializing deck '%s' (FQN: %s) for machine '%s'.",
+              deck_definition.name,
+              deck_definition.fqn,
+              machine_model.name,
+            )
+            deck_class = get_class_from_fqn(deck_definition.fqn)
+            # Most PLR Decks take a 'name' in __init__
+            deck_instance = deck_class(name=f"{machine_model.name}_deck")
+            machine_config["deck"] = deck_instance
+
         instance_name = machine_model.name
 
         init_params = machine_config.copy()

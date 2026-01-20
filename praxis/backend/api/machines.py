@@ -26,6 +26,7 @@ from praxis.backend.models.domain.machine import (
 from praxis.backend.models.enums import MachineStatusEnum
 from praxis.backend.services.machine import MachineService
 from praxis.backend.services.machine_type_definition import MachineTypeDefinitionCRUDService
+from praxis.backend.services.introspection import MethodInfo
 from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
@@ -94,6 +95,36 @@ async def get_machine_definition_facets(
   facets["manufacturer"] = [{"value": row[0], "count": row[1]} for row in rows]
 
   return facets
+
+
+@router.get(
+  "/definitions/{accession_id}/methods",
+  tags=["Machine Definitions"],
+  summary="Get available methods for a machine definition",
+  response_model=list[MethodInfo],
+)
+async def get_machine_definition_methods(
+  accession_id: UUID,
+  db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[MethodInfo]:
+  """Return a list of methods available for the given machine definition."""
+  from praxis.backend.services.introspection import inspect_machine_methods
+
+  service = MachineTypeDefinitionCRUDService(MachineDefinition)
+  definition = await service.get(db, accession_id)
+
+  if not definition:
+    raise HTTPException(status_code=404, detail=f"Machine definition '{accession_id}' not found.")
+
+  if not definition.fqn:
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST, detail="Machine definition does not have an FQN."
+    )
+
+  try:
+    return inspect_machine_methods(definition.fqn)
+  except ValueError as e:
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 # Include Machine Definition CRUD Router

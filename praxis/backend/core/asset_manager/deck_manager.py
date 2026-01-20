@@ -51,7 +51,9 @@ class DeckManagerMixin:
 
     deck_resource_model = await self.resource_svc.get(self.db, deck_model.accession_id)
     if not deck_resource_model:
-      msg = f"Deck Resource ID '{deck_model.accession_id}' (from Deck '{deck_model.name}') not found."
+      msg = (
+        f"Deck Resource ID '{deck_model.accession_id}' (from Deck '{deck_model.name}') not found."
+      )
       raise AssetAcquisitionError(
         msg,
       )
@@ -71,7 +73,7 @@ class DeckManagerMixin:
     self,
     deck_orm_accession_id: uuid.UUID,
     protocol_run_accession_id: uuid.UUID,
-  ) -> PLRDeck:
+  ) -> tuple[PLRDeck, Deck]:
     """Apply a deck instanceuration."""
     logger.info(
       "AM_DECK_CONFIG: Applying deck instanceuration ID '%s', for run_accession_id: %s",
@@ -140,7 +142,7 @@ class DeckManagerMixin:
       live_plr_deck_object,
       PLRDeck,
     ), f"Expected live PLR Deck object, got {type(live_plr_deck_object)}"
-    return live_plr_deck_object
+    return live_plr_deck_object, deck_model
 
   async def _process_deck_resource_item(
     self,

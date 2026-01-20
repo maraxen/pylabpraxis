@@ -109,6 +109,11 @@ class ItemizedTypeInfo:
   items_y: int = DEFAULT_ITEMS_Y
   """Number of rows (default 96-well)."""
 
+  def __post_init__(self) -> None:
+    """Set correct field type based on container status."""
+    if self.is_container and self.field_type == "index_selector":
+      self.field_type = "itemized-selector"
+
   def to_dict(self) -> dict[str, Any]:
     """Convert to dict for ProtocolParameterInfo."""
     return {
@@ -230,6 +235,14 @@ class TypeAnnotationAnalyzer:
             result = self._analyze_node(inner_node, is_inside_container=True)
             if result:
               return result
+
+    # Is it a Dict type?
+    if base_name in {"dict", "Dict"}:
+      return ItemizedTypeInfo(
+        field_type="dict-input",
+        is_itemized=False,
+        is_container=False,
+      )
 
     # Is it an Optional or Union type?
     if base_name in OPTIONAL_TYPE_NAMES:

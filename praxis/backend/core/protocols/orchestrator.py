@@ -1,6 +1,9 @@
 """Orchestrator Protocol."""
 
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+  from praxis.backend.core.protocol_code_manager import ProtocolCodeManager
 
 from praxis.backend.models.domain.protocol import ProtocolRun
 
@@ -8,6 +11,8 @@ from praxis.backend.models.domain.protocol import ProtocolRun
 @runtime_checkable
 class IOrchestrator(Protocol):
   """A protocol for an orchestrator."""
+
+  protocol_code_manager: "ProtocolCodeManager"
 
   async def execute_protocol(
     self,

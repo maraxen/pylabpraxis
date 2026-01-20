@@ -5,6 +5,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from pylabrobot.resources import Deck
 
+from praxis.backend.models.domain.deck import Deck as DeckModel
 from praxis.backend.models.domain.protocol import AssetRequirement as AssetRequirementModel
 from praxis.backend.models.enums import MachineStatusEnum, ResourceStatusEnum
 from praxis.backend.models.pydantic_internals.runtime import AcquireAsset
@@ -18,7 +19,7 @@ class IAssetManager(Protocol):
     self,
     deck_orm_accession_id: uuid.UUID,
     protocol_run_accession_id: uuid.UUID,
-  ) -> Deck: ...
+  ) -> tuple[Deck, DeckModel]: ...
 
   async def acquire_machine(
     self,

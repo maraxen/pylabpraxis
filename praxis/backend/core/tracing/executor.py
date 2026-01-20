@@ -14,13 +14,18 @@ from praxis.backend.core.tracing.recorder import OperationRecorder
 from praxis.backend.core.tracing.tracers import (
   TracedMachine,
   TracedResource,
+  TracedContainerElementCollection,
 )
 from praxis.backend.utils.async_run import run_sync
 from praxis.backend.utils.plr_static_analysis.resource_hierarchy import (
   DeckLayoutType,
   get_parental_chain,
 )
-from praxis.common.type_inspection import extract_resource_types
+from praxis.common.type_inspection import (
+  extract_resource_types,
+  is_container_type,
+  get_element_type,
+)
 
 if TYPE_CHECKING:
   from collections.abc import Callable
@@ -221,6 +226,19 @@ class ProtocolTracingExecutor:
         declared_type=type_hint,
         machine_type=machine_type,
       )
+
+    # Check for container of resources (e.g. list[Well])
+    if is_container_type(type_hint):
+      element_type = get_element_type(type_hint)
+      # We only support itemized collections of specific resource types
+      if element_type in {"Well", "TipSpot", "Tube", "Spot"}:
+        return TracedContainerElementCollection(
+          name=name,
+          recorder=recorder,
+          declared_type=type_hint,
+          element_type=element_type,
+          source_resource=name,
+        )
 
     # Check for PLR resource types
     resource_types = extract_resource_types(type_hint)

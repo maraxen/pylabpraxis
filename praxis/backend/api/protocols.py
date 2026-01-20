@@ -7,7 +7,7 @@ including protocol definitions, protocol runs, protocol execution, and simulatio
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from pydantic import BaseModel, Field
 
 from praxis.backend.api.dependencies import get_db, get_protocol_execution_service
@@ -38,6 +38,7 @@ from praxis.backend.models.domain.simulation import (
   TipStateSnapshot,
 )
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
+from praxis.backend.utils.protocol_serialization import serialize_protocol_function
 from praxis.backend.services.protocols import ProtocolRunService
 
 router = APIRouter()
@@ -562,3 +563,28 @@ async def get_simulation_status(
     )
 
   return result
+
+
+@router.get(
+  "/definitions/{accession_id}/code/binary",
+  tags=["Protocol Definitions"],
+)
+async def get_protocol_binary_code(
+  accession_id: UUID,
+  execution_service: Annotated[ProtocolExecutionService, Depends(get_protocol_execution_service)],
+) -> Response:
+  """Get serialized protocol function for browser execution."""
+  async with execution_service.db_session_factory() as db_session:
+    protocol = await db_session.get(FunctionProtocolDefinition, accession_id)
+    if not protocol:
+      raise HTTPException(status_code=404, detail="Protocol definition not found")
+
+    # Load the function using Orchestrator's CodeManager
+    func, _ = await execution_service.orchestrator.protocol_code_manager.prepare_protocol_code(
+      protocol
+    )
+
+    # Serialize it
+    data = serialize_protocol_function(func)
+
+    return Response(content=data, media_type="application/octet-stream")
