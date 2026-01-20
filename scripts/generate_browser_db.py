@@ -20,6 +20,8 @@ Output:
 
 from __future__ import annotations
 
+from praxis.backend.utils.protocol_serialization import serialize_protocol_function
+import cloudpickle
 import hashlib
 import json
 import sqlite3
@@ -38,394 +40,407 @@ OUTPUT_DB_PATH = ASSETS_DB_DIR / "praxis.db"
 
 
 def generate_uuid_from_fqn(fqn: str) -> str:
-    """Generate a deterministic UUID from a fully qualified name."""
-    hash_bytes = hashlib.md5(fqn.encode()).digest()
-    hex_str = hash_bytes.hex()
-    return f"{hex_str[:8]}-{hex_str[8:12]}-{hex_str[12:16]}-{hex_str[16:20]}-{hex_str[20:32]}"
+  """Generate a deterministic UUID from a fully qualified name."""
+  hash_bytes = hashlib.md5(fqn.encode()).digest()
+  hex_str = hash_bytes.hex()
+  return f"{hex_str[:8]}-{hex_str[8:12]}-{hex_str[12:16]}-{hex_str[16:20]}-{hex_str[20:32]}"
 
 
 def safe_json_dumps(obj: object) -> str:
-    """Safely serialize an object to JSON."""
-    try:
-        return json.dumps(obj)
-    except (TypeError, ValueError):
-        return "{}"
+  """Safely serialize an object to JSON."""
+  try:
+    return json.dumps(obj)
+  except (TypeError, ValueError):
+    return "{}"
 
 
 def discover_resources_static(conn: sqlite3.Connection) -> int:
-    """Discover and insert all PLR resource definitions using static analysis."""
-    from praxis.backend.utils.plr_static_analysis import (
-        PLRSourceParser,
-        find_plr_source_root,
-    )
+  """Discover and insert all PLR resource definitions using static analysis."""
+  from praxis.backend.utils.plr_static_analysis import (
+    PLRSourceParser,
+    find_plr_source_root,
+  )
 
-    parser = PLRSourceParser(find_plr_source_root())
+  parser = PLRSourceParser(find_plr_source_root())
 
-    # Get class-based resources
-    class_resources = parser.discover_resource_classes()
+  # Get class-based resources
+  class_resources = parser.discover_resource_classes()
 
-    # Get factory function-based resources
-    factory_resources = parser.discover_resource_factories()
+  # Get factory function-based resources
+  factory_resources = parser.discover_resource_factories()
 
-    # Combine and deduplicate by FQN
-    all_resources = {r.fqn: r for r in class_resources}
-    for r in factory_resources:
-        if r.fqn not in all_resources:
-            all_resources[r.fqn] = r
+  # Combine and deduplicate by FQN
+  all_resources = {r.fqn: r for r in class_resources}
+  for r in factory_resources:
+    if r.fqn not in all_resources:
+      all_resources[r.fqn] = r
 
+  now = datetime.now().isoformat()
+  count = 0
 
-    now = datetime.now().isoformat()
-    count = 0
+  for res in all_resources.values():
+    try:
+      accession_id = generate_uuid_from_fqn(res.fqn)
 
-    for res in all_resources.values():
-        try:
-            accession_id = generate_uuid_from_fqn(res.fqn)
+      # Determine category
+      category = res.category or res.class_type.value
 
-            # Determine category
-            category = res.category or res.class_type.value
+      # Extract capabilities as properties
+      props = {}
+      if res.capabilities:
+        if res.capabilities.channels:
+          props["channels"] = res.capabilities.channels
+        if res.capabilities.modules:
+          props["modules"] = res.capabilities.modules
 
-            # Extract capabilities as properties
-            props = {}
-            if res.capabilities:
-                if res.capabilities.channels:
-                    props["channels"] = res.capabilities.channels
-                if res.capabilities.modules:
-                    props["modules"] = res.capabilities.modules
+      # Determine consumable/reusable based on category
+      is_consumable = category in ["TipRack", "Trough", "Reservoir"]
+      is_reusable = category in ["Plate", "Carrier", "Deck"]
 
-            # Determine consumable/reusable based on category
-            is_consumable = category in ["TipRack", "Trough", "Reservoir"]
-            is_reusable = category in ["Plate", "Carrier", "Deck"]
-
-            conn.execute(
-                """
+      conn.execute(
+        """
                 INSERT OR REPLACE INTO resource_definitions (
                     accession_id, fqn, name, description, plr_category,
                     is_consumable, is_reusable, vendor, manufacturer,
                     properties_json, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (
-                    accession_id,
-                    res.fqn,
-                    res.name,
-                    res.docstring or "",
-                    category,
-                    1 if is_consumable else 0,
-                    1 if is_reusable else 0,
-                    res.vendor,
-                    res.manufacturer,
-                    safe_json_dumps(props),
-                    now,
-                    now,
-                ),
-            )
-            count += 1
-        except Exception as e:
-            print(f"  [WARN] Failed to insert resource {res.name}: {e}")
+        (
+          accession_id,
+          res.fqn,
+          res.name,
+          res.docstring or "",
+          category,
+          1 if is_consumable else 0,
+          1 if is_reusable else 0,
+          res.vendor,
+          res.manufacturer,
+          safe_json_dumps(props),
+          now,
+          now,
+        ),
+      )
+      count += 1
+    except Exception as e:
+      print(f"  [WARN] Failed to insert resource {res.name}: {e}")
 
-    conn.commit()
-    print(f"[generate_browser_db] Inserted {count} resource definitions")
-    return count
+  conn.commit()
+  print(f"[generate_browser_db] Inserted {count} resource definitions")
+  return count
 
 
 def discover_machines_static(conn: sqlite3.Connection) -> int:
-    """Discover and insert all PLR machine definitions using static analysis."""
-    from praxis.backend.utils.plr_static_analysis import (
-        MACHINE_FRONTEND_TYPES,
-        PLRClassType,
-        PLRSourceParser,
-        find_plr_source_root,
-    )
+  """Discover and insert all PLR machine definitions using static analysis."""
+  from praxis.backend.utils.plr_static_analysis import (
+    MACHINE_FRONTEND_TYPES,
+    PLRClassType,
+    PLRSourceParser,
+    find_plr_source_root,
+  )
 
-    parser = PLRSourceParser(find_plr_source_root())
-    machines = parser.discover_machine_classes()
+  parser = PLRSourceParser(find_plr_source_root())
+  machines = parser.discover_machine_classes()
 
-    now = datetime.now().isoformat()
-    count = 0
+  now = datetime.now().isoformat()
+  count = 0
 
-    # Filter to frontend types only (exclude backends for the definition catalog)
-    frontend_machines = [m for m in machines if m.class_type in MACHINE_FRONTEND_TYPES]
+  # Filter to frontend types only (exclude backends for the definition catalog)
+  frontend_machines = [m for m in machines if m.class_type in MACHINE_FRONTEND_TYPES]
 
-    for machine in frontend_machines:
-        try:
-            from praxis.backend.models.pydantic_internals.maintenance import MAINTENANCE_DEFAULTS
+  for machine in frontend_machines:
+    try:
+      from praxis.backend.models.pydantic_internals.maintenance import MAINTENANCE_DEFAULTS
 
-            accession_id = generate_uuid_from_fqn(f"machine:{machine.fqn}")
+      accession_id = generate_uuid_from_fqn(f"machine:{machine.fqn}")
 
-            # Determine machine category from class type
-            category_map = {
-                PLRClassType.LIQUID_HANDLER: "LiquidHandler",
-                PLRClassType.PLATE_READER: "PlateReader",
-                PLRClassType.HEATER_SHAKER: "HeaterShaker",
-                PLRClassType.SHAKER: "Shaker",
-                PLRClassType.TEMPERATURE_CONTROLLER: "TemperatureController",
-                PLRClassType.CENTRIFUGE: "Centrifuge",
-                PLRClassType.THERMOCYCLER: "Thermocycler",
-                PLRClassType.PUMP: "Pump",
-                PLRClassType.PUMP_ARRAY: "PumpArray",
-                PLRClassType.FAN: "Fan",
-                PLRClassType.SEALER: "Sealer",
-                PLRClassType.PEELER: "Peeler",
-                PLRClassType.POWDER_DISPENSER: "PowderDispenser",
-                PLRClassType.INCUBATOR: "Incubator",
-                PLRClassType.SCARA: "Arm",
-            }
-            category = category_map.get(machine.class_type, "Unknown")
-            
-            # Get default maintenance schedule
-            maintenance_schedule = MAINTENANCE_DEFAULTS.get(category, MAINTENANCE_DEFAULTS["DEFAULT"]).model_dump()
+      # Determine machine category from class type
+      category_map = {
+        PLRClassType.LIQUID_HANDLER: "LiquidHandler",
+        PLRClassType.PLATE_READER: "PlateReader",
+        PLRClassType.HEATER_SHAKER: "HeaterShaker",
+        PLRClassType.SHAKER: "Shaker",
+        PLRClassType.TEMPERATURE_CONTROLLER: "TemperatureController",
+        PLRClassType.CENTRIFUGE: "Centrifuge",
+        PLRClassType.THERMOCYCLER: "Thermocycler",
+        PLRClassType.PUMP: "Pump",
+        PLRClassType.PUMP_ARRAY: "PumpArray",
+        PLRClassType.FAN: "Fan",
+        PLRClassType.SEALER: "Sealer",
+        PLRClassType.PEELER: "Peeler",
+        PLRClassType.POWDER_DISPENSER: "PowderDispenser",
+        PLRClassType.INCUBATOR: "Incubator",
+        PLRClassType.SCARA: "Arm",
+      }
+      category = category_map.get(machine.class_type, "Unknown")
 
+      # Get default maintenance schedule
+      maintenance_schedule = MAINTENANCE_DEFAULTS.get(
+        category, MAINTENANCE_DEFAULTS["DEFAULT"]
+      ).model_dump()
 
-            # Check if has deck (liquid handlers typically have decks)
-            has_deck = machine.class_type == PLRClassType.LIQUID_HANDLER
+      # Check if has deck (liquid handlers typically have decks)
+      has_deck = machine.class_type == PLRClassType.LIQUID_HANDLER
 
-            # Get capabilities dict
-            caps_dict = machine.to_capabilities_dict() if hasattr(machine, "to_capabilities_dict") else {}
+      # Get capabilities dict
+      caps_dict = machine.to_capabilities_dict() if hasattr(machine, "to_capabilities_dict") else {}
 
-            conn.execute(
-                """
+      conn.execute(
+        """
                 INSERT OR REPLACE INTO machine_definitions (
                     accession_id, fqn, name, description, plr_category,
                     machine_category, has_deck, manufacturer,
                     capabilities, compatible_backends, available_simulation_backends, properties_json, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (
-                    accession_id,
-                    machine.fqn,
-                    machine.name,
-                    machine.docstring or "",
-                    "Machine",
-                    category,
-                    1 if has_deck else 0,
-                    machine.manufacturer,
-                    safe_json_dumps(caps_dict),
-                    safe_json_dumps(machine.compatible_backends),
-                    safe_json_dumps(getattr(machine, "available_simulation_backends", [])),
-                    safe_json_dumps({}),
-                    now,
-                    now,
-                ),
-            )
-            
-            # NOTE: We intentionally do NOT seed machine instances.
-            # Users should instantiate machines from definitions via the UI.
-            # This keeps the inventory clean and follows the catalog model.
+        (
+          accession_id,
+          machine.fqn,
+          machine.name,
+          machine.docstring or "",
+          "Machine",
+          category,
+          1 if has_deck else 0,
+          machine.manufacturer,
+          safe_json_dumps(caps_dict),
+          safe_json_dumps(machine.compatible_backends),
+          safe_json_dumps(getattr(machine, "available_simulation_backends", [])),
+          safe_json_dumps({}),
+          now,
+          now,
+        ),
+      )
 
-            count += 1
-        except Exception as e:
-            print(f"  [WARN] Failed to insert machine {machine.name}: {e}")
+      # NOTE: We intentionally do NOT seed machine instances.
+      # Users should instantiate machines from definitions via the UI.
+      # This keeps the inventory clean and follows the catalog model.
 
-    conn.commit()
-    print(f"[generate_browser_db] Inserted {count} machine definitions")
-    return count
+      count += 1
+    except Exception as e:
+      print(f"  [WARN] Failed to insert machine {machine.name}: {e}")
+
+  conn.commit()
+  print(f"[generate_browser_db] Inserted {count} machine definitions")
+  return count
 
 
 # Define critical decks that must always be included
 CRITICAL_DECKS = [
-    {
-        "name": "STARDeck",
-        "fqn": "pylabrobot.liquid_handling.backends.hamilton.STAR.STARDeck",
-        "category": "Deck",
-        "vendor": "Hamilton",
-        "manufacturer": "Hamilton",
-        "docstring": "Hamilton STAR Deck definition",
-    },
-    {
-        "name": "STARLetDeck",
-        "fqn": "pylabrobot.liquid_handling.backends.hamilton.STARlet.STARLetDeck",
-        "category": "Deck",
-        "vendor": "Hamilton",
-        "manufacturer": "Hamilton",
-        "docstring": "Hamilton STARLet Deck definition",
-    },
-    {
-        "name": "VantageDeck",
-        "fqn": "pylabrobot.liquid_handling.backends.hamilton.Vantage.VantageDeck",
-        "category": "Deck",
-        "vendor": "Hamilton",
-        "manufacturer": "Hamilton",
-        "docstring": "Hamilton Vantage Deck definition",
-    },
-    {
-        "name": "OT2Deck",
-        "fqn": "pylabrobot.liquid_handling.backends.opentrons.deck.OT2Deck",
-        "category": "Deck",
-        "vendor": "Opentrons",
-        "manufacturer": "Opentrons",
-        "docstring": "Opentrons OT-2 Deck definition",
-    },
+  {
+    "name": "STARDeck",
+    "fqn": "pylabrobot.liquid_handling.backends.hamilton.STAR.STARDeck",
+    "category": "Deck",
+    "vendor": "Hamilton",
+    "manufacturer": "Hamilton",
+    "docstring": "Hamilton STAR Deck definition",
+  },
+  {
+    "name": "STARLetDeck",
+    "fqn": "pylabrobot.liquid_handling.backends.hamilton.STARlet.STARLetDeck",
+    "category": "Deck",
+    "vendor": "Hamilton",
+    "manufacturer": "Hamilton",
+    "docstring": "Hamilton STARLet Deck definition",
+  },
+  {
+    "name": "VantageDeck",
+    "fqn": "pylabrobot.liquid_handling.backends.hamilton.Vantage.VantageDeck",
+    "category": "Deck",
+    "vendor": "Hamilton",
+    "manufacturer": "Hamilton",
+    "docstring": "Hamilton Vantage Deck definition",
+  },
+  {
+    "name": "OT2Deck",
+    "fqn": "pylabrobot.liquid_handling.backends.opentrons.deck.OT2Deck",
+    "category": "Deck",
+    "vendor": "Opentrons",
+    "manufacturer": "Opentrons",
+    "docstring": "Opentrons OT-2 Deck definition",
+  },
 ]
 
 
 def create_discovered_class_from_dict(d: dict) -> DiscoveredClass:
-    """Create a DiscoveredClass object from a dictionary (fallback)."""
-    from praxis.backend.utils.plr_static_analysis.models import (
-        DiscoveredCapabilities,
-        DiscoveredClass,
-        PLRClassType,
-    )
+  """Create a DiscoveredClass object from a dictionary (fallback)."""
+  from praxis.backend.utils.plr_static_analysis.models import (
+    DiscoveredCapabilities,
+    DiscoveredClass,
+    PLRClassType,
+  )
 
-    return DiscoveredClass(
-        fqn=d["fqn"],
-        name=d["name"],
-        module_path=d["fqn"].rsplit(".", 1)[0],
-        file_path="manual_fallback",
-        class_type=PLRClassType.DECK,
-        category=d.get("category", "Deck"),
-        vendor=d.get("vendor"),
-        manufacturer=d.get("manufacturer"),
-        docstring=d.get("docstring"),
-        capabilities=DiscoveredCapabilities(),
-    )
+  return DiscoveredClass(
+    fqn=d["fqn"],
+    name=d["name"],
+    module_path=d["fqn"].rsplit(".", 1)[0],
+    file_path="manual_fallback",
+    class_type=PLRClassType.DECK,
+    category=d.get("category", "Deck"),
+    vendor=d.get("vendor"),
+    manufacturer=d.get("manufacturer"),
+    docstring=d.get("docstring"),
+    capabilities=DiscoveredCapabilities(),
+  )
 
 
 def discover_decks_static(conn: sqlite3.Connection) -> int:
-    """Discover and insert all PLR deck definitions using static analysis + fallback."""
-    from praxis.backend.utils.plr_static_analysis import (
-        DiscoveredClass,
-        PLRClassType,
-        PLRSourceParser,
-        find_plr_source_root,
-    )
+  """Discover and insert all PLR deck definitions using static analysis + fallback."""
+  from praxis.backend.utils.plr_static_analysis import (
+    DiscoveredClass,
+    PLRClassType,
+    PLRSourceParser,
+    find_plr_source_root,
+  )
 
-    parser = PLRSourceParser(find_plr_source_root())
+  parser = PLRSourceParser(find_plr_source_root())
 
-    # Get class-based resources
-    discovered_classes = parser.discover_resource_classes()
+  # Get class-based resources
+  discovered_classes = parser.discover_resource_classes()
 
-    # Get factory function-based resources
-    discovered_factories = parser.discover_resource_factories()
+  # Get factory function-based resources
+  discovered_factories = parser.discover_resource_factories()
 
-    # Filter for decks and combine
-    deck_classes = [r for r in discovered_classes if r.class_type == PLRClassType.DECK]
-    deck_factories = [r for r in discovered_factories if r.class_type == PLRClassType.DECK]
+  # Filter for decks and combine
+  deck_classes = [r for r in discovered_classes if r.class_type == PLRClassType.DECK]
+  deck_factories = [r for r in discovered_factories if r.class_type == PLRClassType.DECK]
 
-    # Combine and deduplicate by FQN
-    all_decks: dict[str, DiscoveredClass] = {d.fqn: d for d in deck_classes + deck_factories}
+  # Combine and deduplicate by FQN
+  all_decks: dict[str, DiscoveredClass] = {d.fqn: d for d in deck_classes + deck_factories}
 
-    # Add critical decks if missing (fallback)
-    for critical in CRITICAL_DECKS:
-        if critical["fqn"] not in all_decks:
-            print(
-                f"  [INFO] Static analysis missed {critical['name']}, adding from manual registry"
-            )
-            all_decks[critical["fqn"]] = create_discovered_class_from_dict(critical)
+  # Add critical decks if missing (fallback)
+  for critical in CRITICAL_DECKS:
+    if critical["fqn"] not in all_decks:
+      print(f"  [INFO] Static analysis missed {critical['name']}, adding from manual registry")
+      all_decks[critical["fqn"]] = create_discovered_class_from_dict(critical)
 
-    now = datetime.now().isoformat()
-    count = 0
+  now = datetime.now().isoformat()
+  count = 0
 
-    for deck in all_decks.values():
-        try:
-            accession_id = generate_uuid_from_fqn(f"deck:{deck.fqn}")
+  for deck in all_decks.values():
+    try:
+      accession_id = generate_uuid_from_fqn(f"deck:{deck.fqn}")
 
-            conn.execute(
-                """
+      conn.execute(
+        """
                 INSERT OR REPLACE INTO deck_definition_catalog (
                     accession_id, fqn, name, description, plr_category,
                     additional_properties_json, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (
-                    accession_id,
-                    deck.fqn,
-                    deck.name,
-                    deck.docstring or "",
-                    "Deck",
-                    safe_json_dumps({"manufacturer": deck.manufacturer, "vendor": deck.vendor}),
-                    now,
-                    now,
-                ),
-            )
-            count += 1
-        except Exception as e:
-            print(f"  [WARN] Failed to insert deck {deck.name}: {e}")
+        (
+          accession_id,
+          deck.fqn,
+          deck.name,
+          deck.docstring or "",
+          "Deck",
+          safe_json_dumps({"manufacturer": deck.manufacturer, "vendor": deck.vendor}),
+          now,
+          now,
+        ),
+      )
+      count += 1
+    except Exception as e:
+      print(f"  [WARN] Failed to insert deck {deck.name}: {e}")
 
-    conn.commit()
-    print(f"[generate_browser_db] Inserted {count} deck definitions")
-    return count
+  conn.commit()
+  print(f"[generate_browser_db] Inserted {count} deck definitions")
+  return count
 
 
 def discover_protocols_static(conn: sqlite3.Connection) -> int:
-    """Discover and insert all protocol definitions using static analysis."""
-    from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
-        ProtocolFunctionVisitor,
-    )
-    from praxis.backend.core.simulation.simulator import ProtocolSimulator
-    import libcst as cst
+  """Discover and insert all protocol definitions using static analysis."""
+  from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
+    ProtocolFunctionVisitor,
+  )
+  from praxis.backend.core.simulation.simulator import ProtocolSimulator
+  import libcst as cst
 
-    protocols_dir = PROJECT_ROOT / "praxis" / "protocol" / "protocols"
-    now = datetime.now().isoformat()
-    count = 0
-    
-    simulator = ProtocolSimulator()
+  protocols_dir = PROJECT_ROOT / "praxis" / "protocol" / "protocols"
+  now = datetime.now().isoformat()
+  count = 0
 
-    if not protocols_dir.exists():
-        return 0
+  simulator = ProtocolSimulator()
 
-    for protocol_file in protocols_dir.glob("*.py"):
-        if protocol_file.name.startswith("__"):
-            continue
+  if not protocols_dir.exists():
+    return 0
 
+  # Define protocols asset directory
+  PROTOCOLS_ASSET_DIR = WEB_CLIENT_ROOT / "src" / "assets" / "protocols"
+  PROTOCOLS_ASSET_DIR.mkdir(parents=True, exist_ok=True)
+
+  for protocol_file in protocols_dir.glob("*.py"):
+    if protocol_file.name.startswith("__"):
+      continue
+
+    try:
+      module_name = f"praxis.protocol.protocols.{protocol_file.stem}"
+      source_code = protocol_file.read_text()
+
+      # Parse with LibCST
+      tree = cst.parse_module(source_code)
+      visitor = ProtocolFunctionVisitor(module_name, str(protocol_file))
+      tree.visit(visitor)
+
+      for definition in visitor.definitions:
+        accession_id = generate_uuid_from_fqn(definition.fqn)
+
+        # Default category based on keywords
+        category = "General"
+        name_lower = definition.name.lower()
+        if "plate" in name_lower or "prep" in name_lower:
+          category = "Assay Prep"
+        elif "transfer" in name_lower:
+          category = "Liquid Handling"
+        elif "kinetic" in name_lower or "reader" in name_lower:
+          category = "Plate Reading"
+
+        # Run real simulation analysis
+        print(f"  [simulation] Analyzing {definition.fqn}...")
         try:
-            module_name = f"praxis.protocol.protocols.{protocol_file.stem}"
-            source_code = protocol_file.read_text()
-            
-            # Parse with LibCST
-            tree = cst.parse_module(source_code)
-            visitor = ProtocolFunctionVisitor(module_name, str(protocol_file))
-            tree.visit(visitor)
+          # Import the protocol module
+          # Ensure path is in sys.path
+          if str(PROJECT_ROOT) not in sys.path:
+            sys.path.append(str(PROJECT_ROOT))
 
-            for definition in visitor.definitions:
-                accession_id = generate_uuid_from_fqn(definition.fqn)
-                
-                # Default category based on keywords
-                category = "General"
-                name_lower = definition.name.lower()
-                if "plate" in name_lower or "prep" in name_lower:
-                    category = "Assay Prep"
-                elif "transfer" in name_lower:
-                    category = "Liquid Handling"
-                elif "kinetic" in name_lower or "reader" in name_lower:
-                    category = "Plate Reading"
+          module = importlib.import_module(module_name)
+          func = getattr(module, definition.name)
 
-                # Run real simulation analysis
-                print(f"  [simulation] Analyzing {definition.fqn}...")
-                try:
-                    # Import the protocol module
-                    # Ensure path is in sys.path
-                    if str(PROJECT_ROOT) not in sys.path:
-                        sys.path.append(str(PROJECT_ROOT))
-                    
-                    module = importlib.import_module(module_name)
-                    func = getattr(module, definition.name)
-                    
-                    parameter_types = {p.name: p.type_hint for p in definition.parameters}
-                    
-                    # Run analysis
-                    sim_result = simulator.analyze_protocol_sync(
-                        protocol_func=func,
-                        parameter_types=parameter_types
-                    )
-                    
-                    simulation_result_json = safe_json_dumps(sim_result.to_cache_dict())
-                    inferred_requirements_json = safe_json_dumps(sim_result.inferred_requirements)
-                    failure_modes_json = safe_json_dumps(sim_result.failure_modes)
-                except Exception as e:
-                    print(f"  [simulation] ERROR: Protocol analysis failed for {definition.fqn}: {e}")
-                    # Fallback to a marked-as-failed or minimal result if needed?
-                    # For now, we'll keep the mock structure but with an error state if it fails
-                    simulation_result_json = safe_json_dumps({
-                        "passed": False,
-                        "level_completed": "none",
-                        "violations": [{"type": "error", "message": str(e)}],
-                        "simulated_at": now
-                    })
-                    inferred_requirements_json = safe_json_dumps([])
-                    failure_modes_json = safe_json_dumps([])
+          # Serialize protocol function for offline use
+          try:
+            serialized_data = serialize_protocol_function(func)
+            path = WEB_CLIENT_ROOT / "src" / "assets" / "protocols" / f"{accession_id}.pkl"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(serialized_data)
+            print(f"  [pickle] Generated {path}")
+          except Exception as ser_e:
+            print(f"  [pickle] ERROR: Failed to serialize {definition.fqn}: {ser_e}")
 
-                conn.execute(
-                    """
+          parameter_types = {p.name: p.type_hint for p in definition.parameters}
+
+          # Run analysis
+          sim_result = simulator.analyze_protocol_sync(
+            protocol_func=func, parameter_types=parameter_types
+          )
+
+          simulation_result_json = safe_json_dumps(sim_result.to_cache_dict())
+          inferred_requirements_json = safe_json_dumps(sim_result.inferred_requirements)
+          failure_modes_json = safe_json_dumps(sim_result.failure_modes)
+        except Exception as e:
+          print(f"  [simulation] ERROR: Protocol analysis failed for {definition.fqn}: {e}")
+          # Fallback to a marked-as-failed or minimal result if needed?
+          # For now, we'll keep the mock structure but with an error state if it fails
+          simulation_result_json = safe_json_dumps(
+            {
+              "passed": False,
+              "level_completed": "none",
+              "violations": [{"type": "error", "message": str(e)}],
+              "simulated_at": now,
+            }
+          )
+          inferred_requirements_json = safe_json_dumps([])
+          failure_modes_json = safe_json_dumps([])
+
+        conn.execute(
+          """
                     INSERT OR REPLACE INTO function_protocol_definitions (
                         accession_id, name, fqn, module_name, function_name,
                         source_file_path, description, category, tags,
@@ -436,42 +451,42 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
                         solo_execution, preconfigure_deck, deprecated
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (
-                        accession_id,
-                        definition.name.replace("_", " ").title(),
-                        definition.fqn,
-                        definition.module_name,
-                        definition.name,
-                        str(protocol_file.relative_to(PROJECT_ROOT)),
-                        definition.docstring,
-                        category,
-                        safe_json_dumps(["demo", category.lower().replace(" ", "-")]),
-                        safe_json_dumps(definition.hardware_requirements or {}),
-                        inferred_requirements_json,
-                        failure_modes_json,
-                        simulation_result_json,
-                        safe_json_dumps(definition.computation_graph),
-                        definition.source_hash,
-                        1 if definition.requires_deck else 0,
-                        1, # is_top_level default
-                        now,
-                        now,
-                        "0.1.0", # default version
-                        0, # solo_execution default
-                        0, # preconfigure_deck default
-                        0, # deprecated default
-                    ),
-                )
-                
-                # Insert parameters into parameter_definitions table (excluding assets)
-                for param in definition.parameters:
-                    # Skip assets - they go to protocol_asset_requirements
-                    if param.is_asset:
-                        continue
-                    
-                    param_id = generate_uuid_from_fqn(f"param:{definition.fqn}:{param.name}")
-                    conn.execute(
-                        """
+          (
+            accession_id,
+            definition.name.replace("_", " ").title(),
+            definition.fqn,
+            definition.module_name,
+            definition.name,
+            str(protocol_file.relative_to(PROJECT_ROOT)),
+            definition.docstring,
+            category,
+            safe_json_dumps(["demo", category.lower().replace(" ", "-")]),
+            safe_json_dumps(definition.hardware_requirements or {}),
+            inferred_requirements_json,
+            failure_modes_json,
+            simulation_result_json,
+            safe_json_dumps(definition.computation_graph),
+            definition.source_hash,
+            1 if definition.requires_deck else 0,
+            1,  # is_top_level default
+            now,
+            now,
+            "0.1.0",  # default version
+            0,  # solo_execution default
+            0,  # preconfigure_deck default
+            0,  # deprecated default
+          ),
+        )
+
+        # Insert parameters into parameter_definitions table (excluding assets)
+        for param in definition.parameters:
+          # Skip assets - they go to protocol_asset_requirements
+          if param.is_asset:
+            continue
+
+          param_id = generate_uuid_from_fqn(f"param:{definition.fqn}:{param.name}")
+          conn.execute(
+            """
                         INSERT OR REPLACE INTO parameter_definitions (
                             accession_id, protocol_definition_accession_id, name, type_hint, fqn,
                             is_deck_param, optional, default_value_repr, description,
@@ -479,132 +494,132 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
                             created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
-                        (
-                            param_id,
-                            accession_id,
-                            param.name,
-                            param.type_hint,
-                            f"{definition.fqn}.{param.name}",
-                            0, # is_deck_param (simplified)
-                            param.is_optional,
-                            str(param.default_value) if param.default_value is not None else None,
-                            "", # description
-                            safe_json_dumps(param.constraints_json if hasattr(param, "constraints_json") else {}),
-                            param.field_type,
-                            1 if param.is_itemized else 0,
-                            safe_json_dumps(param.itemized_spec),
-                            param.linked_to,
-                            safe_json_dumps(param.ui_hint_json if hasattr(param, "ui_hint_json") else {}),
-                            now,
-                            now,
-                        ),
-                    )
-                
-                # Insert asset requirements into protocol_asset_requirements table
-                for asset in definition.raw_assets:
-                    asset_id = generate_uuid_from_fqn(f"asset:{definition.fqn}:{asset['name']}")
-                    conn.execute(
-                        """
+            (
+              param_id,
+              accession_id,
+              param.name,
+              param.type_hint,
+              f"{definition.fqn}.{param.name}",
+              0,  # is_deck_param (simplified)
+              param.is_optional,
+              str(param.default_value) if param.default_value is not None else None,
+              "",  # description
+              safe_json_dumps(param.constraints_json if hasattr(param, "constraints_json") else {}),
+              param.field_type,
+              1 if param.is_itemized else 0,
+              safe_json_dumps(param.itemized_spec),
+              param.linked_to,
+              safe_json_dumps(param.ui_hint_json if hasattr(param, "ui_hint_json") else {}),
+              now,
+              now,
+            ),
+          )
+
+        # Insert asset requirements into protocol_asset_requirements table
+        for asset in definition.raw_assets:
+          asset_id = generate_uuid_from_fqn(f"asset:{definition.fqn}:{asset['name']}")
+          conn.execute(
+            """
                         INSERT OR REPLACE INTO protocol_asset_requirements (
                             accession_id, protocol_definition_accession_id, name, type_hint_str,
                             actual_type_str, fqn, optional, default_value_repr, description,
                             constraints_json, location_constraints_json, created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
-                        (
-                            asset_id,
-                            accession_id,
-                            asset['name'],
-                            asset['type_hint_str'],
-                            asset['actual_type_str'],
-                            asset['fqn'],
-                            asset.get('optional', False),
-                            asset.get('default_value_repr'),
-                            asset.get('description', ''),
-                            safe_json_dumps({}),  # constraints (empty for now)
-                            safe_json_dumps({}),  # location_constraints (empty for now)
-                            now,
-                            now,
-                        ),
-                    )
-                
-                count += 1
+            (
+              asset_id,
+              accession_id,
+              asset["name"],
+              asset["type_hint_str"],
+              asset["actual_type_str"],
+              asset["fqn"],
+              asset.get("optional", False),
+              asset.get("default_value_repr"),
+              asset.get("description", ""),
+              safe_json_dumps({}),  # constraints (empty for now)
+              safe_json_dumps({}),  # location_constraints (empty for now)
+              now,
+              now,
+            ),
+          )
 
-        except Exception as e:
-            print(f"  [WARN] Failed to process {protocol_file.name}: {e}")
+        count += 1
 
-    conn.commit()
-    print(f"[generate_browser_db] Inserted {count} protocol definitions")
-    return count
+    except Exception as e:
+      print(f"  [WARN] Failed to process {protocol_file.name}: {e}")
+
+  conn.commit()
+  print(f"[generate_browser_db] Inserted {count} protocol definitions")
+  return count
 
 
 def discover_backends_static(conn: sqlite3.Connection) -> int:
-    """Discover and insert all PLR backend definitions using static analysis."""
-    from praxis.backend.utils.plr_static_analysis import (
-        MACHINE_BACKEND_TYPES,
-        PLRClassType,
-        PLRSourceParser,
-        find_plr_source_root,
-    )
+  """Discover and insert all PLR backend definitions using static analysis."""
+  from praxis.backend.utils.plr_static_analysis import (
+    MACHINE_BACKEND_TYPES,
+    PLRClassType,
+    PLRSourceParser,
+    find_plr_source_root,
+  )
 
-    parser = PLRSourceParser(find_plr_source_root())
-    machines = parser.discover_machine_classes()
+  parser = PLRSourceParser(find_plr_source_root())
+  machines = parser.discover_machine_classes()
 
-    # Filter to backend types only
-    backends = [m for m in machines if m.class_type in MACHINE_BACKEND_TYPES]
+  # Filter to backend types only
+  backends = [m for m in machines if m.class_type in MACHINE_BACKEND_TYPES]
 
-    now = datetime.now().isoformat()
-    count = 0
+  now = datetime.now().isoformat()
+  count = 0
 
-    # Map backend types to frontend category names
-    backend_category_map = {
-        PLRClassType.LH_BACKEND: "LiquidHandlerBackend",
-        PLRClassType.PR_BACKEND: "PlateReaderBackend",
-        PLRClassType.HS_BACKEND: "HeaterShakerBackend",
-        PLRClassType.SHAKER_BACKEND: "ShakerBackend",
-        PLRClassType.TEMP_BACKEND: "TemperatureControllerBackend",
-        PLRClassType.CENTRIFUGE_BACKEND: "CentrifugeBackend",
-        PLRClassType.THERMOCYCLER_BACKEND: "ThermocyclerBackend",
-        PLRClassType.PUMP_BACKEND: "PumpBackend",
-        PLRClassType.PUMP_ARRAY_BACKEND: "PumpArrayBackend",
-        PLRClassType.FAN_BACKEND: "FanBackend",
-        PLRClassType.SEALER_BACKEND: "SealerBackend",
-        PLRClassType.PEELER_BACKEND: "PeelerBackend",
-        PLRClassType.POWDER_DISPENSER_BACKEND: "PowderDispenserBackend",
-        PLRClassType.INCUBATOR_BACKEND: "IncubatorBackend",
-        PLRClassType.SCARA_BACKEND: "ScaraBackend",
-    }
+  # Map backend types to frontend category names
+  backend_category_map = {
+    PLRClassType.LH_BACKEND: "LiquidHandlerBackend",
+    PLRClassType.PR_BACKEND: "PlateReaderBackend",
+    PLRClassType.HS_BACKEND: "HeaterShakerBackend",
+    PLRClassType.SHAKER_BACKEND: "ShakerBackend",
+    PLRClassType.TEMP_BACKEND: "TemperatureControllerBackend",
+    PLRClassType.CENTRIFUGE_BACKEND: "CentrifugeBackend",
+    PLRClassType.THERMOCYCLER_BACKEND: "ThermocyclerBackend",
+    PLRClassType.PUMP_BACKEND: "PumpBackend",
+    PLRClassType.PUMP_ARRAY_BACKEND: "PumpArrayBackend",
+    PLRClassType.FAN_BACKEND: "FanBackend",
+    PLRClassType.SEALER_BACKEND: "SealerBackend",
+    PLRClassType.PEELER_BACKEND: "PeelerBackend",
+    PLRClassType.POWDER_DISPENSER_BACKEND: "PowderDispenserBackend",
+    PLRClassType.INCUBATOR_BACKEND: "IncubatorBackend",
+    PLRClassType.SCARA_BACKEND: "ScaraBackend",
+  }
 
-    # Map backend types to frontend FQNs
-    backend_frontend_fqn_map = {
-        PLRClassType.LH_BACKEND: "pylabrobot.liquid_handling.LiquidHandler",
-        PLRClassType.PR_BACKEND: "pylabrobot.plate_reading.PlateReader",
-        PLRClassType.HS_BACKEND: "pylabrobot.heating_shaking.HeaterShaker",
-        PLRClassType.SHAKER_BACKEND: "pylabrobot.shaking.Shaker",
-        PLRClassType.TEMP_BACKEND: "pylabrobot.temperature_controlling.TemperatureController",
-        PLRClassType.CENTRIFUGE_BACKEND: "pylabrobot.centrifuging.Centrifuge",
-        PLRClassType.THERMOCYCLER_BACKEND: "pylabrobot.thermocycling.Thermocycler",
-        PLRClassType.PUMP_BACKEND: "pylabrobot.pumping.Pump",
-        PLRClassType.PUMP_ARRAY_BACKEND: "pylabrobot.pumping.PumpArray",
-        PLRClassType.FAN_BACKEND: "pylabrobot.fans.Fan",
-        PLRClassType.SEALER_BACKEND: "pylabrobot.plate_sealing.Sealer",
-        PLRClassType.PEELER_BACKEND: "pylabrobot.plate_peeling.Peeler",
-        PLRClassType.POWDER_DISPENSER_BACKEND: "pylabrobot.powder_dispensing.PowderDispenser",
-        PLRClassType.INCUBATOR_BACKEND: "pylabrobot.incubating.Incubator",
-        PLRClassType.SCARA_BACKEND: "pylabrobot.scara.SCARA",
-    }
+  # Map backend types to frontend FQNs
+  backend_frontend_fqn_map = {
+    PLRClassType.LH_BACKEND: "pylabrobot.liquid_handling.LiquidHandler",
+    PLRClassType.PR_BACKEND: "pylabrobot.plate_reading.PlateReader",
+    PLRClassType.HS_BACKEND: "pylabrobot.heating_shaking.HeaterShaker",
+    PLRClassType.SHAKER_BACKEND: "pylabrobot.shaking.Shaker",
+    PLRClassType.TEMP_BACKEND: "pylabrobot.temperature_controlling.TemperatureController",
+    PLRClassType.CENTRIFUGE_BACKEND: "pylabrobot.centrifuging.Centrifuge",
+    PLRClassType.THERMOCYCLER_BACKEND: "pylabrobot.thermocycling.Thermocycler",
+    PLRClassType.PUMP_BACKEND: "pylabrobot.pumping.Pump",
+    PLRClassType.PUMP_ARRAY_BACKEND: "pylabrobot.pumping.PumpArray",
+    PLRClassType.FAN_BACKEND: "pylabrobot.fans.Fan",
+    PLRClassType.SEALER_BACKEND: "pylabrobot.plate_sealing.Sealer",
+    PLRClassType.PEELER_BACKEND: "pylabrobot.plate_peeling.Peeler",
+    PLRClassType.POWDER_DISPENSER_BACKEND: "pylabrobot.powder_dispensing.PowderDispenser",
+    PLRClassType.INCUBATOR_BACKEND: "pylabrobot.incubating.Incubator",
+    PLRClassType.SCARA_BACKEND: "pylabrobot.scara.SCARA",
+  }
 
-    for backend in backends:
-        try:
-            accession_id = generate_uuid_from_fqn(f"backend:{backend.fqn}")
-            category = backend_category_map.get(backend.class_type, "UnknownBackend")
-            frontend_fqn = backend_frontend_fqn_map.get(backend.class_type)
+  for backend in backends:
+    try:
+      accession_id = generate_uuid_from_fqn(f"backend:{backend.fqn}")
+      category = backend_category_map.get(backend.class_type, "UnknownBackend")
+      frontend_fqn = backend_frontend_fqn_map.get(backend.class_type)
 
-            # Get capabilities dict
-            caps_dict = backend.to_capabilities_dict() if hasattr(backend, "to_capabilities_dict") else {}
+      # Get capabilities dict
+      caps_dict = backend.to_capabilities_dict() if hasattr(backend, "to_capabilities_dict") else {}
 
-            conn.execute(
-                """
+      conn.execute(
+        """
                 INSERT OR REPLACE INTO machine_definitions (
                     accession_id, fqn, name, description, plr_category,
                     machine_category, has_deck, manufacturer,
@@ -612,74 +627,73 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
                     frontend_fqn
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (
-                    accession_id,
-                    backend.fqn,
-                    backend.name,
-                    backend.docstring or "",
-                    "Backend",
-                    category,
-                    0,  # backends don't have decks
-                    backend.manufacturer,
-                    safe_json_dumps(caps_dict),
-                    safe_json_dumps([]),  # backends don't have compatible_backends
-                    safe_json_dumps({}),
-                    now,
-                    now,
-                    frontend_fqn,
-                ),
-            )
+        (
+          accession_id,
+          backend.fqn,
+          backend.name,
+          backend.docstring or "",
+          "Backend",
+          category,
+          0,  # backends don't have decks
+          backend.manufacturer,
+          safe_json_dumps(caps_dict),
+          safe_json_dumps([]),  # backends don't have compatible_backends
+          safe_json_dumps({}),
+          now,
+          now,
+          frontend_fqn,
+        ),
+      )
 
-            # NOTE: We intentionally do NOT seed machine instances from backends.
-            # Users should instantiate machines from definitions via the UI.
+      # NOTE: We intentionally do NOT seed machine instances from backends.
+      # Users should instantiate machines from definitions via the UI.
 
-            count += 1
-        except Exception as e:
-            print(f"  [WARN] Failed to insert backend {backend.name}: {e}")
+      count += 1
+    except Exception as e:
+      print(f"  [WARN] Failed to insert backend {backend.name}: {e}")
 
-    conn.commit()
-    print(f"[generate_browser_db] Inserted {count} backend definitions")
-    return count
+  conn.commit()
+  print(f"[generate_browser_db] Inserted {count} backend definitions")
+  return count
 
 
 def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
-    """Ensure every frontend type has at least one backend definition (Simulated)."""
-    now = datetime.now().isoformat()
-    
-    # All known frontend types
-    frontend_types = [
-        ("LiquidHandler", "pylabrobot.liquid_handling.LiquidHandler"),
-        ("PlateReader", "pylabrobot.plate_reading.PlateReader"),
-        ("HeaterShaker", "pylabrobot.heating_shaking.HeaterShaker"),
-        ("Shaker", "pylabrobot.shaking.Shaker"),
-        ("TemperatureController", "pylabrobot.temperature_controlling.TemperatureController"),
-        ("Centrifuge", "pylabrobot.centrifuging.Centrifuge"),
-        ("Thermocycler", "pylabrobot.thermocycling.Thermocycler"),
-        ("Pump", "pylabrobot.pumping.Pump"),
-        ("PumpArray", "pylabrobot.pumping.PumpArray"),
-        ("Fan", "pylabrobot.fans.Fan"),
-        ("Sealer", "pylabrobot.plate_sealing.Sealer"),
-        ("Peeler", "pylabrobot.plate_peeling.Peeler"),
-        ("PowderDispenser", "pylabrobot.powder_dispensing.PowderDispenser"),
-        ("Incubator", "pylabrobot.incubating.Incubator"),
-        ("Arm", "pylabrobot.scara.SCARA"),
-    ]
+  """Ensure every frontend type has at least one backend definition (Simulated)."""
+  now = datetime.now().isoformat()
 
-    for short_name, frontend_fqn in frontend_types:
-        # Check if any backend exists for this frontend
-        cursor = conn.execute(
-            "SELECT count(*) FROM machine_definitions WHERE frontend_fqn = ?", 
-            (frontend_fqn,)
-        )
-        count = cursor.fetchone()[0]
-        
-        if count == 0:
-            # Create a synthetic "Simulated" backend
-            fqn = f"pylabrobot.backends.simulated.{short_name}Backend"
-            accession_id = generate_uuid_from_fqn(f"backend:{fqn}")
-            
-            conn.execute(
-                """
+  # All known frontend types
+  frontend_types = [
+    ("LiquidHandler", "pylabrobot.liquid_handling.LiquidHandler"),
+    ("PlateReader", "pylabrobot.plate_reading.PlateReader"),
+    ("HeaterShaker", "pylabrobot.heating_shaking.HeaterShaker"),
+    ("Shaker", "pylabrobot.shaking.Shaker"),
+    ("TemperatureController", "pylabrobot.temperature_controlling.TemperatureController"),
+    ("Centrifuge", "pylabrobot.centrifuging.Centrifuge"),
+    ("Thermocycler", "pylabrobot.thermocycling.Thermocycler"),
+    ("Pump", "pylabrobot.pumping.Pump"),
+    ("PumpArray", "pylabrobot.pumping.PumpArray"),
+    ("Fan", "pylabrobot.fans.Fan"),
+    ("Sealer", "pylabrobot.plate_sealing.Sealer"),
+    ("Peeler", "pylabrobot.plate_peeling.Peeler"),
+    ("PowderDispenser", "pylabrobot.powder_dispensing.PowderDispenser"),
+    ("Incubator", "pylabrobot.incubating.Incubator"),
+    ("Arm", "pylabrobot.scara.SCARA"),
+  ]
+
+  for short_name, frontend_fqn in frontend_types:
+    # Check if any backend exists for this frontend
+    cursor = conn.execute(
+      "SELECT count(*) FROM machine_definitions WHERE frontend_fqn = ?", (frontend_fqn,)
+    )
+    count = cursor.fetchone()[0]
+
+    if count == 0:
+      # Create a synthetic "Simulated" backend
+      fqn = f"pylabrobot.backends.simulated.{short_name}Backend"
+      accession_id = generate_uuid_from_fqn(f"backend:{fqn}")
+
+      conn.execute(
+        """
                 INSERT OR REPLACE INTO machine_definitions (
                     accession_id, fqn, name, description, plr_category,
                     machine_category, has_deck, manufacturer,
@@ -687,139 +701,137 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
                     frontend_fqn
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (
-                    accession_id,
-                    fqn,
-                    f"Simulated {short_name}",
-                    f"Generic simulated backend for {short_name}",
-                    "Backend",
-                    short_name,
-                    0,
-                    "PyLabRobot",
-                    "{}",
-                    "[]",
-                    safe_json_dumps(["Simulator", "Chatterbox"]),
-                    "{}",
-                    now,
-                    now,
-                    frontend_fqn,
-                ),
-            )
-            
-            # NOTE: We intentionally do NOT seed machine instances.
-            # Users should instantiate machines from definitions via the UI.
+        (
+          accession_id,
+          fqn,
+          f"Simulated {short_name}",
+          f"Generic simulated backend for {short_name}",
+          "Backend",
+          short_name,
+          0,
+          "PyLabRobot",
+          "{}",
+          "[]",
+          safe_json_dumps(["Simulator", "Chatterbox"]),
+          "{}",
+          now,
+          now,
+          frontend_fqn,
+        ),
+      )
+
+      # NOTE: We intentionally do NOT seed machine instances.
+      # Users should instantiate machines from definitions via the UI.
 
 
 def insert_metadata(conn: sqlite3.Connection) -> None:
-    """Insert metadata about the database generation."""
-    now = datetime.now().isoformat()
+  """Insert metadata about the database generation."""
+  now = datetime.now().isoformat()
 
-    conn.execute(
-        "INSERT OR REPLACE INTO _schema_metadata (key, value) VALUES (?, ?)",
-        ("generated_at", now),
-    )
-    conn.execute(
-        "INSERT OR REPLACE INTO _schema_metadata (key, value) VALUES (?, ?)",
-        ("schema_version", "1.0.0"),
-    )
-    conn.execute(
-        "INSERT OR REPLACE INTO _schema_metadata (key, value) VALUES (?, ?)",
-        ("generator", "generate_browser_db.py (LibCST static analysis)"),
-    )
-    conn.commit()
+  conn.execute(
+    "INSERT OR REPLACE INTO _schema_metadata (key, value) VALUES (?, ?)",
+    ("generated_at", now),
+  )
+  conn.execute(
+    "INSERT OR REPLACE INTO _schema_metadata (key, value) VALUES (?, ?)",
+    ("schema_version", "1.0.0"),
+  )
+  conn.execute(
+    "INSERT OR REPLACE INTO _schema_metadata (key, value) VALUES (?, ?)",
+    ("generator", "generate_browser_db.py (LibCST static analysis)"),
+  )
+  conn.commit()
 
 
 def add_sample_workcell(conn: sqlite3.Connection) -> None:
-    """Add a sample workcell for demo purposes."""
-    now = datetime.now().isoformat()
-    workcell_id = str(uuid4())
+  """Add a sample workcell for demo purposes."""
+  now = datetime.now().isoformat()
+  workcell_id = str(uuid4())
 
-    conn.execute(
-        """
+  conn.execute(
+    """
         INSERT OR REPLACE INTO workcells (
             accession_id, name, description, physical_location, status,
             created_at, updated_at, properties_json
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (
-            workcell_id,
-            "Demo Workcell",
-            "A sample workcell for browser-mode demonstration",
-            "Virtual Lab 1",
-            "available",
-            now,
-            now,
-            "{}",
-        ),
-    )
-    conn.commit()
+    (
+      workcell_id,
+      "Demo Workcell",
+      "A sample workcell for browser-mode demonstration",
+      "Virtual Lab 1",
+      "available",
+      now,
+      now,
+      "{}",
+    ),
+  )
+  conn.commit()
 
 
 def main() -> None:
-    """Main entry point for database generation."""
-    # Ensure output directory exists
-    ASSETS_DB_DIR.mkdir(parents=True, exist_ok=True)
+  """Main entry point for database generation."""
+  # Ensure output directory exists
+  ASSETS_DB_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Check for schema file
-    if not SCHEMA_SQL_PATH.exists():
-        return
+  # Check for schema file
+  if not SCHEMA_SQL_PATH.exists():
+    return
 
-    # Remove existing database
-    if OUTPUT_DB_PATH.exists():
-        OUTPUT_DB_PATH.unlink()
+  # Remove existing database
+  if OUTPUT_DB_PATH.exists():
+    OUTPUT_DB_PATH.unlink()
 
-    # Create new database
-    conn = sqlite3.connect(OUTPUT_DB_PATH)
+  # Create new database
+  conn = sqlite3.connect(OUTPUT_DB_PATH)
 
-    try:
-        # Load and execute schema
-        schema = SCHEMA_SQL_PATH.read_text()
-        conn.executescript(schema)
+  try:
+    # Load and execute schema
+    schema = SCHEMA_SQL_PATH.read_text()
+    conn.executescript(schema)
 
-        # Discover and insert PLR definitions using static analysis
-        discover_resources_static(conn)
+    # Discover and insert PLR definitions using static analysis
+    discover_resources_static(conn)
 
-        discover_machines_static(conn)
+    discover_machines_static(conn)
 
-        discover_decks_static(conn)
+    discover_decks_static(conn)
 
-        discover_protocols_static(conn)
+    discover_protocols_static(conn)
 
-        discover_backends_static(conn)
+    discover_backends_static(conn)
 
-        # Ensure simulated definitions for all types (fixes SCARA etc)
-        ensure_minimal_backends(conn)
+    # Ensure simulated definitions for all types (fixes SCARA etc)
+    ensure_minimal_backends(conn)
 
-        # Add sample workcell
-        add_sample_workcell(conn)
+    # Add sample workcell
+    add_sample_workcell(conn)
 
-        # Update metadata
-        insert_metadata(conn)
+    # Update metadata
+    insert_metadata(conn)
 
-        # Get database size
-        conn.commit()
-        OUTPUT_DB_PATH.stat().st_size
+    # Get database size
+    conn.commit()
+    OUTPUT_DB_PATH.stat().st_size
 
-
-        # Show table statistics
-        cursor = conn.execute(
-            """
+    # Show table statistics
+    cursor = conn.execute(
+      """
             SELECT name FROM sqlite_master
             WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_%'
             ORDER BY name
             """
-        )
-        for (table_name,) in cursor.fetchall():
-            count_cursor = conn.execute(f"SELECT COUNT(*) FROM {table_name}")
-            count = count_cursor.fetchone()[0]
-            print(f"  {table_name:30}: {count}")
+    )
+    for (table_name,) in cursor.fetchall():
+      count_cursor = conn.execute(f"SELECT COUNT(*) FROM {table_name}")
+      count = count_cursor.fetchone()[0]
+      print(f"  {table_name:30}: {count}")
 
-    except Exception:
-        raise
-    finally:
-        conn.close()
-
+  except Exception:
+    raise
+  finally:
+    conn.close()
 
 
 if __name__ == "__main__":
-    main()
+  main()

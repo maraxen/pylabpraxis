@@ -92,7 +92,7 @@
                   "with": "src/environments/environment.gh-pages.ts"
                 }
               ],
-              "baseHref": "/praxis/",
+              "baseHref": "/pylabpraxis/",
               "optimization": true,
               "outputHashing": "all"
             },
