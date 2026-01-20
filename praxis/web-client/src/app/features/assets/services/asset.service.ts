@@ -278,6 +278,16 @@ export class AssetService {
     );
   }
 
+  searchMachineDefinitions(query: string): Observable<MachineDefinition[]> {
+    return this.getMachineDefinitions().pipe(
+      map(defs => defs.filter(d => 
+        d.name.toLowerCase().includes(query.toLowerCase()) ||
+        d.description?.toLowerCase().includes(query.toLowerCase()) ||
+        d.manufacturer?.toLowerCase().includes(query.toLowerCase())
+      ))
+    );
+  }
+
   getBackendsForFrontend(frontendAccessionId: string): Observable<MachineBackendDefinition[]> {
     if (this.modeService.isBrowserMode()) {
       return this.sqliteService.machineBackendDefinitions.pipe(
@@ -306,6 +316,16 @@ export class AssetService {
     }
     return this.apiWrapper.wrap(AssetsService.getMultiApiV1ResourcesDefinitionsGet(100)).pipe(
       map(defs => defs.map(d => d as unknown as ResourceDefinition))
+    );
+  }
+
+  searchResourceDefinitions(query: string): Observable<ResourceDefinition[]> {
+    return this.getResourceDefinitions().pipe(
+      map(defs => defs.filter(d => 
+        d.name.toLowerCase().includes(query.toLowerCase()) ||
+        d.description?.toLowerCase().includes(query.toLowerCase()) ||
+        d.vendor?.toLowerCase().includes(query.toLowerCase())
+      ))
     );
   }
 
@@ -434,6 +454,29 @@ export class AssetService {
   }
 
   getMachineFacets(): Observable<MachineFacets> {
+    if (this.modeService.isBrowserMode()) {
+      return this.getMachineDefinitions().pipe(
+        map(definitions => {
+          const countBy = <T extends string | number | undefined>(items: T[]): FacetItem[] => {
+            const counts = new Map<string | number, number>();
+            items.forEach(item => {
+              if (item !== undefined && item !== null && item !== '') {
+                const count = counts.get(item) || 0;
+                counts.set(item, count + 1);
+              }
+            });
+            return Array.from(counts.entries())
+              .map(([value, count]) => ({ value, count }))
+              .sort((a, b) => b.count - a.count);
+          };
+
+          return {
+            machine_category: countBy(definitions.map(d => d.machine_category)),
+            manufacturer: countBy(definitions.map(d => d.manufacturer))
+          };
+        })
+      );
+    }
     return this.apiWrapper.wrap(MachinesService.getMachineDefinitionFacetsApiV1MachinesDefinitionsFacetsGet()).pipe(
       map(facets => facets as unknown as MachineFacets)
     );

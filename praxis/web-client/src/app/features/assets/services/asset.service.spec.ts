@@ -253,7 +253,7 @@ describe('AssetService', () => {
         const result = await firstValueFrom(service.createMachine(newMachine));
 
         expect(result.name).toBe(newMachine.name);
-        expect(result.status).toBe('AVAILABLE'); // Service overrides status on create
+        expect(result.status).toBe('idle'); // Service overrides status on create
         expect(result.asset_type).toBe('MACHINE');
         expect(result.maintenance_enabled).toBe(false);
         expect(result.maintenance_schedule_json).toEqual({ intervals: [], enabled: false });
@@ -295,6 +295,7 @@ describe('AssetService', () => {
         const result = await firstValueFrom(service.createResource(newResource));
 
         expect(result.name).toBe(newResource.name);
+        expect(result.status).toBe('available');
         expect(result.asset_type).toBe('RESOURCE');
         expect(mockResourceRepo.create).toHaveBeenCalled();
       });
@@ -310,6 +311,7 @@ describe('AssetService', () => {
         const result = await firstValueFrom(service.getResources());
         expect(result.length).toBe(2);
         expect(result[0].name).toBe('Browser Plate 1');
+        // Check inferred category or other props if needed
       });
 
       it('should delete resource in browser mode', async () => {

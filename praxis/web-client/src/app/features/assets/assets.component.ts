@@ -8,7 +8,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MachineListComponent } from './components/machine-list/machine-list.component';
 import { ResourceAccordionComponent } from './components/resource-accordion/resource-accordion.component';
 import { DefinitionsListComponent } from './components/definitions-list/definitions-list.component';
-import { AddAssetDialogComponent } from '@shared/dialogs/add-asset-dialog/add-asset-dialog.component';
+import { AssetWizard } from '@shared/components/asset-wizard/asset-wizard';
 import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-discovery-dialog/hardware-discovery-dialog.component';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 import { AssetDashboardComponent } from './components/asset-dashboard/asset-dashboard.component';
@@ -350,42 +350,19 @@ export class AssetsComponent implements OnInit, OnDestroy {
   }
 
   private openUnifiedDialog(type: 'machine' | 'resource' | null = null) {
-    const dialogRef = this.dialog.open(AddAssetDialogComponent, {
+    const dialogRef = this.dialog.open(AssetWizard, {
       minWidth: '600px',
-      maxWidth: '850px',
-      width: '70vw',
+      maxWidth: '1000px',
+      width: '80vw',
       data: type ? { initialAssetType: type } : {}
     });
 
-    // Handle MatDialog data binding for standalone components
-    if (type) {
-      dialogRef.componentInstance.initialAssetType = type;
-    }
-
-    dialogRef.afterClosed().pipe(
-      filter(result => !!result),
-      switchMap(result => {
-        this.isLoading.set(true);
-        const type = result.asset_type || (result.machine_definition_accession_id ? 'MACHINE' : 'RESOURCE');
-
-        if (type === 'MACHINE') {
-          return this.assetService.createMachine(result).pipe(
-            finalize(() => {
-              this.isLoading.set(false);
-              this.machineList?.loadMachines();
-            })
-          );
-        } else {
-          return this.assetService.createResource(result).pipe(
-            finalize(() => {
-              this.isLoading.set(false);
-              this.resourceAccordion?.loadData();
-            })
-          );
-        }
-      })
-    ).subscribe({
-      error: (err) => console.error('[ASSET-DEBUG] openUnifiedDialog: Error', err)
+    // AssetWizard handles the creation itself, so we just need to refresh the lists
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.machineList?.loadMachines();
+        this.resourceAccordion?.loadData();
+      }
     });
   }
 

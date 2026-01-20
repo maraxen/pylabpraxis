@@ -14,7 +14,6 @@ import { AssetService } from '../../features/assets/services/asset.service';
 import { Observable, forkJoin, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, startWith, filter, take } from 'rxjs/operators';
 import { AssetBase, Resource, ResourceDefinition } from '../../features/assets/models/asset.models';
-import { ResourceDialogComponent } from '../../features/assets/components/resource-dialog.component';
 
 interface AssetOption {
   asset: AssetBase;
@@ -79,17 +78,6 @@ interface AssetOption {
                 [matAutocomplete]="auto"
                 [placeholder]="props.placeholder || 'Search...'"
               />
-              @if (props['assetType'] === 'resource') {
-                <button
-                  mat-icon-button
-                  matSuffix
-                  type="button"
-                  (click)="openDialog(); $event.stopPropagation()"
-                  matTooltip="Create New Resource"
-                >
-                  <mat-icon>add</mat-icon>
-                </button>
-              }
             </mat-form-field>
             <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn">
               @for (option of filteredOptions$ | async; track option.asset.accession_id) {
@@ -441,22 +429,4 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
     if ('mode' in value) return '';
     return (value as AssetBase).name || '';
   };
-
-  openDialog() {
-    const dialogRef = this.dialog.open(ResourceDialogComponent, {
-      minWidth: '600px',
-      maxWidth: '800px',
-      width: '70vw',
-      maxHeight: '80vh'
-    });
-
-    dialogRef.afterClosed().pipe(
-      filter(result => !!result),
-      take(1),
-      switchMap(result => this.assetService.createResource(result))
-    ).subscribe(newResource => {
-      this.isAutoMode.set(false);
-      this.formControl.setValue(newResource);
-    });
-  }
 }

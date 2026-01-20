@@ -11,6 +11,7 @@ import {
   computed,
   AfterViewInit,
 } from '@angular/core';
+import { InteractionService } from '../../core/services/interaction.service';
 import { AppStore } from '../../core/store/app.store';
 
 import { FormsModule } from '@angular/forms';
@@ -39,7 +40,11 @@ import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-di
 import { serial as polyfillSerial } from 'web-serial-polyfill';
 import { SerialManagerService } from '../../core/services/serial-manager.service';
 import { MatDialog } from '@angular/material/dialog';
-import { InventoryDialogComponent, InventoryItem } from './components/inventory-dialog/inventory-dialog.component';
+import { AssetWizard } from '@shared/components/asset-wizard/asset-wizard';
+
+import { MatTabsModule } from '@angular/material/tabs';
+import { DirectControlComponent } from './components/direct-control/direct-control.component';
+import { MachineRead } from '../../core/api-generated/models/MachineRead';
 
 /**
  * Playground Component
@@ -66,8 +71,9 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
     MatSelectModule,
     MatChipsModule,
     MatProgressSpinnerModule,
+    MatTabsModule,
     HardwareDiscoveryButtonComponent,
-
+    DirectControlComponent,
   ],
   template: `
     <div class="repl-container">
@@ -78,7 +84,7 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
           <div class="repl-header">
             <div class="header-title">
               <mat-icon>auto_stories</mat-icon>
-              <h2>Playground Notebook ({{ modeLabel() }})</h2>
+              <h2>Playground ({{ modeLabel() }})</h2>
             </div>
             
             <div class="header-actions flex items-center gap-2">
@@ -101,35 +107,63 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
             </div>
           </div>
 
-          <!-- JupyterLite iframe -->
-          <div class="repl-notebook-wrapper" data-tour-id="repl-notebook">
+          <mat-tab-group class="repl-tabs" [selectedIndex]="selectedTabIndex()" (selectedIndexChange)="selectedTabIndex.set($event)">
+            <mat-tab label="REPL Notebook">
+              <ng-template matTabContent>
+                <!-- JupyterLite iframe -->
+                <div class="repl-notebook-wrapper" data-tour-id="repl-notebook">
 
-            @if (jupyterliteUrl) {
-              <iframe
-                #notebookFrame
-                [src]="jupyterliteUrl"
-                class="notebook-frame"
-                (load)="onIframeLoad()"
-                allow="cross-origin-isolated; usb; serial"
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
-              ></iframe>
-            }
+                  @if (jupyterliteUrl) {
+                    <iframe
+                      #notebookFrame
+                      [src]="jupyterliteUrl"
+                      class="notebook-frame"
+                      (load)="onIframeLoad()"
+                      allow="cross-origin-isolated; usb; serial"
+                      sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
+                    ></iframe>
+                  }
 
-            @if (isLoading()) {
-              <div class="loading-overlay">
-                <div class="loading-content">
-                  <mat-spinner diameter="48"></mat-spinner>
-                  <p>Initializing Pyodide Environment...</p>
-                  @if (loadingError()) {
-                    <button mat-flat-button color="warn" (click)="reloadNotebook()">
-                      <mat-icon>refresh</mat-icon>
-                      Retry Loading
-                    </button>
+                  @if (isLoading()) {
+                    <div class="loading-overlay">
+                      <div class="loading-content">
+                        <mat-spinner diameter="48"></mat-spinner>
+                        <p>Initializing Pyodide Environment...</p>
+                        @if (loadingError()) {
+                          <button mat-flat-button color="warn" (click)="reloadNotebook()">
+                            <mat-icon>refresh</mat-icon>
+                            Retry Loading
+                          </button>
+                        }
+                      </div>
+                    </div>
                   }
                 </div>
-              </div>
-            }
-          </div>
+              </ng-template>
+            </mat-tab>
+            
+            <mat-tab label="Direct Control">
+              <ng-template matTabContent>
+                <div class="direct-control-wrapper">
+                  @if (selectedMachine()) {
+                    <app-direct-control 
+                      [machine]="$any(selectedMachine())"
+                      (executeCommand)="onExecuteCommand($event)">
+                    </app-direct-control>
+                  } @else {
+                    <div class="empty-state">
+                      <mat-icon>settings_remote</mat-icon>
+                      <p>No machine selected. Use the Inventory to select or create a machine.</p>
+                      <button mat-stroked-button (click)="openInventory()">
+                        <mat-icon>inventory_2</mat-icon>
+                        Open Inventory
+                      </button>
+                    </div>
+                  }
+                </div>
+              </ng-template>
+            </mat-tab>
+          </mat-tab-group>
         </mat-card>
       </div>
     </div>
@@ -154,38 +188,7 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
         flex-direction: column;
       }
 
-      .inventory-area {
-        height: 100%;
-        min-width: 0; /* Allow shrinking */
-        display: flex;
-        flex-direction: column;
-      }
-
-      .resize-handle {
-        width: 16px;
-        height: 100%;
-        cursor: col-resize;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        z-index: 10;
-        
-        /* Visual indicator */
-        &::after {
-          content: '';
-          width: 4px;
-          height: 48px;
-          background-color: var(--mat-sys-outline-variant);
-          border-radius: 2px;
-        }
-
-        &:hover::after {
-          background-color: var(--mat-sys-primary);
-        }
-      }
-
-      .repl-card, .inventory-card {
+      .repl-card {
         height: 100%;
         display: flex;
         flex-direction: column;
@@ -197,7 +200,7 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
         overflow: hidden;
       }
 
-      .repl-header, .inventory-header {
+      .repl-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -219,7 +222,7 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
         color: var(--mat-sys-primary);
       }
 
-      .repl-header h2, .inventory-header h3 {
+      .repl-header h2 {
         margin: 0;
         font-size: 1.1rem;
         font-weight: 500;
@@ -228,16 +231,30 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
         text-overflow: ellipsis;
       }
 
-      .repl-notebook-wrapper, .inventory-content {
-        flex-grow: 1;
-        /* overflow: hidden;  <-- REMOVE THIS. Let the iframe verify its own scroll area. */
+      .repl-tabs {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      :host ::ng-deep .repl-tabs {
+        .mat-mdc-tab-body-wrapper {
+          flex: 1;
+        }
+      }
+
+      .repl-notebook-wrapper {
+        height: 100%;
         position: relative;
         background: var(--mat-sys-surface-container-low);
       }
 
-      .inventory-content {
+      .direct-control-wrapper {
+        height: 100%;
+        padding: 24px;
         overflow-y: auto;
-        padding: 0;
+        background: var(--mat-sys-surface-container-low);
       }
 
       .notebook-frame {
@@ -246,159 +263,23 @@ import { InventoryDialogComponent, InventoryItem } from './components/inventory-
         border: none;
       }
 
-      .filter-section {
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--mat-sys-outline-variant);
+      .empty-state {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        background: var(--mat-sys-surface);
-      }
-
-      .search-field {
-        width: 100%;
-        margin-bottom: 0;
-      }
-
-      :host ::ng-deep .search-field {
-        .mat-mdc-form-field-subscript-wrapper { display: none; }
-        .mat-mdc-text-field-wrapper { height: 40px; }
-        .mat-mdc-form-field-flex { height: 40px; }
-      }
-
-      .category-btn {
-        width: 100%;
-        justify-content: space-between;
-      }
-
-      .inventory-section {
-        padding: 8px 0;
-      }
-
-      .inventory-section h4 {
-        padding: 0 16px;
-        display: flex;
         align-items: center;
-        gap: 8px;
-        margin: 8px 0 8px 0;
-        font-size: 0.8rem;
-        font-weight: 600;
+        justify-content: center;
+        height: 100%;
+        gap: 16px;
         color: var(--mat-sys-on-surface-variant);
-        text-transform: uppercase;
-      }
-
-      .inventory-section h4 mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
-      }
-
-      .inventory-list {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .inventory-item-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 4px 8px 4px 16px;
-        border-bottom: 1px solid var(--mat-sys-outline-variant);
-        
-        &:last-child {
-          border-bottom: none;
-        }
-
-        &:hover {
-          background-color: var(--mat-sys-surface-container-high);
-        }
-      }
-
-      .item-info {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        min-width: 0;
-        gap: 4px;
-      }
-
-      .item-name {
-        font-family: monospace;
-        font-size: 0.85rem;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .item-badges {
-        display: flex;
-        gap: 4px;
-      }
-
-      .badge {
-        font-size: 10px;
-        padding: 2px 6px;
-        border-radius: 4px;
-        text-transform: uppercase;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 2px;
-      }
-      
-      .badge.in-use {
-        background-color: var(--mat-sys-error-container);
-        color: var(--mat-sys-on-error-container);
-        
-        mat-icon {
-          font-size: 10px;
-          height: 10px;
-          width: 10px;
-        }
-      }
-
-      .badge.simulated {
-        background-color: var(--mat-sys-secondary-container);
-        color: var(--mat-sys-on-secondary-container);
-      }
-
-      .resource-icon {
-        font-size: 14px;
-        width: 14px;
-        height: 14px;
-        color: var(--mat-sys-primary);
-        display: inline-block;
-        margin-right: 4px;
-        vertical-align: middle;
-      }
-
-      .insert-btn {
-        color: var(--mat-sys-primary);
-        transform: scale(0.9);
-      }
-
-      .empty-state-small {
-        padding: 16px;
         text-align: center;
-        color: var(--mat-sys-on-surface-variant);
-        font-style: italic;
-        font-size: 0.85rem;
       }
 
-
-
-      .truncation-notice {
-        padding: 8px 16px;
-        text-align: center;
-        font-size: 0.75rem;
-        color: var(--mat-sys-on-surface-variant);
-        font-style: italic;
+      .empty-state mat-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
       }
-      
-      .selected {
-        background-color: var(--mat-sys-secondary-container);
-        color: var(--mat-sys-on-secondary-container);
-      }
+
       .loading-overlay {
         position: absolute;
         top: 0;
@@ -440,6 +321,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   private deckService = inject(DeckCatalogService);
   private sanitizer = inject(DomSanitizer);
   private dialog = inject(MatDialog);
+  private interactionService = inject(InteractionService);
 
   // Serial Manager for main-thread I/O (Phase B)
   private serialManager = inject(SerialManagerService);
@@ -455,6 +337,10 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   private viewInitialized = false;
 
   private subscription = new Subscription();
+
+  // Selected machine for Direct Control
+  selectedMachine = signal<Machine | null>(null);
+  selectedTabIndex = signal(0);
 
   // Ready signal handshake
   private replChannel: BroadcastChannel | null = null;
@@ -504,7 +390,8 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     // Set up BroadcastChannel listener for ready signal from Pyodide kernel
     this.replChannel = new BroadcastChannel('praxis_repl');
     this.replChannel.onmessage = (event) => {
-      if (event.data?.type === 'praxis:ready') {
+      const data = event.data;
+      if (data?.type === 'praxis:ready') {
         console.log('[REPL] Received kernel ready signal');
         this.isLoading.set(false);
         if (this.loadingTimeout) {
@@ -512,8 +399,28 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
           this.loadingTimeout = undefined;
         }
         this.cdr.detectChanges();
+      } else if (data?.type === 'USER_INTERACTION') {
+        this.handleUserInteraction(data);
       }
     };
+  }
+
+  /**
+   * Handle USER_INTERACTION requests from the REPL channel and show UI dialogs
+   */
+  private async handleUserInteraction(payload: any) {
+    const result = await this.interactionService.handleInteraction({
+      interaction_type: payload.interaction_type,
+      payload: payload.payload
+    });
+
+    if (this.replChannel) {
+      this.replChannel.postMessage({
+        type: 'praxis:interaction_response',
+        id: payload.id,
+        value: result
+      });
+    }
   }
 
   ngOnDestroy() {
@@ -529,31 +436,21 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   openInventory() {
-    const dialogRef = this.dialog.open(InventoryDialogComponent, {
+    const dialogRef = this.dialog.open(AssetWizard, {
       width: '1200px',
       minWidth: '500px',
       height: 'auto',
       minHeight: '400px',
-      maxHeight: '70vh',
+      maxHeight: '90vh',
       panelClass: 'praxis-dialog-no-padding'
     });
 
-    dialogRef.afterClosed().subscribe((result: InventoryItem[] | undefined) => {
-      if (result && result.length > 0) {
-        this.insertMultipleAssets(result);
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (result && typeof result === 'object') {
+        const type = result.asset_type === 'MACHINE' ? 'machine' : 'resource';
+        this.insertAsset(type, result);
       }
     });
-  }
-
-  async insertMultipleAssets(items: InventoryItem[]) {
-    for (const item of items) {
-      await this.insertAsset(
-        item.type,
-        item.asset,
-        item.variableName,
-        item.deckConfigId
-      );
-    }
   }
 
   // Helper for AssetService (kept for reference or if we need to reload dialog data via service, though dialog handles it)
@@ -693,8 +590,13 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
       '        if isinstance(data, dict) and data.get("type") == "praxis:execute":',
       '            code = data.get("code", "")',
       '            print(f"Executing injected code...")',
-      '            print(f"DEBUG Code:\\n{code}")',
       '            exec(code, globals())',
+      '        elif isinstance(data, dict) and data.get("type") == "praxis:interaction_response":',
+      '            try:',
+      '                import web_bridge',
+      '                web_bridge.handle_interaction_response(data.get("id"), data.get("value"))',
+      '            except ImportError:',
+      '                print("! web_bridge not found for interaction response")',
       '    except Exception as e:',
       '        import traceback',
       '        print(f"Error executing injected code: {e}")',
@@ -757,6 +659,33 @@ except Exception as e:
     print(f"PylibPraxis: Failed to load ${shim}: {e}")
 `;
     }
+
+    // Load web_bridge.py as a module
+    shimInjections += `
+print("PylibPraxis: Loading web_bridge.py...")
+try:
+    _bridge_code = await (await pyodide.http.pyfetch('/assets/python/web_bridge.py')).string()
+    with open('web_bridge.py', 'w') as f:
+        f.write(_bridge_code)
+    print("PylibPraxis: Loaded web_bridge.py")
+except Exception as e:
+    print(f"PylibPraxis: Failed to load web_bridge.py: {e}")
+
+# Load praxis package
+import os
+if not os.path.exists('praxis'):
+    os.makedirs('praxis')
+    
+for _p_file in ['__init__.py', 'interactive.py']:
+    try:
+        print(f"PylibPraxis: Loading praxis/{_p_file}...")
+        _p_code = await (await pyodide.http.pyfetch(f'/assets/python/praxis/{_p_file}')).string()
+        with open(f'praxis/{_p_file}', 'w') as f:
+            f.write(_p_code)
+        print(f"PylibPraxis: Loaded praxis/{_p_file}")
+    except Exception as e:
+        print(f"PylibPraxis: Failed to load praxis/{_p_file}: {e}")
+`;
 
     const baseBootstrap = this.generateBootstrapCode();
     return shimInjections + '\n' + baseBootstrap;
@@ -879,172 +808,39 @@ except Exception as e:
    */
   private async generateMachineCode(machine: Machine, variableName?: string, deckConfigId?: string): Promise<string> {
     const varName = variableName || this.assetToVarName(machine);
-    const category = machine.machine_category?.toLowerCase() || 'machine';
-    const plrBackendFqn = machine.plr_definition?.fqn || machine.connection_info?.['plr_backend'];
+    
+    // Extract FQNs
+    const frontendFqn = machine.plr_definition?.frontend_fqn || machine.frontend_definition?.fqn;
+    const backendFqn = machine.plr_definition?.fqn || machine.backend_definition?.fqn || machine.simulation_backend_name;
+    const isSimulated = !!(machine.is_simulation_override || machine.simulation_backend_name);
 
-    const isSimulated = machine.is_simulation_override;
-
-    // Get FQNs from definition
-    const frontendFqn = machine.plr_definition?.frontend_fqn;
-    const backendFqn = plrBackendFqn;
-
-    // Deck Configuration Handling
-    let deckCode = '';
-    let deckArg = '';
-
-    if (isSimulated && deckConfigId) {
-      // Look up the configuration
-      // We need to subscribe to the service to get the list, then find it
-      const configs = await new Promise<{ id: string, name: string, config: any }[]>((resolve) => {
-        this.deckService.getUserDeckConfigurations().subscribe(c => resolve(c));
-      });
-      const wrapper = configs.find(c => c.id === deckConfigId);
-
-      if (wrapper) {
-        const plrDeck = this.deckService.createPlrResourceFromConfig(wrapper.config);
-        // Serialize to JSON string for Python
-        const jsonStr = JSON.stringify(plrDeck);
-
-        deckCode = [
-          `# Load Custom Deck Configuration: ${wrapper.name}`,
-          `import json`,
-          `from pylabrobot.resources import Deck`,
-          `_deck_data = json.loads('${jsonStr}')`,
-          `_deck_inst = Deck.deserialize(_deck_data)`,
-          `print(f"Loaded deck: {_deck_inst.name}")`
-        ].join('\n');
-
-        deckArg = `, deck=_deck_inst`;
-      }
+    if (!frontendFqn) {
+      return `# Machine: ${machine.name} (Missing Frontend FQN)`;
     }
 
-    // If we have both FQNs, generate clean code using them
-    if (frontendFqn && backendFqn) {
-      const frontendClass = frontendFqn.split('.').pop()!;
-      const frontendModule = frontendFqn.substring(0, frontendFqn.lastIndexOf('.'));
-      const backendClass = backendFqn.split('.').pop()!;
-      const backendModule = backendFqn.substring(0, backendFqn.lastIndexOf('.'));
+    const frontendClass = frontendFqn.split('.').pop()!;
+    const frontendModule = frontendFqn.substring(0, frontendFqn.lastIndexOf('.'));
 
-      if (isSimulated) {
-        if (frontendClass === 'LiquidHandler') {
-          return [
-            `# Machine: ${machine.name} (simulation mode)`,
-            deckCode,
-            `from ${frontendModule} import ${frontendClass}`,
-            `from pylabrobot.liquid_handling.backends.simulation import SimulatorBackend`,
-            `${varName} = ${frontendClass}(backend=SimulatorBackend()${deckArg})`,
-            `await ${varName}.setup()`,
-            `print(f"Created: {${varName}} (simulation mode)")`,
-          ].filter(Boolean).join('\n');
-        }
-        return [
-          `# Machine: ${machine.name} (simulation mode)`,
-          `# Note: Simulation not available for ${frontendClass}`,
-          `from ${frontendModule} import ${frontendClass}`,
-          `from ${backendModule} import ${backendClass}`,
-          `${varName}_backend = ${backendClass}()`,
-          `${varName} = ${frontendClass}(backend=${varName}_backend)`,
-          `# await ${varName}.setup()  # Uncomment when connected to hardware`,
-          `print(f"Created: {${varName}} (backend initialized, setup skipped)")`,
-        ].join('\n');
-      }
+    const config = {
+      backend_fqn: backendFqn || 'pylabrobot.liquid_handling.backends.simulation.SimulatorBackend',
+      port_id: machine.connection_info?.['address'] || machine.connection_info?.['port_id'] || '',
+      is_simulated: isSimulated,
+      baudrate: machine.connection_info?.['baudrate'] || 9600
+    };
 
-      // Physical hardware
-      if (frontendClass === 'PlateReader') {
-        return [
-          `# Machine: ${machine.name}`,
-          `from ${frontendModule} import ${frontendClass}`,
-          `from ${backendModule} import ${backendClass}`,
-          `${varName}_backend = ${backendClass}()`,
-          `# Force-inject WebSerial (browser shim) into backend io`,
-          `${varName}_backend.io = WebSerial(baudrate=125000)`,
-          `${varName} = ${frontendClass}(name="${machine.name}", backend=${varName}_backend, size_x=1, size_y=1, size_z=1)`,
-          ``,
-          `# Auto-start connection`,
-          `import asyncio`,
-          `print("⏳ Initializing ${machine.name}...")`,
-          `async def _auto_setup_${varName}():`,
-          `    try:`,
-          `        await ${varName}.setup()`,
-          `        print("✅ ${machine.name} connected and ready!")`,
-          `    except Exception as e:`,
-          `        print(f"❌ Setup failed: {e}")`,
-          ``,
-          `asyncio.create_task(_auto_setup_${varName}())`,
-        ].join('\n');
-      }
+    const lines = [
+      `# Machine: ${machine.name}`,
+      `from web_bridge import create_configured_backend`,
+      `from ${frontendModule} import ${frontendClass}`,
+      ``,
+      `config = ${JSON.stringify(config, null, 2)}`,
+      `backend = create_configured_backend(config)`,
+      `${varName} = ${frontendClass}(backend=backend)`,
+      `await ${varName}.setup()`,
+      `print(f"Created: {${varName}}")`
+    ];
 
-      return [
-        `# Machine: ${machine.name}`,
-        `from ${frontendModule} import ${frontendClass}`,
-        `from ${backendModule} import ${backendClass}`,
-        `${varName}_backend = ${backendClass}()`,
-        `${varName} = ${frontendClass}(backend=${varName}_backend)`,
-        `await ${varName}.setup()`,
-        `print(f"Created: {${varName}}")`,
-      ].join('\n');
-    }
-
-    // Fallback: category-based logic
-    if (category === 'liquid_handler' || category === 'liquidhandler') {
-      if (isSimulated) {
-        return [
-          `# Machine: ${machine.name} (simulation mode)`,
-          deckCode,
-          `from pylabrobot.liquid_handling import LiquidHandler`,
-          `from pylabrobot.liquid_handling.backends.simulation import SimulatorBackend`,
-          `${varName} = LiquidHandler(backend=SimulatorBackend()${deckArg})`,
-          `print(f"Created: {${varName}} (simulation mode)")`,
-          `print("Use variable: ${varName}")`,
-          `print("Call 'await ${varName}.setup()' to initialize")`
-        ].filter(Boolean).join('\n');
-      } else {
-        const backendClass = plrBackendFqn?.split('.').pop() || 'STAR';
-        const backendModule = plrBackendFqn?.replace(`.${backendClass}`, '') || 'pylabrobot.liquid_handling.backends.hamilton';
-        return [
-          `# Machine: ${machine.name} (physical hardware)`,
-          `from pylabrobot.liquid_handling import LiquidHandler`,
-          `from ${backendModule} import ${backendClass}`,
-          `${varName}_backend = ${backendClass}()`,
-          `${varName} = LiquidHandler(backend=${varName}_backend)`,
-          `print(f"Created: {${varName}} with ${backendClass} backend")`,
-          `print("Use variable: ${varName}")`,
-          `print("Call 'await ${varName}.setup()' to connect to hardware")`
-        ].join('\n');
-      }
-    } else if (category === 'plate_reader' || category === 'platereader' || category === 'platereaderbackend') {
-      const backendClass = plrBackendFqn?.split('.').pop() || 'CLARIOstarBackend';
-      const backendModule = plrBackendFqn?.replace(`.${backendClass}`, '') || 'pylabrobot.plate_reading.clario_star_backend';
-      return [
-        `# Machine: ${machine.name}`,
-        `from pylabrobot.plate_reading import PlateReader`,
-        `from ${backendModule} import ${backendClass}`,
-        `${varName}_backend = ${backendClass}()`,
-        `# Force-inject WebSerial (browser shim) into backend io`,
-        `${varName}_backend.io = WebSerial(baudrate=125000)`,
-        `${varName} = PlateReader(name="${machine.name}", backend=${varName}_backend, size_x=1, size_y=1, size_z=1)`,
-        ``,
-        `# Auto-start connection`,
-        `import asyncio`,
-        `print("⏳ Initializing ${machine.name}...")`,
-        `async def _auto_setup_${varName}():`,
-        `    try:`,
-        `        await ${varName}.setup()`,
-        `        print("✅ ${machine.name} connected and ready!")`,
-        `    except Exception as e:`,
-        `        print(f"❌ Setup failed: {e}")`,
-        ``,
-        `asyncio.create_task(_auto_setup_${varName}())`,
-      ].join('\n');
-    } else {
-      return [
-        `# Machine: ${machine.name}`,
-        `# Category: ${category}`,
-        `# FQN: ${plrBackendFqn || 'unknown'}`,
-        `print("Warning: Could not determine specific frontend for category '${category}'")`,
-        `print("Machine '${machine.name}' has been skipped or needs manual setup.")`
-      ].join('\n');
-    }
+    return lines.join('\n');
   }
 
   /**
@@ -1069,6 +865,7 @@ except Exception as e:
     // If implementing physical machine, check prior authorization
     if (type === 'machine') {
       const machine = asset as Machine;
+      this.selectedMachine.set(machine);
       // If it's a physical machine (not simulated)
       if (!machine.is_simulation_override) {
         try {
@@ -1106,6 +903,46 @@ except Exception as e:
           duration: 2000,
         });
       });
+    }
+  }
+
+  /**
+   * Handle executeCommand from DirectControlComponent
+   */
+  async onExecuteCommand(event: { machineName: string, methodName: string, args: any }) {
+    const { machineName, methodName, args } = event;
+    
+    // Convert machine name to safe variable name (same logic as insertAsset)
+    const asset = this.selectedMachine();
+    if (!asset) return;
+    
+    const varName = this.assetToVarName(asset);
+    
+    // Construct Python code: await machine_name.method_name(arg1=val1, arg2=val2)
+    const argList = Object.entries(args)
+      .map(([key, val]) => {
+        const valStr = typeof val === 'string' ? `"${val}"` : val;
+        return `${key}=${valStr}`;
+      })
+      .join(', ');
+    
+    const code = `await ${varName}.${methodName}(${argList})`;
+    
+    console.log('[REPL] Executing direct command:', code);
+
+    // Send code via BroadcastChannel
+    try {
+      const channel = new BroadcastChannel('praxis_repl');
+      channel.postMessage({
+        type: 'praxis:execute',
+        code: code
+      });
+      setTimeout(() => channel.close(), 100);
+
+      this.snackBar.open(`Executing ${methodName}...`, 'OK', { duration: 2000 });
+    } catch (e) {
+      console.error('Failed to send command to REPL:', e);
+      this.snackBar.open(`Failed to send command`, 'OK', { duration: 3000 });
     }
   }
 }

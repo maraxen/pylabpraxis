@@ -1,4 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 
 import { ModeService } from '@core/services/mode.service';
 import { PythonRuntimeService } from '@core/services/python-runtime.service';
@@ -15,6 +16,8 @@ import { ApiWrapperService } from '../../../core/services/api-wrapper.service';
 import { ProtocolRun } from '../../../core/db/schema';
 import { MachineDefinition } from '../../assets/models/asset.models';
 
+import { WizardStateService } from './wizard-state.service';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -22,6 +25,8 @@ export class ExecutionService {
   private modeService = inject(ModeService);
   private pythonRuntime = inject(PythonRuntimeService);
   private sqliteService = inject(SqliteService);
+  private http = inject(HttpClient);
+  private wizardState = inject(WizardStateService);
 
   private readonly WS_URL = environment.wsUrl;
   private readonly API_URL = environment.apiUrl;
@@ -42,6 +47,22 @@ export class ExecutionService {
   messages$ = this.messagesSubject.asObservable();
 
   private apiWrapper = inject(ApiWrapperService);
+
+  /**
+   * Fetch protocol blob from backend or static assets
+   */
+  fetchProtocolBlob(id: string): Observable<ArrayBuffer> {
+    if (this.modeService.isBrowserMode()) {
+      // Fetch from static assets in browser/offline mode
+      return this.http.get(`/assets/protocols/${id}.pkl`, {
+        responseType: 'arraybuffer'
+      });
+    }
+    // Default: Fetch from backend API
+    return this.http.get(`${this.API_URL}/api/v1/protocols/definitions/${id}/code/binary`, {
+      responseType: 'arraybuffer'
+    });
+  }
 
   /**
    * Check protocol compatibility with available machines
@@ -178,49 +199,51 @@ export class ExecutionService {
       this.updateRunState({ status: ExecutionStatus.RUNNING });
       this.addLog('[Browser Mode] Loading protocol...');
 
-      // Get protocol definition from SQLite
-      const protocol = await this.sqliteService.getProtocolById(protocolId);
+      // 1. Retrieve the ProtocolRun record to get resolved assets
+      const run = await firstValueFrom(this.sqliteService.getProtocolRun(runId));
 
-      if (!protocol) {
-        throw new Error(`Protocol not found: ${protocolId}`);
-      }
+      // 2. Extract machine config if assets are resolved
+      let machineConfig: any = null;
+      if (run?.resolved_assets_json) {
+        try {
+          const resolvedAssets = typeof run.resolved_assets_json === 'string'
+            ? JSON.parse(run.resolved_assets_json)
+            : run.resolved_assets_json;
 
-      // Resolve Asset Specs (Dimensions/Geometry)
-      const allResources = await firstValueFrom(this.sqliteService.getResources());
-      const allDefinitions = await firstValueFrom(this.sqliteService.getResourceDefinitions());
-      const assetSpecs: Record<string, any> = {};
+          // Find machine asset (look for machine_instance or definition)
+          const assets = Array.isArray(resolvedAssets) ? resolvedAssets : Object.values(resolvedAssets);
+          const machineAsset = assets.find((a: any) => a.machine_instance || a.definition);
 
-      if (parameters) {
-        for (const [key, value] of Object.entries(parameters)) {
-          if (typeof value === 'string') {
-            const res = allResources.find(r => r.accession_id === value);
-            if (res) {
-              const def = allDefinitions.find(d => d.accession_id === res.resource_definition_accession_id);
-              if (def) {
-                assetSpecs[value] = {
-                  name: res.name,
-                  num_items: def.num_items,
-                  type: def.resource_type // e.g. 'plate', 'tip_rack'
-                };
-              }
-            }
+          if (machineAsset) {
+            const instance = machineAsset.machine_instance;
+            const definition = machineAsset.definition;
+
+            machineConfig = {
+              backend_fqn: definition.fqn,
+              port_id: instance?.backend_config?.port_id,
+              baudrate: instance?.backend_config?.baudrate,
+              is_simulated: definition.is_simulation_override || false
+            };
+            this.addLog(`[Browser Mode] Using machine: ${definition.name} (${definition.fqn})`);
           }
+        } catch (e) {
+          console.warn('[ExecutionService] Failed to parse resolved_assets_json:', e);
         }
       }
 
-      this.addLog(`[Browser Mode] Executing: ${protocol.name}`);
-      this.updateRunState({ progress: 10, currentStep: 'Initializing' });
+      // Fetch protocol blob
+      const blob = await firstValueFrom(this.fetchProtocolBlob(protocolId));
 
-      // Build Python code to execute the protocol
-      const code = this.buildProtocolExecutionCode(protocol, parameters, assetSpecs, runId);
+      // NEW: Get serialized deck setup from WizardStateService
+      const deckSetupScript = this.wizardState.serializeToPython();
 
-      // Execute via PythonRuntimeService
+      this.addLog(`[Browser Mode] Executing protocol binary`);
       this.updateRunState({ progress: 20, currentStep: 'Running protocol' });
 
       await new Promise<void>((resolve, reject) => {
         let hasError = false;
 
-        this.pythonRuntime.execute(code).subscribe({
+        this.pythonRuntime.executeBlob(blob, runId, machineConfig, deckSetupScript).subscribe({
           next: (output) => {
             if (output.type === 'stdout') {
               this.addLog(output.content);

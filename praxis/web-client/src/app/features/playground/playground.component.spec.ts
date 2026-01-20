@@ -100,7 +100,6 @@ describe('PlaygroundComponent', () => {
 
         // Ready signal processing is direct, but let's be safe
         expect(component.isLoading).toBe(false);
-        expect(component['readyReceived']()).toBe(true);
     });
 
     it('should reset state on reload', async () => {
@@ -112,7 +111,6 @@ describe('PlaygroundComponent', () => {
         // Now reload
         component.reloadNotebook();
         expect(component.isLoading).toBe(true);
-        expect(component['readyReceived']()).toBe(false);
         expect(component.jupyterliteUrl).toBeUndefined();
 
         // Wait for timeout in reloadNotebook (100ms)

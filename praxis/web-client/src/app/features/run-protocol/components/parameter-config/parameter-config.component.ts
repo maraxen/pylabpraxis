@@ -97,6 +97,11 @@ export class ParameterConfigComponent implements OnChanges {
       // Skip if this parameter matches an asset requirement by name or fqn
       if (this.isAssetParameter(p, protocol)) return false;
 
+      // Allow itemized/index selectors explicitly
+      if (['itemized-selector', 'index_selector', 'dict-input'].includes(p.field_type || '')) {
+        return true;
+      }
+
       // Skip well parameters
       if (this.isWellParameter(p)) return false;
 
@@ -185,8 +190,16 @@ export class ParameterConfigComponent implements OnChanges {
       },
     };
 
+    // Check for explicit dict input
+    if (param.field_type === 'dict-input') {
+      return {
+        ...baseConfig,
+        type: 'dict-input',
+      };
+    }
+
     // Check for explicit field_type from backend
-    if (param.field_type === 'index_selector' && param.itemized_spec) {
+    if ((param.field_type === 'index_selector' || param.field_type === 'itemized-selector') && param.itemized_spec) {
       return {
         ...baseConfig,
         type: 'index-selector',
@@ -195,6 +208,7 @@ export class ParameterConfigComponent implements OnChanges {
           itemsX: param.itemized_spec.items_x,
           itemsY: param.itemized_spec.items_y,
           linkedTo: param.linked_to,
+          mode: (param.field_type === 'itemized-selector') ? 'multiple' : 'single',
         },
       };
     }

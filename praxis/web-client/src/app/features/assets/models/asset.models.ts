@@ -124,6 +124,7 @@ export interface MachineDefinition {
   name: string;
   fqn?: string;
   description?: string;
+  plr_category?: string;
   machine_category?: string;
   manufacturer?: string;
   model?: string;
