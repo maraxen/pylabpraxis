@@ -1,0 +1,51 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install Python dependencies
+        run: uv sync
+
+      - name: Generate assets
+        run: uv run scripts/generate_browser_db.py
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Node dependencies
+        working-directory: ./praxis/web-client
+        run: npm ci
+
+      - name: Build web client
+        working-directory: ./praxis/web-client
+        run: npm run build -- --base-href /pylabpraxis/
+
+      - name: SPA Fix (404.html)
+        run: cp ./praxis/web-client/dist/web-client/browser/index.html ./praxis/web-client/dist/web-client/browser/404.html
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./praxis/web-client/dist/web-client/browser

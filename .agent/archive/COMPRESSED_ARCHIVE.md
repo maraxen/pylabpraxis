@@ -589,3 +589,9 @@ ui_ux_improvements_jan_2026.md
 .agent/archive/.temp_pack/tasks_legacy:
 fix-angular-build-errors.md
 README.md
+
+### 2026-01-20
+- Archived Batch 260115 tasks (Feature Enhancements, QA Scope, Tech Debt, High Level Review).
+- Archived CSS Audit (260109).
+- Archived Status files (backend.md, frontend.md).
+- Merged loose folders: prompts, reports, status, tasks.

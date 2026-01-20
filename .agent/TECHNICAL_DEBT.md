@@ -155,3 +155,35 @@ This document tracks known issues, temporary patches, and required follow-up wor
   - Reason: It should ideally update via WebSockets as operations complete.
   - Priority: Low
   - Notes: Emit `operation_complete` events with step details over the execution WebSocket.
+# Technical Debt Log
+
+## E2E Testing
+- [ ] **Data Seeding in Browser Mode**: The E2E tests for charts (`medium-priority-capture.spec.ts`) fail because the mock database is not reliably seeded with protocol runs when `resetdb=true` is used. This prevents the "Capture Charts" test from finding protocol cards to execute.
+  - **Impact**: Cannot automatically validate charts/visualizations in E2E pipeline.
+  - **Mitigation**: Manually verify charts or fix `SqliteService` seeding logic in browser mode.
+
+## Browser Execution
+
+- [ ] **Browser Protocol Interruption**: `PythonRuntimeService.interrupt()` is currently a placeholder - cannot kill browser-mode execution without terminating and restarting the Web Worker. <!-- id: 1101 -->
+  - Reason: The `stopRun()` method works for backend executions but browser-side interruption is marked as TODO.
+  - Priority: Medium
+  - Files: `praxis/web-client/src/app/core/services/python-runtime.service.ts`
+  - Notes: Will likely require `pyodide.setInterruptBuffer` or similar signaling mechanism within the worker's event loop.
+
+- [ ] **Pause/Resume Protocol Execution**: No implementation exists for pausing or resuming a running Pyodide worker. <!-- id: 1102 -->
+  - Reason: LiveDashboard lacks Pause/Resume buttons, and no service methods exist.
+  - Priority: Medium
+  - Files: `praxis/web-client/src/app/features/run-protocol/services/execution.service.ts`, `praxis/web-client/src/app/features/run-protocol/components/live-dashboard.component.ts`
+  - Notes: Required for complete browser-mode protocol execution control.
+
+## Hardware Integration
+
+- [ ] **Backend Machine Registration Placeholder**: The `register_machine` endpoint in the backend API is a placeholder - discovered hardware cannot be formally added to the system database via the UI. <!-- id: 1201 -->
+  - Reason: Endpoint at line 458 in `praxis/backend/api/hardware.py` has TODO comment.
+  - Priority: Medium
+  - Notes: "TODO: Integrate with MachineService to create actual machine record."
+
+- [ ] **REPL for Real Hardware Not Implemented**: Interactive hardware control via REPL is not yet implemented for real hardware. <!-- id: 1202 -->
+  - Reason: `execute_repl_command` at line 503 in `praxis/backend/api/hardware.py` states "REPL execution not yet implemented for real hardware."
+  - Priority: Low
+  - Notes: Requires WebSocket integration which is currently a TODO.

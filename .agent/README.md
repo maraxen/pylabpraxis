@@ -22,6 +22,7 @@ Central coordination hub for AI agents working on Praxis development.
 ├── ROADMAP.md                 # High-level milestones
 ├── TECHNICAL_DEBT.md          # Issues and temporary patches
 ├── NOTES.md                   # Lessons learned, gotchas
+├── ORCHESTRATION.md           # Orchestration lessons and delegation patterns
 ├── status.json                # Browser subagent coordination
 ├── tasks/                     # Unified Task Units (Unified I-P-E-T)
 │   └── YYMMDD/                # Dated task batches
@@ -64,6 +65,7 @@ Central table with **Priority** and **Difficulty** for all items.
 1. Review `DEVELOPMENT_MATRIX.md` for priorities.
 2. Select or create a task in `tasks/YYMMDD/[task_name]/`.
 3. Review `README.md` in the task directory for unified context.
+4. Check `.agent/ORCHESTRATION.md` for orchestration lessons and delegation patterns.
 
 ### During Work
 

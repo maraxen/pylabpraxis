@@ -103,6 +103,8 @@ These issues from the development matrix must be resolved:
 
 ## Long-Term Vision (v1.0+)
 
+- **Flight Checklists & Interactive Error Recovery**: Interactive pre-run checks (hardware, reagents, placement) and robust error recovery workflows.
+- **Extensibility Architecture**: Plugin system with 4 pillars — labware libraries (JSON/YAML), vendor instrument extensions, theming, and sandboxed application mods. See [extensibility.md](./backlog/extensibility.md).
 - Real-time collaboration for protocol editing
 - Advanced discrete event simulation scheduling
 - Cloud deployment options

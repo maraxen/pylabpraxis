@@ -13,7 +13,7 @@ Browser-mode hardware connectivity is **required for v0.1.0-alpha**. These items
 
 ## P2: Hardware Discovery (Browser Mode)
 
-**Status**: Open
+**Status**: 🔄 Partially Implemented
 **Difficulty**: Hard
 
 ### Problem
@@ -25,6 +25,12 @@ WebSerial/WebUSB device enumeration must work in browser mode.
 - [ ] Test device identification (VID/PID matching)
 - [ ] Verify browser permission flows
 - [ ] Document supported devices and drivers
+
+### Evidence (from 2026-01-20 Recon)
+- ✅ `HardwareDiscoveryService.ts` has robust WebSerial/WebUSB discovery logic
+- ✅ `KNOWN_DEVICES` registry with VID/PID for Hamilton STARlet (0x08BB:0x0107), STAR (0x08BB:0x0106), BMG CLARIOstar (0x0403:0xBB68), Opentrons OT-2 (0x04D8:0xE11A)
+- ❌ No E2E tests for physical discovery (CI/CD limitations)
+- ❌ No validation logs or "Flight Checklists" found
 
 ---
 
@@ -63,22 +69,34 @@ Plate reader hardware connectivity was previously working but recent changes may
 - [ ] Test error handling
 - [ ] Document any required fixes
 
+### Evidence (from 2026-01-20 Recon)
+- ✅ BMG CLARIOstar VID/PID mapped (0x0403:0xBB68)
+- ✅ WebUSB discovery logic present
+- ❌ Current status "Open" due to potential regressions
+
 ---
 
 ## P2: Frontend Protocol Execution (Browser Mode)
 
-**Status**: Open
+**Status**: 🔄 Partially Implemented
 **Difficulty**: Hard
 
 ### Problem
 Users must be able to execute protocols on connected hardware from the browser UI.
 
 ### Tasks
-- [ ] Execute simple protocol on connected hardware
+- [x] Execute simple protocol on connected hardware (via `startBrowserRun()`)
 - [ ] Verify operation timing
-- [ ] Confirm state updates during execution
-- [ ] Test pause/resume/cancel flows
-- [ ] Verify execution monitor updates
+- [x] Confirm state updates during execution (signals, IndexedDB persistence)
+- [ ] Test pause/resume/cancel flows (Pause/Resume: ❌ Not Started, Cancel: 🔄 In Progress)
+- [x] Verify execution monitor updates (LiveDashboardComponent implemented)
+
+### Evidence (from 2026-01-20 Recon)
+- ✅ `ExecutionService.startBrowserRun()` orchestrates blob fetching, machine config, worker execution
+- ✅ `PythonRuntimeService.executeBlob()` sends protocol binaries to Pyodide worker
+- ✅ State tracked via Angular signals and persisted to IndexedDB
+- ❌ No Pause/Resume service methods or UI components
+- 🔄 "Stop" button exists but `PythonRuntimeService.interrupt()` is placeholder
 
 ---
 
@@ -113,3 +131,8 @@ Hamilton Starlet hardware connectivity must be validated for alpha.
 - [ ] Validate 96-head operations
 - [ ] Test iSwap functionality
 - [ ] Document any limitations
+
+### Evidence (from 2026-01-20 Recon)
+- ✅ VID/PID mapped in `KNOWN_DEVICES` registry
+- ✅ `PythonRuntimeService.handleRawIO` bridge implemented for WebSerial commands
+- ❌ End-to-end validation not performed

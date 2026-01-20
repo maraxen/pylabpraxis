@@ -1,8 +1,8 @@
 # Praxis Development Matrix
 
-**Last Updated**: 2026-01-15 (Tech Debt Migration)
+**Last Updated**: 2026-01-20
 **Purpose**: Current iteration work items with priority and difficulty ratings.
-**Current Batch**: [260115_feature_enhancements](tasks/260115_feature_enhancements/README.md)
+**Current Batch**: [260119_comprehensive_review](tasks/260119_comprehensive_review/MASTER_PLAN.md)
 
 ---
 
@@ -41,20 +41,20 @@
 
 | Item                           | Difficulty | Task                                                          | Description                                          |
 |--------------------------------|------------|---------------------------------------------------------------|------------------------------------------------------|
-| State Inspection Backend       | Hard       | [tasks/260115_feature_enhancements/state_inspection_backend](./tasks/260115_feature_enhancements/state_inspection_backend/) | Post-run "time travel" for backend executions |
-| Browser Resources Init         | Easy       | [tasks/260115_feature_enhancements/browser_resources_init](./tasks/260115_feature_enhancements/browser_resources_init/) | Seed 1-of-each labware in browser mode |
-| Simulation Machine Visibility  | Hard       | [tasks/260115_feature_enhancements/sim_machines_visibility](./tasks/260115_feature_enhancements/sim_machines_visibility/) | Frontend-only sim until instantiation |
+| Browser Resources Validation   | Easy       | [archive/tasks/260115_feature_enhancements/browser_resources_init](./archive/tasks/260115_feature_enhancements/browser_resources_init/) | Validate 1-of-each labware seeding in browser mode |
+|                                |            |                                                               |                                                      |
 
 ### Technical Debt (Batch 260115)
 
 | Item                           | Difficulty | Task                                                          | Description                                          |
 |--------------------------------|------------|---------------------------------------------------------------|------------------------------------------------------|
-| Database & Models Cleanup      | Medium     | [tasks/260115_tech_debt/database_models](./tasks/260115_tech_debt/database_models/) | PostgreSQL verification, SQLModel warnings |
-| Backend Test Sync              | Medium     | [tasks/260115_tech_debt/backend_sync](./tasks/260115_tech_debt/backend_sync/)         | Sync tests with schema changes                       |
-| Frontend Type Safety           | Medium     | [tasks/260115_tech_debt/frontend_type_safety](./tasks/260115_tech_debt/frontend_type_safety/) | Audit and replace `as any` usage                     |
-| Schema Alignment (is_reusable) | Easy       | [tasks/260115_tech_debt/schema_alignment](./tasks/260115_tech_debt/schema_alignment/) | Add is_reusable to ResourceDefinition                |
-| Deck Config UX & Validation    | Medium     | [tasks/260115_tech_debt/deck_config_ux](./tasks/260115_tech_debt/deck_config_ux/)     | Validation, Vantage deck, and UX improvements        |
-| Missing Production Docs        | Easy       | [tasks/260115_tech_debt/docs_stability](./tasks/260115_tech_debt/docs_stability/)     | Silence 404 snackbar and add missing docs            |
+| Database & Models Cleanup      | Medium     | [archive/tasks/260115_tech_debt/database_models](./archive/tasks/260115_tech_debt/database_models/) | PostgreSQL verification, SQLModel warnings |
+| Backend Test Sync              | Medium     | [archive/tasks/260115_tech_debt/backend_sync](./archive/tasks/260115_tech_debt/backend_sync/)         | Sync tests with schema changes                       |
+| Frontend Type Safety           | Medium     | [archive/tasks/260115_tech_debt/frontend_type_safety](./archive/tasks/260115_tech_debt/frontend_type_safety/) | Audit and replace `as any` usage                     |
+| Schema Alignment (is_reusable) | Easy       | [archive/tasks/260115_tech_debt/schema_alignment](./archive/tasks/260115_tech_debt/schema_alignment/) | Add is_reusable to ResourceDefinition                |
+| Deck Config UX & Validation    | Medium     | [archive/tasks/260115_tech_debt/deck_config_ux](./archive/tasks/260115_tech_debt/deck_config_ux/)     | Validation, Vantage deck, and UX improvements        |
+| Missing Production Docs        | Easy       | [archive/tasks/260115_tech_debt/docs_stability](./archive/tasks/260115_tech_debt/docs_stability/)     | Silence 404 snackbar and add missing docs            |
+| E2E Data Seeding               | Medium     | [archive/tasks/260115_tech_debt/e2e_data_seeding](./archive/tasks/260115_tech_debt/e2e_data_seeding/) | Fix chart test seeding in browser mode               |
 
 ### UI/UX Implementation (from Redesign Artifacts)
 
@@ -70,7 +70,7 @@
 | Connection Persistence      | Medium     | [hardware.md](./backlog/hardware.md) | Connections persist across sessions             |
 | Plate Reader Validation     | Medium     | [hardware.md](./backlog/hardware.md) | Validate plate reader (may need debugging)      |
 | Hamilton Starlet Validation | Hard       | [hardware.md](./backlog/hardware.md) | Validate with Hamilton hardware                 |
-| Frontend Protocol Execution | Hard       | [hardware.md](./backlog/hardware.md) | Full protocol execution from browser UI         |
+| Frontend Protocol Execution | Hard       | [hardware.md](./backlog/hardware.md) | Full protocol execution from browser UI (Execute ✅, Pause/Resume ❌, Cancel 🔄) |
 | Playground Hardware         | Hard       | [hardware.md](./backlog/hardware.md) | Interactive hardware control from playground    |
 
 ---
@@ -147,6 +147,8 @@
 | Workcell Route Migration (K-11)               | P3       | 2026-01-15 | Migrated /visualizer to /workcell and updated navigation |
 | Machine Simulation Architecture Refactor      | P2       | 2026-01-15 | Refactored simulation to use Factory Pattern and runtime configuration |
 | View Controls Filter Chips (FE-03)           | P2       | 2026-01-16 | Unified filter chip bar with icons and tooltips                      |
+| State Inspection Backend                            | P2       | 2026-01-20 | Post-run "time travel" for backend executions - COMPLETE with state diffing, transformation layer, and API endpoint |
+| Simulation Machine Visibility                       | P2       | 2026-01-20 | Frontend-only sim until instantiation - COMPLETE with is_simulation_override and is_simulated_frontend flags |
 
 ---
 
