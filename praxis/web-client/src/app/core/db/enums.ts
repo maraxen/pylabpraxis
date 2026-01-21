@@ -1,6 +1,6 @@
 /**
  * Auto-generated TypeScript enums from Python enums
- * Generated at: 2026-01-17T12:17:19.275048
+ * Generated at: 2026-01-21T09:39:35.760537
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 

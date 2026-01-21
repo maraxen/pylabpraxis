@@ -1,6 +1,6 @@
 /**
  * Auto-generated TypeScript interfaces from SQLAlchemy ORM models
- * Generated at: 2026-01-17T12:17:19.273064
+ * Generated at: 2026-01-21T09:39:35.759229
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 
