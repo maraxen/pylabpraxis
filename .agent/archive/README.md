@@ -1,25 +1,22 @@
-# Agent Archive
+# Archive
 
-This directory manages the long-term storage of project artifacts, completed prompts, and historical logs. To keep the workspace clean, older content is consolidated into a compressed archive.
+> Historical records of completed tasks and artifacts.
 
-## Contents
+## What Goes Here
 
-- **`archive.tar.gz`**: The master archive file containing all historical data.
-- **`COMPRESSED_ARCHIVE.md`**: A high-level manifest of what is inside the tarball.
-- **`UPDATE_ARCHIVE.md`**: A reusable prompt for agents to perform the archiving process.
-- **`artifacts/`**: Loose artifacts currently slated for the next archive update.
+Completed task directories moved from `tasks/` after work is done. Preserves context for future reference without cluttering active workspaces.
 
-## How to Archive
+## How to Use
 
-To move current loose folders (like `prompts/`, `backlog/`, `artifacts/`, etc.) into the archive:
+1. **Archive completed tasks**: Move `tasks/{id}_name/` here when DONE
+2. **Reference old work**: Search here for past implementations
+3. **Retention**: Keep for 30+ days, then consider deletion
 
-1. Read the instructions in `UPDATE_ARCHIVE.md`.
-2. Execute the steps described there (or ask an agent to "Update the archive using the instructions in .agent/archive/UPDATE_ARCHIVE.md").
+## Related
 
-This process will:
+- [tasks/](../tasks/) - Active work (move here when done)
+- [reports/](../reports/) - Summary reports (may reference archived work)
 
-1. Unpack `archive.tar.gz`.
-2. Merge the current loose directories into the unpacked content.
-3. Update the `COMPRESSED_ARCHIVE.md` manifest.
-4. Re-compress everything into `archive.tar.gz`.
-5. Clean up the loose directories.
+---
+
+*Part of the [.agent coordination hub](../README.md)*

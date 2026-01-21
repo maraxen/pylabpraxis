@@ -1,47 +1,22 @@
 # References
 
-External references, best practices, and technical resources for Praxis development.
+> External documentation, architecture specs, and knowledge bases.
+
+## What Goes Here
+
+Links and copies of external documentation relevant to the project. Architecture decision records (ADRs), API specs, and third-party library guides.
+
+## How to Use
+
+1. **Research**: Check here before external searches
+2. **Add references**: Store relevant external docs for future use
+3. **Link in tasks**: Reference these docs in task READMEs
+
+## Related
+
+- [research/](../research/) - Investigation docs (project-specific research)
+- [backlog/](../backlog/) - Ideas that may need reference docs
 
 ---
 
-## Structure
-
-```
-references/
-├── README.md           # This file
-├── testing/            # Testing strategies, pytest/Vitest patterns
-├── backend/            # FastAPI, SQLAlchemy, PyLabRobot patterns
-├── frontend/           # Angular, RxJS, browser mode patterns
-└── architecture/       # System design decisions
-```
-
----
-
-## Adding References
-
-Use [templates/reference_document.md](../templates/reference_document.md) to document:
-
-1. **Source and metadata** - URL, date added, category
-2. **Summary** - Key points from the reference
-3. **Takeaways** - Specific insights and recommendations
-4. **Implementation notes** - How it applies to Praxis
-5. **Related items** - Links to backlog items or other references
-
----
-
-## When to Add a Reference
-
-Add a reference document when:
-
-- You discover a valuable external resource that influences design decisions
-- A best practices guide is referenced multiple times in conversations
-- External documentation clarifies a complex technical concept
-- A performance optimization technique should be standardized
-
----
-
-## Current References
-
-| Reference | Category | Added |
-|:----------|:---------|:------|
-| [hardware_matrix.md](hardware_matrix.md) | Hardware | Pre-existing |
+*Part of the [.agent coordination hub](../README.md)*

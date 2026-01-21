@@ -1,34 +1,131 @@
 # AGENTS.md
 
-> Agent entry point for the Pylabpraxis codebase.
+> Agent routing document. Read this first.
+
+---
+
+## 🎭 Agent Mode Selection
+
+**Default Mode**: Unless another mode is specified, assume you are in **Evolving-Orchestrator** mode.
+Read `.agent/agents/evolving-orchestrator.md` for your system prompt.
+
+To use a different mode, the user will say:
+
+- `@mode_name` (e.g., `@fixer`, `@explorer`)
+- "Acting as [mode_name]"
+- Reference a specific agent file
+
+### @Mention Convention
+
+**When you see `@mode_name` in a prompt, immediately load `.agent/agents/{mode_name}.md` and adopt that agent's system prompt.**
+
+Examples:
+
+- `@fixer` → Load `.agent/agents/fixer.md`
+- `@oracle` → Load `.agent/agents/oracle.md`
+- `@recon` → Load `.agent/agents/recon.md`
+
+### Available Modes
+
+| Mode | Trigger | File | Description |
+|------|---------|------|-------------|
+| **evolving-orchestrator** | (default) | `.agent/agents/evolving-orchestrator.md` | Multi-agent coordinator |
+| explorer | `@explorer` | `.agent/agents/explorer.md` | Codebase search |
+| librarian | `@librarian` | `.agent/agents/librarian.md` | Documentation |
+| oracle | `@oracle` | `.agent/agents/oracle.md` | Architecture |
+| designer | `@designer` | `.agent/agents/designer.md` | UI/UX |
+| fixer | `@fixer` | `.agent/agents/fixer.md` | Implementation |
+| flash | `@flash` | `.agent/agents/flash.md` | Fast execution |
+| general | `@general` | `.agent/agents/general.md` | Multi-step |
+| investigator | `@investigator` | `.agent/agents/investigator.md` | Investigation |
+| recon | `@recon` | `.agent/agents/recon.md` | Reconnaissance |
+| deep-researcher | `@deep-researcher` | `.agent/agents/deep-researcher.md` | Research |
+| multimodal-looker | `@multimodal-looker` | `.agent/agents/multimodal-looker.md` | Visual |
+| summarize | `@summarize` | `.agent/agents/summarize.md` | Summarization |
+
+---
+
+## 🔄 "What's Next?" Protocol
+
+When the user asks "What's next?" or similar:
+
+### Step 0: Connect via MCP
+
+```
+workspace_handshake(project_root="/Users/mar/Projects/pylabpraxis")
+prep_orchestrator()
+```
+
+This returns active tasks, open debt, recent dispatches, and available workflows.
+
+### Step 1: Query the Matrix
+
+Use `prep_orchestrator()` output, or fall back to grep:
+
+```bash
+grep "| TODO |" .agent/DEVELOPMENT_MATRIX.md
+```
+
+Sort by priority (P1 > P2 > P3 > P4).
+
+### Step 2: Present Top Options
+
+Show top 3 candidates with:
+
+- ID, Priority, Difficulty
+- Description
+- Required Skills, Research, Workflows
+
+### Step 3: On Selection - Load Full Context
+
+For selected task ID (e.g., `a1b2c3`):
+
+1. **Task Dir**: Read `.agent/tasks/a1b2c3_*/README.md` if exists
+2. **Skills**: Load each skill from Skills column
+   - Read `.agent/skills/{skill}/SKILL.md` for each
+3. **Research**: Load docs from Research column
+   - Read `.agent/research/{doc}` for each
+4. **Workflows**: Load workflow from Workflows column
+   - Read `.agent/workflows/{workflow}.md` for each
+5. **Agent Mode**: Load agent prompt from Mode column
+   - Read `.agent/agents/{mode}.md`
+
+### Step 4: Format Dispatch Prompt
+
+Include in the dispatch:
+
+```
+## Context
+- Matrix ID: {id}
+- Skills: {list with key points from each}
+- Research: {summaries}
+- Workflow: {steps}
+
+## Task
+{description from matrix}
+
+## Success Criteria
+{from task README if exists}
+```
+
+### Step 5: Update Matrix
+
+```bash
+# Set status
+sed -i '' 's/| {id} | TODO/| {id} | IN_PROGRESS/' .agent/DEVELOPMENT_MATRIX.md
+# Add agent
+sed -i '' 's/| {id} \(.*\)| - |/| {id} \1| @{agent} |/' .agent/DEVELOPMENT_MATRIX.md
+```
 
 ---
 
 ## 🚀 Quick Start
 
-1. **Read context**: Start with [.agent/README.md](.agent/README.md)
-2. **Check priorities**: Review [.agent/DEVELOPMENT_MATRIX.md](.agent/DEVELOPMENT_MATRIX.md)
-3. **Find your task**: Check [.agent/tasks/](.agent/tasks/) for active work
-4. **Follow conventions**: See [.agent/codestyles/](.agent/codestyles/)
-
----
-
-## ⚡ Performance Rules
-
-- **Playwright Tests**: ALWAYS use a timeout with targeted test commands to prevent stalling (e.g., `timeout 60s npx playwright test [spec]`).
-
----
-
-## ⚠️ Orchestration Principle
-
-**Orchestration agents must orchestrate tasks, not execute them directly.**
-
-When using multi-agent workflows:
-- Orchestrators should delegate work to specialist agents
-- Do not perform implementation work yourself when a specialist exists
-- Use @explorer, @librarian, or reconnaissance agents for codebase exploration
-- Check `.agent/ORCHESTRATION.md` for lessons learned and delegation patterns
-- Your role is to coordinate, verify, and integrate results
+1. **Check matrix**: Review `.agent/DEVELOPMENT_MATRIX.md` for priorities
+2. **Read agent prompt**: Load your mode from `.agent/agents/`
+3. **Find task context**: Check `.agent/tasks/{id}_*/` for active work
+4. **Load skills**: Read skills listed in matrix
+5. **Follow workflows**: Apply workflows from matrix
 
 ---
 
@@ -36,115 +133,177 @@ When using multi-agent workflows:
 
 ```
 .agent/
-├── README.md              # Coordination hub documentation
-├── DEVELOPMENT_MATRIX.md  # Priority/difficulty tracking
-├── ROADMAP.md             # Strategic milestones
-├── TECHNICAL_DEBT.md      # Known issues and patches
-├── NOTES.md               # Lessons learned and gotchas
-├── ORCHESTRATION.md       # Orchestration lessons and delegation patterns
-├── tasks/                 # Active work units (Unified I-P-E-T)
-├── backlog/               # Long-term work item specs
-├── skills/                # 23 reusable skill definitions
-├── templates/             # Document templates (10 total)
+├── README.md              # Coordination hub
+├── DEVELOPMENT_MATRIX.md  # SINGLE SOURCE OF TRUTH
+├── ROADMAP.md             # Milestones (refs matrix IDs)
+├── TECHNICAL_DEBT.md      # Known issues
+├── NOTES.md               # Lessons learned
+├── agents/                # Agent mode prompts
+├── tasks/                 # Active work ({id}_name/)
+├── skills/                # Skill definitions
 ├── workflows/             # Process definitions
-├── pipelines/             # Specialized multi-stage pipelines
-├── references/            # Technical resources
-├── codestyles/            # Language conventions
-├── prompts/               # Dispatch prompts
-└── archive/               # Completed work
+├── research/              # Research documents
+├── templates/             # Document templates
+├── backlog/               # Long-term items
+├── archive/               # Completed work
+└── ...
 ```
 
 ---
 
-## 🛠️ Skills Catalog
+## 🛠️ Skills Integration
 
-| Skill | Trigger | Description |
-|-------|---------|-------------|
-| `agentic-workflow` | Multi-agent coordination | Strategic/Tactical agent protocol |
-| `jules-remote` | `jules new`, `jules remote` | Dispatch to Jules tactical agent |
-| `senior-architect` | System design | Architecture diagrams, tech decisions |
-| `senior-fullstack` | Full implementation | React, Next.js, Node.js, GraphQL |
-| `systematic-debugging` | Bug investigation | Root cause analysis methodology |
-| `test-driven-development` | Feature work | Red-green-refactor workflow |
-| `test-fixing` | Failing tests | Smart error grouping and fixes |
-| `playwright-skill` | Browser automation | E2E testing, screenshots |
-| `webapp-testing` | Frontend testing | Local app verification |
-| `frontend-design` | UI creation | High-quality interfaces |
-| `ui-ux-pro-max` | Design intelligence | 50 styles, 21 palettes |
-| `theme-factory` | Styling artifacts | 10 preset themes |
-| `web-design-guidelines` | UI review | Accessibility, best practices |
-| `writing-plans` | Planning | Multi-step task planning |
-| `verification-before-completion` | Pre-commit | Evidence before assertions |
-| `atomic-git-commit` | Committing | Logical commit grouping |
-| `git-pushing` | Push changes | Conventional commits |
-| `using-git-worktrees` | Feature isolation | Worktree management |
-| `code-maintenance` | Health checks | Linting, audits, cleanup |
-| `prompt-engineering` | Prompt optimization | Debugging agent behavior |
-| `pylabpraxis-planning` | Project planning | Backlog, matrix updates |
-| `loki-mode` | Autonomous startup | Multi-agent orchestration |
-| `backend-dev-guidelines` | Backend work | Express, Prisma patterns |
+Skills are referenced in the DEVELOPMENT_MATRIX.md Skills column.
+
+When dispatching or working on a task:
+
+1. Parse the Skills column (comma-separated)
+2. Load each `.agent/skills/{skill}/SKILL.md`
+3. Include relevant guidance in dispatch prompt
+4. Follow skill instructions during execution
+
+Common skills: `tdd`, `debugging`, `ui-ux-pro-max`, `senior-architect`, etc.
 
 ---
 
-## 📋 Workflows
+## 📊 Dev Matrix Skill
 
-| Workflow | Command | Purpose |
-|----------|---------|---------|
-| [high-level-review](.agent/workflows/high-level-review.md) | `/high-level-review` | R.I.C.E. triage and prompt chain generation |
-| [frontend-polish](.agent/workflows/frontend-polish.md) | - | Capture → Analyze → Fix → Validate pipeline |
+For programmatic matrix interaction, use the `dev-matrix` skill:
 
----
+- Add tasks with proper ID generation
+- Update status via grep/sed
+- Query next items
+- Link tasks to directories
 
-## 📝 Templates Index
-
-| Template | Use Case |
-|----------|----------|
-| `unified_task.md` | I-P-E-T task tracking |
-| `agent_prompt.md` | Single implementation task |
-| `plan.md` | Implementation plans |
-| `research.md` | Research/discovery |
-| `investigation.md` | Debugging/root cause |
-| `handoff.md` | Session handoff notes |
-| `backlog_item.md` | Long-term work items |
-| `reference_document.md` | External references |
-| `reusable_prompt.md` | Common prompts |
-| `prompt_batch.md` | Grouped prompts |
+See `.agent/skills/dev-matrix/SKILL.md`
 
 ---
 
-## 🤖 Subagent Roles
+## 🎛️ Orchestration Skill
 
-| Role | Specialty | When to Use |
-|------|-----------|-------------|
-| **Explorer** | Codebase navigation | Finding files, understanding structure |
-| **Librarian** | Documentation | Reference management, knowledge capture |
-| **Oracle** | Architecture | Design decisions, planning, trade-offs |
-| **Designer** | UI/UX | Visual polish, frontend implementation |
-| **Fixer** | Bug resolution | Debugging, test repair, hotfixes |
+For multi-agent coordination patterns, use the `orchestration` skill:
 
----
+- CLI-compatible vs interactive-only agents
+- Model selection (flash vs pro) by task type
+- Parallel vs sequential dispatch patterns
+- Cross-agent handoff protocols
 
-## 📚 Key Documents
-
-- [DEVELOPMENT_MATRIX.md](.agent/DEVELOPMENT_MATRIX.md) - Current priorities (P1-P4)
-- [.agent/ORCHESTRATION.md](.agent/ORCHESTRATION.md) - Orchestration learning log & strategies
-- [ROADMAP.md](.agent/ROADMAP.md) - Strategic milestones
-- [TECHNICAL_DEBT.md](.agent/TECHNICAL_DEBT.md) - Known issues
-- [NOTES.md](.agent/NOTES.md) - Gotchas and lessons learned
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
+See `global_skills/orchestration/SKILL.md`
 
 ---
 
-## ⚡ Quick Commands
+## 🔌 MCP Infrastructure
+
+**Unified MCP Server**: `agent-infra`
+
+### Session Start Protocol
+
+**Always call `workspace_handshake` at session start:**
+
+Using MCP: `workspace_handshake(project_root="/Users/mar/Projects/pylabpraxis")`
+
+This connects your session to the correct project database.
+
+### Available Tools
+
+| Tool | Purpose |
+|------|---------|
+| `workspace_handshake` | Connect to project (required first) |
+| `prep_orchestrator` | Get full orchestration context |
+| `task_list` / `task_create` / `task_update` | Manage development tasks |
+| `dispatch` / `dispatch_status` | Track agent dispatches |
+| `prompt_list` / `prompt_invoke` | Load and invoke reusable prompts |
+| `skill_list` / `skill_load` | Load skill documentation |
+| `debt_add` / `debt_list` | Track technical debt |
+| `report_recon` / `report_research` | Store findings |
+| `backup_create` / `export_markdown` | Data management |
+
+### 🔄 Pull-Based Task Queue
+
+We have implemented a pull-based work queue where agents can claim pending dispatches instead of being pushed work. This enables:
+
+- Rate-limited execution
+- Model-specific task routing
+- Self-service task pickup
+
+#### `claim_dispatch`
+
+- **Purpose**: Claim a pending dispatch from the queue.
+- **Input**: `{ target_prefix: "antigravity", model: "claude-sonnet-4" }`
+- **Output**: Returns dispatch with prompt and optional system prompt.
+- **Behavior**: Atomically marks dispatch as "running" to prevent double-claiming.
+
+#### `complete_dispatch`
+
+- **Purpose**: Mark a claimed dispatch as completed or failed.
+- **Input**: `{ dispatch_id: "d123", status: "completed", result: "Summary" }`
+
+#### Target Format Convention
+
+| Target | Description |
+|--------|-------------|
+| `antigravity` | Any Claude Code agent |
+| `antigravity:claude-sonnet-4` | Claude Sonnet 4 |
+| `antigravity:gemini-3-pro-high` | Gemini Pro high context |
+| `antigravity:gemini-3-flash` | Gemini Flash |
+| `cli:gemini-3-pro-preview` | External Gemini CLI |
+| `jules` | Jules remote agent |
+
+#### Example Session Loop
+
+```javascript
+// 1. Claim task
+const task = await claim_dispatch({ target_prefix: "antigravity" });
+if (task) {
+  // 2. Do work
+  const result = await doWork(task.prompt);
+  // 3. Complete
+  await complete_dispatch({ dispatch_id: task.dispatch_id, status: "completed", result });
+}
+```
+
+### ⚡ Push Mode Permissions
+
+When using `dispatch_type="push"`, you should specify explicit permissions instead of relying on a blanket `--yolo` mode whenever possible. This follows the principle of least privilege.
+
+```javascript
+dispatch({
+  target: "cli:gemini-3-pro-preview",
+  dispatch_type: "push",
+  execute: true,
+  // Specify only the tools needed for this task
+  permissions: ["write_file", "read_file", "run_shell_command"],
+  mode: "fixer",
+  prompt: "..."
+});
+```
+
+The system will automatically configure the CLI session with these permissions, ensuring the agent has exactly what it needs to complete the task safely.
+
+### Migration Note
+
+Database location: [.agent/agent.db](cci:7://file:///Users/mar/Projects/pylabpraxis/.agent/agent.db:0:0-0:0)
+
+To re-run migration:
 
 ```bash
-# Backend
-uv run pytest                              # Run tests
-uv run ruff check praxis/backend --fix     # Lint
-
-# Frontend
-cd praxis/web-client
-npm run build                              # Build
-npm run start:browser                      # Dev server
-npx vitest [target] --run                  # Tests
+/Users/mar/Projects/orbitalvelocity/agent-infra-mcp/target/release/agent-infra-mcp \
+  --agent-root .agent migrate
 ```
+
+---
+
+## 💻 Gemini CLI Headless Skill
+
+For scripting and automation via Gemini CLI:
+
+- Model selection: `--model gemini-2.5-flash` vs `gemini-2.5-pro`
+- Environment variables: `GEMINI_MODEL_FAST`, `GEMINI_MODEL_DEEP`
+- Handling model accession updates
+- Integration with dev matrix
+
+See `global_skills/gemini-cli-headless/SKILL.md`
+
+---
+
+*This document is the entry point. Always start here.*
