@@ -9,17 +9,17 @@ test('should handle pause, confirm, and input interactions', async ({ page }) =>
 
     // 2. Wait for initialization
     await page.waitForSelector('app-playground', { timeout: 30000 });
-    
+
     // Wait for SQLite/Pyodide to be ready
     await page.waitForFunction(() => (window as any).sqliteService?.isReady$?.getValue() === true, null, { timeout: 45000 });
-    
+
     // Handle Welcome Dialog if it appears
     try {
         const dismissBtn = page.getByRole('button', { name: /Get Started|Skip|Close/i }).first();
         if (await dismissBtn.isVisible({ timeout: 5000 })) {
             await dismissBtn.click();
         }
-    } catch (e) {}
+    } catch (e) { }
 
     // Wait for JupyterLite/REPL to be ready (spinner to disappear)
     const loadingOverlay = page.locator('.loading-overlay');
@@ -29,19 +29,20 @@ test('should handle pause, confirm, and input interactions', async ({ page }) =>
     // The user suggested using 'monaco' locator. If Monaco is used inside JupyterLite or as a standalone, this should work.
     // Fallback to searching inside the iframe if it's JupyterLite's internal editor.
     const iframe = page.frameLocator('iframe.notebook-frame');
-    // Try to find any editor-like element in JupyterLite
-    const editor = iframe.locator('.monaco-editor, .cm-content, .CodeMirror').first();
-    
+    // More robust editor selection: targeting the last cell
+    const editor = iframe.locator('.jp-Cell:last-child .cm-content, .jp-Cell:last-child .monaco-editor, .jp-Cell:last-child .CodeMirror').first();
+
     await expect(editor).toBeVisible({ timeout: 30000 });
     await editor.click();
-    
-    // Clear and type
+    await page.waitForTimeout(1000); // Wait for focus to settle
+
+    // Clear and type - use editor methods instead of page.keyboard since editor is in iframe
     const isMac = process.platform === 'darwin';
     const modifier = isMac ? 'Meta' : 'Control';
-    await page.keyboard.press(`${modifier}+A`);
-    await page.keyboard.press('Backspace');
+    await editor.press(`${modifier}+A`);
+    await editor.press('Backspace');
     await page.waitForTimeout(500);
-    
+
     const pythonCode = `from praxis.interactive import pause, confirm, input
 import time
 
@@ -58,11 +59,12 @@ name = await input("Name?")
 print(f"Hello {name}")
 `;
 
-    await page.keyboard.type(pythonCode, { delay: 5 });
+    // Use pressSequentially to type into the iframe editor
+    await editor.pressSequentially(pythonCode, { delay: 5 });
 
     // 4. Run the code
     await page.waitForTimeout(1000);
-    
+
     // Debug: Take screenshot before running
     await page.screenshot({ path: 'e2e/screenshots/debug-before-run.png' });
 
@@ -72,11 +74,14 @@ print(f"Hello {name}")
         .or(iframe.locator('button[title*="Run"]'))
         .or(iframe.getByRole('button', { name: /Run/i }))
         .first();
-    
+
     if (await runBtn.isVisible()) {
+        console.log('Clicking Run button');
         await runBtn.click({ force: true });
     } else {
-        await page.waitForTimeout(500); // Wait a bit for focus stability
+        console.log('Falling back to Shift+Enter');
+        await editor.click();
+        await page.waitForTimeout(500);
         await page.keyboard.press('Shift+Enter');
     }
 
@@ -88,14 +93,14 @@ print(f"Hello {name}")
         await expect(outputLocator).toBeVisible({ timeout: 10000 });
     } catch (e) {
         // Retry with Shift+Enter if first attempt failed
-        await editor.click(); 
+        await editor.click();
         await page.waitForTimeout(500);
         await page.keyboard.press('Shift+Enter');
-        
+
         const outputLocator = iframe.locator('.jp-OutputArea-output').filter({ hasText: 'Step 1: Pause' });
         await expect(outputLocator).toBeVisible({ timeout: 10000 });
     }
-    
+
     // 5. Verify Pause
 
     // 5. Verify Pause
@@ -103,40 +108,40 @@ print(f"Hello {name}")
     // Increased timeout for slow initialization
     await expect(dialog).toBeVisible({ timeout: 60000 });
     await expect(dialog).toContainText('Check deck');
-    
+
     // Capture screenshot of Pause dialog
     await page.screenshot({ path: 'e2e/screenshots/interactive-pause.png' });
-    
+
     await dialog.getByRole('button', { name: 'Resume' }).click();
-    
+
     // Small wait for execution to proceed
     await page.waitForTimeout(1000);
 
     // 6. Verify Confirm
     await expect(dialog).toBeVisible({ timeout: 10000 });
     await expect(dialog).toContainText('Proceed?');
-    
+
     // Capture screenshot of Confirm dialog
     await page.screenshot({ path: 'e2e/screenshots/interactive-confirm.png' });
-    
+
     await dialog.getByRole('button', { name: 'Yes' }).click();
-    
+
     await page.waitForTimeout(1000);
 
     // 7. Verify Input
     await expect(dialog).toBeVisible({ timeout: 10000 });
     await expect(dialog).toContainText('Name?');
-    
+
     // Capture screenshot of Input dialog
     await page.screenshot({ path: 'e2e/screenshots/interactive-input.png' });
-    
+
     const inputField = dialog.locator('input');
     await inputField.fill('Tester');
     await dialog.getByRole('button', { name: 'Submit' }).click();
 
     // Verify dialog is gone
     await expect(dialog).not.toBeVisible({ timeout: 10000 });
-    
+
     // Final screenshot
     await page.screenshot({ path: 'e2e/screenshots/interactive-final.png' });
 });
