@@ -133,8 +133,9 @@ export class PythonRuntimeService implements ReplRuntime {
   }
 
   interrupt(): void {
-    // Terminate and restart worker is the only safe way to interrupt synchronous Pyodide execution
-    console.warn('Interrupt not fully supported in Pyodide without worker restart');
+    if (this.worker) {
+      this.worker.postMessage({ type: 'INTERRUPT' });
+    }
   }
 
   async getCompletions(code: string, _cursor: number): Promise<CompletionItem[]> {

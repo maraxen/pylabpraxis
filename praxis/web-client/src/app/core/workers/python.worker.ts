@@ -9,11 +9,12 @@ let pyConsole: {
 };
 
 interface PythonMessage {
-  type: 'INIT' | 'PUSH' | 'EXEC' | 'INSTALL' | 'COMPLETE' | 'SIGNATURES' | 'PLR_COMMAND' | 'RAW_IO' | 'RAW_IO_RESPONSE' | 'WELL_STATE_UPDATE' | 'FUNCTION_CALL_LOG' | 'EXECUTE_BLOB' | 'USER_INTERACTION' | 'USER_INTERACTION_RESPONSE';
+  type: 'INIT' | 'PUSH' | 'EXEC' | 'INSTALL' | 'COMPLETE' | 'SIGNATURES' | 'PLR_COMMAND' | 'RAW_IO' | 'RAW_IO_RESPONSE' | 'WELL_STATE_UPDATE' | 'FUNCTION_CALL_LOG' | 'EXECUTE_BLOB' | 'USER_INTERACTION' | 'USER_INTERACTION_RESPONSE' | 'INTERRUPT';
   id?: string;
   payload?: unknown;
 }
 
+const interruptBuffer = new Uint8Array(new SharedArrayBuffer(1));
 let currentExecutionId: string | undefined;
 
 addEventListener('message', async (event) => {
@@ -61,6 +62,11 @@ addEventListener('message', async (event) => {
         console.error('Error routing interaction response to Python:', err);
       }
     }
+    return;
+  }
+
+  if (type === 'INTERRUPT') {
+    interruptBuffer[0] = 2; // Trigger KeyboardInterrupt in Pyodide
     return;
   }
 
@@ -160,7 +166,7 @@ addEventListener('message', async (event) => {
           (self as any).protocol_bytes = new Uint8Array(blob);
           (self as any).machine_config = machine_config;
           (self as any).deck_setup_script = deck_setup_script || '';
-          
+
           await pyodide.runPythonAsync(`
 import cloudpickle
 import js
@@ -256,6 +262,9 @@ async function initializePyodide(id?: string) {
     lockFileURL: 'https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide-lock.json'
   });
 
+  // Set the interrupt buffer for graceful interruption
+  pyodide.setInterruptBuffer(interruptBuffer);
+
   // Install micropip for package management
   await pyodide.loadPackage('micropip');
 
@@ -300,7 +309,7 @@ async function initializePyodide(id?: string) {
   // Load praxis package
   try {
     pyodide.FS.mkdir('praxis');
-    
+
     const initResponse = await fetch('assets/python/praxis/__init__.py');
     const initCode = await initResponse.text();
     pyodide.FS.writeFile('praxis/__init__.py', initCode);
@@ -308,7 +317,7 @@ async function initializePyodide(id?: string) {
     const interactiveResponse = await fetch('assets/python/praxis/interactive.py');
     const interactiveCode = await interactiveResponse.text();
     pyodide.FS.writeFile('praxis/interactive.py', interactiveCode);
-    
+
     console.log('Praxis package loaded successfully');
   } catch (err) {
     console.error('Error loading praxis package:', err);
