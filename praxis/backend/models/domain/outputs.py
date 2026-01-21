@@ -69,7 +69,9 @@ class FunctionDataOutput(FunctionDataOutputBase, table=True):
 
   data_type: DataOutputTypeEnum = Field(
     default=DataOutputTypeEnum.UNKNOWN,
-    sa_column=Column(SAEnum(DataOutputTypeEnum), default=DataOutputTypeEnum.UNKNOWN, nullable=False),
+    sa_column=Column(
+      SAEnum(DataOutputTypeEnum), default=DataOutputTypeEnum.UNKNOWN, nullable=False
+    ),
   )
   spatial_context: SpatialContextEnum = Field(
     default=SpatialContextEnum.GLOBAL,

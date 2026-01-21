@@ -168,7 +168,9 @@ class AssetReservation(AssetReservationBase, table=True):
 
   status: AssetReservationStatusEnum = Field(
     default=AssetReservationStatusEnum.PENDING,
-    sa_column=Column(SAEnum(AssetReservationStatusEnum), default=AssetReservationStatusEnum.PENDING, nullable=False),
+    sa_column=Column(
+      SAEnum(AssetReservationStatusEnum), default=AssetReservationStatusEnum.PENDING, nullable=False
+    ),
   )
   asset_type: AssetType = Field(
     default=AssetType.ASSET,
@@ -276,7 +278,9 @@ class AssetReservationUpdate(SQLModel):
 
 class ScheduleHistoryBase(PraxisBase):
   event_type: ScheduleHistoryEventEnum = Field(description="Type of the schedule history event")
-  from_status: ScheduleStatusEnum | None = Field(default=None, description="Status before the event")
+  from_status: ScheduleStatusEnum | None = Field(
+    default=None, description="Status before the event"
+  )
   to_status: ScheduleStatusEnum | None = Field(default=None, description="Status after the event")
   message: str | None = Field(default=None)
   error_details: str | None = Field(default=None)
@@ -307,19 +311,23 @@ class ScheduleHistory(ScheduleHistoryBase, table=True):
 
   event_type: ScheduleHistoryEventEnum = Field(
     default=ScheduleHistoryEventEnum.STATUS_CHANGED,
-    sa_column=Column(SAEnum(ScheduleHistoryEventEnum), default=ScheduleHistoryEventEnum.STATUS_CHANGED, nullable=False)
+    sa_column=Column(
+      SAEnum(ScheduleHistoryEventEnum),
+      default=ScheduleHistoryEventEnum.STATUS_CHANGED,
+      nullable=False,
+    ),
   )
   from_status: ScheduleStatusEnum | None = Field(
-    default=None,
-    sa_column=Column(SAEnum(ScheduleStatusEnum), nullable=True)
+    default=None, sa_column=Column(SAEnum(ScheduleStatusEnum), nullable=True)
   )
   to_status: ScheduleStatusEnum | None = Field(
-    default=None,
-    sa_column=Column(SAEnum(ScheduleStatusEnum), nullable=True)
+    default=None, sa_column=Column(SAEnum(ScheduleStatusEnum), nullable=True)
   )
   triggered_by: ScheduleHistoryEventTriggerEnum = Field(
     default=ScheduleHistoryEventTriggerEnum.SYSTEM,
-    sa_column=Column(SAEnum(ScheduleHistoryEventTriggerEnum), default=ScheduleHistoryEventTriggerEnum.SYSTEM)
+    sa_column=Column(
+      SAEnum(ScheduleHistoryEventTriggerEnum), default=ScheduleHistoryEventTriggerEnum.SYSTEM
+    ),
   )
 
   event_data_json: dict[str, Any] | None = Field(default=None, sa_type=JsonVariant)

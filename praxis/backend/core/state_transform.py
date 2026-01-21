@@ -45,6 +45,7 @@ def extract_tip_state(plr_state: dict[str, Any]) -> dict[str, Any]:
 
     Returns:
         Dictionary with tips_loaded (bool) and tips_count (int)
+
     """
     tips_loaded = False
     tips_count = 0
@@ -79,6 +80,7 @@ def extract_liquid_volumes(plr_state: dict[str, Any]) -> dict[str, dict[str, flo
     Returns:
         Dictionary mapping resource names to well volumes:
         {"plate_name": {"A1": 250.0, "A2": 100.0, ...}}
+
     """
     liquids: dict[str, dict[str, float]] = {}
 
@@ -119,6 +121,7 @@ def _infer_parent_name(resource_name: str) -> str:
 
     Returns:
         Inferred parent plate name
+
     """
     # Check for common well identifier patterns at the end
     import re
@@ -144,6 +147,7 @@ def _infer_well_id(resource_name: str) -> str:
 
     Returns:
         Well identifier (e.g., "A1") or the full resource name if no pattern matches
+
     """
     import re
 
@@ -163,6 +167,7 @@ def get_on_deck_resources(plr_state: dict[str, Any]) -> list[str]:
 
     Returns:
         List of resource names
+
     """
     return list(plr_state.keys())
 
@@ -177,6 +182,7 @@ def transform_plr_state(plr_state: dict[str, Any] | None) -> dict[str, Any] | No
 
     Returns:
         Dictionary matching frontend StateSnapshot format, or None if input is None
+
     """
     if not plr_state:
         return None

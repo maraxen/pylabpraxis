@@ -3,8 +3,7 @@ from typing import Any, Callable
 
 
 def serialize_protocol_function(func: Callable) -> bytes:
-  """
-  Serializes a protocol function using cloudpickle.
+  """Serializes a protocol function using cloudpickle.
   If the function is decorated (e.g. by Praxis @protocol decorator),
   it unwraps it to get the original function.
   """

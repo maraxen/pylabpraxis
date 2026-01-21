@@ -30,4 +30,3 @@ class PLRTypeDefinition(PLRTypeDefinitionBase):
 
   This is not a table itself but a shape used by synchronizers.
   """
-

@@ -67,19 +67,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
   ) -> list[ModelType]:
     """Get multiple objects with filtering, sorting, and pagination."""
     statement = select(self.model)
-    if filters.search_filters:
-      statement = apply_search_filters(statement, self.model, filters)
-      statement = apply_date_range_filters(
-        statement,
-        filters,
-        self.model.created_at,
-      )
-      if self.model.properties_json:
-        statement = apply_property_filters(
-          statement,
-          filters,
-          self.model.properties_json,
-        )
+    statement = apply_search_filters(statement, self.model, filters)
     if filters.sort_by:
       statement = apply_sorting(statement, self.model, filters.sort_by)
     statement = apply_specific_id_filters(statement, filters, self.model)

@@ -17,8 +17,7 @@ class MethodInfo(BaseModel):
 
 
 def inspect_machine_methods(fqn: str) -> List[MethodInfo]:
-  """
-  Inspects a class given its fully qualified name and returns a list of its public methods.
+  """Inspects a class given its fully qualified name and returns a list of its public methods.
   Only allows classes within the 'pylabrobot' package for security.
   """
   if not fqn.startswith("pylabrobot."):

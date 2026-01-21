@@ -48,7 +48,9 @@ class Workcell(WorkcellBase, table=True):
 
   status: WorkcellStatusEnum = Field(
     default=WorkcellStatusEnum.AVAILABLE,
-    sa_column=Column(SAEnum(WorkcellStatusEnum), default=WorkcellStatusEnum.AVAILABLE, nullable=False),
+    sa_column=Column(
+      SAEnum(WorkcellStatusEnum), default=WorkcellStatusEnum.AVAILABLE, nullable=False
+    ),
   )
 
   # Redefine with sa_type for table
