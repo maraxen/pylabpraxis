@@ -280,6 +280,20 @@ dispatch({
 
 The system will automatically configure the CLI session with these permissions, ensuring the agent has exactly what it needs to complete the task safely.
 
+### ⚠️ Manual Execution Required (Temporary)
+
+**The `execute=true` flag in MCP dispatches currently does NOT spawn CLI processes.** It only records the dispatch and shows the command that would be run.
+
+**Workaround**: After dispatch, manually run the command:
+
+```bash
+timeout 300 gemini --model gemini-3-flash-preview -p "YOUR_PROMPT_HERE" 2>&1 | tee .agent/reports/dispatch_ID.log
+```
+
+Or have the orchestrator run the command directly via `run_command`.
+
+*This is tracked as technical debt - see `debt_list()` for status.*
+
 ### Migration Note
 
 Database location: [.agent/agent.db](cci:7://file:///Users/mar/Projects/pylabpraxis/.agent/agent.db:0:0-0:0)
@@ -293,13 +307,133 @@ To re-run migration:
 
 ---
 
-## 💻 Gemini CLI Headless Skill
+## 📦 Tasks vs Dispatches
 
-For scripting and automation via Gemini CLI:
+**Understanding the Hierarchy**:
 
-- Model selection: `--model gemini-2.5-flash` vs `gemini-2.5-pro`
+- **Tasks** (`tasks` table) are the **Project Backlog** items (Matrix IDs). They represent *what* needs to be done. They persist until the job is `DONE`.
+- **Dispatches** (`dispatches` table) are the **Active Sessions** created to *work* on those tasks. A single Task may require multiple Dispatches (e.g., one for research, one for coding, one for review).
+
+**Guidance**:
+
+- **Create a Task** when you have a distinct unit of work tracked in the Matrix (e.g., "Refactor Auth").
+- **Fire a Dispatch** when you need an agent to *execute* a step of that work (e.g., "Analyze Auth Code", "Implement Login").
+- **Always link them**: `dispatch(..., task_id: "task_123")`.
+
+### 🔗 Automatic Task Context Injection
+
+**When you provide a `task_id` in a dispatch, the system automatically:**
+
+1. **Fetches the task** from the database
+2. **Inherits the task's mode** if not explicitly provided in the dispatch
+3. **Injects a Task Context block** into the full prompt:
+
+```markdown
+# Task Context (ID: abc123)
+
+Title: Fix auth bug
+Description: Resolve the login timeout issue affecting production users...
+Status: IN_PROGRESS
+Priority: P1
+```
+
+**The final prompt structure sent to the agent:**
+
+```
+[System Prompt]       ← from .agent/agents/{mode}.md
+---
+[Task Context]        ← auto-injected from task_id
+---
+[Instructions]        ← your prompt
+```
+
+This means you don't need to manually include task details in your dispatch prompt—just provide the `task_id` and the system handles context coupling automatically.
+
+## 🚀 Batch Dispatching
+
+The `dispatch` tool now supports batch operations for parallel execution.
+
+```json
+{
+  "dispatches": [
+    { "target": "antigravity", "prompt": "Research API", "task_id": "t1" },
+    { "target": "antigravity", "prompt": "Scaffold DB", "task_id": "t2" }
+  ],
+  "metadata": { "batch_id": "b1" }
+}
+```
+
+For **CLI Push** dispatches (`execute: true`), this generates a parallel execution script:
+
+```bash
+( gemini ... & )
+( gemini ... & )
+wait
+```
+
+**Track batch status:**
+
+```javascript
+dispatch_status({ batch_id: "b1" })
+```
+
+## 📦 Batch Task Creation
+
+You can create multiple tasks in a single request, useful for project scaffolding:
+
+```json
+{
+  "tasks": [
+    { "description": "Setup DB", "priority": "P1" },
+    { "description": "Create API", "priority": "P2" }
+  ],
+  "metadata": { "batch_id": "setup-v1" }
+}
+```
+
+---
+
+## 💻 Gemini CLI Dispatch
+
+### ⚠️ CRITICAL: Model Selection
+
+**ALWAYS use `cli` target (auto model selection) unless explicitly instructed otherwise.**
+
+```
+✅ CORRECT: target: "cli"
+❌ WRONG:   target: "cli:gemini-2.5-flash"  (deprecated)
+❌ WRONG:   target: "cli:gemini-3-pro"      (use auto instead)
+```
+
+The `cli` target automatically selects the best available model. Specifying models manually risks using deprecated or unavailable versions.
+
+### Dispatch Targets
+
+| Target | Model | Use Case |
+|--------|-------|----------|
+| `cli` | Auto (recommended) | All CLI dispatches |
+| `jules` | N/A | Remote Jules agent tasks |
+| `antigravity` | Claude | Complex, interactive tasks |
+
+### CLI Dispatch Example
+
+```javascript
+mcp_orbitalvelocity_dispatch({
+  target: "cli",           // NOT "cli:gemini-2.5-flash"
+  mode: "fixer",
+  dispatch_type: "push",
+  execute: true,
+  permissions: ["read_file", "write_file"],
+  prompt: "Your task here..."
+})
+```
+
+### Gemini CLI Headless Skill
+
+For advanced scripting and automation:
+
 - Environment variables: `GEMINI_MODEL_FAST`, `GEMINI_MODEL_DEEP`
-- Handling model accession updates
+- Handling model updates
 - Integration with dev matrix
 
 See `global_skills/gemini-cli-headless/SKILL.md`
