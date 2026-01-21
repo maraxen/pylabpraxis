@@ -14,15 +14,16 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.domain.outputs import (
-  FunctionDataOutput as FunctionDataOutput,
+  FunctionDataOutput,
 )
 from praxis.backend.models.domain.outputs import (
   PlateDataVisualization,
 )
 from praxis.backend.models.domain.outputs import (
-  WellDataOutput as WellDataOutput,
+  WellDataOutput,
 )
 from praxis.backend.models.enums import DataOutputTypeEnum
+from praxis.backend.services.resource import resource_service
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
 logger = get_logger(__name__)
@@ -46,14 +47,14 @@ async def read_plate_data_visualization(
   """Get plate data formatted for visualization.
 
   Args:
-    db: Database session
-    plate_resource_accession_id: Plate resource ID
-    data_type: Type of data to visualize
-    protocol_run_accession_id: Optional protocol run filter
-    function_call_log_accession_id: Optional function call filter
+      db: Database session
+      plate_resource_accession_id: Plate resource ID
+      data_type: Type of data to visualize
+      protocol_run_accession_id: Optional protocol run filter
+      function_call_log_accession_id: Optional function call filter
 
   Returns:
-    Plate data visualization model or None if no data found
+      Plate data visualization model or None if no data found
 
   """
   # Build query for well data
@@ -86,9 +87,29 @@ async def read_plate_data_visualization(
   if not well_data_list:
     return None
 
-  # Get plate information (you'll need to implement this based on your plate model)
-  # For now, assuming standard 96-well plate
+  # Get plate information
+  resource = await resource_service.get(db, plate_resource_accession_id)
   plate_layout = {"rows": 8, "columns": 12, "total_wells": 96, "format": "96-well"}
+
+  if resource and resource.resource_definition and resource.resource_definition.properties_json:
+    try:
+      # Safely extract dimensions from resource definition metadata
+      metadata = resource.resource_definition.properties_json
+      num_items_x = metadata.get("num_items_x")
+      num_items_y = metadata.get("num_items_y")
+
+      if num_items_x and num_items_y:
+        plate_layout = {
+          "rows": num_items_y,
+          "columns": num_items_x,
+          "total_wells": num_items_x * num_items_y,
+          "format": f"{num_items_x * num_items_y}-well",
+        }
+    except (AttributeError, KeyError) as e:
+      logger.warning(
+        "Could not parse plate geometry from resource definition for plate "
+        f"{plate_resource_accession_id}. Error: {e}",
+      )
 
   # Calculate data range for visualization scaling
   values = [wd.data_value for wd in well_data_list if wd.data_value is not None]
