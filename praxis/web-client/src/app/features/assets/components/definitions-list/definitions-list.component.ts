@@ -238,6 +238,12 @@ export class DefinitionsListComponent {
         options: this.manufacturers().map(m => ({ label: m, value: m }))
       },
       {
+        key: 'plr_category',
+        label: 'Category',
+        type: 'multiselect',
+        options: this.categories().map(c => ({ label: c, value: c }))
+      },
+      {
         key: 'consumable',
         label: 'Consumable Only',
         type: 'toggle',
@@ -265,6 +271,14 @@ export class DefinitionsListComponent {
     return Array.from(mfgs).sort();
   });
 
+  categories = computed(() => {
+    const cats = new Set<string>();
+    this.resourceDefinitions().forEach(d => {
+      if (d.plr_category) cats.add(d.plr_category);
+    });
+    return Array.from(cats).sort();
+  });
+
   filteredResourceDefinitions = computed(() => {
     const state = this.resourceViewState();
     let filtered = this.resourceDefinitions();
@@ -284,6 +298,12 @@ export class DefinitionsListComponent {
     const mfgFilters = state.filters['manufacturer'] || [];
     if (mfgFilters.length > 0) {
       filtered = filtered.filter(def => def.manufacturer && mfgFilters.includes(def.manufacturer));
+    }
+
+    // 2b. Category Filter
+    const catFilters = state.filters['plr_category'] || [];
+    if (catFilters.length > 0) {
+      filtered = filtered.filter(def => def.plr_category && catFilters.includes(def.plr_category));
     }
 
     // 3. Consumable Toggle

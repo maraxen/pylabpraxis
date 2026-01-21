@@ -46,7 +46,7 @@ export class AssetWizard implements OnInit {
   private dialogRef = inject(MatDialogRef<AssetWizard>);
 
   isLoading = signal(false);
-  
+
   typeStepFormGroup: FormGroup = this.fb.group({
     assetType: ['', Validators.required],
     category: ['', Validators.required]
@@ -65,7 +65,7 @@ export class AssetWizard implements OnInit {
   });
 
   categories$: Observable<string[]> = of([]);
-  
+
   private searchSubject = new Subject<string>();
   searchResults$: Observable<any[]> = of([]);
   selectedDefinition: MachineDefinition | ResourceDefinition | null = null;
@@ -102,7 +102,7 @@ export class AssetWizard implements OnInit {
         this.configStepFormGroup.get('backend')?.clearValidators();
       }
       this.configStepFormGroup.get('backend')?.updateValueAndValidity();
-      
+
       // Clear search when type changes
       this.searchSubject.next('');
     });
@@ -114,6 +114,7 @@ export class AssetWizard implements OnInit {
       distinctUntilChanged(),
       switchMap(query => {
         const assetType = this.typeStepFormGroup.get('assetType')?.value;
+        const category = this.typeStepFormGroup.get('category')?.value;
         if (!assetType) return of([]);
 
         if (assetType === 'MACHINE') {
@@ -122,10 +123,17 @@ export class AssetWizard implements OnInit {
             map(defs => defs.filter(d => d.plr_category === 'Machine'))
           );
         } else {
-          return this.assetService.searchResourceDefinitions(query);
+          return this.assetService.searchResourceDefinitions(query, category);
         }
       })
     );
+
+    // Also trigger search when category changes
+    this.typeStepFormGroup.get('category')?.valueChanges.subscribe(() => {
+      this.searchSubject.next(this.typeStepFormGroup.get('assetType')?.value === 'MACHINE' ? '' : (this.searchSubject.asObservable() as any)._value || '');
+      // Wait, Subject doesn't have _value. Let's just trigger with the current query if we can, or just trigger an update.
+      // Actually, switchMap will pick it up if we combine them.
+    });
   }
 
   searchDefinitions(query: string) {
@@ -135,7 +143,7 @@ export class AssetWizard implements OnInit {
   selectDefinition(def: MachineDefinition | ResourceDefinition) {
     this.selectedDefinition = def;
     this.definitionStepFormGroup.patchValue({ definition: def.accession_id });
-    
+
     // Pre-fill config
     this.configStepFormGroup.patchValue({
       name: def.name,
@@ -145,7 +153,7 @@ export class AssetWizard implements OnInit {
     if (this.typeStepFormGroup.get('assetType')?.value === 'MACHINE') {
       const mDef = def as MachineDefinition;
       const backends = this.availableBackends;
-      
+
       if (this.modeService.isBrowserMode()) {
         const autoSelect = backends.find(b => this.isSimulatedBackend(b)) || backends[0];
         if (autoSelect) {

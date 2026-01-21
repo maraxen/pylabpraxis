@@ -144,6 +144,31 @@ def apply_specific_id_filters(
   return query
 
 
+def apply_plr_category_filter(
+  query: Select,
+  filters: SearchFilters,
+  orm_model: type[BaseModel],
+) -> Select:
+  """Apply a filter for the plr_category to a SQLAlchemy query.
+
+  Args:
+      query: The SQLAlchemy Select statement.
+      filters: The SearchFilters object containing the plr_category.
+      orm_model: The ORM model class to which the query applies.
+
+  Returns:
+      The modified Select statement with the plr_category filter applied.
+
+  """
+  value = filters.plr_category
+  if not value and filters.search_filters:
+    value = filters.search_filters.get("plr_category")
+
+  if value and hasattr(orm_model, "plr_category"):
+    query = query.filter(orm_model.plr_category == value)
+  return query
+
+
 def apply_search_filters(
   query: Select,
   model_model: type[BaseModel],
@@ -171,6 +196,7 @@ def apply_search_filters(
   timestamp_col = getattr(model_model, timestamp_field, None)
 
   q = apply_specific_id_filters(query, filters, model_model)
+  q = apply_plr_category_filter(q, filters, model_model)
   if properties_col is not None:
     q = apply_property_filters(q, filters, properties_col)
   if timestamp_col is not None:

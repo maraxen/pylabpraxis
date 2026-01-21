@@ -13,6 +13,7 @@ class SearchFilters(SQLModel):
   limit: int = Field(default=100, ge=1, le=1000, description="Maximum number of results to return.")
   offset: int = Field(default=0, ge=0, description="Number of results to skip before returning.")
   sort_by: str | None = Field(default=None, description="Field to sort by.")
+  plr_category: str | None = Field(default=None, description="Filter by PyLabRobot category.")
   search_filters: dict[str, Any] | None = Field(
     default=None,
     description="Generic key-value filters for searching.",

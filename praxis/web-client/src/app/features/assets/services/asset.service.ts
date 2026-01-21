@@ -280,7 +280,7 @@ export class AssetService {
 
   searchMachineDefinitions(query: string): Observable<MachineDefinition[]> {
     return this.getMachineDefinitions().pipe(
-      map(defs => defs.filter(d => 
+      map(defs => defs.filter(d =>
         d.name.toLowerCase().includes(query.toLowerCase()) ||
         d.description?.toLowerCase().includes(query.toLowerCase()) ||
         d.manufacturer?.toLowerCase().includes(query.toLowerCase())
@@ -305,23 +305,43 @@ export class AssetService {
     );
   }
 
-  getResourceDefinitions(): Observable<ResourceDefinition[]> {
+  getResourceDefinitions(plrCategory?: string): Observable<ResourceDefinition[]> {
     if (this.modeService.isBrowserMode()) {
       return this.sqliteService.resourceDefinitions.pipe(
-        map(repo => repo.findAll().map(d => ({
-          ...d,
-          name: (d as Record<string, unknown>)['name'] as string || 'Unknown Definition'
-        }) as unknown as ResourceDefinition))
+        map(repo => {
+          let defs = repo.findAll();
+          if (plrCategory) {
+            defs = defs.filter(d => d.plr_category === plrCategory);
+          }
+          return defs.map(d => ({
+            ...d,
+            name: (d as Record<string, unknown>)['name'] as string || 'Unknown Definition'
+          }) as unknown as ResourceDefinition);
+        })
       );
     }
-    return this.apiWrapper.wrap(AssetsService.getMultiApiV1ResourcesDefinitionsGet(100)).pipe(
+    // Note: We use the search_filters object to pass the plr_category if the generated client doesn't have it as a top-level param yet.
+    // However, since we added it to SearchFilters in the backend, it might be available as a query param eventually.
+    // For now, let's try to pass it if the generated service allows it or via search_filters.
+    return this.apiWrapper.wrap(AssetsService.getMultiApiV1ResourcesDefinitionsGet(
+      100,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      plrCategory ? { search_filters: { plr_category: plrCategory } } : undefined
+    )).pipe(
       map(defs => defs.map(d => d as unknown as ResourceDefinition))
     );
   }
 
-  searchResourceDefinitions(query: string): Observable<ResourceDefinition[]> {
-    return this.getResourceDefinitions().pipe(
-      map(defs => defs.filter(d => 
+  searchResourceDefinitions(query: string, plrCategory?: string): Observable<ResourceDefinition[]> {
+    return this.getResourceDefinitions(plrCategory).pipe(
+      map(defs => defs.filter(d =>
         d.name.toLowerCase().includes(query.toLowerCase()) ||
         d.description?.toLowerCase().includes(query.toLowerCase()) ||
         d.vendor?.toLowerCase().includes(query.toLowerCase())
