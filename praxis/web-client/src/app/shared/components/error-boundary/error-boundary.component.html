@@ -1,0 +1,19 @@
+<div class="error-boundary-container" *ngIf="error">
+  <mat-card class="error-card">
+    <mat-card-header>
+      <div mat-card-avatar><mat-icon>error_outline</mat-icon></div>
+      <mat-card-title>An Unexpected Error Occurred</mat-card-title>
+      <mat-card-subtitle>We're sorry for the inconvenience.</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <p>
+        The application encountered a problem. You can attempt to recover from this
+        error or dismiss this message.
+      </p>
+    </mat-card-content>
+    <mat-card-actions align="end">
+      <button mat-button (click)="onDismiss()">DISMISS</button>
+      <button mat-flat-button color="primary" (click)="onRetry()">RETRY</button>
+    </mat-card-actions>
+  </mat-card>
+</div>

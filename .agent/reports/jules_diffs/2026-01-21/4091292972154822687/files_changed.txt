@@ -1,0 +1,1 @@
+.agent/research/theme_manifest_format.md

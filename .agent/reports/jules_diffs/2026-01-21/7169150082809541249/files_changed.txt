@@ -1,0 +1,3 @@
+praxis/web-client/src/app/shared/components/error-boundary/error-boundary.component.html
+praxis/web-client/src/app/shared/components/error-boundary/error-boundary.component.scss
+praxis/web-client/src/app/shared/components/error-boundary/error-boundary.component.ts

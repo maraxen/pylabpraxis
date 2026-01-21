@@ -1,0 +1,1 @@
+.agent/templates/artifact.md
