@@ -16,13 +16,12 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import Machine, ResourceDefinition
 from praxis.backend.models.domain.deck import (
-  Deck as Deck,
-)
-from praxis.backend.models.domain.deck import (
+  Deck,
   DeckCreate,
   DeckUpdate,
 )
 from praxis.backend.models.domain.filters import SearchFilters
+from praxis.backend.services.deck_configuration import deck_configuration_service
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
@@ -321,6 +320,24 @@ class DeckService(CRUDBase[Deck, DeckCreate, DeckUpdate]):
     )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
+  async def get_slot_coordinates(
+    self,
+    db: AsyncSession,
+    deck_id: uuid.UUID,
+    slot: str,
+  ) -> dict[str, float] | None:
+    """Get the coordinates of a specific slot on a deck."""
+    deck = await self.get(db, deck_id)
+    # The DeckOrm model has a deck_type relationship.
+    # We check if positioning_config_json is present on the deck_type.
+    if not deck or not deck.deck_type or not deck.deck_type.positioning_config_json:
+      return None
+
+    return deck_configuration_service.get_slot_coordinates(
+      deck.deck_type.positioning_config_json,
+      slot,
+    )
 
 
 deck_service = DeckService(Deck)

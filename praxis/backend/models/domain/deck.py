@@ -200,9 +200,7 @@ class DeckDefinition(DeckDefinitionBase, table=True):
   children: list[DeckDefinition] = Relationship(
     sa_relationship=relationship("DeckDefinition", back_populates="parent")
   )
-  deck: list[Deck] = Relationship(
-    sa_relationship=relationship("Deck", back_populates="deck_type")
-  )
+  deck: list[Deck] = Relationship(sa_relationship=relationship("Deck", back_populates="deck_type"))
 
   # Position definitions relationship (exposed as `positions` to match existing callers)
   positions: list[DeckPositionDefinition] = Relationship(
