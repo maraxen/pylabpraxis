@@ -122,6 +122,14 @@ class ExecutionMixin:
       protocol_def_model,
     )
 
+    if protocol_pydantic_def.requires_linked_indices:
+      from praxis.backend.tracers import LinkedIndicesTracer
+
+      tracer = LinkedIndicesTracer()
+      source_wells = input_parameters.get("source_wells", [])
+      destination_wells = input_parameters.get("destination_wells", [])
+      tracer.validate(source_wells, destination_wells)
+
     main_workcell_container = self.workcell_runtime.get_main_workcell()
     if not main_workcell_container:
       error_msg = "Main Workcell container not available from WorkcellRuntime."

@@ -21,7 +21,11 @@ from praxis.backend.models import (
 )
 from praxis.backend.services.protocols import ProtocolRunService
 from praxis.backend.services.state import PraxisState
-from praxis.backend.utils.errors import PyLabRobotGenericError, PyLabRobotVolumeError
+from praxis.backend.utils.errors import (
+  InvalidWellSetsError,
+  PyLabRobotGenericError,
+  PyLabRobotVolumeError,
+)
 from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -79,7 +83,9 @@ class ErrorHandlingMixin:
       try:
         self._validate_praxis_state(praxis_state)
       except Exception:
-        logger.debug("ORCH: PraxisState validation failed, continuing to attempt rollback", exc_info=True)
+        logger.debug(
+          "ORCH: PraxisState validation failed, continuing to attempt rollback", exc_info=True
+        )
 
       if last_good_snapshot:
         self.workcell_runtime.apply_state_snapshot(last_good_snapshot)
@@ -128,6 +134,20 @@ class ErrorHandlingMixin:
           "error_type": type(e).__name__,
           "error_message": str(e),
           "details": "PyLabRobot operation failed.",
+          "traceback": traceback.format_exc(),
+        },
+      )
+    elif isinstance(e, InvalidWellSetsError):
+      logger.info(
+        "Invalid well sets error detected for run %s. Setting status to FAILED.",
+        run_accession_id,
+      )
+      final_run_status = ProtocolRunStatusEnum.FAILED
+      status_details = json.dumps(
+        {
+          "error_type": type(e).__name__,
+          "error_message": str(e),
+          "details": "Invalid well sets provided.",
           "traceback": traceback.format_exc(),
         },
       )

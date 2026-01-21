@@ -24,6 +24,10 @@ class PraxisError(Exception):
     return f"{self.message}"
 
 
+class InvalidWellSetsError(PraxisError):
+  """Raised when source and destination well sets are not linked by index."""
+
+
 class OrchestratorError(Exception):
   """Exception raised for errors in the orchestrator service.
 

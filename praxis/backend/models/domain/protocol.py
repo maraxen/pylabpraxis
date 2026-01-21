@@ -313,6 +313,7 @@ class FunctionProtocolDefinitionBase(PraxisBase):
   deck_construction_function_fqn: str | None = Field(default=None)
   deck_layout_path: str | None = Field(default=None)
   state_param_name: str | None = Field(default=None)
+  requires_linked_indices: bool = Field(default=False)
   category: str | None = Field(default=None, index=True)
   deprecated: bool = Field(default=False, index=True)
   source_hash: str | None = Field(default=None)
@@ -422,6 +423,7 @@ class FunctionProtocolDefinitionUpdate(SQLModel):
 
   description: str | None = None
   tags: dict[str, Any] | None = None
+  requires_linked_indices: bool | None = None
   deprecated: bool | None = None
 
 
