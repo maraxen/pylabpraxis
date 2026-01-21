@@ -210,14 +210,18 @@ class ProtocolExecutionService(IProtocolExecutionService):
       status_info = {
         "protocol_run_id": str(protocol_run_id),
         # Tests expect lowercase status strings (e.g. 'completed'), normalize here
-        "status": protocol_run_model.status.value.lower() if protocol_run_model.status else "unknown",
+        "status": protocol_run_model.status.value.lower()
+        if protocol_run_model.status
+        else "unknown",
         "created_at": protocol_run_model.created_at.isoformat()
         if protocol_run_model.created_at
         else None,
         "start_time": protocol_run_model.start_time.isoformat()
         if protocol_run_model.start_time
         else None,
-        "end_time": protocol_run_model.end_time.isoformat() if protocol_run_model.end_time else None,
+        "end_time": protocol_run_model.end_time.isoformat()
+        if protocol_run_model.end_time
+        else None,
         "duration_ms": protocol_run_model.duration_ms,
         "protocol_name": (
           protocol_run_model.top_level_protocol_definition.name
@@ -303,3 +307,17 @@ class ProtocolExecutionService(IProtocolExecutionService):
       logger.warning("Partial cancellation of protocol run %s", protocol_run_id)
 
     return success
+
+  async def pause_protocol_run(self, protocol_run_id: uuid.UUID) -> bool:
+    """Pause a protocol run."""
+    logger.info("Pausing protocol run %s", protocol_run_id)
+    from praxis.backend.utils.run_control import send_control_command
+
+    return await send_control_command(protocol_run_id, "PAUSE")
+
+  async def resume_protocol_run(self, protocol_run_id: uuid.UUID) -> bool:
+    """Resume a protocol run."""
+    logger.info("Resuming protocol run %s", protocol_run_id)
+    from praxis.backend.utils.run_control import send_control_command
+
+    return await send_control_command(protocol_run_id, "RESUME")

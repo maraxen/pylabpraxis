@@ -70,8 +70,16 @@ import { Subscription } from 'rxjs';
             </mat-card-content>
             <mat-card-actions>
               <button mat-button color="warn" (click)="stopRun()"
-                [disabled]="run.status !== ExecutionStatus.RUNNING">
+                [disabled]="run.status !== ExecutionStatus.RUNNING && run.status !== ExecutionStatus.PAUSED">
                 <mat-icon>stop</mat-icon> Stop
+              </button>
+              <button mat-button color="primary" (click)="pauseRun()"
+                [disabled]="run.status !== ExecutionStatus.RUNNING">
+                <mat-icon>pause</mat-icon> Pause
+              </button>
+              <button mat-button color="primary" (click)="resumeRun()"
+                [disabled]="run.status !== ExecutionStatus.PAUSED">
+                <mat-icon>play_arrow</mat-icon> Resume
               </button>
             </mat-card-actions>
           </mat-card>
@@ -162,6 +170,14 @@ export class LiveDashboardComponent implements OnDestroy {
 
   stopRun() {
     this.executionService.stopRun().subscribe();
+  }
+
+  pauseRun() {
+    this.executionService.pauseRun().subscribe();
+  }
+
+  resumeRun() {
+    this.executionService.resumeRun().subscribe();
   }
 
   ngOnDestroy() {

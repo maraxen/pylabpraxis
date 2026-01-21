@@ -13,6 +13,7 @@ from praxis.backend.api import (
   auth,
   decks,
   discovery,
+  execution,
   machines,
   outputs,
   protocols,
@@ -117,7 +118,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     task_queue = StorageFactory.create_task_queue(storage_backend)
     app.state.kv_store = kv_store
     app.state.task_queue = task_queue
-    logger.info("Storage layer initialized: kv_store=%s, task_queue=%s", type(kv_store).__name__, type(task_queue).__name__)
+    logger.info(
+      "Storage layer initialized: kv_store=%s, task_queue=%s",
+      type(kv_store).__name__,
+      type(task_queue).__name__,
+    )
 
     logger.info("Initializing Praxis database schema...")
     engine = getattr(app.state, "async_engine", None)
@@ -169,6 +174,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       # Initialize DiscoveryService with all type definition services
       logger.info("Initializing DiscoveryService...")
       from praxis.backend.models.domain.protocol import FunctionProtocolDefinition, ProtocolRun
+
       protocol_definition_service = ProtocolDefinitionCRUDService(FunctionProtocolDefinition)
       discovery_service = DiscoveryService(
         db_session_factory=AsyncSessionLocal,
@@ -240,7 +246,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       app.state.praxis_config = praxis_config
       app.state.protocol_execution_service = protocol_execution_service
       app.state.mock_telemetry_service = mock_telemetry_service
-      logger.info("Orchestrator, DiscoveryService, and ProtocolExecutionService attached to application state.")
+      logger.info(
+        "Orchestrator, DiscoveryService, and ProtocolExecutionService attached to application state."
+      )
       logger.info("Application startup complete.")
 
       yield  # The application is now running
@@ -302,6 +310,7 @@ app.include_router(decks.router, prefix="/api/v1/decks", tags=["Decks"])
 app.include_router(machines.router, prefix="/api/v1/machines", tags=["Machines"])
 app.include_router(discovery.router, prefix="/api/v1/discovery", tags=["Discovery"])
 app.include_router(scheduler.router, prefix="/api/v1/scheduler", tags=["Scheduler"])
+app.include_router(execution.router, prefix="/api/v1/execution", tags=["Execution"])
 
 from praxis.backend.api import websockets
 

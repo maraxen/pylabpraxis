@@ -43,6 +43,7 @@ export class ExecutionService {
   readonly currentRun = this._currentRun.asReadonly();
   readonly isConnected = this._isConnected.asReadonly();
   readonly isRunning = computed(() => this._currentRun()?.status === ExecutionStatus.RUNNING);
+  readonly isPaused = computed(() => this._currentRun()?.status === ExecutionStatus.PAUSED);
 
   messages$ = this.messagesSubject.asObservable();
 
@@ -536,12 +537,46 @@ print(f"[Browser] Protocol finished with result: {result}")
   }
 
   /**
+   * Pause the current run
+   */
+  pauseRun(): Observable<void> {
+    const runId = this._currentRun()?.runId;
+    if (!runId) return of(void 0);
+
+    return this.http.post<void>(`${this.API_URL}/api/v1/execution/runs/${runId}/pause`, {});
+  }
+
+  /**
+   * Resume the current run
+   */
+  resumeRun(): Observable<void> {
+    const runId = this._currentRun()?.runId;
+    if (!runId) return of(void 0);
+
+    return this.http.post<void>(`${this.API_URL}/api/v1/execution/runs/${runId}/resume`, {});
+  }
+
+  /**
    * Stop the current run
    */
   stopRun(): Observable<unknown> {
     const runId = this._currentRun()?.runId;
     if (!runId) return of(void 0);
 
+    // Browser mode: Use interrupt buffer
+    if (runId.startsWith('browser-')) {
+      this.pythonRuntime.interrupt();
+      const current = this._currentRun();
+      if (current) {
+        this._currentRun.set({
+          ...current,
+          status: ExecutionStatus.CANCELLED
+        });
+      }
+      return of(void 0);
+    }
+
+    // Production mode: use HTTP API
     return this.apiWrapper.wrap(ProtocolsService.cancelProtocolRunApiV1ProtocolsRunsRunIdCancelPost(runId)).pipe(
       tap(() => {
         const current = this._currentRun();
