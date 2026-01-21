@@ -50,6 +50,12 @@ class PraxisRunContext:
   """Canonical state of the protocol run, shared across all calls."""
   current_db_session: AsyncSession
   """Current database session for the run, shared across all calls."""
+  is_simulation: bool = False
+  """Whether the current run is a simulation."""
+  simulation_state: dict[str, Any] = None  # type: ignore[assignment]
+  """Persistent state for browser-mode simulation.
+  Shared across all contexts in a single run.
+  """
   runtime: Any | None = None
   """Reference to the WorkcellRuntime instance for capturing snapshots."""
   current_call_log_db_accession_id: uuid.UUID | None = None
@@ -80,12 +86,22 @@ class PraxisRunContext:
   def __post_init__(self) -> None:
     if self._shared_run_data is None:
       self._shared_run_data = {}
+    if self.simulation_state is None:
+      self.simulation_state = {}
 
   def get_and_increment_sequence_val(self) -> int:
     """Return the current sequence value and then increment it for the next call."""
     current_val = self._call_sequence_next_val
     self._call_sequence_next_val += 1
     return current_val
+
+  def get_simulation_state(self) -> dict[str, Any]:
+    """Get the current simulation state dictionary."""
+    return self.simulation_state
+
+  def update_simulation_state(self, updates: dict[str, Any]) -> None:
+    """Update the simulation state with new key-value pairs."""
+    self.simulation_state.update(updates)
 
   def create_context_for_nested_call(
     self,
@@ -110,6 +126,8 @@ class PraxisRunContext:
       run_accession_id=self.run_accession_id,
       canonical_state=self.canonical_state,
       current_db_session=self.current_db_session,
+      is_simulation=self.is_simulation,
+      simulation_state=self.simulation_state,
       runtime=self.runtime,
       current_call_log_db_accession_id=new_parent_call_log_db_accession_id,
       _shared_run_data=self._shared_run_data,

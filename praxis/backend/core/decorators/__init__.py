@@ -11,6 +11,8 @@ from .models import (
   logger,
   praxis_run_context_cv,
 )
+from .simulation import simulate_output
+
 from .parameter_processor import _process_parameter
 from .protocol_decorator import (
   _handle_control_commands,
@@ -38,4 +40,5 @@ __all__ = [
   "logger",
   "praxis_run_context_cv",
   "protocol_function",
+  "simulate_output",
 ]

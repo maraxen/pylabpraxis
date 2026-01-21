@@ -334,6 +334,60 @@ class TestSerializeArguments:
         assert data["kwargs"] == {}
 
 
+class TestPraxisRunContextSimulation:
+    """Tests for simulation-related features in PraxisRunContext."""
+
+    def test_simulation_defaults(self) -> None:
+        """Test default simulation values."""
+        context = PraxisRunContext(
+            run_accession_id=uuid7(),
+            canonical_state=Mock(),
+            current_db_session=Mock(),
+        )
+        assert context.is_simulation is False
+        assert context.simulation_state == {}
+
+    def test_get_simulation_state(self) -> None:
+        """Test get_simulation_state method."""
+        context = PraxisRunContext(
+            run_accession_id=uuid7(),
+            canonical_state=Mock(),
+            current_db_session=Mock(),
+        )
+        state = context.get_simulation_state()
+        assert state == {}
+        assert state is context.simulation_state
+
+    def test_update_simulation_state(self) -> None:
+        """Test update_simulation_state method."""
+        context = PraxisRunContext(
+            run_accession_id=uuid7(),
+            canonical_state=Mock(),
+            current_db_session=Mock(),
+        )
+        context.update_simulation_state({"foo": "bar", "count": 42})
+        assert context.simulation_state == {"foo": "bar", "count": 42}
+
+        context.update_simulation_state({"foo": "baz"})
+        assert context.simulation_state == {"foo": "baz", "count": 42}
+
+    def test_nested_context_preserves_simulation_flags(self) -> None:
+        """Test that nested contexts inherit simulation flags and state."""
+        original = PraxisRunContext(
+            run_accession_id=uuid7(),
+            canonical_state=Mock(),
+            current_db_session=Mock(),
+            is_simulation=True,
+        )
+        original.update_simulation_state({"shared": True})
+
+        nested = original.create_context_for_nested_call(uuid7())
+
+        assert nested.is_simulation is True
+        assert nested.simulation_state == {"shared": True}
+        assert nested.simulation_state is original.simulation_state
+
+
 class TestRunContextIntegration:
 
     """Integration tests for PraxisRunContext."""
