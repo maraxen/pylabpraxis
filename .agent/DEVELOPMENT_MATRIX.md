@@ -1,4 +1,5 @@
 # Praxis Development Matrix
+<!-- Migrated to MCP database on 2026-01-21 -->
 
 **Last Updated**: 2026-01-20
 **Purpose**: Current iteration work items with priority and difficulty ratings.

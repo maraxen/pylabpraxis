@@ -29,12 +29,14 @@ test('should handle pause, confirm, and input interactions', async ({ page }) =>
     // The user suggested using 'monaco' locator. If Monaco is used inside JupyterLite or as a standalone, this should work.
     // Fallback to searching inside the iframe if it's JupyterLite's internal editor.
     const iframe = page.frameLocator('iframe.notebook-frame');
-    // More robust editor selection: targeting the last cell
-    const editor = iframe.locator('.jp-Cell:last-child .cm-content, .jp-Cell:last-child .monaco-editor, .jp-Cell:last-child .CodeMirror').first();
+    // Target the last cell (which should be the new empty one) and its editor
+    const editor = iframe.locator('.jp-Cell').last().locator('.cm-content, .CodeMirror').first();
 
+    console.log('Waiting for editor...');
     await expect(editor).toBeVisible({ timeout: 30000 });
+    console.log('Clicking editor...');
     await editor.click();
-    await page.waitForTimeout(1000); // Wait for focus to settle
+    await page.waitForTimeout(1000);
 
     // Clear and type - use editor methods instead of page.keyboard since editor is in iframe
     const isMac = process.platform === 'darwin';
@@ -59,8 +61,13 @@ name = await input("Name?")
 print(f"Hello {name}")
 `;
 
-    // Use pressSequentially to type into the iframe editor
-    await editor.pressSequentially(pythonCode, { delay: 5 });
+    // Use insertText for reliable multi-line code insertion
+    console.log('Inserting Python code...');
+    await page.keyboard.insertText(pythonCode);
+
+    // Verify code was typed correctly
+    await expect(editor).toContainText('from praxis.interactive import pause');
+    await expect(editor).toContainText('print(f"Hello {name}")');
 
     // 4. Run the code
     await page.waitForTimeout(1000);

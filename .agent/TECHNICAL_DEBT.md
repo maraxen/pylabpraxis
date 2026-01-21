@@ -1,4 +1,5 @@
 # Technical Debt
+<!-- Migrated to MCP database on 2026-01-21 -->
 
 This document tracks known issues, temporary patches, and required follow-up work for the Praxis project.
 
@@ -155,9 +156,11 @@ This document tracks known issues, temporary patches, and required follow-up wor
   - Reason: It should ideally update via WebSockets as operations complete.
   - Priority: Low
   - Notes: Emit `operation_complete` events with step details over the execution WebSocket.
+
 # Technical Debt Log
 
 ## E2E Testing
+
 - [ ] **Data Seeding in Browser Mode**: The E2E tests for charts (`medium-priority-capture.spec.ts`) fail because the mock database is not reliably seeded with protocol runs when `resetdb=true` is used. This prevents the "Capture Charts" test from finding protocol cards to execute.
   - **Impact**: Cannot automatically validate charts/visualizations in E2E pipeline.
   - **Mitigation**: Manually verify charts or fix `SqliteService` seeding logic in browser mode.
