@@ -400,7 +400,8 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
         }
         this.cdr.detectChanges();
       } else if (data?.type === 'USER_INTERACTION') {
-        this.handleUserInteraction(data);
+        console.log('[REPL] USER_INTERACTION received via BroadcastChannel:', data.payload);
+        this.handleUserInteraction(data.payload);
       }
     };
   }
@@ -409,10 +410,13 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
    * Handle USER_INTERACTION requests from the REPL channel and show UI dialogs
    */
   private async handleUserInteraction(payload: any) {
+    console.log('[REPL] Opening interaction dialog:', payload.interaction_type);
     const result = await this.interactionService.handleInteraction({
       interaction_type: payload.interaction_type,
       payload: payload.payload
     });
+
+    console.log('[REPL] Interaction result obtained:', result);
 
     if (this.replChannel) {
       this.replChannel.postMessage({
@@ -613,6 +617,15 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
       '            _praxis_channel = js.BroadcastChannel("praxis_repl")',
       '        ',
       '        _praxis_channel.onmessage = _praxis_message_handler',
+      '        ',
+      '        # Register channel with web_bridge for interactive protocols',
+      '        try:',
+      '            import web_bridge',
+      '            web_bridge.register_broadcast_channel(_praxis_channel)',
+      '            print("✓ Interactive protocols enabled (channel registered)")',
+      '        except ImportError:',
+      '            print("! web_bridge not available for channel registration")',
+      '        ',
       '        print("✓ Asset injection ready (channel created)")',
       '    else:',
       '        print("! BroadcastChannel not available")',
@@ -808,7 +821,7 @@ for _p_file in ['__init__.py', 'interactive.py']:
    */
   private async generateMachineCode(machine: Machine, variableName?: string, deckConfigId?: string): Promise<string> {
     const varName = variableName || this.assetToVarName(machine);
-    
+
     // Extract FQNs
     const frontendFqn = machine.plr_definition?.frontend_fqn || machine.frontend_definition?.fqn;
     const backendFqn = machine.plr_definition?.fqn || machine.backend_definition?.fqn || machine.simulation_backend_name;
@@ -911,13 +924,13 @@ for _p_file in ['__init__.py', 'interactive.py']:
    */
   async onExecuteCommand(event: { machineName: string, methodName: string, args: any }) {
     const { machineName, methodName, args } = event;
-    
+
     // Convert machine name to safe variable name (same logic as insertAsset)
     const asset = this.selectedMachine();
     if (!asset) return;
-    
+
     const varName = this.assetToVarName(asset);
-    
+
     // Construct Python code: await machine_name.method_name(arg1=val1, arg2=val2)
     const argList = Object.entries(args)
       .map(([key, val]) => {
@@ -925,9 +938,9 @@ for _p_file in ['__init__.py', 'interactive.py']:
         return `${key}=${valStr}`;
       })
       .join(', ');
-    
+
     const code = `await ${varName}.${methodName}(${argList})`;
-    
+
     console.log('[REPL] Executing direct command:', code);
 
     // Send code via BroadcastChannel

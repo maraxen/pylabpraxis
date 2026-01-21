@@ -401,6 +401,18 @@ _pending_reads: dict[str, asyncio.Future] = {}
 # Global registry for pending user interactions
 _pending_interactions: dict[str, asyncio.Future] = {}
 
+# BroadcastChannel for Playground mode (registered by bootstrap code)
+_broadcast_channel = None
+
+
+def register_broadcast_channel(channel):
+  """Register the BroadcastChannel for user interaction messages.
+
+  Called by the bootstrap code after creating the channel.
+  """
+  global _broadcast_channel
+  _broadcast_channel = channel
+
 
 class WebBridgeIO:
   """A PLR-compatible IO transport that routes raw bytes through the WebWorker
@@ -579,18 +591,17 @@ async def request_user_interaction(interaction_type: str, payload: dict) -> Any:
     "payload": {"id": request_id, "interaction_type": interaction_type, "payload": payload},
   }
 
-  # Try using BroadcastChannel if available (Playground mode)
-  try:
-    import js
-
-    if hasattr(js, "_praxis_channel"):
+  # Try using registered BroadcastChannel if available (Playground mode)
+  if _broadcast_channel is not None:
+    try:
+      import js
       from pyodide.ffi import to_js
 
       js_msg = to_js(message_dict, dict_converter=js.Object.fromEntries)
-      js._praxis_channel.postMessage(js_msg)
-    else:
+      _broadcast_channel.postMessage(js_msg)
+    except Exception:
       postMessage(json.dumps(message_dict))
-  except Exception:
+  else:
     postMessage(json.dumps(message_dict))
 
   try:

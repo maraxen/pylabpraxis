@@ -106,14 +106,14 @@ export class PythonRuntimeService implements ReplRuntime {
         subject.error('Worker not active');
         return;
       }
-      this.worker.postMessage({ 
-        type: 'EXECUTE_BLOB', 
-        id: runId, 
-        payload: { 
-          blob, 
+      this.worker.postMessage({
+        type: 'EXECUTE_BLOB',
+        id: runId,
+        payload: {
+          blob,
           machine_config: machineConfig,
           deck_setup_script: deckSetupScript
-        } 
+        }
       });
 
       this.responseMap.set(runId, (result) => {
@@ -254,6 +254,7 @@ export class PythonRuntimeService implements ReplRuntime {
 
     // Handle USER_INTERACTION messages from Python
     if (type === 'USER_INTERACTION' && payload) {
+      console.log('[PythonRuntime] USER_INTERACTION received from worker:', payload);
       this.handleUserInteraction(payload);
       return;
     }
@@ -338,10 +339,13 @@ export class PythonRuntimeService implements ReplRuntime {
    * Handle USER_INTERACTION requests from Python and show UI dialogs
    */
   private async handleUserInteraction(payload: any) {
+    console.log('[PythonRuntime] Calling InteractionService.handleInteraction for:', payload.interaction_type);
     const result = await this.interactionService.handleInteraction({
       interaction_type: payload.interaction_type,
       payload: payload.payload
     });
+
+    console.log('[PythonRuntime] Interaction result obtained:', result);
 
     this.worker?.postMessage({
       type: 'USER_INTERACTION_RESPONSE',
