@@ -1,48 +1,54 @@
 <div class="asset-wizard-container">
   <mat-stepper orientation="horizontal" [linear]="true" #stepper>
-    <!-- Step 1: Type & Category -->
+    <!-- Step 1: Asset Type -->
     <mat-step [stepControl]="typeStepFormGroup">
       <form [formGroup]="typeStepFormGroup">
-        <ng-template matStepLabel>Type & Category</ng-template>
-        
+        <ng-template matStepLabel>Type</ng-template>
+
         <div class="step-content">
-          <h3>Select Asset Type</h3>
+          <h3><mat-icon>category</mat-icon> Select Asset Type</h3>
+
           <mat-radio-group formControlName="assetType" class="type-selection">
-            <mat-card class="type-card" [class.selected]="typeStepFormGroup.get('assetType')?.value === 'MACHINE'">
-              <mat-card-content (click)="typeStepFormGroup.get('assetType')?.setValue('MACHINE')">
-                <mat-radio-button value="MACHINE">
-                  <mat-icon>settings</mat-icon>
-                  <span>Machine</span>
-                </mat-radio-button>
-                <p>Instruments, robots, and automated hardware.</p>
-              </mat-card-content>
-            </mat-card>
+            <!-- Machine Type Card -->
+            <div class="praxis-card premium type-card group"
+              [class.selected]="typeStepFormGroup.get('assetType')?.value === 'MACHINE'"
+              (click)="typeStepFormGroup.get('assetType')?.setValue('MACHINE')">
+              <div class="card-header">
+                <div class="flex items-center gap-3 w-full">
+                  <div class="card-icon-avatar bg-[var(--mat-sys-primary)] text-[var(--mat-sys-on-primary)]">
+                    <mat-icon>settings</mat-icon>
+                  </div>
+                  <div class="min-w-0">
+                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors">Machine</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="card-content">
+                <p class="text-sm text-sys-text-secondary">Instruments, robots, and automated lab hardware.</p>
+              </div>
+              <mat-radio-button value="MACHINE"></mat-radio-button>
+            </div>
 
-            <mat-card class="type-card" [class.selected]="typeStepFormGroup.get('assetType')?.value === 'RESOURCE'">
-              <mat-card-content (click)="typeStepFormGroup.get('assetType')?.setValue('RESOURCE')">
-                <mat-radio-button value="RESOURCE">
-                  <mat-icon>inventory_2</mat-icon>
-                  <span>Resource</span>
-                </mat-radio-button>
-                <p>Labware, tips, reagents, and consumables.</p>
-              </mat-card-content>
-            </mat-card>
+            <!-- Resource Type Card -->
+            <div class="praxis-card premium type-card group"
+              [class.selected]="typeStepFormGroup.get('assetType')?.value === 'RESOURCE'"
+              (click)="typeStepFormGroup.get('assetType')?.setValue('RESOURCE')">
+              <div class="card-header">
+                <div class="flex items-center gap-3 w-full">
+                  <div class="card-icon-avatar bg-[var(--mat-sys-secondary)] text-[var(--mat-sys-on-secondary)]">
+                    <mat-icon>inventory_2</mat-icon>
+                  </div>
+                  <div class="min-w-0">
+                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors">Resource</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="card-content">
+                <p class="text-sm text-sys-text-secondary">Labware, tips, reagents, and consumables.</p>
+              </div>
+              <mat-radio-button value="RESOURCE"></mat-radio-button>
+            </div>
           </mat-radio-group>
-
-          <div class="category-selection" *ngIf="typeStepFormGroup.get('assetType')?.value">
-            <h3>Select Category</h3>
-            <mat-form-field appearance="outline">
-              <mat-label>Category</mat-label>
-              <mat-select formControlName="category">
-                <mat-option *ngFor="let cat of categories$ | async" [value]="cat">
-                  {{ cat }}
-                </mat-option>
-              </mat-select>
-              <mat-error *ngIf="typeStepFormGroup.get('category')?.hasError('required')">
-                Category is required
-              </mat-error>
-            </mat-form-field>
-          </div>
         </div>
 
         <div class="step-actions">
@@ -51,99 +57,306 @@
       </form>
     </mat-step>
 
-    <!-- Step 2: Definition -->
-    <mat-step [stepControl]="definitionStepFormGroup">
-      <form [formGroup]="definitionStepFormGroup">
-        <ng-template matStepLabel>Definition</ng-template>
-        <div class="step-content">
-          <div class="search-container">
-            <mat-form-field appearance="outline" class="search-field">
-              <mat-label>Search Definitions</mat-label>
-              <mat-icon matPrefix>search</mat-icon>
-              <input matInput (input)="searchDefinitions($any($event.target).value)" placeholder="e.g. Hamilton, Plate, Tip...">
-            </mat-form-field>
-          </div>
+    <!-- Step 2: Category -->
+    <mat-step [stepControl]="categoryStepFormGroup">
+      <form [formGroup]="categoryStepFormGroup">
+        <ng-template matStepLabel>Category</ng-template>
 
-          <div class="results-grid" *ngIf="searchResults$ | async as results">
-            <mat-card *ngFor="let def of results" 
-                      class="result-card" 
-                      [class.selected]="selectedDefinition?.accession_id === def.accession_id"
-                      (click)="selectDefinition(def)">
-              <mat-card-header>
-                <mat-card-title>{{ def.name }}</mat-card-title>
-                <mat-card-subtitle>{{ def.fqn }}</mat-card-subtitle>
-              </mat-card-header>
-              <mat-card-content>
-                <p class="description">{{ def.description }}</p>
-                <div class="chip-list">
-                  <mat-chip-set>
-                    <mat-chip *ngIf="def.manufacturer || def.vendor">{{ def.manufacturer || def.vendor }}</mat-chip>
-                    <ng-container *ngIf="typeStepFormGroup.get('assetType')?.value === 'MACHINE'">
-                      <mat-chip class="sim-chip" *ngIf="def.available_simulation_backends?.length">Simulated</mat-chip>
-                      <mat-chip class="real-chip" *ngIf="!def.available_simulation_backends?.length">Real</mat-chip>
-                    </ng-container>
-                  </mat-chip-set>
-                </div>
-              </mat-card-content>
-            </mat-card>
-            
-            <div *ngIf="results.length === 0" class="no-results">
-              <p>No definitions found matching your search.</p>
+        <div class="step-content">
+          <div class="category-selection">
+            <h3><mat-icon>segment</mat-icon> Select Category</h3>
+            <div class="category-grid">
+              @for (cat of (categories$ | async); track cat) {
+              <div class="category-card" [class.selected]="categoryStepFormGroup.get('category')?.value === cat"
+                (click)="categoryStepFormGroup.get('category')?.setValue(cat)">
+                <mat-icon>{{ getCategoryIcon(cat) }}</mat-icon>
+                <span class="category-label">{{ cat }}</span>
+              </div>
+              }
             </div>
+            @if (categoryStepFormGroup.get('category')?.hasError('required') &&
+            categoryStepFormGroup.get('category')?.touched) {
+            <div class="chip-error">
+              <mat-icon>error_outline</mat-icon>
+              <span>Category is required</span>
+            </div>
+            }
           </div>
         </div>
+
         <div class="step-actions">
           <button mat-button matStepperPrevious>Back</button>
-          <button mat-flat-button color="primary" matStepperNext [disabled]="definitionStepFormGroup.invalid">Next</button>
+          <button mat-flat-button color="primary" matStepperNext
+            [disabled]="categoryStepFormGroup.invalid">Next</button>
         </div>
       </form>
     </mat-step>
 
-    <!-- Step 3: Configuration -->
+    <!-- Step 3A: Frontend Selection (MACHINES ONLY) -->
+    @if (isMachine) {
+    <mat-step [stepControl]="frontendStepFormGroup">
+      <form [formGroup]="frontendStepFormGroup">
+        <ng-template matStepLabel>Machine Type</ng-template>
+        <div class="step-content">
+          <h3><mat-icon>precision_manufacturing</mat-icon> Select Machine Type</h3>
+          <p class="step-description">Choose the abstract machine type you want to instantiate.</p>
+
+          <!-- Playground Mode: Show existing machines -->
+          @if (context === 'playground') {
+          @if (existingMachines$ | async; as machines) {
+          @if (machines.length > 0) {
+          <div class="existing-machines-section">
+            <h4 class="section-subtitle">
+              <mat-icon>inventory</mat-icon>
+              Existing Machines
+            </h4>
+            <div class="results-grid compact">
+              @for (machine of machines; track machine.accession_id) {
+              <div class="praxis-card premium result-card group compact" (click)="selectExistingMachine(machine)">
+                <div class="card-header">
+                  <div class="flex items-center gap-3 w-full">
+                    <div
+                      class="card-icon-avatar small bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-primary)]">
+                      <mat-icon>precision_manufacturing</mat-icon>
+                    </div>
+                    <div class="min-w-0 flex-grow">
+                      <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors line-clamp-1">{{
+                        machine.name }}</h3>
+                      <p class="card-subtitle line-clamp-1">{{ machine.machine_category }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              }
+            </div>
+            <div class="separator">
+              <span>or create new</span>
+            </div>
+          </div>
+          }
+          }
+          }
+
+          <!-- Frontend Selection Grid -->
+          <div class="results-grid">
+            @for (frontend of (frontends$ | async); track frontend.accession_id) {
+            <div class="praxis-card premium result-card group"
+              [class.selected]="selectedFrontend?.accession_id === frontend.accession_id"
+              (click)="selectFrontend(frontend)">
+              <div class="card-header">
+                <div class="flex items-center gap-3 w-full">
+                  <div class="card-icon-avatar bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-primary)]">
+                    <mat-icon>{{ getCategoryIcon(frontend.machine_category || 'Other') }}</mat-icon>
+                  </div>
+                  <div class="min-w-0 flex-grow">
+                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors line-clamp-1"
+                      [title]="frontend.name">{{ frontend.name }}</h3>
+                    <p class="card-subtitle line-clamp-1" [title]="frontend.fqn">{{ frontend.fqn }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="card-content">
+                <p class="text-sm text-sys-text-secondary line-clamp-2 min-h-[40px]">{{ frontend.description ||
+                  'Abstract ' + frontend.name + ' interface' }}</p>
+              </div>
+              <div class="card-actions">
+                <div class="flex flex-wrap gap-2">
+                  @if (frontend.has_deck) {
+                  <span
+                    class="px-2 py-0.5 rounded bg-[var(--mat-sys-secondary-container)] text-[var(--mat-sys-secondary)] text-[10px] font-bold uppercase tracking-wider">Has
+                    Deck</span>
+                  }
+                </div>
+              </div>
+            </div>
+            }
+
+            @if ((frontends$ | async)?.length === 0) {
+            <div class="no-results">
+              <mat-icon>search_off</mat-icon>
+              <p>No machine types found for this category</p>
+            </div>
+            }
+          </div>
+        </div>
+        <div class="step-actions">
+          <button mat-button matStepperPrevious>Back</button>
+          <button mat-flat-button color="primary" matStepperNext
+            [disabled]="frontendStepFormGroup.invalid">Next</button>
+        </div>
+      </form>
+    </mat-step>
+
+    <!-- Step 4: Backend Selection (MACHINES ONLY) -->
+    <mat-step [stepControl]="backendStepFormGroup">
+      <form [formGroup]="backendStepFormGroup">
+        <ng-template matStepLabel>Driver</ng-template>
+        <div class="step-content">
+          <h3><mat-icon>memory</mat-icon> Select Driver</h3>
+          <p class="step-description">Choose a driver (backend) for your {{ selectedFrontend?.name || 'machine' }}.</p>
+
+          <div class="results-grid">
+            @for (backend of (backends$ | async); track backend.accession_id) {
+            <div class="praxis-card premium result-card group"
+              [class.selected]="selectedBackend?.accession_id === backend.accession_id"
+              (click)="selectBackend(backend)">
+              <div class="card-header">
+                <div class="flex items-center gap-3 w-full">
+                  <div class="card-icon-avatar" [ngClass]="getBackendTypeBadgeClass(backend)">
+                    <mat-icon>{{ backend.backend_type === 'simulator' ? 'science' : 'cable' }}</mat-icon>
+                  </div>
+                  <div class="min-w-0 flex-grow">
+                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors line-clamp-1"
+                      [title]="backend.name">{{ getBackendDisplayName(backend) }}</h3>
+                    <p class="card-subtitle line-clamp-1" [title]="backend.fqn">{{ backend.manufacturer || 'PyLabRobot'
+                      }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="card-content">
+                <p class="text-sm text-sys-text-secondary line-clamp-2 min-h-[40px]">{{ backend.description ||
+                  (backend.backend_type === 'simulator' ? 'Simulated backend for testing' : 'Hardware driver') }}</p>
+              </div>
+              <div class="card-actions">
+                <div class="flex flex-wrap gap-2">
+                  @if (backend.backend_type === 'simulator') {
+                  <span
+                    class="px-2 py-0.5 rounded bg-[var(--mat-sys-tertiary-container)] text-[var(--mat-sys-tertiary)] text-[10px] font-bold uppercase tracking-wider">Simulated</span>
+                  } @else {
+                  <span
+                    class="px-2 py-0.5 rounded bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-primary)] text-[10px] font-bold uppercase tracking-wider">Hardware</span>
+                  }
+                </div>
+              </div>
+            </div>
+            }
+
+            @if ((backends$ | async)?.length === 0) {
+            <div class="no-results">
+              <mat-icon>search_off</mat-icon>
+              <p>No drivers found for {{ selectedFrontend?.name }}</p>
+              <p class="text-xs text-sys-text-tertiary mt-2">Try selecting a different machine type</p>
+            </div>
+            }
+          </div>
+        </div>
+        <div class="step-actions">
+          <button mat-button matStepperPrevious>Back</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="backendStepFormGroup.invalid">Next</button>
+        </div>
+      </form>
+    </mat-step>
+    }
+
+    <!-- Step 3B: Definition Selection (RESOURCES ONLY) -->
+    @if (!isMachine) {
+    <mat-step [stepControl]="definitionStepFormGroup">
+      <form [formGroup]="definitionStepFormGroup">
+        <ng-template matStepLabel>Definition</ng-template>
+        <div class="step-content">
+          <h3><mat-icon>find_in_page</mat-icon> Choose Definition</h3>
+
+          <div class="search-container">
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-label>Search the registry...</mat-label>
+              <mat-icon matPrefix>search</mat-icon>
+              <input matInput (input)="searchDefinitions($any($event.target).value)" placeholder="e.g. Plate, Tip..."
+                #searchInput>
+            </mat-form-field>
+          </div>
+
+          @if (searchResults$ | async; as results) {
+          <div class="results-grid">
+            @for (def of results; track def.accession_id) {
+            <div class="praxis-card premium result-card group"
+              [class.selected]="selectedDefinition?.accession_id === def.accession_id" (click)="selectDefinition(def)">
+              <div class="card-header">
+                <div class="flex items-center gap-3 w-full">
+                  <div class="card-icon-avatar bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-primary)]">
+                    <mat-icon>inventory_2</mat-icon>
+                  </div>
+                  <div class="min-w-0 flex-grow">
+                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors line-clamp-1"
+                      [title]="def.name">{{ def.name }}</h3>
+                    <p class="card-subtitle line-clamp-1" [title]="def.fqn">{{ def.fqn }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="card-content">
+                <p class="text-sm text-sys-text-secondary line-clamp-2 min-h-[40px]">{{ def.description }}</p>
+              </div>
+              <div class="card-actions">
+                <div class="flex flex-wrap gap-2">
+                  @if (def.vendor) {
+                  <span
+                    class="px-2 py-0.5 rounded bg-[var(--mat-sys-secondary-container)] text-[var(--mat-sys-secondary)] text-[10px] font-bold uppercase tracking-wider">{{
+                    def.vendor }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+            }
+
+            @if (results.length === 0) {
+            <div class="no-results">
+              <mat-icon>search_off</mat-icon>
+              <p>No definitions found matching "{{ searchInput.value }}"</p>
+              <button mat-button color="primary" (click)="searchInput.value = ''; searchDefinitions('')">Clear
+                Search</button>
+            </div>
+            }
+          </div>
+          }
+        </div>
+        <div class="step-actions">
+          <button mat-button matStepperPrevious>Back</button>
+          <button mat-flat-button color="primary" matStepperNext
+            [disabled]="definitionStepFormGroup.invalid">Next</button>
+        </div>
+      </form>
+    </mat-step>
+    }
+
+    <!-- Step N: Configuration -->
     <mat-step [stepControl]="configStepFormGroup">
       <form [formGroup]="configStepFormGroup">
-        <ng-template matStepLabel>Configuration</ng-template>
+        <ng-template matStepLabel>Config</ng-template>
         <div class="step-content">
-          <h3>Configure {{ typeStepFormGroup.get('assetType')?.value === 'MACHINE' ? 'Machine' : 'Resource' }}</h3>
-          
+          <h3><mat-icon>settings_suggest</mat-icon> Complete Configuration</h3>
+
           <div class="form-grid">
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Instance Name</mat-label>
               <input matInput formControlName="name" placeholder="e.g. Primary Hamilton, Plate Bench 1">
-              <mat-error *ngIf="configStepFormGroup.get('name')?.hasError('required')">Name is required</mat-error>
+              <mat-icon matSuffix>badge</mat-icon>
+              @if (configStepFormGroup.get('name')?.hasError('required')) {
+              <mat-error>Name is required</mat-error>
+              }
             </mat-form-field>
 
-            <ng-container *ngIf="typeStepFormGroup.get('assetType')?.value === 'MACHINE'">
+            @if (isMachine && requiresConnectionInfo) {
+            <div class="connection-settings">
+              <h4>Connection Settings</h4>
               <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Backend (Driver)</mat-label>
-                <mat-select formControlName="backend">
-                  <mat-option *ngFor="let backend of availableBackends" [value]="backend">
-                    {{ backend }}
-                    <span class="backend-type-hint" *ngIf="isSimulatedBackend(backend)">(Simulated)</span>
-                  </mat-option>
-                </mat-select>
-                <mat-hint *ngIf="modeService.isBrowserMode()">Browser mode defaults to simulated backends</mat-hint>
+                <mat-label>Serial Port / USB / IP</mat-label>
+                <input matInput formControlName="connection_info" placeholder="e.g. COM3, /dev/ttyUSB0, 192.168.1.10">
+                <mat-icon matSuffix>lan</mat-icon>
               </mat-form-field>
+            </div>
+            }
 
-              <div class="connection-settings" *ngIf="configStepFormGroup.get('backend')?.value && !isSimulatedBackend(configStepFormGroup.get('backend')?.value)">
-                <h4>Connection Settings</h4>
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Serial Port / USB / IP</mat-label>
-                  <input matInput formControlName="connection_info" placeholder="e.g. COM3, /dev/ttyUSB0, 192.168.1.10">
-                </mat-form-field>
-              </div>
-            </ng-container>
-
-            <ng-container *ngIf="typeStepFormGroup.get('assetType')?.value === 'RESOURCE'">
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Initial Location (Optional)</mat-label>
-                <input matInput formControlName="location" placeholder="e.g. Deck Slot A1, Storage Rack B">
-              </mat-form-field>
-            </ng-container>
+            @if (!isMachine) {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Initial Location (Optional)</mat-label>
+              <input matInput formControlName="location" placeholder="e.g. Deck Slot A1, Storage Rack B">
+              <mat-icon matSuffix>location_on</mat-icon>
+            </mat-form-field>
+            }
 
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Description (Optional)</mat-label>
               <textarea matInput formControlName="description" rows="3"></textarea>
+              <mat-icon matSuffix>notes</mat-icon>
             </mat-form-field>
           </div>
         </div>
@@ -154,46 +367,56 @@
       </form>
     </mat-step>
 
-    <!-- Step 4: Review -->
+    <!-- Step N+1: Review -->
     <mat-step>
       <ng-template matStepLabel>Review</ng-template>
       <div class="step-content">
-        <h3>Summary</h3>
-        <p>Review your asset details before saving.</p>
-        
-        <mat-card class="review-card">
-          <mat-card-content>
+        <h3><mat-icon>assignment_turned_in</mat-icon> Final Review</h3>
+        <p>Confirm the details for your new {{ typeStepFormGroup.get('assetType')?.value | lowercase }}.</p>
+
+        <div class="praxis-card premium review-card">
+          <div class="card-content">
             <div class="review-row">
-              <span class="label">Type:</span>
+              <span class="label">Type</span>
               <span class="value">{{ typeStepFormGroup.get('assetType')?.value | titlecase }}</span>
             </div>
             <div class="review-row">
-              <span class="label">Category:</span>
-              <span class="value">{{ typeStepFormGroup.get('category')?.value }}</span>
+              <span class="label">Category</span>
+              <span class="value">{{ categoryStepFormGroup.get('category')?.value }}</span>
+            </div>
+            @if (isMachine) {
+            <div class="review-row">
+              <span class="label">Machine Type</span>
+              <span class="value">{{ selectedFrontend?.name }}</span>
             </div>
             <div class="review-row">
-              <span class="label">Definition:</span>
+              <span class="label">Driver</span>
+              <span class="value">
+                {{ selectedBackend ? getBackendDisplayName(selectedBackend) : 'None' }}
+                @if (selectedBackend?.backend_type === 'simulator') {
+                <span class="text-[var(--mat-sys-tertiary)] text-xs ml-1">(Simulated)</span>
+                }
+              </span>
+            </div>
+            } @else {
+            <div class="review-row">
+              <span class="label">Definition</span>
               <span class="value">{{ selectedDefinition?.name }}</span>
             </div>
+            }
             <div class="review-row">
-              <span class="label">Instance Name:</span>
+              <span class="label">Instance Name</span>
               <span class="value">{{ configStepFormGroup.get('name')?.value }}</span>
             </div>
-            <div class="review-row" *ngIf="typeStepFormGroup.get('assetType')?.value === 'MACHINE'">
-              <span class="label">Backend:</span>
-              <span class="value">{{ configStepFormGroup.get('backend')?.value }}</span>
-            </div>
-            <div class="review-row" *ngIf="configStepFormGroup.get('description')?.value">
-              <span class="label">Description:</span>
-              <span class="value">{{ configStepFormGroup.get('description')?.value }}</span>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <div class="creation-status" *ngIf="isLoading()">
-          <mat-spinner diameter="40"></mat-spinner>
-          <p>Creating asset...</p>
+          </div>
         </div>
+
+        @if (isLoading()) {
+        <div class="creation-status">
+          <mat-spinner diameter="40"></mat-spinner>
+          <p>Deploying asset to environment...</p>
+        </div>
+        }
       </div>
       <div class="step-actions">
         <button mat-button matStepperPrevious [disabled]="isLoading()">Back</button>

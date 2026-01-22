@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, computed, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ViewChild, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatStepperModule } from '@angular/material/stepper';
@@ -11,12 +11,16 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
-import { AssetService, FacetItem } from '../../../features/assets/services/asset.service';
+import { MatDialogRef, MatDialogModule, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { AssetService } from '../../../features/assets/services/asset.service';
 import { ModeService } from '../../../core/services/mode.service';
-import { MachineDefinition, ResourceDefinition, MachineCreate, ResourceCreate } from '../../../features/assets/models/asset.models';
+import {
+  MachineDefinition, ResourceDefinition, MachineCreate, ResourceCreate, Machine,
+  MachineFrontendDefinition, MachineBackendDefinition
+} from '../../../features/assets/models/asset.models';
 import { debounceTime, distinctUntilChanged, map, startWith, switchMap } from 'rxjs/operators';
-import { Observable, Subject, of, firstValueFrom } from 'rxjs';
+import { Observable, BehaviorSubject, of, firstValueFrom, combineLatest } from 'rxjs';
 
 @Component({
   selector: 'app-asset-wizard',
@@ -34,7 +38,8 @@ import { Observable, Subject, of, firstValueFrom } from 'rxjs';
     MatIconModule,
     MatChipsModule,
     MatProgressSpinnerModule,
-    MatDialogModule
+    MatDialogModule,
+    MatSnackBarModule
   ],
   templateUrl: './asset-wizard.html',
   styleUrl: './asset-wizard.scss',
@@ -44,21 +49,43 @@ export class AssetWizard implements OnInit {
   private assetService = inject(AssetService);
   public modeService = inject(ModeService);
   private dialogRef = inject(MatDialogRef<AssetWizard>);
+  public data = inject(MAT_DIALOG_DATA, { optional: true });
+  private snackBar = inject(MatSnackBar);
+
+  @ViewChild('stepper') stepper!: any;
+
+  @Input() context: 'playground' | 'asset-management' = 'asset-management';
 
   isLoading = signal(false);
+  existingMachines$: Observable<Machine[]> = of([]);
+  selectedExistingMachine: Machine | null = null;
 
+  // Form groups for each step
   typeStepFormGroup: FormGroup = this.fb.group({
-    assetType: ['', Validators.required],
+    assetType: ['', Validators.required]
+  });
+
+  categoryStepFormGroup: FormGroup = this.fb.group({
     category: ['', Validators.required]
   });
 
+  // Step 3: Frontend selection (for machines) or Definition (for resources)
+  frontendStepFormGroup: FormGroup = this.fb.group({
+    frontend: ['', Validators.required]
+  });
+
+  // Step 4: Backend selection (for machines only)
+  backendStepFormGroup: FormGroup = this.fb.group({
+    backend: ['', Validators.required]
+  });
+
+  // For resources, we still use definition selection
   definitionStepFormGroup: FormGroup = this.fb.group({
     definition: ['', Validators.required]
   });
 
   configStepFormGroup: FormGroup = this.fb.group({
     name: ['', Validators.required],
-    backend: [''],
     connection_info: [''],
     location: [''],
     description: ['']
@@ -66,102 +93,190 @@ export class AssetWizard implements OnInit {
 
   categories$: Observable<string[]> = of([]);
 
-  private searchSubject = new Subject<string>();
-  searchResults$: Observable<any[]> = of([]);
-  selectedDefinition: MachineDefinition | ResourceDefinition | null = null;
-  availableSimulationBackends = ['Simulated', 'Chatterbox'];
+  // Frontend definitions for machines
+  frontends$: Observable<MachineFrontendDefinition[]> = of([]);
+  selectedFrontend: MachineFrontendDefinition | null = null;
 
-  get availableBackends(): string[] {
-    if (!this.selectedDefinition || this.typeStepFormGroup.get('assetType')?.value !== 'MACHINE') {
-      return [];
+  // Backend definitions for selected frontend
+  backends$: Observable<MachineBackendDefinition[]> = of([]);
+  selectedBackend: MachineBackendDefinition | null = null;
+
+  // For resources: still use the old search-based approach
+  private searchSubject = new BehaviorSubject<string>('');
+  searchResults$: Observable<any[]> = of([]);
+  selectedDefinition: ResourceDefinition | null = null;
+
+  /**
+   * Get display name for a backend (strips package path and 'Backend' suffix)
+   */
+  getBackendDisplayName(backend: MachineBackendDefinition): string {
+    const name = backend.name || backend.fqn.split('.').pop() || 'Unknown';
+    // Make "Chatterbox" more user-friendly
+    if (name.toLowerCase().includes('chatterbox')) {
+      return 'Simulated';
     }
-    const mDef = this.selectedDefinition as MachineDefinition;
-    const compatible = mDef.compatible_backends || [];
-    const simulated = mDef.available_simulation_backends || this.availableSimulationBackends;
-    return [...new Set([...compatible, ...simulated])];
+    return name.replace(/Backend$/, '');
   }
 
-  isSimulatedBackend(backend: string): boolean {
-    const simulated = (this.selectedDefinition as MachineDefinition)?.available_simulation_backends || this.availableSimulationBackends;
-    return simulated.includes(backend);
+  /**
+   * Get CSS class for backend type badge
+   */
+  getBackendTypeBadgeClass(backend: MachineBackendDefinition): string {
+    if (backend.backend_type === 'simulator') {
+      return 'bg-[var(--mat-sys-tertiary-container)] text-[var(--mat-sys-tertiary)]';
+    }
+    return 'bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-primary)]';
   }
 
   ngOnInit() {
+    // Initialize context from dialog data if provided
+    if (this.data?.context) {
+      this.context = this.data.context;
+    }
+
     // Listen to assetType changes to update categories
     this.typeStepFormGroup.get('assetType')?.valueChanges.subscribe(type => {
-      this.typeStepFormGroup.get('category')?.reset();
+      this.categoryStepFormGroup.get('category')?.reset();
+      this.selectedExistingMachine = null;
+      this.selectedFrontend = null;
+      this.selectedBackend = null;
+      this.selectedDefinition = null;
+
       if (type === 'MACHINE') {
         this.categories$ = this.assetService.getMachineFacets().pipe(
-          map(facets => facets.machine_category.map(f => String(f.value)))
+          map(facets => facets.machine_category
+            .filter(f => f.value !== 'Backend' && f.value !== 'Other')
+            .map(f => String(f.value)))
         );
-        this.configStepFormGroup.get('backend')?.setValidators([Validators.required]);
+
+        // Load existing machines if in playground mode
+        if (this.context === 'playground') {
+          this.existingMachines$ = this.assetService.getMachines();
+        }
       } else if (type === 'RESOURCE') {
         this.categories$ = this.assetService.getFacets().pipe(
           map(facets => facets.plr_category.map(f => String(f.value)))
         );
-        this.configStepFormGroup.get('backend')?.clearValidators();
       }
-      this.configStepFormGroup.get('backend')?.updateValueAndValidity();
 
       // Clear search when type changes
       this.searchSubject.next('');
     });
 
-    // Handle search logic
-    this.searchResults$ = this.searchSubject.pipe(
-      startWith(''),
-      debounceTime(300),
-      distinctUntilChanged(),
-      switchMap(query => {
-        const assetType = this.typeStepFormGroup.get('assetType')?.value;
-        const category = this.typeStepFormGroup.get('category')?.value;
-        if (!assetType) return of([]);
+    // Listen to category changes to load frontends (for machines)
+    this.categoryStepFormGroup.get('category')?.valueChanges.subscribe(category => {
+      if (this.typeStepFormGroup.get('assetType')?.value === 'MACHINE' && category) {
+        // Load frontends filtered by category
+        this.frontends$ = this.assetService.getMachineFrontendDefinitions().pipe(
+          map(frontends => frontends.filter(f => f.machine_category === category))
+        );
+      }
+    });
 
-        if (assetType === 'MACHINE') {
-          // Filter results to only show items where plr_category === 'Machine' (to hide raw backends)
-          return this.assetService.searchMachineDefinitions(query).pipe(
-            map(defs => defs.filter(d => d.plr_category === 'Machine'))
-          );
-        } else {
-          return this.assetService.searchResourceDefinitions(query, category);
+    // Listen to frontend selection to load backends
+    this.frontendStepFormGroup.get('frontend')?.valueChanges.subscribe(frontendId => {
+      if (frontendId) {
+        this.backends$ = this.assetService.getBackendsForFrontend(frontendId);
+      }
+    });
+
+    // Handle initial asset type if provided
+    const preselected = this.data?.preselectedType || this.data?.initialAssetType;
+    if (preselected) {
+      const type = String(preselected).toUpperCase();
+      this.typeStepFormGroup.patchValue({ assetType: type });
+      setTimeout(() => {
+        if (this.stepper) {
+          this.stepper.selectedIndex = 1;
         }
+      }, 0);
+    }
+
+    // Resource search logic (kept for resources)
+    const assetType$ = this.typeStepFormGroup.get('assetType')!.valueChanges.pipe(startWith(''));
+    const category$ = this.categoryStepFormGroup.get('category')!.valueChanges.pipe(startWith(''));
+    const query$ = this.searchSubject.pipe(startWith(''), debounceTime(300), distinctUntilChanged());
+
+    this.searchResults$ = combineLatest([assetType$, category$, query$]).pipe(
+      switchMap(([assetType, category, query]) => {
+        if (!assetType || assetType !== 'RESOURCE') return of([]);
+        return this.assetService.searchResourceDefinitions(query, category);
       })
     );
-
-    // Also trigger search when category changes
-    this.typeStepFormGroup.get('category')?.valueChanges.subscribe(() => {
-      this.searchSubject.next(this.typeStepFormGroup.get('assetType')?.value === 'MACHINE' ? '' : (this.searchSubject.asObservable() as any)._value || '');
-      // Wait, Subject doesn't have _value. Let's just trigger with the current query if we can, or just trigger an update.
-      // Actually, switchMap will pick it up if we combine them.
-    });
   }
 
   searchDefinitions(query: string) {
     this.searchSubject.next(query);
   }
 
-  selectDefinition(def: MachineDefinition | ResourceDefinition) {
+  getCategoryIcon(cat: string): string {
+    const mapping: { [key: string]: string } = {
+      'LiquidHandler': 'precision_manufacturing',
+      'PlateReader': 'visibility',
+      'HeaterShaker': 'thermostat',
+      'Shaker': 'vibration',
+      'Centrifuge': 'rotate_right',
+      'Incubator': 'thermostat_auto',
+      'Plate': 'grid_view',
+      'TipRack': 'view_in_ar',
+      'Trough': 'water_drop',
+      'Reservoir': 'water_drop',
+      'Carrier': 'apps',
+      'Deck': 'dashboard',
+      'Tube': 'science',
+      'Other': 'extension'
+    };
+    return mapping[cat] || 'science';
+  }
+
+  /**
+   * Select a frontend definition (for machines)
+   */
+  selectFrontend(frontend: MachineFrontendDefinition) {
+    this.selectedFrontend = frontend;
+    this.frontendStepFormGroup.patchValue({ frontend: frontend.accession_id });
+    this.selectedBackend = null;
+    this.backendStepFormGroup.reset();
+
+    // Pre-fill instance name
+    const uniqueSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    this.configStepFormGroup.patchValue({
+      name: `${frontend.name} ${uniqueSuffix}`,
+      description: frontend.description || ''
+    });
+  }
+
+  /**
+   * Select a backend definition (for machines)
+   */
+  selectBackend(backend: MachineBackendDefinition) {
+    this.selectedBackend = backend;
+    this.backendStepFormGroup.patchValue({ backend: backend.accession_id });
+  }
+
+  /**
+   * Select a resource definition (for resources)
+   */
+  selectDefinition(def: ResourceDefinition) {
     this.selectedDefinition = def;
     this.definitionStepFormGroup.patchValue({ definition: def.accession_id });
 
-    // Pre-fill config
+    const uniqueSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
     this.configStepFormGroup.patchValue({
-      name: def.name,
+      name: `${def.name} ${uniqueSuffix}`,
       description: def.description || ''
     });
+  }
 
-    if (this.typeStepFormGroup.get('assetType')?.value === 'MACHINE') {
-      const mDef = def as MachineDefinition;
-      const backends = this.availableBackends;
+  selectExistingMachine(machine: Machine) {
+    this.selectedExistingMachine = machine;
+    this.dialogRef.close(machine);
+  }
 
-      if (this.modeService.isBrowserMode()) {
-        const autoSelect = backends.find(b => this.isSimulatedBackend(b)) || backends[0];
-        if (autoSelect) {
-          this.configStepFormGroup.patchValue({ backend: autoSelect });
-        }
-      } else if (backends.length === 1) {
-        this.configStepFormGroup.patchValue({ backend: backends[0] });
-      }
+  chooseSimulateNew() {
+    this.selectedExistingMachine = null;
+    if (this.stepper) {
+      this.stepper.selectedIndex = 1;
     }
   }
 
@@ -169,7 +284,7 @@ export class AssetWizard implements OnInit {
     if (this.isLoading()) return;
 
     const assetType = this.typeStepFormGroup.get('assetType')?.value;
-    const category = this.typeStepFormGroup.get('category')?.value;
+    const category = this.categoryStepFormGroup.get('category')?.value;
     const config = this.configStepFormGroup.value;
 
     this.isLoading.set(true);
@@ -177,16 +292,23 @@ export class AssetWizard implements OnInit {
     try {
       let createdAsset: any;
       if (assetType === 'MACHINE') {
+        // Use the new 3-tier architecture
         const machinePayload: MachineCreate = {
           name: config.name,
           machine_category: category,
-          machine_type: category, // Alias for backward compatibility
+          machine_type: category,
           description: config.description,
-          machine_definition_accession_id: this.selectedDefinition?.accession_id,
-          simulation_backend_name: config.backend,
-          // If it's a real backend, we might want to map it differently in a real app, 
-          // but here we follow the simplified createMachine logic.
-          connection_info: config.connection_info ? { address: config.connection_info } : undefined
+          // Link to frontend and backend definitions
+          frontend_definition_accession_id: this.selectedFrontend?.accession_id,
+          backend_definition_accession_id: this.selectedBackend?.accession_id,
+          // Determine if simulated based on backend type
+          is_simulation_override: this.selectedBackend?.backend_type === 'simulator',
+          simulation_backend_name: this.selectedBackend?.backend_type === 'simulator'
+            ? this.getBackendDisplayName(this.selectedBackend!)
+            : undefined,
+          connection_info: config.connection_info ? { address: config.connection_info } : undefined,
+          // Include backend config for hardware connections
+          backend_config: this.selectedBackend?.connection_config
         };
         createdAsset = await firstValueFrom(this.assetService.createMachine(machinePayload));
       } else {
@@ -198,9 +320,14 @@ export class AssetWizard implements OnInit {
       }
 
       this.dialogRef.close(createdAsset);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating asset:', error);
-      // In a real app, show a snackbar or error message
+      const msg = error?.message || '';
+      if (msg.includes('UNIQUE constraint') || msg.includes('already exists')) {
+        this.snackBar.open('An asset with this name already exists. Please use a different name.', 'OK', { duration: 5000 });
+      } else {
+        this.snackBar.open('Failed to create asset. Please try again.', 'OK', { duration: 5000 });
+      }
     } finally {
       this.isLoading.set(false);
     }
@@ -208,5 +335,19 @@ export class AssetWizard implements OnInit {
 
   close() {
     this.dialogRef.close();
+  }
+
+  /**
+   * Check if the current asset type is MACHINE
+   */
+  get isMachine(): boolean {
+    return this.typeStepFormGroup.get('assetType')?.value === 'MACHINE';
+  }
+
+  /**
+   * Check if selected backend requires connection info
+   */
+  get requiresConnectionInfo(): boolean {
+    return this.selectedBackend?.backend_type === 'hardware';
   }
 }
