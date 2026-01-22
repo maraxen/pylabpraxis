@@ -25,6 +25,7 @@ export interface PlrResource {
     max_volume?: number;
     volume?: number;
     cross_section_type?: string;
+    is_ghost?: boolean;
 }
 
 /**

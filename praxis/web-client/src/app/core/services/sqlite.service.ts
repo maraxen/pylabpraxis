@@ -441,8 +441,8 @@ export class SqliteService {
             // FIXED: Removed is_reusable to align with schema.sql
             const insertResDef = db.prepare(`
                 INSERT OR IGNORE INTO resource_definitions
-                (accession_id, name, fqn, resource_type, vendor, description, properties_json, is_consumable, num_items)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (accession_id, name, fqn, resource_type, vendor, description, properties_json, is_consumable, num_items, plr_category)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             for (const def of PLR_RESOURCE_DEFINITIONS) {
@@ -456,7 +456,8 @@ export class SqliteService {
                     JSON.stringify(def.properties_json),
                     def.is_consumable ? 1 : 0,
                     // def.is_reusable, <-- DROPPED per schema.sql
-                    def.num_items || null
+                    def.num_items || null,
+                    def.plr_category // maps to plr_category
                 ]);
             }
             insertResDef.free();
@@ -465,8 +466,8 @@ export class SqliteService {
             // UPDATE: Include is_simulated_frontend and available_simulation_backends and compatible_backends
             const insertMachDef = db.prepare(`
                 INSERT OR IGNORE INTO machine_definitions
-                (accession_id, name, fqn, machine_category, manufacturer, description, has_deck, properties_json, capabilities_config, frontend_fqn, is_simulated_frontend, available_simulation_backends, compatible_backends)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (accession_id, name, fqn, machine_category, manufacturer, description, has_deck, properties_json, capabilities_config, frontend_fqn, is_simulated_frontend, available_simulation_backends, compatible_backends, plr_category)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             for (const def of PLR_MACHINE_DEFINITIONS) {
@@ -489,7 +490,8 @@ export class SqliteService {
                     def.frontend_fqn || null,
                     def.is_simulated_frontend ? 1 : 0,
                     def.available_simulation_backends ? JSON.stringify(def.available_simulation_backends) : null,
-                    null // compatible_backends (defaults to null if not provided in mock data, or could map from backends?)
+                    null, // compatible_backends (defaults to null if not provided in mock data, or could map from backends?)
+                    'Machine' // maps to plr_category
                 ]);
             }
             insertMachDef.free();
@@ -497,8 +499,8 @@ export class SqliteService {
             // Seed Frontend Definitions
             const insertFrontendDef = db.prepare(`
                 INSERT OR IGNORE INTO machine_frontend_definitions
-                (accession_id, name, fqn, machine_category, description, has_deck, capabilities, capabilities_config)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (accession_id, name, fqn, machine_category, description, has_deck, capabilities, capabilities_config, plr_category)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
             for (const def of PLR_FRONTEND_DEFINITIONS) {
                 insertFrontendDef.run([
@@ -509,7 +511,8 @@ export class SqliteService {
                     def.description || null,
                     def.has_deck ? 1 : 0,
                     def.capabilities ? JSON.stringify(def.capabilities) : null,
-                    def.capabilities_config ? JSON.stringify(def.capabilities_config) : null
+                    def.capabilities_config ? JSON.stringify(def.capabilities_config) : null,
+                    'Machine'
                 ]);
             }
             insertFrontendDef.free();
@@ -646,29 +649,41 @@ export class SqliteService {
     }): Observable<any> {
         return this.db$.pipe(
             map(db => {
+                console.log('[SqliteService] createMachine called with:', {
+                    name: machine.name,
+                    plr_backend: machine.plr_backend,
+                    connection_type: machine.connection_type
+                });
                 const now = new Date().toISOString();
                 const assetId = crypto.randomUUID();
 
                 try {
                     db.exec('BEGIN TRANSACTION');
 
-                    // 1. Look up definition
+                    // 1. Look up definition from multiple sources
                     let defRow: any[] | null = null;
+                    let backendDefId: string | null = null;
+                    let frontendDefId: string | null = null;
 
                     if (machine.machine_definition_accession_id) {
-                        const defQuery = db.prepare("SELECT accession_id, machine_category, compatible_backends, manufacturer, description FROM machine_definitions WHERE accession_id = ?");
+                        // Query columns: 0=accession_id, 1=machine_category, 2=compatible_backends, 3=manufacturer, 4=description, 5=name, 6=model
+                        const defQuery = db.prepare("SELECT accession_id, machine_category, compatible_backends, manufacturer, description, name, model FROM machine_definitions WHERE accession_id = ?");
                         try {
                             defQuery.bind([machine.machine_definition_accession_id]);
                             if (defQuery.step()) defRow = defQuery.get();
                         } finally { defQuery.free(); }
                     }
 
-                    const plrBackend = (machine.plr_backend || machine.connection_info?.plr_backend || '').toLowerCase();
+                    // Get the original PLR backend FQN (preserve case for code generation)
+                    const plrBackendOriginal = machine.plr_backend || machine.connection_info?.plr_backend || '';
+                    // Lowercased version for case-insensitive lookups
+                    const plrBackendLower = plrBackendOriginal.toLowerCase();
 
-                    if (!defRow && plrBackend) {
-                        const defQuery = db.prepare("SELECT accession_id, machine_category, compatible_backends, manufacturer, description FROM machine_definitions WHERE fqn = ?");
+                    // Try machine_definitions first (legacy)
+                    if (!defRow && plrBackendLower) {
+                        const defQuery = db.prepare("SELECT accession_id, machine_category, compatible_backends, manufacturer, description, name, model FROM machine_definitions WHERE LOWER(fqn) = ?");
                         try {
-                            defQuery.bind([plrBackend]);
+                            defQuery.bind([plrBackendLower]);
                             if (defQuery.step()) {
                                 defRow = defQuery.get();
                             }
@@ -677,15 +692,70 @@ export class SqliteService {
                         }
                     }
 
-                    // Defaults if no definition found (though it should exist for registered hardware)
+                    // If still not found, check machine_backend_definitions (where hardware backends like CLARIOstar are stored)
+                    if (!defRow && plrBackendLower) {
+                        console.log(`[SqliteService] Searching backend definitions for: ${plrBackendOriginal}`);
+                        // Query backend: 0=accession_id, 1=manufacturer, 2=model, 3=frontend_definition_accession_id, 4=description
+                        const backendQuery = db.prepare(`
+                            SELECT accession_id, manufacturer, model, frontend_definition_accession_id, description 
+                            FROM machine_backend_definitions 
+                            WHERE LOWER(fqn) LIKE ?
+                        `);
+                        try {
+                            // Use LIKE with % to handle path variations (e.g. bmg_labtech.clario_star_backend vs clario_star_backend)
+                            const backendClass = plrBackendLower.split('.').pop() || '';
+                            const pattern = '%' + backendClass.toLowerCase();
+                            console.log(`[SqliteService] Backend class: ${backendClass}, pattern: ${pattern}`);
+                            backendQuery.bind([pattern]);
+                            if (backendQuery.step()) {
+                                const backendRow = backendQuery.get() as any[];
+                                console.log(`[SqliteService] Found backend row:`, backendRow);
+                                backendDefId = backendRow[0];
+                                frontendDefId = backendRow[3];
+
+                                // Now get frontend info for the category
+                                if (frontendDefId) {
+                                    const frontendQuery = db.prepare("SELECT machine_category, name FROM machine_frontend_definitions WHERE accession_id = ?");
+                                    try {
+                                        frontendQuery.bind([frontendDefId]);
+                                        if (frontendQuery.step()) {
+                                            const frontendRow = frontendQuery.get() as any[];
+                                            console.log(`[SqliteService] Found frontend row:`, frontendRow);
+                                            // Build a defRow-compatible array: [accession_id, category, null, manufacturer, description, name, model]
+                                            defRow = [
+                                                backendDefId,                    // 0: accession_id
+                                                frontendRow[0],                  // 1: machine_category from frontend
+                                                null,                            // 2: compatible_backends
+                                                backendRow[1] || 'Unknown',      // 3: manufacturer from backend
+                                                backendRow[4] || `${frontendRow[1]} device`, // 4: description
+                                                frontendRow[1],                  // 5: name (frontend name like "PlateReader")
+                                                backendRow[2] || backendRow[0]   // 6: model from backend
+                                            ];
+                                            console.log(`[SqliteService] Found backend definition: ${backendDefId} -> frontend: ${frontendDefId}`);
+                                        } else {
+                                            console.log(`[SqliteService] No frontend found for ID: ${frontendDefId}`);
+                                        }
+                                    } finally { frontendQuery.free(); }
+                                } else {
+                                    console.log(`[SqliteService] Backend has no frontend_definition_accession_id`);
+                                }
+                            } else {
+                                console.log(`[SqliteService] No backend found matching pattern: ${pattern}`);
+                            }
+                        } finally {
+                            backendQuery.free();
+                        }
+                    }
+
+                    // Defaults if no definition found
                     const _defId = defRow ? defRow[0] : null;
                     const category = defRow ? defRow[1] : 'liquid_handler';
                     const description = defRow ? `User registered instance of ${defRow[4] || machine.name}` : `Registered Machine: ${machine.name}`;
 
                     // 2. Insert Machine
-                    const isSimulated = machine.is_simulated || plrBackend.includes('chatterbox') ||
-                        plrBackend.includes('simulator') ||
-                        plrBackend.includes('simulated') ||
+                    const isSimulated = machine.is_simulated || plrBackendLower.includes('chatterbox') ||
+                        plrBackendLower.includes('simulator') ||
+                        plrBackendLower.includes('simulated') ||
                         machine.connection_type === 'sim';
 
                     const insertMachine = db.prepare(`
@@ -707,12 +777,12 @@ export class SqliteService {
                         'IDLE',
                         JSON.stringify({
                             connection_type: machine.connection_type || 'serial',
-                            plr_backend: plrBackend, // Store PLR backend FQN for REPL code generation
+                            plr_backend: plrBackendOriginal, // Store PLR backend FQN for REPL code generation (preserve case!)
                             ...machine.connection_info
                         }),
                         description,
-                        defRow ? defRow[3] : 'Unknown', // manufacturer
-                        machine.name, // model
+                        defRow ? defRow[3] : 'Unknown', // manufacturer (index 3)
+                        defRow ? (defRow[6] || defRow[5] || machine.name) : machine.name, // model (index 6) or name (index 5) or fallback
                         1, // maintenance_enabled (default true)
                         JSON.stringify({ frequency: 'monthly', last_maintenance: null }), // maintenance_schedule_json default
                         JSON.stringify({}), // last_maintenance_json default
@@ -847,6 +917,9 @@ export class SqliteService {
                         return {
                             ...p,
                             is_top_level: p['is_top_level'] === 1 || p['is_top_level'] === true,
+                            requires_deck: p['requires_deck'] === 1 || p['requires_deck'] === true,
+                            solo_execution: p['solo_execution'] === 1 || p['solo_execution'] === true,
+                            preconfigure_deck: p['preconfigure_deck'] === 1 || p['preconfigure_deck'] === true,
                             parameters: protocolParams,
                             assets: protocolAssets,
                             tags: p['tags'] ? (typeof p['tags'] === 'string' ? p['tags'].split(',') : p['tags']) : [],
@@ -921,6 +994,9 @@ export class SqliteService {
                     const result = {
                         ...protocol,
                         is_top_level: protocol['is_top_level'] === 1 || protocol['is_top_level'] === true,
+                        requires_deck: protocol['requires_deck'] === 1 || protocol['requires_deck'] === true,
+                        solo_execution: protocol['solo_execution'] === 1 || protocol['solo_execution'] === true,
+                        preconfigure_deck: protocol['preconfigure_deck'] === 1 || protocol['preconfigure_deck'] === true,
                         parameters: protocolParams,
                         assets: protocolAssets,
                         hardware_requirements_json: protocol['hardware_requirements_json'] ? JSON.parse(protocol['hardware_requirements_json'] as string) : {},
@@ -999,12 +1075,15 @@ export class SqliteService {
             map(db => {
                 try {
                     const res = db.exec("SELECT * FROM machines");
+                    console.log('[SqliteService] getMachines raw result:', res);
                     if (res.length === 0) return [];
-                    return this.resultToObjects(res[0]).map(m => ({
+                    const machines = this.resultToObjects(res[0]).map(m => ({
                         ...m,
                         properties_json: m['properties_json'] ? JSON.parse(m['properties_json'] as string) : {},
                         connection_info_json: m['connection_info_json'] ? JSON.parse(m['connection_info_json'] as string) : (m['connection_info'] || {})
                     } as unknown as Machine));
+                    console.log('[SqliteService] getMachines parsed:', machines.length, machines);
+                    return machines;
                 } catch (e) {
                     console.warn('[SqliteService] Failed to fetch machines', e);
                     return [];
@@ -1273,7 +1352,7 @@ export class SqliteService {
 
             request.onsuccess = (event) => {
                 const idb = (event.target as IDBOpenDBRequest).result;
-                
+
                 if (!idb.objectStoreNames.contains('sqlite')) {
                     idb.close();
                     resolve();

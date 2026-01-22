@@ -1,6 +1,6 @@
 /**
  * Auto-generated TypeScript interfaces from SQLAlchemy ORM models
- * Generated at: 2026-01-21T09:39:35.759229
+ * Generated at: 2026-01-21T18:31:14.015294
  * DO NOT EDIT MANUALLY - regenerate using: uv run scripts/generate_browser_schema.py
  */
 
@@ -192,6 +192,7 @@ export interface FunctionProtocolDefinition {
   deck_construction_function_fqn: string | null;
   deck_layout_path: string | null;
   state_param_name: string | null;
+  requires_linked_indices: boolean | null;
   category: string | null;
   deprecated: boolean | null;
   source_hash: string | null;
@@ -399,6 +400,7 @@ export interface ProtocolRun {
   final_state_json: Record<string, unknown> | null;
   created_by_user: Record<string, unknown> | null;
   top_level_protocol_definition_accession_id: string;
+  protocol_definition_accession_id: string | null;
   previous_accession_id: string | null;
 }
 

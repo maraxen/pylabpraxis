@@ -2,9 +2,14 @@ import { HttpErrorResponse, HttpHandlerFn, HttpInterceptorFn, HttpRequest } from
 import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { SKIP_ERROR_HANDLING } from './http-context.tokens';
 
 export const errorInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, next: HttpHandlerFn) => {
   const snackBar = inject(MatSnackBar);
+
+  if (req.context.get(SKIP_ERROR_HANDLING)) {
+    return next(req);
+  }
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
@@ -16,11 +21,11 @@ export const errorInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, n
       } else {
         // Server-side error
         if (error.status === 401) {
-            errorMessage = 'Session expired. Please login again.';
+          errorMessage = 'Session expired. Please login again.';
         } else if (error.status === 403) {
-            errorMessage = 'You do not have permission to perform this action.';
+          errorMessage = 'You do not have permission to perform this action.';
         } else {
-            errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
+          errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
         }
       }
 

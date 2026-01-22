@@ -318,8 +318,23 @@ export class SqliteRepository<T extends BaseEntity> {
     protected deserializeValue(value: unknown, columnName: string): unknown {
         if (value === null) return null;
 
-        // Check if column is a JSON column (ends with _json or is properties_json)
-        if (columnName.endsWith('_json') && typeof value === 'string') {
+        // Check if column is a JSON column
+        const isJsonColumn = columnName.endsWith('_json') ||
+            columnName.endsWith('_config') ||
+            [
+                'capabilities',
+                'compatible_backends',
+                'available_simulation_backends',
+                'user_configured_capabilities',
+                'plr_state',
+                'plr_definition',
+                'allowed_resource_definition_names',
+                'compatible_resource_fqns',
+                'tags',
+                'connection_info'
+            ].includes(columnName);
+
+        if (isJsonColumn && typeof value === 'string') {
             try {
                 return JSON.parse(value);
             } catch {
@@ -349,9 +364,11 @@ export class SqliteRepository<T extends BaseEntity> {
             'is_consumable',
             'has_deck',
             'is_simulation_override',
+            'is_simulated_frontend',
             'accepts_tips',
             'accepts_plates',
             'accepts_tubes',
+            'requires_deck',
             'maintenance_enabled'
         ];
         return booleanColumns.includes(columnName);

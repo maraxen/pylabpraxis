@@ -350,7 +350,18 @@ export class BrowserMockRouter {
 
         // Hardware registration
         if (url.includes('/hardware/register') && method === 'POST') {
-            const payload = body as { device_id?: string; name?: string; plr_backend?: string; connection_type?: string; configuration?: unknown };
+            // Body comes as JSON string from getRequestBody, need to parse it
+            let payload: { device_id?: string; name?: string; plr_backend?: string; connection_type?: string; configuration?: unknown };
+            if (typeof body === 'string') {
+                try {
+                    payload = JSON.parse(body);
+                } catch {
+                    payload = {};
+                }
+            } else {
+                payload = body as typeof payload || {};
+            }
+            console.log('[BrowserMockRouter] Hardware register payload (parsed):', payload);
             return db.createMachine({
                 name: payload?.name || 'Registered Machine',
                 plr_backend: payload?.plr_backend || '',

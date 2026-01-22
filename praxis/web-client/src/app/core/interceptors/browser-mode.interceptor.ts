@@ -122,9 +122,9 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
         return of(PLR_MACHINE_DEFINITIONS);
     }
 
-    // Machines - return array directly
+    // Machines - return array from SQLite
     if (url.includes('/machines') && !url.includes('type-definitions') && !url.includes('definitions') && method === 'GET') {
-        return of(MOCK_MACHINES);
+        return sqliteService.getMachines();
     }
 
     // Machine definitions
@@ -294,6 +294,7 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
     // Hardware registration
     if (url.includes('/hardware/register') && method === 'POST') {
         const body = req.body as { device_id?: string; name?: string; plr_backend?: string; connection_type?: string; configuration?: any };
+        console.log('[BrowserModeIntercepter] Hardware register body:', body);
         return sqliteService.createMachine({
             name: body?.name || 'Registered Machine',
             plr_backend: body?.plr_backend || '',
@@ -302,25 +303,29 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
         });
     }
 
-    // Protocol compatibility check - return compatible machines
+    // Protocol compatibility check - return compatible machines from SQLite
     if (url.match(/\/protocols\/[a-f0-9-]+\/compatibility$/) && method === 'GET') {
-        // Return mock compatibility data with available machines
-        // Filter to liquid handlers only for browser mode
-        const liquidHandlers = MOCK_MACHINES.filter(m => m.type === 'liquid_handler');
-        const mockCompatibility = liquidHandlers.map(machine => ({
-            machine: {
-                accession_id: machine.accession_id,
-                name: machine.name,
-                machine_type: machine.type || 'liquid_handler',
-            },
-            compatibility: {
-                is_compatible: true,
-                missing_capabilities: [],
-                matched_capabilities: ['liquid_handling', 'pipetting'],
-                warnings: [],
-            }
-        }));
-        return of(mockCompatibility);
+        // Return compatibility data based on actual machines in SQLite
+        return sqliteService.getMachines().pipe(
+            map(machines => {
+                return machines.map(machine => ({
+                    machine: {
+                        accession_id: machine.accession_id,
+                        name: machine.name,
+                        machine_category: machine.machine_category || (machine as any).machine_type || 'LiquidHandler',
+                        // Add other fields needed by MachineCard / MachineSelection
+                        is_simulation_override: (machine as any).is_simulation_override || true,
+                        backend_definition: (machine as any).backend_definition
+                    },
+                    compatibility: {
+                        is_compatible: true, // In browser mode, we assume compatibility or handle it in frontend
+                        missing_capabilities: [],
+                        matched_capabilities: ['liquid_handling', 'pipetting'],
+                        warnings: [],
+                    }
+                }));
+            })
+        );
     }
 
     // Hardware REPL command

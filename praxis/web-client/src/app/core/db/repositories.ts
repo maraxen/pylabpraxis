@@ -253,7 +253,9 @@ export class MachineRepository extends SqliteRepository<WithIndex<Machine>> {
         if (options?.orderBy) sql += this.buildOrderByClause(options.orderBy);
         if (options?.limit !== undefined) sql += ` LIMIT ${options.limit}`;
         if (options?.offset !== undefined) sql += ` OFFSET ${options.offset}`;
-        return this.executeQuery(sql);
+        const results = this.executeQuery(sql);
+        console.log('[MachineRepository] findAll executed, found:', results.length, results);
+        return results;
     }
 
     /**
