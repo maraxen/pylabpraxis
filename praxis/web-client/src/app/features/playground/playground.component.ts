@@ -44,6 +44,7 @@ import { AssetWizard } from '@shared/components/asset-wizard/asset-wizard';
 
 import { MatTabsModule } from '@angular/material/tabs';
 import { DirectControlComponent } from './components/direct-control/direct-control.component';
+import { DirectControlKernelService } from './services/direct-control-kernel.service';
 import { MachineRead } from '../../core/api-generated/models/MachineRead';
 
 /**
@@ -98,9 +99,25 @@ import { MachineRead } from '../../core/api-generated/models/MachineRead';
               </button>
               <button 
                 mat-icon-button 
+                (click)="openAddMachine()"
+                matTooltip="Add Machine"
+                aria-label="Add Machine"
+                color="primary">
+                <mat-icon>precision_manufacturing</mat-icon>
+              </button>
+              <button 
+                mat-icon-button 
+                (click)="openAddResource()"
+                matTooltip="Add Resource"
+                aria-label="Add Resource"
+                color="primary">
+                <mat-icon>science</mat-icon>
+              </button>
+              <button 
+                mat-icon-button 
                 (click)="openInventory()"
-                matTooltip="Open Inventory Dialog"
-                aria-label="Open Inventory Dialog"
+                matTooltip="Browse Inventory"
+                aria-label="Browse Inventory"
                 color="primary">
                 <mat-icon>inventory_2</mat-icon>
               </button>
@@ -144,22 +161,62 @@ import { MachineRead } from '../../core/api-generated/models/MachineRead';
             
             <mat-tab label="Direct Control">
               <ng-template matTabContent>
-                <div class="direct-control-wrapper">
-                  @if (selectedMachine()) {
-                    <app-direct-control 
-                      [machine]="$any(selectedMachine())"
-                      (executeCommand)="onExecuteCommand($event)">
-                    </app-direct-control>
-                  } @else {
-                    <div class="empty-state">
-                      <mat-icon>settings_remote</mat-icon>
-                      <p>No machine selected. Use the Inventory to select or create a machine.</p>
-                      <button mat-stroked-button (click)="openInventory()">
-                        <mat-icon>inventory_2</mat-icon>
-                        Open Inventory
+                <div class="direct-control-dashboard">
+                  <!-- Machine Selector Sidebar -->
+                  <div class="machine-selector-panel">
+                    <div class="panel-header">
+                      <h3>Available Machines</h3>
+                      <button mat-icon-button (click)="loadMachinesForDirectControl()" matTooltip="Refresh machines">
+                        <mat-icon>refresh</mat-icon>
                       </button>
                     </div>
-                  }
+                    
+                    @if (availableMachines().length === 0) {
+                      <div class="empty-machines">
+                        <mat-icon>precision_manufacturing</mat-icon>
+                        <p>No machines registered</p>
+                        <button mat-stroked-button (click)="openAssetWizard('MACHINE')">
+                          <mat-icon>add</mat-icon>
+                          Add Machine
+                        </button>
+                      </div>
+                    } @else {
+                      <div class="machine-list">
+                        @for (machine of availableMachines(); track machine.accession_id) {
+                          <div 
+                            class="machine-card" 
+                            [class.selected]="selectedMachine()?.accession_id === machine.accession_id"
+                            (click)="selectMachineForControl(machine)">
+                            <div class="machine-icon">
+                              <mat-icon>{{ getMachineIcon($any(machine).machine_category) }}</mat-icon>
+                            </div>
+                            <div class="machine-info">
+                              <span class="machine-name">{{ machine.name }}</span>
+                              <span class="machine-category">{{ $any(machine).machine_category || 'Machine' }}</span>
+                            </div>
+                            <div class="machine-status" [class]="$any(machine).status?.toLowerCase() || 'offline'">
+                              <span class="status-dot"></span>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                  
+                  <!-- Control Panel -->
+                  <div class="control-panel">
+                    @if (selectedMachine()) {
+                      <app-direct-control 
+                        [machine]="$any(selectedMachine())"
+                        (executeCommand)="onExecuteCommand($event)">
+                      </app-direct-control>
+                    } @else {
+                      <div class="empty-state">
+                        <mat-icon>settings_remote</mat-icon>
+                        <p>Select a machine from the list to control it</p>
+                      </div>
+                    }
+                  </div>
                 </div>
               </ng-template>
             </mat-tab>
@@ -307,6 +364,166 @@ import { MachineRead } from '../../core/api-generated/models/MachineRead';
         font-weight: 500;
         letter-spacing: 0.02em;
       }
+
+      /* Direct Control Dashboard */
+      .direct-control-dashboard {
+        display: flex;
+        height: 100%;
+        background: var(--mat-sys-surface-container-low);
+      }
+
+      .machine-selector-panel {
+        width: 280px;
+        min-width: 280px;
+        border-right: 1px solid var(--mat-sys-outline-variant);
+        background: var(--mat-sys-surface-container);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--mat-sys-outline-variant);
+        background: var(--mat-sys-surface-container-high);
+      }
+
+      .panel-header h3 {
+        margin: 0;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--mat-sys-on-surface);
+      }
+
+      .machine-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+      }
+
+      .machine-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.15s ease, box-shadow 0.15s ease;
+        margin-bottom: 4px;
+        background: var(--mat-sys-surface);
+        border: 1px solid transparent;
+      }
+
+      .machine-card:hover {
+        background: var(--mat-sys-surface-container-highest);
+      }
+
+      .machine-card.selected {
+        background: color-mix(in srgb, var(--mat-sys-primary) 12%, var(--mat-sys-surface));
+        border-color: var(--mat-sys-primary);
+      }
+
+      .machine-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background: var(--mat-sys-primary-container);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .machine-icon mat-icon {
+        color: var(--mat-sys-on-primary-container);
+      }
+
+      .machine-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .machine-name {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--mat-sys-on-surface);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .machine-category {
+        font-size: 0.75rem;
+        color: var(--mat-sys-on-surface-variant);
+      }
+
+      .machine-status {
+        flex-shrink: 0;
+      }
+
+      .status-dot {
+        display: block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--mat-sys-outline);
+      }
+
+      .machine-status.idle .status-dot {
+        background: var(--mat-sys-tertiary);
+      }
+
+      .machine-status.running .status-dot,
+      .machine-status.connected .status-dot {
+        background: var(--mat-sys-primary);
+        animation: pulse 2s infinite;
+      }
+
+      .machine-status.error .status-dot {
+        background: var(--mat-sys-error);
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      .empty-machines {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        padding: 24px;
+        gap: 12px;
+        color: var(--mat-sys-on-surface-variant);
+        text-align: center;
+      }
+
+      .empty-machines mat-icon {
+        font-size: 40px;
+        width: 40px;
+        height: 40px;
+        opacity: 0.5;
+      }
+
+      .empty-machines p {
+        margin: 0;
+        font-size: 0.875rem;
+      }
+
+      .control-panel {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px;
+        min-width: 0;
+      }
     `,
   ],
 })
@@ -326,6 +543,9 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   // Serial Manager for main-thread I/O (Phase B)
   private serialManager = inject(SerialManagerService);
 
+  // Direct Control dedicated kernel (separate from JupyterLite)
+  private directControlKernel = inject(DirectControlKernelService);
+
   modeLabel = computed(() => this.modeService.modeLabel());
 
   // JupyterLite Iframe Configuration
@@ -340,7 +560,14 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // Selected machine for Direct Control
   selectedMachine = signal<Machine | null>(null);
+  availableMachines = signal<Machine[]>([]);
   selectedTabIndex = signal(0);
+
+  // Event listener for machine-registered events
+  private machineRegisteredHandler = () => {
+    console.log('[Playground] machine-registered event received, refreshing list...');
+    this.loadMachinesForDirectControl();
+  };
 
   // Ready signal handshake
   private replChannel: BroadcastChannel | null = null;
@@ -369,6 +596,10 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnInit() {
     this.setupReadyListener();
+    this.loadMachinesForDirectControl();
+
+    // Listen for new machine registrations
+    window.addEventListener('machine-registered', this.machineRegisteredHandler);
   }
 
   ngAfterViewInit() {
@@ -429,6 +660,8 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnDestroy() {
     this.subscription.unsubscribe();
+    // Clean up event listener
+    window.removeEventListener('machine-registered', this.machineRegisteredHandler);
     // Clean up ready signal channel
     if (this.replChannel) {
       this.replChannel.close();
@@ -439,14 +672,82 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
+  /**
+   * Load registered machines for Direct Control tab.
+   * Auto-selects the most recently created machine if none is selected.
+   */
+  loadMachinesForDirectControl(): void {
+    this.subscription.add(
+      this.assetService.getMachines().subscribe({
+        next: (machines) => {
+          console.log('[Playground] Loaded machines for Direct Control:', machines.length, machines);
+          // Sort by created_at descending (most recent first)
+          const sorted = [...machines].sort((a, b) => {
+            const aDate = (a as any).created_at ? new Date((a as any).created_at).getTime() : 0;
+            const bDate = (b as any).created_at ? new Date((b as any).created_at).getTime() : 0;
+            return bDate - aDate;
+          });
+          this.availableMachines.set(sorted);
+
+          // Auto-select the first (most recent) machine if none selected
+          if (!this.selectedMachine() && sorted.length > 0) {
+            this.selectedMachine.set(sorted[0]);
+            console.log('[Playground] Auto-selected machine for Direct Control:', sorted[0].name);
+          }
+        },
+        error: (err) => {
+          console.error('[Playground] Failed to load machines:', err);
+        }
+      })
+    );
+  }
+
+  /**
+   * Select a machine for Direct Control
+   */
+  selectMachineForControl(machine: Machine): void {
+    this.selectedMachine.set(machine);
+  }
+
+  /**
+   * Get icon for machine category
+   */
+  getMachineIcon(category: string): string {
+    const iconMap: Record<string, string> = {
+      'LiquidHandler': 'science',
+      'PlateReader': 'visibility',
+      'Shaker': 'vibration',
+      'Centrifuge': 'loop',
+      'Incubator': 'thermostat',
+      'Other': 'precision_manufacturing'
+    };
+    return iconMap[category] || 'precision_manufacturing';
+  }
+
+  openAddMachine() {
+    this.openAssetWizard('MACHINE');
+  }
+
+  openAddResource() {
+    this.openAssetWizard('RESOURCE');
+  }
+
   openInventory() {
+    this.openAssetWizard();
+  }
+
+  openAssetWizard(preselectedType?: 'MACHINE' | 'RESOURCE') {
     const dialogRef = this.dialog.open(AssetWizard, {
-      width: '1200px',
-      minWidth: '500px',
+      minWidth: '600px',
+      maxWidth: '1000px',
+      width: '80vw',
       height: 'auto',
       minHeight: '400px',
       maxHeight: '90vh',
-      panelClass: 'praxis-dialog-no-padding'
+      data: {
+        ...(preselectedType ? { preselectedType } : {}),
+        context: 'playground'
+      }
     });
 
     dialogRef.afterClosed().subscribe((result: any) => {
@@ -509,13 +810,15 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     this.jupyterliteUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
 
     // Set a timeout to show error/retry if iframe load is slow
+    // Pyodide/JupyterLite can take 20+ seconds to fully boot on slower connections
     this.loadingTimeout = setTimeout(() => {
       if (this.isLoading()) {
-        console.warn('[REPL] Loading timeout reached - forcing overlay close');
+        console.warn('[REPL] Loading timeout (30s) reached - Pyodide kernel may still be booting');
+        console.warn('[REPL] Tip: Check browser console in the iframe for bootstrap errors');
         this.isLoading.set(false);
         this.cdr.detectChanges();
       }
-    }, 15000); // 15 second fallback
+    }, 30000); // 30 second fallback (was 15s, but Pyodide needs more time)
 
     this.cdr.detectChanges();
   }
@@ -546,19 +849,21 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
       'import micropip',
       "await micropip.install('/assets/wheels/pylabrobot-0.1.6-py3-none-any.whl')",
       '',
-      '# Ensure WebSerial and WebUSB are in builtins for all cells',
+      '# Ensure WebSerial, WebUSB, and WebFTDI are in builtins for all cells',
       'import builtins',
       'if "WebSerial" in globals():',
       '    builtins.WebSerial = WebSerial',
       'if "WebUSB" in globals():',
       '    builtins.WebUSB = WebUSB',
+      'if "WebFTDI" in globals():',
+      '    builtins.WebFTDI = WebFTDI',
       '',
       '# Mock pylibftdi (not supported in browser/Pyodide)',
       'import sys',
       'from unittest.mock import MagicMock',
       'sys.modules["pylibftdi"] = MagicMock()',
       '',
-      '# Load WebSerial/WebUSB shims for browser I/O',
+      '# Load WebSerial/WebUSB/WebFTDI shims for browser I/O',
       '# Note: These are pre-loaded to avoid extra network requests',
       'try:',
       '    import pyodide_js',
@@ -572,8 +877,14 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
       '# Patch pylabrobot.io to use browser shims',
       'import pylabrobot.io.serial as _ser',
       'import pylabrobot.io.usb as _usb',
+      'import pylabrobot.io.ftdi as _ftdi',
       '_ser.Serial = WebSerial',
       '_usb.USB = WebUSB',
+      '',
+      '# CRITICAL: Patch FTDI for backends like CLARIOstarBackend',
+      '_ftdi.FTDI = WebFTDI',
+      '_ftdi.HAS_PYLIBFTDI = True',
+      'print("✓ Patched pylabrobot.io with WebSerial/WebUSB/WebFTDI")',
       '',
       '# Import pylabrobot',
       'import pylabrobot',
@@ -593,8 +904,19 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
       '        ',
       '        if isinstance(data, dict) and data.get("type") == "praxis:execute":',
       '            code = data.get("code", "")',
-      '            print(f"Executing injected code...")',
-      '            exec(code, globals())',
+      '            print(f"Executing: {code}")',
+      '            # Handle async code (contains await)',
+      '            if "await " in code:',
+      '                import asyncio',
+      '                # Wrap in async function and schedule',
+      '                async def _run_async():',
+      '                    exec(f"async def __praxis_async__(): return {code}", globals())',
+      '                    result = await __praxis_async__()',
+      '                    if result is not None:',
+      '                        print(result)',
+      '                asyncio.ensure_future(_run_async())',
+      '            else:',
+      '                exec(code, globals())',
       '        elif isinstance(data, dict) and data.get("type") == "praxis:interaction_response":',
       '            try:',
       '                import web_bridge',
@@ -632,7 +954,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
       'except Exception as e:',
       '    print(f"! Failed to setup injection channel: {e}")',
       '',
-      'print("✓ pylabrobot loaded with browser I/O shims!")',
+      'print("✓ pylabrobot loaded with browser I/O shims (including FTDI)!")',
       'print(f"  Version: {pylabrobot.__version__}")',
       'print("Use the Inventory button to insert asset variables.")',
       '',
@@ -656,7 +978,8 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   private async getOptimizedBootstrap(): Promise<string> {
     // We cannot inline the shims because they are too large for the URL parameters (causes 431 error).
     // Instead, we generate Python code to fetch and execute them from within the kernel.
-    const shims = ['web_serial_shim.py', 'web_usb_shim.py'];
+    // IMPORTANT: web_ftdi_shim.py is critical for CLARIOstarBackend and similar FTDI-based devices
+    const shims = ['web_serial_shim.py', 'web_usb_shim.py', 'web_ftdi_shim.py'];
     let shimInjections = '# --- Browser Hardware Shims --- \n';
     shimInjections += 'import pyodide.http\n';
 
@@ -921,41 +1244,48 @@ for _p_file in ['__init__.py', 'interactive.py']:
 
   /**
    * Handle executeCommand from DirectControlComponent
+   * Uses a dedicated Pyodide kernel that persists across tab switches
    */
-  async onExecuteCommand(event: { machineName: string, methodName: string, args: any }) {
-    const { machineName, methodName, args } = event;
+  async onExecuteCommand(event: { machineName: string, methodName: string, args: Record<string, unknown> }) {
+    const { methodName, args } = event;
 
-    // Convert machine name to safe variable name (same logic as insertAsset)
     const asset = this.selectedMachine();
     if (!asset) return;
 
     const varName = this.assetToVarName(asset);
+    const machineId = asset.accession_id;
+    const connectionInfo = asset.connection_info as Record<string, unknown> || {};
+    const plrBackend = connectionInfo['plr_backend'] as string || '';
+    const category = (asset as unknown as { machine_category?: string }).machine_category || 'LiquidHandler';
 
-    // Construct Python code: await machine_name.method_name(arg1=val1, arg2=val2)
-    const argList = Object.entries(args)
-      .map(([key, val]) => {
-        const valStr = typeof val === 'string' ? `"${val}"` : val;
-        return `${key}=${valStr}`;
-      })
-      .join(', ');
-
-    const code = `await ${varName}.${methodName}(${argList})`;
-
-    console.log('[REPL] Executing direct command:', code);
-
-    // Send code via BroadcastChannel
     try {
-      const channel = new BroadcastChannel('praxis_repl');
-      channel.postMessage({
-        type: 'praxis:execute',
-        code: code
-      });
-      setTimeout(() => channel.close(), 100);
+      // Boot kernel if needed (this is idempotent)
+      if (!this.directControlKernel.isReady()) {
+        this.snackBar.open('Booting Python kernel...', 'OK', { duration: 3000 });
+        await this.directControlKernel.boot();
+      }
 
+      // Ensure machine is instantiated
+      await this.directControlKernel.ensureMachineInstantiated(
+        machineId,
+        asset.name,
+        varName,
+        plrBackend,
+        category
+      );
+
+      // Execute the method
       this.snackBar.open(`Executing ${methodName}...`, 'OK', { duration: 2000 });
+      const output = await this.directControlKernel.executeMethod(varName, methodName, args);
+
+      if (output.trim()) {
+        console.log('[DirectControl] Output:', output);
+        this.snackBar.open(output.split('\n')[0].substring(0, 80), 'OK', { duration: 5000 });
+      }
     } catch (e) {
-      console.error('Failed to send command to REPL:', e);
-      this.snackBar.open(`Failed to send command`, 'OK', { duration: 3000 });
+      console.error('[DirectControl] Command failed:', e);
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      this.snackBar.open(`Error: ${errorMsg.substring(0, 80)}`, 'Dismiss', { duration: 5000 });
     }
   }
 }

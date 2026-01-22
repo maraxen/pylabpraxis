@@ -1,69 +1,103 @@
 <div class="direct-control-container">
+  <!-- Header with machine info -->
   <div class="header">
-    <h3>Direct Control: {{ machine?.name }}</h3>
+    <div class="title-row">
+      <mat-icon class="machine-icon">precision_manufacturing</mat-icon>
+      <div class="title-info">
+        <h3>{{ machine?.name }}</h3>
+        <span class="category-badge">{{ getMachineCategory() }}</span>
+      </div>
+    </div>
   </div>
 
   <div class="content" *ngIf="machine">
-    <div class="method-selector">
-      <mat-form-field appearance="outline" class="w-full">
-        <mat-label>Select Method</mat-label>
-        <mat-select [value]="selectedMethod" (selectionChange)="onMethodSelected($event.value)">
-          <mat-option *ngFor="let method of methods" [value]="method">
-            {{ method.name }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <div class="method-doc" *ngIf="selectedMethod?.doc">
-        <p>{{ selectedMethod?.doc }}</p>
+    <!-- Method Grid - Quick Actions -->
+    <div class="method-grid">
+      <h4 class="section-title">
+        <mat-icon>play_arrow</mat-icon>
+        Quick Actions
+      </h4>
+      <div class="method-chips">
+        <button *ngFor="let method of methods" mat-stroked-button class="method-chip"
+          [class.lifecycle]="isLifecycleMethod(method.name)" [class.selected]="selectedMethod?.name === method.name"
+          (click)="onMethodSelected(method)">
+          <mat-icon class="method-icon">{{ getMethodIcon(method.name) }}</mat-icon>
+          {{ formatMethodName(method.name) }}
+        </button>
       </div>
     </div>
 
-    <form [formGroup]="form" *ngIf="selectedMethod" class="args-form">
-      <div class="args-list">
-        <ng-container *ngFor="let arg of selectedMethod.args">
-          <div class="arg-item">
-            <ng-container [ngSwitch]="getArgType(arg)">
-              
+    <!-- Selected Method Details -->
+    <div class="method-panel" *ngIf="selectedMethod">
+      <div class="method-header">
+        <div class="method-title">
+          <mat-icon class="method-icon-lg">{{ getMethodIcon(selectedMethod.name) }}</mat-icon>
+          <div>
+            <h4>{{ formatMethodName(selectedMethod.name) }}</h4>
+            <p class="method-doc" *ngIf="selectedMethod?.doc">{{ selectedMethod?.doc }}</p>
+          </div>
+        </div>
+      </div>
+
+      <form [formGroup]="form" class="args-form">
+        <!-- No args message -->
+        <div *ngIf="selectedMethod.args.length === 0" class="no-args">
+          <mat-icon>check_circle</mat-icon>
+          <span>No parameters required</span>
+        </div>
+
+        <!-- Args grid -->
+        <div class="args-grid" *ngIf="selectedMethod.args.length > 0">
+          <ng-container *ngFor="let arg of selectedMethod.args">
+            <div class="arg-item" [ngSwitch]="getArgType(arg)">
+
               <!-- Checkbox for Booleans -->
               <div *ngSwitchCase="'checkbox'" class="checkbox-field">
-                <mat-checkbox [formControlName]="arg.name">
-                  {{ arg.name }} <span class="type-hint">({{ arg.type }})</span>
+                <mat-checkbox [formControlName]="arg.name" color="primary">
+                  {{ formatArgName(arg.name) }}
                 </mat-checkbox>
+                <span class="type-badge">{{ arg.type }}</span>
               </div>
 
               <!-- Number Input -->
               <mat-form-field *ngSwitchCase="'number'" appearance="outline" class="w-full">
-                <mat-label>{{ arg.name }}</mat-label>
-                <input matInput type="number" [formControlName]="arg.name" [placeholder]="'' + (arg.default !== undefined ? arg.default : '')">
-                <mat-hint *ngIf="arg.type">{{ arg.type }}</mat-hint>
+                <mat-label>{{ formatArgName(arg.name) }}</mat-label>
+                <input matInput type="number" [formControlName]="arg.name"
+                  [placeholder]="arg.default !== null ? '' + arg.default : 'Optional'">
+                <span matSuffix class="type-badge">{{ arg.type }}</span>
               </mat-form-field>
 
               <!-- Text Input (Default) -->
               <mat-form-field *ngSwitchDefault appearance="outline" class="w-full">
-                <mat-label>{{ arg.name }}</mat-label>
-                <input matInput type="text" [formControlName]="arg.name" [placeholder]="'' + (arg.default !== undefined ? arg.default : '')">
-                <mat-hint *ngIf="arg.type">{{ arg.type }}</mat-hint>
+                <mat-label>{{ formatArgName(arg.name) }}</mat-label>
+                <input matInput type="text" [formControlName]="arg.name"
+                  [placeholder]="arg.default !== undefined ? '' + arg.default : 'Required'">
+                <span matSuffix class="type-badge">{{ arg.type }}</span>
               </mat-form-field>
 
-            </ng-container>
-          </div>
-        </ng-container>
-      </div>
+            </div>
+          </ng-container>
+        </div>
 
-      <div class="actions">
-        <button mat-raised-button color="primary" (click)="runCommand()" [disabled]="!form.valid">
-          Execute {{ selectedMethod.name }}
-        </button>
-      </div>
-    </form>
-
-    <div *ngIf="!selectedMethod && methods.length > 0" class="empty-state">
-      <p>Select a method to configure arguments.</p>
+        <!-- Execute Button -->
+        <div class="actions">
+          <button mat-flat-button color="primary" class="execute-btn" (click)="runCommand()" [disabled]="!form.valid">
+            <mat-icon>play_arrow</mat-icon>
+            Execute {{ formatMethodName(selectedMethod.name) }}
+          </button>
+        </div>
+      </form>
     </div>
 
-    <div *ngIf="methods.length === 0" class="empty-state">
-      <p>No methods available for this machine definition.</p>
+    <!-- Empty State -->
+    <div *ngIf="!selectedMethod && methods.length > 0" class="empty-state">
+      <mat-icon class="empty-icon">touch_app</mat-icon>
+      <p>Select a method to configure and execute</p>
+    </div>
+
+    <div *ngIf="methods.length === 0" class="empty-state error">
+      <mat-icon class="empty-icon">warning</mat-icon>
+      <p>No methods available for this machine</p>
     </div>
   </div>
 </div>
