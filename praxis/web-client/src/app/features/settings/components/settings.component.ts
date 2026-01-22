@@ -122,7 +122,7 @@ type Theme = 'light' | 'dark' | 'system';
                    @if (hasTutorialProgress()) {
                      Resume or restart the interactive tour
                    } @else if (onboarding.hasCompletedTutorial()) {
-                     <span class="flex items-center text-green-600 dark:text-green-400">
+                     <span class="flex items-center text-status-success">
                        <mat-icon class="mr-1 text-sm h-4 w-4">check_circle</mat-icon>
                        You have completed the tour. Feel free to restart it anytime.
                      </span>
@@ -283,6 +283,10 @@ type Theme = 'light' | 'dark' | 'system';
     .settings-divider {
       margin: 1.5rem 0;
       opacity: 0.3;
+    }
+
+    .text-status-success {
+      color: var(--theme-status-success);
     }
     
     /* Fix for icon cutoff due to scaling */

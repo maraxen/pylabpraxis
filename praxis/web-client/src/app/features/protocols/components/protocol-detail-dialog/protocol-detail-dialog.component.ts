@@ -131,7 +131,7 @@ import { ProtocolDefinition } from '../../models/protocol.models';
             </div>
             <div *ngIf="data.protocol.simulation_result.violations.length > 0" class="violations-list">
               <div class="violation-item" *ngFor="let v of data.protocol.simulation_result.violations">
-                 <mat-icon class="text-yellow-500">warning</mat-icon>
+                 <mat-icon class="theme-status-warning">warning</mat-icon>
                  <span class="text-sm">{{ v['message'] || 'Unknown violation' }}</span>
               </div>
             </div>
@@ -307,6 +307,10 @@ import { ProtocolDefinition } from '../../models/protocol.models';
       padding: 0.5rem;
       background: var(--theme-surface-elevated);
       border-radius: 0.5rem;
+    }
+
+    .theme-status-warning {
+      color: var(--theme-status-warning);
     }
 
     .dialog-actions {

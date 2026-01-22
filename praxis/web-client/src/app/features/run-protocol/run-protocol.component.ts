@@ -467,7 +467,7 @@ interface FilterCategory {
                    </div>
                                    <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-6 flex flex-col items-center">
                       <span class="text-sys-text-tertiary text-sm uppercase tracking-wider font-bold mb-2">Mode</span>
-                     <span class="text-lg font-medium" [class.text-primary]="store.simulationMode()" [class.text-blue-400]="!store.simulationMode()">
+                     <span class="text-lg font-medium" [class.text-primary]="store.simulationMode()" [class.text-tertiary]="!store.simulationMode()">
                        {{ store.simulationMode() ? 'Simulation' : 'Physical Run' }}
                      </span>
                   </div>
@@ -523,7 +523,7 @@ interface FilterCategory {
                     </div>
                   </button>
                   
-                  <button mat-raised-button class="!bg-gradient-to-r !from-green-500 !to-emerald-600 !text-white !rounded-xl !px-8 !py-6 !font-bold !text-lg w-64 shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:-translate-y-0.5 transition-all" (click)="startRun()" 
+                  <button mat-raised-button class="bg-gradient-success !text-white !rounded-xl !px-8 !py-6 !font-bold !text-lg w-64 shadow-success hover:shadow-success-hover hover:-translate-y-0.5 transition-all" (click)="startRun()"
                     [disabled]="isStartingRun() || executionService.isRunning() || !configuredAssets() || !machineSelectionsValid() || showMachineError()">
 
                     @if (isStartingRun()) {
@@ -553,8 +553,22 @@ interface FilterCategory {
     /* Utilities */
     .bg-primary-10 { background-color: rgba(var(--primary-color-rgb), 0.1); }
     .text-white-70 { color: var(--theme-text-secondary); }
-    .border-green-500-30 { border-color: rgba(74, 222, 128, 0.3) !important; }
-    .bg-green-500-05 { background-color: rgba(74, 222, 128, 0.05) !important; }
+    .text-tertiary { color: var(--tertiary-color); }
+
+    .border-theme-status-success { border-color: var(--theme-status-success-border) !important; }
+    .bg-theme-status-success-muted { background-color: var(--theme-status-success-muted) !important; }
+    .text-theme-status-success { color: var(--theme-status-success) !important; }
+
+    .bg-gradient-success {
+      background: var(--gradient-success, linear-gradient(to right, #4ade80, #10b981));
+    }
+    .shadow-success {
+      box-shadow: 0 4px 6px -1px var(--theme-status-success-muted), 0 2px 4px -1px var(--theme-status-success-muted);
+    }
+    .shadow-success-hover {
+       box-shadow: 0 10px 15px -3px var(--theme-status-success-border), 0 4px 6px -2px var(--theme-status-success-border);
+    }
+
 
     /* Protocol description scrollable container */
     .description-container {

@@ -31,7 +31,7 @@ import { Subscription } from 'rxjs';
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold">Execution Monitor</h1>
         <div class="flex items-center gap-2">
-          <span class="text-sm" [class.text-green-600]="executionService.isConnected()" [class.text-gray-400]="!executionService.isConnected()">
+          <span class="text-sm" [style.color]="executionService.isConnected() ? 'var(--theme-status-success)' : 'var(--theme-text-tertiary)'">
             <mat-icon class="text-sm">{{ executionService.isConnected() ? 'wifi' : 'wifi_off' }}</mat-icon>
             {{ executionService.isConnected() ? 'Connected' : 'Disconnected' }}
           </span>
@@ -50,8 +50,7 @@ import { Subscription } from 'rxjs';
               <div class="flex items-center gap-2 mb-4">
                 <mat-chip-set>
                   <mat-chip [highlighted]="run.status === ExecutionStatus.RUNNING"
-                    [class.bg-green-100]="run.status === ExecutionStatus.COMPLETED"
-                    [class.bg-red-100]="run.status === ExecutionStatus.FAILED">
+                    [style.background-color]="run.status === ExecutionStatus.COMPLETED ? 'var(--theme-status-success-muted)' : (run.status === ExecutionStatus.FAILED ? 'var(--theme-status-error-muted)' : 'transparent')">
                     {{ run.status | uppercase }}
                   </mat-chip>
                 </mat-chip-set>
@@ -90,7 +89,7 @@ import { Subscription } from 'rxjs';
               <mat-card-title>Execution Log</mat-card-title>
             </mat-card-header>
             <mat-card-content class="pt-4">
-              <div class="bg-gray-900 text-green-400 font-mono text-sm p-4 rounded-lg h-64 overflow-y-auto">
+              <div style="background-color: var(--mat-sys-surface-container);" class="text-green-400 font-mono text-sm p-4 rounded-lg h-64 overflow-y-auto">
                 @for (log of run.logs; track $index) {
                   <div class="mb-1">{{ log }}</div>
                 }

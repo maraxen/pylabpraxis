@@ -329,7 +329,7 @@ export interface GuidedSetupResult {
     
     .requirement-item.autofilled .order-badge.completed {
         background: var(--sys-green); /* If available, or hardcode green */
-        background: rgb(34, 197, 94);
+        background: var(--theme-status-success);
     }
     .optional-badge {
       font-size: 0.7rem;
@@ -361,7 +361,7 @@ export interface GuidedSetupResult {
       flex: 1;
     }
     .autofill-btn {
-      color: rgb(34, 197, 94);
+      color: var(--theme-status-success);
       opacity: 0.7;
       transition: all 0.2s ease;
     }
@@ -398,17 +398,17 @@ export interface GuidedSetupResult {
       font-size: 16px !important;
       width: 16px !important;
       height: 16px !important;
-      color: rgb(34, 197, 94);
+      color: var(--theme-status-success);
     }
     .suggested-icon {
       font-size: 16px !important;
       width: 16px !important;
       height: 16px !important;
-      color: rgb(251, 191, 36);
+      color: var(--theme-status-warning);
       margin-right: 4px;
     }
     ::ng-deep .suggested-group .mat-mdc-optgroup-label {
-      color: rgb(34, 197, 94) !important;
+      color: var(--theme-status-success) !important;
       font-weight: 600;
     }
     ::ng-deep .suggested-option {

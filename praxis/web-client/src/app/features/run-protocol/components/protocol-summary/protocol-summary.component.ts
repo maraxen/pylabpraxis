@@ -61,7 +61,12 @@ import { ProtocolDefinition } from '../../../protocols/models/protocol.models';
                     <span class="text-xs text-sys-text-tertiary">{{ item.id }}</span>
                   </div>
                 </div>
-                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tighter bg-green-500/10 text-green-500 border border-green-500/20">Allocated</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tighter"
+                      [style]="{
+                        'background-color': 'var(--theme-status-success-muted)',
+                        'color': 'var(--theme-status-success)',
+                        'border': '1px solid var(--theme-status-success-border)'
+                      }">Allocated</span>
               </div>
             } @empty {
               <p class="text-sm text-sys-text-tertiary italic">No specific assets required</p>
@@ -92,7 +97,7 @@ import { ProtocolDefinition } from '../../../protocols/models/protocol.models';
               </div>
             } @empty {
                @if (wellSelectionRequired) {
-                  <p class="text-sm text-red-500 italic">No wells selected (required)</p>
+                  <p class="text-sm italic" [style.color]="'var(--status-error)'">No wells selected (required)</p>
                } @else {
                   <p class="text-sm text-sys-text-tertiary italic">No well selection required</p>
                }

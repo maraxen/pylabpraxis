@@ -419,6 +419,16 @@ body {
   color: var(--mat-sys-primary);
 }
 
+.status-success-bg {
+  background-color: var(--theme-status-success-muted);
+  color: var(--theme-status-success);
+  border: 1px solid var(--theme-status-success-border);
+}
+
+.status-error-text {
+  color: var(--status-error);
+}
+
 /* Skeleton Loading Utilities */
 @keyframes skeleton-pulse {
   0% {
