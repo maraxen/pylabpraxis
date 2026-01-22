@@ -54,7 +54,7 @@
     "@types/plotly.js-dist-min": "^2.3.4",
     "@types/sql.js": "^1.4.9",
     "angular-plotly.js": "^20.0.0",
-    "keycloak-angular": "^20.0.0",
+    "keycloak-angular": "^21.0.0",
     "keycloak-js": "^26.2.2",
     "marked": "^17.0.1",
     "mermaid": "^11.12.2",
