@@ -158,8 +158,12 @@ class WebUSB:
     except Exception as e:
       logger.warning(f"Error closing WebUSB device: {e}")
 
-  async def write(self, data: bytes, timeout: float | None = None):
-    """Write data to the USB device."""
+  async def write(self, data: bytes, timeout: float | None = None) -> int:
+    """Write data to the USB device.
+
+    Returns:
+        Number of bytes written.
+    """
     if self.dev is None:
       raise RuntimeError("Device not connected. Call setup() first.")
 
@@ -171,9 +175,21 @@ class WebUSB:
 
     try:
       result = await self.dev.transferOut(self._endpoint_out, js_data)
+      # Debug logging
+      print(
+        f"[WebUSB] transferOut result: status={result.status}, bytesWritten={getattr(result, 'bytesWritten', 'N/A')}"
+      )
       if result.status != "ok":
         raise RuntimeError(f"Write failed with status: {result.status}")
       logger.debug(f"{self._unique_id} write: {data}")
+      # Return number of bytes written (bytesWritten from USBOutTransferResult)
+      # If bytesWritten is 0 but status is ok, the data was sent - use data length
+      bytes_written = getattr(result, "bytesWritten", len(data))
+      if bytes_written == 0:
+        print(f"[WebUSB] bytesWritten is 0, but status=ok, returning len(data)={len(data)}")
+        bytes_written = len(data)
+      print(f"[WebUSB] Returning {bytes_written}")
+      return bytes_written
     except Exception as e:
       raise RuntimeError(f"Write failed: {e}")
 

@@ -14,6 +14,8 @@ Usage in JupyterLite (auto-executed in bootstrap):
 
 import logging
 import sys
+import types
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -29,74 +31,172 @@ def patch_pylabrobot_io():
   This replaces:
   - pylabrobot.io.Serial -> WebSerial
   - pylabrobot.io.USB -> WebUSB
-  - pylabrobot.io.ftdi.FTDI -> WebFTDI (critical for CLARIOstarBackend!)
+  - pylabrobot.io.ftdi.FTDI -> WebFTDI
+
+  AND injects global module shims for direct imports:
+  - import serial -> SerialShimModule
+  - import usb.core -> USBShimModule
+  - import hid -> HIDShimModule
   """
   if not is_pyodide():
     logger.info("Not in Pyodide environment, skipping I/O patch")
     return False
 
   try:
-    # Import shims (these should be in micropip's path or loaded as assets)
-    # Import pylabrobot.io module
+    # 1. Import browser shims
+    from web_serial_shim import WebSerial
+    from web_usb_shim import WebUSB
+    from web_hid_shim import WebHID
+
+    # 2. Patch Pylabrobot IO Classes (Existing Logic)
     import pylabrobot.io as plr_io
     import pylabrobot.io.serial as plr_serial
     import pylabrobot.io.usb as plr_usb
-    from web_hid_shim import WebHID
-    from web_serial_shim import WebSerial
-    from web_usb_shim import WebUSB
 
-    # Patch the Serial class
     plr_io.Serial = WebSerial
     plr_serial.Serial = WebSerial
 
-    # Patch the USB class
     plr_io.USB = WebUSB
     plr_usb.USB = WebUSB
 
-    # Update HAS_SERIAL and USE_USB flags
     plr_serial.HAS_SERIAL = True
     plr_usb.USE_USB = True
 
-    logger.info("✓ Patched pylabrobot.io with WebSerial/WebUSB shims")
+    logger.info("✓ Patched pylabrobot.io with WebSerial/WebUSB")
 
-  except ImportError as e:
-    logger.warning(f"Could not import Serial/USB shims: {e}")
+    try:
+      import pylabrobot.io.ftdi as plr_ftdi
+      from web_ftdi_shim import WebFTDI
+
+      plr_ftdi.FTDI = WebFTDI
+      plr_ftdi.HAS_PYLIBFTDI = True
+      logger.info("✓ Patched pylabrobot.io.ftdi with WebFTDI")
+    except ImportError:
+      logger.warning("Could not patch FTDI (module not found)")
+
+    try:
+      import pylabrobot.io.hid as plr_hid
+
+      plr_hid.HID = WebHID
+      plr_hid.USE_HID = True
+      logger.info("✓ Patched pylabrobot.io.hid with WebHID")
+    except ImportError:
+      logger.warning("Could not patch HID (module not found)")
+
+    # 3. Inject Global Module Shims (New Logic)
+    _inject_serial_shim(WebSerial)
+    _inject_usb_shim(WebUSB)
+    _inject_hid_shim()
+
+    logger.info("✓ Injected global module shims (serial, usb, hid)")
+
   except Exception as e:
-    logger.error(f"Error patching Serial/USB: {e}")
-
-  # Patch HID (e.g. for Inheco)
-  try:
-    import pylabrobot.io.hid as plr_hid
-    from web_hid_shim import WebHID
-
-    plr_hid.HID = WebHID
-    plr_hid.USE_HID = True
-
-    logger.info("✓ Patched pylabrobot.io.hid with WebHID shim")
-  except ImportError as e:
-    logger.warning(f"Could not import HID shim or module: {e}")
-  except Exception as e:
-    logger.error(f"Error patching HID: {e}")
-
-  # CRITICAL: Patch FTDI for backends like CLARIOstarBackend
-  try:
-    import pylabrobot.io.ftdi as plr_ftdi
-    from web_ftdi_shim import WebFTDI
-
-    # Patch the FTDI class
-    plr_ftdi.FTDI = WebFTDI
-
-    # Also set HAS_PYLIBFTDI to True so CLARIOstarBackend doesn't error
-    plr_ftdi.HAS_PYLIBFTDI = True
-
-    logger.info("✓ Patched pylabrobot.io.ftdi with WebFTDI shim")
-
-  except ImportError as e:
-    logger.warning(f"Could not import FTDI shim: {e}")
-  except Exception as e:
-    logger.error(f"Error patching FTDI: {e}")
+    logger.error(f"Error patching I/O: {e}")
+    # Don't re-raise, allow app to continue even if shim fails (partial functionality)
+    return False
 
   return True
+
+
+def _inject_serial_shim(WebSerialClass):
+  """Inject a fake 'serial' module into sys.modules."""
+
+  # Define the Shim Module
+  class SerialShimModule(types.ModuleType):
+    def __init__(self):
+      super().__init__("serial")
+      self.Serial = WebSerialClass
+      self.SerialException = Exception  # Simple alias
+
+      # Constants required by backends
+      self.EIGHTBITS = 8
+      self.SEVENBITS = 7
+      self.FIVEBITS = 5
+      self.SIXBITS = 6
+
+      self.PARITY_NONE = "N"
+      self.PARITY_EVEN = "E"
+      self.PARITY_ODD = "O"
+      self.PARITY_MARK = "M"
+      self.PARITY_SPACE = "S"
+
+      self.STOPBITS_ONE = 1
+      self.STOPBITS_TWO = 2
+      self.STOPBITS_ONE_POINT_FIVE = 1.5
+
+    def __getattr__(self, name):
+      # Fallback for other attributes
+      if name in self.__dict__:
+        return self.__dict__[name]
+      raise AttributeError(f"module 'serial' has no attribute '{name}'")
+
+  # Inject 'serial'
+  if "serial" not in sys.modules:
+    sys.modules["serial"] = SerialShimModule()
+
+  # Inject 'serial.tools'
+  serial_tools = types.ModuleType("serial.tools")
+  sys.modules["serial.tools"] = serial_tools
+
+  # Inject 'serial.tools.list_ports'
+  class ListPortsModule(types.ModuleType):
+    def __init__(self):
+      super().__init__("serial.tools.list_ports")
+
+    def comports(self, include_links=False):
+      # Return empty list to force manual port selection or prevent auto-scan errors
+      return []
+
+  sys.modules["serial.tools.list_ports"] = ListPortsModule()
+
+  # Link them up so import serial.tools.list_ports works
+  serial_tools.list_ports = sys.modules["serial.tools.list_ports"]
+  sys.modules["serial"].tools = serial_tools
+
+
+def _inject_usb_shim(WebUSBClass):
+  """Inject a fake 'usb' and 'usb.core' module."""
+
+  # Only inject if not already present
+  if "usb" not in sys.modules:
+    sys.modules["usb"] = types.ModuleType("usb")
+
+  class USBCoreShim(types.ModuleType):
+    def __init__(self):
+      super().__init__("usb.core")
+
+    def find(self, *args, **kwargs):
+      # Return a placeholder or None.
+      # Real usage requires instantiating WebUSB directly in our shims,
+      # but this prevents ImportErrors.
+      return None
+
+    class Device:
+      """Phantom Device class."""
+
+      pass
+
+  sys.modules["usb.core"] = USBCoreShim()
+  sys.modules["usb"].core = sys.modules["usb.core"]
+
+
+def _inject_hid_shim():
+  """Inject a fake 'hid' module."""
+
+  class HIDShimModule(types.ModuleType):
+    def __init__(self):
+      super().__init__("hid")
+
+    def device(self):
+      """Return a dummy device or raise NotImplementedError currently."""
+      # Future: Return WebHID shim
+      return None
+
+    def enumerate(self, vid=0, pid=0):
+      return []
+
+  if "hid" not in sys.modules:
+    sys.modules["hid"] = HIDShimModule()
 
 
 def get_io_status() -> dict:
@@ -110,6 +210,8 @@ def get_io_status() -> dict:
     "has_serial": False,
     "use_usb": False,
     "use_hid": False,
+    "global_serial_shim": False,
+    "global_usb_shim": False,
   }
 
   try:
@@ -117,6 +219,11 @@ def get_io_status() -> dict:
 
     result["serial_patched"] = "WebSerial" in str(Serial)
     result["has_serial"] = HAS_SERIAL
+
+    # Check global shim
+    import serial
+
+    result["global_serial_shim"] = "WebSerial" in str(serial.Serial)
   except Exception:
     pass
 
@@ -125,6 +232,11 @@ def get_io_status() -> dict:
 
     result["usb_patched"] = "WebUSB" in str(USB)
     result["use_usb"] = USE_USB
+
+    # Check global shim
+    import usb.core
+
+    result["global_usb_shim"] = "usb.core" in sys.modules
   except Exception:
     pass
 
