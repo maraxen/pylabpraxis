@@ -1,7 +1,7 @@
 .asset-wizard-container {
   display: flex;
   flex-direction: column;
-  height: 650px; // Stable height to prevent canvas jumps between steps
+  min-height: 650px; // Stable height to prevent canvas jumps between steps
   max-height: 90vh;
   width: 100%; // Fill dialog surface
   margin: 0;
@@ -37,7 +37,7 @@
 }
 
 .step-content {
-  padding: 24px;
+  padding: var(--spacing-xl);
   flex: 1;
   animation: fadeIn 0.3s ease-out;
   overflow-y: auto;
@@ -75,7 +75,7 @@
 .type-selection {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
+  gap: var(--spacing-md);
   max-width: 800px;
   margin: auto; // Center vertically in step-content
 
@@ -90,8 +90,8 @@
   height: 100%;
 
   &.selected {
-    border-color: var(--mat-sys-primary) !important;
-    background: rgba(var(--mat-sys-primary-rgb), 0.08) !important;
+    border-color: var(--mat-sys-primary);
+    background: rgba(var(--mat-sys-primary-rgb), 0.08);
   }
 
   &:hover:not(.selected) {
@@ -108,8 +108,8 @@
 
   .category-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--spacing-sm);
     width: 100%;
     box-sizing: border-box;
     padding: 4px;
@@ -162,7 +162,7 @@
       background: var(--mat-sys-surface-container-highest);
       border-color: var(--mat-sys-primary);
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 
       mat-icon {
         opacity: 1;
@@ -171,9 +171,9 @@
     }
 
     &.selected {
-      background: var(--mat-sys-primary-container) !important;
+      background: rgba(var(--mat-sys-primary-rgb), 0.08) !important;
       border-color: var(--mat-sys-primary) !important;
-      box-shadow: 0 0 0 2px var(--mat-sys-primary), 0 4px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: none;
 
       mat-icon {
         color: var(--mat-sys-on-primary-container) !important;
@@ -242,7 +242,7 @@
     &.selected {
       background: var(--mat-sys-primary-container);
       border-color: var(--mat-sys-primary);
-      box-shadow: 0 0 0 2px var(--mat-sys-primary), 0 8px 16px rgba(0, 0, 0, 0.15);
+      box-shadow: none;
 
       .card-title {
         color: var(--mat-sys-on-primary-container);
@@ -277,8 +277,8 @@
 
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--spacing-sm);
   flex: 1;
   min-height: 0;
   overflow-y: auto;
