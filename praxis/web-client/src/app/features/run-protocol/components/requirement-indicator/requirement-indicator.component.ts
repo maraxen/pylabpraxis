@@ -12,15 +12,16 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { InferredRequirement, RequirementStatus } from '@core/models/simulation.models';
 
 @Component({
-    selector: 'app-requirement-indicator',
-    standalone: true,
-    imports: [MatIconModule, MatTooltipModule],
-    template: `
+  selector: 'app-requirement-indicator',
+  standalone: true,
+  imports: [MatIconModule, MatTooltipModule],
+  template: `
     <div class="requirement-item" 
          [class.met]="isMet()"
          [class.warning]="isWarning()"
          [class.unmet]="!isMet() && !isWarning()"
-         [matTooltip]="tooltipText()">
+         [matTooltip]="tooltipText()"
+         [matTooltipShowDelay]="600">
       
       <div class="status-icon">
         @if (isMet() && !isWarning()) {
@@ -40,7 +41,7 @@ import { InferredRequirement, RequirementStatus } from '@core/models/simulation.
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .requirement-item {
       display: flex;
       align-items: flex-start;
@@ -116,76 +117,76 @@ import { InferredRequirement, RequirementStatus } from '@core/models/simulation.
   `]
 })
 export class RequirementIndicatorComponent {
-    /** The requirement status to display */
-    status = input.required<RequirementStatus>();
+  /** The requirement status to display */
+  status = input.required<RequirementStatus>();
 
-    /** Whether the requirement is met */
-    isMet = computed(() => this.status().isMet);
+  /** Whether the requirement is met */
+  isMet = computed(() => this.status().isMet);
 
-    /** Whether the requirement is in warning state */
-    isWarning = computed(() => this.status().isWarning);
+  /** Whether the requirement is in warning state */
+  isWarning = computed(() => this.status().isWarning);
 
-    /** Human-readable label for the requirement */
-    label = computed(() => {
-        const req = this.status().requirement;
+  /** Human-readable label for the requirement */
+  label = computed(() => {
+    const req = this.status().requirement;
 
-        switch (req.requirement_type) {
-            case 'resource_on_deck':
-                return `${req.resource || 'Resource'} must be placed on deck`;
-            case 'liquid_present':
-                return `${req.resource || 'Source'} must contain liquid`;
-            case 'tips_required':
-                return 'Tips must be available';
-            default:
-                return req.requirement_type.replace(/_/g, ' ');
-        }
-    });
+    switch (req.requirement_type) {
+      case 'resource_on_deck':
+        return `${req.resource || 'Resource'} must be placed on deck`;
+      case 'liquid_present':
+        return `${req.resource || 'Source'} must contain liquid`;
+      case 'tips_required':
+        return 'Tips must be available';
+      default:
+        return req.requirement_type.replace(/_/g, ' ');
+    }
+  });
 
-    /** Details text from requirement */
-    details = computed(() => {
-        const req = this.status().requirement;
-        const details = req.details;
+  /** Details text from requirement */
+  details = computed(() => {
+    const req = this.status().requirement;
+    const details = req.details;
 
-        if (!details || Object.keys(details).length === 0) {
-            return this.status().message || '';
-        }
+    if (!details || Object.keys(details).length === 0) {
+      return this.status().message || '';
+    }
 
-        // Format specific detail types
-        if (details['before_operation']) {
-            return `Required before: ${details['before_operation']}`;
-        }
+    // Format specific detail types
+    if (details['before_operation']) {
+      return `Required before: ${details['before_operation']}`;
+    }
 
-        if (details['wells']) {
-            const wells = details['wells'] as string[];
-            return `Wells: ${wells.slice(0, 5).join(', ')}${wells.length > 5 ? '...' : ''}`;
-        }
+    if (details['wells']) {
+      const wells = details['wells'] as string[];
+      return `Wells: ${wells.slice(0, 5).join(', ')}${wells.length > 5 ? '...' : ''}`;
+    }
 
-        if (details['min_volume']) {
-            return `Minimum volume: ${details['min_volume']}µL`;
-        }
+    if (details['min_volume']) {
+      return `Minimum volume: ${details['min_volume']}µL`;
+    }
 
-        return this.status().message || '';
-    });
+    return this.status().message || '';
+  });
 
-    /** Tooltip text with full requirement information */
-    tooltipText = computed(() => {
-        const req = this.status().requirement;
-        const parts = [
-            `Type: ${req.requirement_type}`,
-        ];
+  /** Tooltip text with full requirement information */
+  tooltipText = computed(() => {
+    const req = this.status().requirement;
+    const parts = [
+      `Type: ${req.requirement_type}`,
+    ];
 
-        if (req.resource) {
-            parts.push(`Resource: ${req.resource}`);
-        }
+    if (req.resource) {
+      parts.push(`Resource: ${req.resource}`);
+    }
 
-        if (req.inferred_at_level) {
-            parts.push(`Detected at: ${req.inferred_at_level} level`);
-        }
+    if (req.inferred_at_level) {
+      parts.push(`Detected at: ${req.inferred_at_level} level`);
+    }
 
-        if (this.status().message) {
-            parts.push(this.status().message!);
-        }
+    if (this.status().message) {
+      parts.push(this.status().message!);
+    }
 
-        return parts.join('\n');
-    });
+    return parts.join('\n');
+  });
 }

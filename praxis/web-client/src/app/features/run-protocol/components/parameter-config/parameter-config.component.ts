@@ -300,7 +300,7 @@ export class ParameterConfigComponent implements OnChanges {
     const name = (param.name || '').toLowerCase();
 
     // Check name patterns
-    const wellNamePatterns = ['well', 'wells', 'source_wells', 'target_wells', 'well_ids'];
+    const wellNamePatterns = ['well', 'wells', 'source_wells', 'target_wells', 'well_ids', 'indices'];
     if (wellNamePatterns.some(p => name.includes(p))) {
       return true;
     }

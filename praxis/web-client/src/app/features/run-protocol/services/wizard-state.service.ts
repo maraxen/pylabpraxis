@@ -381,7 +381,7 @@ export class WizardStateService {
                     map[asset.accession_id] = {
                         name: asset.name,
                         accession_id: assignment.assignedAssetId || undefined,
-                        // Add other properties if needed by RunProtocolComponent
+                        physically_placed: true
                     };
                 }
             });
@@ -400,7 +400,7 @@ export class WizardStateService {
 
         // Start building the Python script
         let code = 'import pylabrobot.resources as res\n';
-        
+
         // Import deck class
         if (deckType.includes('HamiltonSTAR')) {
             code += 'from pylabrobot.resources.hamilton import HamiltonSTARDeck\n';
@@ -410,7 +410,7 @@ export class WizardStateService {
         }
 
         code += '\ndef setup_deck():\n';
-        
+
         // Instantiate Deck
         if (deckType.includes('HamiltonSTAR')) {
             code += '    deck = HamiltonSTARDeck()\n';
@@ -423,7 +423,7 @@ export class WizardStateService {
         // Track placed carriers
         const carrierVarNames = new Map<string, string>();
         const uniqueCarriers = new Map<string, any>();
-        
+
         assignments.forEach(a => {
             if (a.placed && a.carrier) {
                 uniqueCarriers.set(a.carrier.id, a.carrier);
@@ -434,12 +434,12 @@ export class WizardStateService {
         uniqueCarriers.forEach((carrier, id) => {
             const varName = id.replace(/[^a-zA-Z0-9_]/g, '_');
             carrierVarNames.set(id, varName);
-            
+
             // Heuristic for class name from FQN
             const className = carrier.fqn.split('.').pop()?.toUpperCase() || 'Carrier';
-            
+
             code += `    ${varName} = ${className}(name="${carrier.name}")\n`;
-            
+
             if (carrier.railPosition !== undefined) {
                 code += `    deck.assign_child_resource(${varName}, rails=${carrier.railPosition})\n`;
             }
@@ -450,7 +450,7 @@ export class WizardStateService {
             if (assign.placed) {
                 const varName = `labware_${index}`;
                 const carrierVar = carrierVarNames.get(assign.carrier.id);
-                
+
                 if (carrierVar) {
                     // Map resource types to PLR classes
                     let className = 'Resource';
@@ -459,7 +459,7 @@ export class WizardStateService {
                     } else if (assign.resource.type === 'TipRack') {
                         className = 'TipRack';
                     }
-                    
+
                     code += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
                     code += `    ${carrierVar}[${assign.slot.index}] = ${varName}\n`;
                 } else if (deckType.includes('OTDeck')) {
@@ -467,7 +467,7 @@ export class WizardStateService {
                     let className = 'Resource';
                     if (assign.resource.type === 'Plate') className = 'Plate';
                     else if (assign.resource.type === 'TipRack') className = 'TipRack';
-                    
+
                     code += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
                     code += `    deck.assign_child_at_slot(${varName}, ${assign.slot.index + 1})\n`;
                 }

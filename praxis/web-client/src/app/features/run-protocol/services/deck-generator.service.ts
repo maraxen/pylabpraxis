@@ -4,6 +4,7 @@ import { PlrDeckData, PlrResource } from '@core/models/plr.models';
 import { DeckCatalogService } from './deck-catalog.service';
 import { AssetService } from '@features/assets/services/asset.service';
 import { Machine } from '@features/assets/models/asset.models';
+import { CarrierInferenceService } from './carrier-inference.service';
 
 /**
  * Default dimensions used when PLR definitions are not available.
@@ -30,7 +31,8 @@ interface ResourceDimensions {
 export class DeckGeneratorService {
     constructor(
         private deckCatalog: DeckCatalogService,
-        private assetService: AssetService
+        private assetService: AssetService,
+        private carrierInference: CarrierInferenceService
     ) { }
 
     /**
@@ -150,7 +152,7 @@ export class DeckGeneratorService {
     ): PlrDeckData {
         const deck: PlrResource = {
             name: "deck",
-            type: spec.fqn || "OT2Deck", // Fallback if fqn missing
+            type: spec.fqn || "OT2Deck",
             location: { x: 0, y: 0, z: 0, type: "Coordinate" },
             size_x: spec.dimensions.width,
             size_y: spec.dimensions.height,
@@ -158,8 +160,6 @@ export class DeckGeneratorService {
             children: []
         };
 
-        // Create trash if deck has one defined in slots
-        // OT-2 Trash is typically in slot 12
         const slots = spec.slots || [];
         const trashSlot = slots.find((s: any) => s.slotType === 'trash');
 
@@ -175,38 +175,31 @@ export class DeckGeneratorService {
                 },
                 size_x: trashSlot.dimensions.width,
                 size_y: trashSlot.dimensions.height,
-                size_z: 100, // Arbitrary height
+                size_z: 100,
                 children: [],
                 slot_id: trashSlot.slotNumber
             } as PlrResource);
         }
 
-        // Only place resources that are explicitly in the assetMap (user-assigned)
         if (protocol.assets && assetMap) {
-            // Logic for placing assigned assets can go here if we want pre-population of assigned items.
-            // For "Guided Setup" strictly starting empty, we might want to skip this loop entirely?
-            // The prompt says "Guided Deck Setup Empty Start... only including machine-specific defaults".
-            // However, if the user has already assigned assets in valid slots (e.g. re-entering wizard?), they should show up.
-            // But the CarrierInferenceService is typically what places them.
-            // DeckGeneratorService is seemingly used for VISUALIZATION.
-            // If we remove logic here, the Deck View of the "Asset Selection" or "Wizard" steps might be empty even if successful?
-
-            // Re-reading: "Deck state should be pulled from the database."
-            // "The deck should start empty except for immutable machine defaults. Users add labware matching protocol requirements."
-
-            // For now, we REMOVE the auto-placement logic.
-            // The WizardStateService/CarrierInferenceService will handle adding things back one by one.
-            // If assetMap is provided, we assume those assets are ALREADY known and placed?
-            // Actually, in the current app flow, DeckGenerator is used to create the BACKGROUND deck.
-            // The items on top are often handled by the wizard state overlay.
-            // But let's stick to the plan: START EMPTY.
+            const setup = this.carrierInference.createDeckSetup(protocol, spec.fqn);
+            setup.slotAssignments.forEach(assignment => {
+                const assetReq = protocol.assets?.find(a => a.name === assignment.resource.name);
+                const assignedAsset = assetReq ? assetMap[assetReq.accession_id] : null;
+                if (assignedAsset) {
+                    deck.children!.push({
+                        ...assignment.resource,
+                        is_ghost: !assignedAsset.physically_placed,
+                        location: { ...assignment.resource.location, type: 'Coordinate' }
+                    });
+                }
+            });
         }
 
         return { resource: deck, state: {} };
     }
 
     private generateHamiltonDeck(protocol: ProtocolDefinition, assetMap?: Record<string, any>): PlrDeckData {
-        // 1. Base Deck (Hamilton STAR)
         const deck: PlrResource = {
             name: "deck",
             type: "HamiltonSTARDeck",
@@ -218,13 +211,46 @@ export class DeckGeneratorService {
             children: []
         };
 
-        // No default carriers created. 
-        // The deck starts empty. Users must add carriers.
+        if (protocol && assetMap) {
+            const setup = this.carrierInference.createDeckSetup(protocol, 'HamiltonSTARDeck');
+            const carrierMap = new Map<string, PlrResource>();
 
-        return {
-            resource: deck,
-            state: {}
-        };
+            setup.slotAssignments.forEach(assignment => {
+                const assetReq = protocol.assets?.find(a => a.name === assignment.resource.name);
+                const assignedAsset = assetReq ? assetMap[assetReq.accession_id] : null;
+
+                if (assignedAsset) {
+                    let plrCarrier = carrierMap.get(assignment.carrier.id);
+                    if (!plrCarrier) {
+                        plrCarrier = {
+                            name: assignment.carrier.name,
+                            type: assignment.carrier.fqn.split('.').pop() || 'Carrier',
+                            is_ghost: !assignedAsset.physically_placed,
+                            location: {
+                                x: 100 + (assignment.carrier.railPosition * 22.5),
+                                y: 63,
+                                z: 0,
+                                type: "Coordinate"
+                            },
+                            size_x: assignment.carrier.dimensions.width,
+                            size_y: assignment.carrier.dimensions.height,
+                            size_z: assignment.carrier.dimensions.depth,
+                            children: []
+                        };
+                        deck.children!.push(plrCarrier);
+                        carrierMap.set(assignment.carrier.id, plrCarrier);
+                    }
+
+                    plrCarrier.children!.push({
+                        ...assignment.resource,
+                        is_ghost: !assignedAsset.physically_placed,
+                        location: { ...assignment.resource.location, type: 'Coordinate' }
+                    });
+                }
+            });
+        }
+
+        return { resource: deck, state: {} };
     }
 
     /**

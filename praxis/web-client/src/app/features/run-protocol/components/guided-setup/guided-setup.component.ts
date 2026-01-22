@@ -35,7 +35,6 @@ export interface GuidedSetupResult {
     MatTooltipModule,
     MatChipsModule,
     FormsModule,
-    FormsModule,
     PraxisAutocompleteComponent
   ],
   template: `
@@ -62,25 +61,47 @@ export interface GuidedSetupResult {
           <span>No resources in inventory. Add resources from the Assets page first.</span>
         </div>
       } @else {
+        <div class="list-actions">
+          <button mat-stroked-button (click)="autoFillAll()">
+            <mat-icon>auto_fix_high</mat-icon>
+            Auto-fill All
+          </button>
+          <button mat-button (click)="clearAll()" [disabled]="!hasSelections()">
+            <mat-icon>clear_all</mat-icon>
+            Clear All
+          </button>
+        </div>
         <div class="requirements-list">
-          @for (req of requiredAssets; track req.accession_id) {
+          @for (req of requiredAssets; track req.accession_id; let i = $index) {
             <div class="requirement-item" 
+                 [matTooltip]="getAssetTooltip(req)"
+                 [matTooltipShowDelay]="600"
+                 [class.current]="i === currentIndex()"
+                 [class.completed]="selectedAssets()[req.accession_id]"
                  [class.autofilled]="isAutofilled(req.accession_id)" 
-                 [class.assigned]="selectedAssets()[req.accession_id] && !isAutofilled(req.accession_id)"
-                 [class.unassigned]="!selectedAssets()[req.accession_id]">
+                 [class.pending]="!selectedAssets()[req.accession_id] && i > currentIndex()">
+              
+              <!-- Order Badge -->
+              <div class="order-badge" 
+                   [class.active]="i === currentIndex()"
+                   [class.completed]="selectedAssets()[req.accession_id]">
+                @if (selectedAssets()[req.accession_id]) {
+                  <mat-icon style="font-size: 18px; width: 18px; height: 18px">check</mat-icon>
+                } @else {
+                  {{ i + 1 }}
+                }
+              </div>
+
               <div class="req-info">
                 <div class="req-header">
                   <span class="req-name">{{ req.name }}</span>
                   @if (isAutofilled(req.accession_id)) {
-                    <span class="autofill-badge" matTooltip="Auto-matched based on resource type">
+                    <span class="autofill-badge">
                       <mat-icon class="autofill-icon">auto_awesome</mat-icon>
                       Auto
                     </span>
                   } @else if (selectedAssets()[req.accession_id]) {
-                    <span class="set-badge" matTooltip="Selection is confirmed">
-                      <mat-icon class="set-icon">check_circle</mat-icon>
-                      Set
-                    </span>
+                    <!-- 'Set' badge removed as redundant with checkmark/completed style -->
                   }
                   @if (req.optional) {
                     <span class="optional-badge">Optional</span>
@@ -88,20 +109,36 @@ export interface GuidedSetupResult {
                 </div>
                 <span class="req-type">{{ req.type_hint_str || 'Generic Resource' }}</span>
                 @if (req.fqn) {
-                  <span class="req-fqn" matTooltip="{{ req.fqn }}">{{ getShortFqn(req.fqn) }}</span>
+                  <span class="req-fqn">{{ getShortFqn(req.fqn) }}</span>
                 }
               </div>
 
               <div class="resource-select">
-                <label class="text-xs font-medium text-gray-500 mb-1 block">Select Inventory Item</label>
-                <app-praxis-autocomplete
-                  [options]="requirementsOptions()[req.accession_id] || []"
-                  [ngModel]="selectedAssets()[req.accession_id]"
-                  (ngModelChange)="updateSelection(req.accession_id, $event)"
-                  [placeholder]="'Search inventory...'"
-                ></app-praxis-autocomplete>
+                <label class="text-xs font-medium text-gray-500 mb-1 block">
+                  @if (i === currentIndex() && !selectedAssets()[req.accession_id]) {
+                     Select Item
+                  } @else {
+                     &nbsp;
+                  }
+                </label>
+                <div class="resource-select-field">
+                  <app-praxis-autocomplete
+                    [options]="requirementsOptions()[req.accession_id] || []"
+                    [ngModel]="selectedAssets()[req.accession_id]"
+                    (ngModelChange)="updateSelection(req.accession_id, $event)"
+                    [placeholder]="'Search inventory...'"
+                  ></app-praxis-autocomplete>
+                  <button mat-icon-button class="autofill-btn" (click)="autoFillAsset(req)" matTooltip="Auto-select matching item" [matTooltipShowDelay]="600">
+                    <mat-icon>auto_fix_high</mat-icon>
+                  </button>
+                  @if (selectedAssets()[req.accession_id]) {
+                    <button mat-icon-button class="clear-asset-btn" (click)="clearAsset(req)" matTooltip="Clear selection" [matTooltipShowDelay]="600">
+                      <mat-icon>cancel</mat-icon>
+                    </button>
+                  }
+                </div>
                 @if (!req.optional && !selectedAssets()[req.accession_id]) {
-                  <div class="text-xs text-red-500 mt-1">Required</div>
+                  <!-- <div class="text-xs text-red-500 mt-1">Required</div> -->
                 }
               </div>
             </div>
@@ -174,9 +211,16 @@ export interface GuidedSetupResult {
       flex-direction: column;
       gap: 16px;
     }
+    .list-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding-right: 4px;
+    }
     .requirement-item {
       display: grid;
-      grid-template-columns: 1fr 240px;
+      grid-template-columns: auto 1fr 240px;
       gap: 16px;
       align-items: center;
       padding: 12px 16px;
@@ -186,16 +230,16 @@ export interface GuidedSetupResult {
       transition: all 0.2s ease;
     }
     .requirement-item.autofilled {
-      border-color: rgba(34, 197, 94, 0.3);
-      background: rgba(34, 197, 94, 0.05);
+      border-color: var(--theme-status-success-border);
+      background: var(--theme-status-success-muted);
     }
     .requirement-item.assigned {
-      border-color: rgba(59, 130, 246, 0.3);
-      background: rgba(59, 130, 246, 0.05);
+      border-color: var(--theme-status-info-border);
+      background: var(--theme-status-info-muted);
     }
     .requirement-item.unassigned {
-      border-color: rgba(251, 191, 36, 0.3);
-      background: rgba(251, 191, 36, 0.05);
+      border-color: var(--theme-status-warning-border);
+      background: var(--theme-status-warning-muted);
     }
     .req-info {
       display: flex;
@@ -223,17 +267,69 @@ export interface GuidedSetupResult {
       border-radius: 12px;
     }
     .autofill-badge {
-      background: rgba(34, 197, 94, 0.15);
-      color: rgb(34, 197, 94);
+      background: var(--theme-status-success-muted);
+      color: var(--theme-status-success);
     }
     .set-badge {
-      background: rgba(59, 130, 246, 0.15);
-      color: rgb(59, 130, 246);
+      background: var(--theme-status-info-muted);
+      color: var(--theme-status-info);
     }
     .autofill-icon, .set-icon {
       font-size: 14px !important;
       width: 14px !important;
       height: 14px !important;
+    }
+    
+    /* Highlight Styles mirroring ResourcePlacementStep */
+    .requirement-item.current {
+      background: var(--sys-tertiary-container);
+      border-color: var(--sys-tertiary);
+      transform: scale(1.01);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .requirement-item.completed {
+      background: var(--sys-surface-container-low);
+      border-color: var(--sys-outline-variant);
+      opacity: 0.9;
+    }
+    
+    .requirement-item.completed.autofilled {
+       background: var(--theme-status-success-muted);
+       border-color: var(--theme-status-success-border);
+    }
+
+    .requirement-item.pending {
+      opacity: 0.7;
+    }
+
+    .order-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--sys-surface-container-high);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.875rem;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .order-badge.active {
+      background: var(--sys-tertiary);
+      color: var(--sys-on-tertiary);
+    }
+    
+    .order-badge.completed {
+       background: var(--sys-primary);
+       color: var(--sys-on-primary);
+    }
+    
+    .requirement-item.autofilled .order-badge.completed {
+        background: var(--sys-green); /* If available, or hardcode green */
+        background: rgb(34, 197, 94);
     }
     .optional-badge {
       font-size: 0.7rem;
@@ -255,6 +351,33 @@ export interface GuidedSetupResult {
     }
     .resource-select {
       min-width: 240px;
+    }
+    .resource-select-field {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .resource-select-field app-praxis-autocomplete {
+      flex: 1;
+    }
+    .autofill-btn {
+      color: rgb(34, 197, 94);
+      opacity: 0.7;
+      transition: all 0.2s ease;
+    }
+    .autofill-btn:hover {
+      opacity: 1;
+      background: var(--theme-status-success-muted);
+    }
+    .clear-asset-btn {
+      color: var(--sys-outline);
+      opacity: 0.7;
+      transition: all 0.2s ease;
+    }
+    .clear-asset-btn:hover {
+      opacity: 1;
+      color: var(--sys-error);
+      background: var(--sys-error-container);
     }
     mat-form-field {
       margin-bottom: -1.25em;
@@ -289,7 +412,7 @@ export interface GuidedSetupResult {
       font-weight: 600;
     }
     ::ng-deep .suggested-option {
-      background: rgba(34, 197, 94, 0.05) !important;
+      background: var(--theme-status-success-muted) !important;
     }
     .summary {
       display: flex;
@@ -312,10 +435,15 @@ export interface GuidedSetupResult {
       height: 20px;
     }
     .text-green {
-      color: rgb(34, 197, 94) !important;
+      color: var(--theme-status-success) !important;
     }
     .text-amber {
-      color: rgb(251, 191, 36) !important;
+      color: var(--theme-status-warning) !important;
+    }
+    ::ng-deep .mat-mdc-tooltip .mdc-tooltip__body {
+      white-space: pre-line !important;
+      padding: 8px 12px !important;
+      line-height: 1.4 !important;
     }
   `]
 })
@@ -327,18 +455,25 @@ export class GuidedSetupComponent implements OnInit {
   @Input() protocol: ProtocolDefinition | null = null;
   @Input({ transform: booleanAttribute }) isInline = false;
   @Input() initialSelections: Record<string, Resource> = {};
+  @Input() excludeAssetIds: string[] = [];
   @Output() selectionChange = new EventEmitter<Record<string, Resource>>();
 
   inventory = signal<Resource[]>([]);
   selectedAssets = signal<Record<string, Resource | null>>({});
   autofilledIds = signal<Set<string>>(new Set());
   isLoading = signal(true);
+  currentIndex = signal(0);
 
   constructor(@Inject(MAT_DIALOG_DATA) @Optional() public data: GuidedSetupData | null) { }
 
   get requiredAssets(): AssetRequirement[] {
     const protocol = this.protocol || this.data?.protocol;
-    return protocol?.assets || [];
+    const assets = protocol?.assets || [];
+
+    if (this.excludeAssetIds.length > 0) {
+      return assets.filter(a => !this.excludeAssetIds.includes(a.accession_id));
+    }
+    return assets;
   }
 
   // Pre-compute options to ensure stable references
@@ -367,6 +502,10 @@ export class GuidedSetupComponent implements OnInit {
     return this.requiredAssets.filter(req =>
       !req.optional && !this.selectedAssets()[req.accession_id]
     ).length;
+  });
+
+  hasSelections = computed(() => {
+    return Object.values(this.selectedAssets()).some(val => !!val);
   });
 
   ngOnInit() {
@@ -405,15 +544,7 @@ export class GuidedSetupComponent implements OnInit {
         return;
       }
 
-      // Find compatible resources sorted by match quality
-      const candidates = this.getCompatibleResources(req);
-
-      // Prioritize exact FQN matches
-      const exactMatches = candidates.filter(res => this.isExactMatch(req, res));
-      const sortedCandidates = [...exactMatches, ...candidates.filter(res => !this.isExactMatch(req, res))];
-
-      // Find first unused candidate
-      const match = sortedCandidates.find(res => !usedResourceIds.has(res.accession_id));
+      const match = this.getBestMatch(req, usedResourceIds);
 
       if (match) {
         map[req.accession_id] = match;
@@ -427,10 +558,30 @@ export class GuidedSetupComponent implements OnInit {
     this.selectedAssets.set(map);
     this.autofilledIds.set(autofilled);
 
+    // Update current index to first unassigned
+    const firstUnassigned = this.requiredAssets.findIndex(req => !map[req.accession_id]);
+    if (firstUnassigned !== -1) {
+      this.currentIndex.set(firstUnassigned);
+    } else {
+      this.currentIndex.set(this.requiredAssets.length);
+    }
+
     // Emit if valid so the stepper can proceed
     if (this.isInline && this.isValid()) {
       this.selectionChange.emit(map as Record<string, Resource>);
     }
+  }
+
+  private getBestMatch(req: AssetRequirement, usedResourceIds: Set<string>): Resource | null {
+    // Find compatible resources sorted by match quality
+    const candidates = this.getCompatibleResources(req);
+
+    // Prioritize exact FQN matches
+    const exactMatches = candidates.filter(res => this.isExactMatch(req, res));
+    const sortedCandidates = [...exactMatches, ...candidates.filter(res => !this.isExactMatch(req, res))];
+
+    // Find first unused candidate
+    return sortedCandidates.find(res => !usedResourceIds.has(res.accession_id)) || null;
   }
 
   /**
@@ -448,7 +599,6 @@ export class GuidedSetupComponent implements OnInit {
 
     return this.inventory().filter(res => {
       const resFqn = (res.fqn || '').toLowerCase();
-      const resName = res.name.toLowerCase();
       const resClassName = this.getClassName(resFqn);
 
       // EXCLUDE carriers when requirement is for a non-carrier resource
@@ -594,6 +744,29 @@ export class GuidedSetupComponent implements OnInit {
     return parts.slice(-2).join('.');
   }
 
+  getAssetTooltip(req: AssetRequirement): string {
+    const selected = this.selectedAssets()[req.accession_id];
+    let tooltip = `Requirement: ${req.name}`;
+    tooltip += `\nType: ${req.type_hint_str || 'Generic Resource'}`;
+
+    if (req.fqn) {
+      tooltip += `\nFQN: ${req.fqn}`;
+    }
+
+    if (selected) {
+      tooltip += `\n\n--- Selection ---`;
+      tooltip += `\nName: ${selected.name}`;
+      if (selected.fqn) {
+        tooltip += `\nFQN: ${selected.fqn}`;
+      }
+      tooltip += `\nStatus: ${this.isAutofilled(req.accession_id) ? 'Auto-matched' : 'Confirmed'}`;
+    } else {
+      tooltip += `\n\nStatus: Unassigned`;
+    }
+
+    return tooltip;
+  }
+
 
 
   private generateOptionsForReq(req: AssetRequirement, inventory: Resource[]): SelectOption[] {
@@ -635,7 +808,6 @@ export class GuidedSetupComponent implements OnInit {
 
     return inventory.filter(res => {
       const resFqn = (res.fqn || '').toLowerCase();
-      const resName = res.name.toLowerCase();
       const resClassName = this.getClassName(resFqn);
 
       // EXCLUDE carriers - they are container resources, not consumables
@@ -671,6 +843,19 @@ export class GuidedSetupComponent implements OnInit {
         return newSet;
       });
     }
+
+    // Auto-advance logic
+    if (resource) { // If setting a value
+      const index = this.requiredAssets.findIndex(r => r.accession_id === reqId);
+      // Only advance if we worked on the current item
+      if (index === this.currentIndex()) {
+        // Find next unassigned
+        const nextUnassigned = this.requiredAssets.findIndex((r, i) => i > index && !this.selectedAssets()[r.accession_id]);
+        if (nextUnassigned !== -1) {
+          this.currentIndex.set(nextUnassigned);
+        }
+      }
+    }
   }
 
   isValid(): boolean {
@@ -689,6 +874,46 @@ export class GuidedSetupComponent implements OnInit {
       this.dialogRef.close(result);
     }
   }
+
+  clearAsset(req: AssetRequirement) {
+    this.updateSelection(req.accession_id, null);
+  }
+
+  autoFillAll() {
+    this.autoSelect();
+  }
+
+  clearAll() {
+    const map: Record<string, Resource | null> = {};
+    this.requiredAssets.forEach(req => {
+      map[req.accession_id] = null;
+    });
+    this.selectedAssets.set(map);
+    this.autofilledIds.set(new Set());
+    if (this.isInline) {
+      this.selectionChange.emit(map as Record<string, Resource>);
+    }
+  }
+
+  autoFillAsset(req: AssetRequirement) {
+    const currentMap = this.selectedAssets();
+    const usedResourceIds = new Set<string>();
+    Object.values(currentMap).forEach(res => {
+      if (res) usedResourceIds.add(res.accession_id);
+    });
+
+    const match = this.getBestMatch(req, usedResourceIds);
+    if (match) {
+      this.updateSelection(req.accession_id, match);
+      this.autofilledIds.update(set => {
+        const newSet = new Set(set);
+        newSet.add(req.accession_id);
+        return newSet;
+      });
+    }
+  }
+
+
 
   compareResources(o1: Resource, o2: Resource): boolean {
     return o1 && o2 ? o1.accession_id === o2.accession_id : o1 === o2;

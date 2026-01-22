@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatBadgeModule } from '@angular/material/badge';
@@ -27,6 +28,7 @@ import { DeckSetupWizardComponent } from './components/deck-setup-wizard/deck-se
 import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component'; // Import added
 import { MachineCompatibility } from './models/machine-compatibility.models';
 import { MachineSelectionComponent } from './components/machine-selection/machine-selection.component';
+import { MachineArgumentSelectorComponent, MachineArgumentSelection } from '@shared/components/machine-argument-selector/machine-argument-selector.component';
 import { ParameterConfigComponent } from './components/parameter-config/parameter-config.component';
 import { ProtocolCardSkeletonComponent } from './components/protocol-card/protocol-card-skeleton.component';
 import { ProtocolCardComponent } from './components/protocol-card/protocol-card.component';
@@ -37,7 +39,9 @@ import { WizardStateService } from './services/wizard-state.service';
 import { ProtocolSummaryComponent } from './components/protocol-summary/protocol-summary.component';
 import { AssetService } from '@features/assets/services/asset.service';
 import { SimulationConfigDialogComponent } from './components/simulation-config-dialog/simulation-config-dialog.component';
-import { Machine, MachineDefinition, MachineStatus } from '@features/assets/models/asset.models';
+import { Machine as _Machine, MachineDefinition, MachineStatus as _MachineStatus } from '@features/assets/models/asset.models';
+import { MACHINE_CATEGORIES, PLRCategory } from '@core/db/plr-category';
+
 
 const RECENTS_KEY = 'praxis_recent_protocols';
 const MAX_RECENTS = 5;
@@ -77,10 +81,12 @@ interface FilterCategory {
     ProtocolCardComponent,
     ProtocolCardSkeletonComponent,
     MachineSelectionComponent,
+    MachineArgumentSelectorComponent,
     HardwareDiscoveryButtonComponent,
     DeckSetupWizardComponent,
     ProtocolSummaryComponent,
-    GuidedSetupComponent
+    GuidedSetupComponent,
+    MatSnackBarModule
   ],
   template: `
     <div class="h-full flex flex-col p-6 max-w-screen-2xl mx-auto">
@@ -279,14 +285,14 @@ interface FilterCategory {
 
           <!-- Step 3: Machine Selection -->
           <mat-step [stepControl]="machineFormGroup">
-            <ng-template matStepLabel><span data-tour-id="run-step-label-machine">Select Machine</span></ng-template>
+            <ng-template matStepLabel><span data-tour-id="run-step-label-machine">Select Machines</span></ng-template>
             <div class="h-full flex flex-col p-6" data-tour-id="run-step-machine">
               <div class="flex-1 overflow-y-auto">
                 <h3 class="text-xl font-bold text-sys-text-primary mb-6 flex items-center gap-3">
                    <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
                      <mat-icon>precision_manufacturing</mat-icon>
                    </div>
-                   Select Execution Machine
+                   Select Execution Machines
                    <span class="flex-1"></span>
                    <app-hardware-discovery-button></app-hardware-discovery-button>
                 </h3>
@@ -295,8 +301,8 @@ interface FilterCategory {
                   <div class="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
                     <mat-icon class="text-red-400 mt-0.5">error_outline</mat-icon>
                     <div>
-                      <p class="text-red-400 font-bold">Physical execution requires a real machine.</p>
-                      <p class="text-red-400/80 text-sm">The selected machine is simulated. Switch to Simulation mode or select a physical machine.</p>
+                      <p class="text-red-400 font-bold">Physical execution requires real machines.</p>
+                      <p class="text-red-400/80 text-sm">Some selected machines are simulated. Switch to Simulation mode or select physical machines.</p>
                     </div>
                   </div>
                 }
@@ -304,21 +310,32 @@ interface FilterCategory {
                 @if (isLoadingCompatibility()) {
                   <div class="flex flex-col items-center justify-center py-12">
                     <mat-spinner diameter="40"></mat-spinner>
-                    <p class="mt-4 text-sys-text-tertiary">Checking compatibility...</p>
+                    <p class="mt-4 text-sys-text-tertiary">Loading machine options...</p>
                   </div>
                 } @else {
-                  <app-machine-selection
-                    [machines]="compatibilityData()"
-                    [selected]="selectedMachine()"
-                    [isPhysicalMode]="!store.simulationMode()"
-                    (select)="onMachineSelect($event)"
-                  ></app-machine-selection>
+                  <!-- NEW: Per-argument machine selector -->
+                  <app-machine-argument-selector
+                    [requirements]="selectedProtocol()?.assets || []"
+                    [simulationMode]="store.simulationMode()"
+                    (selectionsChange)="machineSelections.set($event)"
+                    (validChange)="machineSelectionsValid.set($event); machineFormGroup.get('machineId')?.setValue($event ? 'valid' : '')"
+                  ></app-machine-argument-selector>
+
+                  <!-- Keep old selector as fallback for backwards compat, hidden -->
+                  @if (false) {
+                    <app-machine-selection
+                      [machines]="compatibilityData()"
+                      [selected]="selectedMachine()"
+                      [isPhysicalMode]="!store.simulationMode()"
+                      (select)="onMachineSelect($event)"
+                    ></app-machine-selection>
+                  }
                 }
               </div>
 
               <div class="wizard-footer mt-6 flex justify-between">
                  <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
-                 <button mat-flat-button color="primary" matStepperNext [disabled]="!selectedMachine() || showMachineError()" class="!rounded-xl !px-8 !py-6">Continue</button>
+                 <button mat-flat-button color="primary" matStepperNext [disabled]="!machineSelectionsValid() || showMachineError()" class="!rounded-xl !px-8 !py-6">Continue</button>
               </div>
             </div>
           </mat-step>
@@ -339,6 +356,7 @@ interface FilterCategory {
                     <app-guided-setup 
                       [protocol]="selectedProtocol()" 
                       [isInline]="true"
+                      [excludeAssetIds]="excludedMachineAssetIds()"
                       [initialSelections]="configuredAssets() || {}"
                       (selectionChange)="onAssetSelectionChange($event)">
                     </app-guided-setup>
@@ -497,6 +515,7 @@ interface FilterCategory {
                     class="!rounded-xl !px-6 !py-6 !font-bold !text-lg w-48 !border-primary/50"
                     [disabled]="modeService.isBrowserMode() || isStartingRun() || executionService.isRunning()"
                     [matTooltip]="modeService.isBrowserMode() ? 'Scheduling is not supported in browser mode' : 'Schedule this protocol for later'"
+                    [matTooltipShowDelay]="600"
                     matTooltipPosition="above">
                     <div class="flex items-center gap-2">
                       <mat-icon>calendar_today</mat-icon>
@@ -505,7 +524,8 @@ interface FilterCategory {
                   </button>
                   
                   <button mat-raised-button class="!bg-gradient-to-r !from-green-500 !to-emerald-600 !text-white !rounded-xl !px-8 !py-6 !font-bold !text-lg w-64 shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:-translate-y-0.5 transition-all" (click)="startRun()" 
-                    [disabled]="isStartingRun() || executionService.isRunning() || !configuredAssets()">
+                    [disabled]="isStartingRun() || executionService.isRunning() || !configuredAssets() || !machineSelectionsValid() || showMachineError()">
+
                     @if (isStartingRun()) {
                       <mat-spinner diameter="24" class="mr-2"></mat-spinner>
                       Initializing...
@@ -647,13 +667,16 @@ export class RunProtocolComponent implements OnInit {
   private dialog = inject(MatDialog);
   public modeService = inject(ModeService);
   private assetService = inject(AssetService);
+  private snackBar = inject(MatSnackBar);
 
   // Signals
   protocols = signal<ProtocolDefinition[]>([]);
   selectedProtocol = signal<ProtocolDefinition | null>(null);
   selectedMachine = signal<MachineCompatibility | null>(null);
+  machineSelections = signal<MachineArgumentSelection[]>([]);  // NEW: Per-argument selections
   compatibilityData = signal<MachineCompatibility[]>([]);
   isLoadingCompatibility = signal(false);
+  machineSelectionsValid = signal(false);  // NEW: Validation state from selector
 
   isLoading = signal(true);
   isStartingRun = signal(false);
@@ -676,13 +699,58 @@ export class RunProtocolComponent implements OnInit {
   // Well selection state
   wellSelectionRequired = computed(() => {
     const protocol = this.selectedProtocol();
-    // Trigger if parameters indicate wells OR known selective transfer protocol
-    const hasWellParams = protocol?.parameters?.some(p => this.isWellSelectionParameter(p)) ?? false;
-    return hasWellParams || this.isSelectiveTransferProtocol();
+    // Trigger if parameters indicate wells
+    return protocol?.parameters?.some(p => this.isWellSelectionParameter(p)) ?? false;
   });
   wellSelections = signal<Record<string, string[]>>({});
 
+  // Compute asset IDs that should be excluded from GuidedSetup (because they are machines)
+  excludedMachineAssetIds = computed(() => {
+    const protocol = this.selectedProtocol();
+    if (!protocol || !protocol.assets) return [];
+
+    // Identify machine requirements using the same logic as the machine selector
+    return protocol.assets
+      .filter(req => {
+        const catStr = (req.required_plr_category || '');
+        const typeHint = (req.type_hint_str || '').toLowerCase();
+
+        // Match logic from MachineArgumentSelectorComponent.isMachineRequirement
+        if (MACHINE_CATEGORIES.has(catStr as PLRCategory)) {
+          return true;
+        }
+
+        const lowerCat = catStr.toLowerCase();
+        if (lowerCat.includes('plate') || lowerCat.includes('tip') || lowerCat.includes('trough') ||
+          lowerCat.includes('reservoir') || lowerCat.includes('carrier') || lowerCat.includes('tube')) {
+          return false;
+        }
+
+        return typeHint.includes('liquidhandler') || typeHint.includes('platereader') ||
+          typeHint.includes('shaker') || typeHint.includes('centrifuge') ||
+          typeHint.includes('incubator') || typeHint.includes('heater') || typeHint.includes('scara');
+      })
+      .map(req => req.accession_id || '');
+  });
+
   constructor() {
+    // Snap-back to Machine Selection step (index 2) if mode change invalidates selections
+    effect(() => {
+      const error = this.showMachineError();
+      const valid = this.machineSelectionsValid();
+      const currentStep = this.stepper?.selectedIndex;
+
+      // If error exists or selections are invalid, and we are past the machine selection step (step 3, index 2)
+      if ((error || !valid) && currentStep > 2) {
+        // Use a small timeout to ensure stepper is ready and avoid expression changed error
+        setTimeout(() => {
+          if (this.stepper) {
+            this.stepper.selectedIndex = 2; // Return to Select Machines
+            this.snackBar.open('Environment mode changed. Please re-verify machines.', 'OK', { duration: 5000 });
+          }
+        }, 100);
+      }
+    });
   }
 
   /** Helper to check if a machine is simulated */
@@ -710,7 +778,29 @@ export class RunProtocolComponent implements OnInit {
 
   /** Whether to show the machine validation error */
   showMachineError = computed(() => {
-    return !this.store.simulationMode() && this.isMachineSimulated();
+    // In simulation mode, never show error
+    if (this.store.simulationMode()) return false;
+
+    // Check if any selected machine/backend in machineSelections is simulated
+    const selections = this.machineSelections();
+    if (!selections || selections.length === 0) return false;
+
+    return selections.some(sel => {
+      // If a backend template was selected, check its type
+      if (sel.selectedBackend) {
+        return sel.selectedBackend.backend_type === 'simulator';
+      }
+      // If an existing machine was selected, check its backend
+      if (sel.selectedMachine) {
+        const machine = sel.selectedMachine;
+        if (machine.backend_definition?.backend_type === 'simulator') return true;
+        // Fallback: check connection_info for backend hints
+        const connectionInfo = machine.connection_info || {};
+        const backend = (connectionInfo['backend'] || '').toString().toLowerCase();
+        return backend.includes('chatterbox') || backend.includes('simulation');
+      }
+      return false;
+    });
   });
 
   onAssetSelectionChange(assetMap: Record<string, any>) {
@@ -924,7 +1014,7 @@ export class RunProtocolComponent implements OnInit {
 
     this.assetsFormGroup.patchValue({ valid: false });
     this.deckFormGroup.patchValue({ valid: protocol.requires_deck === false });
-    
+
     // Always load compatibility to show templates or machines
     this.loadCompatibility(protocol.accession_id);
   }
@@ -972,42 +1062,71 @@ export class RunProtocolComponent implements OnInit {
 
         // Filter based on protocol requirements (Frontend filtering)
         if (protocol) {
+          console.log('[RunProtocol] Debug Machine Filtering:', {
+            protocolName: protocol.name,
+            requiresDeck: protocol.requires_deck,
+            assets: protocol.assets,
+            allCompatLength: allCompat.length
+          });
+
           // Identify required machine categories from assets
           const requiredCategories = new Set<string>();
           const machineAssets = protocol.assets?.filter(a => a.required_plr_category && !a.required_plr_category.includes('plate') && !a.required_plr_category.includes('tip_rack')) || [];
-          
+
           machineAssets.forEach(a => {
-             // Extract simple category from type_hint or category
-             if (a.required_plr_category) requiredCategories.add(a.required_plr_category);
-             // Also add common aliases
-             if (a.type_hint_str?.includes('LiquidHandler')) requiredCategories.add('LiquidHandler');
-             if (a.type_hint_str?.includes('PlateReader')) requiredCategories.add('PlateReader');
+            // Extract simple category from type_hint or category
+            if (a.required_plr_category) requiredCategories.add(a.required_plr_category.toLowerCase());
+            // Also add common aliases
+            if (a.type_hint_str?.includes('LiquidHandler')) requiredCategories.add('liquidhandler');
+            if (a.type_hint_str?.includes('PlateReader')) requiredCategories.add('platereader');
           });
+
+          console.log('[RunProtocol] Required Categories:', Array.from(requiredCategories));
 
           // Default to LiquidHandler if nothing specific found but deck is required
           if (requiredCategories.size === 0 && protocol.requires_deck !== false) {
-             requiredCategories.add('LiquidHandler');
+            console.log('[RunProtocol] Defaulting to LiquidHandler (deck required, no specific machine categories)');
+            requiredCategories.add('liquidhandler');
           }
 
           if (requiredCategories.size > 0) {
-             allCompat = allCompat.filter(d => {
-                const cat = d.machine.machine_category;
-                return cat && (requiredCategories.has(cat) || requiredCategories.has('LiquidHandler') && cat === 'HamiltonSTAR');
-             });
+            allCompat = allCompat.filter(d => {
+              const cat = (d.machine.machine_category || '').toLowerCase();
+              // Normalized category matching - check base category names
+              const normalizedCat = cat.replace(/[_\-\s]/g, '');
+              const matchesCategory = requiredCategories.has(normalizedCat) ||
+                // Common liquid handler variants
+                (requiredCategories.has('liquidhandler') && (
+                  normalizedCat === 'liquidhandler' ||
+                  normalizedCat.includes('hamilton') ||
+                  normalizedCat.includes('opentrons') ||
+                  normalizedCat.includes('tecan')
+                )) ||
+                // Common plate reader variants
+                (requiredCategories.has('platereader') && (
+                  normalizedCat === 'platereader' ||
+                  normalizedCat.includes('bmg') ||
+                  normalizedCat.includes('clario')
+                ));
+              return matchesCategory;
+            });
+            console.log('[RunProtocol] After category filter:', allCompat.length);
           }
         }
 
         // Filter based on deck requirement
         if (protocol?.requires_deck === false) {
+          console.log('[RunProtocol] Deck not required, explicitly filtering out LiquidHandlers');
           // If deck not required, hide LiquidHandlers (unless they are specifically capable - logic can be improved)
           allCompat = allCompat.filter(d =>
             d.machine.machine_category !== 'LiquidHandler' &&
             d.machine.machine_category !== 'HamiltonSTAR'
           );
+          console.log('[RunProtocol] After deck=false filter:', allCompat.length);
         }
 
         this.compatibilityData.set(allCompat);
-        
+
         // Only auto-select if exactly one option and it's a real machine (not template)
         // We want users to click templates to configure them
         const active = allCompat.filter(d =>
@@ -1055,15 +1174,38 @@ export class RunProtocolComponent implements OnInit {
           // Find appropriate frontend/backend IDs
           // In a real implementation, these would come from the definition's associations
           // For now, we'll try to find them by FQN or use the definition's own accession_id if it's acting as a combined template
-          
+
           this.assetService.getMachineFrontendDefinitions().pipe(
             switchMap(frontends => {
               const frontend = frontends.find(f => f.fqn === def.frontend_fqn || f.fqn === def.fqn);
               const frontendId = frontend?.accession_id || def.accession_id;
-              
+
               return this.assetService.getBackendsForFrontend(frontendId).pipe(
                 map(backends => {
-                  const backend = backends.find(b => b.backend_type === 'simulator' && (b.name === result.simulation_backend_name || b.fqn.includes(result.simulation_backend_name.toLowerCase())));
+                  // First try exact match
+                  let backend = backends.find(b =>
+                    b.backend_type === 'simulator' &&
+                    (b.name === result.simulation_backend_name || b.fqn === result.simulation_backend_name)
+                  );
+
+                  // Fallback: any simulator backend for this machine type
+                  if (!backend) {
+                    backend = backends.find(b => b.backend_type === 'simulator');
+                    if (backend) {
+                      console.warn(`[RunProtocol] Specific simulator backend '${result.simulation_backend_name}' not found, falling back to: ${backend.name}`);
+                    }
+                  }
+
+                  if (!backend) {
+                    const msg = `No compatible simulator backend found for ${def.name}`;
+                    console.error(`[RunProtocol] ${msg}`);
+                    this.snackBar.open(msg, 'OK', { duration: 5000 });
+                  }
+
+                  if (!backend) {
+                    console.error(`[RunProtocol] No compatible backend found for frontend '${frontendId}'`);
+                  }
+
                   return {
                     frontendId,
                     backendId: backend?.accession_id
@@ -1107,7 +1249,13 @@ export class RunProtocolComponent implements OnInit {
               this.compatibilityData.update(current => [newCompat, ...current]);
               this.onMachineSelect(newCompat);
             },
-            error: (err) => console.error('Failed to create simulation machine', err)
+            error: (err) => {
+              console.error('Failed to create simulation machine', err);
+              this.snackBar.open('Failed to create simulation machine. Check console for details.', 'Close', {
+                duration: 5000,
+                panelClass: ['error-snackbar']
+              });
+            }
           });
         }
       });
@@ -1184,11 +1332,35 @@ export class RunProtocolComponent implements OnInit {
 
       // Merge parameters form values with configured assets and well selections
       // This ensures backend receives both standard parameters and asset mappings
-      const params = {
+      const wellSelections = this.wellSelections();
+      const params: Record<string, any> = {
         ...this.parametersFormGroup.value,
         ...this.configuredAssets(),
-        ...this.wellSelections()  // Add well selections
       };
+
+      // Add well selections, serializing arrays to comma-separated strings
+      Object.entries(wellSelections).forEach(([name, wells]) => {
+        const wellsStr = Array.isArray(wells) ? wells.join(',') : wells;
+        params[name] = wellsStr;
+      });
+
+      // Add machine argument mappings from per-argument selector
+      const machineAssignments = this.machineSelections();
+      for (const sel of machineAssignments) {
+        if (sel.selectedMachine) {
+          // Existing machine: reference by accession_id
+          params[sel.argumentName] = sel.selectedMachine.accession_id;
+        } else if (sel.selectedBackend) {
+          // New simulated instance: pass backend info for runtime creation
+          params[sel.argumentName] = {
+            _create_from_backend: true,
+            backend_accession_id: sel.selectedBackend.accession_id,
+            frontend_accession_id: sel.frontendId,
+            is_simulated: sel.selectedBackend.backend_type === 'simulator',
+            simulation_backend_name: sel.selectedBackend.fqn
+          };
+        }
+      }
 
       this.executionService.startRun(
         protocol.accession_id,
@@ -1209,39 +1381,23 @@ export class RunProtocolComponent implements OnInit {
   // Well Selection Methods
   private isWellSelectionParameter(param: any): boolean {
     const name = (param.name || '').toLowerCase();
-    const typeHint = (param.type_hint || '').toLowerCase();
-
     // Check name patterns
-    const wellNamePatterns = ['well', 'wells', 'source_wells', 'target_wells', 'well_ids'];
+    const wellNamePatterns = ['well', 'wells', 'source_wells', 'target_wells', 'well_ids', 'indices'];
     if (wellNamePatterns.some(p => name.includes(p))) {
       return true;
     }
 
-    // Check ui_hint if available
-    if (param.ui_hint?.type === 'well_selector') {
+    // Check ui_hint if available (supports string or object with type)
+    const uiHint = (param as any).ui_hint;
+    if (uiHint === 'well_selector' || uiHint?.type === 'well_selector') {
       return true;
     }
 
     return false;
   }
 
-  private isSelectiveTransferProtocol(): boolean {
-    const p = this.selectedProtocol();
-    const name = (p?.name || '').toLowerCase();
-    const fqn = (p?.fqn || '').toLowerCase();
-    return name.includes('selective transfer') || fqn.includes('selective_transfer');
-  }
-
   getWellParameters(): any[] {
-    const params = this.selectedProtocol()?.parameters?.filter(p => this.isWellSelectionParameter(p)) || [];
-    if (params.length === 0 && this.isSelectiveTransferProtocol()) {
-      // Fallback: derive well parameters for Selective Transfer when not loaded from DB
-      return [
-        { name: 'source_wells', description: 'Source wells', optional: false },
-        { name: 'target_wells', description: 'Target wells', optional: false }
-      ];
-    }
-    return params;
+    return this.selectedProtocol()?.parameters?.filter(p => this.isWellSelectionParameter(p)) || [];
   }
 
   openWellSelector(param: any) {
