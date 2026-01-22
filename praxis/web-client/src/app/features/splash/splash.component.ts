@@ -1,4 +1,4 @@
-import { Component, signal, effect, inject, computed } from '@angular/core';
+import { Component, signal, effect, inject, computed, OnInit } from '@angular/core';
 
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -480,17 +480,18 @@ import { AppStore } from '../../core/store/app.store';
     }
   `]
 })
-export class SplashComponent {
+export class SplashComponent implements OnInit {
   store = inject(AppStore);
   private router = inject(Router);
   isLightTheme = computed(() => this.store.theme() === 'light');
 
-  constructor() {
+  constructor() {}
+
+  ngOnInit() {
     // Auto-redirect in browser mode or if already authenticated
     if (isBrowserModeEnv()) {
       // Use Angular Router to properly respect base href
       this.router.navigate(['/app/home']);
-      return;
     }
   }
 
