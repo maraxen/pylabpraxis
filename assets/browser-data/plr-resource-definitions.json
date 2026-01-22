@@ -1,0 +1,71 @@
+[
+  {
+    "accession_id": "plr-8ef1308a",
+    "name": "Carrier",
+    "fqn": "pylabrobot.resources.carrier.Carrier",
+    "plr_category": "Carrier",
+    "description": "Base class for all carriers.",
+    "vendor": null,
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "category": "carrier"
+    }
+  },
+  {
+    "accession_id": "plr-6ac556a3",
+    "name": "Container",
+    "fqn": "pylabrobot.resources.container.Container",
+    "plr_category": "Resource",
+    "description": "A container is an abstract base class for a resource that can hold liquid.",
+    "vendor": "Container",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {}
+  },
+  {
+    "accession_id": "plr-372a72c9",
+    "name": "Deck",
+    "fqn": "pylabrobot.resources.deck.Deck",
+    "plr_category": "Deck",
+    "description": "Base class for liquid handler decks.\n\nThis class maintains a dictionary of all resources on the deck. The dictionary is keyed by the\nresource name and is updated when resources are assigned and unassigned from the deck. The point\nof this dictionary is to allow O(1) naming collision checks as well as the quick lookup of\nresources by name.",
+    "vendor": null,
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "name": "deck",
+      "size_x": 1360,
+      "size_y": 653.5,
+      "size_z": 900,
+      "category": "deck"
+    }
+  },
+  {
+    "accession_id": "plr-7083134a",
+    "name": "HamiltonSTARDeck",
+    "fqn": "pylabrobot.resources.hamilton.hamilton_decks.HamiltonSTARDeck",
+    "plr_category": "Deck",
+    "description": "Base class for a Hamilton STAR(let) deck.",
+    "vendor": "Hamilton",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "name": "deck",
+      "category": "deck",
+      "with_trash": true,
+      "with_trash96": true,
+      "with_teaching_rack": true,
+      "core_grippers": "1000uL-5mL-on-waste"
+    }
+  },
+  {
+    "accession_id": "plr-715efcec",
+    "name": "ItemizedResource",
+    "fqn": "pylabrobot.resources.itemized_resource.ItemizedResource",
+    "plr_category": "Resource",
+    "description": "Base class for Itemized resources.\n\nThis class provides utilities for getting child resources by an identifier. It also restricts the\nchild resources to instances of the generic type `T`, specified by the subclass. For example, a\n:class:`pylabrobot.resources.plate.Plate` can only have child resources of type\n:class:`pylabrobot.resources.well.Well`.\n\n.. note::\n  This class is not meant to be used directly, but rather to be subclassed, most commonly by\n  :class:`pylabrobot.resources.Plate` and :class:`pylabrobot.resources.TipRack`.",
+    "vendor": "Itemized Resource",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "num_items": 
