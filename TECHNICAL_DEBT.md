@@ -52,3 +52,11 @@
   - [ ] Refactor protocols to use a single index argument where possible.
   - [ ] Revisit 1:1 mapping logic when the simulation engine can robustly infer indices from the tracers.
   - [ ] Indices inference from simulation mode inspection and tracers should be formalized.
+
+## Tooling & Build Scripts
+
+- **Refactor Generation Logic**: The scripts for generating browser databases, schemas, and OpenAPI definitions are currently monolithic and contain ad-hoc patches.
+  - [ ] Audit `scripts/generate_browser_db.py`, `scripts/generate_browser_schema.py`, and `scripts/generate_openapi.py`.
+  - [ ] Identify ways to make the generation logic more robust and less patchy.
+  - [ ] Split monolithic scripts into reusable submodules (e.g., in a `praxis.gen` or equivalent package).
+  - [ ] Implement validation for generated artifacts.

@@ -78,3 +78,14 @@ PyLabRobot module imports fail until `sys.path` is explicitly configured in the 
 The global breadcrumb bar was removed from the unified shell as it served no purpose and added visual clutter. The `BreadcrumbService` and `BreadcrumbComponent` were also deleted.
 
 **Files:** `praxis/web-client/src/app/layout/unified-shell.component.ts`, `praxis/web-client/src/app/core/components/breadcrumb/`, `praxis/web-client/src/app/core/services/breadcrumb.service.ts`
+
+---
+
+### SharedArrayBuffer & COOP/COEP Headers
+
+**Date:** 2026-01-22
+**Area:** Frontend - Browser Mode
+
+Pyodide requires `SharedArrayBuffer` for multi-threading. Modern browsers disable this unless `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` headers are set. These headers have been added to the Angular dev server in `angular.json`. For production, the web server must be configured to send these headers.
+
+**Files:** `praxis/web-client/angular.json`, `.agent/docs/known_issues/shared_array_buffer.md`

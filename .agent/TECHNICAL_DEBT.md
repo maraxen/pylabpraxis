@@ -190,3 +190,18 @@ This document tracks known issues, temporary patches, and required follow-up wor
   - Reason: `execute_repl_command` at line 503 in `praxis/backend/api/hardware.py` states "REPL execution not yet implemented for real hardware."
   - Priority: Low
   - Notes: Requires WebSocket integration which is currently a TODO.
+
+## Hardware Transport Shims
+
+- [ ] **HID Transport Shim**: Missing `WebHID` implementation for `pylabrobot.io.hid.HID`.
+  - Impact: Blocks support for Inheco heating/shaking devices in browser mode.
+  - Priority: High
+- [ ] **Socket/TCP Transport Shim**: Browsers don't support raw TCP sockets used by `pylabrobot.io.socket.Socket`.
+  - Impact: Blocks PreciseFlex arms and other ethernet-controlled hardware.
+  - Priority: High (Blocker for specific hardware)
+  - Notes: Requires a WebSocket-to-TCP proxy or intermediate bridge service.
+- [ ] **Global Module Shimming for Direct Imports**: Many backends (`BioShake`, etc.) perform `import serial` directly, bypassing the `pylabrobot.io.Serial` abstraction.
+  - Impact: These backends crash on import in Pyodide even if `pylabrobot.io.Serial` is patched.
+  - Fix: Update `pyodide_io_patch.py` to inject shims into `sys.modules['serial']`, `sys.modules['usb']`, etc.
+- [ ] **Missing Pyserial/PyUSB Constants**: Current shims (e.g., `WebSerial`) are missing standard constants like `EIGHTBITS`, `PARITY_NONE` which backends expect.
+  - Impact: `AttributeError` when backend try to configure serial parameters.

@@ -72,10 +72,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for more detai
 ## Known Limitations
 
 | Feature | Limitation | Recommendation |
-|---------|------------|----------------|
+| :--- | :--- | :--- |
 | **Multi-Workcell** | Scheduling across multiple physical robots is in progress | Use single-robot protocols for now |
 | **PWA Support** | Mobile optimization is planned | Use desktop browsers for best experience |
 | **Legacy Drivers** | Some older PLR drivers may require backend mode | Use Production Mode for full driver coverage |
+| **SharedArrayBuffer** | Required for multi-threaded Python in Browser Mode | Ensure COOP/COEP headers are set (added to dev server) |
 
 ---
 
