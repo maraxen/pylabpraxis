@@ -38,7 +38,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-pylabrobot = { path = "lib/pylabrobot", editable = true }
+pylabrobot = { path = "external/pylabrobot", editable = true }
 
 [project.optional-dependencies]
 fw = [
@@ -324,4 +324,4 @@ exclude = [
 
 [tool.ty.environment]
 python-version = "3.12"
-extra-paths = ["lib/pylabrobot"]
+extra-paths = ["external/pylabrobot"]
