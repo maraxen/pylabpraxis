@@ -19,7 +19,7 @@ Some VSCode Extensions I'd recommend:
 - [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
 - [Pylint](https://github.com/microsoft/vscode-pylint)
 - [Code Spell Checker](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker)
-- [mypy](https://marketplace.visualstudio.com/items?itemName=matangover.mypy)
+- [pylance/pyright](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance)
 
 ## Agentic Development Workflow
 
@@ -46,10 +46,10 @@ uv run pytest # run test on the latest version
 uv run ruff check
 ```
 
-`mypy` is used to enforce type checking.
+`ty` (pyright-based) is used to enforce type checking.
 
 ```bash
-uv run mypy
+uv run ty check
 ```
 
 ## Writing documentation
