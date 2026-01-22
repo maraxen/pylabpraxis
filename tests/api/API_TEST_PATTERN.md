@@ -356,7 +356,7 @@ async def create_machine(
 
 ## Test Examples
 
-See `/home/user/pylabpraxis/tests/api/test_decks.py` for complete working examples:
+See `/home/user/praxis/tests/api/test_decks.py` for complete working examples:
 
 - ✅ `test_create_deck` - POST /api/v1/decks/ (201 Created)
 - ✅ `test_get_deck` - GET /api/v1/decks/:id (200 OK)
@@ -454,4 +454,4 @@ A complete API test suite should have:
 ---
 
 **Last Updated**: Session ending with 5/5 deck API tests passing
-**Reference Implementation**: `/home/user/pylabpraxis/tests/api/test_decks.py`
+**Reference Implementation**: `/home/user/praxis/tests/api/test_decks.py`

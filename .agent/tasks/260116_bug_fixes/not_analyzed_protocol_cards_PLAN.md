@@ -37,7 +37,7 @@ The issue stems from a mismatch between the SQLite database schema and the Front
 
 ### Service/Repository Layer (Data Transformation)
 
-#### [MODIFY] [repositories.ts](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/core/db/repositories.ts) OR [protocol.service.ts](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/features/protocols/services/protocol.service.ts)
+#### [MODIFY] [repositories.ts](file:///Users/mar/Projects/praxis/praxis/web-client/src/app/core/db/repositories.ts) OR [protocol.service.ts](file:///Users/mar/Projects/praxis/praxis/web-client/src/app/features/protocols/services/protocol.service.ts)
 
 **Add a mapping function** that transforms raw database rows into domain objects:
 
@@ -87,17 +87,17 @@ class ProtocolRepository {
 }
 ```
 
-#### [NO CHANGE] [protocol.models.ts](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/features/protocols/models/protocol.models.ts)
+#### [NO CHANGE] [protocol.models.ts](file:///Users/mar/Projects/praxis/praxis/web-client/src/app/features/protocols/models/protocol.models.ts)
 
 **Keep the interface clean** - no `simulation_result_json` field added.
 
-#### [NO CHANGE] [protocol-warning-badge.component.ts](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/shared/components/protocol-warning-badge/protocol-warning-badge.component.ts)
+#### [NO CHANGE] [protocol-warning-badge.component.ts](file:///Users/mar/Projects/praxis/praxis/web-client/src/app/shared/components/protocol-warning-badge/protocol-warning-badge.component.ts)
 
 **Component logic stays simple** - only checks `simulation_result` (no fallback needed).
 
 ### Backend / Scripts
 
-#### [MODIFY] [generate_browser_db.py](file:///Users/mar/Projects/pylabpraxis/scripts/generate_browser_db.py)
+#### [MODIFY] [generate_browser_db.py](file:///Users/mar/Projects/praxis/scripts/generate_browser_db.py)
 
 Update the seeding logic to construct a valid `SimulationResult` object structure.
 

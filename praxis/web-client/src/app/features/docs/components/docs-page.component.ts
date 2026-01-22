@@ -564,7 +564,7 @@ export class DocsPageComponent {
     const path = this.sourcePath();
     if (path) {
       // Open source file on GitHub
-      const githubRepo = 'https://github.com/maraxen/pylabpraxis/blob/main/';
+      const githubRepo = 'https://github.com/maraxen/praxis/blob/main/';
       window.open(`${githubRepo}${path}`, '_blank');
     }
   }

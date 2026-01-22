@@ -275,8 +275,8 @@ Add to your shell profile (`.bashrc` or `.zshrc`):
 
 ```bash
 # Praxis aliases
-alias praxis-backend='cd ~/projects/pylabpraxis && PRAXIS_DB_DSN="postgresql+asyncpg://postgres:postgres@localhost:5432/praxis" uv run uvicorn praxis.backend.main:app --reload'
-alias praxis-frontend='cd ~/projects/pylabpraxis/praxis/web-client && npm start'
-alias praxis-test='cd ~/projects/pylabpraxis && uv run pytest'
+alias praxis-backend='cd ~/projects/praxis && PRAXIS_DB_DSN="postgresql+asyncpg://postgres:postgres@localhost:5432/praxis" uv run uvicorn praxis.backend.main:app --reload'
+alias praxis-frontend='cd ~/projects/praxis/praxis/web-client && npm start'
+alias praxis-test='cd ~/projects/praxis && uv run pytest'
 alias praxis-sync='curl -X POST http://localhost:8000/api/v1/discovery/sync-all'
 ```

@@ -15,8 +15,8 @@ Thank you for your interest in contributing to Praxis! This guide covers how to 
 
 ```bash
 # Clone the repository
-git clone https://github.com/maraxen/pylabpraxis.git
-cd pylabpraxis
+git clone https://github.com/maraxen/praxis.git
+cd praxis
 
 # Install Python dependencies
 uv sync
@@ -168,7 +168,7 @@ npm test -- --code-coverage
 ## Project Structure
 
 ```
-pylabpraxis/
+praxis/
 ├── praxis/
 │   ├── backend/
 │   │   ├── api/           # FastAPI routes
@@ -236,9 +236,9 @@ mkdocs build
 
 ## Getting Help
 
-- **Issues**: [GitHub Issues](https://github.com/maraxen/pylabpraxis/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/maraxen/pylabpraxis/discussions)
-- **Documentation**: [This site](https://maraxen.github.io/pylabpraxis/)
+- **Issues**: [GitHub Issues](https://github.com/maraxen/praxis/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/maraxen/praxis/discussions)
+- **Documentation**: [This site](https://maraxen.github.io/praxis/)
 
 ## Code of Conduct
 

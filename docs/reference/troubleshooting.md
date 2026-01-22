@@ -314,8 +314,8 @@ logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
 
 If you're still stuck:
 
-1. **Check existing issues:** [GitHub Issues](https://github.com/maraxen/pylabpraxis/issues)
-2. **Search discussions:** [GitHub Discussions](https://github.com/maraxen/pylabpraxis/discussions)
+1. **Check existing issues:** [GitHub Issues](https://github.com/maraxen/praxis/issues)
+2. **Search discussions:** [GitHub Discussions](https://github.com/maraxen/praxis/discussions)
 3. **Open new issue:** Include:
    - Error message (full traceback)
    - Steps to reproduce

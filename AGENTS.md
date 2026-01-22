@@ -52,7 +52,7 @@ When the user asks "What's next?" or similar:
 ### Step 0: Connect via MCP
 
 ```
-workspace_handshake(project_root="/Users/mar/Projects/pylabpraxis")
+workspace_handshake(project_root="/Users/mar/Projects/praxis")
 prep_orchestrator()
 ```
 
@@ -200,7 +200,7 @@ See `global_skills/orchestration/SKILL.md`
 
 **Always call `workspace_handshake` at session start:**
 
-Using MCP: `workspace_handshake(project_root="/Users/mar/Projects/pylabpraxis")`
+Using MCP: `workspace_handshake(project_root="/Users/mar/Projects/praxis")`
 
 This connects your session to the correct project database.
 
@@ -296,7 +296,7 @@ Or have the orchestrator run the command directly via `run_command`.
 
 ### Migration Note
 
-Database location: [.agent/agent.db](cci:7://file:///Users/mar/Projects/pylabpraxis/.agent/agent.db:0:0-0:0)
+Database location: [.agent/agent.db](cci:7://file:///Users/mar/Projects/praxis/.agent/agent.db:0:0-0:0)
 
 To re-run migration:
 

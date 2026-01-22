@@ -12,8 +12,8 @@ Lite Mode provides a lightweight local development environment using the FastAPI
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/maraxen/pylabpraxis.git
-   cd pylabpraxis
+   git clone https://github.com/maraxen/praxis.git
+   cd praxis
    ```
 
 2. **Install Dependencies**

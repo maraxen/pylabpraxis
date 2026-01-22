@@ -149,13 +149,13 @@ import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcom
         </main>
 
         <footer class="app-footer">
-            <a href="https://github.com/maraxen/pylabpraxis" target="_blank" class="footer-link" matTooltip="GitHub Repository">
+            <a href="https://github.com/maraxen/praxis" target="_blank" class="footer-link" matTooltip="GitHub Repository">
                 <mat-icon>code</mat-icon>
             </a>
-            <a href="https://github.com/maraxen/pylabpraxis" target="_blank" class="footer-link" matTooltip="Star on GitHub">
+            <a href="https://github.com/maraxen/praxis" target="_blank" class="footer-link" matTooltip="Star on GitHub">
                 <mat-icon>star_border</mat-icon>
             </a>
-            <a href="https://github.com/maraxen/pylabpraxis/issues/new" target="_blank" class="footer-link" matTooltip="Raise an Issue">
+            <a href="https://github.com/maraxen/praxis/issues/new" target="_blank" class="footer-link" matTooltip="Raise an Issue">
                 <mat-icon>bug_report</mat-icon>
             </a>
             <div class="footer-divider"></div>

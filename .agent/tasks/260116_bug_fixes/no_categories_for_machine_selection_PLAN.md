@@ -26,7 +26,7 @@ The original plan proposed mixing `MachineDefinition` (catalog items) with `Mach
 
 ### Inventory Dialog (Catalog-to-Inventory Workflow)
 
-#### [MODIFY] [inventory-dialog.component.ts](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/features/playground/components/inventory-dialog/inventory-dialog.component.ts)
+#### [MODIFY] [inventory-dialog.component.ts](file:///Users/mar/Projects/praxis/praxis/web-client/src/app/features/playground/components/inventory-dialog/inventory-dialog.component.ts)
 
 **Architecture**: Separate the UI into two distinct sections:
 
@@ -124,7 +124,7 @@ async onQuickAddSimulated(definition: MachineDefinition) {
 
 ### Asset Service (Ensure Defaults)
 
-#### [MODIFY] [asset.service.ts](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/features/assets/services/asset.service.ts)
+#### [MODIFY] [asset.service.ts](file:///Users/mar/Projects/praxis/praxis/web-client/src/app/features/assets/services/asset.service.ts)
 
 Ensure `createMachine` handles all NOT NULL fields with sensible defaults for simulated instances:
 

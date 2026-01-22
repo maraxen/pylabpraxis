@@ -114,8 +114,8 @@ all = [
 ]
 
 [project.urls]
-Repository = "https://github.com/maraxen/pylabpraxis.git"
-Homepage = "https://github.com/maraxen/pylabpraxis.git"
+Repository = "https://github.com/maraxen/praxis.git"
+Homepage = "https://github.com/maraxen/praxis.git"
 
 [tool.setuptools]
 packages = ["praxis"]

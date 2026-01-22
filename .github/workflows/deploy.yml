@@ -39,7 +39,7 @@ jobs:
 
       - name: Build web client
         working-directory: ./praxis/web-client
-        run: npm run build -- --base-href /pylabpraxis/
+        run: npm run build -- --base-href /praxis/
 
       - name: SPA Fix (404.html)
         run: cp ./praxis/web-client/dist/web-client/browser/index.html ./praxis/web-client/dist/web-client/browser/404.html

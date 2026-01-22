@@ -12,11 +12,11 @@ Praxis can be run in two main ways. For a 5-minute start, we recommend **Browser
 
 ### Option A: Browser Mode (Zero Backend)
 
-1. Clone the repo: `git clone https://github.com/maraxen/pylabpraxis.git`
+1. Clone the repo: `git clone https://github.com/maraxen/praxis.git`
 2. Install & Start:
 
    ```bash
-   cd pylabpraxis/praxis/web-client
+   cd praxis/praxis/web-client
    npm install && npm run start:browser
    ```
 

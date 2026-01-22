@@ -26,7 +26,7 @@ Carefully update the pylabpraxis `.agent/` directory to use the new standardized
 
 ```bash
 # Create dated backup
-cd ~/Projects/pylabpraxis
+cd ~/Projects/praxis
 tar -czf .agent-backup-$(date +%Y%m%d-%H%M%S).tar.gz .agent/
 ```
 
@@ -80,7 +80,7 @@ Before modifying, understand what's project-specific vs generic:
 
 ## Success Criteria
 
-- [ ] Backup exists at `~/Projects/pylabpraxis/.agent-backup-*.tar.gz`
+- [ ] Backup exists at `~/Projects/praxis/.agent-backup-*.tar.gz`
 - [ ] All project-specific content preserved
 - [ ] Subdirectory READMEs updated to new format
 - [ ] `.agent/README.md` updated
@@ -92,7 +92,7 @@ Before modifying, understand what's project-specific vs generic:
 If something goes wrong:
 
 ```bash
-cd ~/Projects/pylabpraxis
+cd ~/Projects/praxis
 rm -rf .agent/
 tar -xzf .agent-backup-*.tar.gz
 ```

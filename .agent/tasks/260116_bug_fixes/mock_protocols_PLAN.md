@@ -16,7 +16,7 @@ The current Browser Mode database is seeded with "Mock Protocols" (e.g., "Daily 
 
 ### Core Services
 
-#### [MODIFY] [sqlite.service.ts](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/core/services/sqlite.service.ts)
+#### [MODIFY] [sqlite.service.ts](file:///Users/mar/Projects/praxis/praxis/web-client/src/app/core/services/sqlite.service.ts)
 
 - Remove imports of `MOCK_PROTOCOLS` and `MOCK_PROTOCOL_RUNS`.
 - Update `seedDefaultRuns()` method to remove the logic that inserts these mock records.
@@ -24,14 +24,14 @@ The current Browser Mode database is seeded with "Mock Protocols" (e.g., "Daily 
 
 ### Execution Feature
 
-#### [MODIFY] [execution.service.ts](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/features/run-protocol/services/execution.service.ts)
+#### [MODIFY] [execution.service.ts](file:///Users/mar/Projects/praxis/praxis/web-client/src/app/features/run-protocol/services/execution.service.ts)
 
 - Remove import of `MOCK_PROTOCOLS`.
 - Remove the fallback logic that searches `MOCK_PROTOCOLS` if a protocol is not found in the database.
 
 ### Interceptors
 
-#### [MODIFY] [browser-mode.interceptor.ts](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/core/interceptors/browser-mode.interceptor.ts)
+#### [MODIFY] [browser-mode.interceptor.ts](file:///Users/mar/Projects/praxis/praxis/web-client/src/app/core/interceptors/browser-mode.interceptor.ts)
 
 - Remove `MOCK_PROTOCOL_RUNS` import.
 - **Refactor `/protocols/runs/queue` handler**:
@@ -62,11 +62,11 @@ The current Browser Mode database is seeded with "Mock Protocols" (e.g., "Daily 
 
 ### assets/browser-data
 
-#### [DELETE] [protocols.ts](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/assets/browser-data/protocols.ts)
+#### [DELETE] [protocols.ts](file:///Users/mar/Projects/praxis/praxis/web-client/src/assets/browser-data/protocols.ts)
 
 - File containing the mock protocol definitions.
 
-#### [DELETE] [protocol-runs.ts](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/assets/browser-data/protocol-runs.ts)
+#### [DELETE] [protocol-runs.ts](file:///Users/mar/Projects/praxis/praxis/web-client/src/assets/browser-data/protocol-runs.ts)
 
 - File containing the mock protocol runs (which depend on the mock protocols).
 

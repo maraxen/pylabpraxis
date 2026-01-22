@@ -6,7 +6,7 @@
 **Context**:
 Currently, `.github/workflows/docs.yml` builds MkDocs and deploys it to `gh-pages`.
 We need to shift focus to deploying the Angular application located in `praxis/web-client`.
-The repository name is `pylabpraxis` so the base href should be `/pylabpraxis/`.
+The repository name is `pylabpraxis` so the base href should be `/praxis/`.
 Current `angular.json` has a `gh-pages` configuration with baseHref set to `/praxis/` which might be incorrect.
 
 ## Tasks
@@ -20,7 +20,7 @@ Current `angular.json` has a `gh-pages` configuration with baseHref set to `/pra
     4.  Install Python dependencies: `uv sync`.
     5.  Generate Browser DB: `uv run scripts/generate_browser_db.py`.
     6.  Install NPM dependencies: `npm ci` (in `praxis/web-client`).
-    7.  Build Angular App: `npm run build -- --base-href /pylabpraxis/` (in `praxis/web-client`).
+    7.  Build Angular App: `npm run build -- --base-href /praxis/` (in `praxis/web-client`).
         -   Note: Override the `gh-pages` config in `angular.json` if needed, or update it.
     8.  Deploy to GH Pages using `peaceiris/actions-gh-pages`.
         -   `publish_dir`: `praxis/web-client/dist/web-client/browser` (Need to verify exact path after build).
@@ -29,12 +29,12 @@ Current `angular.json` has a `gh-pages` configuration with baseHref set to `/pra
 ### Task 2: Base Href & Routing Config (Completed)
 - **File**: `praxis/web-client/angular.json`
 - **Action**:
-    -   Update `gh-pages` configuration `baseHref` to `/pylabpraxis/`.
+    -   Update `gh-pages` configuration `baseHref` to `/praxis/`.
     -   Ensure `404.html` is generated (copy `index.html` to `404.html` for SPA routing on GH Pages). This can be done as a post-build step in the workflow.
 
 ### Task 3: Verification (Completed)
 - **Local Verification**:
-    -   Run `npm run build -- --base-href /pylabpraxis/` inside `praxis/web-client`.
+    -   Run `npm run build -- --base-href /praxis/` inside `praxis/web-client`.
     -   Verify `dist/` contains `index.html` and assets.
     -   Confirm output directory structure (likely `dist/web-client/browser` or `dist/praxis-web-client/browser`).
 

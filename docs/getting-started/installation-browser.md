@@ -21,8 +21,8 @@ If you want to run the browser client from your own machine:
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/maraxen/pylabpraxis.git
-   cd pylabpraxis
+   git clone https://github.com/maraxen/praxis.git
+   cd praxis
    ```
 
 2. **Install Frontend Dependencies**

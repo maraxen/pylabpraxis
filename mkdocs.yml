@@ -1,8 +1,8 @@
 site_name: Praxis
 site_description: Lab automation platform built on PyLabRobot
-site_url: https://maraxen.github.io/pylabpraxis/
-repo_url: https://github.com/maraxen/pylabpraxis
-repo_name: maraxen/pylabpraxis
+site_url: https://maraxen.github.io/praxis/
+repo_url: https://github.com/maraxen/praxis
+repo_name: maraxen/praxis
 
 theme:
   name: material
@@ -110,7 +110,7 @@ plugins:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/maraxen/pylabpraxis
+      link: https://github.com/maraxen/praxis
   generator: false
 
 copyright: Copyright &copy; 2025 Ovchinnikov Lab, MIT Biology

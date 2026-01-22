@@ -30,8 +30,8 @@ Browser mode allows you to run Praxis entirely within your web browser. It uses 
 2. Clone the repo and install frontend dependencies:
 
    ```bash
-   git clone https://github.com/maraxen/pylabpraxis.git
-   cd pylabpraxis/praxis/web-client
+   git clone https://github.com/maraxen/praxis.git
+   cd praxis/praxis/web-client
    npm install
    ```
 
@@ -48,8 +48,8 @@ Browser mode allows you to run Praxis entirely within your web browser. It uses 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/maraxen/pylabpraxis.git
-cd pylabpraxis
+git clone https://github.com/maraxen/praxis.git
+cd praxis
 ```
 
 ### 2. Install Python Dependencies

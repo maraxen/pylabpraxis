@@ -24,7 +24,7 @@ git push origin <branch_name>
 ### 1.2 Check Current Jules Capacity
 
 ```bash
-jules remote list --session 2>&1 | cat | grep -c "maraxen/pylabpraxis"
+jules remote list --session 2>&1 | cat | grep -c "maraxen/praxis"
 ```
 
 Jules can handle ~60 concurrent sessions per repository.
@@ -169,7 +169,7 @@ git push origin <branch_name>
 
 ```bash
 # List all pylabpraxis sessions
-jules remote list --session 2>&1 | cat | grep "maraxen/pylabpraxis"
+jules remote list --session 2>&1 | cat | grep "maraxen/praxis"
 
 # Count sessions by status
 jules remote list --session 2>&1 | cat | grep -c "Completed"

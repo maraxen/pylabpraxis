@@ -6,7 +6,7 @@ import tempfile
 import time
 import os
 
-DB_PATH = "/Users/mar/Projects/pylabpraxis/.agent/agent.db"
+DB_PATH = "/Users/mar/Projects/praxis/.agent/agent.db"
 
 def get_pending_dispatches():
     """Get all pending Jules dispatches."""
@@ -49,7 +49,7 @@ def submit_to_jules(prompt: str) -> tuple[bool, str]:
             capture_output=True,
             text=True,
             timeout=60,
-            cwd="/Users/mar/Projects/pylabpraxis"
+            cwd="/Users/mar/Projects/praxis"
         )
         
         output = result.stdout + result.stderr

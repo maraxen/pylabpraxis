@@ -2,8 +2,8 @@
 # Submit pending Jules dispatches from the agent database
 # Usage: ./submit_jules_dispatches.sh
 
-DB_PATH="/Users/mar/Projects/pylabpraxis/.agent/agent.db"
-REPO="maraxen/pylabpraxis"
+DB_PATH="/Users/mar/Projects/praxis/.agent/agent.db"
+REPO="maraxen/praxis"
 BRANCH="angular_refactor"
 
 # Get all pending jules dispatches

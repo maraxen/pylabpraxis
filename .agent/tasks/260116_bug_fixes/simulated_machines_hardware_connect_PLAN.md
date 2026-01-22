@@ -21,7 +21,7 @@ Prevent "Simulated" machines (which are internal software constructs) from appea
 
 ### Shared Components
 
-#### [MODIFY] [hardware-discovery-dialog.component.ts](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/shared/components/hardware-discovery-dialog/hardware-discovery-dialog.component.ts)
+#### [MODIFY] [hardware-discovery-dialog.component.ts](file:///Users/mar/Projects/praxis/praxis/web-client/src/app/shared/components/hardware-discovery-dialog/hardware-discovery-dialog.component.ts)
 
 Update the `filteredDevices` computed signal to explicitly exclude devices where the associated PLR definition is marked as simulated.
 

@@ -66,7 +66,7 @@ index 0000000..8715f41
 +      36 |
 +      37 |         // Wait for Quick Actions to load
 +      38 |         await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10000 });
-+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:35:84
++        at /Users/mar/Projects/praxis/praxis/web-client/e2e/asset-inventory.spec.ts:35:84
 +
 +    Error Context: test-results/asset-inventory-Asset-Inve-eb362-ated-machine-across-reloads-chromium/error-context.md
 +
@@ -109,7 +109,7 @@ index 0000000..8715f41
 +      94 |         await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10000 });
 +      95 |
 +      96 |         // 2. Click "Add Resource"
-+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:93:84
++        at /Users/mar/Projects/praxis/praxis/web-client/e2e/asset-inventory.spec.ts:93:84
 +
 +    Error Context: test-results/asset-inventory-Asset-Inve-eae82-ted-resource-across-reloads-chromium/error-context.md
 +
@@ -153,7 +153,7 @@ index 0000000..8715f41
 +      36 |
 +      37 |         // Wait for Quick Actions to load
 +      38 |         await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10000 });
-+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:35:84
++        at /Users/mar/Projects/praxis/praxis/web-client/e2e/asset-inventory.spec.ts:35:84
 +
 +    Error Context: test-results/asset-inventory-Asset-Inve-eb362-ated-machine-across-reloads-firefox/error-context.md
 +
@@ -173,7 +173,7 @@ index 0000000..8715f41
 +      94 |         await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10000 });
 +      95 |
 +      96 |         // 2. Click "Add Resource"
-+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:93:84
++        at /Users/mar/Projects/praxis/praxis/web-client/e2e/asset-inventory.spec.ts:93:84
 +
 +    Error Context: test-results/asset-inventory-Asset-Inve-eae82-ted-resource-across-reloads-firefox/error-context.md
 +
@@ -193,7 +193,7 @@ index 0000000..8715f41
 +      36 |
 +      37 |         // Wait for Quick Actions to load
 +      38 |         await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10000 });
-+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:35:84
++        at /Users/mar/Projects/praxis/praxis/web-client/e2e/asset-inventory.spec.ts:35:84
 +
 +    Error Context: test-results/asset-inventory-Asset-Inve-eb362-ated-machine-across-reloads-webkit/error-context.md
 +
@@ -236,7 +236,7 @@ index 0000000..8715f41
 +      94 |         await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10000 });
 +      95 |
 +      96 |         // 2. Click "Add Resource"
-+        at /Users/mar/Projects/pylabpraxis/praxis/web-client/e2e/asset-inventory.spec.ts:93:84
++        at /Users/mar/Projects/praxis/praxis/web-client/e2e/asset-inventory.spec.ts:93:84
 +
 +    Error Context: test-results/asset-inventory-Asset-Inve-eae82-ted-resource-across-reloads-webkit/error-context.md
 +

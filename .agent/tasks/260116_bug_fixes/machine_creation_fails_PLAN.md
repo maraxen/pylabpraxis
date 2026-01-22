@@ -13,7 +13,7 @@ Fix the "Machine Creation Fails - NOT NULL constraint" issue where adding a new 
 
 ### Core Database Layer
 
-#### [MODIFY] [repositories.ts](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/core/db/repositories.ts)
+#### [MODIFY] [repositories.ts](file:///Users/mar/Projects/praxis/praxis/web-client/src/app/core/db/repositories.ts)
 
 - Update `MachineRepository.create` method.
 - Add `'maintenance_enabled'` and `'maintenance_schedule_json'` to the `machineFields` array.
@@ -21,7 +21,7 @@ Fix the "Machine Creation Fails - NOT NULL constraint" issue where adding a new 
 
 ### Asset Service Layer
 
-#### [MODIFY] [asset.service.ts](file:///Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/features/assets/services/asset.service.ts)
+#### [MODIFY] [asset.service.ts](file:///Users/mar/Projects/praxis/praxis/web-client/src/app/features/assets/services/asset.service.ts)
 
 - Update `createMachine` method in `AssetService`.
 - When creating the `newMachine` object for Browser Mode, add default values:

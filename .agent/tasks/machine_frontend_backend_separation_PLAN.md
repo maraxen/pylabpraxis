@@ -379,7 +379,7 @@ GET  /api/v1/machine-definitions/         # Replace with /machine-frontends/ + /
 
 ```bash
 # Working directory for all commands
-cd /Users/mar/Projects/pylabpraxis
+cd /Users/mar/Projects/praxis
 
 # Ensure dependencies are available
 uv sync
@@ -393,7 +393,7 @@ git stash  # if uncommitted changes exist
 
 ### Step 2.1: Create New Enum (BackendTypeEnum)
 
-**File**: `/Users/mar/Projects/pylabpraxis/praxis/backend/models/enums/machine.py`
+**File**: `/Users/mar/Projects/praxis/praxis/backend/models/enums/machine.py`
 
 **Action**: Add new enum after `MachineStatusEnum`:
 
@@ -416,7 +416,7 @@ uv run python -c "from praxis.backend.models.enums import BackendTypeEnum; print
 
 ### Step 2.2: Create MachineFrontendDefinition Model
 
-**File**: Create `/Users/mar/Projects/pylabpraxis/praxis/backend/models/domain/machine_frontend.py`
+**File**: Create `/Users/mar/Projects/praxis/praxis/backend/models/domain/machine_frontend.py`
 
 **Content** (complete file):
 
@@ -516,7 +516,7 @@ uv run python -c "from praxis.backend.models.domain.machine_frontend import Mach
 
 ### Step 2.3: Create MachineBackendDefinition Model
 
-**File**: Create `/Users/mar/Projects/pylabpraxis/praxis/backend/models/domain/machine_backend.py`
+**File**: Create `/Users/mar/Projects/praxis/praxis/backend/models/domain/machine_backend.py`
 
 **Content** (complete file):
 
@@ -611,7 +611,7 @@ uv run python -c "from praxis.backend.models.domain.machine_backend import Machi
 
 ### Step 2.4: Update Machine Model with New FKs
 
-**File**: `/Users/mar/Projects/pylabpraxis/praxis/backend/models/domain/machine.py`
+**File**: `/Users/mar/Projects/praxis/praxis/backend/models/domain/machine.py`
 
 **Changes**: Add new foreign keys and relationships to `Machine` class (around line 230-260).
 
@@ -678,7 +678,7 @@ uv run python -c "from praxis.backend.models.domain.machine import Machine; prin
 
 ### Step 2.5: Update Model Exports
 
-**File**: `/Users/mar/Projects/pylabpraxis/praxis/backend/models/__init__.py`
+**File**: `/Users/mar/Projects/praxis/praxis/backend/models/__init__.py`
 
 **Add exports** for new models:
 
@@ -710,7 +710,7 @@ uv run python -c "from praxis.backend.models import MachineFrontendDefinition, M
 
 ### Step 2.6: Update Static Analysis Parser
 
-**File**: `/Users/mar/Projects/pylabpraxis/praxis/backend/utils/plr_static_analysis/parser.py`
+**File**: `/Users/mar/Projects/praxis/praxis/backend/utils/plr_static_analysis/parser.py`
 
 **Add two new methods** to `PLRSourceParser` class:
 
@@ -742,7 +742,7 @@ print(f'Frontends: {len(frontends)}, Backends: {len(backends)}')
 
 ### Step 2.7: Create Frontend Definition Service
 
-**File**: Create `/Users/mar/Projects/pylabpraxis/praxis/backend/services/machine_frontend_definition.py`
+**File**: Create `/Users/mar/Projects/praxis/praxis/backend/services/machine_frontend_definition.py`
 
 **Content** (complete file):
 
@@ -874,7 +874,7 @@ uv run python -c "from praxis.backend.services.machine_frontend_definition impor
 
 ### Step 2.8: Create Backend Definition Service
 
-**File**: Create `/Users/mar/Projects/pylabpraxis/praxis/backend/services/machine_backend_definition.py`
+**File**: Create `/Users/mar/Projects/praxis/praxis/backend/services/machine_backend_definition.py`
 
 **Content** (complete file):
 
@@ -1029,7 +1029,7 @@ uv run python -c "from praxis.backend.services.machine_backend_definition import
 
 ### Step 2.9: Create API Endpoints for Frontend Definitions
 
-**File**: Create `/Users/mar/Projects/pylabpraxis/praxis/backend/api/machine_frontends.py`
+**File**: Create `/Users/mar/Projects/praxis/praxis/backend/api/machine_frontends.py`
 
 **Content** (complete file):
 
@@ -1138,7 +1138,7 @@ async def delete_frontend_definition(
 
 ### Step 2.10: Create API Endpoints for Backend Definitions
 
-**File**: Create `/Users/mar/Projects/pylabpraxis/praxis/backend/api/machine_backends.py`
+**File**: Create `/Users/mar/Projects/praxis/praxis/backend/api/machine_backends.py`
 
 **Content** (complete file):
 
@@ -1229,7 +1229,7 @@ async def delete_backend_definition(
 
 ### Step 2.11: Register New API Routers
 
-**File**: `/Users/mar/Projects/pylabpraxis/praxis/backend/main.py`
+**File**: `/Users/mar/Projects/praxis/praxis/backend/main.py`
 
 **Add imports** near other router imports:
 
@@ -1262,7 +1262,7 @@ uv run python -c "from praxis.backend.main import app; routes = [r.path for r in
 
 ### Step 2.12: Update Machine Instantiation (Critical)
 
-**File**: `/Users/mar/Projects/pylabpraxis/praxis/backend/core/workcell_runtime/machine_manager.py`
+**File**: `/Users/mar/Projects/praxis/praxis/backend/core/workcell_runtime/machine_manager.py`
 
 **Replace the instantiation logic** around line 95. Find this code:
 
@@ -1315,7 +1315,7 @@ else:
 **Commands** (run in order):
 
 ```bash
-cd /Users/mar/Projects/pylabpraxis
+cd /Users/mar/Projects/praxis
 
 # Step 1: Generate new SQLite schema and TypeScript interfaces
 uv run python scripts/generate_browser_schema.py
@@ -1347,7 +1347,7 @@ grep -c "MachineFrontendDefinition\|MachineBackendDefinition" praxis/web-client/
 
 ### Step 2.14: Update Frontend Repositories
 
-**File**: `/Users/mar/Projects/pylabpraxis/praxis/web-client/src/app/core/db/repositories.ts`
+**File**: `/Users/mar/Projects/praxis/praxis/web-client/src/app/core/db/repositories.ts`
 
 **Add new repository classes** after `MachineDefinitionRepository`:
 
@@ -1392,7 +1392,7 @@ export class MachineBackendDefinitionRepository extends SqliteRepository<WithInd
 **Commands**:
 
 ```bash
-cd /Users/mar/Projects/pylabpraxis
+cd /Users/mar/Projects/praxis
 
 # Backend unit tests
 uv run pytest tests/models/ -v --tb=short
@@ -1419,7 +1419,7 @@ npm test -- --run
 
 **Start the backend**:
 ```bash
-cd /Users/mar/Projects/pylabpraxis
+cd /Users/mar/Projects/praxis
 uv run uvicorn praxis.backend.main:app --reload --port 8000
 ```
 
@@ -1445,7 +1445,7 @@ curl http://localhost:8000/api/v1/machines/
 
 ### 3.1 Backend Unit Tests
 
-**Create test file**: `/Users/mar/Projects/pylabpraxis/tests/models/test_machine_frontend_definition.py`
+**Create test file**: `/Users/mar/Projects/praxis/tests/models/test_machine_frontend_definition.py`
 
 ```python
 """Tests for MachineFrontendDefinition model."""
@@ -1479,7 +1479,7 @@ def test_frontend_definition_model():
     assert model.has_deck is False
 ```
 
-**Create test file**: `/Users/mar/Projects/pylabpraxis/tests/models/test_machine_backend_definition.py`
+**Create test file**: `/Users/mar/Projects/praxis/tests/models/test_machine_backend_definition.py`
 
 ```python
 """Tests for MachineBackendDefinition model."""
@@ -1515,14 +1515,14 @@ def test_backend_type_enum():
 
 **Run unit tests**:
 ```bash
-cd /Users/mar/Projects/pylabpraxis
+cd /Users/mar/Projects/praxis
 uv run pytest tests/models/test_machine_frontend_definition.py tests/models/test_machine_backend_definition.py -v
 # Expected: All tests pass
 ```
 
 ### 3.2 Service Tests
 
-**Create test file**: `/Users/mar/Projects/pylabpraxis/tests/services/test_machine_frontend_definition_service.py`
+**Create test file**: `/Users/mar/Projects/praxis/tests/services/test_machine_frontend_definition_service.py`
 
 ```python
 """Tests for MachineFrontendDefinitionService."""
@@ -1543,7 +1543,7 @@ def test_discover_frontend_classes():
             f"Class {frontend.name} should be a frontend type, got {frontend.class_type}"
 ```
 
-**Create test file**: `/Users/mar/Projects/pylabpraxis/tests/services/test_machine_backend_definition_service.py`
+**Create test file**: `/Users/mar/Projects/praxis/tests/services/test_machine_backend_definition_service.py`
 
 ```python
 """Tests for MachineBackendDefinitionService."""
@@ -1581,7 +1581,7 @@ uv run pytest tests/services/test_machine_frontend_definition_service.py tests/s
 
 ### 3.3 API Tests
 
-**Create test file**: `/Users/mar/Projects/pylabpraxis/tests/api/test_machine_frontends_api.py`
+**Create test file**: `/Users/mar/Projects/praxis/tests/api/test_machine_frontends_api.py`
 
 ```python
 """Tests for machine frontend API endpoints."""
@@ -1622,7 +1622,7 @@ uv run pytest tests/api/test_machine_frontends_api.py -v
 ### 3.4 Full Test Suite
 
 ```bash
-cd /Users/mar/Projects/pylabpraxis
+cd /Users/mar/Projects/praxis
 
 # Run all backend tests
 uv run pytest tests/ -v --tb=short -x
@@ -1636,7 +1636,7 @@ uv run pytest tests/ -v --tb=short -x
 ### 3.5 Frontend Tests
 
 ```bash
-cd /Users/mar/Projects/pylabpraxis/praxis/web-client
+cd /Users/mar/Projects/praxis/praxis/web-client
 
 # Run frontend tests
 npm test -- --run
@@ -1653,7 +1653,7 @@ npm run build
 
 ```bash
 # Terminal 1: Start backend
-cd /Users/mar/Projects/pylabpraxis
+cd /Users/mar/Projects/praxis
 uv run uvicorn praxis.backend.main:app --reload --port 8000
 
 # Terminal 2: Test endpoints
@@ -1933,6 +1933,6 @@ Before marking migration as complete:
 
 **Final command to verify success**:
 ```bash
-cd /Users/mar/Projects/pylabpraxis
+cd /Users/mar/Projects/praxis
 uv run pytest tests/ -v --tb=short && echo "✓ ALL TESTS PASS - Migration complete"
 ```

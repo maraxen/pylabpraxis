@@ -13,7 +13,7 @@ Fix the "Missing Deck Definitions" bug where only 2 deck definitions are found i
 
 ### Backend Utils
 
-#### [MODIFY] [resource_factory.py](file:///Users/mar/Projects/pylabpraxis/praxis/backend/utils/plr_static_analysis/visitors/resource_factory.py)
+#### [MODIFY] [resource_factory.py](file:///Users/mar/Projects/praxis/praxis/backend/utils/plr_static_analysis/visitors/resource_factory.py)
 
 - Update `RESOURCE_RETURN_TYPES` to include:
   - `HamiltonSTARDeck`
@@ -28,7 +28,7 @@ Fix the "Missing Deck Definitions" bug where only 2 deck definitions are found i
 
 ### Scripts
 
-#### [MODIFY] [generate_browser_db.py](file:///Users/mar/Projects/pylabpraxis/scripts/generate_browser_db.py)
+#### [MODIFY] [generate_browser_db.py](file:///Users/mar/Projects/praxis/scripts/generate_browser_db.py)
 
 **Implement Hybrid Approach**: Static analysis with manual fallback registry.
 
