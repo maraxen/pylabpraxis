@@ -11,7 +11,7 @@ Common commands for development and operations.
 make db-test
 
 # Or with Docker Compose
-docker compose up -d db redis
+docker compose up -d praxis-db redis
 ```
 
 ### Run Backend
@@ -245,28 +245,28 @@ Common targets in `Makefile`:
 .PHONY: dev test lint build
 
 dev:
-	docker compose up -d db redis
-	uv run uvicorn praxis.backend.main:app --reload
+ docker compose up -d praxis-db redis
+ uv run uvicorn praxis.backend.main:app --reload
 
 test:
-	uv run pytest
+ uv run pytest
 
 lint:
-	uv run ruff check .
-	cd praxis/web-client && npm run lint
+ uv run ruff check .
+ cd praxis/web-client && npm run lint
 
 build:
-	cd praxis/web-client && npm run build
+ cd praxis/web-client && npm run build
 
 db-test:
-	docker run -d --name praxis_test_db \
-		-e POSTGRES_PASSWORD=postgres \
-		-p 5432:5432 postgres:15
+ docker run -d --name praxis_test_db \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5432:5432 postgres:15
 
 clean:
-	docker compose down -v
-	rm -rf .pytest_cache htmlcov
-	cd praxis/web-client && rm -rf dist node_modules
+ docker compose down -v
+ rm -rf .pytest_cache htmlcov
+ cd praxis/web-client && rm -rf dist node_modules
 ```
 
 ## Environment Shortcuts

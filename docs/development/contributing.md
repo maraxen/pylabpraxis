@@ -30,7 +30,7 @@ npm install
 
 ```bash
 # Start database and Redis
-docker compose up -d db redis
+docker compose up -d praxis-db redis
 
 # Or use make
 make db-test
@@ -53,6 +53,7 @@ npm start
 ### Python
 
 We use:
+
 - **ruff** for linting and formatting
 - **pyright/ty** for type checking
 - **pytest** for testing
@@ -72,6 +73,7 @@ uv run pytest
 ### TypeScript
 
 We use:
+
 - **ESLint** for linting
 - **Prettier** for formatting (via ESLint)
 - **Karma/Jasmine** for testing
@@ -169,20 +171,19 @@ npm test -- --code-coverage
 
 ```
 praxis/
-├── praxis/
-│   ├── backend/
-│   │   ├── api/           # FastAPI routes
-│   │   ├── core/          # Execution engine
-│   │   ├── services/      # Business logic
-│   │   ├── models/        # ORM & Pydantic
-│   │   └── utils/         # Utilities
-│   └── web-client/
-│       └── src/
-│           ├── app/
-│           │   ├── core/      # Services, guards
-│           │   ├── features/  # Feature modules
-│           │   └── shared/    # Shared components
-│           └── assets/
+├── backend/
+│   ├── api/           # FastAPI routes
+│   ├── core/          # Execution engine
+│   ├── services/      # Business logic
+│   ├── models/        # ORM & Pydantic
+│   └── utils/         # Utilities
+└── web-client/
+    └── src/
+        ├── app/
+        │   ├── core/      # Services, guards
+        │   ├── features/  # Feature modules
+        │   └── shared/    # Shared components
+        └── assets/
 ├── tests/                 # Python tests
 ├── docs/                  # Documentation
 └── external/             # External dependencies (PLR)

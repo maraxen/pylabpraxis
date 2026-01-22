@@ -16,7 +16,7 @@ Praxis can be run in two main ways. For a 5-minute start, we recommend **Browser
 2. Install & Start:
 
    ```bash
-   cd praxis/praxis/web-client
+   cd praxis/web-client
    npm install && npm run start:browser
    ```
 
@@ -30,9 +30,8 @@ Requires Python 3.11+, PostgreSQL, and Redis. Follow the [Production Installatio
 
 ```bash
 # Terminal 1: Backend
-make db-test
-PRAXIS_DB_DSN="postgresql+asyncpg://postgres:postgres@localhost:5432/praxis_test" \
-  uv run uvicorn praxis.backend.main:app --reload
+export PRAXIS_DB_DSN="postgresql+asyncpg://postgres:postgres@localhost:5432/praxis_test"
+uv run uvicorn praxis.backend.main:app --reload --port 8000
 
 # Terminal 2: Frontend
 cd praxis/web-client && npm start

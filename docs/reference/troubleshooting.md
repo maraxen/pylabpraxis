@@ -9,6 +9,7 @@ Solutions to common issues in Praxis.
 **Symptom:** `uv sync` fails with version conflicts.
 
 **Solution:**
+
 ```bash
 # Clear cache and reinstall
 rm -rf .venv
@@ -20,6 +21,7 @@ uv sync
 **Symptom:** npm install fails or Angular CLI errors.
 
 **Solution:**
+
 ```bash
 # Use Node 20+
 nvm install 20
@@ -35,6 +37,7 @@ npm install
 **Symptom:** `ModuleNotFoundError: No module named 'pylabrobot'`
 
 **Solution:**
+
 ```bash
 # Ensure using uv environment
 uv run python -c "import pylabrobot"
@@ -52,9 +55,10 @@ ls external/pylabrobot
 **Cause:** PostgreSQL not running or wrong port.
 
 **Solution:**
+
 ```bash
 # Start database
-docker compose up -d db
+docker compose up -d praxis-db
 
 # Check it's running
 docker ps | grep postgres
@@ -68,6 +72,7 @@ psql -h localhost -U postgres -d praxis -c "SELECT 1"
 **Symptom:** `alembic.util.exc.CommandError: Can't locate revision`
 
 **Solution:**
+
 ```bash
 # Reset alembic
 uv run alembic stamp head
@@ -75,7 +80,7 @@ uv run alembic upgrade head
 
 # If still failing, recreate database
 docker compose down -v
-docker compose up -d db
+docker compose up -d praxis-db
 uv run alembic upgrade head
 ```
 
@@ -92,6 +97,7 @@ uv run alembic upgrade head
 **Symptom:** `redis.exceptions.ConnectionError: Error connecting to redis://localhost:6379`
 
 **Solution:**
+
 ```bash
 # Start Redis
 docker compose up -d redis
@@ -105,6 +111,7 @@ redis-cli ping  # Should return PONG
 **Symptom:** Tasks queued but never executed.
 
 **Solution:**
+
 ```bash
 # Check worker is running
 uv run celery -A praxis.backend.celery status
@@ -124,6 +131,7 @@ uv run celery -A praxis.backend.celery worker --loglevel=debug
 **Symptom:** App loads but shows blank screen.
 
 **Solution:**
+
 1. Check browser console for errors (F12)
 2. Verify API is running: `curl http://localhost:8000/health`
 3. Check CORS settings if API errors
@@ -133,6 +141,7 @@ uv run celery -A praxis.backend.celery worker --loglevel=debug
 **Symptom:** Network errors in browser console.
 
 **Solution:**
+
 ```bash
 # Check backend is running
 curl http://localhost:8000/health
@@ -146,6 +155,7 @@ cat praxis/web-client/src/environments/environment.ts
 **Symptom:** Real-time updates not working, console shows WebSocket errors.
 
 **Solution:**
+
 1. Verify WebSocket URL in environment
 2. Check for proxy issues (nginx, load balancer)
 3. Ensure backend WebSocket route is enabled
@@ -155,6 +165,7 @@ cat praxis/web-client/src/environments/environment.ts
 **Symptom:** `npm run build` fails.
 
 **Solution:**
+
 ```bash
 # Clear caches
 rm -rf node_modules/.cache
@@ -176,6 +187,7 @@ npm run build
 **Cause:** Browser permissions, physical connection, or browser support.
 
 **Solutions:**
+
 1. Ensure using Chromium-based browser (Chrome, Edge)
 2. Check physical USB/serial connections
 3. Try different USB port or cable
@@ -186,6 +198,7 @@ npm run build
 **Symptom:** "Permission denied" when accessing device.
 
 **Solution:**
+
 ```bash
 # Linux: Add user to dialout group
 sudo usermod -a -G dialout $USER
@@ -199,6 +212,7 @@ sudo usermod -a -G dialout $USER
 **Symptom:** Device appears but shows "Unknown" type.
 
 **Solution:**
+
 1. Check if device is supported by PyLabRobot
 2. Manually select the correct FQN when registering
 3. Check device USB VID/PID against known devices
@@ -210,6 +224,7 @@ sudo usermod -a -G dialout $USER
 **Symptom:** Protocol exists but execution fails with "not found."
 
 **Solution:**
+
 ```bash
 # Sync protocols
 curl -X POST http://localhost:8000/api/v1/discovery/sync-protocols
@@ -223,6 +238,7 @@ curl http://localhost:8000/api/v1/protocols | jq
 **Symptom:** "AssetUnavailableError: Machine X is in use"
 
 **Solutions:**
+
 1. Check if another run is using the asset
 2. Verify asset status: `curl http://localhost:8000/api/v1/machines/{id}`
 3. Cancel stuck runs if any
@@ -233,11 +249,13 @@ curl http://localhost:8000/api/v1/protocols | jq
 **Symptom:** Protocol hangs, eventually times out.
 
 **Causes:**
+
 - Hardware not responding
 - Network issues
 - Deadlock in protocol code
 
 **Solutions:**
+
 1. Check hardware connections
 2. Enable simulation mode to test logic
 3. Add logging to identify stuck point
@@ -250,10 +268,13 @@ curl http://localhost:8000/api/v1/protocols | jq
 **Symptom:** API calls take several seconds.
 
 **Solutions:**
+
 1. Check database query performance:
+
    ```sql
    EXPLAIN ANALYZE SELECT * FROM protocols;
    ```
+
 2. Add missing indexes
 3. Increase database connection pool size
 4. Enable query caching
@@ -263,6 +284,7 @@ curl http://localhost:8000/api/v1/protocols | jq
 **Symptom:** Backend using excessive memory.
 
 **Solutions:**
+
 1. Check for memory leaks in long-running processes
 2. Reduce Celery worker concurrency
 3. Enable garbage collection logging
@@ -273,6 +295,7 @@ curl http://localhost:8000/api/v1/protocols | jq
 **Symptom:** UI is sluggish, especially with large lists.
 
 **Solutions:**
+
 1. Enable virtual scrolling for long lists
 2. Use `trackBy` in `*ngFor` loops
 3. Check for unnecessary re-renders

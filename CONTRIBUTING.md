@@ -37,26 +37,26 @@ See `.agent/README.md` for full documentation.
 Praxis uses `pytest` to run unit tests. Please make sure tests pass when you submit a PR. You can run tests as follows.
 
 ```bash
-make test # run test on the latest version
+uv run pytest # run test on the latest version
 ```
 
 `pylint` is used to enforce code style. The rc file is `/.pylintrc`. As mentioned above, it is very helpful to have an editor do style checking as you're writing code.
 
 ```bash
-make lint
+uv run ruff check
 ```
 
 `mypy` is used to enforce type checking.
 
 ```bash
-make typecheck
+uv run mypy
 ```
 
 ## Writing documentation
 
 It is important that you write documentation for your code. As a rule of thumb, all functions and classes, whether public or private, are required to have a docstring. Praxis uses [Google Style Python Docstrings](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html). In addition, Praxis uses [type hints](https://docs.python.org/3/library/typing.html) to document the types of variables.
 
-To build the documentation, run `make docs` in the root directory. The documentation will be built in `docs/_build/html`. Run `open docs/_build/html/index.html` to open the documentation in your browser.
+To build the documentation, run `uv run mkdocs serve` in the root directory. The documentation will be built in `docs/_build/html`. Run `open docs/_build/html/index.html` to open the documentation in your browser.
 
 ## Data Models
 
@@ -67,11 +67,13 @@ Praxis uses **SQLModel** for unified data modeling, combining ORM and Pydantic f
 **Location:** `praxis/backend/models/domain/`
 
 SQLModel provides:
+
 - **ORM Models**: Database tables with SQLAlchemy relationships
 - **API Schemas**: Pydantic validation (Create/Read/Update variants)
 - **Polymorphic Inheritance**: Handled via SQLAlchemy's single-table inheritance
 
 **Example Structure:**
+
 ```python
 # Domain model (both ORM + Pydantic)
 class Machine(Asset, table=True):
@@ -93,6 +95,7 @@ class MachineRead(SQLModel):
 ### Legacy Aliases (Temporary)
 
 The `praxis/backend/models/orm/` directory contains **backward-compatibility aliases** only:
+
 ```python
 # orm/__init__.py provides aliases for gradual migration
 from praxis.backend.models.domain.machine import Machine as MachineOrm
@@ -116,6 +119,7 @@ uv run python scripts/fix_orm_references.py --path tests
 ```
 
 The script automatically:
+
 - Replaces `XOrm` → `X` (e.g., `MachineOrm` → `Machine`)
 - Updates imports: `from praxis.backend.models.orm` → `from praxis.backend.models.domain`
 
