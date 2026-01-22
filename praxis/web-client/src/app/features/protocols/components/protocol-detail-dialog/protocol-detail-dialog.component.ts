@@ -154,18 +154,18 @@ import { ProtocolDefinition } from '../../models/protocol.models';
       flex-direction: column;
       max-height: 90vh;
       overflow: hidden;
-      background: #1a1b1e;
+      background: var(--mdc-dialog-container-color);
       backdrop-filter: blur(12px);
       color: var(--theme-text-primary);
       border-radius: 28px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--theme-border);
+      box-shadow: var(--glass-shadow);
     }
 
     .dialog-header {
       padding: 2rem 2rem 1.5rem;
       border-bottom: 1px solid var(--theme-border);
-      background: rgba(255, 255, 255, 0.03);
+      background: var(--theme-surface);
       margin: 0 !important;
     }
 
@@ -291,8 +291,8 @@ import { ProtocolDefinition } from '../../models/protocol.models';
       margin-bottom: 1rem;
     }
 
-    .simulation-status.passed { background: rgba(34, 197, 94, 0.1); color: rgb(34, 197, 94); }
-    .simulation-status.failed { background: rgba(239, 68, 68, 0.1); color: rgb(239, 68, 68); }
+    .simulation-status.passed { background: var(--mat-sys-success-container); color: var(--mat-sys-success); }
+    .simulation-status.failed { background: var(--mat-sys-error-container); color: var(--mat-sys-error); }
 
     .violations-list {
       display: flex;

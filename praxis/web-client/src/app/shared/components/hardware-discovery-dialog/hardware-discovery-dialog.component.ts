@@ -630,6 +630,11 @@ export class HardwareDiscoveryDialogComponent {
                 newMap.set(device.id, result.accession_id);
                 return newMap;
             });
+
+            // Dispatch global event so machine lists can refresh
+            window.dispatchEvent(new CustomEvent('machine-registered', {
+                detail: { accession_id: result.accession_id, name: result.name }
+            }));
         } else {
             this.snackBar.open('Failed to register device', 'Dismiss', { duration: 5000 });
         }

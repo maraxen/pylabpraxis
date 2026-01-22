@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, OnInit, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, inject, signal, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { FieldType, FieldTypeConfig, FormlyModule } from '@ngx-formly/core';
@@ -12,7 +12,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { AssetService } from '../../features/assets/services/asset.service';
 import { Observable, forkJoin, of } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, startWith, filter, take } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap, startWith } from 'rxjs/operators';
 import { AssetBase, Resource, ResourceDefinition } from '../../features/assets/models/asset.models';
 
 interface AssetOption {
@@ -71,6 +71,7 @@ interface AssetOption {
           <div class="manual-select">
             <mat-form-field appearance="outline" class="asset-input">
               <input
+                #assetInput
                 type="text"
                 matInput
                 [formControl]="formControl"
@@ -78,8 +79,13 @@ interface AssetOption {
                 [matAutocomplete]="auto"
                 [placeholder]="props.placeholder || 'Search...'"
               />
+              @if (formControl.value) {
+                <button mat-icon-button matSuffix (click)="clearAsset($event)" type="button">
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
             </mat-form-field>
-            <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn">
+            <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn" panelClass="praxis-select-panel">
               @for (option of filteredOptions$ | async; track option.asset.accession_id) {
                 <mat-option [value]="option.asset" class="asset-option">
                   <div class="asset-content">
@@ -233,6 +239,8 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
   autoAsset = signal<AssetBase | null>(null);
   autoAssetTags = signal<string[]>([]);
   canUseAuto = signal(true);
+
+  @ViewChild('assetInput') assetInput!: ElementRef<HTMLInputElement>;
 
   ngOnInit() {
     const assetType = this.props['assetType'] || 'machine';
@@ -429,4 +437,10 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
     if ('mode' in value) return '';
     return (value as AssetBase).name || '';
   };
+
+  clearAsset(event: MouseEvent) {
+    event.stopPropagation();
+    this.formControl.setValue(null);
+    this.assetInput.nativeElement.focus();
+  }
 }

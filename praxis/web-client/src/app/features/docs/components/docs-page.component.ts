@@ -5,10 +5,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { AppStore } from '../../../core/store/app.store';
 import { DiagramOverlayComponent } from '../../../shared/components/diagram-overlay/diagram-overlay.component';
 
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { MarkdownModule } from 'ngx-markdown';
 import { catchError, of } from 'rxjs';
+import { SKIP_ERROR_HANDLING } from '../../../core/http/http-context.tokens';
 import { SystemTopologyComponent } from './system-topology/system-topology.component';
 import mermaid from 'mermaid';
 
@@ -515,7 +516,10 @@ export class DocsPageComponent {
     // Default fallback
     const defaultPath = `assets/docs/${section}/${page}.md`;
 
-    this.http.get(modePath, { responseType: 'text' })
+    this.http.get(modePath, {
+      responseType: 'text',
+      context: new HttpContext().set(SKIP_ERROR_HANDLING, true)
+    })
       .pipe(
         catchError(() => {
           // If mode specific not found, try default

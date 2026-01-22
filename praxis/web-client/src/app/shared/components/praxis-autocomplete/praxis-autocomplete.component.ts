@@ -6,8 +6,12 @@ import {
   signal,
   computed,
   effect,
+  untracked,
+  ChangeDetectorRef,
+  inject,
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -36,6 +40,7 @@ export interface SelectOption {
     MatInputModule,
     MatFormFieldModule,
     MatIconModule,
+    MatButtonModule,
   ],
   providers: [
     {
@@ -60,7 +65,7 @@ export interface SelectOption {
           <mat-icon>close</mat-icon>
         </button>
       }
-      <mat-autocomplete #auto="matAutocomplete" (optionSelected)="onOptionSelected($event)" panelClass="praxis-select-panel">
+      <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn" (optionSelected)="onOptionSelected($event)" panelClass="praxis-select-panel">
         @for (option of filteredOptions(); track option.label) {
           <mat-option [value]="option.value" [disabled]="option.disabled">
             <div class="praxis-option-content">
@@ -82,12 +87,42 @@ export interface SelectOption {
 })
 export class PraxisAutocompleteComponent implements ControlValueAccessor {
   @Input() label = '';
-  @Input() options: SelectOption[] = [];
+  @Input()
+  set options(val: SelectOption[]) {
+    this._options.set(val || []);
+  }
+  get options(): SelectOption[] {
+    return this._options();
+  }
   @Input() disabled = false;
   @Input() placeholder = 'Search...';
 
+  private cdr = inject(ChangeDetectorRef);
+  private _options = signal<SelectOption[]>([]);
   protected _currentValue = signal<unknown>(null);
   query = signal('');
+
+  constructor() {
+    // Sync query string whenever value or options change
+    effect(() => {
+      // We only want this effect to trigger when 'value' or 'options' change
+      const val = this._currentValue();
+      const opts = this._options();
+
+      untracked(() => {
+        if (val != null) {
+          const match = opts.find(o => this.compareValues(o.value, val));
+          if (match && this.query() !== match.label) {
+            this.query.set(match.label);
+            this.cdr.markForCheck();
+          }
+        } else if (this.query() !== '') {
+          this.query.set('');
+          this.cdr.markForCheck();
+        }
+      });
+    });
+  }
 
   // ControlValueAccessor callbacks
   private onChange: (value: unknown) => void = () => { };
@@ -96,11 +131,18 @@ export class PraxisAutocompleteComponent implements ControlValueAccessor {
   /** Filtered options based on query */
   filteredOptions = computed(() => {
     const q = this.query().toLowerCase();
-    if (!q) return this.options;
-    return this.options.filter((opt) =>
+    const opts = this._options();
+    if (!q) return opts;
+    return opts.filter((opt: SelectOption) =>
       opt.label.toLowerCase().includes(q)
     );
   });
+
+  displayFn = (val: any): string => {
+    if (val === null || val === undefined) return '';
+    const match = this.options.find(o => this.compareValues(o.value, val));
+    return match ? match.label : (typeof val === 'string' ? val : '');
+  };
 
   onQueryChange(val: string): void {
     this.query.set(val);
@@ -122,6 +164,7 @@ export class PraxisAutocompleteComponent implements ControlValueAccessor {
 
     this.onChange(val);
     this.onTouched();
+    this.cdr.markForCheck();
   }
 
   clearQuery(event: Event): void {
@@ -134,6 +177,8 @@ export class PraxisAutocompleteComponent implements ControlValueAccessor {
   // ControlValueAccessor implementation
   writeValue(value: unknown): void {
     this._currentValue.set(value);
+
+    // Attempt immediate sync - effect will also handle it when options arrive
     if (value != null) {
       const selectedOption = this.options.find((opt) => this.compareValues(opt.value, value));
       if (selectedOption) {
@@ -142,6 +187,7 @@ export class PraxisAutocompleteComponent implements ControlValueAccessor {
     } else {
       this.query.set('');
     }
+    this.cdr.markForCheck();
   }
 
   registerOnChange(fn: (value: unknown) => void): void {
@@ -156,10 +202,19 @@ export class PraxisAutocompleteComponent implements ControlValueAccessor {
     this.disabled = isDisabled;
   }
 
-  compareValues(v1: any, v2: any): boolean {
+  compareValues(v1: unknown, v2: unknown): boolean {
     if (v1 === v2) return true;
     if (typeof v1 === 'object' && v1 !== null && typeof v2 === 'object' && v2 !== null) {
-      return (v1.accession_id === v2.accession_id) || (v1.id === v2.id);
+      const a = v1 as any;
+      const b = v2 as any;
+      // Check accession_id
+      if (a.accession_id && b.accession_id) {
+        return a.accession_id === b.accession_id;
+      }
+      // Check id
+      if (a.id && b.id) {
+        return a.id === b.id;
+      }
     }
     return false;
   }

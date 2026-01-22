@@ -697,11 +697,11 @@ export class DeckViewComponent {
     if (parent) {
       const parentState = this.getAllState(parent);
       if (parentState?.liquid_mask) {
-         const idx = index >= 0 ? index : parent.children.indexOf(res);
-         // Optimization: We could cache decoded masks if needed
-         const numChildren = parent.children.length;
-         const liquids = this.decodeBitmask(parentState.liquid_mask, numChildren);
-         return idx >= 0 && idx < liquids.length ? liquids[idx] : false;
+        const idx = index >= 0 ? index : parent.children.indexOf(res);
+        // Optimization: We could cache decoded masks if needed
+        const numChildren = parent.children.length;
+        const liquids = this.decodeBitmask(parentState.liquid_mask, numChildren);
+        return idx >= 0 && idx < liquids.length ? liquids[idx] : false;
       }
     }
     return false;
@@ -712,7 +712,7 @@ export class DeckViewComponent {
    */
   getLiquidStyle(res: PlrResource, parent: PlrResource | null = null, index: number = -1): string {
     const volume = this.getVolume(res, parent, index);
-    
+
     // If no volume but hasLiquid is true (via mask), show generic fill
     if (volume <= 0 && this.hasLiquid(res, parent, index)) {
       const liquidColor = res.color || 'rgba(59, 130, 246, 0.8)';
@@ -774,7 +774,7 @@ export class DeckViewComponent {
   }
 
   isGhost(res: PlrResource): boolean {
-    return res.name.startsWith('ghost_');
+    return !!res.is_ghost || res.name.startsWith('ghost_');
   }
 
   /**

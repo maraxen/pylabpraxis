@@ -53,7 +53,7 @@ type Theme = 'light' | 'dark' | 'system';
              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                <div>
                  <h3 class="font-medium">Theme</h3>
-                 <p class="text-sm text-gray-500 dark:text-gray-400">Select your preferred color theme</p>
+                 <p class="text-sm text-secondary">Select your preferred color theme</p>
                </div>
 
                <mat-button-toggle-group hideSingleSelectionIndicator [value]="store.theme()" (change)="setTheme($event.value)">
@@ -82,7 +82,7 @@ type Theme = 'light' | 'dark' | 'system';
             <div class="flex items-center justify-between">
               <div>
                 <h3 class="font-medium">Maintenance Tracking</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Track asset maintenance schedules and alerts</p>
+                <p class="text-sm text-secondary">Track asset maintenance schedules and alerts</p>
               </div>
               <mat-slide-toggle 
                 [checked]="store.maintenanceEnabled()" 
@@ -96,7 +96,7 @@ type Theme = 'light' | 'dark' | 'system';
             <div class="flex items-center justify-between">
               <div>
                 <h3 class="font-medium">Infinite Consumables</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Auto-replenish tips and plates during simulation</p>
+                <p class="text-sm text-secondary">Auto-replenish tips and plates during simulation</p>
               </div>
               <mat-slide-toggle 
                 [checked]="store.infiniteConsumables()" 
@@ -118,7 +118,7 @@ type Theme = 'light' | 'dark' | 'system';
              <div class="flex items-center justify-between">
                <div>
                  <h3 class="font-medium">Guided Tutorial</h3>
-                 <p class="text-sm text-gray-500 dark:text-gray-400">
+                 <p class="text-sm text-secondary">
                    @if (hasTutorialProgress()) {
                      Resume or restart the interactive tour
                    } @else if (onboarding.hasCompletedTutorial()) {
@@ -233,7 +233,7 @@ type Theme = 'light' | 'dark' | 'system';
           <mat-card-content class="pt-4">
              <div class="mb-6">
                 <h3 class="font-medium">Export/Import State</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                <p class="text-sm text-secondary mb-4">
                   Export your browser data for backup or import a previous backup.
                 </p>
                 <div class="flex gap-4">
@@ -252,7 +252,7 @@ type Theme = 'light' | 'dark' | 'system';
              <div class="flex items-center justify-between">
                <div>
                  <h3 class="font-medium">Reset Asset Inventory</h3>
-                 <p class="text-sm text-gray-500 dark:text-gray-400">
+                 <p class="text-sm text-secondary">
                    Reset all resources and machines to default simulated state. <br>
                    <span class="text-warn text-xs font-bold">WARNING: This will delete all user-created items.</span>
                  </p>
@@ -272,11 +272,11 @@ type Theme = 'light' | 'dark' | 'system';
     }
 
     .glass-panel {
-      background: rgba(30, 30, 45, 0.7) !important; /* Darker, more opaque */
+      background: var(--glass-bg) !important; /* Darker, more opaque */
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      border: 1px solid var(--theme-border);
+      box-shadow: var(--glass-shadow);
       border-radius: 16px;
     }
 

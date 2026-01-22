@@ -72,7 +72,7 @@ interface RecentRun {
 
       <!-- Stats Overview -->
       <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="praxis-card premium group cursor-pointer" routerLink="/app/run" matTooltip="View active protocol runs">
+        <div class="praxis-card premium group cursor-pointer" routerLink="/app/monitor" matTooltip="View active protocol runs">
           <!-- Glow effect via cards.scss aurora hint -->
           <div class="card-header pb-0">
             <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-primary/20 to-secondary/20 shrink-0">
@@ -155,7 +155,7 @@ interface RecentRun {
             @if (hasRunningExperiments()) {
               @for (run of currentRuns(); track run.id) {
                 <div class="praxis-card-min group cursor-pointer mb-3 hover:bg-[var(--mat-sys-surface-variant)] transition-all" 
-                     routerLink="/app/run"
+                     [routerLink]="['/app/monitor', run.id]"
                      matTooltip="View run details">
                   <div class="flex justify-between items-start mb-3">
                     <div class="min-w-0">

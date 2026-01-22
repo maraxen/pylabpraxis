@@ -14,7 +14,7 @@ import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-di
 import { AssetDashboardComponent } from './components/asset-dashboard/asset-dashboard.component';
 import { SpatialViewComponent } from './components/spatial-view/spatial-view.component';
 import { AssetService } from './services/asset.service';
-import { switchMap, filter, finalize } from 'rxjs/operators';
+import { finalize } from 'rxjs/operators';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ModeService } from '@core/services/mode.service';
@@ -354,7 +354,10 @@ export class AssetsComponent implements OnInit, OnDestroy {
       minWidth: '600px',
       maxWidth: '1000px',
       width: '80vw',
-      data: type ? { initialAssetType: type } : {}
+      height: 'auto',
+      minHeight: '400px',
+      maxHeight: '90vh',
+      data: type ? { preselectedType: type.toUpperCase() } : {}
     });
 
     // AssetWizard handles the creation itself, so we just need to refresh the lists
@@ -367,9 +370,15 @@ export class AssetsComponent implements OnInit, OnDestroy {
   }
 
   openHardwareDiscovery() {
-    this.dialog.open(HardwareDiscoveryDialogComponent, {
+    const dialogRef = this.dialog.open(HardwareDiscoveryDialogComponent, {
       width: '1000px',
       maxHeight: '90vh'
+    });
+
+    // Refresh machine list after hardware discovery dialog closes
+    // (machines may have been registered during discovery)
+    dialogRef.afterClosed().subscribe(() => {
+      this.machineList?.loadMachines();
     });
   }
 }

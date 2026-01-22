@@ -86,13 +86,19 @@ export class AssetService {
       console.debug('[ASSET-DEBUG] createMachine: Browser mode, creating via SqliteService');
       return this.sqliteService.machines.pipe(
         switchMap(async repo => {
+          const isSimulation = machine.is_simulation_override || !!machine.simulation_backend_name;
+          const randomSuffix = Math.random().toString(36).substring(2, 9);
+          const defaultSerial = isSimulation
+            ? `SIM-${Date.now()}-${randomSuffix}`
+            : `SN-${randomSuffix.toUpperCase()}`;
+
           const defaults = {
             status: MachineStatus.IDLE,
             location: 'Unknown',
             maintenance_enabled: false,
             maintenance_schedule_json: { intervals: [], enabled: false },
             is_simulated: false,
-            serial_number: 'N/A',
+            serial_number: defaultSerial,
             firmware_version: '0.0.0'
           };
 
@@ -278,12 +284,13 @@ export class AssetService {
     );
   }
 
-  searchMachineDefinitions(query: string): Observable<MachineDefinition[]> {
+  searchMachineDefinitions(query: string, category?: string): Observable<MachineDefinition[]> {
     return this.getMachineDefinitions().pipe(
       map(defs => defs.filter(d =>
-        d.name.toLowerCase().includes(query.toLowerCase()) ||
-        d.description?.toLowerCase().includes(query.toLowerCase()) ||
-        d.manufacturer?.toLowerCase().includes(query.toLowerCase())
+        (d.name.toLowerCase().includes(query.toLowerCase()) ||
+          d.description?.toLowerCase().includes(query.toLowerCase()) ||
+          d.manufacturer?.toLowerCase().includes(query.toLowerCase())) &&
+        (!category || d.machine_category === category)
       ))
     );
   }

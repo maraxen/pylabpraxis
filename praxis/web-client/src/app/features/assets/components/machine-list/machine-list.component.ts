@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal, ViewChild, computed, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, ViewChild, computed, OnInit, OnDestroy } from '@angular/core';
 
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
@@ -288,7 +288,7 @@ import { AppStore } from '../../../../core/store/app.store';
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MachineListComponent implements OnInit {
+export class MachineListComponent implements OnInit, OnDestroy {
   private assetService = inject(AssetService);
   private dialog = inject(MatDialog);
   public store = inject(AppStore);
@@ -393,9 +393,21 @@ export class MachineListComponent implements OnInit {
   @ViewChild(MatMenuTrigger) contextMenuTrigger!: MatMenuTrigger;
   contextMenuPosition = { x: '0px', y: '0px' };
 
+  // Listener for global machine-registered event (from hardware discovery)
+  private machineRegisteredListener = () => {
+    this.loadMachines();
+  };
+
   ngOnInit() {
     this.loadMachines();
     this.loadMachineDefinitions();
+
+    // Listen for machines registered via hardware discovery
+    window.addEventListener('machine-registered', this.machineRegisteredListener);
+  }
+
+  ngOnDestroy() {
+    window.removeEventListener('machine-registered', this.machineRegisteredListener);
   }
 
   loadMachines(): void {
