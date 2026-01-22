@@ -157,6 +157,19 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --status-warning: var(--mat-sys-warning);
   --status-error: var(--mat-sys-error);
 
+  // Status Colors (Semantic)
+  --theme-status-success: var(--mat-sys-success);
+  --theme-status-success-muted: var(--mat-sys-success-container);
+  --theme-status-success-border: rgba(74, 222, 128, 0.3);
+
+  --theme-status-warning: var(--mat-sys-warning);
+  --theme-status-warning-muted: var(--mat-sys-warning-container);
+  --theme-status-warning-border: rgba(250, 204, 21, 0.3);
+
+  --theme-status-info: var(--status-info);
+  --theme-status-info-muted: var(--mat-sys-tertiary-container);
+  --theme-status-info-border: rgba(115, 169, 194, 0.3);
+
   // Default to dark theme - Refined Gradient
   --theme-bg-gradient: linear-gradient(135deg, #12121e 0%, #1a1a2e 50%, #0f0f1a 100%);
   --theme-surface: rgba(255, 255, 255, 0.03); // More subtle
@@ -220,6 +233,19 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --status-success: var(--mat-sys-success);
   --status-warning: var(--mat-sys-warning);
   --status-error: var(--mat-sys-error);
+
+  // Status Color Overrides for Light Theme
+  --theme-status-success: #16a34a;
+  --theme-status-success-muted: rgba(22, 163, 74, 0.1);
+  --theme-status-success-border: rgba(22, 163, 74, 0.2);
+
+  --theme-status-warning: #ca8a04;
+  --theme-status-warning-muted: rgba(202, 138, 4, 0.1);
+  --theme-status-warning-border: rgba(202, 138, 4, 0.2);
+
+  --theme-status-info: #0284c7;
+  --theme-status-info-muted: rgba(2, 132, 199, 0.1);
+  --theme-status-info-border: rgba(2, 132, 199, 0.2);
 
   --theme-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f1f5f9 100%);
   --theme-surface: rgba(255, 255, 255, 0.7);
@@ -559,21 +585,24 @@ body {
 /* Snackbar Overrides for Visibility */
 .mat-mdc-snack-bar-container {
   /* Ensure it sits above bottom bars */
-  margin-bottom: 48px !important; 
+  margin-bottom: 48px !important;
   z-index: 2000 !important;
-  
+
   .mdc-snackbar__surface {
-    background-color: #323232 !important; /* Solid dark background */
-    box-shadow: 0 3px 5px -1px rgba(0,0,0,.2), 0 6px 10px 0 rgba(0,0,0,.14), 0 1px 18px 0 rgba(0,0,0,.12);
+    background-color: #323232 !important;
+    /* Solid dark background */
+    box-shadow: 0 3px 5px -1px rgba(0, 0, 0, .2), 0 6px 10px 0 rgba(0, 0, 0, .14), 0 1px 18px 0 rgba(0, 0, 0, .12);
   }
 
   .mdc-snackbar__label {
-    color: rgba(255, 255, 255, 0.95) !important; /* High contrast text */
+    color: rgba(255, 255, 255, 0.95) !important;
+    /* High contrast text */
     font-weight: 500;
   }
 
   .mat-mdc-snack-bar-action {
-    color: #ff4081 !important; /* High contrast pink for action */
+    color: #ff4081 !important;
+    /* High contrast pink for action */
     font-weight: 700;
   }
 }

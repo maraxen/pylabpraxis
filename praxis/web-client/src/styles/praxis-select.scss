@@ -177,6 +177,12 @@ app-praxis-multiselect {
     border-radius: 8px !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
     padding: 4px 0;
+    // Fix alignment: align with container (parent) not the input trigger
+    // The input has 12px padding on each side, so we pull left by 12px and increase width by 24px
+    margin-left: -12px;
+    width: calc(100% + 24px);
+    max-width: calc(100% + 24px);
+    box-sizing: border-box;
 
     // Option Styling
     .mat-mdc-option {
