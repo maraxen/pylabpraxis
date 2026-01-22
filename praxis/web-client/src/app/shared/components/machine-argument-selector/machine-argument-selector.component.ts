@@ -614,7 +614,7 @@ export class MachineArgumentSelectorComponent implements OnInit, OnChanges {
 
     // 2. Exclude non-machine categories to avoid false positives in fallback check
     const lowerCat = catStr.toLowerCase();
-    if (lowerCat.includes('plate') || lowerCat.includes('tip') || lowerCat.includes('trough') ||
+    if ((lowerCat.includes('plate') && !lowerCat.includes('reader')) || lowerCat.includes('tip') || lowerCat.includes('trough') ||
       lowerCat.includes('reservoir') || lowerCat.includes('carrier') || lowerCat.includes('tube')) {
       return false;
     }
