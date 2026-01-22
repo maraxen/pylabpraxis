@@ -278,27 +278,36 @@ async function initializePyodide(id?: string) {
     console.error('Failed to install PyLabRobot/Jedi:', err);
   }
 
-  // Load WebSerial Shim (must be before bridge if bridge depends on it, but here bridge imports it optionally)
-  // We want it available as a module 'web_serial_shim'
-  try {
-    const shimResponse = await fetch('assets/shims/web_serial_shim.py');
-    if (shimResponse.ok) {
-      const shimCode = await shimResponse.text();
-      pyodide.FS.writeFile('web_serial_shim.py', shimCode);
-      console.log('WebSerial Shim loaded successfully');
+  // Load WebSerial, WebUSB, and WebFTDI Shims (must be before bridge if bridge depends on them)
+  // CRITICAL: WebFTDI is required for CLARIOstarBackend and similar FTDI-based devices
+  const shims = [
+    { file: 'web_serial_shim.py', name: 'WebSerial' },
+    { file: 'web_usb_shim.py', name: 'WebUSB' },
+    { file: 'web_ftdi_shim.py', name: 'WebFTDI' },
+    { file: 'web_hid_shim.py', name: 'WebHID' }
+  ];
 
-      // Verify file exists
-      try {
-        const files = pyodide.FS.readdir('.');
-        console.log('Pyodide FS root files:', files.filter(f => f.endsWith('.py')));
-      } catch (e) {
-        console.warn('Could not list FS:', e);
+  for (const shim of shims) {
+    try {
+      const shimResponse = await fetch(`assets/shims/${shim.file}`);
+      if (shimResponse.ok) {
+        const shimCode = await shimResponse.text();
+        pyodide.FS.writeFile(shim.file, shimCode);
+        console.log(`${shim.name} Shim loaded successfully`);
+      } else {
+        console.error(`Failed to fetch ${shim.name} Shim:`, shimResponse.statusText);
       }
-    } else {
-      console.error('Failed to fetch WebSerial Shim:', shimResponse.statusText);
+    } catch (err) {
+      console.error(`Error loading ${shim.name} Shim:`, err);
     }
-  } catch (err) {
-    console.error('Error loading WebSerial Shim:', err);
+  }
+
+  // Verify files exist
+  try {
+    const files = pyodide.FS.readdir('.');
+    console.log('Pyodide FS root files:', files.filter((f: string) => f.endsWith('.py')));
+  } catch (e) {
+    console.warn('Could not list FS:', e);
   }
 
   // Load WebBridge Python code (for RAW_IO and signature help)
@@ -360,6 +369,24 @@ console
 import builtins
 print(f"SCOPE CHECK: WebSerial in builtins: {hasattr(builtins, 'WebSerial')}")
 print(f"SCOPE CHECK: WebUSB in builtins: {hasattr(builtins, 'WebUSB')}")
+print(f"SCOPE CHECK: WebFTDI in builtins: {hasattr(builtins, 'WebFTDI')}")
+print(f"SCOPE CHECK: WebHID in builtins: {hasattr(builtins, 'WebHID')}")
+
+# Verify FTDI patching (critical for CLARIOstarBackend)
+try:
+    import pylabrobot.io.ftdi as _ftdi
+    print(f"SCOPE CHECK: pylabrobot.io.ftdi.FTDI = {_ftdi.FTDI}")
+    print(f"SCOPE CHECK: FTDI is WebFTDI? {'WebFTDI' in str(_ftdi.FTDI)}")
+except Exception as e:
+    print(f"SCOPE CHECK: FTDI check failed: {e}")
+
+# Verify HID patching (critical for Inheco)
+try:
+    import pylabrobot.io.hid as _hid
+    print(f"SCOPE CHECK: pylabrobot.io.hid.HID = {_hid.HID}")
+    print(f"SCOPE CHECK: HID is WebHID? {'WebHID' in str(_hid.HID)}")
+except Exception as e:
+    print(f"SCOPE CHECK: HID check failed: {e}")
     `.trim();
     pyConsole.push(checkCode);
   } catch (e) {
