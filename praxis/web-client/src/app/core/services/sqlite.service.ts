@@ -57,6 +57,7 @@ import {
 
 import { transformPlrState } from '../utils/state-transform';
 import { applyDiff } from '../utils/state-diff';
+import { assetUrl, createWasmLocator } from '../utils/asset-url';
 import type { StateHistory, OperationStateSnapshot, StateSnapshot, InferredRequirement, FailureMode, SimulationResult } from '../models/simulation.models';
 
 
@@ -209,7 +210,7 @@ export class SqliteService {
     private async initDb(): Promise<Database> {
         try {
             const SQL = await initSqlJs({
-                locateFile: file => `/assets/wasm/${file}`
+                locateFile: createWasmLocator()
             });
 
             // Try loading prebuilt database first
@@ -296,7 +297,7 @@ export class SqliteService {
     private async tryLoadPrebuiltDb(SQL: SqlJsStatic): Promise<Database | null> {
         try {
             // Try enabling prebuilt database loading
-            const response = await fetch('/assets/db/praxis.db');
+            const response = await fetch(assetUrl('assets/db/praxis.db'));
             if (!response.ok) {
                 console.log('[SqliteService] Prebuilt database (praxis.db) not found, falling back to schema.sql');
                 return null;
@@ -337,7 +338,7 @@ export class SqliteService {
      */
     private async tryLoadSchemaDb(SQL: SqlJsStatic): Promise<Database | null> {
         try {
-            const response = await fetch('/assets/db/schema.sql');
+            const response = await fetch(assetUrl('assets/db/schema.sql'));
             if (!response.ok) {
                 console.log('[SqliteService] schema.sql not available');
                 return null;
@@ -1207,7 +1208,7 @@ export class SqliteService {
         const data = new Uint8Array(buffer);
 
         const SQL = await initSqlJs({
-            locateFile: file => `/assets/wasm/${file}`
+            locateFile: createWasmLocator()
         });
 
         // Close current database

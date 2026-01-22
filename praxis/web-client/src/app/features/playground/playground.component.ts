@@ -847,7 +847,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
       '# PyLabRobot Interactive Notebook',
       '# Installing pylabrobot from local wheel...',
       'import micropip',
-      "await micropip.install('/assets/wheels/pylabrobot-0.1.6-py3-none-any.whl')",
+      "await micropip.install('assets/wheels/pylabrobot-0.1.6-py3-none-any.whl')",
       '',
       '# Ensure WebSerial, WebUSB, and WebFTDI are in builtins for all cells',
       'import builtins',
@@ -985,10 +985,11 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
     for (const shim of shims) {
       // Generate Python code to fetch and exec
+      // Use relative path (no leading slash) for GitHub Pages compatibility
       shimInjections += `
 print("PylibPraxis: Loading ${shim}...")
 try:
-    _shim_code = await (await pyodide.http.pyfetch('/assets/shims/${shim}')).string()
+    _shim_code = await (await pyodide.http.pyfetch('assets/shims/${shim}')).string()
     exec(_shim_code, globals())
     print("PylibPraxis: Loaded ${shim}")
 except Exception as e:
@@ -997,10 +998,11 @@ except Exception as e:
     }
 
     // Load web_bridge.py as a module
+    // Use relative path (no leading slash) for GitHub Pages compatibility
     shimInjections += `
 print("PylibPraxis: Loading web_bridge.py...")
 try:
-    _bridge_code = await (await pyodide.http.pyfetch('/assets/python/web_bridge.py')).string()
+    _bridge_code = await (await pyodide.http.pyfetch('assets/python/web_bridge.py')).string()
     with open('web_bridge.py', 'w') as f:
         f.write(_bridge_code)
     print("PylibPraxis: Loaded web_bridge.py")
@@ -1015,7 +1017,7 @@ if not os.path.exists('praxis'):
 for _p_file in ['__init__.py', 'interactive.py']:
     try:
         print(f"PylibPraxis: Loading praxis/{_p_file}...")
-        _p_code = await (await pyodide.http.pyfetch(f'/assets/python/praxis/{_p_file}')).string()
+        _p_code = await (await pyodide.http.pyfetch(f'assets/python/praxis/{_p_file}')).string()
         with open(f'praxis/{_p_file}', 'w') as f:
             f.write(_p_code)
         print(f"PylibPraxis: Loaded praxis/{_p_file}")

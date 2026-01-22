@@ -55,7 +55,8 @@ export class ExecutionService {
   fetchProtocolBlob(id: string): Observable<ArrayBuffer> {
     if (this.modeService.isBrowserMode()) {
       // Fetch from static assets in browser/offline mode
-      return this.http.get(`/assets/protocols/${id}.pkl`, {
+      // Use relative path (no leading slash) to respect base href on GitHub Pages
+      return this.http.get(`assets/protocols/${id}.pkl`, {
         responseType: 'arraybuffer'
       });
     }

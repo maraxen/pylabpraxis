@@ -257,8 +257,9 @@ await run_wrapper()
 
 async function initializePyodide(id?: string) {
   // Load Pyodide with core files from local assets, packages from CDN
+  // Use relative path (no leading slash) to respect base href on GitHub Pages
   pyodide = await loadPyodide({
-    indexURL: '/assets/pyodide/',
+    indexURL: 'assets/pyodide/',
     lockFileURL: 'https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide-lock.json'
   });
 

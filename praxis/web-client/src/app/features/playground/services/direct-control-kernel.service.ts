@@ -79,7 +79,8 @@ export class DirectControlKernelService {
             await this.pyodide.runPythonAsync(`
 import micropip
 # Install from local wheel to get all modules including backends
-await micropip.install('/assets/wheels/pylabrobot-0.1.6-py3-none-any.whl')
+# Use relative path (no leading slash) for GitHub Pages compatibility
+await micropip.install('assets/wheels/pylabrobot-0.1.6-py3-none-any.whl')
 print("PyLabRobot installed from local wheel")
 `);
 
@@ -104,6 +105,7 @@ print("Browser mocks installed")
 
             // Load browser I/O shims (WebSerial, WebUSB, WebFTDI)
             // Add cache-busting timestamp to ensure latest version is loaded
+            // Use relative paths (no leading slash) for GitHub Pages compatibility
             const cacheBust = Date.now();
             console.log('[DirectControlKernel] Loading browser shims...');
             await this.pyodide.runPythonAsync(`
@@ -113,7 +115,7 @@ import builtins
 # Load WebSerial shim
 print("Loading WebSerial shim...")
 try:
-    _shim_code = await (await pyodide.http.pyfetch('/assets/shims/web_serial_shim.py?v=${cacheBust}')).string()
+    _shim_code = await (await pyodide.http.pyfetch('assets/shims/web_serial_shim.py?v=${cacheBust}')).string()
     exec(_shim_code, globals())
     builtins.WebSerial = WebSerial
     print("✓ WebSerial shim loaded and added to builtins")
@@ -123,7 +125,7 @@ except Exception as e:
 # Load WebUSB shim
 print("Loading WebUSB shim...")
 try:
-    _shim_code = await (await pyodide.http.pyfetch('/assets/shims/web_usb_shim.py?v=${cacheBust}')).string()
+    _shim_code = await (await pyodide.http.pyfetch('assets/shims/web_usb_shim.py?v=${cacheBust}')).string()
     exec(_shim_code, globals())
     builtins.WebUSB = WebUSB
     print("✓ WebUSB shim loaded and added to builtins")
@@ -133,7 +135,7 @@ except Exception as e:
 # Load WebFTDI shim (CRITICAL for CLARIOstarBackend!)
 print("Loading WebFTDI shim...")
 try:
-    _shim_code = await (await pyodide.http.pyfetch('/assets/shims/web_ftdi_shim.py?v=${cacheBust}')).string()
+    _shim_code = await (await pyodide.http.pyfetch('assets/shims/web_ftdi_shim.py?v=${cacheBust}')).string()
     exec(_shim_code, globals())
     builtins.WebFTDI = WebFTDI
     print("✓ WebFTDI shim loaded and added to builtins")
