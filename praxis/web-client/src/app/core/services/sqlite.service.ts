@@ -439,11 +439,10 @@ export class SqliteService {
             db.exec('BEGIN TRANSACTION');
 
             // Seed Resources
-            // FIXED: Removed is_reusable to align with schema.sql
             const insertResDef = db.prepare(`
                 INSERT OR IGNORE INTO resource_definitions
-                (accession_id, name, fqn, resource_type, vendor, description, properties_json, is_consumable, num_items, plr_category)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (accession_id, name, fqn, resource_type, vendor, description, properties_json, is_consumable, is_reusable, num_items, plr_category)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             for (const def of PLR_RESOURCE_DEFINITIONS) {
@@ -456,7 +455,7 @@ export class SqliteService {
                     def.description || null,
                     JSON.stringify(def.properties_json),
                     def.is_consumable ? 1 : 0,
-                    // def.is_reusable, <-- DROPPED per schema.sql
+                    def.is_reusable ? 1 : 0,
                     def.num_items || null,
                     def.plr_category // maps to plr_category
                 ]);
