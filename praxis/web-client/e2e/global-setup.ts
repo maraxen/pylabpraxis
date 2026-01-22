@@ -18,12 +18,16 @@ export default async function globalSetup(config: FullConfig) {
     try {
         // Navigate to app home with browser mode param to ensure services load
         // Increased timeout to 60s for CI environments
-        await page.goto(targetUrl + '/app/home?mode=browser', { 
-            waitUntil: 'networkidle', 
-            timeout: 60000 
+        await page.goto(targetUrl + '/app/home?mode=browser', {
+            waitUntil: 'networkidle',
+            timeout: 60000
         });
 
-        // Wait for the application to be stable and SqliteService to be available
+        // Disable welcome tour and onboarding
+        await page.evaluate(() => {
+            localStorage.setItem('praxis_tour_completed', 'true');
+            localStorage.setItem('praxis_welcome_dismissed', 'true');
+        });
         console.log('[Global Setup] Waiting for SqliteService...');
         try {
             await page.waitForFunction(() => (window as any).sqliteService !== undefined, null, { timeout: 60000 });
@@ -36,7 +40,7 @@ export default async function globalSetup(config: FullConfig) {
         const isReady = await page.evaluate(async () => {
             const service = (window as any).sqliteService;
             if (!service) return false;
-            
+
             return new Promise((resolve) => {
                 const sub = service.isReady$.subscribe((ready: boolean) => {
                     if (ready) {
@@ -44,7 +48,7 @@ export default async function globalSetup(config: FullConfig) {
                         resolve(true);
                     }
                 });
-                
+
                 // Timeout fallback within evaluate
                 setTimeout(() => {
                     sub.unsubscribe();

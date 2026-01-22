@@ -12,13 +12,13 @@ export abstract class BasePage {
     async goto() {
         const hasModeParam = this.url.includes('mode=');
         const hasResetDbParam = this.url.includes('resetdb=');
-        
+
         let targetUrl = this.url;
-        
+
         if (!hasModeParam) {
             targetUrl += `${targetUrl.includes('?') ? '&' : '?'}mode=browser`;
         }
-        
+
         if (!hasResetDbParam) {
             targetUrl += `${targetUrl.includes('?') ? '&' : '?'}resetdb=1`;
         }
@@ -44,10 +44,31 @@ export abstract class BasePage {
         return await this.page.title();
     }
 
-    async waitForOverlay() {
+    async waitForOverlay(options: { timeout?: number; dismissWithEscape?: boolean } = {}): Promise<void> {
+        const { timeout = 10000, dismissWithEscape = true } = options;
         const overlay = this.page.locator('.cdk-overlay-backdrop');
-        if (await overlay.isVisible()) {
-            await overlay.waitFor({ state: 'hidden', timeout: 10000 });
+
+        const startTime = Date.now();
+
+        while (await overlay.isVisible({ timeout: 500 }).catch(() => false)) {
+            const elapsed = Date.now() - startTime;
+
+            if (elapsed > timeout) {
+                if (dismissWithEscape) {
+                    console.log('[Base] Overlay persisted, attempting Escape key dismiss...');
+                    await this.page.keyboard.press('Escape');
+                    await this.page.waitForTimeout(500);
+
+                    if (await overlay.isVisible({ timeout: 500 }).catch(() => false)) {
+                        console.warn('[Base] Overlay still visible after Escape');
+                        break; // Give up but don't throw
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            await this.page.waitForTimeout(200); // Poll interval
         }
     }
 }

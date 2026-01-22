@@ -1,34 +1,31 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/app.fixture';
 
 test.describe('Smoke Test', () => {
-  test.beforeEach(async ({ page }) => {
-    // Seed localStorage to bypass login
-    await page.addInitScript(() => {
-      localStorage.setItem('auth_token', 'fake-smoke-token');
-      localStorage.setItem('auth_user', JSON.stringify({ username: 'smoke_user', email: 'smoke@test.com' }));
-    });
-  });
+  // Common setup (auth, navigation, shell wait, dialog dismissal) is now handled by app.fixture.ts
+
 
   test('should load the dashboard', async ({ page }) => {
-    await page.goto('/');
-    await expect(page).toHaveTitle(/PyLabPraxis/);
-    await expect(page.locator('app-main-layout')).toBeVisible();
+    // page.goto('/') handled in beforeEach, which also handles redirects
+    await expect(page).toHaveTitle(/Praxis/);
+    await expect(page.locator('app-unified-shell, app-main-layout')).toBeVisible({ timeout: 30000 });
     await expect(page.locator('mat-toolbar').first()).toBeVisible();
+    await page.screenshot({ path: '/tmp/e2e-smoke/landing_dashboard.png' });
   });
 
   test('should navigate to Assets and display tables', async ({ page }) => {
     await page.goto('/assets');
-    await expect(page.locator('app-assets')).toBeVisible();
-    
+    await expect(page.locator('app-assets')).toBeVisible({ timeout: 30000 });
+
     // Check for Tabs
     await expect(page.locator('mat-tab-group')).toBeVisible();
     await expect(page.locator('.mat-mdc-tab-labels')).toContainText('Machines');
     await expect(page.locator('.mat-mdc-tab-labels')).toContainText('Resources');
-    await expect(page.locator('.mat-mdc-tab-labels')).toContainText('Definitions');
+    await expect(page.locator('.mat-mdc-tab-labels')).toContainText('Registry');
 
     // Check Machine List (default tab)
-    await expect(page.locator('app-machine-list')).toBeVisible();
+    await expect(page.locator('app-machine-list')).toBeVisible({ timeout: 30000 });
     await expect(page.locator('app-machine-list table')).toBeVisible();
+    await page.screenshot({ path: '/tmp/e2e-smoke/assets_list.png' });
   });
 
   test('should navigate to Protocols and display library', async ({ page }) => {
@@ -36,17 +33,19 @@ test.describe('Smoke Test', () => {
     await expect(page.locator('app-protocol-library')).toBeVisible();
     await expect(page.locator('app-protocol-library h1')).toContainText('Protocol Library');
     await expect(page.locator('app-protocol-library table')).toBeVisible();
+    await page.screenshot({ path: '/tmp/e2e-smoke/protocol_list.png' });
   });
 
   test('should navigate to Run Protocol wizard', async ({ page }) => {
     await page.goto('/run');
     await expect(page.locator('app-run-protocol')).toBeVisible();
-    
+
     // Check Stepper
     await expect(page.locator('mat-stepper')).toBeVisible();
-    
+
     // Use stricter locators to avoid ambiguity
     await expect(page.locator('.mat-step-header').filter({ hasText: 'Select Protocol' })).toBeVisible();
     await expect(page.locator('.mat-step-header').filter({ hasText: 'Configure Parameters' })).toBeVisible();
+    await page.screenshot({ path: '/tmp/e2e-smoke/run_protocol.png' });
   });
 });

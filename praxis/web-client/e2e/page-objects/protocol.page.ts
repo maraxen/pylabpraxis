@@ -15,8 +15,8 @@ export class ProtocolPage extends BasePage {
 
     private async dismissOverlays() {
         const dismissButtons = this.page
-            .locator('.cdk-overlay-container button')
-            .filter({ hasText: /Close|Dismiss|Got it|OK|Continue/i });
+            .locator('.cdk-overlay-container button, .mat-mdc-dialog-container button')
+            .filter({ hasText: /Close|Dismiss|Got it|OK|Continue|Skip|Start/i });
         if (await dismissButtons.count()) {
             await dismissButtons.first().click({ timeout: 2000 }).catch(() => undefined);
         }
@@ -42,6 +42,7 @@ export class ProtocolPage extends BasePage {
     async selectProtocolByName(name: string): Promise<string> {
         const card = this.protocolCards.filter({ hasText: name }).first();
         await expect(card, `Protocol card for ${name} should be visible`).toBeVisible({ timeout: 15000 });
+        await this.dismissOverlays();
         await card.click();
         await this.assertProtocolSelected(name);
         return name;

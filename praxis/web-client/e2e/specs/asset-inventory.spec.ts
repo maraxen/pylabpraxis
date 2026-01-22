@@ -19,6 +19,14 @@ test.describe('Asset Inventory Persistence', () => {
         // Ensure shell layout is visible
         await expect(page.locator('.sidebar-rail')).toBeVisible({ timeout: 10000 });
 
+        // Handle Welcome Dialog if present (Browser Mode)
+        const welcomeDialog = page.getByRole('dialog', { name: /Welcome to Praxis/i });
+        if (await welcomeDialog.isVisible({ timeout: 5000 })) {
+            console.log('Dismissing Welcome Dialog...');
+            await page.getByRole('button', { name: /Skip for Now/i }).click();
+            await expect(welcomeDialog).not.toBeVisible();
+        }
+
         page.on('console', msg => {
             const text = msg.text();
             if (text.includes('ASSET-DEBUG') || text.includes('[SqliteService]')) {
@@ -30,14 +38,32 @@ test.describe('Asset Inventory Persistence', () => {
     test('should persist created machine across reloads', async ({ page }) => {
         const machineName = `E2E Machine ${Date.now()}`;
 
+        console.log('Navigating to Assets...');
         // 1. Navigate to Assets via sidebar
-        await page.locator('.sidebar-rail').getByRole('link', { name: /Assets/i }).click();
+        // Use CSS selector as backup if accessible name 'Assets' is missing/hidden
+        const assetsLink = page.locator('.sidebar-rail a[href="/app/assets"]');
+        await expect(assetsLink).toBeVisible();
+        await assetsLink.click();
 
         // Wait for Quick Actions to load
         await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10000 });
 
+        // SCREENSHOT: Asset List View
+        await page.screenshot({ path: '/tmp/e2e-asset/asset-list_initial.png' });
+
+        console.log('Looking for Add Machine button...');
         // 2. Click "Add Machine" 
-        await page.getByRole('button', { name: /Add Machine/i }).click();
+        const addMachineBtn = page.getByRole('button', { name: /Add Machine/i });
+        if (await addMachineBtn.isVisible()) {
+            console.log('Add Machine button found, clicking...');
+            await addMachineBtn.click();
+        } else {
+            console.log('Add Machine button NOT found!');
+            await page.screenshot({ path: '/tmp/e2e-asset/debug_no_add_machine.png' });
+            // print all buttons
+            const buttons = await page.getByRole('button').allInnerTexts();
+            console.log('Available buttons:', buttons);
+        }
 
         // 3. Wait for dialog (title: "Add New Machine")
         await expect(page.getByRole('heading', { name: /Add New Machine/i })).toBeVisible({ timeout: 5000 });
@@ -48,6 +74,9 @@ test.describe('Asset Inventory Persistence', () => {
         await machineTypeInput.fill('Opentrons');
         await page.waitForTimeout(500); // Wait for autocomplete
 
+        // SCREENSHOT: Filter Interactions
+        await page.screenshot({ path: '/tmp/e2e-asset/filter-interaction.png' });
+
         // Select first option in the autocomplete dropdown
         const optionLocator = page.getByRole('option').first();
         if (await optionLocator.isVisible({ timeout: 3000 })) {
@@ -57,11 +86,15 @@ test.describe('Asset Inventory Persistence', () => {
             await machineTypeInput.clear();
             await machineTypeInput.fill('Hamilton');
             await page.waitForTimeout(500);
+            await page.screenshot({ path: '/tmp/e2e-asset/filter-fallback.png' });
             await page.getByRole('option').first().click();
         }
 
         // 5. Now fill the "Name" field
         await page.getByLabel('Name').fill(machineName);
+
+        // SCREENSHOT: Asset Detail View (Creation Dialog)
+        await page.screenshot({ path: '/tmp/e2e-asset/asset-detail_creation-dialog.png' });
 
         // 6. Save
         await page.getByRole('button', { name: /Save/i }).click();
@@ -73,11 +106,14 @@ test.describe('Asset Inventory Persistence', () => {
         await page.getByRole('tab', { name: /Machines/i }).click();
         await expect(page.getByText(machineName)).toBeVisible({ timeout: 10000 });
 
+        // SCREENSHOT: Asset List View (With Data)
+        await page.screenshot({ path: '/tmp/e2e-asset/asset-list_with-machine.png' });
+
         // 9. Reload page to test persistence
         await page.reload();
 
         // Navigate back to assets and machines tab
-        await page.locator('.sidebar-rail').getByRole('link', { name: /Assets/i }).click();
+        await page.locator('.sidebar-rail a[href="/app/assets"]').click();
         await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10000 });
         await page.getByRole('tab', { name: /Machines/i }).click();
 
@@ -88,8 +124,9 @@ test.describe('Asset Inventory Persistence', () => {
     test('should persist created resource across reloads', async ({ page }) => {
         const resourceName = `E2E Resource ${Date.now()}`;
 
+        console.log('Navigating to Assets (Resource Test)...');
         // 1. Navigate to Assets via sidebar
-        await page.locator('.sidebar-rail').getByRole('link', { name: /Assets/i }).click();
+        await page.locator('.sidebar-rail a[href="/app/assets"]').click();
         await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10000 });
 
         // 2. Click "Add Resource"
@@ -137,7 +174,7 @@ test.describe('Asset Inventory Persistence', () => {
         await page.reload();
 
         // Navigate back
-        await page.locator('.sidebar-rail').getByRole('link', { name: /Assets/i }).click();
+        await page.locator('.sidebar-rail a[href="/app/assets"]').click();
         await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10000 });
         await page.getByRole('tab', { name: /Registry/i }).click();
 

@@ -100,6 +100,10 @@ export class WizardPage {
         const target = (await simulationCard.count()) ? simulationCard : machineCards.first();
         await target.click();
 
+        // Handle Configure Simulation dialog if it appears
+        await this.handleConfigureSimulationDialog();
+
+
         const continueButton = this.machineStep.getByRole('button', { name: /Continue/i }).first();
         await expect(continueButton).toBeEnabled({ timeout: 10000 });
         await continueButton.click();
@@ -162,4 +166,28 @@ export class WizardPage {
             startButton.click()
         ]);
     }
+
+    async handleConfigureSimulationDialog(): Promise<boolean> {
+        // Check if Configure Simulation dialog is visible
+        const dialog = this.page.getByRole('dialog').filter({ hasText: /Configure Simulation|Simulation/i });
+
+        if (await dialog.isVisible({ timeout: 2000 }).catch(() => false)) {
+            console.log('[Wizard] Handling Configure Simulation dialog...');
+
+            // Fill instance name if required
+            const nameInput = dialog.locator('input[formcontrolname="instanceName"], input[name="name"]');
+            if (await nameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+                await nameInput.fill('E2E Simulation');
+            }
+
+            // Click create/confirm button
+            await dialog.getByRole('button', { name: /Create|Confirm|Continue|OK/i }).first().click();
+
+            // Wait for dialog to close
+            await dialog.waitFor({ state: 'hidden', timeout: 5000 });
+            return true;
+        }
+        return false;
+    }
 }
+

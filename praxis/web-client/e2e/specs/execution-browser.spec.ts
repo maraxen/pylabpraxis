@@ -13,16 +13,27 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Browser Mode Execution', () => {
     test.beforeEach(async ({ page }) => {
-        // Navigate to the app (browser mode)
         await page.goto('/');
+        // In browser mode, we expect a redirect to /app/home
+        await page.waitForURL('**/app/home', { timeout: 15000 }).catch(() => {
+            console.log('Did not redirect to /app/home automatically');
+        });
+        // Ensure shell layout is visible
+        await expect(page.locator('.sidebar-rail')).toBeVisible({ timeout: 10000 });
 
-        // Wait for app to initialize
-        await page.waitForLoadState('networkidle');
-
-        // Navigate past splash if present
-        const splashButton = page.locator('button:has-text("Get Started")');
-        if (await splashButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-            await splashButton.click();
+        // Handle Welcome Dialog if present (Browser Mode)
+        const welcomeDialog = page.getByRole('dialog', { name: /Welcome to Praxis/i });
+        if (await welcomeDialog.isVisible({ timeout: 5000 })) {
+            console.log('Dismissing Welcome Dialog...');
+            // Try explicit 'Skip for Now' or generic dismiss if that fails
+            const skipButton = page.getByRole('button', { name: /Skip for Now/i });
+            if (await skipButton.isVisible()) {
+                await skipButton.click();
+            } else {
+                // Fallback for other dismiss buttons if text varies
+                await page.locator('button').filter({ hasText: /Close|Dismiss/i }).first().click().catch(() => { });
+            }
+            await expect(welcomeDialog).not.toBeVisible();
         }
     });
 
@@ -32,7 +43,21 @@ test.describe('Browser Mode Execution', () => {
         await page.waitForLoadState('domcontentloaded');
 
         // Wait for protocols to load
-        await page.waitForSelector('[class*="protocol"]', { timeout: 10000 });
+        try {
+            await page.waitForSelector('[class*="protocol"]', { timeout: 15000 });
+            // Screenshot: Protocol Load
+            await page.screenshot({ path: '/tmp/e2e-browser-exec/01_protocol_load.png' });
+        } catch (e) {
+            console.log('Failed to find protocol cards. Taking debug screenshot...');
+            await page.screenshot({ path: '/tmp/e2e-browser-exec/debug_protocol_load_failed.png' });
+            // Dump page text to help debug
+            const text = await page.textContent('body');
+            console.log('Page content:', text?.substring(0, 500) + '...');
+            throw e;
+        }
+
+        // Screenshot: Protocol Load
+        await page.screenshot({ path: '/tmp/e2e-browser-exec/01_protocol_load.png' });
 
         // Select first available protocol
         const protocolCard = page.locator('app-protocol-card').first();
@@ -68,6 +93,10 @@ test.describe('Browser Mode Execution', () => {
         if (await startButton.isVisible({ timeout: 5000 }).catch(() => false)) {
             // Check if button is enabled (requires deck setup)
             const isDisabled = await startButton.getAttribute('disabled');
+
+            // Screenshot: Run Start (Before Click)
+            await page.screenshot({ path: '/tmp/e2e-browser-exec/02_run_start_setup.png' });
+
             if (!isDisabled) {
                 await startButton.click();
 
@@ -77,9 +106,14 @@ test.describe('Browser Mode Execution', () => {
                 ).toBeVisible({ timeout: 5000 }).catch(() => {
                     // May have already navigated
                 });
+
+                // Screenshot: Run Completion (Initialization)
+                await page.screenshot({ path: '/tmp/e2e-browser-exec/03_run_initialization.png' });
             } else {
                 // Button disabled - deck setup required
                 console.log('Start button disabled - deck setup required');
+                // Screenshot even if disabled to show why
+                await page.screenshot({ path: '/tmp/e2e-browser-exec/02_run_start_disabled.png' });
             }
         }
     });
