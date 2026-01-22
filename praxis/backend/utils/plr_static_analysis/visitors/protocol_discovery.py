@@ -20,6 +20,7 @@ from praxis.backend.utils.plr_static_analysis.visitors.protocol_requirement_extr
   ProtocolRequirementExtractor,
 )
 from praxis.common.type_inspection import is_pylabrobot_resource
+from praxis.backend.models.enums.plr_category import infer_category_from_name
 
 
 class ProtocolFunctionVisitor(BasePLRVisitor):
@@ -153,6 +154,7 @@ class ProtocolFunctionVisitor(BasePLRVisitor):
 
     for p in params_info:
       if p.is_asset:
+        category = infer_category_from_name(p.type_hint)
         raw_assets.append(
           {
             "accession_id": uuid_placeholder,  # Service will replace this
@@ -162,6 +164,7 @@ class ProtocolFunctionVisitor(BasePLRVisitor):
             "actual_type_str": p.type_hint,
             "optional": p.is_optional,
             "default_value_repr": p.default_value,
+            "required_plr_category": category.value if category else None,
           }
         )
       else:
@@ -259,9 +262,12 @@ class ProtocolFunctionVisitor(BasePLRVisitor):
     if isinstance(node, cst.Float):
       return float(node.value)
     if isinstance(node, cst.Name):
-      if node.value == "True": return True
-      if node.value == "False": return False
-      if node.value == "None": return None
+      if node.value == "True":
+        return True
+      if node.value == "False":
+        return False
+      if node.value == "None":
+        return None
     if isinstance(node, cst.Dict):
       return self._parse_cst_dict(node)
     if isinstance(node, cst.List):

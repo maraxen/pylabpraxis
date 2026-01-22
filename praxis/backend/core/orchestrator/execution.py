@@ -126,9 +126,16 @@ class ExecutionMixin:
       from praxis.backend.tracers import LinkedIndicesTracer
 
       tracer = LinkedIndicesTracer()
-      source_wells = input_parameters.get("source_wells", [])
-      destination_wells = input_parameters.get("destination_wells", [])
-      tracer.validate(source_wells, destination_wells)
+      source_wells = input_parameters.get("source_wells")
+      destination_wells = input_parameters.get("destination_wells")
+      indices = input_parameters.get("indices")
+
+      # Fallback to 'indices' if specific well sets are missing
+      actual_source = source_wells if source_wells is not None else indices
+      actual_dest = destination_wells if destination_wells is not None else indices
+
+      if actual_source is not None and actual_dest is not None:
+        tracer.validate(actual_source, actual_dest)
 
     main_workcell_container = self.workcell_runtime.get_main_workcell()
     if not main_workcell_container:

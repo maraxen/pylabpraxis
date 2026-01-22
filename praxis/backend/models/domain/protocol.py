@@ -386,7 +386,11 @@ class FunctionProtocolDefinition(FunctionProtocolDefinitionBase, table=True):
   )
 
   protocol_runs: list["ProtocolRun"] = Relationship(
-    sa_relationship=relationship("ProtocolRun", back_populates="top_level_protocol_definition")
+    sa_relationship=relationship(
+      "ProtocolRun",
+      back_populates="top_level_protocol_definition",
+      foreign_keys="ProtocolRun.top_level_protocol_definition_accession_id",
+    )
   )
 
 
@@ -471,7 +475,18 @@ class ProtocolRun(ProtocolRunBase, table=True):
     sa_relationship=relationship("ScheduleEntry", back_populates="protocol_run")
   )
   top_level_protocol_definition: Optional["FunctionProtocolDefinition"] = Relationship(
-    back_populates="protocol_runs"
+    sa_relationship=relationship(
+      "FunctionProtocolDefinition",
+      back_populates="protocol_runs",
+      foreign_keys="[ProtocolRun.top_level_protocol_definition_accession_id]",
+    )
+  )
+
+  protocol_definition: Optional["FunctionProtocolDefinition"] = Relationship(
+    sa_relationship=relationship(
+      "FunctionProtocolDefinition",
+      foreign_keys="[ProtocolRun.protocol_definition_accession_id]",
+    )
   )
   asset_reservations: list["AssetReservation"] = Relationship(
     sa_relationship=relationship("AssetReservation", back_populates="protocol_run")
@@ -492,6 +507,10 @@ class ProtocolRun(ProtocolRunBase, table=True):
 
   top_level_protocol_definition_accession_id: uuid.UUID = Field(
     foreign_key="function_protocol_definitions.accession_id", index=True
+  )
+
+  protocol_definition_accession_id: uuid.UUID | None = Field(
+    default=None, foreign_key="function_protocol_definitions.accession_id", index=True
   )
 
   @property
@@ -527,6 +546,7 @@ class ProtocolRunCreate(ProtocolRunBase):
   run_accession_id: uuid.UUID | None = None
 
   top_level_protocol_definition_accession_id: uuid.UUID
+  protocol_definition_accession_id: uuid.UUID | None = None
   # JSON fields available at creation time
   input_parameters_json: dict[str, Any] | None = None
   resolved_assets_json: dict[str, Any] | None = None
@@ -541,6 +561,7 @@ class ProtocolRunRead(ProtocolRunBase):
 
   accession_id: uuid.UUID
   top_level_protocol_definition_accession_id: uuid.UUID
+  protocol_definition_accession_id: uuid.UUID | None = None
   protocol_name: str | None = None
   started_at: datetime | None = None
   completed_at: datetime | None = None
