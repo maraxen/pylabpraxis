@@ -79,11 +79,21 @@ def discover_resources_static(conn: sqlite3.Connection) -> int:
   count = 0
 
   for res in all_resources.values():
+    # Skip items that look like methods or private members
+    if (
+      res.name.startswith("get_")
+      or res.name.startswith("set_")
+      or res.name.startswith("_")
+      or not any(c.isupper() for c in res.name)
+    ):
+      continue
+
     try:
       accession_id = generate_uuid_from_fqn(res.fqn)
 
       # Determine category
       category = res.category or res.class_type.value
+      category = category.title() if category else "Resource"
 
       # Extract capabilities as properties
       props = {}
@@ -205,6 +215,30 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
           safe_json_dumps(machine.compatible_backends),
           safe_json_dumps(getattr(machine, "available_simulation_backends", [])),
           safe_json_dumps({}),
+          now,
+          now,
+        ),
+      )
+
+      # Also insert into machine_frontend_definitions for new architecture
+      conn.execute(
+        """
+                INSERT OR REPLACE INTO machine_frontend_definitions (
+                    accession_id, fqn, name, description, plr_category,
+                    machine_category, has_deck, manufacturer,
+                    capabilities, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+        (
+          accession_id,
+          machine.fqn,
+          machine.name,
+          machine.docstring or "",
+          "Machine",
+          category,
+          1 if has_deck else 0,
+          machine.manufacturer,
+          safe_json_dumps(caps_dict),
           now,
           now,
         ),
@@ -447,9 +481,10 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
                         hardware_requirements_json,
                         inferred_requirements_json, failure_modes_json, simulation_result_json,
                         computation_graph_json, source_hash, requires_deck,
+                        requires_linked_indices,
                         is_top_level, created_at, updated_at, version,
                         solo_execution, preconfigure_deck, deprecated
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
           (
             accession_id,
@@ -468,6 +503,7 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
             safe_json_dumps(definition.computation_graph),
             definition.source_hash,
             1 if definition.requires_deck else 0,
+            1 if getattr(definition, "requires_linked_indices", False) else 0,
             1,  # is_top_level default
             now,
             now,
@@ -523,8 +559,9 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
                         INSERT OR REPLACE INTO protocol_asset_requirements (
                             accession_id, protocol_definition_accession_id, name, type_hint_str,
                             actual_type_str, fqn, optional, default_value_repr, description,
-                            constraints_json, location_constraints_json, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            required_plr_category, constraints_json, location_constraints_json, 
+                            created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
             (
               asset_id,
@@ -536,6 +573,7 @@ def discover_protocols_static(conn: sqlite3.Connection) -> int:
               asset.get("optional", False),
               asset.get("default_value_repr"),
               asset.get("description", ""),
+              asset.get("required_plr_category"),
               safe_json_dumps({}),  # constraints (empty for now)
               safe_json_dumps({}),  # location_constraints (empty for now)
               now,
@@ -609,6 +647,34 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
     PLRClassType.SCARA_BACKEND: "pylabrobot.scara.SCARA",
   }
 
+  # First, seed machine_frontend_definitions to satisfy foreign key constraints
+  for backend_type, frontend_fqn in backend_frontend_fqn_map.items():
+    frontend_id = generate_uuid_from_fqn(f"machine:{frontend_fqn}")
+    frontend_category = backend_category_map.get(backend_type, "Unknown").replace("Backend", "")
+    
+    conn.execute(
+      """
+            INSERT OR REPLACE INTO machine_frontend_definitions (
+                accession_id, fqn, name, description, plr_category,
+                machine_category, has_deck, manufacturer,
+                capabilities, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+      (
+        frontend_id,
+        frontend_fqn,
+        frontend_category,
+        f"Generic {frontend_category} frontend",
+        "Machine",
+        frontend_category,
+        1 if "LiquidHandler" in frontend_category else 0,
+        "PyLabRobot",
+        safe_json_dumps({}),
+        now,
+        now,
+      ),
+    )
+
   for backend in backends:
     try:
       accession_id = generate_uuid_from_fqn(f"backend:{backend.fqn}")
@@ -618,30 +684,32 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
       # Get capabilities dict
       caps_dict = backend.to_capabilities_dict() if hasattr(backend, "to_capabilities_dict") else {}
 
+      # Determine backend type
+      backend_type = "simulator" if "Chatterbox" in backend.fqn or "simulated" in backend.fqn else "hardware"
+
       conn.execute(
         """
-                INSERT OR REPLACE INTO machine_definitions (
-                    accession_id, fqn, name, description, plr_category,
-                    machine_category, has_deck, manufacturer,
-                    capabilities, compatible_backends, properties_json, created_at, updated_at,
-                    frontend_fqn
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO machine_backend_definitions (
+                    accession_id, fqn, name, description, 
+                    manufacturer, model, is_deprecated, backend_type, 
+                    frontend_definition_accession_id, connection_config,
+                    properties_json, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
         (
           accession_id,
           backend.fqn,
           backend.name,
           backend.docstring or "",
-          "Backend",
-          category,
-          0,  # backends don't have decks
           backend.manufacturer,
-          safe_json_dumps(caps_dict),
-          safe_json_dumps([]),  # backends don't have compatible_backends
-          safe_json_dumps({}),
+          backend.name,
+          0, # is_deprecated
+          backend_type,
+          generate_uuid_from_fqn(f"machine:{frontend_fqn}"),
+          safe_json_dumps({}), # connection_config
+          safe_json_dumps(caps_dict), # properties_json (using capabilities for now)
           now,
           now,
-          frontend_fqn,
         ),
       )
 
@@ -694,29 +762,27 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
 
       conn.execute(
         """
-                INSERT OR REPLACE INTO machine_definitions (
-                    accession_id, fqn, name, description, plr_category,
-                    machine_category, has_deck, manufacturer,
-                    capabilities, compatible_backends, available_simulation_backends, properties_json, created_at, updated_at,
-                    frontend_fqn
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO machine_backend_definitions (
+                    accession_id, fqn, name, description, 
+                    manufacturer, model, is_deprecated, backend_type, 
+                    frontend_definition_accession_id, connection_config,
+                    properties_json, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
         (
           accession_id,
           fqn,
           f"Simulated {short_name}",
           f"Generic simulated backend for {short_name}",
-          "Backend",
-          short_name,
-          0,
           "PyLabRobot",
-          "{}",
-          "[]",
-          safe_json_dumps(["Simulator", "Chatterbox"]),
-          "{}",
+          f"Simulated {short_name}",
+          0,
+          "simulator",
+          generate_uuid_from_fqn(f"machine:{frontend_fqn}"),
+          safe_json_dumps({}),
+          safe_json_dumps({}),
           now,
           now,
-          frontend_fqn,
         ),
       )
 
