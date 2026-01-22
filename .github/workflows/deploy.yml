@@ -41,10 +41,12 @@ jobs:
 
       - name: Build web client
         working-directory: ./praxis/web-client
-        run: npm run build -- --base-href /praxis/
+        run: npm run build:gh-pages
 
-      - name: SPA Fix (404.html)
-        run: cp ./praxis/web-client/dist/web-client/browser/index.html ./praxis/web-client/dist/web-client/browser/404.html
+      - name: SPA Fix (404.html + .nojekyll)
+        run: |
+          cp ./praxis/web-client/dist/web-client/browser/index.html ./praxis/web-client/dist/web-client/browser/404.html
+          touch ./praxis/web-client/dist/web-client/browser/.nojekyll
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
