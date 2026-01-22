@@ -101,7 +101,7 @@ debug_*.py
 praxis/web-client/test-results/
 praxis/web-client/playwright-report/
 praxis/web-client/test_output*.txt
-praxis/web-client/e2e/screenshot/
+praxis/web-client/e2e/screenshots/
 
 
 !.agent/archive/archive.tar.gz
@@ -164,3 +164,8 @@ praxis/web-client/e2e/screenshot/
 test-results/
 gcli-request-*.json
 session-*.md
+# Ignore SQLite databases
+*.db
+
+# Ignore compiled binaries
+.agent/scripts/jules-diff-tool/jules-diff-tool

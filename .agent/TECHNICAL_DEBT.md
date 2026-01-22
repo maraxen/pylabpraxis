@@ -193,9 +193,8 @@ This document tracks known issues, temporary patches, and required follow-up wor
 
 ## Hardware Transport Shims
 
-- [ ] **HID Transport Shim**: Missing `WebHID` implementation for `pylabrobot.io.hid.HID`.
-  - Impact: Blocks support for Inheco heating/shaking devices in browser mode.
-  - Priority: High
+- [x] **HID Transport Shim**: `WebHID` implementation for `pylabrobot.io.hid.HID`.
+  - Note: Implemented at `praxis/web-client/src/assets/shims/web_hid_shim.py`.
 - [ ] **Socket/TCP Transport Shim**: Browsers don't support raw TCP sockets used by `pylabrobot.io.socket.Socket`.
   - Impact: Blocks PreciseFlex arms and other ethernet-controlled hardware.
   - Priority: High (Blocker for specific hardware)

@@ -7,6 +7,7 @@ export default defineConfig({
   globalSetup: require.resolve('./e2e/global-setup'),
   timeout: 60000,
   testDir: './e2e/specs',
+  outputDir: 'test-results/',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -29,7 +30,7 @@ export default defineConfig({
     headless: true,
 
     /* Capture screenshot on failure */
-    screenshot: 'only-on-failure',
+    screenshot: 'on',
   },
 
   /* Configure projects for major browsers */
