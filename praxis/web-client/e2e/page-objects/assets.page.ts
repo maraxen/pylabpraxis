@@ -21,6 +21,90 @@ export class AssetsPage extends BasePage {
         this.spatialViewTab = page.getByRole('tab', { name: /Spatial View/i });
     }
 
+    /**
+     * Helper: Click a result card in the wizard with proper scrolling
+     * Uses dialog-context scrolling to handle elements outside viewport
+     * 
+     * Note: On some viewport sizes, cards can exist in DOM but be outside
+     * the visible scroll area of the dialog. We handle this by:
+     * 1. Waiting for card count > 0 (not visibility)
+     * 2. Using element.scrollIntoView() which respects nested scroll containers
+     * 3. Using force click to bypass animation stability checks
+     */
+    private async selectWizardCard(cardSelector = '.results-grid .praxis-card.result-card', maxRetries = 3): Promise<void> {
+        // CRITICAL: Use :visible pseudo-selector to exclude hidden cards from previous wizard steps.
+        // The Material Stepper keeps all step content in DOM but hides inactive steps via CSS.
+        // Using :visible ensures we only target cards that are actually displayed on screen.
+        // This fixes the "Stale Step" locator trap where cards from previous steps are clicked.
+        const cards = this.page.locator(`${cardSelector}:visible`);
+
+        // Wait for cards to exist in DOM (not just visible)
+        await expect(async () => {
+            const count = await cards.count();
+            expect(count).toBeGreaterThan(0);
+        }).toPass({ timeout: 15000 });
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const firstCard = cards.first();
+
+                // Debug: Log the element we're clicking
+                const debugInfo = await firstCard.evaluate((el: HTMLElement) => {
+                    return {
+                        tagName: el.tagName,
+                        classList: Array.from(el.classList),
+                        hasClickListener: typeof (el as any).onclick === 'function',
+                        innerText: el.innerText.substring(0, 50),
+                    };
+                });
+                console.log(`[AssetsPage] Clicking card:`, JSON.stringify(debugInfo));
+
+                // Use native element.click() which Angular handles correctly
+                await firstCard.evaluate((el: HTMLElement) => {
+                    el.scrollIntoView({ block: 'center', behavior: 'instant' });
+                    // Try multiple approaches
+                    el.click();  // Native click
+                    // Also try dispatching a proper MouseEvent
+                    const clickEvent = new MouseEvent('click', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    });
+                    el.dispatchEvent(clickEvent);
+                });
+                await this.page.waitForTimeout(600);
+
+                // Verify selection by checking if Next button is now enabled
+                const nextButton = this.page.getByRole('button', { name: /Next/i });
+                const isNextEnabled = await nextButton.isEnabled({ timeout: 1000 }).catch(() => false);
+                console.log(`[AssetsPage] After click - Next button enabled: ${isNextEnabled}`);
+                if (isNextEnabled) {
+                    return;
+                }
+
+                // If Next is still disabled, try clicking again
+                console.log(`[AssetsPage] Card click didn't enable Next (attempt ${attempt + 1}), retrying...`);
+            } catch (err) {
+                if (attempt === maxRetries - 1) throw err;
+                console.log(`[AssetsPage] Card selection error (attempt ${attempt + 1}): ${err}`);
+                await this.page.waitForTimeout(500);
+            }
+        }
+
+        throw new Error(`[AssetsPage] Failed to select card after ${maxRetries} attempts`);
+    }
+
+    /**
+     * Helper: Click the Next button with stability checks
+     */
+    private async clickNextButton(): Promise<void> {
+        const nextButton = this.page.getByRole('button', { name: /Next/i });
+        await expect(nextButton).toBeEnabled({ timeout: 5000 });
+        await nextButton.click();
+        await this.page.waitForLoadState('domcontentloaded');
+        await this.page.waitForTimeout(300); // Allow step transition
+    }
+
     async navigateToOverview() {
         await this.overviewTab.click();
         await this.page.waitForTimeout(300);
@@ -57,57 +141,86 @@ export class AssetsPage extends BasePage {
         const dialog = this.page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
-        // Step 1: Select Category - wait for categories to load from definitions
-        // Categories are dynamically loaded, so we need to wait for them
-        // Step 1: Select Category - wait for dynamic content
-        // In browser mode, these come from SQLite which might take a moment to init
+        // Wait for wizard initialization - the wizard uses setTimeout(0) to auto-advance 
+        // when preselectedType is provided, so we need a small delay
+        await this.page.waitForTimeout(500);
+
+        // Step 1: Select Asset Type (Machine vs Resource)
+        // The type cards have class .type-card - may already be pre-selected
+        const machineTypeCard = this.page.locator('.type-card').filter({ hasText: /Machine/i }).first();
         const categoryCards = this.page.locator('.category-card');
 
-        // Wait for at least one card to be present
+        // Check if we're already on Step 2 (Category) - wizard may have auto-advanced
+        const alreadyOnCategoryStep = await categoryCards.first().isVisible({ timeout: 1000 }).catch(() => false);
+
+        if (!alreadyOnCategoryStep) {
+            // We're on Step 1 - handle type selection
+            await expect(machineTypeCard).toBeVisible({ timeout: 10000 });
+
+            // Check if already selected (form may have default value)
+            const isAlreadySelected = await machineTypeCard.evaluate(el => el.classList.contains('selected'));
+            if (!isAlreadySelected) {
+                // Use force:true to bypass stability checks during CSS transitions
+                await machineTypeCard.click({ force: true });
+            }
+
+            // Click Next to advance to Category selection
+            const nextButton = this.page.getByRole('button', { name: /Next/i });
+            await expect(nextButton).toBeEnabled({ timeout: 5000 });
+            await nextButton.click();
+            await this.page.waitForLoadState('domcontentloaded');
+            await this.page.waitForTimeout(300); // Allow step transition
+        }
+
+        // Step 2: Select Category - wait for categories to load from definitions
         await expect(categoryCards.first()).toBeVisible({ timeout: 15000 });
 
-        // Try to find 'Liquid Handling' category or fall back to first available
+        // Try to find 'LiquidHandler' category or fall back to first available
         const liquidCategory = categoryCards.filter({ hasText: /liquid|handler/i }).first();
-        if (await liquidCategory.isVisible({ timeout: 2000 })) {
-            await liquidCategory.click();
+        const hasLiquidCategory = await liquidCategory.isVisible({ timeout: 2000 }).catch(() => false);
+        if (hasLiquidCategory) {
+            await liquidCategory.click({ force: true });
         } else {
             // Click the first available category
-            await categoryCards.first().click();
+            await categoryCards.first().click({ force: true });
         }
 
-        // Step 2: Select Model - wait for model list to load
-        const definitionItems = this.page.locator('.definition-item');
-        await expect(definitionItems.first()).toBeVisible({ timeout: 10000 });
+        // Click Next to advance to Machine Type selection
+        await this.page.getByRole('button', { name: /Next/i }).click();
+        await this.page.waitForLoadState('domcontentloaded');
+        await this.page.waitForTimeout(300); // Allow step transition
 
-        // Search for specific model if query provided
-        const searchInput = this.page.getByPlaceholder(/Filter by name/i);
-        if (await searchInput.isVisible({ timeout: 2000 })) {
-            await searchInput.fill(typeQuery);
-            await this.page.waitForTimeout(500);
-        }
+        // Step 3: Select Machine Type (Frontend) - wait for cards to load
+        await this.selectWizardCard();
 
-        // Select first matching definition
-        await definitionItems.first().click();
+        // Click Next to advance to Driver/Backend selection
+        await this.clickNextButton();
 
-        // Fill the name field
-        await this.page.getByLabel('Instance Name').or(this.page.getByLabel('Name')).fill(name);
+        // Step 4: Select Driver/Backend - select first available
+        await this.selectWizardCard();
 
-        // Click Next to go to Step 3
-        const nextBtn = this.page.getByRole('button', { name: /Next/i });
-        if (await nextBtn.isVisible({ timeout: 1000 })) {
-            await nextBtn.click();
-        }
+        // Click Next to advance to Config step
+        await this.clickNextButton();
+        await this.page.waitForTimeout(300); // Allow step transition
 
-        // Click Finish to complete
-        const finishBtn = this.page.getByRole('button', { name: /Finish/i });
-        if (await finishBtn.isVisible({ timeout: 2000 })) {
-            await finishBtn.click();
-        } else {
-            // Fallback to Save button
-            await this.page.getByRole('button', { name: /Save/i }).click();
-        }
+        // Step 5: Fill Configuration
+        const nameInput = this.page.getByLabel('Instance Name').or(this.page.getByLabel('Name'));
+        await expect(nameInput).toBeVisible({ timeout: 5000 });
+        await nameInput.clear();
+        await nameInput.fill(name);
 
-        await expect(dialog).not.toBeVisible({ timeout: 5000 });
+        // Click Next to go to Review step
+        await this.page.getByRole('button', { name: /Next/i }).click();
+        await this.page.waitForLoadState('domcontentloaded');
+        await this.page.waitForTimeout(300); // Allow step transition
+
+        // Step 6: Review and Create
+        const createBtn = this.page.getByRole('button', { name: /Create Asset/i });
+        await expect(createBtn).toBeVisible({ timeout: 5000 });
+        await createBtn.click();
+
+        // Wait for dialog to close (asset created)
+        await expect(dialog).not.toBeVisible({ timeout: 15000 });
     }
 
     async createResource(name: string, modelQuery: string = '96') {

@@ -6,13 +6,30 @@ export class SettingsPage extends BasePage {
     readonly importButton: Locator;
     readonly importInput: Locator;
     readonly clearDataButton: Locator;
+    readonly opfsToggle: Locator;
 
     constructor(page: Page) {
         super(page, '/settings');
         this.exportButton = page.getByRole('button', { name: /Export/i });
         this.importButton = page.getByRole('button', { name: /Import/i });
         this.importInput = page.locator('input[type="file"]');
-        this.clearDataButton = page.getByRole('button', { name: /Clear Data/i }); // Verify if this exists or we need to manually clear storage
+        this.clearDataButton = page.getByRole('button', { name: /Clear Data/i });
+        this.clearDataButton = page.getByRole('button', { name: /Clear Data/i });
+        this.opfsToggle = page.getByRole('switch', { name: /Database Backend/i });
+    }
+
+    async toggleOpfs(enabled: boolean): Promise<void> {
+        const isCurrentlyChecked = await this.opfsToggle.isChecked();
+        if (isCurrentlyChecked !== enabled) {
+            await this.opfsToggle.click();
+            // Wait for snackbar and click Reload
+            await this.page.getByRole('button', { name: 'Reload' }).click();
+            await this.page.waitForLoadState('domcontentloaded');
+        }
+    }
+
+    async isOpfsEnabled(): Promise<boolean> {
+        return this.opfsToggle.isChecked();
     }
 
     async exportDatabase() {

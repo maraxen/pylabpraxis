@@ -1,0 +1,139 @@
+
+import { test, expect } from '@playwright/test';
+import { WelcomePage } from '../page-objects/welcome.page';
+import { AssetsPage } from '../page-objects/assets.page';
+import { SettingsPage } from '../page-objects/settings.page';
+
+test.describe('OPFS Persistence (Browser Mode)', () => {
+    // Serial execution to avoid storage conflicts
+    test.describe.configure({ mode: 'serial' });
+
+    test.beforeEach(async ({ page }) => {
+        // 1. Clear LocalStorage and FORCE Browser Mode
+        await page.goto('/');
+        await page.evaluate(() => {
+            localStorage.clear();
+            localStorage.setItem('praxis_mode_override', 'browser');
+        });
+
+        // 2. Clear IndexedDB
+        await page.evaluate(async () => {
+            const dbs = await indexedDB.databases();
+            for (const db of dbs) {
+                if (db.name) await indexedDB.deleteDatabase(db.name);
+            }
+        });
+
+        // 3. Clear OPFS directory (if exists)
+        await page.evaluate(async () => {
+            try {
+                const root = await navigator.storage.getDirectory();
+                await root.removeEntry('praxis-data', { recursive: true });
+            } catch (e) { /* Directory may not exist */ }
+        });
+
+        // 4. Fresh load
+        const welcomePage = new WelcomePage(page);
+        await welcomePage.goto();
+        await welcomePage.handleSplashScreen();
+    });
+
+    test('Test 1: Data persists across reloads when OPFS is enabled', async ({ page }) => {
+        const settingsPage = new SettingsPage(page);
+        const assetsPage = new AssetsPage(page);
+        const uniqueName = `OPFS-Machine-${Date.now()}`;
+
+        // Ensure Legacy DB is populated and saved so migration has data (definitions)
+        await assetsPage.goto();
+        await assetsPage.createMachine("ForceSaveLegacy");
+        // Wait for legacy DB to persist (debounce is 1s)
+        await page.waitForTimeout(2000);
+
+        // Enable OPFS
+        await settingsPage.goto();
+
+        // Wait for toggle to be visible - ensures page is ready
+        await expect(settingsPage.opfsToggle).toBeVisible();
+        await settingsPage.toggleOpfs(true);
+
+        // Verify OPFS is enabled
+        await settingsPage.goto();
+        expect(await settingsPage.isOpfsEnabled()).toBe(true);
+
+        // Create asset
+        await assetsPage.goto();
+        await assetsPage.createMachine(uniqueName);
+        await assetsPage.machinesTab.click();
+        await page.waitForTimeout(500); // Allow tab content to load
+        await assetsPage.verifyAssetVisible(uniqueName);
+
+        // Reload and verify
+        await page.reload();
+        await assetsPage.goto();
+        await assetsPage.machinesTab.click();
+        await assetsPage.verifyAssetVisible(uniqueName);
+    });
+
+    test('Test 2: IndexedDB data migrates to OPFS on first enable', async ({ page }) => {
+        const settingsPage = new SettingsPage(page);
+        const assetsPage = new AssetsPage(page);
+        const uniqueName = `Migrate-Machine-${Date.now()}`;
+
+        // 1. Ensure OPFS is OFF (legacy mode)
+        // (Default after localStorage.clear() is legacy)
+        await settingsPage.goto();
+        // Just verify it's off to be safe
+        const isEnabled = await settingsPage.isOpfsEnabled();
+        if (isEnabled) {
+            await settingsPage.toggleOpfs(false);
+        }
+
+        // 2. Create asset in legacy mode
+        await assetsPage.goto();
+        await assetsPage.createMachine(uniqueName);
+        await assetsPage.verifyAssetVisible(uniqueName);
+
+        // Wait for auto-save (debounce) to enforce persistence before migration
+        await page.waitForTimeout(2000);
+
+        // 3. Enable OPFS (triggers migration)
+        await settingsPage.goto();
+        await settingsPage.toggleOpfs(true);
+
+        // 4. Verify data persists after migration
+        await assetsPage.goto();
+        await assetsPage.machinesTab.click();
+        await assetsPage.verifyAssetVisible(uniqueName);
+    });
+
+    test('Test 3: Verify console logs confirm OPFS worker initialization', async ({ page }) => {
+        const settingsPage = new SettingsPage(page);
+        const logs: string[] = [];
+
+        page.on('console', msg => {
+            if (msg.text().includes('[SqliteOpfsWorker]')) {
+                logs.push(msg.text());
+                // Uncomment to see logs in test output for debugging
+                // console.log(`PAGE LOG: ${msg.text()}`);
+            }
+        });
+
+        // Enable OPFS
+        await settingsPage.goto();
+        await settingsPage.toggleOpfs(true);
+
+        // Wait for init messages - triggering a db operation ensures worker spins up if lazy loaded
+        // Visiting assets page will trigger DB reads
+        const assetsPage = new AssetsPage(page);
+        await assetsPage.goto();
+
+        // Wait a bit for potential async logs
+        await page.waitForTimeout(1000);
+
+        // Check for success markers
+        const hasVfsInstall = logs.some(l => l.includes('opfs-sahpool VFS installed'));
+        const hasDbOpen = logs.some(l => l.includes('Database') && l.includes('opened'));
+
+        expect(hasVfsInstall || hasDbOpen).toBe(true);
+    });
+});

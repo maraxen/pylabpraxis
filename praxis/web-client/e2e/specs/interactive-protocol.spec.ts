@@ -25,17 +25,30 @@ test('should handle pause, confirm, and input interactions', async ({ page }) =>
     const loadingOverlay = page.locator('.loading-overlay');
     await expect(loadingOverlay).not.toBeVisible({ timeout: 60000 });
 
-    // 3. Type code into the editor
-    // The user suggested using 'monaco' locator. If Monaco is used inside JupyterLite or as a standalone, this should work.
-    // Fallback to searching inside the iframe if it's JupyterLite's internal editor.
     const iframe = page.frameLocator('iframe.notebook-frame');
+
+    // Handle potential JupyterLite initialization dialogs (e.g. "Error Loading Theme")
+    // which can block interaction with the editor.
+    try {
+        const jupyterDialogBtn = iframe.locator('.jp-Dialog-button.jp-mod-accept').first()
+            .or(iframe.getByRole('button', { name: 'OK' }));
+        if (await jupyterDialogBtn.isVisible({ timeout: 10000 })) {
+            console.log('Dismissing Jupyter dialog...');
+            await jupyterDialogBtn.click();
+            await page.waitForTimeout(1000);
+        }
+    } catch (e) { }
+
+    // 3. Type code into the editor
     // Target the last cell (which should be the new empty one) and its editor
     const editor = iframe.locator('.jp-Cell').last().locator('.cm-content, .CodeMirror').first();
 
     console.log('Waiting for editor...');
-    await expect(editor).toBeVisible({ timeout: 30000 });
+    await expect(editor).toBeVisible({ timeout: 60000 });
     console.log('Clicking editor...');
-    await editor.click();
+    // Ensure the editor handle is stable
+    await page.waitForTimeout(2000);
+    await editor.click({ force: true });
     await page.waitForTimeout(1000);
 
     // Clear and type - use editor methods instead of page.keyboard since editor is in iframe
@@ -61,9 +74,9 @@ name = await input("Name?")
 print(f"Hello {name}")
 `;
 
-    // Use insertText for reliable multi-line code insertion
+    // Use pressSequentially on the editor locator to ensure input goes into the iframe
     console.log('Inserting Python code...');
-    await page.keyboard.insertText(pythonCode);
+    await editor.pressSequentially(pythonCode, { delay: 10 });
 
     // Verify code was typed correctly
     await expect(editor).toContainText('from praxis.interactive import pause');

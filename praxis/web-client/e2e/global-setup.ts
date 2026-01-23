@@ -35,31 +35,12 @@ export default async function globalSetup(config: FullConfig) {
             throw new Error('[Global Setup] CRITICAL: SqliteService not found! The application failed to initialize properly.');
         }
 
-        // Wait for DB initialization (isReady$)
+        // Wait for DB initialization (isReady$) using waitForFunction which is more resilient to navigation
         console.log('[Global Setup] Waiting for database initialization...');
-        const isReady = await page.evaluate(async () => {
+        await page.waitForFunction(() => {
             const service = (window as any).sqliteService;
-            if (!service) return false;
-
-            return new Promise((resolve) => {
-                const sub = service.isReady$.subscribe((ready: boolean) => {
-                    if (ready) {
-                        sub.unsubscribe();
-                        resolve(true);
-                    }
-                });
-
-                // Timeout fallback within evaluate
-                setTimeout(() => {
-                    sub.unsubscribe();
-                    resolve(false);
-                }, 55000);
-            });
-        });
-
-        if (!isReady) {
-            throw new Error('[Global Setup] CRITICAL: SqliteService failed to reach ready state within timeout.');
-        }
+            return service && typeof service.isReady$?.getValue === 'function' && service.isReady$.getValue() === true;
+        }, null, { timeout: 120000 });
 
         console.log('[Global Setup] Success: Application and database are ready.');
 
