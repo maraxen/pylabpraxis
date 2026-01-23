@@ -4,7 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { ExecutionService } from './execution.service';
 import { ExecutionStatus } from '../models/execution.models';
 import { ModeService } from '@core/services/mode.service';
-import { SqliteService } from '@core/services/sqlite.service';
+import { SqliteService } from '@core/services/sqlite';
 import { PythonRuntimeService } from '@core/services/python-runtime.service';
 import { ApiWrapperService } from '@core/services/api-wrapper.service';
 import { Subject, of } from 'rxjs';

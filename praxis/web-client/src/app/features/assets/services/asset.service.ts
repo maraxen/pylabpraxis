@@ -9,7 +9,7 @@ import {
   MachineStatus, ResourceStatus, Workcell
 } from '../models/asset.models';
 import { ModeService } from '../../../core/services/mode.service';
-import { SqliteService } from '../../../core/services/sqlite.service';
+import { SqliteService } from '../../../core/services/sqlite';
 import { ResourceDefinitionCatalog } from '../../../core/db/schema';
 import { inferCategory } from '../utils/category-inference';
 
@@ -60,17 +60,17 @@ export class AssetService {
   // --- Machines ---
   getMachines(): Observable<Machine[]> {
     if (this.modeService.isBrowserMode()) {
-      console.debug('[ASSET-DEBUG] getMachines: Browser mode, querying SqliteService.machines');
-      return this.sqliteService.machines.pipe(
-        map(repo => {
-          const results = repo.findAll();
-          console.debug('[ASSET-DEBUG] getMachines: Found', results.length, 'machines in DB', results);
+      console.debug('[ASSET-DEBUG] getMachines: Browser mode, querying async repos');
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => repos.machines.findAll()),
+        map(results => {
+          console.debug('[ASSET-DEBUG] getMachines: Found', results.length, 'machines in OPFS', results);
           return results.map(m => ({
             ...m,
             status: m.status || 'OFFLINE',
             machine_type: m.machine_category,
-            name: (m as Record<string, unknown>)['name'] as string || 'Unknown',
-            fqn: (m as Record<string, unknown>)['fqn'] as string || ''
+            name: (m as any).name || 'Unknown',
+            fqn: (m as any).fqn || ''
           }) as unknown as Machine);
         })
       );
@@ -83,9 +83,9 @@ export class AssetService {
   createMachine(machine: MachineCreate): Observable<Machine> {
     console.debug('[ASSET-DEBUG] createMachine called with:', machine);
     if (this.modeService.isBrowserMode()) {
-      console.debug('[ASSET-DEBUG] createMachine: Browser mode, creating via SqliteService');
-      return this.sqliteService.machines.pipe(
-        switchMap(async repo => {
+      console.debug('[ASSET-DEBUG] createMachine: Browser mode, creating via async repos');
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => {
           const isSimulation = machine.is_simulation_override || !!machine.simulation_backend_name;
           const randomSuffix = Math.random().toString(36).substring(2, 9);
           const defaultSerial = isSimulation
@@ -114,10 +114,12 @@ export class AssetService {
             machine_category: machine.machine_category || machine.machine_type || 'unknown'
           };
           console.debug('[ASSET-DEBUG] createMachine: Calling repo.create with:', newMachine);
-          repo.create(newMachine as any);
-          await this.sqliteService.save();
-          console.debug('[ASSET-DEBUG] createMachine: Machine created and saved to store');
-          return newMachine;
+          return repos.machines.create(newMachine as any).pipe(
+            map(m => {
+              console.debug('[ASSET-DEBUG] createMachine: Machine created in OPFS');
+              return m as unknown as Machine;
+            })
+          );
         })
       );
     }
@@ -129,10 +131,9 @@ export class AssetService {
 
   deleteMachine(accessionId: string): Observable<void> {
     if (this.modeService.isBrowserMode()) {
-      return this.sqliteService.machines.pipe(
-        map(repo => {
-          repo.delete(accessionId);
-        })
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => repos.machines.delete(accessionId)),
+        map(() => undefined)
       );
     }
     return this.apiWrapper.wrap(MachinesService.deleteApiV1MachinesAccessionIdDelete(accessionId));
@@ -140,8 +141,10 @@ export class AssetService {
 
   updateMachine(accessionId: string, machine: Partial<MachineCreate>): Observable<Machine> {
     if (this.modeService.isBrowserMode()) {
-      // Browser update logic omitted for brevity in this POC, but it was not implemented before either
-      throw new Error('Update machine not implemented for browser mode');
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => repos.machines.update(accessionId, machine as any)),
+        map(m => m as unknown as Machine)
+      );
     }
     return this.apiWrapper.wrap(MachinesService.updateApiV1MachinesAccessionIdPut(accessionId, machine as ApiMachineUpdate)).pipe(
       map(m => m as unknown as Machine)
@@ -151,16 +154,16 @@ export class AssetService {
   // --- Resources ---
   getResources(): Observable<Resource[]> {
     if (this.modeService.isBrowserMode()) {
-      console.debug('[ASSET-DEBUG] getResources: Browser mode, querying SqliteService.resources');
-      return this.sqliteService.resources.pipe(
-        map(repo => {
-          const results = repo.findAll();
-          console.debug('[ASSET-DEBUG] getResources: Found', results.length, 'resources in DB', results);
+      console.debug('[ASSET-DEBUG] getResources: Browser mode, querying async repos');
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => repos.resources.findAll()),
+        map(results => {
+          console.debug('[ASSET-DEBUG] getResources: Found', results.length, 'resources in OPFS', results);
           return results.map(r => ({
             ...r,
             status: r.status || 'available',
-            name: (r as Record<string, unknown>)['name'] as string || 'Unknown',
-            fqn: (r as Record<string, unknown>)['fqn'] as string || ''
+            name: (r as any).name || 'Unknown',
+            fqn: (r as any).fqn || ''
           }) as unknown as Resource);
         })
       );
@@ -173,9 +176,9 @@ export class AssetService {
   createResource(resource: ResourceCreate): Observable<Resource> {
     console.debug('[ASSET-DEBUG] createResource called with:', resource);
     if (this.modeService.isBrowserMode()) {
-      console.debug('[ASSET-DEBUG] createResource: Browser mode, creating via SqliteService');
-      return this.sqliteService.resources.pipe(
-        switchMap(async repo => {
+      console.debug('[ASSET-DEBUG] createResource: Browser mode, creating via async repos');
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => {
           const newResource: Resource = {
             ...resource,
             accession_id: crypto.randomUUID(),
@@ -187,10 +190,12 @@ export class AssetService {
             fqn: `resources.${resource.name.replace(/\s+/g, '_').toLowerCase()}`,
           };
           console.debug('[ASSET-DEBUG] createResource: Calling repo.create with:', newResource);
-          repo.create(newResource as any);
-          await this.sqliteService.save();
-          console.debug('[ASSET-DEBUG] createResource: Resource created and saved to store');
-          return newResource;
+          return repos.resources.create(newResource as any).pipe(
+            map(r => {
+              console.debug('[ASSET-DEBUG] createResource: Resource created in OPFS');
+              return r as unknown as Resource;
+            })
+          );
         })
       );
     }
@@ -201,10 +206,9 @@ export class AssetService {
 
   deleteResource(accessionId: string): Observable<void> {
     if (this.modeService.isBrowserMode()) {
-      return this.sqliteService.resources.pipe(
-        map(repo => {
-          repo.delete(accessionId);
-        })
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => repos.resources.delete(accessionId)),
+        map(() => undefined)
       );
     }
     return this.apiWrapper.wrap(ResourcesService.deleteApiV1ResourcesAccessionIdDelete(accessionId));
@@ -213,9 +217,9 @@ export class AssetService {
   // --- Workcells ---
   getWorkcells(): Observable<Workcell[]> {
     if (this.modeService.isBrowserMode()) {
-      return this.sqliteService.workcells.pipe(
-        map(repo => {
-          const results = repo.findAll();
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => repos.workcells.findAll()),
+        map(results => {
           return results.map(w => ({
             ...w,
             status: w.status || 'unknown'
@@ -231,13 +235,13 @@ export class AssetService {
   // --- Definitions (Discovery) ---
   getMachineDefinitions(): Observable<MachineDefinition[]> {
     if (this.modeService.isBrowserMode()) {
-      return this.sqliteService.machineDefinitions.pipe(
-        map(repo => {
-          const defs = repo.findAll();
-          console.debug('[ASSET-DEBUG] getMachineDefinitions: Found', defs.length, 'definitions in DB');
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => repos.machineDefinitions.findAll()),
+        map(defs => {
+          console.debug('[ASSET-DEBUG] getMachineDefinitions: Found', defs.length, 'definitions in OPFS');
           return defs.map(d => ({
             ...d,
-            name: (d as Record<string, unknown>)['name'] as string || 'Unknown Definition',
+            name: (d as any).name || 'Unknown Definition',
             compatible_backends: (typeof d.compatible_backends === 'string'
               ? (() => { try { return JSON.parse(d.compatible_backends); } catch { return []; } })()
               : (Array.isArray(d.compatible_backends) ? d.compatible_backends : []))
@@ -252,9 +256,9 @@ export class AssetService {
 
   getMachineFrontendDefinitions(): Observable<MachineFrontendDefinition[]> {
     if (this.modeService.isBrowserMode()) {
-      return this.sqliteService.machineFrontendDefinitions.pipe(
-        map(repo => {
-          const defs = repo.findAll();
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => repos.machineFrontendDefinitions.findAll()),
+        map(defs => {
           return defs.map(d => ({
             ...d,
             name: (d as any).name || 'Unknown Frontend'
@@ -269,9 +273,9 @@ export class AssetService {
 
   getMachineBackendDefinitions(): Observable<MachineBackendDefinition[]> {
     if (this.modeService.isBrowserMode()) {
-      return this.sqliteService.machineBackendDefinitions.pipe(
-        map(repo => {
-          const defs = repo.findAll();
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => repos.machineBackendDefinitions.findAll()),
+        map(defs => {
           return defs.map(d => ({
             ...d,
             name: (d as any).name || 'Unknown Backend'
@@ -297,9 +301,9 @@ export class AssetService {
 
   getBackendsForFrontend(frontendAccessionId: string): Observable<MachineBackendDefinition[]> {
     if (this.modeService.isBrowserMode()) {
-      return this.sqliteService.machineBackendDefinitions.pipe(
-        map(repo => {
-          const defs = repo.findByFrontend(frontendAccessionId);
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => repos.machineBackendDefinitions.findByFrontend(frontendAccessionId)),
+        map(defs => {
           return defs.map(d => ({
             ...d,
             name: (d as any).name || 'Unknown Backend'
@@ -314,15 +318,15 @@ export class AssetService {
 
   getResourceDefinitions(plrCategory?: string): Observable<ResourceDefinition[]> {
     if (this.modeService.isBrowserMode()) {
-      return this.sqliteService.resourceDefinitions.pipe(
-        map(repo => {
-          let defs = repo.findAll();
-          if (plrCategory) {
-            defs = defs.filter(d => d.plr_category === plrCategory);
-          }
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => plrCategory
+          ? repos.resourceDefinitions.findByPlrCategory(plrCategory)
+          : repos.resourceDefinitions.findAll()
+        ),
+        map(defs => {
           return defs.map(d => ({
             ...d,
-            name: (d as Record<string, unknown>)['name'] as string || 'Unknown Definition'
+            name: (d as any).name || 'Unknown Definition'
           }) as unknown as ResourceDefinition);
         })
       );
@@ -364,20 +368,23 @@ export class AssetService {
     if (this.modeService.isBrowserMode()) {
       // Browser Mode: Use SqliteService
       try {
-        const repo = await firstValueFrom(this.sqliteService.resourceDefinitions);
-        let def: ResourceDefinitionCatalog | null = null;
+        const repos = await firstValueFrom(this.sqliteService.getAsyncRepositories());
+        let defObservable: Observable<ResourceDefinitionCatalog | null>;
 
         if (fqn) {
-          def = repo.findOneBy({ fqn } as Partial<ResourceDefinitionCatalog>);
+          defObservable = repos.resourceDefinitions.findOneBy({ fqn } as Partial<ResourceDefinitionCatalog>);
+        } else if (partialName) {
+          defObservable = repos.resourceDefinitions.findAll().pipe(
+            map(all => all.find(d =>
+              d.name?.toLowerCase().includes(partialName.toLowerCase()) ||
+              d.plr_category?.toLowerCase().includes(partialName.toLowerCase())
+            ) || null)
+          );
+        } else {
+          return null;
         }
 
-        if (!def && partialName) {
-          const all = repo.findBy({} as Partial<ResourceDefinitionCatalog>);
-          def = all.find(d =>
-            d.name?.toLowerCase().includes(partialName.toLowerCase()) ||
-            d.plr_category?.toLowerCase().includes(partialName.toLowerCase())
-          ) || null;
-        }
+        const def = await firstValueFrom(defObservable);
 
         if (def) {
           return {

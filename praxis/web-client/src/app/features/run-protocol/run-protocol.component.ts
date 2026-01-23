@@ -298,11 +298,11 @@ interface FilterCategory {
                 </h3>
 
                 @if (showMachineError()) {
-                  <div class="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <mat-icon class="text-red-400 mt-0.5">error_outline</mat-icon>
+                  <div class="mb-6 p-4 status-error-bg rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <mat-icon class="status-error-text mt-0.5">error_outline</mat-icon>
                     <div>
-                      <p class="text-red-400 font-bold">Physical execution requires real machines.</p>
-                      <p class="text-red-400/80 text-sm">Some selected machines are simulated. Switch to Simulation mode or select physical machines.</p>
+                      <p class="status-error-text font-bold">Physical execution requires real machines.</p>
+                      <p class="status-error-text opacity-80 text-sm">Some selected machines are simulated. Switch to Simulation mode or select physical machines.</p>
                     </div>
                   </div>
                 }
@@ -422,8 +422,8 @@ interface FilterCategory {
               @if (selectedProtocol()?.requires_deck === false) {
                 <!-- No deck required - show skip message -->
                 <div class="flex flex-col items-center justify-center h-full text-sys-text-tertiary">
-                  <div class="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
-                    <mat-icon class="!w-8 !h-8 !text-[32px] text-green-500">check_circle</mat-icon>
+                  <div class="w-16 h-16 rounded-full status-success-bg flex items-center justify-center mb-4">
+                    <mat-icon class="!w-8 !h-8 !text-[32px] status-success">check_circle</mat-icon>
                   </div>
                   <h3 class="text-lg font-medium text-sys-text-primary mb-2">No Deck Setup Required</h3>
                   <p class="text-sys-text-secondary mb-6 max-w-md text-center">
@@ -560,7 +560,7 @@ interface FilterCategory {
     .text-theme-status-success { color: var(--theme-status-success) !important; }
 
     .bg-gradient-success {
-      background: var(--gradient-success, linear-gradient(to right, #4ade80, #10b981));
+      background: var(--gradient-success);
     }
     .shadow-success {
       box-shadow: 0 4px 6px -1px var(--theme-status-success-muted), 0 2px 4px -1px var(--theme-status-success-muted);

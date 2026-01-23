@@ -1,7 +1,7 @@
 import { DeckCatalogService } from './deck-catalog.service';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
-import { SqliteService } from '@core/services/sqlite.service';
+import { SqliteService } from '@core/services/sqlite';
 import { of } from 'rxjs';
 
 describe('DeckCatalogService', () => {

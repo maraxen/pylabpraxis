@@ -2,7 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { KeycloakService } from '../../core/auth/keycloak.service';
+import { KeycloakService } from '@core/auth/keycloak.service';
 
 @Component({
   selector: 'app-register',
@@ -10,7 +10,7 @@ import { KeycloakService } from '../../core/auth/keycloak.service';
   imports: [
     MatCardModule,
     MatProgressSpinnerModule
-],
+  ],
   template: `
     <div class="register-container">
       <div class="register-card">

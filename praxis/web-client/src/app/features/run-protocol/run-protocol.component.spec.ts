@@ -5,7 +5,7 @@ import { ExecutionService } from './services/execution.service';
 import { DeckGeneratorService } from './services/deck-generator.service';
 import { WizardStateService } from './services/wizard-state.service';
 import { ModeService } from '@core/services/mode.service';
-import { SqliteService } from '@core/services/sqlite.service'; // Import SqliteService
+import { SqliteService } from '@core/services/sqlite'; // Import SqliteService
 import { AppStore } from '@core/store/app.store';
 import { ActivatedRoute } from '@angular/router';
 import { of } from 'rxjs';

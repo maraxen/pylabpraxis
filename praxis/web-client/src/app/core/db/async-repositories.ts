@@ -1,13 +1,15 @@
 /**
- * Entity-specific Repository Implementations
+ * Async Entity-specific Repository Implementations
  *
- * Provides specialized repositories for key entities with custom query methods.
+ * Provides specialized repositories for key entities using the SqliteAsyncRepository base.
+ * All methods return Observables.
  */
 
-import type { Database, SqlValue } from 'sql.js';
-import { SqliteRepository, type BaseEntity, type QueryOptions } from './sqlite-repository';
+import { Observable, map, switchMap } from 'rxjs';
+import { SqliteOpfsService } from '@core/services/sqlite';
+import { SqliteAsyncRepository, type QueryOptions } from './sqlite-async-repository';
+import { BaseEntity } from './base-sqlite-repository';
 import type {
-    Asset,
     ProtocolRun,
     FunctionProtocolDefinition,
     FunctionCallLog,
@@ -24,7 +26,7 @@ import type {
     FunctionDataOutput,
 } from './schema';
 import type { ProtocolRunStatus, MachineStatus, ResourceStatus } from './enums';
-import type { ProtocolDefinition, SimulationResult } from '../../features/protocols/models/protocol.models';
+import type { ProtocolDefinition, SimulationResult } from '@features/protocols/models/protocol.models';
 
 // Re-type interfaces with index signature for repository compatibility
 type WithIndex<T> = T & BaseEntity;
@@ -32,15 +34,15 @@ type WithIndex<T> = T & BaseEntity;
 /**
  * Repository for Protocol Runs with specialized queries
  */
-export class ProtocolRunRepository extends SqliteRepository<WithIndex<ProtocolRun>> {
-    constructor(db: Database) {
-        super(db, 'protocol_runs', 'accession_id');
+export class AsyncProtocolRunRepository extends SqliteAsyncRepository<WithIndex<ProtocolRun>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'protocol_runs', 'accession_id');
     }
 
     /**
      * Find protocol runs by status
      */
-    findByStatus(statuses: ProtocolRunStatus[]): ProtocolRun[] {
+    findByStatus(statuses: ProtocolRunStatus[]): Observable<ProtocolRun[]> {
         const placeholders = statuses.map(() => '?').join(', ');
         const sql = `SELECT * FROM ${this.tableName} WHERE status IN (${placeholders}) ORDER BY created_at DESC`;
         return this.executeQuery(sql, statuses);
@@ -49,7 +51,7 @@ export class ProtocolRunRepository extends SqliteRepository<WithIndex<ProtocolRu
     /**
      * Find recent protocol runs
      */
-    findRecent(limit: number = 10): ProtocolRun[] {
+    findRecent(limit: number = 10): Observable<ProtocolRun[]> {
         return this.findAll({
             orderBy: { column: 'created_at', direction: 'DESC' },
             limit
@@ -59,7 +61,7 @@ export class ProtocolRunRepository extends SqliteRepository<WithIndex<ProtocolRu
     /**
      * Find protocol runs for a specific protocol definition
      */
-    findByProtocolDefinition(protocolDefinitionId: string): ProtocolRun[] {
+    findByProtocolDefinition(protocolDefinitionId: string): Observable<ProtocolRun[]> {
         return this.findBy(
             { top_level_protocol_definition_accession_id: protocolDefinitionId } as Partial<ProtocolRun>,
             { orderBy: { column: 'created_at', direction: 'DESC' } }
@@ -69,14 +71,14 @@ export class ProtocolRunRepository extends SqliteRepository<WithIndex<ProtocolRu
     /**
      * Find running protocol runs
      */
-    findRunning(): ProtocolRun[] {
+    findRunning(): Observable<ProtocolRun[]> {
         return this.findByStatus(['running', 'preparing', 'resuming'] as ProtocolRunStatus[]);
     }
 
     /**
      * Find completed protocol runs in a date range
      */
-    findCompletedInRange(startDate: string, endDate: string): ProtocolRun[] {
+    findCompletedInRange(startDate: string, endDate: string): Observable<ProtocolRun[]> {
         const sql = `
             SELECT * FROM ${this.tableName}
             WHERE status = 'completed'
@@ -99,7 +101,7 @@ function mapProtocolEntity(row: any): ProtocolDefinition {
 
     if (row.simulation_result_json) {
         try {
-            // Check if already parsed (some ORMs auto-deserialize)
+            // Check if already parsed
             simulationResult = typeof row.simulation_result_json === 'string'
                 ? JSON.parse(row.simulation_result_json)
                 : row.simulation_result_json;
@@ -147,72 +149,78 @@ function mapProtocolEntity(row: any): ProtocolDefinition {
 /**
  * Repository for Protocol Definitions
  */
-export class ProtocolDefinitionRepository extends SqliteRepository<WithIndex<FunctionProtocolDefinition>> {
-    constructor(db: Database) {
-        super(db, 'function_protocol_definitions', 'accession_id');
+export class AsyncProtocolDefinitionRepository extends SqliteAsyncRepository<WithIndex<FunctionProtocolDefinition>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'function_protocol_definitions', 'accession_id');
     }
 
     /**
      * Find top-level (executable) protocols
      */
-    findTopLevel(): ProtocolDefinition[] {
-        const rows = this.findBy({ is_top_level: true } as Partial<FunctionProtocolDefinition>);
-        return rows.map(mapProtocolEntity);
+    findTopLevel(): Observable<ProtocolDefinition[]> {
+        return this.findBy({ is_top_level: true } as Partial<FunctionProtocolDefinition>).pipe(
+            map(rows => rows.map(mapProtocolEntity))
+        );
     }
 
     /**
      * Find protocols by category
      */
-    findByCategory(category: string): ProtocolDefinition[] {
-        const rows = this.findBy({ category } as Partial<FunctionProtocolDefinition>);
-        return rows.map(mapProtocolEntity);
+    findByCategory(category: string): Observable<ProtocolDefinition[]> {
+        return this.findBy({ category } as Partial<FunctionProtocolDefinition>).pipe(
+            map(rows => rows.map(mapProtocolEntity))
+        );
     }
 
     /**
      * Find active (non-deprecated) protocols
      */
-    findActive(): ProtocolDefinition[] {
-        const rows = this.findBy({ deprecated: false } as Partial<FunctionProtocolDefinition>);
-        return rows.map(mapProtocolEntity);
+    findActive(): Observable<ProtocolDefinition[]> {
+        return this.findBy({ deprecated: false } as Partial<FunctionProtocolDefinition>).pipe(
+            map(rows => rows.map(mapProtocolEntity))
+        );
     }
 
     /**
      * Search protocols by name or description
      */
-    search(query: string): ProtocolDefinition[] {
+    search(query: string): Observable<ProtocolDefinition[]> {
         const sql = `
             SELECT * FROM ${this.tableName}
             WHERE name LIKE ? OR description LIKE ? OR fqn LIKE ?
             ORDER BY name ASC
         `;
         const pattern = `%${query}%`;
-        const rows = this.executeQuery(sql, [pattern, pattern, pattern]);
-        return rows.map(mapProtocolEntity);
+        return this.executeQuery(sql, [pattern, pattern, pattern]).pipe(
+            map(rows => rows.map(mapProtocolEntity))
+        );
     }
 
-    override findAll(options?: QueryOptions<WithIndex<FunctionProtocolDefinition>>): WithIndex<FunctionProtocolDefinition>[] {
-        const rows = super.findAll(options);
-        return rows.map(mapProtocolEntity) as unknown as WithIndex<FunctionProtocolDefinition>[];
+    override findAll(options?: QueryOptions<WithIndex<FunctionProtocolDefinition>>): Observable<WithIndex<FunctionProtocolDefinition>[]> {
+        return super.findAll(options).pipe(
+            map(rows => rows.map(mapProtocolEntity) as unknown as WithIndex<FunctionProtocolDefinition>[])
+        );
     }
 
-    override findById(id: string): WithIndex<FunctionProtocolDefinition> | null {
-        const row = super.findById(id);
-        return row ? (mapProtocolEntity(row) as unknown as WithIndex<FunctionProtocolDefinition>) : null;
+    override findById(id: string): Observable<WithIndex<FunctionProtocolDefinition> | null> {
+        return super.findById(id).pipe(
+            map(row => row ? (mapProtocolEntity(row) as unknown as WithIndex<FunctionProtocolDefinition>) : null)
+        );
     }
 }
 
 /**
  * Repository for Function Call Logs
  */
-export class FunctionCallLogRepository extends SqliteRepository<WithIndex<FunctionCallLog>> {
-    constructor(db: Database) {
-        super(db, 'function_call_logs', 'accession_id');
+export class AsyncFunctionCallLogRepository extends SqliteAsyncRepository<WithIndex<FunctionCallLog>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'function_call_logs', 'accession_id');
     }
 
     /**
      * Find logs for a protocol run, ordered by sequence
      */
-    findByProtocolRun(protocolRunId: string): FunctionCallLog[] {
+    findByProtocolRun(protocolRunId: string): Observable<FunctionCallLog[]> {
         return this.findBy(
             { protocol_run_accession_id: protocolRunId } as Partial<FunctionCallLog>,
             { orderBy: { column: 'sequence_in_run', direction: 'ASC' } }
@@ -222,7 +230,7 @@ export class FunctionCallLogRepository extends SqliteRepository<WithIndex<Functi
     /**
      * Find child calls of a parent function call
      */
-    findChildren(parentCallId: string): FunctionCallLog[] {
+    findChildren(parentCallId: string): Observable<FunctionCallLog[]> {
         return this.findBy(
             { parent_function_call_log_accession_id: parentCallId } as Partial<FunctionCallLog>,
             { orderBy: { column: 'sequence_in_run', direction: 'ASC' } }
@@ -233,9 +241,9 @@ export class FunctionCallLogRepository extends SqliteRepository<WithIndex<Functi
 /**
  * Repository for Machines
  */
-export class MachineRepository extends SqliteRepository<WithIndex<Machine>> {
-    constructor(db: Database) {
-        super(db, 'machines', 'accession_id');
+export class AsyncMachineRepository extends SqliteAsyncRepository<WithIndex<Machine>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'machines', 'accession_id');
     }
 
     /**
@@ -248,29 +256,28 @@ export class MachineRepository extends SqliteRepository<WithIndex<Machine>> {
     /**
      * Find all machines with asset details
      */
-    override findAll(options?: QueryOptions<WithIndex<Machine>>): WithIndex<Machine>[] {
+    override findAll(options?: QueryOptions<WithIndex<Machine>>): Observable<WithIndex<Machine>[]> {
         let sql = this.joinedSelect;
         if (options?.orderBy) sql += this.buildOrderByClause(options.orderBy);
         if (options?.limit !== undefined) sql += ` LIMIT ${options.limit}`;
         if (options?.offset !== undefined) sql += ` OFFSET ${options.offset}`;
-        const results = this.executeQuery(sql);
-        console.log('[MachineRepository] findAll executed, found:', results.length, results);
-        return results;
+        return this.executeQuery(sql);
     }
 
     /**
      * Find machine by ID with asset details
      */
-    override findById(id: string): WithIndex<Machine> | null {
+    override findById(id: string): Observable<WithIndex<Machine> | null> {
         const sql = `${this.joinedSelect} WHERE m.accession_id = ?`;
-        const results = this.executeQuery(sql, [id]);
-        return results.length > 0 ? results[0] : null;
+        return this.executeQuery(sql, [id]).pipe(
+            map(results => results.length > 0 ? results[0] : null)
+        );
     }
 
     /**
      * Find machines by status
      */
-    findByStatus(statuses: MachineStatus[]): Machine[] {
+    findByStatus(statuses: MachineStatus[]): Observable<Machine[]> {
         const placeholders = statuses.map(() => '?').join(', ');
         const sql = `${this.joinedSelect} WHERE m.status IN (${placeholders})`;
         return this.executeQuery(sql, statuses);
@@ -279,21 +286,21 @@ export class MachineRepository extends SqliteRepository<WithIndex<Machine>> {
     /**
      * Find available machines
      */
-    findAvailable(): Machine[] {
+    findAvailable(): Observable<Machine[]> {
         return this.findByStatus(['AVAILABLE'] as MachineStatus[]);
     }
 
     /**
      * Find machines in a workcell
      */
-    findByWorkcell(workcellId: string): Machine[] {
+    findByWorkcell(workcellId: string): Observable<Machine[]> {
         return this.findBy({ workcell_accession_id: workcellId } as Partial<Machine>);
     }
 
     /**
      * Find machines by category
      */
-    findByCategory(category: string): Machine[] {
+    findByCategory(category: string): Observable<Machine[]> {
         return this.findBy({ machine_category: category } as Partial<Machine>);
     }
 
@@ -301,7 +308,7 @@ export class MachineRepository extends SqliteRepository<WithIndex<Machine>> {
      * Create a new machine (overrides generic create to handle Joined Table Inheritance)
      * Inserts into 'assets' and 'machines' tables.
      */
-    override create(entity: Omit<WithIndex<Machine>, 'created_at' | 'updated_at'>): WithIndex<Machine> {
+    override create(entity: Omit<WithIndex<Machine>, 'created_at' | 'updated_at'>): Observable<WithIndex<Machine>> {
         // Flattened schema: Insert directly into machines table
         const machineFields = [
             'accession_id', 'asset_type', 'name', 'fqn', 'location',
@@ -322,44 +329,49 @@ export class MachineRepository extends SqliteRepository<WithIndex<Machine>> {
 
         const machineCols = Object.keys(machineData);
         if (machineCols.length > 0) {
-            const machineVals = Object.values(machineData).map(v => this.serializeValue(v)) as SqlValue[];
+            const machineVals = Object.values(machineData).map(v => this.serializeValue(v));
             const machinePlaceholders = machineCols.map(() => '?').join(', ');
             const machineSql = `INSERT INTO machines (${machineCols.join(', ')}) VALUES (${machinePlaceholders})`;
-            const stmt = this.db.prepare(machineSql);
-            stmt.run(machineVals);
-            stmt.free();
+
+            return this.opfs.exec(machineSql, machineVals).pipe(
+                switchMap(() => this.findById(entity['accession_id'] as string)),
+                map(res => {
+                    if (!res) throw new Error("Failed to create machine");
+                    return res as WithIndex<Machine>;
+                })
+            );
         }
 
-        return this.findById(entity['accession_id'] as string) as WithIndex<Machine>;
+        throw new Error("No machine columns to insert");
     }
 }
 
 /**
  * Repository for Machine Definitions (catalog)
  */
-export class MachineDefinitionRepository extends SqliteRepository<WithIndex<MachineDefinitionCatalog>> {
-    constructor(db: Database) {
-        super(db, 'machine_definitions', 'accession_id');
+export class AsyncMachineDefinitionRepository extends SqliteAsyncRepository<WithIndex<MachineDefinitionCatalog>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'machine_definitions', 'accession_id');
     }
 
     /**
      * Find by fully qualified name
      */
-    findByFqn(fqn: string): MachineDefinitionCatalog | null {
+    findByFqn(fqn: string): Observable<MachineDefinitionCatalog | null> {
         return this.findOneBy({ fqn } as Partial<MachineDefinitionCatalog>);
     }
 
     /**
      * Find by category
      */
-    findByCategory(category: string): MachineDefinitionCatalog[] {
+    findByCategory(category: string): Observable<MachineDefinitionCatalog[]> {
         return this.findBy({ machine_category: category } as Partial<MachineDefinitionCatalog>);
     }
 
     /**
      * Find machines with decks
      */
-    findWithDecks(): MachineDefinitionCatalog[] {
+    findWithDecks(): Observable<MachineDefinitionCatalog[]> {
         return this.findBy({ has_deck: true } as Partial<MachineDefinitionCatalog>);
     }
 }
@@ -367,22 +379,22 @@ export class MachineDefinitionRepository extends SqliteRepository<WithIndex<Mach
 /**
  * Repository for Machine Frontend Definitions (catalog)
  */
-export class MachineFrontendDefinitionRepository extends SqliteRepository<WithIndex<MachineFrontendDefinition>> {
-    constructor(db: Database) {
-        super(db, 'machine_frontend_definitions', 'accession_id');
+export class AsyncMachineFrontendDefinitionRepository extends SqliteAsyncRepository<WithIndex<MachineFrontendDefinition>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'machine_frontend_definitions', 'accession_id');
     }
 
     /**
      * Find by fully qualified name
      */
-    findByFqn(fqn: string): MachineFrontendDefinition | null {
+    findByFqn(fqn: string): Observable<MachineFrontendDefinition | null> {
         return this.findOneBy({ fqn } as Partial<MachineFrontendDefinition>);
     }
 
     /**
      * Find by category
      */
-    findByCategory(category: string): MachineFrontendDefinition[] {
+    findByCategory(category: string): Observable<MachineFrontendDefinition[]> {
         return this.findBy({ machine_category: category } as Partial<MachineFrontendDefinition>);
     }
 }
@@ -390,22 +402,22 @@ export class MachineFrontendDefinitionRepository extends SqliteRepository<WithIn
 /**
  * Repository for Machine Backend Definitions (catalog)
  */
-export class MachineBackendDefinitionRepository extends SqliteRepository<WithIndex<MachineBackendDefinition>> {
-    constructor(db: Database) {
-        super(db, 'machine_backend_definitions', 'accession_id');
+export class AsyncMachineBackendDefinitionRepository extends SqliteAsyncRepository<WithIndex<MachineBackendDefinition>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'machine_backend_definitions', 'accession_id');
     }
 
     /**
      * Find by fully qualified name
      */
-    findByFqn(fqn: string): MachineBackendDefinition | null {
+    findByFqn(fqn: string): Observable<MachineBackendDefinition | null> {
         return this.findOneBy({ fqn } as Partial<MachineBackendDefinition>);
     }
 
     /**
      * Find by frontend definition
      */
-    findByFrontend(frontendId: string): MachineBackendDefinition[] {
+    findByFrontend(frontendId: string): Observable<MachineBackendDefinition[]> {
         return this.findBy({ frontend_definition_accession_id: frontendId } as Partial<MachineBackendDefinition>);
     }
 }
@@ -413,9 +425,9 @@ export class MachineBackendDefinitionRepository extends SqliteRepository<WithInd
 /**
  * Repository for Resources
  */
-export class ResourceRepository extends SqliteRepository<WithIndex<Resource>> {
-    constructor(db: Database) {
-        super(db, 'resources', 'accession_id');
+export class AsyncResourceRepository extends SqliteAsyncRepository<WithIndex<Resource>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'resources', 'accession_id');
     }
 
     /**
@@ -428,7 +440,7 @@ export class ResourceRepository extends SqliteRepository<WithIndex<Resource>> {
     /**
      * Find all resources with asset details
      */
-    override findAll(options?: QueryOptions<WithIndex<Resource>>): WithIndex<Resource>[] {
+    override findAll(options?: QueryOptions<WithIndex<Resource>>): Observable<WithIndex<Resource>[]> {
         let sql = this.joinedSelect;
         if (options?.orderBy) sql += this.buildOrderByClause(options.orderBy);
         if (options?.limit !== undefined) sql += ` LIMIT ${options.limit}`;
@@ -439,16 +451,17 @@ export class ResourceRepository extends SqliteRepository<WithIndex<Resource>> {
     /**
      * Find resource by ID with asset details
      */
-    override findById(id: string): WithIndex<Resource> | null {
+    override findById(id: string): Observable<WithIndex<Resource> | null> {
         const sql = `${this.joinedSelect} WHERE r.accession_id = ?`;
-        const results = this.executeQuery(sql, [id]);
-        return results.length > 0 ? results[0] : null;
+        return this.executeQuery(sql, [id]).pipe(
+            map(results => results.length > 0 ? results[0] : null)
+        );
     }
 
     /**
      * Find resources by status
      */
-    findByStatus(statuses: ResourceStatus[]): Resource[] {
+    findByStatus(statuses: ResourceStatus[]): Observable<Resource[]> {
         const placeholders = statuses.map(() => '?').join(', ');
         const sql = `${this.joinedSelect} WHERE r.status IN (${placeholders})`;
         return this.executeQuery(sql, statuses);
@@ -457,22 +470,21 @@ export class ResourceRepository extends SqliteRepository<WithIndex<Resource>> {
     /**
      * Find resources on a deck
      */
-    findByDeck(deckId: string): Resource[] {
+    findByDeck(deckId: string): Observable<Resource[]> {
         return this.findBy({ deck_accession_id: deckId } as Partial<Resource>);
     }
 
     /**
      * Find children of a parent resource
      */
-    findChildren(parentId: string): Resource[] {
+    findChildren(parentId: string): Observable<Resource[]> {
         return this.findBy({ parent_accession_id: parentId } as Partial<Resource>);
     }
 
     /**
-     * Create a new resource (overrides generic create to handle Joined Table Inheritance)
-     * Inserts into 'assets' and 'resources' tables.
+     * Create a new resource
      */
-    override create(entity: Omit<WithIndex<Resource>, 'created_at' | 'updated_at'>): WithIndex<Resource> {
+    override create(entity: Omit<WithIndex<Resource>, 'created_at' | 'updated_at'>): Observable<WithIndex<Resource>> {
         // Flattened schema: Insert directly into resources table
         const resourceFields = [
             'accession_id', 'asset_type', 'name', 'fqn', 'location',
@@ -490,58 +502,63 @@ export class ResourceRepository extends SqliteRepository<WithIndex<Resource>> {
 
         const resourceCols = Object.keys(resourceData);
         if (resourceCols.length > 0) {
-            const resourceVals = Object.values(resourceData).map(v => this.serializeValue(v)) as SqlValue[];
+            const resourceVals = Object.values(resourceData).map(v => this.serializeValue(v));
             const resourcePlaceholders = resourceCols.map(() => '?').join(', ');
             const resourceSql = `INSERT INTO resources (${resourceCols.join(', ')}) VALUES (${resourcePlaceholders})`;
-            const stmt = this.db.prepare(resourceSql);
-            stmt.run(resourceVals);
-            stmt.free();
+
+            return this.opfs.exec(resourceSql, resourceVals).pipe(
+                switchMap(() => this.findById(entity['accession_id'] as string)),
+                map(res => {
+                    if (!res) throw new Error("Failed to create resource");
+                    return res as WithIndex<Resource>;
+                })
+            );
         }
 
-        return this.findById(entity['accession_id'] as string) as WithIndex<Resource>;
+        throw new Error("No resource columns to insert");
     }
 }
 
 /**
  * Repository for Resource Definitions (catalog)
  */
-export class ResourceDefinitionRepository extends SqliteRepository<WithIndex<ResourceDefinitionCatalog>> {
-    constructor(db: Database) {
-        super(db, 'resource_definitions', 'accession_id');
+export class AsyncResourceDefinitionRepository extends SqliteAsyncRepository<WithIndex<ResourceDefinitionCatalog>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'resource_definitions', 'accession_id');
     }
 
     /**
      * Find by fully qualified name
      */
-    findByFqn(fqn: string): ResourceDefinitionCatalog | null {
+    findByFqn(fqn: string): Observable<ResourceDefinitionCatalog | null> {
         return this.findOneBy({ fqn } as Partial<ResourceDefinitionCatalog>);
     }
 
     /**
      * Find consumables
      */
-    findConsumables(): ResourceDefinitionCatalog[] {
+    findConsumables(): Observable<ResourceDefinitionCatalog[]> {
         return this.findBy({ is_consumable: true } as Partial<ResourceDefinitionCatalog>);
     }
 
     /**
      * Find by PLR category
      */
-    findByPlrCategory(category: string): ResourceDefinitionCatalog[] {
+    findByPlrCategory(category: string): Observable<ResourceDefinitionCatalog[]> {
         return this.findBy({ plr_category: category } as Partial<ResourceDefinitionCatalog>);
     }
 
     /**
      * Find by vendor
      */
-    findByVendor(vendor: string): ResourceDefinitionCatalog[] {
+    findByVendor(vendor: string): Observable<ResourceDefinitionCatalog[]> {
         return this.findBy({ vendor } as Partial<ResourceDefinitionCatalog>);
     }
 
     /**
      * Search by name or FQN
      */
-    search(query: string): ResourceDefinitionCatalog[] {
+    search(query: string): Observable<ResourceDefinitionCatalog[]> {
         const sql = `
             SELECT * FROM ${this.tableName}
             WHERE name LIKE ? OR fqn LIKE ?
@@ -554,7 +571,7 @@ export class ResourceDefinitionRepository extends SqliteRepository<WithIndex<Res
     /**
      * Find plates by well count
      */
-    findPlatesByWellCount(numWells: number): ResourceDefinitionCatalog[] {
+    findPlatesByWellCount(numWells: number): Observable<ResourceDefinitionCatalog[]> {
         return this.findBy({ num_items: numWells, plr_category: 'Plate' } as Partial<ResourceDefinitionCatalog>);
     }
 }
@@ -562,15 +579,15 @@ export class ResourceDefinitionRepository extends SqliteRepository<WithIndex<Res
 /**
  * Repository for Decks
  */
-export class DeckRepository extends SqliteRepository<WithIndex<Deck>> {
-    constructor(db: Database) {
-        super(db, 'decks', 'accession_id');
+export class AsyncDeckRepository extends SqliteAsyncRepository<WithIndex<Deck>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'decks', 'accession_id');
     }
 
     /**
      * Find decks for a machine
      */
-    findByMachine(machineId: string): Deck[] {
+    findByMachine(machineId: string): Observable<Deck[]> {
         return this.findBy({ parent_machine_accession_id: machineId } as Partial<Deck>);
     }
 }
@@ -578,15 +595,15 @@ export class DeckRepository extends SqliteRepository<WithIndex<Deck>> {
 /**
  * Repository for Deck Definitions (catalog)
  */
-export class DeckDefinitionRepository extends SqliteRepository<WithIndex<DeckDefinitionCatalog>> {
-    constructor(db: Database) {
-        super(db, 'deck_definition_catalog', 'accession_id');
+export class AsyncDeckDefinitionRepository extends SqliteAsyncRepository<WithIndex<DeckDefinitionCatalog>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'deck_definition_catalog', 'accession_id');
     }
 
     /**
      * Find by fully qualified name
      */
-    findByFqn(fqn: string): DeckDefinitionCatalog | null {
+    findByFqn(fqn: string): Observable<DeckDefinitionCatalog | null> {
         return this.findOneBy({ fqn } as Partial<DeckDefinitionCatalog>);
     }
 }
@@ -594,15 +611,15 @@ export class DeckDefinitionRepository extends SqliteRepository<WithIndex<DeckDef
 /**
  * Repository for Deck Position Definitions
  */
-export class DeckPositionRepository extends SqliteRepository<WithIndex<DeckPositionDefinition>> {
-    constructor(db: Database) {
-        super(db, 'deck_position_definitions', 'accession_id');
+export class AsyncDeckPositionRepository extends SqliteAsyncRepository<WithIndex<DeckPositionDefinition>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'deck_position_definitions', 'accession_id');
     }
 
     /**
      * Find positions for a deck type
      */
-    findByDeckType(deckTypeId: string): DeckPositionDefinition[] {
+    findByDeckType(deckTypeId: string): Observable<DeckPositionDefinition[]> {
         return this.findBy({ deck_type_id: deckTypeId } as Partial<DeckPositionDefinition>);
     }
 }
@@ -610,15 +627,15 @@ export class DeckPositionRepository extends SqliteRepository<WithIndex<DeckPosit
 /**
  * Repository for Workcells
  */
-export class WorkcellRepository extends SqliteRepository<WithIndex<Workcell>> {
-    constructor(db: Database) {
-        super(db, 'workcells', 'accession_id');
+export class AsyncWorkcellRepository extends SqliteAsyncRepository<WithIndex<Workcell>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'workcells', 'accession_id');
     }
 
     /**
      * Find active workcells
      */
-    findActive(): Workcell[] {
+    findActive(): Observable<Workcell[]> {
         return this.findBy({ status: 'active' } as Partial<Workcell>);
     }
 }
@@ -626,15 +643,15 @@ export class WorkcellRepository extends SqliteRepository<WithIndex<Workcell>> {
 /**
  * Repository for Function Data Outputs
  */
-export class DataOutputRepository extends SqliteRepository<WithIndex<FunctionDataOutput>> {
-    constructor(db: Database) {
-        super(db, 'function_data_outputs', 'accession_id');
+export class AsyncDataOutputRepository extends SqliteAsyncRepository<WithIndex<FunctionDataOutput>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'function_data_outputs', 'accession_id');
     }
 
     /**
      * Find outputs for a protocol run
      */
-    findByProtocolRun(protocolRunId: string): FunctionDataOutput[] {
+    findByProtocolRun(protocolRunId: string): Observable<FunctionDataOutput[]> {
         return this.findBy(
             { protocol_run_accession_id: protocolRunId } as Partial<FunctionDataOutput>,
             { orderBy: { column: 'measurement_timestamp', direction: 'ASC' } }
@@ -644,49 +661,49 @@ export class DataOutputRepository extends SqliteRepository<WithIndex<FunctionDat
     /**
      * Find outputs for a function call
      */
-    findByFunctionCall(functionCallId: string): FunctionDataOutput[] {
+    findByFunctionCall(functionCallId: string): Observable<FunctionDataOutput[]> {
         return this.findBy({ function_call_log_accession_id: functionCallId } as Partial<FunctionDataOutput>);
     }
 }
 
 /**
- * Repository factory - creates all repositories for a database
+ * Repository factory - creates all async repositories for a service
  */
-export interface Repositories {
-    protocolRuns: ProtocolRunRepository;
-    protocolDefinitions: ProtocolDefinitionRepository;
-    functionCallLogs: FunctionCallLogRepository;
-    machines: MachineRepository;
-    machineDefinitions: MachineDefinitionRepository;
-    machineFrontendDefinitions: MachineFrontendDefinitionRepository;
-    machineBackendDefinitions: MachineBackendDefinitionRepository;
-    resources: ResourceRepository;
-    resourceDefinitions: ResourceDefinitionRepository;
-    decks: DeckRepository;
-    deckDefinitions: DeckDefinitionRepository;
-    deckPositions: DeckPositionRepository;
-    workcells: WorkcellRepository;
-    dataOutputs: DataOutputRepository;
+export interface AsyncRepositories {
+    protocolRuns: AsyncProtocolRunRepository;
+    protocolDefinitions: AsyncProtocolDefinitionRepository;
+    functionCallLogs: AsyncFunctionCallLogRepository;
+    machines: AsyncMachineRepository;
+    machineDefinitions: AsyncMachineDefinitionRepository;
+    machineFrontendDefinitions: AsyncMachineFrontendDefinitionRepository;
+    machineBackendDefinitions: AsyncMachineBackendDefinitionRepository;
+    resources: AsyncResourceRepository;
+    resourceDefinitions: AsyncResourceDefinitionRepository;
+    decks: AsyncDeckRepository;
+    deckDefinitions: AsyncDeckDefinitionRepository;
+    deckPositions: AsyncDeckPositionRepository;
+    workcells: AsyncWorkcellRepository;
+    dataOutputs: AsyncDataOutputRepository;
 }
 
 /**
- * Create all repositories for a database
+ * Create all repositories for a service
  */
-export function createRepositories(db: Database): Repositories {
+export function createAsyncRepositories(opfs: SqliteOpfsService): AsyncRepositories {
     return {
-        protocolRuns: new ProtocolRunRepository(db),
-        protocolDefinitions: new ProtocolDefinitionRepository(db),
-        functionCallLogs: new FunctionCallLogRepository(db),
-        machines: new MachineRepository(db),
-        machineDefinitions: new MachineDefinitionRepository(db),
-        machineFrontendDefinitions: new MachineFrontendDefinitionRepository(db),
-        machineBackendDefinitions: new MachineBackendDefinitionRepository(db),
-        resources: new ResourceRepository(db),
-        resourceDefinitions: new ResourceDefinitionRepository(db),
-        decks: new DeckRepository(db),
-        deckDefinitions: new DeckDefinitionRepository(db),
-        deckPositions: new DeckPositionRepository(db),
-        workcells: new WorkcellRepository(db),
-        dataOutputs: new DataOutputRepository(db),
+        protocolRuns: new AsyncProtocolRunRepository(opfs),
+        protocolDefinitions: new AsyncProtocolDefinitionRepository(opfs),
+        functionCallLogs: new AsyncFunctionCallLogRepository(opfs),
+        machines: new AsyncMachineRepository(opfs),
+        machineDefinitions: new AsyncMachineDefinitionRepository(opfs),
+        machineFrontendDefinitions: new AsyncMachineFrontendDefinitionRepository(opfs),
+        machineBackendDefinitions: new AsyncMachineBackendDefinitionRepository(opfs),
+        resources: new AsyncResourceRepository(opfs),
+        resourceDefinitions: new AsyncResourceDefinitionRepository(opfs),
+        decks: new AsyncDeckRepository(opfs),
+        deckDefinitions: new AsyncDeckDefinitionRepository(opfs),
+        deckPositions: new AsyncDeckPositionRepository(opfs),
+        workcells: new AsyncWorkcellRepository(opfs),
+        dataOutputs: new AsyncDataOutputRepository(opfs),
     };
 }

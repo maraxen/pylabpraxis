@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCardModule } from '@angular/material/card';
 
-import { Machine } from '../../../assets/models/asset.models';
+import { Machine } from '@features/assets/models/asset.models';
 import { MachineCompatibility } from '../../models/machine-compatibility.models';
 
 @Component({
@@ -19,7 +19,7 @@ import { MachineCompatibility } from '../../models/machine-compatibility.models'
     MatTooltipModule,
     MatCardModule,
     MachineCardComponent
-],
+  ],
   template: `
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       @for (item of machines(); track item.machine.accession_id) {

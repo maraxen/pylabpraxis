@@ -7,7 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
-import { MachineRead } from '../../../../core/api-generated/models/MachineRead';
+import { MachineRead } from '@api/models/MachineRead';
 
 // Interface for method info
 interface ArgumentInfo {

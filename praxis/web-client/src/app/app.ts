@@ -1,6 +1,6 @@
 import { Component, signal, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { SqliteService } from './core/services/sqlite.service';
+import { SqliteService } from './core/services/sqlite';
 import { ApiConfigService } from './core/services/api-config.service';
 
 @Component({

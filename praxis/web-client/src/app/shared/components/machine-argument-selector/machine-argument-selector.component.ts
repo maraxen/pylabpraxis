@@ -8,7 +8,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { AssetService } from '../../../features/assets/services/asset.service';
 import { Machine, MachineFrontendDefinition, MachineBackendDefinition } from '../../../features/assets/models/asset.models';
 import { AssetRequirement } from '../../../features/protocols/models/protocol.models';
-import { PLRCategory, MACHINE_CATEGORIES } from '../../../core/db/plr-category';
+import { PLRCategory, MACHINE_CATEGORIES, RESOURCE_CATEGORIES } from '../../../core/db/plr-category';
 import { firstValueFrom } from 'rxjs';
 
 /**
@@ -612,10 +612,8 @@ export class MachineArgumentSelectorComponent implements OnInit, OnChanges {
       return true;
     }
 
-    // 2. Exclude non-machine categories to avoid false positives in fallback check
-    const lowerCat = catStr.toLowerCase();
-    if (lowerCat.includes('plate') || lowerCat.includes('tip') || lowerCat.includes('trough') ||
-      lowerCat.includes('reservoir') || lowerCat.includes('carrier') || lowerCat.includes('tube')) {
+    // 2. Exclude resource categories (Plate, TipRack, Trough, etc.) using canonical set
+    if (RESOURCE_CATEGORIES.has(catStr as PLRCategory)) {
       return false;
     }
 

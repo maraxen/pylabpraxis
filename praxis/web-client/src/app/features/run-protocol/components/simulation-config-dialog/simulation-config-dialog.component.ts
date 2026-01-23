@@ -8,31 +8,31 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
-import { MachineDefinition } from '../../../assets/models/asset.models';
+import { MachineDefinition } from '@features/assets/models/asset.models';
 
 export interface SimulationConfigData {
-    definition: MachineDefinition;
+  definition: MachineDefinition;
 }
 
 export interface SimulationConfigResult {
-    name: string;
-    simulation_backend_name: string;
+  name: string;
+  simulation_backend_name: string;
 }
 
 @Component({
-    selector: 'app-simulation-config-dialog',
-    standalone: true,
-    imports: [
-        CommonModule,
-        ReactiveFormsModule,
-        MatDialogModule,
-        MatButtonModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatSelectModule,
-        MatIconModule
-    ],
-    template: `
+  selector: 'app-simulation-config-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatIconModule
+  ],
+  template: `
     <div class="p-6 min-w-[400px]">
       <div class="flex items-center gap-3 mb-6">
         <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
@@ -76,37 +76,37 @@ export interface SimulationConfigResult {
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     :host {
       display: block;
     }
   `],
-    changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SimulationConfigDialogComponent {
-    form: FormGroup;
-    backends: string[] = [];
+  form: FormGroup;
+  backends: string[] = [];
 
-    constructor(
-        private fb: FormBuilder,
-        public dialogRef: MatDialogRef<SimulationConfigDialogComponent>,
-        @Inject(MAT_DIALOG_DATA) public data: SimulationConfigData
-    ) {
-        this.backends = data.definition.available_simulation_backends || ['Chatterbox', 'Simulator'];
+  constructor(
+    private fb: FormBuilder,
+    public dialogRef: MatDialogRef<SimulationConfigDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: SimulationConfigData
+  ) {
+    this.backends = data.definition.available_simulation_backends || ['Chatterbox', 'Simulator'];
 
-        this.form = this.fb.group({
-            name: [`${data.definition.name} (Sim)`, Validators.required],
-            simulation_backend_name: [this.backends[0], Validators.required]
-        });
+    this.form = this.fb.group({
+      name: [`${data.definition.name} (Sim)`, Validators.required],
+      simulation_backend_name: [this.backends[0], Validators.required]
+    });
+  }
+
+  cancel(): void {
+    this.dialogRef.close();
+  }
+
+  confirm(): void {
+    if (this.form.valid) {
+      this.dialogRef.close(this.form.value);
     }
-
-    cancel(): void {
-        this.dialogRef.close();
-    }
-
-    confirm(): void {
-        if (this.form.valid) {
-            this.dialogRef.close(this.form.value);
-        }
-    }
+  }
 }

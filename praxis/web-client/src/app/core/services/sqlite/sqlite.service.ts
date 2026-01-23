@@ -1,0 +1,326 @@
+import { Injectable } from '@angular/core';
+import { BehaviorSubject, Observable, of } from 'rxjs';
+import { map, shareReplay, switchMap } from 'rxjs/operators';
+
+// Type imports
+import type { ResourceDefinitionCatalog, MachineDefinitionCatalog } from '@core/db/schema';
+import type {
+    FunctionProtocolDefinition,
+    FunctionCallLog,
+    ProtocolRun,
+    Machine,
+    Resource
+} from '@core/db/schema';
+
+import type { InferredRequirement, FailureMode, SimulationResult } from '@core/models/simulation.models';
+import { SqliteStatus } from './sqlite.types';
+
+import { SqliteOpfsService } from './sqlite-opfs.service';
+import { AsyncRepositories, createAsyncRepositories } from '@core/db/async-repositories';
+import {
+    AsyncProtocolRunRepository,
+    AsyncProtocolDefinitionRepository,
+    AsyncFunctionCallLogRepository,
+    AsyncMachineRepository,
+    AsyncMachineDefinitionRepository,
+    AsyncMachineFrontendDefinitionRepository,
+    AsyncMachineBackendDefinitionRepository,
+    AsyncResourceRepository,
+    AsyncResourceDefinitionRepository,
+    AsyncDeckRepository,
+    AsyncDeckDefinitionRepository,
+    AsyncDeckPositionRepository,
+    AsyncWorkcellRepository,
+    AsyncDataOutputRepository
+} from '@core/db/async-repositories';
+
+@Injectable({ providedIn: 'root' })
+export class SqliteService {
+    private asyncRepositories: AsyncRepositories | null = null;
+
+    private statusSubject = new BehaviorSubject<SqliteStatus>({
+        initialized: false,
+        source: 'none',
+        tableCount: 0
+    });
+
+    public readonly status$ = this.statusSubject.asObservable();
+
+    /** Observable that emits true when the database is ready to use */
+    public readonly isReady$ = new BehaviorSubject<boolean>(false);
+
+    constructor(private opfs: SqliteOpfsService) {
+        if (typeof window !== 'undefined') {
+            (window as any).sqliteService = this;
+        }
+
+        // Initialize OPFS and sync status
+        this.opfs.init().subscribe({
+            next: () => {
+                this.statusSubject.next({
+                    initialized: true,
+                    source: 'opfs',
+                    tableCount: 0
+                });
+                this.isReady$.next(true);
+            },
+            error: (err) => {
+                this.statusSubject.next({
+                    initialized: false,
+                    source: 'none',
+                    tableCount: 0,
+                    error: err.message
+                });
+            }
+        });
+    }
+
+    // ============================================
+    // Core Repository Access
+    // ============================================
+
+    /**
+     * Get async repositories (OPFS Worker backed)
+     */
+    public getAsyncRepositories(): Observable<AsyncRepositories> {
+        return this.opfs.init().pipe(
+            map(() => {
+                if (!this.asyncRepositories) {
+                    this.asyncRepositories = createAsyncRepositories(this.opfs);
+                }
+                return this.asyncRepositories;
+            }),
+            shareReplay(1)
+        );
+    }
+
+    /**
+     * @deprecated Use getAsyncRepositories()
+     */
+    public getRepositories(): Observable<AsyncRepositories> {
+        return this.getAsyncRepositories();
+    }
+
+    // ============================================
+    // Repository Accessors
+    // ============================================
+
+    public get protocolRuns(): Observable<AsyncProtocolRunRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.protocolRuns));
+    }
+
+    public get protocolDefinitions(): Observable<AsyncProtocolDefinitionRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.protocolDefinitions));
+    }
+
+    public get machines(): Observable<AsyncMachineRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.machines));
+    }
+
+    public get machineDefinitions(): Observable<AsyncMachineDefinitionRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.machineDefinitions));
+    }
+
+    public get machineFrontendDefinitions(): Observable<AsyncMachineFrontendDefinitionRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.machineFrontendDefinitions));
+    }
+
+    public get machineBackendDefinitions(): Observable<AsyncMachineBackendDefinitionRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.machineBackendDefinitions));
+    }
+
+    public get resources(): Observable<AsyncResourceRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.resources));
+    }
+
+    public get resourceDefinitions(): Observable<AsyncResourceDefinitionRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.resourceDefinitions));
+    }
+
+    public get decks(): Observable<AsyncDeckRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.decks));
+    }
+
+    public get deckDefinitions(): Observable<AsyncDeckDefinitionRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.deckDefinitions));
+    }
+
+    public get deckPositions(): Observable<AsyncDeckPositionRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.deckPositions));
+    }
+
+    public get workcells(): Observable<AsyncWorkcellRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.workcells));
+    }
+
+    public get dataOutputs(): Observable<AsyncDataOutputRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.dataOutputs));
+    }
+
+    public get functionCallLogs(): Observable<AsyncFunctionCallLogRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.functionCallLogs));
+    }
+
+    // ============================================
+    // Convenience Query Methods
+    // ============================================
+
+    public getProtocols(): Observable<FunctionProtocolDefinition[]> {
+        return this.getAsyncRepositories().pipe(
+            switchMap(repos => repos.protocolDefinitions.findAll())
+        );
+    }
+
+    public getProtocolById(accessionId: string): Observable<FunctionProtocolDefinition | null> {
+        return this.getAsyncRepositories().pipe(
+            switchMap(repos => repos.protocolDefinitions.findById(accessionId))
+        );
+    }
+
+    public getProtocolRuns(): Observable<ProtocolRun[]> {
+        return this.getAsyncRepositories().pipe(
+            switchMap(repos => repos.protocolRuns.findAll())
+        );
+    }
+
+    public getTransferLogs(runId: string): Observable<FunctionCallLog[]> {
+        return this.getAsyncRepositories().pipe(
+            switchMap(repos => repos.functionCallLogs.findByProtocolRun(runId))
+        );
+    }
+
+    public getProtocolRun(id: string): Observable<ProtocolRun | undefined> {
+        return this.getAsyncRepositories().pipe(
+            switchMap(repos => repos.protocolRuns.findById(id)),
+            map(run => run || undefined)
+        );
+    }
+
+    public getResources(): Observable<Resource[]> {
+        return this.getAsyncRepositories().pipe(
+            switchMap(repos => repos.resources.findAll())
+        );
+    }
+
+    public getMachines(): Observable<Machine[]> {
+        return this.getAsyncRepositories().pipe(
+            switchMap(repos => repos.machines.findAll())
+        );
+    }
+
+    public getResourceDefinitions(): Observable<ResourceDefinitionCatalog[]> {
+        return this.getAsyncRepositories().pipe(
+            switchMap(repos => repos.resourceDefinitions.findAll())
+        );
+    }
+
+    public getMachineDefinitions(): Observable<MachineDefinitionCatalog[]> {
+        return this.getAsyncRepositories().pipe(
+            switchMap(repos => repos.machineDefinitions.findAll())
+        );
+    }
+
+    public getProtocolSimulationData(protocolId: string): Observable<{
+        inferred_requirements: InferredRequirement[];
+        failure_modes: FailureMode[];
+        simulation_result: SimulationResult | null;
+    } | null> {
+        return this.getAsyncRepositories().pipe(
+            switchMap(repos => repos.protocolDefinitions.findById(protocolId)),
+            map(protocol => {
+                if (!protocol) return null;
+                const props = (protocol as any).properties_json || {};
+                return {
+                    inferred_requirements: props.inferred_requirements || [],
+                    failure_modes: props.failure_modes || [],
+                    simulation_result: props.simulation_result || null,
+                };
+            })
+        );
+    }
+
+    // ============================================
+    // Database Operations (Delegate to OPFS)
+    // ============================================
+
+    /**
+     * Create a new protocol run (convenience wrapper)
+     */
+    public createProtocolRun(entity: any): Observable<ProtocolRun> {
+        return this.protocolRuns.pipe(
+            switchMap(repo => repo.create(entity))
+        );
+    }
+
+    /**
+     * Create a new machine (convenience wrapper)
+     */
+    public createMachine(entity: any): Observable<Machine> {
+        return this.machines.pipe(
+            switchMap(repo => repo.create(entity))
+        );
+    }
+
+    /**
+     * Update protocol run status (convenience wrapper)
+     */
+    public updateProtocolRunStatus(runId: string, status: string): Observable<void> {
+        return this.protocolRuns.pipe(
+            switchMap(repo => repo.update(runId, { status } as any)),
+            map(() => { })
+        );
+    }
+
+    /**
+     * Save state resolution (convenience wrapper)
+     */
+    public saveStateResolution(runId: string, resolution: any): Observable<void> {
+        // Implementation pending in repositories, mock for now to fix build
+        console.warn('saveStateResolution: NOT YET IMPLEMENTED', runId, resolution);
+        return of(undefined);
+    }
+
+    /**
+     * Get state history for a run (convenience wrapper)
+     */
+    public getRunStateHistory(runId: string): Observable<any> {
+        return this.protocolRuns.pipe(
+            switchMap(repo => repo.findById(runId)),
+            map(run => (run?.properties_json as any)?.state_history || null)
+        );
+    }
+
+    /**
+     * Export database as Uint8Array
+     */
+    public exportDatabase(): Observable<Uint8Array> {
+        return this.opfs.exportDatabase();
+    }
+
+    /**
+     * Import database from Uint8Array
+     */
+    public importDatabase(data: Uint8Array): Observable<void> {
+        return this.opfs.importDatabase(data);
+    }
+
+    /**
+     * Close database connection
+     */
+    public close(): Observable<void> {
+        return this.opfs.close();
+    }
+
+    /**
+     * Reset database to factory defaults.
+     * Clears all user data and reloads from the prebuilt praxis.db.
+     */
+    public resetToDefaults(): Observable<void> {
+        this.isReady$.next(false);
+        return this.opfs.resetToDefaults().pipe(
+            map(() => {
+                this.isReady$.next(true);
+            })
+        );
+    }
+}

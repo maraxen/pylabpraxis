@@ -1,12 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { AuthenticationService } from '../../../core/api-generated/services/AuthenticationService';
-import { ApiWrapperService } from '../../../core/services/api-wrapper.service';
-import { ApiConfigService } from '../../../core/services/api-config.service';
+import { AuthenticationService } from '@api/services/AuthenticationService';
+import { ApiWrapperService } from '@core/services/api-wrapper.service';
+import { ApiConfigService } from '@core/services/api-config.service';
 import { tap } from 'rxjs/operators';
 import { LoginRequest } from '../models/auth.models';
-import { LoginResponse } from '../../../core/api-generated/models/LoginResponse';
-import { UserRead } from '../../../core/api-generated/models/UserRead';
+import { LoginResponse } from '@api/models/LoginResponse';
+import { UserRead } from '@api/models/UserRead';
 
 @Injectable({
   providedIn: 'root'

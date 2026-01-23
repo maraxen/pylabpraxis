@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { ModeService } from '@core/services/mode.service';
-import { SqliteService } from '@core/services/sqlite.service';
+import { SqliteService } from '@core/services/sqlite';
 import { ProtocolRun } from '@core/db/schema';
 import {
     RunSummary,
@@ -10,9 +10,9 @@ import {
     RunHistoryParams,
     RunStatus,
 } from '../models/monitor.models';
-import { ProtocolsService } from '../../../core/api-generated/services/ProtocolsService';
-import { SchedulerService as SchedulerApiService } from '../../../core/api-generated/services/SchedulerService';
-import { ApiWrapperService } from '../../../core/services/api-wrapper.service';
+import { ProtocolsService } from '@api/services/ProtocolsService';
+import { SchedulerService as SchedulerApiService } from '@api/services/SchedulerService';
+import { ApiWrapperService } from '@core/services/api-wrapper.service';
 
 @Injectable({
     providedIn: 'root',

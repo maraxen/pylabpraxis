@@ -3,18 +3,17 @@ import { HttpClient } from '@angular/common/http';
 
 import { ModeService } from '@core/services/mode.service';
 import { PythonRuntimeService } from '@core/services/python-runtime.service';
-import { SqliteService } from '@core/services/sqlite.service';
+import { SqliteService } from '@core/services/sqlite';
 import { environment } from '@env/environment';
 import { Observable, Subject, of, firstValueFrom } from 'rxjs';
-import { catchError, map, retry, tap } from 'rxjs/operators';
+import { catchError, map, retry, switchMap, tap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
 import { ExecutionMessage, ExecutionState, ExecutionStatus } from '../models/execution.models';
 import { MachineCompatibility } from '../models/machine-compatibility.models';
-import { ProtocolsService } from '../../../core/api-generated/services/ProtocolsService';
+import { ProtocolsService } from '@api/services/ProtocolsService';
 import { calculateDiff } from '@core/utils/state-diff';
-import { ApiWrapperService } from '../../../core/services/api-wrapper.service';
-import { ProtocolRun } from '../../../core/db/schema';
-import { MachineDefinition } from '../../assets/models/asset.models';
+import { ApiWrapperService } from '@core/services/api-wrapper.service';
+import { ProtocolRun } from '@core/db/schema';
 
 import { WizardStateService } from './wizard-state.service';
 
@@ -74,8 +73,8 @@ export class ExecutionService {
     // In browser mode, return all definitions as templates
     if (this.modeService.isBrowserMode()) {
       return this.sqliteService.machineDefinitions.pipe(
-        map(repo => repo.findAll() as unknown as MachineDefinition[]),
-        map((definitions: MachineDefinition[]) => definitions.map(def => ({
+        switchMap(repo => repo.findAll()),
+        map((definitions: any[]) => definitions.map(def => ({
           machine: {
             accession_id: `template-${def.accession_id}`,
             name: def.name,
@@ -178,7 +177,9 @@ export class ExecutionService {
       previous_accession_id: null
     };
 
-    this.sqliteService.createProtocolRun(runRecord).subscribe({
+    this.sqliteService.protocolRuns.pipe(
+      switchMap(repo => repo.create(runRecord as any))
+    ).subscribe({
       error: (err) => console.warn('[ExecutionService] Failed to persist run:', err)
     });
 
@@ -298,8 +299,10 @@ export class ExecutionService {
       });
       this.addLog('[Browser Mode] Execution completed successfully.');
 
-      // Update run status in IndexedDB
-      this.sqliteService.updateProtocolRunStatus(runId, 'COMPLETED').subscribe();
+      // Update run status in DB
+      this.sqliteService.protocolRuns.pipe(
+        switchMap(repo => repo.update(runId, { status: 'completed', end_time: new Date().toISOString() }))
+      ).subscribe();
 
     } catch (error) {
       console.error('[Browser Execution Error]', error);
@@ -312,8 +315,10 @@ export class ExecutionService {
         });
       }
 
-      // Update run status in IndexedDB
-      this.sqliteService.updateProtocolRunStatus(runId, 'FAILED').subscribe();
+      // Update run status in DB
+      this.sqliteService.protocolRuns.pipe(
+        switchMap(repo => repo.update(runId, { status: 'failed', end_time: new Date().toISOString() }))
+      ).subscribe();
     }
   }
 
@@ -633,9 +638,9 @@ print(f"[Browser] Protocol finished with result: {result}")
     if (logData.status !== 'running') {
       // 1. Capture initial state if not already done
       if (!this.lastSavedState && logData.state_before) {
-        this.sqliteService.updateProtocolRun(runId, {
-          initial_state_json: JSON.stringify(logData.state_before) as any
-        }).subscribe();
+        this.sqliteService.protocolRuns.pipe(
+          switchMap(repo => repo.update(runId, { initial_state_json: JSON.stringify(logData.state_before) as any }))
+        ).subscribe();
         this.lastSavedState = logData.state_before;
       }
 
@@ -675,7 +680,9 @@ print(f"[Browser] Protocol finished with result: {result}")
       };
 
       // Cast to any because the partial match is looser than strict type checking
-      this.sqliteService.createFunctionCallLog(record as any).subscribe({
+      this.sqliteService.functionCallLogs.pipe(
+        switchMap(repo => repo.create(record as any))
+      ).subscribe({
         error: (err: any) => console.warn('[ExecutionService] Failed to persist function call log:', err)
       });
     }

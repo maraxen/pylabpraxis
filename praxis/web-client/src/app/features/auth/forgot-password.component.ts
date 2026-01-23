@@ -3,7 +3,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { environment } from '../../../environments/environment';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-forgot-password',
@@ -12,7 +12,7 @@ import { environment } from '../../../environments/environment';
     MatCardModule,
     MatProgressSpinnerModule,
     MatIconModule
-],
+  ],
   template: `
     <div class="forgot-container">
       <div class="forgot-card">

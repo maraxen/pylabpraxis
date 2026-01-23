@@ -89,7 +89,7 @@ import { Subscription } from 'rxjs';
               <mat-card-title>Execution Log</mat-card-title>
             </mat-card-header>
             <mat-card-content class="pt-4">
-              <div style="background-color: var(--mat-sys-surface-container);" class="text-green-400 font-mono text-sm p-4 rounded-lg h-64 overflow-y-auto">
+              <div style="background-color: var(--mat-sys-surface-container);" [style.color]="'var(--theme-status-success)'" class="font-mono text-sm p-4 rounded-lg h-64 overflow-y-auto">
                 @for (log of run.logs; track $index) {
                   <div class="mb-1">{{ log }}</div>
                 }

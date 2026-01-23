@@ -1,15 +1,15 @@
 import { HttpRequest, HttpHandlerFn, HttpEvent, HttpResponse } from '@angular/common/http';
 import { Observable, of, delay, switchMap, map } from 'rxjs';
 import { inject } from '@angular/core';
-import { ModeService } from '../services/mode.service';
-import { SqliteService } from '../services/sqlite.service';
-import { ProtocolRun } from '../db/schema';
+import { ModeService } from '@core/services/mode.service';
+import { SqliteService } from '@core/services/sqlite';
+import { ProtocolRun } from '@core/db/schema';
 
 // Import mock data for fallback
 
-import { MOCK_RESOURCES, MOCK_RESOURCE_DEFINITIONS } from '../../../assets/browser-data/resources';
-import { MOCK_MACHINES } from '../../../assets/browser-data/machines';
-import { PLR_RESOURCE_DEFINITIONS, PLR_MACHINE_DEFINITIONS } from '../../../assets/browser-data/plr-definitions';
+import { MOCK_RESOURCES, MOCK_RESOURCE_DEFINITIONS } from '@assets/browser-data/resources';
+import { MOCK_MACHINES } from '@assets/browser-data/machines';
+import { PLR_RESOURCE_DEFINITIONS, PLR_MACHINE_DEFINITIONS } from '@assets/browser-data/plr-definitions';
 
 const LATENCY_MS = 150;
 

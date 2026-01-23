@@ -2,8 +2,8 @@ import { Component, inject, OnInit } from '@angular/core';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { KeycloakService } from '../../core/auth/keycloak.service';
-import { isBrowserModeEnv } from '../../core/services/mode.service';
+import { KeycloakService } from '@core/auth/keycloak.service';
+import { isBrowserModeEnv } from '@core/services/mode.service';
 
 @Component({
   selector: 'app-login',

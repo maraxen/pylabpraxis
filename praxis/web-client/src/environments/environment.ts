@@ -7,5 +7,6 @@ export const environment = {
     url: 'http://localhost:8080',
     realm: 'praxis',
     clientId: 'praxis'
-  }
+  },
+  sqliteOpfsEnabled: false // Opt-in to experimental OPFS storage
 };

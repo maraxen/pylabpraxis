@@ -11,8 +11,7 @@ export * from './schema';
 export * from './enums';
 
 // Repository pattern
-export * from './sqlite-repository';
-export * from './repositories';
+export * from './base-sqlite-repository';
+export * from './async-repositories';
+export * from './sqlite-async-repository';
 
-// Persistence
-export * from './sqlite-persistence.service';

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, Input, OnChanges, SimpleChanges, si
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatDividerModule } from '@angular/material/divider';
 import { FormlyFieldConfig, FormlyModule } from '@ngx-formly/core';
-import { ParameterMetadata, ProtocolDefinition } from '../../../protocols/models/protocol.models';
+import { ParameterMetadata, ProtocolDefinition } from '@features/protocols/models/protocol.models';
 
 @Component({
   selector: 'app-parameter-config',

@@ -8,7 +8,7 @@ import { Observable, of } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
 
 import { ModeService } from '@core/services/mode.service';
-import { SqliteService } from '@core/services/sqlite.service';
+import { SqliteService } from '@core/services/sqlite';
 import {
     InferredRequirement,
     FailureMode,
@@ -18,8 +18,8 @@ import {
     StateSnapshot,
 } from '@core/models/simulation.models';
 
-import { ProtocolDefinitionsService } from '../api-generated/services/ProtocolDefinitionsService';
-import { OpenAPI } from '../api-generated/core/OpenAPI';
+import { ProtocolDefinitionsService } from '@api/services/ProtocolDefinitionsService';
+import { OpenAPI } from '@api/core/OpenAPI';
 import { ApiWrapperService } from './api-wrapper.service';
 
 @Injectable({ providedIn: 'root' })

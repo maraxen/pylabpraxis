@@ -11,11 +11,11 @@ import {
   computed,
   AfterViewInit,
 } from '@angular/core';
-import { InteractionService } from '../../core/services/interaction.service';
-import { AppStore } from '../../core/store/app.store';
+import { InteractionService } from '@core/services/interaction.service';
+import { AppStore } from '@core/store/app.store';
 
 import { FormsModule } from '@angular/forms';
-import { DeckCatalogService } from '../run-protocol/services/deck-catalog.service';
+import { DeckCatalogService } from '@features/run-protocol/services/deck-catalog.service';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -31,21 +31,21 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { ModeService } from '../../core/services/mode.service';
-import { AssetService } from '../assets/services/asset.service';
-import { Machine, Resource, MachineStatus } from '../assets/models/asset.models';
+import { ModeService } from '@core/services/mode.service';
+import { AssetService } from '@features/assets/services/asset.service';
+import { Machine, Resource, MachineStatus } from '@features/assets/models/asset.models';
 import { Subscription } from 'rxjs';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 
 import { serial as polyfillSerial } from 'web-serial-polyfill';
-import { SerialManagerService } from '../../core/services/serial-manager.service';
+import { SerialManagerService } from '@core/services/serial-manager.service';
 import { MatDialog } from '@angular/material/dialog';
 import { AssetWizard } from '@shared/components/asset-wizard/asset-wizard';
 
 import { MatTabsModule } from '@angular/material/tabs';
 import { DirectControlComponent } from './components/direct-control/direct-control.component';
 import { DirectControlKernelService } from './services/direct-control-kernel.service';
-import { MachineRead } from '../../core/api-generated/models/MachineRead';
+import { MachineRead } from '@api/models/MachineRead';
 
 /**
  * Playground Component
@@ -847,7 +847,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
       '# PyLabRobot Interactive Notebook',
       '# Installing pylabrobot from local wheel...',
       'import micropip',
-      "await micropip.install('assets/wheels/pylabrobot-0.1.6-py3-none-any.whl')",
+      'await micropip.install(f"{PRAXIS_HOST_ROOT}assets/wheels/pylabrobot-0.1.6-py3-none-any.whl")',
       '',
       '# Ensure WebSerial, WebUSB, and WebFTDI are in builtins for all cells',
       'import builtins',
@@ -980,16 +980,23 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     // Instead, we generate Python code to fetch and execute them from within the kernel.
     // IMPORTANT: web_ftdi_shim.py is critical for CLARIOstarBackend and similar FTDI-based devices
     const shims = ['web_serial_shim.py', 'web_usb_shim.py', 'web_ftdi_shim.py'];
-    let shimInjections = '# --- Browser Hardware Shims --- \n';
+
+    // Calculate host root in TypeScript (reliable) instead of Python/Worker (unreliable)
+    const hostRoot = this.calculateHostRoot();
+
+    let shimInjections = '# --- Host Root (injected from Angular) --- \n';
+    shimInjections += `PRAXIS_HOST_ROOT = "${hostRoot}"\n`;
+    shimInjections += 'print(f"PylibPraxis: Using Host Root: {PRAXIS_HOST_ROOT}")\n\n';
+
+    shimInjections += '# --- Browser Hardware Shims --- \n';
     shimInjections += 'import pyodide.http\n';
 
     for (const shim of shims) {
       // Generate Python code to fetch and exec
-      // Use relative path (no leading slash) for GitHub Pages compatibility
       shimInjections += `
 print("PylibPraxis: Loading ${shim}...")
 try:
-    _shim_code = await (await pyodide.http.pyfetch('assets/shims/${shim}')).string()
+    _shim_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/shims/${shim}')).string()
     exec(_shim_code, globals())
     print("PylibPraxis: Loaded ${shim}")
 except Exception as e:
@@ -1002,7 +1009,7 @@ except Exception as e:
     shimInjections += `
 print("PylibPraxis: Loading web_bridge.py...")
 try:
-    _bridge_code = await (await pyodide.http.pyfetch('assets/python/web_bridge.py')).string()
+    _bridge_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/python/web_bridge.py')).string()
     with open('web_bridge.py', 'w') as f:
         f.write(_bridge_code)
     print("PylibPraxis: Loaded web_bridge.py")
@@ -1017,7 +1024,7 @@ if not os.path.exists('praxis'):
 for _p_file in ['__init__.py', 'interactive.py']:
     try:
         print(f"PylibPraxis: Loading praxis/{_p_file}...")
-        _p_code = await (await pyodide.http.pyfetch(f'assets/python/praxis/{_p_file}')).string()
+        _p_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/python/praxis/{_p_file}')).string()
         with open(f'praxis/{_p_file}', 'w') as f:
             f.write(_p_code)
         print(f"PylibPraxis: Loaded praxis/{_p_file}")
@@ -1040,6 +1047,30 @@ for _p_file in ['__init__.py', 'interactive.py']:
       .replace(/^_|_$/g, '');
     const prefix = asset.accession_id.slice(0, 6);
     return `${desc}_${prefix}`;
+  }
+
+  /**
+   * Calculate the absolute host root URL for asset injection.
+   * This is done in TypeScript because window.location in the Pyodide worker is unreliable.
+   */
+  private calculateHostRoot(): string {
+    const href = window.location.href;
+    const anchor = '/assets/jupyterlite/';
+
+    if (href.includes(anchor)) {
+      // We are likely inside the iframe context (if code runs there) or main window
+      return href.split(anchor)[0] + '/';
+    }
+
+    // Fallback: We are in the main Angular app (e.g., localhost:4200/app/playground)
+    // We need to construct the root path to where assets are served.
+    const baseHref = document.querySelector('base')?.getAttribute('href') || '/';
+    // Remove leading slash from baseHref if it exists to avoid double slash with origin
+    const cleanBase = baseHref.startsWith('/') ? baseHref : '/' + baseHref;
+    // Ensure trailing slash
+    const finalBase = cleanBase.endsWith('/') ? cleanBase : cleanBase + '/';
+
+    return window.location.origin + finalBase;
   }
 
   /**

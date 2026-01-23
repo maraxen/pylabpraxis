@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
-import { ProtocolDefinition } from '../../../protocols/models/protocol.models';
+import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 
 @Component({
   selector: 'app-protocol-summary',

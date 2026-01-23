@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 
-import { SetupInstruction } from '../../../protocols/models/protocol.models';
+import { SetupInstruction } from '@features/protocols/models/protocol.models';
 
 /**
  * Component to display protocol setup instructions in the Deck Setup wizard.
@@ -18,16 +18,16 @@ import { SetupInstruction } from '../../../protocols/models/protocol.models';
  * - Responsive design
  */
 @Component({
-    selector: 'app-setup-instructions',
-    standalone: true,
-    imports: [
+  selector: 'app-setup-instructions',
+  standalone: true,
+  imports: [
     FormsModule,
     MatCheckboxModule,
     MatIconModule,
     MatTooltipModule,
     MatChipsModule
-],
-    template: `
+  ],
+  template: `
     @if (instructions && instructions.length > 0) {
       <div class="setup-instructions-panel">
         <div class="panel-header">
@@ -87,7 +87,7 @@ import { SetupInstruction } from '../../../protocols/models/protocol.models';
       </div>
     }
   `,
-    styles: [`
+  styles: [`
     .setup-instructions-panel {
       background: var(--surface-container-low, #f5f5f5);
       border-radius: 12px;
@@ -219,86 +219,86 @@ import { SetupInstruction } from '../../../protocols/models/protocol.models';
   `],
 })
 export class SetupInstructionsComponent {
-    /**
-     * List of setup instructions to display.
-     */
-    @Input() instructions: SetupInstruction[] | null = null;
+  /**
+   * List of setup instructions to display.
+   */
+  @Input() instructions: SetupInstruction[] | null = null;
 
-    /**
-     * Whether to show the severity legend at the bottom.
-     */
-    @Input() showLegend = false;
+  /**
+   * Whether to show the severity legend at the bottom.
+   */
+  @Input() showLegend = false;
 
-    /**
-     * Emits when all required instructions have been checked.
-     */
-    @Output() allRequiredChecked = new EventEmitter<boolean>();
+  /**
+   * Emits when all required instructions have been checked.
+   */
+  @Output() allRequiredChecked = new EventEmitter<boolean>();
 
-    /**
-     * Emits the current checked state array.
-     */
-    @Output() checkedStateChange = new EventEmitter<boolean[]>();
+  /**
+   * Emits the current checked state array.
+   */
+  @Output() checkedStateChange = new EventEmitter<boolean[]>();
 
-    /**
-     * Internal signal tracking checked state of each instruction.
-     */
-    checkedState = signal<boolean[]>([]);
+  /**
+   * Internal signal tracking checked state of each instruction.
+   */
+  checkedState = signal<boolean[]>([]);
 
-    /**
-     * Computed signal for the count of checked items.
-     */
-    checkedCount = computed(() => this.checkedState().filter(Boolean).length);
+  /**
+   * Computed signal for the count of checked items.
+   */
+  checkedCount = computed(() => this.checkedState().filter(Boolean).length);
 
-    /**
-     * Computed signal for whether all items are complete.
-     */
-    isComplete = computed(() => {
-        const state = this.checkedState();
-        return state.length > 0 && state.every(Boolean);
-    });
+  /**
+   * Computed signal for whether all items are complete.
+   */
+  isComplete = computed(() => {
+    const state = this.checkedState();
+    return state.length > 0 && state.every(Boolean);
+  });
 
-    /**
-     * Computed signal for whether all required items are checked.
-     */
-    allRequiredComplete = computed(() => {
-        if (!this.instructions) return true;
-        const state = this.checkedState();
-        return this.instructions.every((inst, i) =>
-            inst.severity !== 'required' || state[i]
-        );
-    });
+  /**
+   * Computed signal for whether all required items are checked.
+   */
+  allRequiredComplete = computed(() => {
+    if (!this.instructions) return true;
+    const state = this.checkedState();
+    return this.instructions.every((inst, i) =>
+      inst.severity !== 'required' || state[i]
+    );
+  });
 
-    ngOnChanges(): void {
-        // Initialize checked state array when instructions change
-        if (this.instructions) {
-            this.checkedState.set(new Array(this.instructions.length).fill(false));
-        }
+  ngOnChanges(): void {
+    // Initialize checked state array when instructions change
+    if (this.instructions) {
+      this.checkedState.set(new Array(this.instructions.length).fill(false));
     }
+  }
 
-    /**
-     * Toggle the checked state of an instruction.
-     */
-    toggleCheck(index: number): void {
-        const current = this.checkedState();
-        const updated = [...current];
-        updated[index] = !updated[index];
-        this.checkedState.set(updated);
+  /**
+   * Toggle the checked state of an instruction.
+   */
+  toggleCheck(index: number): void {
+    const current = this.checkedState();
+    const updated = [...current];
+    updated[index] = !updated[index];
+    this.checkedState.set(updated);
 
-        this.checkedStateChange.emit(updated);
-        this.allRequiredChecked.emit(this.allRequiredComplete());
+    this.checkedStateChange.emit(updated);
+    this.allRequiredChecked.emit(this.allRequiredComplete());
+  }
+
+  /**
+   * Get the Material color for a severity level.
+   */
+  getSeverityColor(severity: string): 'warn' | 'primary' | 'accent' {
+    switch (severity) {
+      case 'required':
+        return 'warn';
+      case 'recommended':
+        return 'primary';
+      default:
+        return 'accent';
     }
-
-    /**
-     * Get the Material color for a severity level.
-     */
-    getSeverityColor(severity: string): 'warn' | 'primary' | 'accent' {
-        switch (severity) {
-            case 'required':
-                return 'warn';
-            case 'recommended':
-                return 'primary';
-            default:
-                return 'accent';
-        }
-    }
+  }
 }

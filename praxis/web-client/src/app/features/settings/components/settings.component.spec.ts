@@ -4,7 +4,7 @@ import { AppStore } from '../../../core/store/app.store';
 import { OnboardingService, TutorialState } from '@core/services/onboarding.service';
 import { TutorialService } from '@core/services/tutorial.service';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { SqliteService } from '@core/services/sqlite.service';
+import { SqliteService } from '@core/services/sqlite';
 import { BrowserService } from '@core/services/browser.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';

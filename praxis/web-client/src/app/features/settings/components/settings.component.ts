@@ -16,8 +16,9 @@ import { BrowserService } from '@core/services/browser.service';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { SqliteService } from '@core/services/sqlite.service';
+import { SqliteService } from '@core/services/sqlite';
 import { ConfirmationDialogComponent } from '@shared/components/confirmation-dialog';
+import { ModeService } from '@core/services/mode.service';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -30,9 +31,7 @@ type Theme = 'light' | 'dark' | 'system';
     MatIconModule,
     MatListModule,
     MatSlideToggleModule,
-    MatSlideToggleModule,
     MatExpansionModule,
-    MatButtonModule,
     MatButtonModule,
     MatDividerModule,
     MatTooltipModule
@@ -314,6 +313,7 @@ export class SettingsComponent {
   dialog = inject(MatDialog);
   snackBar = inject(MatSnackBar);
   browserService = inject(BrowserService);
+  modeService = inject(ModeService);
 
 
   setTheme(theme: Theme) {
@@ -346,21 +346,40 @@ export class SettingsComponent {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        try {
-          this.sqlite.resetToDefaults();
-          this.snackBar.open('Asset inventory reset to defaults', 'Close', { duration: 3000 });
-        } catch (e) {
-          console.error(e);
-          this.snackBar.open('Failed to reset inventory', 'Close', { duration: 3000, panelClass: 'error-snackbar' });
-        }
+        this.snackBar.open('Resetting database...', '', { duration: 0 });
+        this.sqlite.resetToDefaults().subscribe({
+          next: () => {
+            this.snackBar.open('Database reset complete. Reloading...', 'OK', { duration: 2000 });
+            // Reload the page to reinitialize all services with fresh data
+            setTimeout(() => window.location.reload(), 1500);
+          },
+          error: (err: Error) => {
+            console.error('[Settings] Reset failed:', err);
+            this.snackBar.open('Reset failed: ' + err.message, 'Close', { duration: 5000 });
+          }
+        });
       }
     });
   }
 
   async exportData() {
     try {
-      await this.sqlite.exportDatabase();
-      this.snackBar.open('Database exported', 'OK', { duration: 3000 });
+      this.sqlite.exportDatabase().subscribe({
+        next: (data: Uint8Array) => {
+          const blob = new Blob([new Uint8Array(data).buffer as ArrayBuffer], { type: 'application/x-sqlite3' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `praxis-backup-${new Date().toISOString().slice(0, 10)}.db`;
+          a.click();
+          URL.revokeObjectURL(url);
+          this.snackBar.open('Database exported', 'OK', { duration: 3000 });
+        },
+        error: (err: Error) => {
+          console.error(err);
+          this.snackBar.open('Export failed', 'OK', { duration: 3000 });
+        }
+      });
     } catch (err) {
       console.error(err);
       this.snackBar.open('Export failed', 'OK', { duration: 3000 });
@@ -385,9 +404,18 @@ export class SettingsComponent {
     dialogRef.afterClosed().subscribe(async result => {
       if (result) {
         try {
-          await this.sqlite.importDatabase(file);
-          this.snackBar.open('Database imported - refreshing...', 'OK', { duration: 2000 });
-          setTimeout(() => this.browserService.reload(), 2000);
+          const buffer = await file.arrayBuffer();
+          const data = new Uint8Array(buffer);
+          this.sqlite.importDatabase(data).subscribe({
+            next: () => {
+              this.snackBar.open('Database imported - refreshing...', 'OK', { duration: 2000 });
+              setTimeout(() => this.browserService.reload(), 2000);
+            },
+            error: (err: Error) => {
+              console.error(err);
+              this.snackBar.open('Import failed', 'OK', { duration: 3000 });
+            }
+          });
         } catch (err) {
           console.error(err);
           this.snackBar.open('Import failed', 'OK', { duration: 3000 });

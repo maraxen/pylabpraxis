@@ -8,9 +8,9 @@ import {
     DeckSlotSpec,
     CarrierDefinition
 } from '../models/deck-layout.models';
-import { Machine } from '../../assets/models/asset.models';
+import { Machine } from '@features/assets/models/asset.models';
 import { PlrResource } from '@core/models/plr.models';
-import { SqliteService } from '@core/services/sqlite.service';
+import { SqliteService } from '@core/services/sqlite';
 import { DeckDefinitionCatalog } from '@core/db/schema';
 import { map, switchMap, take } from 'rxjs/operators';
 import { Observable, of } from 'rxjs';
@@ -167,17 +167,15 @@ export class DeckCatalogService {
      */
     loadDeckDefinitions(): Observable<{ fqn: string, name: string }[]> {
         return this.sqlite.deckDefinitions.pipe(
-            take(1),
-            map(repo => {
-                const all = repo.findAll();
-                return all
-                    .filter(def => def.fqn && def.name)
-                    .map(def => ({
-                        fqn: def.fqn!,
-                        name: def.name!
-                    }))
-                    .sort((a, b) => a.name.localeCompare(b.name));
-            })
+            switchMap(repo => repo.findAll()),
+            map(all => all
+                .filter(def => def.fqn && def.name)
+                .map(def => ({
+                    fqn: def.fqn!,
+                    name: def.name!
+                }))
+                .sort((a, b) => a.name.localeCompare(b.name))
+            )
         );
     }
 
@@ -192,7 +190,7 @@ export class DeckCatalogService {
     saveUserDeckConfiguration(config: DeckConfiguration, name: string): Observable<DeckDefinitionCatalog> {
         return this.sqlite.deckDefinitions.pipe(
             take(1),
-            map(repo => {
+            switchMap(repo => {
                 const now = new Date().toISOString();
                 const entity: Partial<DeckDefinitionCatalog> = {
                     accession_id: crypto.randomUUID(),
@@ -217,21 +215,18 @@ export class DeckCatalogService {
      */
     getUserDeckConfigurations(): Observable<{ id: string, name: string, config: DeckConfiguration }[]> {
         return this.sqlite.deckDefinitions.pipe(
-            take(1),
-            map(repo => {
-                const all = repo.findAll();
-                // Filter for user configs in memory (could be optimized with a query info logic exists)
-                return all
-                    .filter(def => {
-                        const props = def.properties_json as any;
-                        return props && props.is_user_config === true;
-                    })
+            switchMap(repo => repo.findAll()),
+            map(all =>
+                all.filter(def => {
+                    const props = def.properties_json as any;
+                    return props && props.is_user_config === true;
+                })
                     .map(def => ({
                         id: def.accession_id!,
                         name: def.name!,
                         config: (def.properties_json as any).configuration as DeckConfiguration
-                    }));
-            })
+                    }))
+            )
         );
     }
 
@@ -240,27 +235,25 @@ export class DeckCatalogService {
      */
     getUserConfigsForMachine(machineDefFqn: string): Observable<{ id: string, name: string, config: DeckConfiguration }[]> {
         return this.sqlite.deckDefinitions.pipe(
-            take(1),
-            map(repo => {
-                const all = repo.findAll();
-                return all
-                    .filter(def => {
-                        const props = def.properties_json as any;
-                        if (!props || !props.is_user_config) return false;
+            switchMap(repo => repo.findAll()),
+            map(all =>
+                all.filter(def => {
+                    const props = def.properties_json as any;
+                    if (!props || !props.is_user_config) return false;
 
-                        // Compatibility check
-                        const baseFqn = props.base_deck_fqn;
-                        if (machineDefFqn.includes('Hamilton') && baseFqn.includes('Hamilton')) return true;
-                        if (machineDefFqn.includes('OT') && baseFqn.includes('OT')) return true;
+                    // Compatibility check
+                    const baseFqn = props.base_deck_fqn;
+                    if (machineDefFqn.includes('Hamilton') && baseFqn.includes('Hamilton')) return true;
+                    if (machineDefFqn.includes('OT') && baseFqn.includes('OT')) return true;
 
-                        return false;
-                    })
+                    return false;
+                })
                     .map(def => ({
                         id: def.accession_id!,
                         name: def.name!,
                         config: (def.properties_json as any).configuration as DeckConfiguration
-                    }));
-            })
+                    }))
+            )
         );
     }
 
