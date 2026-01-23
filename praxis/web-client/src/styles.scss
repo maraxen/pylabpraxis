@@ -198,6 +198,7 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
 
   // Gradient text
   --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, #ff8fa8 50%, var(--tertiary-color) 100%);
+  --gradient-success: linear-gradient(135deg, #4ade80 0%, #10b981 100%);
 }
 
 /* Default Theme (Dark) */
@@ -273,6 +274,7 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
 
   // Gradient text for light theme
   --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, #ff8fa8 50%, var(--tertiary-color) 100%);
+  --gradient-success: linear-gradient(135deg, #16a34a 0%, #059669 100%);
 
   @include mat.all-component-themes($light-theme);
 
@@ -427,6 +429,12 @@ body {
 
 .status-error-text {
   color: var(--status-error);
+}
+
+.status-error-bg {
+  background-color: var(--mat-sys-error-container);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--mat-sys-error);
 }
 
 /* Skeleton Loading Utilities */
