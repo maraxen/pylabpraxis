@@ -8,6 +8,7 @@
 
 # JupyterLite generated assets
 /src/assets/jupyterlite
+!/src/assets/jupyterlite/jupyter-lite.gh-pages.json
 
 # Node
 /node_modules
@@ -44,3 +45,9 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Test results and reports
+test-results/
+playwright-report/
+test_output*.txt
+e2e/screenshots/

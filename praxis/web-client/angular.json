@@ -35,8 +35,8 @@
                 "output": "/assets"
               },
               {
-                "glob": "sql-wasm.wasm",
-                "input": "node_modules/sql.js/dist",
+                "glob": "sqlite3.wasm",
+                "input": "node_modules/@sqlite.org/sqlite-wasm/dist",
                 "output": "assets/wasm"
               },
               {

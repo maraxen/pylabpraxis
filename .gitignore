@@ -97,11 +97,7 @@ __marimo__/
 debug_*.py
 *.tar.gz
 
-# Test results and reports
-praxis/web-client/test-results/
-praxis/web-client/playwright-report/
-praxis/web-client/test_output*.txt
-praxis/web-client/e2e/screenshots/
+
 
 
 !.agent/archive/archive.tar.gz
