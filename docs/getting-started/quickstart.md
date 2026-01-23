@@ -8,9 +8,13 @@ Complete the [Installation](installation.md) guide first. You can choose between
 
 ## Modes: Pick Your Flow
 
-Praxis can be run in two main ways. For a 5-minute start, we recommend **Browser Mode**.
+Praxis can be run in two main ways.
 
-### Option A: Browser Mode (Zero Backend)
+> **ℹ️ Recommendation:** We currently recommend **Browser Mode** for most users. It is the most **stable, rigorously tested, and actively developed** version of Praxis. Use Production Mode only if you require persistent database storage or specialized backend integration.
+
+### Option A: Browser Mode (Recommended)
+
+This mode runs entirely in your browser using Pyodide (WASM). No Python/Docker backend required.
 
 1. Clone the repo: `git clone https://github.com/maraxen/praxis.git`
 2. Install & Start:
@@ -22,20 +26,21 @@ Praxis can be run in two main ways. For a 5-minute start, we recommend **Browser
 
 3. Open <http://localhost:4200>. You're ready to go!
 
-Requires Python 3.11+, PostgreSQL, and Redis. Follow the [Production Installation Guide](installation-production.md) for full setup.
+### Option B: Production / Full Stack Mode
 
-## Running Your First Protocol
+This runs the full architecture with FastAPI, PostgreSQL, and Redis. Verification steps:
 
-### 1. Start the Services
+1. Follow the [Production Installation Guide](installation-production.md) to set up Docker and Python.
+2. Start the Services:
 
-```bash
-# Terminal 1: Backend
-export PRAXIS_DB_DSN="postgresql+asyncpg://postgres:postgres@localhost:5432/praxis_test"
-uv run uvicorn praxis.backend.main:app --reload --port 8000
+   ```bash
+   # Terminal 1: Backend
+   export PRAXIS_DB_DSN="postgresql+asyncpg://postgres:postgres@localhost:5432/praxis_test"
+   uv run uvicorn praxis.backend.main:app --reload --port 8000
 
-# Terminal 2: Frontend
-cd praxis/web-client && npm start
-```
+   # Terminal 2: Frontend
+   cd praxis/web-client && npm start
+   ```
 
 ### 2. Sync Protocol Definitions
 
