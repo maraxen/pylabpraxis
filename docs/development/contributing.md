@@ -32,8 +32,6 @@ npm install
 # Start database and Redis
 docker compose up -d praxis-db redis
 
-# Or use make
-make db-test
 ```
 
 ### Run the Application
