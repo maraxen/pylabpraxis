@@ -23,7 +23,9 @@ from praxis.backend.models.domain.resource import (
   ResourceUpdate,
 )
 from praxis.backend.services.resource import resource_service
-from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionCRUDService
+from praxis.backend.services.resource_type_crud import (
+    ResourceTypeDefinitionCRUDService,
+)
 
 router = APIRouter()
 

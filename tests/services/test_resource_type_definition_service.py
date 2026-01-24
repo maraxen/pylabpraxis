@@ -8,8 +8,10 @@ from praxis.backend.models.domain.resource import (
     ResourceDefinitionCreate,
     ResourceDefinitionUpdate,
 )
-from praxis.backend.services.resource_type_definition import (
+from praxis.backend.services.resource_type_crud import (
     ResourceTypeDefinitionCRUDService,
+)
+from praxis.backend.services.resource_type_definition import (
     ResourceTypeDefinitionService,
 )
 
