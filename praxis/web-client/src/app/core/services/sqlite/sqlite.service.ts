@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core'; // Added inject
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { map, shareReplay, switchMap } from 'rxjs/operators';
 
@@ -37,6 +37,7 @@ import {
 @Injectable({ providedIn: 'root' })
 export class SqliteService {
     private asyncRepositories: AsyncRepositories | null = null;
+    private opfs = inject(SqliteOpfsService);
 
     private statusSubject = new BehaviorSubject<SqliteStatus>({
         initialized: false,
@@ -49,7 +50,7 @@ export class SqliteService {
     /** Observable that emits true when the database is ready to use */
     public readonly isReady$ = new BehaviorSubject<boolean>(false);
 
-    constructor(private opfs: SqliteOpfsService) {
+    constructor() {
         if (typeof window !== 'undefined') {
             (window as any).sqliteService = this;
         }

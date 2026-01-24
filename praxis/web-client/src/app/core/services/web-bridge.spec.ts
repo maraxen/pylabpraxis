@@ -3,6 +3,7 @@ import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PythonRuntimeService } from './python-runtime.service';
 import { HardwareDiscoveryService } from './hardware-discovery.service';
+import { InteractionService } from './interaction.service';
 
 // Mock Serial Port Interface
 const mockReader = {
@@ -85,7 +86,11 @@ describe('WebBridgeIO E2E Integration (Mocked)', () => {
             imports: [HttpClientTestingModule],
             providers: [
                 PythonRuntimeService,
-                HardwareDiscoveryService
+                HardwareDiscoveryService,
+                {
+                    provide: InteractionService,
+                    useValue: { handleInteraction: vi.fn().mockResolvedValue({}) }
+                }
             ]
         });
 

@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { PythonRuntimeService } from './python-runtime.service';
+import { InteractionService } from './interaction.service';
+import { HardwareDiscoveryService } from './hardware-discovery.service';
 import { firstValueFrom } from 'rxjs';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
@@ -26,7 +28,27 @@ describe('PythonRuntimeService', () => {
     const originalWorker = window.Worker;
     (window as any).Worker = MockWorker;
 
-    TestBed.configureTestingModule({});
+    (window as any).Worker = MockWorker;
+
+    TestBed.configureTestingModule({
+      providers: [
+        PythonRuntimeService,
+        {
+          provide: InteractionService,
+          useValue: { handleInteraction: vi.fn().mockResolvedValue({}) }
+        },
+        {
+          provide: HardwareDiscoveryService,
+          useValue: {
+            openPort: vi.fn(),
+            closePort: vi.fn(),
+            writeToPort: vi.fn(),
+            readFromPort: vi.fn(),
+            readLineFromPort: vi.fn()
+          }
+        }
+      ]
+    });
     service = TestBed.inject(PythonRuntimeService);
   });
 

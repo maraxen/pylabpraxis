@@ -6,7 +6,8 @@
     "outDir": "./out-tsc/spec",
     "types": [
       "vitest/globals"
-    ]
+    ],
+    "emitDecoratorMetadata": true
   },
   "include": [
     "src/**/*.d.ts",

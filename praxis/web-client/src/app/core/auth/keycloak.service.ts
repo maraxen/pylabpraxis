@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import Keycloak from 'keycloak-js';
-import { environment } from '../../../environments/environment';
-import { isBrowserModeEnv } from '../services/mode.service';
+import { environment } from '@env/environment';
+import { isBrowserModeEnv } from '@core/services/mode.service';
 
 export interface KeycloakUser {
   id: string;
