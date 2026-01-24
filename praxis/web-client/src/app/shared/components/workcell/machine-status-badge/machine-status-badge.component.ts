@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, Input, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MachineStatus } from '../../../../features/assets/models/asset.models';
+import { MachineStatus } from '@features/assets/models/asset.models';
 
 /**
  * A reusable status indicator component for machine state display.

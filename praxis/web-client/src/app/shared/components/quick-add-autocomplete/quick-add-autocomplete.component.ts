@@ -7,8 +7,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { AssetService } from '../../../features/assets/services/asset.service';
-import { MachineDefinition, ResourceDefinition } from '../../../features/assets/models/asset.models';
+import { AssetService } from '@features/assets/services/asset.service';
+import { MachineDefinition, ResourceDefinition } from '@features/assets/models/asset.models';
 
 export interface QuickAddResult {
   type: 'machine' | 'resource';

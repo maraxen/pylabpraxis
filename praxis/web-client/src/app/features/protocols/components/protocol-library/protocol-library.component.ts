@@ -13,9 +13,9 @@ import { finalize } from 'rxjs/operators';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { ViewControlsComponent } from '../../../../shared/components/view-controls/view-controls.component';
-import { ViewControlsConfig, ViewControlsState } from '../../../../shared/components/view-controls/view-controls.types';
-import { ProtocolCardComponent } from '../../../run-protocol/components/protocol-card/protocol-card.component';
+import { ViewControlsComponent } from '@shared/components/view-controls/view-controls.component';
+import { ViewControlsConfig, ViewControlsState } from '@shared/components/view-controls/view-controls.types';
+import { ProtocolCardComponent } from '@features/run-protocol/components/protocol-card/protocol-card.component';
 
 import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protocol-detail-dialog.component';
 

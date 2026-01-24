@@ -5,12 +5,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatDialog } from '@angular/material/dialog';
 import { WorkcellViewService } from '../services/workcell-view.service';
-import { WorkcellExplorerComponent } from '../../../shared/components/workcell/workcell-explorer/workcell-explorer.component';
-import { MachineCardComponent } from '../../../shared/components/workcell/machine-card/machine-card.component';
-import { MachineCardMiniComponent } from '../../../shared/components/workcell/machine-card/machine-card-mini.component';
+import { WorkcellExplorerComponent } from '@shared/components/workcell/workcell-explorer/workcell-explorer.component';
+import { MachineCardComponent } from '@shared/components/workcell/machine-card/machine-card.component';
+import { MachineCardMiniComponent } from '@shared/components/workcell/machine-card/machine-card-mini.component';
 import { MachineFocusViewComponent } from '../machine-focus-view/machine-focus-view.component';
 import { MachineWithRuntime } from '../models/workcell-view.models';
-import { DeckSimulationDialogComponent } from '../../run-protocol/components/simulation-config-dialog/deck-simulation-dialog.component';
+import { DeckSimulationDialogComponent } from '@features/run-protocol/components/simulation-config-dialog/deck-simulation-dialog.component';
 
 @Component({
   selector: 'app-workcell-dashboard',

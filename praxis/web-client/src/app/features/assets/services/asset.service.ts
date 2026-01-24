@@ -8,23 +8,23 @@ import {
   ResourceDefinition, ActiveFilters,
   MachineStatus, ResourceStatus, Workcell
 } from '../models/asset.models';
-import { ModeService } from '../../../core/services/mode.service';
-import { SqliteService } from '../../../core/services/sqlite';
-import { ResourceDefinitionCatalog } from '../../../core/db/schema';
+import { ModeService } from '@core/services/mode.service';
+import { SqliteService } from '@core/services/sqlite';
+import { ResourceDefinitionCatalog } from '@core/db/schema';
 import { inferCategory } from '../utils/category-inference';
 
 // API Generated imports
-import { MachinesService } from '../../../core/api-generated/services/MachinesService';
-import { MachineFrontendsService } from '../../../core/api-generated/services/MachineFrontendsService';
-import { MachineBackendsService } from '../../../core/api-generated/services/MachineBackendsService';
-import { ResourcesService } from '../../../core/api-generated/services/ResourcesService';
-import { AssetsService } from '../../../core/api-generated/services/AssetsService';
-import { DiscoveryService } from '../../../core/api-generated/services/DiscoveryService';
-import { ApiWrapperService } from '../../../core/services/api-wrapper.service';
-import { MachineCreate as ApiMachineCreate } from '../../../core/api-generated/models/MachineCreate';
-import { MachineUpdate as ApiMachineUpdate } from '../../../core/api-generated/models/MachineUpdate';
-import { ResourceCreate as ApiResourceCreate } from '../../../core/api-generated/models/ResourceCreate';
-import { WorkcellsService } from '../../../core/api-generated/services/WorkcellsService';
+import { MachinesService } from '@core/api-generated/services/MachinesService';
+import { MachineFrontendsService } from '@core/api-generated/services/MachineFrontendsService';
+import { MachineBackendsService } from '@core/api-generated/services/MachineBackendsService';
+import { ResourcesService } from '@core/api-generated/services/ResourcesService';
+import { AssetsService } from '@core/api-generated/services/AssetsService';
+import { DiscoveryService } from '@core/api-generated/services/DiscoveryService';
+import { ApiWrapperService } from '@core/services/api-wrapper.service';
+import { MachineCreate as ApiMachineCreate } from '@core/api-generated/models/MachineCreate';
+import { MachineUpdate as ApiMachineUpdate } from '@core/api-generated/models/MachineUpdate';
+import { ResourceCreate as ApiResourceCreate } from '@core/api-generated/models/ResourceCreate';
+import { WorkcellsService } from '@core/api-generated/services/WorkcellsService';
 
 // Facet item with value and count
 export interface FacetItem {

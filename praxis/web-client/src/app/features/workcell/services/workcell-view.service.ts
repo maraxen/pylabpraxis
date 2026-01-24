@@ -1,9 +1,9 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { forkJoin, Observable, map } from 'rxjs';
-import { AssetService } from '../../assets/services/asset.service';
-import { Machine, Workcell, MachineStatus } from '../../assets/models/asset.models';
+import { AssetService } from '@features/assets/services/asset.service';
+import { Machine, Workcell, MachineStatus } from '@features/assets/models/asset.models';
 import { WorkcellGroup, MachineWithRuntime, MachineAlert } from '../models/workcell-view.models';
-import { DeckCatalogService } from '../../run-protocol/services/deck-catalog.service';
+import { DeckCatalogService } from '@features/run-protocol/services/deck-catalog.service';
 
 @Injectable({
     providedIn: 'root'

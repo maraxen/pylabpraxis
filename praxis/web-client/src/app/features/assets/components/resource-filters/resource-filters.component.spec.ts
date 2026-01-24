@@ -3,7 +3,7 @@ import { ResourceFiltersComponent } from './resource-filters.component';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ResourceStatus, Resource } from '../../models/asset.models';
-import { FilterResultService } from '../../../../shared/services/filter-result.service';
+import { FilterResultService } from '@shared/services/filter-result.service';
 
 describe('ResourceFiltersComponent', () => {
     let component: ResourceFiltersComponent;

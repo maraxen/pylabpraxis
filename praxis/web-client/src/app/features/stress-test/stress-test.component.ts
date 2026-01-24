@@ -6,8 +6,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormsModule } from '@angular/forms';
-import { MachinesService } from '../../core/api-generated/services/MachinesService';
-import { ApiWrapperService } from '../../core/services/api-wrapper.service';
+import { MachinesService } from '@core/api-generated/services/MachinesService';
+import { ApiWrapperService } from '@core/services/api-wrapper.service';
 import { firstValueFrom } from 'rxjs';
 
 @Component({

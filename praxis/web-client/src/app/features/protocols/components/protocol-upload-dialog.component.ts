@@ -5,7 +5,7 @@ import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { AssetService } from '../../assets/services/asset.service'; // Typo? ProtocolService?
+import { AssetService } from '@features/assets/services/asset.service'; // Typo? ProtocolService?
 import { ProtocolService } from '../services/protocol.service';
 
 @Component({

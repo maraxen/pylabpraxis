@@ -10,8 +10,8 @@ import { forkJoin } from 'rxjs';
 import { AssetService } from '../../services/asset.service';
 import { AssetStatusChipComponent } from '../asset-status-chip/asset-status-chip.component';
 import { Machine, Resource, Workcell } from '../../models/asset.models';
-import { ViewControlsComponent } from '../../../../shared/components/view-controls/view-controls.component';
-import { ViewControlsConfig, ViewControlsState } from '../../../../shared/components/view-controls/view-controls.types';
+import { ViewControlsComponent } from '@shared/components/view-controls/view-controls.component';
+import { ViewControlsConfig, ViewControlsState } from '@shared/components/view-controls/view-controls.types';
 
 @Component({
   selector: 'app-spatial-view',

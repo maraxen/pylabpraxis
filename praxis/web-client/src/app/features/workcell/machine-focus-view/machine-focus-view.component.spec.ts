@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MachineFocusViewComponent } from './machine-focus-view.component';
 import { MachineWithRuntime } from '../models/workcell-view.models';
-import { MachineStatus } from '../../assets/models/asset.models';
+import { MachineStatus } from '@features/assets/models/asset.models';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 describe('MachineFocusViewComponent', () => {

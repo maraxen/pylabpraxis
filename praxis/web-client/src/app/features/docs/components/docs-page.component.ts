@@ -2,14 +2,14 @@ import { Component, computed, effect, ElementRef, HostListener, inject, signal }
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
-import { AppStore } from '../../../core/store/app.store';
-import { DiagramOverlayComponent } from '../../../shared/components/diagram-overlay/diagram-overlay.component';
+import { AppStore } from '@core/store/app.store';
+import { DiagramOverlayComponent } from '@shared/components/diagram-overlay/diagram-overlay.component';
 
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { MarkdownModule } from 'ngx-markdown';
 import { catchError, of } from 'rxjs';
-import { SKIP_ERROR_HANDLING } from '../../../core/http/http-context.tokens';
+import { SKIP_ERROR_HANDLING } from '@core/http/http-context.tokens';
 import { SystemTopologyComponent } from './system-topology/system-topology.component';
 import mermaid from 'mermaid';
 

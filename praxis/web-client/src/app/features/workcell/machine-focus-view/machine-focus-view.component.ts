@@ -2,11 +2,11 @@ import { Component, ChangeDetectionStrategy, Input, output, signal, HostListener
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MachineWithRuntime } from '../models/workcell-view.models';
-import { DeckViewComponent } from '../../../shared/components/deck-view/deck-view.component';
+import { DeckViewComponent } from '@shared/components/deck-view/deck-view.component';
 import { ProtocolProgressPanelComponent } from './protocol-progress-panel.component';
 import { ResourceInspectorPanelComponent } from './resource-inspector-panel.component';
 import { PlrResourceDetails } from '@core/models/plr.models';
-import { DeckStateIndicatorComponent } from '../../../shared/components/workcell/deck-state-indicator/deck-state-indicator.component';
+import { DeckStateIndicatorComponent } from '@shared/components/workcell/deck-state-indicator/deck-state-indicator.component';
 
 @Component({
   selector: 'app-machine-focus-view',

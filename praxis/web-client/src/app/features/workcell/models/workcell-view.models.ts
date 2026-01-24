@@ -1,4 +1,4 @@
-import { Machine, Workcell } from '../../assets/models/asset.models';
+import { Machine, Workcell } from '@features/assets/models/asset.models';
 
 export interface WorkcellGroup {
     workcell: Workcell | null;

@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ResourceAccordionComponent } from './resource-accordion.component';
 import { AssetService } from '../../services/asset.service';
 import { MatDialog } from '@angular/material/dialog';
-import { AppStore } from '../../../../core/store/app.store';
+import { AppStore } from '@core/store/app.store';
 import { of } from 'rxjs';
 import { signal } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';

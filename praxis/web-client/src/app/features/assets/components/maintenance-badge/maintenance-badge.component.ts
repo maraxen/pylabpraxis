@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Machine } from '../../models/asset.models';
 import { calculateMaintenanceStatus, calculateNextDueDate } from '../../utils/maintenance.utils';
-import { AppStore } from '../../../../core/store/app.store';
+import { AppStore } from '@core/store/app.store';
 
 export type MaintenanceStatus = 'ok' | 'warning' | 'overdue' | 'disabled';
 

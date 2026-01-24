@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { FormlyModule } from '@ngx-formly/core';
-import { ParameterMetadata, ProtocolDefinition } from '../../../protocols/models/protocol.models';
+import { ParameterMetadata, ProtocolDefinition } from '@features/protocols/models/protocol.models';
 import { ParameterConfigComponent } from './parameter-config.component';
 
 describe('ParameterConfigComponent', () => {

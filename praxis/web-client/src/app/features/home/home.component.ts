@@ -11,15 +11,15 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatBadgeModule } from '@angular/material/badge';
 import { Subscription } from 'rxjs';
 
-import { AssetService } from '../assets/services/asset.service';
-import { ProtocolService } from '../protocols/services/protocol.service';
-import { ExecutionService } from '../run-protocol/services/execution.service';
+import { AssetService } from '@features/assets/services/asset.service';
+import { ProtocolService } from '@features/protocols/services/protocol.service';
+import { ExecutionService } from '@features/run-protocol/services/execution.service';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 import { SparklineComponent } from '@shared/components/sparkline/sparkline.component';
 import { ModeService } from '@core/services/mode.service';
-import { Machine, Resource, MachineStatus } from '../assets/models/asset.models';
-import { ProtocolDefinition } from '../protocols/models/protocol.models';
-import { ExecutionStatus } from '../run-protocol/models/execution.models';
+import { Machine, Resource, MachineStatus } from '@features/assets/models/asset.models';
+import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
+import { ExecutionStatus } from '@features/run-protocol/models/execution.models';
 
 interface RecentRun {
   id: string;

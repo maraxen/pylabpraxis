@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { Observable, forkJoin, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { AssetService } from './asset.service';
-import { Command } from '../../../core/services/command-registry.service';
+import { Command } from '@core/services/command-registry.service';
 import { Machine, Resource } from '../models/asset.models';
 
 @Injectable({

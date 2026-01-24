@@ -15,8 +15,8 @@ import { ViewControlsConfig, ViewControlsState } from '@shared/components/view-c
 import { WellSelectorDialogComponent } from '@shared/components/well-selector-dialog/well-selector-dialog.component';
 import { PlotlyModule } from 'angular-plotly.js';
 import { interval, Subscription } from 'rxjs';
-import { ProtocolService } from '../protocols/services/protocol.service';
-import { ProtocolDefinition } from '../protocols/models/protocol.models';
+import { ProtocolService } from '@features/protocols/services/protocol.service';
+import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 
 interface TransferDataPoint {
   timestamp: Date;

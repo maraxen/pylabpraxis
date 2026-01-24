@@ -6,9 +6,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Resource, ResourceStatus, Machine } from '../../models/asset.models';
-import { PraxisMultiselectComponent } from '../../../../shared/components/praxis-multiselect/praxis-multiselect.component';
-import { FilterOption, FilterResultService } from '../../../../shared/services/filter-result.service';
-import { extractUniqueNameParts } from '../../../../shared/utils/name-parser';
+import { PraxisMultiselectComponent } from '@shared/components/praxis-multiselect/praxis-multiselect.component';
+import { FilterOption, FilterResultService } from '@shared/services/filter-result.service';
+import { extractUniqueNameParts } from '@shared/utils/name-parser';
 
 export interface ResourceFilterState {
   search: string;

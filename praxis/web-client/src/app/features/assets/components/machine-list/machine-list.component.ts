@@ -17,9 +17,9 @@ import { AssetStatusChipComponent } from '../asset-status-chip/asset-status-chip
 import { LocationBreadcrumbComponent } from '../location-breadcrumb/location-breadcrumb.component';
 import { MaintenanceBadgeComponent } from '../maintenance-badge/maintenance-badge.component';
 import { MachineDetailsDialogComponent } from './machine-details-dialog.component';
-import { ViewControlsComponent } from '../../../../shared/components/view-controls/view-controls.component';
-import { ViewControlsConfig, ViewControlsState } from '../../../../shared/components/view-controls/view-controls.types';
-import { AppStore } from '../../../../core/store/app.store';
+import { ViewControlsComponent } from '@shared/components/view-controls/view-controls.component';
+import { ViewControlsConfig, ViewControlsState } from '@shared/components/view-controls/view-controls.types';
+import { AppStore } from '@core/store/app.store';
 
 @Component({
   selector: 'app-machine-list',

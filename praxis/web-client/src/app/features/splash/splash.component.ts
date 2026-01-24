@@ -6,8 +6,8 @@ import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { isBrowserModeEnv } from '../../core/services/mode.service';
-import { AppStore } from '../../core/store/app.store';
+import { isBrowserModeEnv } from '@core/services/mode.service';
+import { AppStore } from '@core/store/app.store';
 import { PRAXIS_LOGO_SVG_DATA } from '@shared/constants/logo';
 
 @Component({

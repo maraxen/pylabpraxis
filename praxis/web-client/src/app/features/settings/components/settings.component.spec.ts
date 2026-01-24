@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SettingsComponent } from './settings.component';
-import { AppStore } from '../../../core/store/app.store';
+import { AppStore } from '@core/store/app.store';
 import { OnboardingService, TutorialState } from '@core/services/onboarding.service';
 import { TutorialService } from '@core/services/tutorial.service';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { WorkcellViewService } from './workcell-view.service';
-import { AssetService } from '../../assets/services/asset.service';
-import { Machine, Workcell, MachineStatus } from '../../assets/models/asset.models';
+import { AssetService } from '@features/assets/services/asset.service';
+import { Machine, Workcell, MachineStatus } from '@features/assets/models/asset.models';
 import { of, firstValueFrom } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 

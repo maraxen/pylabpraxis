@@ -3,10 +3,10 @@ import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testin
 import { PlaygroundComponent } from './playground.component';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { AppStore } from '../../core/store/app.store';
-import { ModeService } from '../../core/services/mode.service';
-import { AssetService } from '../assets/services/asset.service';
-import { SerialManagerService } from '../../core/services/serial-manager.service';
+import { AppStore } from '@core/store/app.store';
+import { ModeService } from '@core/services/mode.service';
+import { AssetService } from '@features/assets/services/asset.service';
+import { SerialManagerService } from '@core/services/serial-manager.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { signal, WritableSignal } from '@angular/core'; // Import signal
 import { of } from 'rxjs';

@@ -18,9 +18,9 @@ import { getResourceCategoryIcon } from '@shared/constants/asset-icons';
 import { getUiGroup, UI_GROUP_ORDER, shouldHideCategory, ResourceUiGroup } from '../../utils/resource-category-groups';
 import { ResourceChipsComponent } from '../resource-chips/resource-chips.component';
 import { getDisplayLabel } from '../../utils/resource-name-parser';
-import { AppStore } from '../../../../core/store/app.store';
-import { ViewControlsComponent } from '../../../../shared/components/view-controls/view-controls.component';
-import { ViewControlsConfig, ViewControlsState } from '../../../../shared/components/view-controls/view-controls.types';
+import { AppStore } from '@core/store/app.store';
+import { ViewControlsComponent } from '@shared/components/view-controls/view-controls.component';
+import { ViewControlsConfig, ViewControlsState } from '@shared/components/view-controls/view-controls.types';
 
 export interface ResourceGroup {
   category: string;

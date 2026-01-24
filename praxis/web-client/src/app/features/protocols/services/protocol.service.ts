@@ -1,11 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
-import { ProtocolDefinitionsService } from '../../../core/api-generated/services/ProtocolDefinitionsService';
-import { ProtocolsService } from '../../../core/api-generated/services/ProtocolsService';
-import { ApiWrapperService } from '../../../core/services/api-wrapper.service';
-import { FunctionProtocolDefinitionRead } from '../../../core/api-generated/models/FunctionProtocolDefinitionRead';
-import { ProtocolRunRead } from '../../../core/api-generated/models/ProtocolRunRead';
+import { ProtocolDefinitionsService } from '@core/api-generated/services/ProtocolDefinitionsService';
+import { ProtocolsService } from '@core/api-generated/services/ProtocolsService';
+import { ApiWrapperService } from '@core/services/api-wrapper.service';
+import { FunctionProtocolDefinitionRead } from '@core/api-generated/models/FunctionProtocolDefinitionRead';
+import { ProtocolRunRead } from '@core/api-generated/models/ProtocolRunRead';
 import { ProtocolDefinition } from '../models/protocol.models';
 
 @Injectable({

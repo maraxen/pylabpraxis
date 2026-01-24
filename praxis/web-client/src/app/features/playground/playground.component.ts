@@ -792,9 +792,9 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     console.log('[REPL] Building JupyterLite URL. Calculated isDark:', isDark, 'Effective Theme Class:', this.currentTheme);
 
     // JupyterLite REPL URL with parameters
-    const baseUrl = './assets/jupyterlite/repl/index.html';
+    // Force kernel selection in the base URL path to ensure it's prioritized
+    const baseUrl = './assets/jupyterlite/repl/index.html?kernel=python';
     const params = new URLSearchParams({
-      kernel: 'python',
       toolbar: '1',
       theme: isDark ? 'JupyterLab Dark' : 'JupyterLab Light',
     });
@@ -806,7 +806,8 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
       params.set('code', bootstrapCode);
     }
 
-    const fullUrl = `${baseUrl}?${params.toString()}`;
+    // Append other params with '&' since '?' is already in the baseUrl
+    const fullUrl = `${baseUrl}&${params.toString()}`;
     this.jupyterliteUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
 
     // Set a timeout to show error/retry if iframe load is slow

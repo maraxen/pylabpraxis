@@ -19,7 +19,7 @@ import { StateHistoryTimelineComponent } from './state-history-timeline';
 import { StateDeltaComponent } from './state-delta/state-delta.component';
 import { ParameterViewerComponent } from './parameter-viewer';
 import { DeckViewComponent } from '@shared/components/deck-view/deck-view.component';
-import { ExecutionService } from '../../run-protocol/services/execution.service';
+import { ExecutionService } from '@features/run-protocol/services/execution.service';
 
 /**
  * Displays detailed information about a single protocol run.

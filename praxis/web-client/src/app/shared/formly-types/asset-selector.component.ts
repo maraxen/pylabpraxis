@@ -10,10 +10,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
-import { AssetService } from '../../features/assets/services/asset.service';
+import { AssetService } from '@features/assets/services/asset.service';
 import { Observable, forkJoin, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, startWith } from 'rxjs/operators';
-import { AssetBase, Resource, ResourceDefinition } from '../../features/assets/models/asset.models';
+import { AssetBase, Resource, ResourceDefinition } from '@features/assets/models/asset.models';
 
 interface AssetOption {
   asset: AssetBase;

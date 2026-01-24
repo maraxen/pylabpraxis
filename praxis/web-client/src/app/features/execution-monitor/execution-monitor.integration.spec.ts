@@ -4,7 +4,7 @@ import { ExecutionMonitorComponent } from './execution-monitor.component';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
-import { ProtocolService } from '../protocols/services/protocol.service';
+import { ProtocolService } from '@features/protocols/services/protocol.service';
 import { of } from 'rxjs';
 import { NO_ERRORS_SCHEMA, Component } from '@angular/core';
 

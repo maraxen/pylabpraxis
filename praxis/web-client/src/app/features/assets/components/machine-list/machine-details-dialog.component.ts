@@ -15,7 +15,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MaintenanceBadgeComponent } from '../maintenance-badge/maintenance-badge.component';
-import { AppStore } from '../../../../core/store/app.store';
+import { AppStore } from '@core/store/app.store';
 import { AssetService } from '../../services/asset.service';
 
 @Component({

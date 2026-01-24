@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ProtocolSummaryComponent } from './protocol-summary.component';
-import { ProtocolDefinition } from '../../../protocols/models/protocol.models';
+import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 
 describe('ProtocolSummaryComponent', () => {
     let component: ProtocolSummaryComponent;

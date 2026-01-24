@@ -4,8 +4,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MarkdownModule } from 'ngx-markdown';
-import { AppStore } from '../../../../core/store/app.store';
-import { DiagramOverlayComponent } from '../../../../shared/components/diagram-overlay/diagram-overlay.component';
+import { AppStore } from '@core/store/app.store';
+import { DiagramOverlayComponent } from '@shared/components/diagram-overlay/diagram-overlay.component';
 
 @Component({
   selector: 'app-system-topology',

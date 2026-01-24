@@ -13,12 +13,17 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialogRef, MatDialogModule, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { AssetService } from '../../../features/assets/services/asset.service';
-import { ModeService } from '../../../core/services/mode.service';
+import { AssetService } from '@features/assets/services/asset.service';
+import { ModeService } from '@core/services/mode.service';
 import {
-  MachineDefinition, ResourceDefinition, MachineCreate, ResourceCreate, Machine,
-  MachineFrontendDefinition, MachineBackendDefinition
-} from '../../../features/assets/models/asset.models';
+  MachineDefinition,
+  ResourceDefinition,
+  MachineCreate,
+  ResourceCreate,
+  Machine,
+  MachineFrontendDefinition,
+  MachineBackendDefinition
+} from '@features/assets/models/asset.models';
 import { debounceTime, distinctUntilChanged, map, startWith, switchMap } from 'rxjs/operators';
 import { Observable, BehaviorSubject, of, firstValueFrom, combineLatest } from 'rxjs';
 

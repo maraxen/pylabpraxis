@@ -9,11 +9,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { PraxisSelectComponent } from '../../../../shared/components/praxis-select/praxis-select.component';
-import { PraxisMultiselectComponent } from '../../../../shared/components/praxis-multiselect/praxis-multiselect.component';
-import { SelectOption } from '../../../../shared/components/praxis-select/praxis-select.component';
+import { PraxisSelectComponent } from '@shared/components/praxis-select/praxis-select.component';
+import { PraxisMultiselectComponent } from '@shared/components/praxis-multiselect/praxis-multiselect.component';
+import { SelectOption } from '@shared/components/praxis-select/praxis-select.component';
 import { Machine, Workcell } from '../../models/asset.models';
-import { extractUniqueNameParts } from '../../../../shared/utils/name-parser';
+import { extractUniqueNameParts } from '@shared/utils/name-parser';
 
 export type AssetSortOption =
   | 'name'

@@ -1,5 +1,5 @@
 
-import { Machine } from '../../assets/models/asset.models';
+import { Machine } from '@features/assets/models/asset.models';
 
 export interface MachineCompatibility {
   machine: Machine;

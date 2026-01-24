@@ -2,10 +2,10 @@ import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { AssetService } from './asset.service';
-import { SqliteService } from '../../../core/services/sqlite';
+import { SqliteService } from '@core/services/sqlite';
 import { Machine, MachineCreate, Resource, ResourceCreate, MachineStatus, ResourceStatus, MachineDefinition, ResourceDefinition } from '../models/asset.models';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ModeService } from '../../../core/services/mode.service';
+import { ModeService } from '@core/services/mode.service';
 import { of, firstValueFrom } from 'rxjs';
 
 describe('AssetService', () => {

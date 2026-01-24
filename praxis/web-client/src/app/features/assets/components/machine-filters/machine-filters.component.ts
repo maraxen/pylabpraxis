@@ -9,7 +9,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatInputModule } from '@angular/material/input';
 import { Machine, MachineStatus, MachineDefinition } from '../../models/asset.models';
 import { getMachineCategoryIcon } from '@shared/constants/asset-icons';
-import { extractUniqueNameParts } from '../../../../shared/utils/name-parser';
+import { extractUniqueNameParts } from '@shared/utils/name-parser';
 import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
 import { PraxisMultiselectComponent } from '@shared/components/praxis-multiselect/praxis-multiselect.component';
 

@@ -7,14 +7,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { ActiveRunsPanelComponent } from './components/active-runs-panel.component';
 import { RunHistoryTableComponent } from './components/run-history-table.component';
 import { RunStatsPanelComponent } from './components/run-stats-panel.component';
-import { ViewControlsComponent } from '../../shared/components/view-controls/view-controls.component';
-import { ViewControlsConfig, ViewControlsState } from '../../shared/components/view-controls/view-controls.types';
-import { ProtocolService } from '../protocols/services/protocol.service';
-import { MachinesService } from '../../core/api-generated/services/MachinesService';
-import { ApiWrapperService } from '../../core/services/api-wrapper.service';
+import { ViewControlsComponent } from '@shared/components/view-controls/view-controls.component';
+import { ViewControlsConfig, ViewControlsState } from '@shared/components/view-controls/view-controls.types';
+import { ProtocolService } from '@features/protocols/services/protocol.service';
+import { MachinesService } from '@core/api-generated/services/MachinesService';
+import { ApiWrapperService } from '@core/services/api-wrapper.service';
 import { RunStatus, FilterState } from './models/monitor.models';
-import { MachineRead } from '../../core/api-generated/models/MachineRead';
-import { ProtocolDefinition } from '../protocols/models/protocol.models';
+import { MachineRead } from '@core/api-generated/models/MachineRead';
+import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 
 /**
  * Main dashboard for the Execution Monitor feature.
