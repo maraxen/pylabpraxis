@@ -88,11 +88,13 @@ async function handleInit(id: string, payload: SqliteInitRequest) {
 
     // Install opfs-sahpool VFS (SyncAccessHandle Pool)
     // This VFS is preferred for performance and doesn't require SharedArrayBuffer
+    // proxyUri must point to our copied asset to avoid Vite's dynamic import issues
     try {
         poolUtil = await (sqlite3 as any).installOpfsSAHPoolVfs({
             name: 'opfs-sahpool', // Standard name used by the library
             directory: 'praxis-data',
-            clearOnInit: false
+            clearOnInit: false,
+            proxyUri: `${wasmPath}sqlite3-opfs-async-proxy.js`
         });
     } catch (err) {
         console.error('[SqliteOpfsWorker] Failed to install opfs-sahpool VFS:', err);

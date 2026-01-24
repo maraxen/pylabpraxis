@@ -40,6 +40,11 @@
                 "output": "assets/wasm"
               },
               {
+                "glob": "sqlite3-opfs-async-proxy.js",
+                "input": "node_modules/@sqlite.org/sqlite-wasm/dist",
+                "output": "assets/wasm"
+              },
+              {
                 "glob": "**/*",
                 "input": "node_modules/pyodide",
                 "output": "assets/pyodide"
@@ -117,6 +122,11 @@
             "headers": {
               "Cross-Origin-Opener-Policy": "same-origin",
               "Cross-Origin-Embedder-Policy": "require-corp"
+            },
+            "prebundle": {
+              "exclude": [
+                "@sqlite.org/sqlite-wasm"
+              ]
             }
           },
           "configurations": {
