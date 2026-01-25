@@ -1,0 +1,48 @@
+# Praxis GH-Pages Shipping Readiness Audits
+
+> **Generated**: January 25, 2026  
+> **Campaign**: Jan 24 Jules Audit Dispatch
+
+This index consolidates audit reports from the January 24-25 Jules audit sessions targeting shipping readiness for the Praxis GH-Pages demo.
+
+## Audit Reports
+
+| ID | Feature | Blockers | Status |
+|:---|:--------|:---------|:-------|
+| [AUDIT-01](AUDIT-01-run-protocol.md) | Run Protocol & Wizard | 🔴 1 | Applied |
+| [AUDIT-03](AUDIT-03-protocol-execution.md) | Protocol Library & Execution | 🔴 2 | Applied |
+| [AUDIT-06](AUDIT-06-persistence.md) | Browser Persistence (OPFS/SQLite) | 🔴 2 | Applied |
+| [AUDIT-07](AUDIT-07-jupyterlite.md) | JupyterLite Integration | 🔴 1 | Applied |
+| [AUDIT-08](AUDIT-08-ghpages-config.md) | GH-Pages Deployment Config | ✅ 0 | Applied |
+| [AUDIT-09](AUDIT-09-direct-control.md) | Direct Control Feature | 🔴 2 | Applied |
+
+## Consolidated Shipping Blockers
+
+### Critical (🔴) - Require Action Before Ship
+
+| Audit | Issue | Impact |
+|:------|:------|:-------|
+| AUDIT-01 | No validation to prevent starting physical run with simulated machine | Safety |
+| AUDIT-03 | Missing `PAUSE`, `RESUME`, `CANCEL` controls | Core functionality |
+| AUDIT-03 | No user-facing error handling (API/WebSocket failures) | UX |
+| AUDIT-06 | No schema migration mechanism | Data loss risk |
+| AUDIT-06 | No recovery from WASM/Worker failure | Breaking state |
+| AUDIT-07 | Bootstrap code via URL parameter at risk of length limits | Breaking state |
+| AUDIT-09 | Mock data source (methods not fetched from machine) | Non-functional |
+| AUDIT-09 | No response/error handling for executed commands | UX |
+
+### Not Shipped (Failed Sessions)
+
+| ID | Feature | Issue |
+|:---|:--------|:------|
+| AUDIT-02 | Asset Management | *Session produced raw source dump, not audit doc* |
+| AUDIT-04 | Playground & Data Viz | *Incomplete/fragmented document* |
+| AUDIT-05 | Workcell Dashboard | *Session failed - no diff produced* |
+
+## Previously Existing Audits
+
+- [visual-audit-data-playground.md](visual-audit-data-playground.md)
+- [visual-audit-run-protocol.md](visual-audit-run-protocol.md)
+- [visual-audit-settings-workcell.md](visual-audit-settings-workcell.md)
+- [jupyterlite-ghpages-audit.md](jupyterlite-ghpages-audit.md)
+- [opfs-pyodide-audit.md](opfs-pyodide-audit.md)
