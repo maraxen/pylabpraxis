@@ -5,7 +5,7 @@ import { ModeService } from '@core/services/mode.service';
 import { PythonRuntimeService } from '@core/services/python-runtime.service';
 import { SqliteService } from '@core/services/sqlite';
 import { environment } from '@env/environment';
-import { Observable, Subject, of, firstValueFrom } from 'rxjs';
+import { Observable, Subject, of, firstValueFrom, throwError } from 'rxjs';
 import { catchError, map, retry, switchMap, tap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
 import { ExecutionMessage, ExecutionState, ExecutionStatus } from '../models/execution.models';
@@ -108,6 +108,17 @@ export class ExecutionService {
     simulationMode: boolean = true,
     _notes?: string
   ): Observable<{ run_id: string }> {
+    // AUDIT-01: Defense-in-depth validation
+    if (!simulationMode && parameters) {
+      const hasSimulatedConfig = Object.values(parameters).some((val: any) => 
+        val && typeof val === 'object' && val.is_simulated === true
+      );
+      
+      if (hasSimulatedConfig) {
+        return throwError(() => new Error('Cannot start physical run with simulated machine configuration'));
+      }
+    }
+
     // Browser mode: execute via Pyodide
     if (this.modeService.isBrowserMode()) {
       return this.startBrowserRun(protocolId, runName, parameters, _notes);

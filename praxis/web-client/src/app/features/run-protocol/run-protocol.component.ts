@@ -1337,6 +1337,15 @@ export class RunProtocolComponent implements OnInit {
 
   // Execution
   startRun() {
+    // AUDIT-01: Validation Guard
+    if (!this.store.simulationMode() && this.showMachineError()) {
+      this.snackBar.open('Cannot start physical run with simulated machines. Please select physical machines or switch to simulation mode.', 'Close', {
+        duration: 5000,
+        panelClass: 'error-snackbar'
+      });
+      return;
+    }
+
     const protocol = this.selectedProtocol();
     // Validate parameters form AND ensure deck is configured
     if (protocol && this.parametersFormGroup.valid && !this.isStartingRun() && this.configuredAssets()) {
