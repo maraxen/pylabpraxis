@@ -89,3 +89,7 @@ The global breadcrumb bar was removed from the unified shell as it served no pur
 Pyodide requires `SharedArrayBuffer` for multi-threading. Modern browsers disable this unless `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` headers are set. These headers have been added to the Angular dev server in `angular.json`. For production, the web server must be configured to send these headers.
 
 **Files:** `praxis/web-client/angular.json`, `.agent/docs/known_issues/shared_array_buffer.md`
+
+## User provided notes
+
+git ls-files -- . ':!:*.json' ':!:*.png' ':!:*.bak' ':!:*.db' ':!:*.sql' | xargs wc -l | sort -gr | head -n 20 allows us to find the longest files in the repo
