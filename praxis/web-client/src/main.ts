@@ -8,6 +8,7 @@ import { PlotlyService } from 'angular-plotly.js';
 PlotlyService.setPlotly((window as any).Plotly);
 
 import { environment } from './environments/environment';
+import { GlobalInjector } from './app/core/utils/global-injector';
 
 // Pre-bootstrap configuration checks
 if ((environment as any).browserMode) {
@@ -16,5 +17,8 @@ if ((environment as any).browserMode) {
 }
 
 bootstrapApplication(App, appConfig)
+  .then((appRef) => {
+    GlobalInjector.set(appRef.injector);
+  })
   .catch((err) => console.error(err));
 

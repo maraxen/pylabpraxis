@@ -17,17 +17,10 @@ import { Injectable } from '@angular/core';
 import { Observable, of, map, forkJoin } from 'rxjs';
 import { SqliteService } from '@core/services/sqlite';
 import { ProtocolRun, Machine, Resource } from '@core/db/schema';
-import { SqliteOpfsService } from '@core/services/sqlite';
+import { GlobalInjector } from '@core/utils/global-injector';
 
-// Singleton instance for non-DI contexts
-let _sqliteServiceInstance: SqliteService | null = null;
 function getSqliteService(): SqliteService {
-    if (!_sqliteServiceInstance) {
-        // Manually instantiate dependencies since we are outside DI
-        const opfs = new SqliteOpfsService();
-        _sqliteServiceInstance = new SqliteService(opfs);
-    }
-    return _sqliteServiceInstance;
+    return GlobalInjector.get(SqliteService);
 }
 
 @Injectable({

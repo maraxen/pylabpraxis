@@ -7,6 +7,7 @@ import type { OnCancel } from './CancelablePromise';
 import type { OpenAPIConfig } from './OpenAPI';
 import { firstValueFrom } from 'rxjs';
 import { BrowserMockRouter } from '../../interceptors/browser-mock-router';
+import { GlobalInjector } from '@core/utils/global-injector';
 
 export const isDefined = <T>(value: T | null | undefined): value is Exclude<T, null | undefined> => {
     return value !== undefined && value !== null;
@@ -299,7 +300,7 @@ export const request = <T>(config: OpenAPIConfig, options: ApiRequestOptions): C
                 localStorage.getItem('praxis_mode') === 'browser';
 
             if (isBrowserMode) {
-                const router = new BrowserMockRouter();
+                const router = GlobalInjector.get(BrowserMockRouter);
                 const method = options.method;
 
                 // Try to route to mock handler
