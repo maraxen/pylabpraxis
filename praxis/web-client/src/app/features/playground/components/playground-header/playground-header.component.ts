@@ -3,10 +3,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-import { ModeService } from '@core/services/mode.service';
+import { ModeService } from '../../../../core/services/mode.service';
 import { PlaygroundJupyterliteService } from '../../services/playground-jupyterlite.service';
 import { PlaygroundAssetService } from '../../services/playground-asset.service';
-import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
+import { HardwareDiscoveryButtonComponent } from '../../../../shared/components/hardware-discovery-button/hardware-discovery-button.component';
 
 @Component({
   selector: 'app-playground-header',
