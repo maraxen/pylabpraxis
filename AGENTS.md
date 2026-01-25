@@ -210,13 +210,13 @@ This connects your session to the correct project database.
 |------|---------|
 | `workspace_handshake` | Connect to project (required first) |
 | `prep_orchestrator` | Get full orchestration context |
-| `task_list` / `task_create` / `task_update` | Manage development tasks |
-| `dispatch` / `dispatch_status` | Track agent dispatches |
-| `prompt_list` / `prompt_invoke` | Load and invoke reusable prompts |
-| `skill_list` / `skill_load` | Load skill documentation |
-| `debt_add` / `debt_list` | Track technical debt |
-| `report_recon` / `report_research` | Store findings |
-| `backup_create` / `export_markdown` | Data management |
+| `task(action: "list")` / `task(action: "create")` / `task(action: "update")` | Manage development tasks |
+| `dispatch` / `dispatch(action: "status")` | Track agent dispatches |
+| `prompt(action: "list")` / `prompt(action: "invoke")` | Load and invoke reusable prompts |
+| `skill(action: "list")` / `skill(action: "load")` | Load skill documentation |
+| `debt(action: "add")` / `debt(action: "list")` | Track technical debt |
+| `report(action: "recon")` / `report(action: "research")` | Store findings |
+| `config(action: "backup")` / `config(action: "export")` | Data management |
 
 ### 🔄 Pull-Based Task Queue
 
@@ -226,14 +226,14 @@ We have implemented a pull-based work queue where agents can claim pending dispa
 - Model-specific task routing
 - Self-service task pickup
 
-#### `claim_dispatch`
+#### `dispatch(action: "claim")`
 
 - **Purpose**: Claim a pending dispatch from the queue.
 - **Input**: `{ target_prefix: "antigravity", model: "claude-sonnet-4" }`
 - **Output**: Returns dispatch with prompt and optional system prompt.
 - **Behavior**: Atomically marks dispatch as "running" to prevent double-claiming.
 
-#### `complete_dispatch`
+#### `dispatch(action: "complete")`
 
 - **Purpose**: Mark a claimed dispatch as completed or failed.
 - **Input**: `{ dispatch_id: "d123", status: "completed", result: "Summary" }`
@@ -253,12 +253,12 @@ We have implemented a pull-based work queue where agents can claim pending dispa
 
 ```javascript
 // 1. Claim task
-const task = await claim_dispatch({ target_prefix: "antigravity" });
+const task = await dispatch(action: "claim")({ target_prefix: "antigravity" });
 if (task) {
   // 2. Do work
   const result = await doWork(task.prompt);
   // 3. Complete
-  await complete_dispatch({ dispatch_id: task.dispatch_id, status: "completed", result });
+  await dispatch(action: "complete")({ dispatch_id: task.dispatch_id, status: "completed", result });
 }
 ```
 
@@ -292,7 +292,7 @@ timeout 300 gemini --model gemini-3-flash-preview -p "YOUR_PROMPT_HERE" 2>&1 | t
 
 Or have the orchestrator run the command directly via `run_command`.
 
-*This is tracked as technical debt - see `debt_list()` for status.*
+*This is tracked as technical debt - see `debt(action: "list")()` for status.*
 
 ### Migration Note
 
@@ -374,7 +374,7 @@ wait
 **Track batch status:**
 
 ```javascript
-dispatch_status({ batch_id: "b1" })
+dispatch(action: "status")({ batch_id: "b1" })
 ```
 
 ## 📦 Batch Task Creation

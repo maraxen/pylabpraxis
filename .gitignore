@@ -164,4 +164,5 @@ session-*.md
 *.db
 
 # Ignore compiled binaries
-.agent/scripts/jules-diff-tool/jules-diff-tool
+.agent/scripts/jules-diff-tool/jules-diff-tool.worktrees/
+.worktrees/
