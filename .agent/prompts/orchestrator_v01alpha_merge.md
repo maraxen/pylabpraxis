@@ -63,7 +63,7 @@ The `jules remote pull --apply` command failed for all critical sessions due to 
 
 ### 3. Pending Antigravity Dispatches
 
-Check status with `mcp_orbitalvelocity_dispatch_status`. Active dispatches:
+Check status with `dispatch(action: "status")`. Active dispatches:
 
 - `d260121111829` - Apply Docstrings (90 files)
 - `d260121110837` - Component Audit Playground
@@ -209,7 +209,7 @@ These are **blocking issues** that require proper architectural solutions, not p
 Before dispatching ANY work:
 
 1. **Read all context documents** listed above
-2. **Check dispatch status** with `mcp_orbitalvelocity_dispatch_status`
+2. **Check dispatch status** with `dispatch(action: "status")`
 3. **Synthesize a v0.1-alpha Plan** that addresses:
    - All 5 MUST FIX items above
    - Logical sequencing (e.g., database schema before services that query it)
@@ -278,8 +278,8 @@ Only after plan approval:
 ## Tools Available
 
 - `mcp_orbitalvelocity_dispatch` - Create new agent dispatches
-- `mcp_orbitalvelocity_dispatch_status` - Check active dispatch status
-- `mcp_orbitalvelocity_task_list` / `task_update` - Track task progress
+- `dispatch(action: "status")` - Check active dispatch status
+- `task(action: "list")` / `task(action: "update")` - Track task progress
 - `jules remote pull --session <id>` - Pull Jules session diffs
 
 ---

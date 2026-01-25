@@ -210,7 +210,7 @@ scripts/generate_browser_schema.py
 
 ```bash
 # Check dispatch status
-mcp_orbitalvelocity_dispatch_status
+dispatch(action: "status")
 
 # Regenerate DB
 uv run scripts/generate_browser_db.py

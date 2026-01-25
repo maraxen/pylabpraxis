@@ -35,6 +35,6 @@ The following research tasks have been pushed to the remote Jules fleet:
 
 ## 📋 Next Steps for User
 
-1. **Monitor Antigravity Queue**: Use `mcp_orbitalvelocity_dispatch_status` or the TUI.
+1. **Monitor Antigravity Queue**: Use `dispatch(action: "status")` or the TUI.
 2. **Monitor Jules**: Check standard output or `.agent/reports/` for incoming research artifacts.
 3. **Wait for Completion**: Do not merge until Phase 1 is confirmed green.
