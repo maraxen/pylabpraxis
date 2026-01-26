@@ -7,7 +7,9 @@ import {
     RowMode,
     SqliteExecRequest,
     SqliteInitRequest,
-    SqliteImportRequest
+    SqliteImportRequest,
+    SqliteSchemaMismatchPayload,
+    CURRENT_SCHEMA_VERSION
 } from '@core/workers/sqlite-opfs.types';
 
 import { assetUrl } from '@core/utils/asset-url';
@@ -60,7 +62,15 @@ export class SqliteOpfsService {
 
             const payload: SqliteInitRequest = { dbName };
             this.sendRequest<unknown>('init', payload).pipe(
-                switchMap(() => this.ensureSchemaAndSeeds())
+                switchMap((result: any) => {
+                    // Check for schema mismatch response
+                    if (result?.type === 'schema_mismatch') {
+                        const mismatch = result as SqliteSchemaMismatchPayload;
+                        console.warn(`[SqliteOpfsService] Schema version mismatch: DB=${mismatch.currentVersion}, App=${mismatch.expectedVersion}`);
+                        return this.handleSchemaMismatch(mismatch.currentVersion, mismatch.expectedVersion);
+                    }
+                    return this.ensureSchemaAndSeeds();
+                })
             ).subscribe({
                 next: () => {
                     console.log('[SqliteOpfsService] Database initialized successfully.');
@@ -130,6 +140,17 @@ export class SqliteOpfsService {
     }
 
     /**
+     * Handle schema version mismatch by prompting user to reset.
+     * For now, we auto-reset; a production app would show a dialog.
+     */
+    private handleSchemaMismatch(currentVersion: number, expectedVersion: number): Observable<void> {
+        console.warn(`[SqliteOpfsService] Schema mismatch detected: v${currentVersion} -> v${expectedVersion}. Resetting database...`);
+        // TODO: In production, show a dialog to let user choose
+        // For now, auto-reset to avoid broken state
+        return this.resetToDefaults();
+    }
+
+    /**
      * Fallback initialization: apply schema.sql and seed from TypeScript definitions.
      */
     private initializeFromSchema(): Observable<void> {
@@ -137,6 +158,7 @@ export class SqliteOpfsService {
         return from(fetch(assetUrl('assets/db/schema.sql'))).pipe(
             switchMap(res => res.text()),
             switchMap(schema => this.exec(schema)),
+            switchMap(() => this.exec(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION}`)),
             switchMap(() => this.seedDefinitionCatalogs()),
             switchMap(() => this.seedDefaultAssets()),
             map(() => {

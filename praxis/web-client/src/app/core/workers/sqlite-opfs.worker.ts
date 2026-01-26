@@ -8,7 +8,8 @@ import {
     SqliteExecRequest,
     SqliteInitRequest,
     SqliteImportRequest,
-    SqliteErrorResponse
+    SqliteErrorResponse,
+    CURRENT_SCHEMA_VERSION
 } from './sqlite-opfs.types';
 
 let sqlite3: Sqlite3Static | null = null;
@@ -117,6 +118,26 @@ async function handleInit(id: string, payload: SqliteInitRequest) {
     }
 
     console.log(`[SqliteOpfsWorker] Database "${dbName}" opened with opfs-sahpool VFS`);
+
+    // Check schema version for migration handling
+    if (!db) {
+        throw new Error('Database failed to open');
+    }
+    const versionResult = db.exec({
+        sql: 'PRAGMA user_version',
+        rowMode: 'array',
+        returnValue: 'resultRows'
+    });
+    const storedVersion = (versionResult as any)?.[0]?.[0] ?? 0;
+
+    if (storedVersion !== 0 && storedVersion !== CURRENT_SCHEMA_VERSION) {
+        console.warn(`[SqliteOpfsWorker] Schema mismatch: stored=${storedVersion}, expected=${CURRENT_SCHEMA_VERSION}`);
+        sendResponse(id, 'schema_mismatch', {
+            currentVersion: storedVersion,
+            expectedVersion: CURRENT_SCHEMA_VERSION
+        });
+        return;
+    }
 
     sendResponse(id, 'initialized', { success: true });
 }

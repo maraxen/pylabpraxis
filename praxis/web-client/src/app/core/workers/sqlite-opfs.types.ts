@@ -27,7 +27,7 @@ export interface SqliteImportRequest {
 
 export interface SqliteWorkerResponse {
     id: string;
-    type: 'initialized' | 'execResult' | 'exportResult' | 'importResult' | 'error' | 'closed';
+    type: 'initialized' | 'execResult' | 'exportResult' | 'importResult' | 'error' | 'closed' | 'schema_mismatch';
     payload: any;
 }
 
@@ -44,3 +44,11 @@ export interface SqliteErrorResponse {
     code?: string;
     stack?: string;
 }
+
+export interface SqliteSchemaMismatchPayload {
+    currentVersion: number;
+    expectedVersion: number;
+}
+
+// Schema version constant - bump this when schema changes
+export const CURRENT_SCHEMA_VERSION = 1;
