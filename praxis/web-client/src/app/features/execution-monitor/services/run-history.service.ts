@@ -167,22 +167,22 @@ export class RunHistoryService {
     getStatusColor(status: RunStatus): string {
         switch (status) {
             case 'RUNNING':
-                return 'status-running';
+                return 'text-sys-primary';
             case 'QUEUED':
             case 'PREPARING':
-                return 'status-warning';
+                return 'text-sys-secondary';
             case 'PENDING':
-                return 'status-info';
+                return 'text-sys-tertiary';
             case 'COMPLETED':
-                return 'status-success';
+                return 'text-sys-success';
             case 'FAILED':
-                return 'status-error';
+                return 'text-sys-error';
             case 'CANCELLED':
-                return 'status-neutral';
+                return 'text-sys-on-surface-variant';
             case 'PAUSED':
-                return 'status-warning';
+                return 'text-sys-warning';
             default:
-                return 'status-neutral';
+                return 'text-sys-on-surface-variant';
         }
     }
 
@@ -206,7 +206,7 @@ export class RunHistoryService {
             case 'CANCELLED':
                 return 'cancel';
             case 'PAUSED':
-                return 'pause_circle';
+                return 'pause_circle_filled';
             default:
                 return 'help';
         }

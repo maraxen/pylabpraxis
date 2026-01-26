@@ -1,0 +1,1443 @@
+---
+task_id: SPLIT-06
+session_id: 2939224647793981217
+status: ✅ Completed
+---
+
+diff --git a/praxis/backend/api/resources.py b/praxis/backend/api/resources.py
+index 6b06bf3..ccbfd6e 100644
+--- a/praxis/backend/api/resources.py
++++ b/praxis/backend/api/resources.py
+@@ -23,7 +23,9 @@ from praxis.backend.models.domain.resource import (
+   ResourceUpdate,
+ )
+ from praxis.backend.services.resource import resource_service
+-from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionCRUDService
++from praxis.backend.services.resource_type_crud import (
++    ResourceTypeDefinitionCRUDService,
++)
+ 
+ router = APIRouter()
+ 
+diff --git a/praxis/backend/services/resource_type_crud.py b/praxis/backend/services/resource_type_crud.py
+new file mode 100644
+index 0000000..5ba39e4
+--- /dev/null
++++ b/praxis/backend/services/resource_type_crud.py
+@@ -0,0 +1,33 @@
++"""CRUD service for resource type definitions."""
++
++from typing import Any
++
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from praxis.backend.models.domain.resource import (
++  ResourceDefinition,
++  ResourceDefinitionCreate,
++  ResourceDefinitionUpdate,
++)
++from praxis.backend.services.utils.crud_base import CRUDBase
++
++
++class ResourceTypeDefinitionCRUDService(
++  CRUDBase[
++    ResourceDefinition,
++    ResourceDefinitionCreate,
++    ResourceDefinitionUpdate,
++  ],
++):
++  """CRUD service for resource type definitions."""
++
++  async def update(
++    self,
++    db: AsyncSession,
++    *,
++    db_obj: ResourceDefinition,
++    obj_in: ResourceDefinitionUpdate | dict[str, Any],
++  ) -> ResourceDefinition:
++    """Update an existing resource definition."""
++    obj_in_model = ResourceDefinitionUpdate(**obj_in) if isinstance(obj_in, dict) else obj_in
++    return await super().update(db=db, db_obj=db_obj, obj_in=obj_in_model)
+diff --git a/praxis/backend/services/resource_type_definition.py b/praxis/backend/services/resource_type_definition.py
+index 9134920..2693f9a 100644
+--- a/praxis/backend/services/resource_type_definition.py
++++ b/praxis/backend/services/resource_type_definition.py
+@@ -1,54 +1,35 @@
+ """Service layer for Resource Type Definition Management."""
+ 
+-import contextlib
+ import importlib
+ import inspect
+-import math
+ import pkgutil
+-import re
+ import types
+ from typing import Any
+ 
+ import pylabrobot.resources
+-from pylabrobot.resources import (
+-  Carrier,
+-  Container,
+-  Deck,
+-  ItemizedResource,
+-  Lid,
+-  MFXCarrier,
+-  NestedTipRack,
+-  PetriDish,
+-  PetriDishHolder,
+-  Plate,
+-  PlateAdapter,
+-  PlateCarrier,
+-  PlateHolder,
+-  Resource,
+-  ResourceHolder,
+-  ResourceStack,
+-  TipCarrier,
+-  TipRack,
+-  TipSpot,
+-  Trash,
+-  Trough,
+-  TroughCarrier,
+-  Tube,
+-  TubeCarrier,
+-  TubeRack,
+-  Well,
+-)
+ from sqlalchemy import select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+ from praxis.backend.models.domain.resource import (
+-  ResourceDefinition as ResourceDefinition,
+-)
+-from praxis.backend.models.domain.resource import (
+-  ResourceDefinitionCreate,
+-  ResourceDefinitionUpdate,
++    ResourceDefinition,
++    ResourceDefinitionCreate,
++    ResourceDefinitionUpdate,
+ )
+ from praxis.backend.services.plr_type_base import DiscoverableTypeServiceBase
++from praxis.backend.services.resource_type_validation import (
++    can_catalog_resource,
++    extract_ordering_from_plr_class,
++    extract_vendor_from_fqn,
++    get_category_from_plr_class,
++    get_description_from_plr_class,
++    get_metadata_from_factory_function,
++    get_nominal_volume_ul_from_plr_class,
++    get_short_name_from_plr_class,
++    get_size_x_mm_from_plr_class,
++    get_size_y_mm_from_plr_class,
++    get_size_z_mm_from_plr_class,
++    is_resource_factory_function,
++)
+ from praxis.backend.services.utils.crud_base import CRUDBase
+ from praxis.backend.utils.logging import get_logger
+ 
+@@ -56,646 +37,249 @@ logger = get_logger(__name__)
+ 
+ # Module patterns for vendor-specific resources (these are concrete implementations)
+ VENDOR_MODULE_PATTERNS = (
+-  # Original vendors
+-  "pylabrobot.resources.hamilton",
+-  "pylabrobot.resources.opentrons",
+-  "pylabrobot.resources.tecan",
+-  "pylabrobot.resources.corning",
+-  "pylabrobot.resources.azenta",
+-  "pylabrobot.resources.alpaqua",
+-  "pylabrobot.resources.boekel",
+-  "pylabrobot.resources.greiner",
+-  "pylabrobot.resources.thermo",
+-  "pylabrobot.resources.revvity",
+-  "pylabrobot.resources.porvair",
+-  # Additional vendors discovered in PLR
+-  "pylabrobot.resources.agenbio",
+-  "pylabrobot.resources.agilent",
+-  "pylabrobot.resources.bioer",
+-  "pylabrobot.resources.biorad",
+-  "pylabrobot.resources.celltreat",
+-  "pylabrobot.resources.cellvis",
+-  "pylabrobot.resources.diy",
+-  "pylabrobot.resources.eppendorf",
+-  "pylabrobot.resources.falcon",
+-  "pylabrobot.resources.imcs",
+-  "pylabrobot.resources.nest",
+-  "pylabrobot.resources.perkin_elmer",
+-  "pylabrobot.resources.sergi",
+-  "pylabrobot.resources.stanley",
+-  "pylabrobot.resources.thermo_fisher",
+-  "pylabrobot.resources.vwr",
++    # Original vendors
++    "pylabrobot.resources.hamilton",
++    "pylabrobot.resources.opentrons",
++    "pylabrobot.resources.tecan",
++    "pylabrobot.resources.corning",
++    "pylabrobot.resources.azenta",
++    "pylabrobot.resources.alpaqua",
++    "pylabrobot.resources.boekel",
++    "pylabrobot.resources.greiner",
++    "pylabrobot.resources.thermo",
++    "pylabrobot.resources.revvity",
++    "pylabrobot.resources.porvair",
++    # Additional vendors discovered in PLR
++    "pylabrobot.resources.agenbio",
++    "pylabrobot.resources.agilent",
++    "pylabrobot.resources.bioer",
++    "pylabrobot.resources.biorad",
++    "pylabrobot.resources.celltreat",
++    "pylabrobot.resources.cellvis",
++    "pylabrobot.resources.diy",
++    "pylabrobot.resources.eppendorf",
++    "pylabrobot.resources.falcon",
++    "pylabrobot.resources.imcs",
++    "pylabrobot.resources.nest",
++    "pylabrobot.resources.perkin_elmer",
++    "pylabrobot.resources.sergi",
++    "pylabrobot.resources.stanley",
++    "pylabrobot.resources.thermo_fisher",
++    "pylabrobot.resources.vwr",
+ )
+ 
+ 
+ class ResourceTypeDefinitionService(
+-  CRUDBase[
+-    ResourceDefinition,
+-    ResourceDefinitionCreate,
+-    ResourceDefinitionUpdate,
+-  ],
+-  DiscoverableTypeServiceBase[
+-    ResourceDefinition,
+-    ResourceDefinitionCreate,
+-    ResourceDefinitionUpdate,
+-  ],
++    CRUDBase[
++        ResourceDefinition,
++        ResourceDefinitionCreate,
++        ResourceDefinitionUpdate,
++    ],
++    DiscoverableTypeServiceBase[
++        ResourceDefinition,
++        ResourceDefinitionCreate,
++        ResourceDefinitionUpdate,
++    ],
+ ):
+-  """Service for discovering and syncing resource type definitions.
+-
+-  This service discovers PyLabRobot resource definitions and syncs them to the database.
+-  It excludes generic base classes (like Plate, TipRack) and includes:
+-  1. Vendor-specific concrete classes (TecanPlate, HamiltonSTARDeck, etc.)
+-  2. Factory functions that create resource instances (Cor_96_wellplate_360ul_Fb, etc.)
+-  """
+-
+-  # Generic base classes that should NOT be cataloged as resource definitions.
+-  # These are abstract or intermediate types, not usable resource definitions.
+-  EXCLUDED_BASE_CLASSES: tuple[type[Resource], ...] = (
+-    Carrier,  # Base carrier type
+-    Container,  # Base container type
+-    Deck,  # Base deck type
+-    ItemizedResource,  # Resources with indexed items
+-    Lid,  # Base lid type
+-    MFXCarrier,  # Base MFX carrier type
+-    NestedTipRack,  # Nested tip rack base
+-    PetriDish,  # Base petri dish type
+-    PetriDishHolder,  # Petri dish holder base
+-    Plate,  # Base plate type - concrete plates are factory functions
+-    PlateAdapter,  # Plate adapter base
+-    PlateCarrier,  # Plate carrier base
+-    PlateHolder,  # Plate holder base
+-    Resource,  # Root resource type
+-    ResourceHolder,  # Resource holder base
+-    ResourceStack,  # Resource stack base
+-    TipCarrier,  # Tip carrier base
+-    TipRack,  # Base tip rack - concrete tip racks are factory functions
+-    TipSpot,  # Individual tip spots
+-    Trash,  # Base trash type
+-    Trough,  # Base trough type
+-    TroughCarrier,  # Trough carrier base
+-    Tube,  # Base tube type
+-    TubeCarrier,  # Tube carrier base
+-    TubeRack,  # Base tube rack type
+-    Well,  # Individual wells in plates
+-  )
+-
+-  def __init__(self, db: AsyncSession) -> None:
+-    """Initialize the ResourceTypeDefinitionService."""
+-    super().__init__(ResourceDefinition)
+-    self.db = db
++    """Service for discovering and syncing resource type definitions.
+ 
+-  @property
+-  def _orm_model(self) -> type[ResourceDefinition]:
+-    """The SQLAlchemy ORM model for the type definition."""
+-    return ResourceDefinition
+-
+-  def _can_catalog_resource(self, plr_class: type[Any]) -> bool:
+-    """Determine if a PyLabRobot class represents a resource definition to catalog.
+-
+-    Excludes:
+-    - Non-Resource subclasses
+-    - Abstract classes
+-    - Generic base classes (by identity or name)
+-    - Classes not in pylabrobot.resources namespace
+-    """
+-    if not inspect.isclass(plr_class) or not issubclass(plr_class, Resource):
+-      return False
+-    if inspect.isabstract(plr_class):
+-      return False
+-    # Check by identity (exact class object match)
+-    if plr_class in self.EXCLUDED_BASE_CLASSES:
+-      return False
+-    # Check by name (handles cases where class is imported via different paths)
+-    excluded_names = {cls.__name__ for cls in self.EXCLUDED_BASE_CLASSES}
+-    if plr_class.__name__ in excluded_names:
+-      return False
+-    return plr_class.__module__.startswith("pylabrobot.resources")
+-
+-  def _get_category_from_plr_class(self, plr_class: type[Any]) -> str | None:
+-    """Extract the category from a PyLabRobot class."""
+-    if hasattr(plr_class, "category"):
+-      category = plr_class.category
+-      # Normalize categories (e.g. tecan_plate -> plate)
+-      if category:
+-        if "plate" in category and category != "plate":
+-          return "plate"
+-        if "tip_rack" in category and category != "tip_rack":
+-          return "tip_rack"
+-        if "carrier" in category and category != "carrier":
+-          # Keep specific carrier types if needed, but for now normalize if it's just vendor_carrier
+-          if category.endswith("_carrier") and category not in {
+-            "plate_carrier",
+-            "tip_carrier",
+-            "tube_carrier",
+-          }:
+-            return "carrier"
+-      return category
+-    return None
+-
+-  def _extract_ordering_from_plr_class(self, plr_class: type[Any]) -> str | None:
+-    """Extract ordering information from a PyLabRobot class."""
+-    if hasattr(plr_class, "ordering") and isinstance(plr_class.ordering, list):
+-      return ",".join(plr_class.ordering)
+-    return None
+-
+-  def _get_short_name_from_plr_class(self, plr_class: type[Any]) -> str:
+-    """Extract the short name from a PyLabRobot class."""
+-    return plr_class.__name__
+-
+-  def _get_description_from_plr_class(self, plr_class: type[Any]) -> str | None:
+-    """Extract the description from a PyLabRobot class."""
+-    return inspect.getdoc(plr_class)
+-
+-  def _get_size_x_mm_from_plr_class(self, plr_class: type[Any]) -> float | None:
+-    """Extract the size_x_mm from a PyLabRobot class."""
+-    if hasattr(plr_class, "size_x"):
+-      return plr_class.size_x
+-    return None
+-
+-  def _get_size_y_mm_from_plr_class(self, plr_class: type[Any]) -> float | None:
+-    """Extract the size_y_mm from a PyLabRobot class."""
+-    if hasattr(plr_class, "size_y"):
+-      return plr_class.size_y
+-    return None
+-
+-  def _get_size_z_mm_from_plr_class(self, plr_class: type[Any]) -> float | None:
+-    """Extract the size_z_mm from a PyLabRobot class."""
+-    if hasattr(plr_class, "size_z"):
+-      return plr_class.size_z
+-    return None
+-
+-  def _get_nominal_volume_ul_from_plr_class(self, plr_class: type[Any]) -> float | None:
+-    """Extract the nominal_volume_ul from a PyLabRobot class."""
+-    if hasattr(plr_class, "nominal_volume"):
+-      return plr_class.nominal_volume
+-    return None
+-
+-  def _is_resource_factory_function(self, func: Any) -> bool:
+-    """Check if a function is a resource factory (creates Resource instances).
+-
+-    Factory functions are the primary way PyLabRobot defines concrete resources.
+-    They return instances of Plate, TipRack, Trough, etc.
++    This service discovers PyLabRobot resource definitions and syncs them to the database.
++    It excludes generic base classes (like Plate, TipRack) and includes:
++    1. Vendor-specific concrete classes (TecanPlate, HamiltonSTARDeck, etc.)
++    2. Factory functions that create resource instances (Cor_96_wellplate_360ul_Fb, etc.)
+     """
+-    if not inspect.isfunction(func):
+-      return False
+-
+-    # Check if function name starts with common resource prefixes
+-    name = func.__name__
+-    # Skip internal/private functions
+-    if name.startswith("_"):
+-      return False
+-
+-    # Skip utility functions with common names
+-    # Valid return types for resource factory functions
+-    valid_return_types = {
+-      "Plate",
+-      "TipRack",
+-      "Trough",
+-      "Tube",
+-      "TubeRack",
+-      "Carrier",
+-      "PlateCarrier",
+-      "TipCarrier",
+-      "TroughCarrier",
+-      "TubeCarrier",
+-      "Lid",
+-      "PetriDish",
+-      "Container",
+-    }
+-
+-    # Check return type annotation
+-    try:
+-      hints = inspect.signature(func).return_annotation
+-      if hints != inspect.Signature.empty and inspect.isclass(hints):
+-        # Reject if return type is exactly Resource (base class)
+-        if hints.__name__ == "Resource":
+-          return False
+-        # Accept if return type is in allowlist
+-        if hints.__name__ in valid_return_types:
+-          return True
+-          # Also check if it's a subclass of an allowed type (optional, but robust)
+-          # Only if the specific class is not exported but is a subclass
+-          # For now, explicit name check is safer to avoid broad matches
+-    except (ValueError, TypeError):
+-      pass
+ 
+-    # Fallback to docstring check only if type hint was missing or inconclusive?
+-    # No, let's rely primarily on type hints for accuracy.
+-    # The docstring check below is too broad and catches utility functions.
+-    # Removing fuzzy logic to prevent false positives.
+-    return False
++    def __init__(self, db: AsyncSession) -> None:
++        """Initialize the ResourceTypeDefinitionService."""
++        super().__init__(ResourceDefinition)
++        self.db = db
+ 
+-  def _extract_vendor_from_fqn(self, fqn: str) -> str | None:
+-    """Extract vendor name from FQN like 'pylabrobot.resources.corning.plates.Cor_96'."""
+-    # Known vendor module patterns - all 28 PLR vendors
+-    vendor_patterns = {
+-      "hamilton": "hamilton",
+-      "opentrons": "opentrons",
+-      "tecan": "tecan",
+-      "corning": "corning",
+-      "azenta": "azenta",
+-      "alpaqua": "alpaqua",
+-      "boekel": "boekel",
+-      "greiner": "greiner",
+-      "thermo": "thermo",
+-      "revvity": "revvity",
+-      "porvair": "porvair",
+-      "agenbio": "agenbio",
+-      "agilent": "agilent",
+-      "bioer": "bioer",
+-      "biorad": "biorad",
+-      "celltreat": "celltreat",
+-      "cellvis": "cellvis",
+-      "diy": "diy",
+-      "eppendorf": "eppendorf",
+-      "falcon": "falcon",
+-      "imcs": "imcs",
+-      "nest": "nest",
+-      "perkin_elmer": "perkin_elmer",
+-      "sergi": "sergi",
+-      "stanley": "stanley",
+-      "thermo_fisher": "thermo_fisher",
+-      "vwr": "vwr",
+-    }
+-    fqn_lower = fqn.lower()
+-    for pattern, vendor in vendor_patterns.items():
+-      if f".{pattern}." in fqn_lower or f".{pattern}" in fqn_lower:
+-        return vendor
+-    return None
++    @property
++    def _orm_model(self) -> type[ResourceDefinition]:
++        """The SQLAlchemy ORM model for the type definition."""
++        return ResourceDefinition
+ 
+-  def _parse_volume_from_name(self, name: str) -> float | None:
+-    """Parse volume from model name like 'Cor_96_wellplate_360ul_Fb' or '2mL'."""
+-    # Match patterns like '360ul', '2mL', '10ul', '1000uL'
+-    vol_match = re.search(r"(\d+(?:\.\d+)?)(ul|ml)", name.lower())
+-    if vol_match:
+-      vol = float(vol_match.group(1))
+-      unit = vol_match.group(2)
+-      return vol * 1000 if unit == "ml" else vol
+-    return None
++    async def discover_and_synchronize_type_definitions(
++        self,
++        plr_resources_package: types.ModuleType = pylabrobot,
++    ) -> list[ResourceDefinition]:
++        """Discover all pylabrobot resource type definitions and synchronize them with the database.
+ 
+-  def _parse_num_items_from_name(self, name: str) -> int | None:
+-    """Parse number of items (wells/tips) from model name like 'Cor_96_wellplate'."""
+-    # Common well/tip counts
+-    for count in [384, 96, 48, 24, 12, 6]:
+-      if f"_{count}_" in name or f"_{count}" in name or name.startswith(f"{count}_"):
+-        return count
+-    return None
++        This method discovers both:
++        1. Resource subclasses (vendor-specific classes like TecanPlate, HamiltonSTARDeck)
++        2. Factory functions that create Resource instances (like Cor_96_wellplate_360ul_Fb)
++        """
++        logger.info(
++            "Starting PyLabRobot resource definition sync from package: %s",
++            plr_resources_package.__name__,
++        )
++        synced_definitions = []
++        processed_fqns: set[str] = set()
+ 
+-  def _parse_plate_type_from_name(self, name: str) -> str | None:
+-    """Parse plate type from model name like 'Cor_96_wellplate_360ul_Fb'."""
+-    name_lower = name.lower()
+-    if "_fb" in name_lower or "flatbottom" in name_lower or "flat_bottom" in name_lower:
+-      return "flat"
+-    if "_vb" in name_lower or "vbottom" in name_lower or "v_bottom" in name_lower:
+-      return "v-bottom"
+-    if "_rb" in name_lower or "roundbottom" in name_lower or "round_bottom" in name_lower:
+-      return "round"
+-    if "_cb" in name_lower or "conicalbottom" in name_lower or "conical_bottom" in name_lower:
+-      return "conical"
+-    return None
++        for _, modname, _ in pkgutil.walk_packages(
++            path=plr_resources_package.__path__,
++            prefix=plr_resources_package.__name__ + ".",
++            onerror=lambda x: logger.error("Error walking package %s", x),
++        ):
++            try:
++                module = importlib.import_module(modname)
++            except Exception as e:  # Catch all exceptions including deprecation warnings
++                logger.warning("Could not import module %s during sync: %s", modname, e)
++                continue
+ 
+-  def _extract_properties_from_instance(self, instance: Any, fqn: str) -> dict[str, Any]:
+-    """Extract properties from a PLR instance based on class inheritance.
++            # 1. Discover class-based resource definitions
++            for class_name, plr_class_obj in inspect.getmembers(module, inspect.isclass):
++                fqn = f"{modname}.{class_name}"
++                if fqn in processed_fqns:
++                    continue
++                processed_fqns.add(fqn)
+ 
+-    Uses PLR class hierarchy to determine which attributes to extract:
+-    - Resource: size_x, size_y, size_z, category, model
+-    - ItemizedResource: num_items, num_items_x, num_items_y
+-    - Plate: plate_type, well properties from first well
+-    - TipRack: tip properties from prototype tip
+-    - Container: max_volume
+-    """
+-    props: dict[str, Any] = {}
++                if not can_catalog_resource(plr_class_obj):
++                    continue
+ 
+-    # All Resources - basic dimensions
+-    props["size_x_mm"] = getattr(instance, "_size_x", None)
+-    props["size_y_mm"] = getattr(instance, "_size_y", None)
+-    props["size_z_mm"] = getattr(instance, "_size_z", None)
+-    props["category"] = getattr(instance, "category", None)
+-    props["model"] = getattr(instance, "model", None)
++                # Extract metadata
++                category = get_category_from_plr_class(plr_class_obj)
++                ordering = extract_ordering_from_plr_class(plr_class_obj)
++                short_name = get_short_name_from_plr_class(plr_class_obj)
++                description = get_description_from_plr_class(plr_class_obj)
++                size_x_mm = get_size_x_mm_from_plr_class(plr_class_obj)
++                size_y_mm = get_size_y_mm_from_plr_class(plr_class_obj)
++                size_z_mm = get_size_z_mm_from_plr_class(plr_class_obj)
++                nominal_volume_ul = get_nominal_volume_ul_from_plr_class(
++                    plr_class_obj
++                )
+ 
+-    # ItemizedResource (Plate, TipRack) - item count
+-    if hasattr(instance, "num_items"):
+-      with contextlib.suppress(Exception):
+-        props["num_items"] = instance.num_items
+-      if hasattr(instance, "num_items_x"):
+-        try:
+-          props["num_items_x"] = instance.num_items_x
+-          props["num_items_y"] = instance.num_items_y
+-        except Exception:
+-          pass
++                synced_def = await self._sync_definition(
++                    fqn=fqn,
++                    short_name=short_name,
++                    description=description,
++                    category=category,
++                    ordering=ordering,
++                    size_x_mm=size_x_mm,
++                    size_y_mm=size_y_mm,
++                    size_z_mm=size_z_mm,
++                    nominal_volume_ul=nominal_volume_ul,
++                )
++                synced_definitions.append(synced_def)
+ 
+-    # Plate-specific - plate_type and well properties
+-    if hasattr(instance, "plate_type"):
+-      props["plate_type"] = getattr(instance, "plate_type", None)
+-      # Get first well's volume and bottom type
+-      try:
+-        wells = instance.get_all_items()
+-        if wells:
+-          first_well = wells[0]
+-          props["well_volume_ul"] = getattr(first_well, "max_volume", None)
+-          bottom_type = getattr(first_well, "bottom_type", None)
+-          if bottom_type is not None:
+-            props["well_bottom_type"] = (
+-              bottom_type.value if hasattr(bottom_type, "value") else str(bottom_type)
++            # 2. Discover factory function-based resource definitions from vendor modules
++            is_vendor_module = any(
++                modname.startswith(p) for p in VENDOR_MODULE_PATTERNS
+             )
+-          cross_section = getattr(first_well, "cross_section_type", None)
+-          if cross_section is not None:
+-            props["well_cross_section"] = (
+-              cross_section.value if hasattr(cross_section, "value") else str(cross_section)
+-            )
+-      except Exception:
+-        pass
+-
+-    # TipRack-specific - tip properties from prototype
+-    if hasattr(instance, "get_all_items") and props.get("category") == "tip_rack":
+-      try:
+-        spots = instance.get_all_items()
+-        if spots and hasattr(spots[0], "make_tip"):
+-          tip = spots[0].make_tip()
+-          props["tip_volume_ul"] = getattr(tip, "maximal_volume", None)
+-          props["tip_has_filter"] = getattr(tip, "has_filter", None)
+-          props["tip_length_mm"] = getattr(tip, "total_tip_length", None)
+-          props["tip_fitting_depth_mm"] = getattr(tip, "fitting_depth", None)
+-      except Exception:
+-        pass
+-
+-    # Container - max_volume (for troughs, tubes, etc.)
+-    if hasattr(instance, "max_volume") and "well_volume_ul" not in props:
+-      props["max_volume_ul"] = getattr(instance, "max_volume", None)
+-
+-    # Clean up None values and non-JSON-serializable floats (infinity)
+-    def is_json_serializable(v: Any) -> bool:
+-      if v is None:
+-        return False
+-      return not (isinstance(v, float) and (math.isinf(v) or math.isnan(v)))
+-
+-    return {k: v for k, v in props.items() if is_json_serializable(v)}
+-
+-  def _get_metadata_from_factory_function(self, func: Any, fqn: str) -> dict[str, Any]:
+-    """Extract metadata from a resource factory function by instantiating it."""
+-    name = func.__name__
+-    metadata: dict[str, Any] = {
+-      "name": name,
+-      "description": inspect.getdoc(func),
+-      "category": None,
+-      "ordering": None,
+-      "size_x_mm": None,
+-      "size_y_mm": None,
+-      "size_z_mm": None,
+-      "nominal_volume_ul": None,
+-      # Dynamic filter fields - will be populated from instance
+-      "num_items": self._parse_num_items_from_name(name),
+-      "plate_type": self._parse_plate_type_from_name(name),
+-      "well_volume_ul": None,
+-      "tip_volume_ul": None,
+-      "vendor": self._extract_vendor_from_fqn(fqn),
+-      "properties_json": None,
+-    }
++            if is_vendor_module:
++                for func_name, func_obj in inspect.getmembers(
++                    module, inspect.isfunction
++                ):
++                    fqn = f"{modname}.{func_name}"
++                    if fqn in processed_fqns:
++                        continue
++                    processed_fqns.add(fqn)
+ 
+-    # Try to infer category from function name (fallback)
+-    name_lower = name.lower()
+-    if "plate" in name_lower or "_vb" in name_lower or "_fb" in name_lower:
+-      metadata["category"] = "plate"
+-      metadata["well_volume_ul"] = self._parse_volume_from_name(name)
+-    elif "tip" in name_lower:
+-      metadata["category"] = "tip_rack"
+-      metadata["tip_volume_ul"] = self._parse_volume_from_name(name)
+-    elif "trough" in name_lower:
+-      metadata["category"] = "trough"
+-    elif "tube" in name_lower:
+-      metadata["category"] = "tube"
+-    elif "lid" in name_lower:
+-      metadata["category"] = "lid"
+-    elif "carrier" in name_lower:
+-      metadata["category"] = "carrier"
++                    if not is_resource_factory_function(func_obj):
++                        continue
+ 
+-    # Try to instantiate the factory function and extract properties
+-    try:
+-      # Most PLR factory functions take a name argument
+-      instance = func(name=f"_temp_{name}")
+-      props = self._extract_properties_from_instance(instance, fqn)
+-      metadata["properties_json"] = props
++                    # Only include functions defined in this module (not imported)
++                    if func_obj.__module__ != modname:
++                        continue
+ 
+-      # Override metadata with actual values from instance
+-      if props.get("size_x_mm"):
+-        metadata["size_x_mm"] = props["size_x_mm"]
+-      if props.get("size_y_mm"):
+-        metadata["size_y_mm"] = props["size_y_mm"]
+-      if props.get("size_z_mm"):
+-        metadata["size_z_mm"] = props["size_z_mm"]
+-      if props.get("category"):
+-        metadata["category"] = props["category"]
+-      if props.get("num_items"):
+-        metadata["num_items"] = props["num_items"]
+-      if props.get("plate_type"):
+-        metadata["plate_type"] = props["plate_type"]
+-      if props.get("well_volume_ul"):
+-        metadata["well_volume_ul"] = props["well_volume_ul"]
+-      if props.get("tip_volume_ul"):
+-        metadata["tip_volume_ul"] = props["tip_volume_ul"]
++                    metadata = get_metadata_from_factory_function(func_obj, fqn)
+ 
+-      logger.debug("Extracted properties from instance: %s", fqn)
+-    except Exception as e:
+-      logger.debug("Could not instantiate factory function %s: %s", fqn, e)
++                    synced_def = await self._sync_definition(
++                        fqn=fqn,
++                        short_name=metadata["name"],
++                        description=metadata["description"],
++                        category=metadata["category"],
++                        ordering=metadata["ordering"],
++                        size_x_mm=metadata["size_x_mm"],
++                        size_y_mm=metadata["size_y_mm"],
++                        size_z_mm=metadata["size_z_mm"],
++                        nominal_volume_ul=metadata["nominal_volume_ul"],
++                        num_items=metadata["num_items"],
++                        plate_type=metadata["plate_type"],
++                        well_volume_ul=metadata["well_volume_ul"],
++                        tip_volume_ul=metadata["tip_volume_ul"],
++                        vendor=metadata["vendor"],
++                        properties_json=metadata.get("properties_json"),
++                    )
++                    synced_definitions.append(synced_def)
+ 
+-    return metadata
++        await self.db.commit()
++        logger.info("Synchronized %d resource definitions.", len(synced_definitions))
++        return synced_definitions
+ 
+-  async def discover_and_synchronize_type_definitions(
+-    self,
+-    plr_resources_package: types.ModuleType = pylabrobot,
+-  ) -> list[ResourceDefinition]:
+-    """Discover all pylabrobot resource type definitions and synchronize them with the database.
++    async def _sync_definition(
++        self,
++        *,
++        fqn: str,
++        short_name: str,
++        description: str | None,
++        category: str | None,
++        ordering: str | None,
++        size_x_mm: float | None,
++        size_y_mm: float | None,
++        size_z_mm: float | None,
++        nominal_volume_ul: float | None,
++        num_items: int | None = None,
++        plate_type: str | None = None,
++        well_volume_ul: float | None = None,
++        tip_volume_ul: float | None = None,
++        vendor: str | None = None,
++        properties_json: dict[str, Any] | None = None,
++    ) -> ResourceDefinition:
++        """Sync a single resource definition to the database (create or update)."""
++        # Extract vendor from FQN if not provided
++        if vendor is None:
++            vendor = extract_vendor_from_fqn(fqn)
+ 
+-    This method discovers both:
+-    1. Resource subclasses (vendor-specific classes like TecanPlate, HamiltonSTARDeck)
+-    2. Factory functions that create Resource instances (like Cor_96_wellplate_360ul_Fb)
+-    """
+-    logger.info(
+-      "Starting PyLabRobot resource definition sync from package: %s",
+-      plr_resources_package.__name__,
+-    )
+-    synced_definitions = []
+-    processed_fqns: set[str] = set()
+-
+-    for _, modname, _ in pkgutil.walk_packages(
+-      path=plr_resources_package.__path__,
+-      prefix=plr_resources_package.__name__ + ".",
+-      onerror=lambda x: logger.error("Error walking package %s", x),
+-    ):
+-      try:
+-        module = importlib.import_module(modname)
+-      except Exception as e:  # Catch all exceptions including deprecation warnings
+-        logger.warning("Could not import module %s during sync: %s", modname, e)
+-        continue
+-
+-      # 1. Discover class-based resource definitions
+-      for class_name, plr_class_obj in inspect.getmembers(module, inspect.isclass):
+-        fqn = f"{modname}.{class_name}"
+-        if fqn in processed_fqns:
+-          continue
+-        processed_fqns.add(fqn)
+-
+-        if not self._can_catalog_resource(plr_class_obj):
+-          continue
+-
+-        # Extract metadata
+-        category = self._get_category_from_plr_class(plr_class_obj)
+-        ordering = self._extract_ordering_from_plr_class(plr_class_obj)
+-        short_name = self._get_short_name_from_plr_class(plr_class_obj)
+-        description = self._get_description_from_plr_class(plr_class_obj)
+-        size_x_mm = self._get_size_x_mm_from_plr_class(plr_class_obj)
+-        size_y_mm = self._get_size_y_mm_from_plr_class(plr_class_obj)
+-        size_z_mm = self._get_size_z_mm_from_plr_class(plr_class_obj)
+-        nominal_volume_ul = self._get_nominal_volume_ul_from_plr_class(plr_class_obj)
+-
+-        synced_def = await self._sync_definition(
+-          fqn=fqn,
+-          short_name=short_name,
+-          description=description,
+-          category=category,
+-          ordering=ordering,
+-          size_x_mm=size_x_mm,
+-          size_y_mm=size_y_mm,
+-          size_z_mm=size_z_mm,
+-          nominal_volume_ul=nominal_volume_ul,
++        existing_resource_def_result = await self.db.execute(
++            select(ResourceDefinition).filter(ResourceDefinition.fqn == fqn),
+         )
+-        synced_definitions.append(synced_def)
+-
+-      # 2. Discover factory function-based resource definitions from vendor modules
+-      is_vendor_module = any(modname.startswith(p) for p in VENDOR_MODULE_PATTERNS)
+-      if is_vendor_module:
+-        for func_name, func_obj in inspect.getmembers(module, inspect.isfunction):
+-          fqn = f"{modname}.{func_name}"
+-          if fqn in processed_fqns:
+-            continue
+-          processed_fqns.add(fqn)
+-
+-          if not self._is_resource_factory_function(func_obj):
+-            continue
++        existing_resource_def = existing_resource_def_result.scalar_one_or_none()
+ 
+-          # Only include functions defined in this module (not imported)
+-          if func_obj.__module__ != modname:
+-            continue
+-
+-          metadata = self._get_metadata_from_factory_function(func_obj, fqn)
+-
+-          synced_def = await self._sync_definition(
++        if existing_resource_def:
++            update_data = ResourceDefinitionUpdate(
++                name=short_name,
++                fqn=fqn,
++                description=description,
++                plr_category=category,
++                ordering=ordering,
++                size_x_mm=size_x_mm,
++                size_y_mm=size_y_mm,
++                size_z_mm=size_z_mm,
++                nominal_volume_ul=nominal_volume_ul,
++                num_items=num_items,
++                plate_type=plate_type,
++                well_volume_ul=well_volume_ul,
++                tip_volume_ul=tip_volume_ul,
++                vendor=vendor,
++            )
++            for key, value in update_data.model_dump(exclude_unset=True).items():
++                setattr(existing_resource_def, key, value)
++            # Store properties_json directly (not in Pydantic model)
++            if properties_json is not None:
++                existing_resource_def.properties_json = properties_json
++            self.db.add(existing_resource_def)
++            logger.debug("Updated resource definition: %s", fqn)
++            return existing_resource_def
++        new_resource_def = ResourceDefinition(
++            name=short_name,
+             fqn=fqn,
+-            short_name=metadata["name"],
+-            description=metadata["description"],
+-            category=metadata["category"],
+-            ordering=metadata["ordering"],
+-            size_x_mm=metadata["size_x_mm"],
+-            size_y_mm=metadata["size_y_mm"],
+-            size_z_mm=metadata["size_z_mm"],
+-            nominal_volume_ul=metadata["nominal_volume_ul"],
+-            num_items=metadata["num_items"],
+-            plate_type=metadata["plate_type"],
+-            well_volume_ul=metadata["well_volume_ul"],
+-            tip_volume_ul=metadata["tip_volume_ul"],
+-            vendor=metadata["vendor"],
+-            properties_json=metadata.get("properties_json"),
+-          )
+-          synced_definitions.append(synced_def)
+-
+-    await self.db.commit()
+-    logger.info("Synchronized %d resource definitions.", len(synced_definitions))
+-    return synced_definitions
+-
+-  async def _sync_definition(
+-    self,
+-    *,
+-    fqn: str,
+-    short_name: str,
+-    description: str | None,
+-    category: str | None,
+-    ordering: str | None,
+-    size_x_mm: float | None,
+-    size_y_mm: float | None,
+-    size_z_mm: float | None,
+-    nominal_volume_ul: float | None,
+-    num_items: int | None = None,
+-    plate_type: str | None = None,
+-    well_volume_ul: float | None = None,
+-    tip_volume_ul: float | None = None,
+-    vendor: str | None = None,
+-    properties_json: dict[str, Any] | None = None,
+-  ) -> ResourceDefinition:
+-    """Sync a single resource definition to the database (create or update)."""
+-    # Extract vendor from FQN if not provided
+-    if vendor is None:
+-      vendor = self._extract_vendor_from_fqn(fqn)
+-
+-    existing_resource_def_result = await self.db.execute(
+-      select(ResourceDefinition).filter(ResourceDefinition.fqn == fqn),
+-    )
+-    existing_resource_def = existing_resource_def_result.scalar_one_or_none()
+-
+-    if existing_resource_def:
+-      update_data = ResourceDefinitionUpdate(
+-        name=short_name,
+-        fqn=fqn,
+-        description=description,
+-        plr_category=category,
+-        ordering=ordering,
+-        size_x_mm=size_x_mm,
+-        size_y_mm=size_y_mm,
+-        size_z_mm=size_z_mm,
+-        nominal_volume_ul=nominal_volume_ul,
+-        num_items=num_items,
+-        plate_type=plate_type,
+-        well_volume_ul=well_volume_ul,
+-        tip_volume_ul=tip_volume_ul,
+-        vendor=vendor,
+-      )
+-      for key, value in update_data.model_dump(exclude_unset=True).items():
+-        setattr(existing_resource_def, key, value)
+-      # Store properties_json directly (not in Pydantic model)
+-      if properties_json is not None:
+-        existing_resource_def.properties_json = properties_json
+-      self.db.add(existing_resource_def)
+-      logger.debug("Updated resource definition: %s", fqn)
+-      return existing_resource_def
+-    new_resource_def = ResourceDefinition(
+-      name=short_name,
+-      fqn=fqn,
+-      description=description,
+-      plr_category=category,
+-      ordering=ordering,
+-      size_x_mm=size_x_mm,
+-      size_y_mm=size_y_mm,
+-      size_z_mm=size_z_mm,
+-      nominal_volume_ul=nominal_volume_ul,
+-      num_items=num_items,
+-      plate_type=plate_type,
+-      well_volume_ul=well_volume_ul,
+-      tip_volume_ul=tip_volume_ul,
+-      vendor=vendor,
+-    )
+-    # Set properties_json after creation (init=False in ORM model)
+-    if properties_json is not None:
+-      new_resource_def.properties_json = properties_json
+-    self.db.add(new_resource_def)
+-    logger.debug("Added new resource definition: %s", fqn)
+-    return new_resource_def
+-
+-
+-class ResourceTypeDefinitionCRUDService(
+-  CRUDBase[
+-    ResourceDefinition,
+-    ResourceDefinitionCreate,
+-    ResourceDefinitionUpdate,
+-  ],
+-):
+-  """CRUD service for resource type definitions."""
+-
+-  async def update(
+-    self,
+-    db: AsyncSession,
+-    *,
+-    db_obj: ResourceDefinition,
+-    obj_in: ResourceDefinitionUpdate | dict[str, Any],
+-  ) -> ResourceDefinition:
+-    """Update an existing resource definition."""
+-    obj_in_model = ResourceDefinitionUpdate(**obj_in) if isinstance(obj_in, dict) else obj_in
+-    return await super().update(db=db, db_obj=db_obj, obj_in=obj_in_model)
++            description=description,
++            plr_category=category,
++            ordering=ordering,
++            size_x_mm=size_x_mm,
++            size_y_mm=size_y_mm,
++            size_z_mm=size_z_mm,
++            nominal_volume_ul=nominal_volume_ul,
++            num_items=num_items,
++            plate_type=plate_type,
++            well_volume_ul=well_volume_ul,
++            tip_volume_ul=tip_volume_ul,
++            vendor=vendor,
++        )
++        # Set properties_json after creation (init=False in ORM model)
++        if properties_json is not None:
++            new_resource_def.properties_json = properties_json
++        self.db.add(new_resource_def)
++        logger.debug("Added new resource definition: %s", fqn)
++        return new_resource_def
+diff --git a/praxis/backend/services/resource_type_validation.py b/praxis/backend/services/resource_type_validation.py
+new file mode 100644
+index 0000000..d571591
+--- /dev/null
++++ b/praxis/backend/services/resource_type_validation.py
+@@ -0,0 +1,419 @@
++"""Validation and parsing logic for PyLabRobot resource type definitions."""
++
++import contextlib
++import inspect
++import math
++import re
++from typing import Any
++
++from pylabrobot.resources import (
++  Carrier,
++  Container,
++  Deck,
++  ItemizedResource,
++  Lid,
++  MFXCarrier,
++  NestedTipRack,
++  PetriDish,
++  PetriDishHolder,
++  Plate,
++  PlateAdapter,
++  PlateCarrier,
++  PlateHolder,
++  Resource,
++  ResourceHolder,
++  ResourceStack,
++  TipCarrier,
++  TipRack,
++  TipSpot,
++  Trash,
++  Trough,
++  TroughCarrier,
++  Tube,
++  TubeCarrier,
++  TubeRack,
++  Well,
++)
++
++from praxis.backend.utils.logging import get_logger
++
++logger = get_logger(__name__)
++
++# Generic base classes that should NOT be cataloged as resource definitions.
++# These are abstract or intermediate types, not usable resource definitions.
++EXCLUDED_BASE_CLASSES: tuple[type[Resource], ...] = (
++  Carrier,  # Base carrier type
++  Container,  # Base container type
++  Deck,  # Base deck type
++  ItemizedResource,  # Resources with indexed items
++  Lid,  # Base lid type
++  MFXCarrier,  # Base MFX carrier type
++  NestedTipRack,  # Nested tip rack base
++  PetriDish,  # Base petri dish type
++  PetriDishHolder,  # Petri dish holder base
++  Plate,  # Base plate type - concrete plates are factory functions
++  PlateAdapter,  # Plate adapter base
++  PlateCarrier,  # Plate carrier base
++  PlateHolder,  # Plate holder base
++  Resource,  # Root resource type
++  ResourceHolder,  # Resource holder base
++  ResourceStack,  # Resource stack base
++  TipCarrier,  # Tip carrier base
++  TipRack,  # Base tip rack - concrete tip racks are factory functions
++  TipSpot,  # Individual tip spots
++  Trash,  # Base trash type
++  Trough,  # Base trough type
++  TroughCarrier,  # Trough carrier base
++  Tube,  # Base tube type
++  TubeCarrier,  # Tube carrier base
++  TubeRack,  # Base tube rack type
++  Well,  # Individual wells in plates
++)
++
++
++def can_catalog_resource(plr_class: type[Any]) -> bool:
++  """Determine if a PyLabRobot class represents a resource definition to catalog.
++
++  Excludes:
++  - Non-Resource subclasses
++  - Abstract classes
++  - Generic base classes (by identity or name)
++  - Classes not in pylabrobot.resources namespace
++  """
++  if not inspect.isclass(plr_class) or not issubclass(plr_class, Resource):
++    return False
++  if inspect.isabstract(plr_class):
++    return False
++  # Check by identity (exact class object match)
++  if plr_class in EXCLUDED_BASE_CLASSES:
++    return False
++  # Check by name (handles cases where class is imported via different paths)
++  excluded_names = {cls.__name__ for cls in EXCLUDED_BASE_CLASSES}
++  if plr_class.__name__ in excluded_names:
++    return False
++  return plr_class.__module__.startswith("pylabrobot.resources")
++
++
++def get_category_from_plr_class(plr_class: type[Any]) -> str | None:
++  """Extract the category from a PyLabRobot class."""
++  if hasattr(plr_class, "category"):
++    category = plr_class.category
++    # Normalize categories (e.g. tecan_plate -> plate)
++    if category:
++      if "plate" in category and category != "plate":
++        return "plate"
++      if "tip_rack" in category and category != "tip_rack":
++        return "tip_rack"
++      if "carrier" in category and category != "carrier":
++        # Keep specific carrier types if needed, but for now normalize if it's just vendor_carrier
++        if category.endswith("_carrier") and category not in {
++          "plate_carrier",
++          "tip_carrier",
++          "tube_carrier",
++        }:
++          return "carrier"
++    return category
++  return None
++
++
++def extract_ordering_from_plr_class(plr_class: type[Any]) -> str | None:
++  """Extract ordering information from a PyLabRobot class."""
++  if hasattr(plr_class, "ordering") and isinstance(plr_class.ordering, list):
++    return ",".join(plr_class.ordering)
++  return None
++
++
++def get_short_name_from_plr_class(plr_class: type[Any]) -> str:
++  """Extract the short name from a PyLabRobot class."""
++  return plr_class.__name__
++
++
++def get_description_from_plr_class(plr_class: type[Any]) -> str | None:
++  """Extract the description from a PyLabRobot class."""
++  return inspect.getdoc(plr_class)
++
++
++def get_size_x_mm_from_plr_class(plr_class: type[Any]) -> float | None:
++  """Extract the size_x_mm from a PyLabRobot class."""
++  if hasattr(plr_class, "size_x"):
++    return plr_class.size_x
++  return None
++
++
++def get_size_y_mm_from_plr_class(plr_class: type[Any]) -> float | None:
++  """Extract the size_y_mm from a PyLabRobot class."""
++  if hasattr(plr_class, "size_y"):
++    return plr_class.size_y
++  return None
++
++
++def get_size_z_mm_from_plr_class(plr_class: type[Any]) -> float | None:
++  """Extract the size_z_mm from a PyLabRobot class."""
++  if hasattr(plr_class, "size_z"):
++    return plr_class.size_z
++  return None
++
++
++def get_nominal_volume_ul_from_plr_class(plr_class: type[Any]) -> float | None:
++  """Extract the nominal_volume_ul from a PyLabRobot class."""
++  if hasattr(plr_class, "nominal_volume"):
++    return plr_class.nominal_volume
++  return None
++
++
++def is_resource_factory_function(func: Any) -> bool:
++  """Check if a function is a resource factory (creates Resource instances).
++
++  Factory functions are the primary way PyLabRobot defines concrete resources.
++  They return instances of Plate, TipRack, Trough, etc.
++  """
++  if not inspect.isfunction(func):
++    return False
++
++  # Check if function name starts with common resource prefixes
++  name = func.__name__
++  # Skip internal/private functions
++  if name.startswith("_"):
++    return False
++
++  # Skip utility functions with common names
++  # Valid return types for resource factory functions
++  valid_return_types = {
++    "Plate",
++    "TipRack",
++    "Trough",
++    "Tube",
++    "TubeRack",
++    "Carrier",
++    "PlateCarrier",
++    "TipCarrier",
++    "TroughCarrier",
++    "TubeCarrier",
++    "Lid",
++    "PetriDish",
++    "Container",
++  }
++
++  # Check return type annotation
++  try:
++    hints = inspect.signature(func).return_annotation
++    if hints != inspect.Signature.empty and inspect.isclass(hints):
++      # Reject if return type is exactly Resource (base class)
++      if hints.__name__ == "Resource":
++        return False
++      # Accept if return type is in allowlist
++      if hints.__name__ in valid_return_types:
++        return True
++  except (ValueError, TypeError):
++    pass
++
++  return False
++
++
++def extract_vendor_from_fqn(fqn: str) -> str | None:
++  """Extract vendor name from FQN like 'pylabrobot.resources.corning.plates.Cor_96'."""
++  # Known vendor module patterns - all 28 PLR vendors
++  vendor_patterns = {
++    "hamilton": "hamilton",
++    "opentrons": "opentrons",
++    "tecan": "tecan",
++    "corning": "corning",
++    "azenta": "azenta",
++    "alpaqua": "alpaqua",
++    "boekel": "boekel",
++    "greiner": "greiner",
++    "thermo": "thermo",
++    "revvity": "revvity",
++    "porvair": "porvair",
++    "agenbio": "agenbio",
++    "agilent": "agilent",
++    "bioer": "bioer",
++    "biorad": "biorad",
++    "celltreat": "celltreat",
++    "cellvis": "cellvis",
++    "diy": "diy",
++    "eppendorf": "eppendorf",
++    "falcon": "falcon",
++    "imcs": "imcs",
++    "nest": "nest",
++    "perkin_elmer": "perkin_elmer",
++    "sergi": "sergi",
++    "stanley": "stanley",
++    "thermo_fisher": "thermo_fisher",
++    "vwr": "vwr",
++  }
++  fqn_lower = fqn.lower()
++  for pattern, vendor in vendor_patterns.items():
++    if f".{pattern}." in fqn_lower or f".{pattern}" in fqn_lower:
++      return vendor
++  return None
++
++
++def parse_volume_from_name(name: str) -> float | None:
++  """Parse volume from model name like 'Cor_96_wellplate_360ul_Fb' or '2mL'."""
++  vol_match = re.search(r"(\d+(?:\.\d+)?)(ul|ml)", name.lower())
++  if vol_match:
++    vol = float(vol_match.group(1))
++    unit = vol_match.group(2)
++    return vol * 1000 if unit == "ml" else vol
++  return None
++
++
++def parse_num_items_from_name(name: str) -> int | None:
++  """Parse number of items (wells/tips) from model name like 'Cor_96_wellplate'."""
++  for count in [384, 96, 48, 24, 12, 6]:
++    if f"_{count}_" in name or f"_{count}" in name or name.startswith(f"{count}_"):
++      return count
++  return None
++
++
++def parse_plate_type_from_name(name: str) -> str | None:
++  """Parse plate type from model name like 'Cor_96_wellplate_360ul_Fb'."""
++  name_lower = name.lower()
++  if "_fb" in name_lower or "flatbottom" in name_lower or "flat_bottom" in name_lower:
++    return "flat"
++  if "_vb" in name_lower or "vbottom" in name_lower or "v_bottom" in name_lower:
++    return "v-bottom"
++  if "_rb" in name_lower or "roundbottom" in name_lower or "round_bottom" in name_lower:
++    return "round"
++  if "_cb" in name_lower or "conicalbottom" in name_lower or "conical_bottom" in name_lower:
++    return "conical"
++  return None
++
++
++def extract_properties_from_instance(instance: Any) -> dict[str, Any]:
++  """Extract properties from a PLR instance based on class inheritance."""
++  props: dict[str, Any] = {}
++
++  # All Resources - basic dimensions
++  props["size_x_mm"] = getattr(instance, "_size_x", None)
++  props["size_y_mm"] = getattr(instance, "_size_y", None)
++  props["size_z_mm"] = getattr(instance, "_size_z", None)
++  props["category"] = getattr(instance, "category", None)
++  props["model"] = getattr(instance, "model", None)
++
++  # ItemizedResource (Plate, TipRack) - item count
++  if hasattr(instance, "num_items"):
++    with contextlib.suppress(Exception):
++      props["num_items"] = instance.num_items
++    if hasattr(instance, "num_items_x"):
++      try:
++        props["num_items_x"] = instance.num_items_x
++        props["num_items_y"] = instance.num_items_y
++      except Exception:
++        pass
++
++  # Plate-specific - plate_type and well properties
++  if hasattr(instance, "plate_type"):
++    props["plate_type"] = getattr(instance, "plate_type", None)
++    try:
++      wells = instance.get_all_items()
++      if wells:
++        first_well = wells[0]
++        props["well_volume_ul"] = getattr(first_well, "max_volume", None)
++        bottom_type = getattr(first_well, "bottom_type", None)
++        if bottom_type is not None:
++          props["well_bottom_type"] = (
++            bottom_type.value if hasattr(bottom_type, "value") else str(bottom_type)
++          )
++        cross_section = getattr(first_well, "cross_section_type", None)
++        if cross_section is not None:
++          props["well_cross_section"] = (
++            cross_section.value if hasattr(cross_section, "value") else str(cross_section)
++          )
++    except Exception:
++      pass
++
++  # TipRack-specific - tip properties from prototype
++  if hasattr(instance, "get_all_items") and props.get("category") == "tip_rack":
++    try:
++      spots = instance.get_all_items()
++      if spots and hasattr(spots[0], "make_tip"):
++        tip = spots[0].make_tip()
++        props["tip_volume_ul"] = getattr(tip, "maximal_volume", None)
++        props["tip_has_filter"] = getattr(tip, "has_filter", None)
++        props["tip_length_mm"] = getattr(tip, "total_tip_length", None)
++        props["tip_fitting_depth_mm"] = getattr(tip, "fitting_depth", None)
++    except Exception:
++      pass
++
++  # Container - max_volume (for troughs, tubes, etc.)
++  if hasattr(instance, "max_volume") and "well_volume_ul" not in props:
++    props["max_volume_ul"] = getattr(instance, "max_volume", None)
++
++  def is_json_serializable(v: Any) -> bool:
++    if v is None:
++      return False
++    return not (isinstance(v, float) and (math.isinf(v) or math.isnan(v)))
++
++  return {k: v for k, v in props.items() if is_json_serializable(v)}
++
++
++def get_metadata_from_factory_function(func: Any, fqn: str) -> dict[str, Any]:
++  """Extract metadata from a resource factory function by instantiating it."""
++  name = func.__name__
++  metadata: dict[str, Any] = {
++    "name": name,
++    "description": inspect.getdoc(func),
++    "category": None,
++    "ordering": None,
++    "size_x_mm": None,
++    "size_y_mm": None,
++    "size_z_mm": None,
++    "nominal_volume_ul": None,
++    # Dynamic filter fields - will be populated from instance
++    "num_items": parse_num_items_from_name(name),
++    "plate_type": parse_plate_type_from_name(name),
++    "well_volume_ul": None,
++    "tip_volume_ul": None,
++    "vendor": extract_vendor_from_fqn(fqn),
++    "properties_json": None,
++  }
++
++  # Try to infer category from function name (fallback)
++  name_lower = name.lower()
++  if "plate" in name_lower or "_vb" in name_lower or "_fb" in name_lower:
++    metadata["category"] = "plate"
++    metadata["well_volume_ul"] = parse_volume_from_name(name)
++  elif "tip" in name_lower:
++    metadata["category"] = "tip_rack"
++    metadata["tip_volume_ul"] = parse_volume_from_name(name)
++  elif "trough" in name_lower:
++    metadata["category"] = "trough"
++  elif "tube" in name_lower:
++    metadata["category"] = "tube"
++  elif "lid" in name_lower:
++    metadata["category"] = "lid"
++  elif "carrier" in name_lower:
++    metadata["category"] = "carrier"
++
++  # Try to instantiate the factory function and extract properties
++  try:
++    # Most PLR factory functions take a name argument
++    instance = func(name=f"_temp_{name}")
++    props = extract_properties_from_instance(instance)
++    metadata["properties_json"] = props
++
++    # Override metadata with actual values from instance
++    if props.get("size_x_mm"):
++      metadata["size_x_mm"] = props["size_x_mm"]
++    if props.get("size_y_mm"):
++      metadata["size_y_mm"] = props["size_y_mm"]
++    if props.get("size_z_mm"):
++      metadata["size_z_mm"] = props["size_z_mm"]
++    if props.get("category"):
++      metadata["category"] = props["category"]
++    if props.get("num_items"):
++      metadata["num_items"] = props["num_items"]
++    if props.get("plate_type"):
++      metadata["plate_type"] = props["plate_type"]
++    if props.get("well_volume_ul"):
++      metadata["well_volume_ul"] = props["well_volume_ul"]
++    if props.get("tip_volume_ul"):
++      metadata["tip_volume_ul"] = props["tip_volume_ul"]
++
++    logger.debug("Extracted properties from instance: %s", fqn)
++  except Exception as e:
++    logger.debug("Could not instantiate factory function %s: %s", fqn, e)
++
++  return metadata
+diff --git a/tests/services/test_resource_type_definition_service.py b/tests/services/test_resource_type_definition_service.py
+index 64ddad0..24e352a 100644
+--- a/tests/services/test_resource_type_definition_service.py
++++ b/tests/services/test_resource_type_definition_service.py
+@@ -8,8 +8,10 @@ from praxis.backend.models.domain.resource import (
+     ResourceDefinitionCreate,
+     ResourceDefinitionUpdate,
+ )
+-from praxis.backend.services.resource_type_definition import (
++from praxis.backend.services.resource_type_crud import (
+     ResourceTypeDefinitionCRUDService,
++)
++from praxis.backend.services.resource_type_definition import (
+     ResourceTypeDefinitionService,
+ )
+ 
+

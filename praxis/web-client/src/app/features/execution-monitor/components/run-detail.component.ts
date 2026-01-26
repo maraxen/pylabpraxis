@@ -8,6 +8,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 
 import { RunHistoryService } from '../services/run-history.service';
@@ -171,6 +172,17 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
                 <mat-card-title>Actions</mat-card-title>
               </mat-card-header>
               <mat-card-content class="pt-4 space-y-2">
+                @if (run()?.status === 'RUNNING' || run()?.status === 'PAUSED') {
+                  <div class="run-controls">
+                    <button mat-raised-button color="warn" (click)="cancelRun()" [disabled]="isCancelling()">
+                      <mat-icon>stop</mat-icon> Cancel
+                    </button>
+                    <button mat-raised-button (click)="togglePause()" [disabled]="isToggling()">
+                      <mat-icon>{{ run()?.status === 'PAUSED' ? 'play_arrow' : 'pause' }}</mat-icon>
+                      {{ run()?.status === 'PAUSED' ? 'Resume' : 'Pause' }}
+                    </button>
+                  </div>
+                }
                 <button mat-stroked-button class="w-full" disabled>
                   <mat-icon>replay</mat-icon>
                   Re-run Protocol
@@ -378,6 +390,10 @@ export class RunDetailComponent implements OnInit, OnDestroy {
   readonly currentOperationIndex = signal(0);
 
   readonly executionService = inject(ExecutionService);
+  private readonly snackBar = inject(MatSnackBar);
+
+  isCancelling = signal(false);
+  isToggling = signal(false);
 
   readonly isLive = computed(() => {
     const r = this.run();
@@ -502,5 +518,24 @@ export class RunDetailComponent implements OnInit, OnDestroy {
 
   onOperationSelected(index: number): void {
     this.currentOperationIndex.set(index);
+  }
+
+  cancelRun() {
+    this.isCancelling.set(true);
+    this.executionService.cancel(this.runId).subscribe({
+      next: () => this.snackBar.open('Run cancelled', 'Close', { duration: 3000 }),
+      error: (err) => this.snackBar.open('Failed to cancel: ' + err.message, 'Close'),
+      complete: () => this.isCancelling.set(false)
+    });
+  }
+
+  togglePause() {
+    this.isToggling.set(true);
+    const action = this.run()?.status === 'PAUSED' ? 'resume' : 'pause';
+    this.executionService[action](this.runId).subscribe({
+      next: () => {},
+      error: (err) => this.snackBar.open('Failed to ' + action + ': ' + err.message, 'Close'),
+      complete: () => this.isToggling.set(false)
+    });
   }
 }

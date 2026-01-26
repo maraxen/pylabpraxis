@@ -608,6 +608,34 @@ print(f"[Browser] Protocol finished with result: {result}")
     );
   }
 
+  cancel(runId: string): Observable<void> {
+    if (this.modeService.isBrowserMode()) {
+      // Browser mode: stop Python runtime
+      this.pythonRuntime.interrupt();
+      return of(undefined);
+    }
+    return this.apiWrapper.wrap(ProtocolsService.cancelProtocolRunApiV1ProtocolsRunsRunIdCancelPost(runId))
+      .pipe(map(() => undefined));
+  }
+
+  // TODO(Jules): The pause and resume endpoints are not yet included in the
+  // generated OpenAPI client. Using raw HttpClient as a temporary measure.
+  // These should be updated to use the ApiWrapperService and generated client
+  // once the client is updated.
+  pause(runId: string): Observable<void> {
+    if (this.modeService.isBrowserMode()) {
+      return of(undefined).pipe(tap(() => console.warn('Pause is not supported in browser mode.')));
+    }
+    return this.http.post<void>(`${this.API_URL}/api/v1/execution/runs/${runId}/pause`, {});
+  }
+
+  resume(runId: string): Observable<void> {
+    if (this.modeService.isBrowserMode()) {
+      return of(undefined).pipe(tap(() => console.warn('Resume is not supported in browser mode.')));
+    }
+    return this.http.post<void>(`${this.API_URL}/api/v1/execution/runs/${runId}/resume`, {});
+  }
+
   /**
    * Disconnect WebSocket connection
    */

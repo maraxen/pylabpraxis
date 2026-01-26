@@ -1,0 +1,516 @@
+---
+task_id: SPLIT-05
+session_id: 7027017935549180084
+status: ✅ Completed
+---
+
+diff --git a/praxis/backend/utils/plr_inspection/__init__.py b/praxis/backend/utils/plr_inspection/__init__.py
+new file mode 100644
+index 0000000..e6ec6cd
+--- /dev/null
++++ b/praxis/backend/utils/plr_inspection/__init__.py
+@@ -0,0 +1,67 @@
++"""PyLabRobot inspection utilities."""
++
++from .docs import (
++  get_capabilities,
++  get_deck_details,
++)
++from .runtime import (
++  discover_deck_classes,
++  get_all_carrier_classes,
++  get_all_classes,
++  get_all_classes_with_inspection,
++  get_all_deck_and_carrier_classes,
++  get_all_machine_and_deck_classes,
++  get_all_resource_and_machine_classes,
++  get_all_resource_and_machine_classes_enhanced,
++  get_all_resource_classes,
++  get_backend_classes,
++  get_carrier_classes,
++  get_class_fqn,
++  get_constructor_params_with_defaults,
++  get_deck_and_carrier_classes,
++  get_deck_classes,
++  get_liquid_handler_classes,
++  get_machine_classes,
++  get_module_classes,
++  get_plate_carrier_classes,
++  get_resource_classes,
++  get_resource_holder_classes,
++  get_tip_carrier_classes,
++  get_trough_carrier_classes,
++)
++from .validation import (
++  is_deck_subclass,
++  is_machine_subclass,
++  is_resource_subclass,
++)
++
++__all__ = [
++  "get_capabilities",
++  "get_deck_details",
++  "discover_deck_classes",
++  "get_all_carrier_classes",
++  "get_all_classes",
++  "get_all_classes_with_inspection",
++  "get_all_deck_and_carrier_classes",
++  "get_all_machine_and_deck_classes",
++  "get_all_resource_and_machine_classes",
++  "get_all_resource_and_machine_classes_enhanced",
++  "get_all_resource_classes",
++  "get_backend_classes",
++  "get_carrier_classes",
++  "get_class_fqn",
++  "get_constructor_params_with_defaults",
++  "get_deck_and_carrier_classes",
++  "get_deck_classes",
++  "get_liquid_handler_classes",
++  "get_machine_classes",
++  "get_module_classes",
++  "get_plate_carrier_classes",
++  "get_resource_classes",
++  "get_resource_holder_classes",
++  "get_tip_carrier_classes",
++  "get_trough_carrier_classes",
++  "is_deck_subclass",
++  "is_machine_subclass",
++  "is_resource_subclass",
++]
+diff --git a/praxis/backend/utils/plr_inspection/docs.py b/praxis/backend/utils/plr_inspection/docs.py
+new file mode 100644
+index 0000000..792f6a8
+--- /dev/null
++++ b/praxis/backend/utils/plr_inspection/docs.py
+@@ -0,0 +1,96 @@
++# Standard Library Imports
++import inspect
++import warnings
++from typing import (
++  Any,
++)
++
++from pylabrobot.resources import Deck
++
++from .runtime import (
++  get_class_fqn,
++  get_constructor_params_with_defaults,
++)
++
++
++def get_capabilities(class_obj: type[Any]) -> dict[str, Any]:
++  """Extract capabilities from a PLR class (LiquidHandler or Backend).
++
++  .. deprecated::
++    Use :class:`praxis.backend.utils.plr_static_analysis.PLRSourceParser` instead.
++    Static analysis provides more accurate capability extraction via AST analysis.
++
++  """
++  warnings.warn(
++    "get_capabilities() is deprecated. Use PLRSourceParser for capability extraction instead.",
++    DeprecationWarning,
++    stacklevel=2,
++  )
++  capabilities: dict[str, Any] = {
++    "channels": [],
++    "modules": [],
++    "is_backend": False,
++  }
++
++  # Heuristics for capabilities based on class name or attributes
++  name = class_obj.__name__.lower()
++  doc = inspect.getdoc(class_obj) or ""
++  doc_lower = doc.lower()
++
++  # Channels
++  if "96" in name or "96" in doc_lower:
++    capabilities["channels"].append(96)
++  if "384" in name or "384" in doc_lower:
++    capabilities["channels"].append(384)
++  if "8" in name or "8" in doc_lower or "channels" in doc_lower:  # Basic assumption
++    # Refine this: check for 'num_channels' attribute if instantiated, but we are static here
++    pass
++
++  # Modules
++  if "swap" in name or "swap" in doc_lower:
++    capabilities["modules"].append("swap")
++  if "hepa" in name or "hepa" in doc_lower:
++    capabilities["modules"].append("hepa")
++
++  return capabilities
++
++
++def get_deck_details(deck_class: type[Deck]) -> dict[str, Any]:
++  """Return detailed info about a Deck class.
++
++  Includes all position-to-location methods and their signatures.
++  """
++  details = {
++    "fqn": get_class_fqn(deck_class),
++    "constructor_args": get_constructor_params_with_defaults(deck_class),
++    "assignment_methods": [],
++    "category": getattr(deck_class, "category", None),
++    "model": getattr(deck_class, "model", None),
++  }
++
++  # Find all *_to_location methods
++  assignment_methods: list[dict[str, Any]] = []
++  for name, method in inspect.getmembers(deck_class, inspect.isfunction):
++    if name.endswith("_to_location"):
++      sig = inspect.signature(method)
++      params = [
++        {
++          "name": pname,
++          "annotation": str(param.annotation),
++          "default": (param.default if param.default is not inspect.Parameter.empty else None),
++        }
++        for pname, param in sig.parameters.items()
++      ]
++      assignment_methods.append(
++        {
++          "name": name,
++          "signature": str(sig),
++          "parameters": params,
++          "doc": inspect.getdoc(method),
++        },
++      )
++
++  details["assignment_methods"] = assignment_methods
++
++  # Optionally, add more deck metadata here
++  return details
+diff --git a/praxis/backend/utils/plr_inspection.py b/praxis/backend/utils/plr_inspection/runtime.py
+similarity index 80%
+rename from praxis/backend/utils/plr_inspection.py
+rename to praxis/backend/utils/plr_inspection/runtime.py
+index 8b7936b..db50110 100644
+--- a/praxis/backend/utils/plr_inspection.py
++++ b/praxis/backend/utils/plr_inspection/runtime.py
+@@ -11,9 +11,9 @@
+ import importlib
+ import inspect
+ import logging
++from inspect import isabstract
+ import pkgutil
+ import warnings
+-from inspect import isabstract
+ from typing import (
+   Any,
+ )
+@@ -79,7 +79,7 @@ def get_module_classes(
+       if not is_submodule_class:
+         continue
+ 
+-    if concrete_only and inspect.isabstract(obj):
++    if concrete_only and isabstract(obj):
+       continue
+     classes[name] = obj
+   return classes
+@@ -114,36 +114,6 @@ def get_constructor_params_with_defaults(
+   return params
+ 
+ 
+-def is_resource_subclass(item_class: type[Any]) -> bool:
+-  """Check if a class is a non-abstract subclass of pylabrobot.resources.Resource."""
+-  return (
+-    inspect.isclass(item_class)
+-    and issubclass(item_class, Resource)
+-    and not inspect.isabstract(item_class)
+-    and item_class is not Resource
+-  )
+-
+-
+-def is_machine_subclass(item_class: type[Any]) -> bool:
+-  """Check if a class is a non-abstract subclass of Machine."""
+-  return (
+-    inspect.isclass(item_class)
+-    and issubclass(item_class, Machine)
+-    and not inspect.isabstract(item_class)
+-    and item_class is not Machine
+-  )
+-
+-
+-def is_deck_subclass(item_class: type[Any]) -> bool:
+-  """Check if a class is a non-abstract subclass of pylabrobot.resources.Deck."""
+-  return (
+-    inspect.isclass(item_class)
+-    and issubclass(item_class, Deck)
+-    and not inspect.isabstract(item_class)
+-    and item_class is not Deck  # Exclude the base Deck class itself
+-  )
+-
+-
+ def _discover_classes_in_module_recursive(
+   module_name: str,
+   parent_class: type[Any] | None,
+@@ -232,7 +202,7 @@ def get_resource_classes(
+   concrete_only: bool = True,
+ ) -> dict[str, type[Resource]]:
+   """Return all resource classes from PyLabRobot modules."""
+-  return get_all_classes(  # type: ignore
++  return get_all_classes(
+     base_module_names=[
+       "pylabrobot.resources",
+       "pylabrobot.liquid_handling.resources",
+@@ -257,7 +227,7 @@ def get_machine_classes(
+     DeprecationWarning,
+     stacklevel=2,
+   )
+-  return get_all_classes(  # type: ignore
++  return get_all_classes(
+     base_module_names="pylabrobot.machines",
+     parent_class=Machine,
+     concrete_only=concrete_only,
+@@ -266,7 +236,7 @@ def get_machine_classes(
+ 
+ def get_deck_classes(concrete_only: bool = True) -> dict[str, type[Deck]]:
+   """Return all deck classes from PyLabRobot modules."""
+-  all_decks = get_all_classes(  # type: ignore
++  all_decks = get_all_classes(
+     base_module_names=[
+       "pylabrobot.resources",
+       "pylabrobot.liquid_handling.resources",
+@@ -296,7 +266,7 @@ def get_liquid_handler_classes(
+   try:
+     from pylabrobot.liquid_handling import LiquidHandler
+ 
+-    return get_all_classes(  # type: ignore
++    return get_all_classes(
+       base_module_names=[
+         "pylabrobot.liquid_handling",
+         "pylabrobot.resources",  # some definitions might be here
+@@ -326,7 +296,7 @@ def get_backend_classes(
+   try:
+     from pylabrobot.liquid_handling.backends import LiquidHandlerBackend
+ 
+-    return get_all_classes(  # type: ignore
++    return get_all_classes(
+       base_module_names=[
+         "pylabrobot.liquid_handling.backends",
+       ],
+@@ -337,51 +307,6 @@ def get_backend_classes(
+     return {}
+ 
+ 
+-def get_capabilities(class_obj: type[Any]) -> dict[str, Any]:
+-  """Extract capabilities from a PLR class (LiquidHandler or Backend).
+-
+-  .. deprecated::
+-    Use :class:`praxis.backend.utils.plr_static_analysis.PLRSourceParser` instead.
+-    Static analysis provides more accurate capability extraction via AST analysis.
+-
+-  """
+-  warnings.warn(
+-    "get_capabilities() is deprecated. Use PLRSourceParser for capability extraction instead.",
+-    DeprecationWarning,
+-    stacklevel=2,
+-  )
+-  capabilities: dict[str, Any] = {
+-    "channels": [],
+-    "modules": [],
+-    "is_backend": False,
+-  }
+-
+-  # Heuristics for capabilities based on class name or attributes
+-  name = class_obj.__name__.lower()
+-  doc = inspect.getdoc(class_obj) or ""
+-  doc_lower = doc.lower()
+-
+-  # Channels
+-  if "96" in name or "96" in doc_lower:
+-    capabilities["channels"].append(96)
+-  if "384" in name or "384" in doc_lower:
+-    capabilities["channels"].append(384)
+-  if "8" in name or "8" in doc_lower or "channels" in doc_lower:  # Basic assumption
+-    # Refine this: check for 'num_channels' attribute if instantiated, but we are static here
+-    pass
+-
+-  # Modules
+-  if "swap" in name or "swap" in doc_lower:
+-    capabilities["modules"].append("swap")
+-  if "hepa" in name or "hepa" in doc_lower:
+-    capabilities["modules"].append("hepa")
+-
+-  return capabilities
+-
+-
+-# --- Phase 1: Enhanced PyLabRobot Deck and General Asset Introspection ---
+-
+-
+ def discover_deck_classes(
+   packages: str | list[str] = "pylabrobot.resources",
+ ) -> dict[str, type[Deck]]:
+@@ -399,7 +324,7 @@ def discover_deck_classes(
+       )
+       for fqn, deck_class in deck_classes_in_pkg.items():
+         if issubclass(deck_class, Deck) and deck_class is not Deck:
+-          discovered_deck_classes[fqn] = deck_class  # type: ignore
++          discovered_deck_classes[fqn] = deck_class
+     except ImportError:
+       logger.warning("Package %s not found during deck discovery.", package_name)
+     except Exception as e:
+@@ -451,7 +376,7 @@ def get_resource_holder_classes(
+ 
+   Includes holders and specific carriers from PyLabRobot modules.
+   """
+-  return get_all_classes(  # type: ignore
++  return get_all_classes(
+     base_module_names=[
+       "pylabrobot.resources",
+       "pylabrobot.liquid_handling.resources",
+@@ -468,7 +393,7 @@ def get_carrier_classes(
+ 
+   Includes all carrier types from PyLabRobot modules.
+   """
+-  return get_all_classes(  # type: ignore
++  return get_all_classes(
+     base_module_names=[
+       "pylabrobot.resources",
+       "pylabrobot.liquid_handling.resources",
+@@ -482,7 +407,7 @@ def get_plate_carrier_classes(
+   concrete_only: bool = True,
+ ) -> dict[str, type[PlateCarrier]]:
+   """Return all plate carrier classes from PyLabRobot modules."""
+-  return get_all_classes(  # type: ignore
++  return get_all_classes(
+     base_module_names=[
+       "pylabrobot.resources",
+       "pylabrobot.liquid_handling.resources",
+@@ -496,7 +421,7 @@ def get_tip_carrier_classes(
+   concrete_only: bool = True,
+ ) -> dict[str, type[TipCarrier]]:
+   """Return all tip carrier classes from PyLabRobot modules."""
+-  return get_all_classes(  # type: ignore
++  return get_all_classes(
+     base_module_names=[
+       "pylabrobot.resources",
+       "pylabrobot.liquid_handling.resources",
+@@ -510,7 +435,7 @@ def get_trough_carrier_classes(
+   concrete_only: bool = True,
+ ) -> dict[str, type[TroughCarrier]]:
+   """Return all trough carrier classes from PyLabRobot modules."""
+-  return get_all_classes(  # type: ignore
++  return get_all_classes(
+     base_module_names=[
+       "pylabrobot.resources",
+       "pylabrobot.liquid_handling.resources",
+@@ -535,7 +460,7 @@ def get_all_carrier_classes(
+     A dictionary of fully qualified class names to carrier class objects.
+ 
+   """
+-  all_carriers = get_all_classes(  # type: ignore
++  all_carriers = get_all_classes(
+     base_module_names=[
+       "pylabrobot.resources",
+       "pylabrobot.liquid_handling.resources",
+@@ -616,7 +541,7 @@ def get_all_classes_with_inspection(
+     all_classes = {
+       name: klass
+       for name, klass in all_classes.items()
+-      if not inspect.isabstract(klass) and not isabstract(klass)
++      if not isabstract(klass)
+     }
+ 
+   return all_classes
+@@ -673,44 +598,3 @@ def get_all_resource_and_machine_classes_enhanced(
+     for fqn, resource_or_machine_class in all_resources_and_machines.items()
+     if resource_or_machine_class is not Machine
+   }
+-
+-
+-def get_deck_details(deck_class: type[Deck]) -> dict[str, Any]:
+-  """Return detailed info about a Deck class.
+-
+-  Includes all position-to-location methods and their signatures.
+-  """
+-  details = {
+-    "fqn": get_class_fqn(deck_class),
+-    "constructor_args": get_constructor_params_with_defaults(deck_class),
+-    "assignment_methods": [],
+-    "category": getattr(deck_class, "category", None),
+-    "model": getattr(deck_class, "model", None),
+-  }
+-
+-  # Find all *_to_location methods
+-  assignment_methods: list[dict[str, Any]] = []
+-  for name, method in inspect.getmembers(deck_class, inspect.isfunction):
+-    if name.endswith("_to_location"):
+-      sig = inspect.signature(method)
+-      params = [
+-        {
+-          "name": pname,
+-          "annotation": str(param.annotation),
+-          "default": (param.default if param.default is not inspect.Parameter.empty else None),
+-        }
+-        for pname, param in sig.parameters.items()
+-      ]
+-      assignment_methods.append(
+-        {
+-          "name": name,
+-          "signature": str(sig),
+-          "parameters": params,
+-          "doc": inspect.getdoc(method),
+-        },
+-      )
+-
+-  details["assignment_methods"] = assignment_methods
+-
+-  # Optionally, add more deck metadata here
+-  return details
+diff --git a/praxis/backend/utils/plr_inspection/static.py b/praxis/backend/utils/plr_inspection/static.py
+new file mode 100644
+index 0000000..87d6205
+--- /dev/null
++++ b/praxis/backend/utils/plr_inspection/static.py
+@@ -0,0 +1 @@
++# This file is reserved for static analysis functions.
+diff --git a/praxis/backend/utils/plr_inspection/validation.py b/praxis/backend/utils/plr_inspection/validation.py
+new file mode 100644
+index 0000000..bd742e5
+--- /dev/null
++++ b/praxis/backend/utils/plr_inspection/validation.py
+@@ -0,0 +1,43 @@
++# Standard Library Imports
++import inspect
++from typing import (
++  Any,
++)
++
++from pylabrobot.machines.machine import Machine
++
++# PyLabRobot Imports
++from pylabrobot.resources import (
++  Deck,
++  Resource,
++)
++
++
++def is_resource_subclass(item_class: type[Any]) -> bool:
++  """Check if a class is a non-abstract subclass of pylabrobot.resources.Resource."""
++  return (
++    inspect.isclass(item_class)
++    and issubclass(item_class, Resource)
++    and not inspect.isabstract(item_class)
++    and item_class is not Resource
++  )
++
++
++def is_machine_subclass(item_class: type[Any]) -> bool:
++  """Check if a class is a non-abstract subclass of Machine."""
++  return (
++    inspect.isclass(item_class)
++    and issubclass(item_class, Machine)
++    and not inspect.isabstract(item_class)
++    and item_class is not Machine
++  )
++
++
++def is_deck_subclass(item_class: type[Any]) -> bool:
++  """Check if a class is a non-abstract subclass of pylabrobot.resources.Deck."""
++  return (
++    inspect.isclass(item_class)
++    and issubclass(item_class, Deck)
++    and not inspect.isabstract(item_class)
++    and item_class is not Deck  # Exclude the base Deck class itself
++  )
+

@@ -1,0 +1,162 @@
+---
+task_id: REFACTOR-03
+session_id: 13019827227538808257
+status: ✅ Completed
+---
+
+diff --git a/praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.ts b/praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.ts
+index 4c4acf6..e203189 100644
+--- a/praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.ts
++++ b/praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.ts
+@@ -13,12 +13,17 @@ import { MatChipsModule } from '@angular/material/chips';
+ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+ import { MatDialogRef, MatDialogModule, MAT_DIALOG_DATA } from '@angular/material/dialog';
+ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+-import { AssetService } from '../../../features/assets/services/asset.service';
+-import { ModeService } from '../../../core/services/mode.service';
++import { AssetService } from '@features/assets/services/asset.service';
++import { ModeService } from '@core/services/mode.service';
+ import {
+-  MachineDefinition, ResourceDefinition, MachineCreate, ResourceCreate, Machine,
+-  MachineFrontendDefinition, MachineBackendDefinition
+-} from '../../../features/assets/models/asset.models';
++  MachineDefinition,
++  ResourceDefinition,
++  MachineCreate,
++  ResourceCreate,
++  Machine,
++  MachineFrontendDefinition,
++  MachineBackendDefinition
++} from '@features/assets/models/asset.models';
+ import { debounceTime, distinctUntilChanged, map, startWith, switchMap } from 'rxjs/operators';
+ import { Observable, BehaviorSubject, of, firstValueFrom, combineLatest } from 'rxjs';
+ 
+diff --git a/praxis/web-client/src/app/shared/components/machine-card/machine-card.component.ts b/praxis/web-client/src/app/shared/components/machine-card/machine-card.component.ts
+index 5f42cc2..19d87a2 100644
+--- a/praxis/web-client/src/app/shared/components/machine-card/machine-card.component.ts
++++ b/praxis/web-client/src/app/shared/components/machine-card/machine-card.component.ts
+@@ -3,8 +3,8 @@ import { Component, ChangeDetectionStrategy, input, output } from '@angular/core
+ import { MatIconModule } from '@angular/material/icon';
+ import { MatButtonModule } from '@angular/material/button';
+ import { MatTooltipModule } from '@angular/material/tooltip';
+-import { Machine } from '../../../features/assets/models/asset.models';
+-import { MachineCompatibility } from '../../../features/run-protocol/models/machine-compatibility.models';
++import { Machine } from '@features/assets/models/asset.models';
++import { MachineCompatibility } from '@features/run-protocol/models/machine-compatibility.models';
+ import { HardwareBadgeComponent } from '../hardware-badge/hardware-badge.component';
+ import { CommonModule } from '@angular/common';
+ 
+diff --git a/praxis/web-client/src/app/shared/components/quick-add-autocomplete/quick-add-autocomplete.component.ts b/praxis/web-client/src/app/shared/components/quick-add-autocomplete/quick-add-autocomplete.component.ts
+index 14f5458..0ba0ad5 100644
+--- a/praxis/web-client/src/app/shared/components/quick-add-autocomplete/quick-add-autocomplete.component.ts
++++ b/praxis/web-client/src/app/shared/components/quick-add-autocomplete/quick-add-autocomplete.component.ts
+@@ -7,8 +7,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
+ import { MatIconModule } from '@angular/material/icon';
+ import { MatButtonModule } from '@angular/material/button';
+ import { MatTooltipModule } from '@angular/material/tooltip';
+-import { AssetService } from '../../../features/assets/services/asset.service';
+-import { MachineDefinition, ResourceDefinition } from '../../../features/assets/models/asset.models';
++import { AssetService } from '@features/assets/services/asset.service';
++import { MachineDefinition, ResourceDefinition } from '@features/assets/models/asset.models';
+ 
+ export interface QuickAddResult {
+   type: 'machine' | 'resource';
+diff --git a/praxis/web-client/src/app/shared/components/workcell/machine-card/machine-card-mini.component.ts b/praxis/web-client/src/app/shared/components/workcell/machine-card/machine-card-mini.component.ts
+index db60244..584fb81 100644
+--- a/praxis/web-client/src/app/shared/components/workcell/machine-card/machine-card-mini.component.ts
++++ b/praxis/web-client/src/app/shared/components/workcell/machine-card/machine-card-mini.component.ts
+@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
+ import { MatIconModule } from '@angular/material/icon';
+ import { MatMenuModule } from '@angular/material/menu';
+ import { MatProgressBarModule } from '@angular/material/progress-bar';
+-import { MachineWithRuntime } from '../../../../features/workcell/models/workcell-view.models';
++import { MachineWithRuntime } from '@features/workcell/models/workcell-view.models';
+ import { MachineStatusBadgeComponent } from '../machine-status-badge/machine-status-badge.component';
+ 
+ @Component({
+diff --git a/praxis/web-client/src/app/shared/components/workcell/machine-card/machine-card.component.ts b/praxis/web-client/src/app/shared/components/workcell/machine-card/machine-card.component.ts
+index 7bf732a..5b60628 100644
+--- a/praxis/web-client/src/app/shared/components/workcell/machine-card/machine-card.component.ts
++++ b/praxis/web-client/src/app/shared/components/workcell/machine-card/machine-card.component.ts
+@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
+ import { MatIconModule } from '@angular/material/icon';
+ import { MatMenuModule } from '@angular/material/menu';
+ import { MatProgressBarModule } from '@angular/material/progress-bar';
+-import { MachineWithRuntime } from '../../../../features/workcell/models/workcell-view.models';
++import { MachineWithRuntime } from '@features/workcell/models/workcell-view.models';
+ import { MachineStatusBadgeComponent } from '../machine-status-badge/machine-status-badge.component';
+ import { DeckViewComponent } from '../../deck-view/deck-view.component';
+ import { PlrResource, PlrState } from '@core/models/plr.models';
+diff --git a/praxis/web-client/src/app/shared/components/workcell/machine-status-badge/machine-status-badge.component.ts b/praxis/web-client/src/app/shared/components/workcell/machine-status-badge/machine-status-badge.component.ts
+index e66e2db..3b0cd17 100644
+--- a/praxis/web-client/src/app/shared/components/workcell/machine-status-badge/machine-status-badge.component.ts
++++ b/praxis/web-client/src/app/shared/components/workcell/machine-status-badge/machine-status-badge.component.ts
+@@ -1,6 +1,6 @@
+ import { Component, ChangeDetectionStrategy, Input, computed } from '@angular/core';
+ import { CommonModule } from '@angular/common';
+-import { MachineStatus } from '../../../../features/assets/models/asset.models';
++import { MachineStatus } from '@features/assets/models/asset.models';
+ 
+ /**
+  * A reusable status indicator component for machine state display.
+diff --git a/praxis/web-client/src/app/shared/components/workcell/workcell-explorer/machine-tree-node/machine-tree-node.component.ts b/praxis/web-client/src/app/shared/components/workcell/workcell-explorer/machine-tree-node/machine-tree-node.component.ts
+index 3ee1e79..2412fef 100644
+--- a/praxis/web-client/src/app/shared/components/workcell/workcell-explorer/machine-tree-node/machine-tree-node.component.ts
++++ b/praxis/web-client/src/app/shared/components/workcell/workcell-explorer/machine-tree-node/machine-tree-node.component.ts
+@@ -1,6 +1,6 @@
+ import { Component, output, ChangeDetectionStrategy, Input, signal, input } from '@angular/core';
+ import { CommonModule } from '@angular/common';
+-import { MachineWithRuntime } from '../../../../../features/workcell/models/workcell-view.models';
++import { MachineWithRuntime } from '@features/workcell/models/workcell-view.models';
+ 
+ @Component({
+   selector: 'app-machine-tree-node',
+diff --git a/praxis/web-client/src/app/shared/components/workcell/workcell-explorer/workcell-explorer.component.ts b/praxis/web-client/src/app/shared/components/workcell/workcell-explorer/workcell-explorer.component.ts
+index bba5050..48e331c 100644
+--- a/praxis/web-client/src/app/shared/components/workcell/workcell-explorer/workcell-explorer.component.ts
++++ b/praxis/web-client/src/app/shared/components/workcell/workcell-explorer/workcell-explorer.component.ts
+@@ -1,6 +1,6 @@
+ import { Component, output, signal, computed, ChangeDetectionStrategy, Input } from '@angular/core';
+ import { CommonModule } from '@angular/common';
+-import { WorkcellGroup, MachineWithRuntime } from '../../../../features/workcell/models/workcell-view.models';
++import { WorkcellGroup, MachineWithRuntime } from '@features/workcell/models/workcell-view.models';
+ import { WorkcellGroupComponent } from './workcell-group/workcell-group.component';
+ 
+ @Component({
+diff --git a/praxis/web-client/src/app/shared/components/workcell/workcell-explorer/workcell-group/workcell-group.component.ts b/praxis/web-client/src/app/shared/components/workcell/workcell-explorer/workcell-group/workcell-group.component.ts
+index 7270ac8..e725d90 100644
+--- a/praxis/web-client/src/app/shared/components/workcell/workcell-explorer/workcell-group/workcell-group.component.ts
++++ b/praxis/web-client/src/app/shared/components/workcell/workcell-explorer/workcell-group/workcell-group.component.ts
+@@ -1,6 +1,6 @@
+ import { Component, output, signal, effect, ChangeDetectionStrategy, Input } from '@angular/core';
+ import { CommonModule } from '@angular/common';
+-import { WorkcellGroup, MachineWithRuntime } from '../../../../../features/workcell/models/workcell-view.models';
++import { WorkcellGroup, MachineWithRuntime } from '@features/workcell/models/workcell-view.models';
+ import { MachineTreeNodeComponent } from '../machine-tree-node/machine-tree-node.component';
+ 
+ @Component({
+diff --git a/praxis/web-client/src/app/shared/formly-types/asset-selector.component.ts b/praxis/web-client/src/app/shared/formly-types/asset-selector.component.ts
+index 0c148d8..3858aae 100644
+--- a/praxis/web-client/src/app/shared/formly-types/asset-selector.component.ts
++++ b/praxis/web-client/src/app/shared/formly-types/asset-selector.component.ts
+@@ -10,10 +10,10 @@ import { MatIconModule } from '@angular/material/icon';
+ import { MatChipsModule } from '@angular/material/chips';
+ import { MatTooltipModule } from '@angular/material/tooltip';
+ import { MatDialog } from '@angular/material/dialog';
+-import { AssetService } from '../../features/assets/services/asset.service';
++import { AssetService } from '@features/assets/services/asset.service';
+ import { Observable, forkJoin, of } from 'rxjs';
+ import { debounceTime, distinctUntilChanged, switchMap, startWith } from 'rxjs/operators';
+-import { AssetBase, Resource, ResourceDefinition } from '../../features/assets/models/asset.models';
++import { AssetBase, Resource, ResourceDefinition } from '@features/assets/models/asset.models';
+ 
+ interface AssetOption {
+   asset: AssetBase;
+@@ -443,4 +443,4 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
+     this.formControl.setValue(null);
+     this.assetInput.nativeElement.focus();
+   }
+-}
+\ No newline at end of file
++}
+

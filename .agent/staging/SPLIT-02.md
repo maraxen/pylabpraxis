@@ -1,0 +1,2733 @@
+---
+task_id: SPLIT-02
+session_id: 1174395877673969907
+status: ✅ Completed
+---
+
+diff --git a/praxis/web-client/angular.json b/praxis/web-client/angular.json
+index f627951..884bacd 100644
+--- a/praxis/web-client/angular.json
++++ b/praxis/web-client/angular.json
+@@ -39,6 +39,11 @@
+                 "input": "node_modules/@sqlite.org/sqlite-wasm/dist",
+                 "output": "assets/wasm"
+               },
++              {
++                "glob": "sqlite3-opfs-async-proxy.js",
++                "input": "node_modules/@sqlite.org/sqlite-wasm/dist",
++                "output": "assets/wasm"
++              },
+               {
+                 "glob": "**/*",
+                 "input": "node_modules/pyodide",
+@@ -117,6 +122,9 @@
+             "headers": {
+               "Cross-Origin-Opener-Policy": "same-origin",
+               "Cross-Origin-Embedder-Policy": "require-corp"
++            },
++            "prebundle": {
++              "exclude": ["@sqlite.org/sqlite-wasm"]
+             }
+           },
+           "configurations": {
+@@ -150,4 +158,4 @@
+       }
+     }
+   }
+-}
+\ No newline at end of file
++}
+diff --git a/praxis/web-client/package-lock.json b/praxis/web-client/package-lock.json
+index 67515c6..cfb909b 100644
+--- a/praxis/web-client/package-lock.json
++++ b/praxis/web-client/package-lock.json
+@@ -31,6 +31,7 @@
+         "mermaid": "^11.12.2",
+         "ngx-markdown": "^21.0.1",
+         "ngx-skeleton-loader": "^11.3.0",
++        "playwright": "^1.58.0",
+         "plotly.js-dist-min": "^3.3.1",
+         "pyodide": "^0.29.0",
+         "rxjs": "~7.8.0",
+@@ -57,6 +58,7 @@
+         "eslint": "^9.39.2",
+         "jsdom": "^27.1.0",
+         "openapi-typescript-codegen": "^0.30.0",
++        "playwright": "^1.58.0",
+         "postcss": "^8.5.6",
+         "tailwindcss": "^3.4.17",
+         "typescript": "~5.9.2",
+@@ -458,7 +460,6 @@
+       "integrity": "sha512-PYVgNbjNtuD5/QOuS6cHR8A7bRqsVqxtUUXGqdv76FYMAajQcAvyfR0QxOkqf3NmYxgNgO3hlUHWq0ILjVbcow==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@angular-eslint/bundled-angular-compiler": "21.1.0",
+         "eslint-scope": "^9.0.0"
+@@ -488,7 +489,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/animations/-/animations-21.1.1.tgz",
+       "integrity": "sha512-OQRyNbFBCkuihdCegrpN/Np5YQ7uV9if48LAoXxT68tYhK3S/Qbyx2MzJpOMFEFNfpjXRg1BZr8hVcZVFnArpg==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.3.0"
+       },
+@@ -617,7 +617,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/cdk/-/cdk-21.1.1.tgz",
+       "integrity": "sha512-lzscv+A6FCQdyWIr0t0QHXEgkLzS9wJwgeOOOhtxbixxxuk7xVXdcK/jnswE1Maugh1m696jUkOhZpffks3psA==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "parse5": "^8.0.0",
+         "tslib": "^2.3.0"
+@@ -635,7 +634,6 @@
+       "integrity": "sha512-eXhHuYvruWHBn7lX3GuAyLq29+ELwPADOW8ShzZkWRPNlIDiFDsS5pXrxkM9ez+8f86kfDHh88Twevn4UBUqQg==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@angular-devkit/architect": "0.2101.1",
+         "@angular-devkit/core": "21.1.1",
+@@ -671,7 +669,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/common/-/common-21.1.1.tgz",
+       "integrity": "sha512-Di2I6TooHdKun3SqRr45o4LbWJq/ZdwUt3fg0X3obPYaP/f6TrFQ4TMjcl03EfPufPtoQx6O+d32rcWVLhDxyw==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.3.0"
+       },
+@@ -688,7 +685,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/compiler/-/compiler-21.1.1.tgz",
+       "integrity": "sha512-Urd3bh0zv0MQ//S7RRTanIkOMAZH/A7vSMXUDJ3aflplNs7JNbVqBwDNj8NoX1V+os+fd8JRJOReCc1EpH4ZKQ==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.3.0"
+       },
+@@ -702,7 +698,6 @@
+       "integrity": "sha512-CCB8SZS0BzqLOdOaMpPpOW256msuatYCFDRTaT+awYIY1vQp/eLXzkMTD2uqyHraQy8cReeH/P6optRP9A077Q==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@babel/core": "7.28.5",
+         "@jridgewell/sourcemap-codec": "^1.4.14",
+@@ -735,7 +730,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/core/-/core-21.1.1.tgz",
+       "integrity": "sha512-KFRCEhsi02pY1EqJ5rnze4mzSaacqh14D8goDhtmARiUH0tefaHR+uKyu4bKSrWga2T/ExG0DJX52LhHRs2qSw==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.3.0"
+       },
+@@ -761,7 +755,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/forms/-/forms-21.1.1.tgz",
+       "integrity": "sha512-NBbJOynLOeMsPo03+3dfdxE0P7SB7SXRqoFJ7WP2sOgOIxODna/huo2blmRlnZAVPTn1iQEB9Q+UeyP5c4/1+w==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@standard-schema/spec": "^1.0.0",
+         "tslib": "^2.3.0"
+@@ -781,7 +774,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/material/-/material-21.1.1.tgz",
+       "integrity": "sha512-flRS8Mqf41n5lhrG/D0iPl2zyhhEZBaASFjCMSk5idUWMfwdYlKtCaJ3iRFClIixBUwGPrp8ivjBGKsRGfM/Zw==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.3.0"
+       },
+@@ -799,7 +791,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/platform-browser/-/platform-browser-21.1.1.tgz",
+       "integrity": "sha512-d6liZjPz29GUZ6dhxytFL/W2nMsYwPpc/E/vZpr5yV+u+gI2VjbnLbl8SG+jjj0/Hyq7s4aGhEKsRrCJJMXgNw==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.3.0"
+       },
+@@ -840,7 +831,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/router/-/router-21.1.1.tgz",
+       "integrity": "sha512-3ypbtH3KfzuVgebdEET9+bRwn1VzP//KI0tIqleCGi4rblP3WQ/HwIGa5Qhdcxmw/kbmABKLRXX2kRUvidKs/Q==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.3.0"
+       },
+@@ -972,7 +962,6 @@
+       "integrity": "sha512-e7jT4DxYvIDLk1ZHmU/m/mB19rex9sv0c2ftBtjSBv+kVM/902eh0fINUzD7UwLLNR+jU585GxUJ8/EBfAM5fw==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@babel/code-frame": "^7.27.1",
+         "@babel/generator": "^7.28.5",
+@@ -1390,7 +1379,6 @@
+         }
+       ],
+       "license": "MIT",
+-      "peer": true,
+       "engines": {
+         "node": ">=18"
+       },
+@@ -1434,7 +1422,6 @@
+         }
+       ],
+       "license": "MIT",
+-      "peer": true,
+       "engines": {
+         "node": ">=18"
+       }
+@@ -2489,7 +2476,6 @@
+       "integrity": "sha512-Dx/y9bCQcXLI5ooQ5KyvA4FTgeo2jYj/7plWfV5Ak5wDPKQZgudKez2ixyfz7tKXzcJciTxqLeK7R9HItwiByg==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@inquirer/checkbox": "^4.3.2",
+         "@inquirer/confirm": "^5.1.21",
+@@ -3311,7 +3297,6 @@
+       "resolved": "https://registry.npmjs.org/@ngx-formly/core/-/core-7.0.1.tgz",
+       "integrity": "sha512-Ahx9STZ9tntaRikizsnApBPSCM1dGsS+G3MYN0JOZYn6sgb+dz8SczYNMFHokMW7f9o0lR0Za3Bd9nT9f85E6w==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.0.0"
+       },
+@@ -3950,6 +3935,38 @@
+         "node": ">=18"
+       }
+     },
++    "node_modules/@playwright/test/node_modules/playwright": {
++      "version": "1.57.0",
++      "resolved": "https://registry.npmjs.org/playwright/-/playwright-1.57.0.tgz",
++      "integrity": "sha512-ilYQj1s8sr2ppEJ2YVadYBN0Mb3mdo9J0wQ+UuDhzYqURwSoW4n1Xs5vs7ORwgDGmyEh33tRMeS8KhdkMoLXQw==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "dependencies": {
++        "playwright-core": "1.57.0"
++      },
++      "bin": {
++        "playwright": "cli.js"
++      },
++      "engines": {
++        "node": ">=18"
++      },
++      "optionalDependencies": {
++        "fsevents": "2.3.2"
++      }
++    },
++    "node_modules/@playwright/test/node_modules/playwright-core": {
++      "version": "1.57.0",
++      "resolved": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.57.0.tgz",
++      "integrity": "sha512-agTcKlMw/mjBWOnD6kFZttAAGHgi/Nw0CZ2o6JqWSbMlI219lAFLZZCyqByTsvVAJq5XA5H8cA6PrvBRpBWEuQ==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "bin": {
++        "playwright-core": "cli.js"
++      },
++      "engines": {
++        "node": ">=18"
++      }
++    },
+     "node_modules/@rolldown/binding-android-arm64": {
+       "version": "1.0.0-beta.58",
+       "resolved": "https://registry.npmjs.org/@rolldown/binding-android-arm64/-/binding-android-arm64-1.0.0-beta.58.tgz",
+@@ -5000,8 +5017,7 @@
+       "resolved": "https://registry.npmjs.org/@types/json-schema/-/json-schema-7.0.15.tgz",
+       "integrity": "sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==",
+       "dev": true,
+-      "license": "MIT",
+-      "peer": true
++      "license": "MIT"
+     },
+     "node_modules/@types/plotly.js": {
+       "version": "3.0.9",
+@@ -5060,7 +5076,6 @@
+       "integrity": "sha512-nm3cvFN9SqZGXjmw5bZ6cGmvJSyJPn0wU9gHAZZHDnZl2wF9PhHv78Xf06E0MaNk4zLVHL8hb2/c32XvyJOLQg==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@typescript-eslint/scope-manager": "8.53.1",
+         "@typescript-eslint/types": "8.53.1",
+@@ -5168,7 +5183,6 @@
+       "integrity": "sha512-jr/swrr2aRmUAUjW5/zQHbMaui//vQlsZcJKijZf3M26bnmLj8LyZUpj8/Rd6uzaek06OWsqdofN/Thenm5O8A==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "engines": {
+         "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
+       },
+@@ -5211,7 +5225,6 @@
+       "integrity": "sha512-c4bMvGVWW4hv6JmDUEG7fSYlWOl3II2I4ylt0NM+seinYQlZMQIaKaXIIVJWt9Ofh6whrpM+EdDQXKXjNovvrg==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@eslint-community/eslint-utils": "^4.9.1",
+         "@typescript-eslint/scope-manager": "8.53.1",
+@@ -5452,7 +5465,6 @@
+       "resolved": "https://registry.npmjs.org/acorn/-/acorn-8.15.0.tgz",
+       "integrity": "sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==",
+       "license": "MIT",
+-      "peer": true,
+       "bin": {
+         "acorn": "bin/acorn"
+       },
+@@ -5868,7 +5880,6 @@
+         }
+       ],
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "baseline-browser-mapping": "^2.9.0",
+         "caniuse-lite": "^1.0.30001759",
+@@ -6090,7 +6101,6 @@
+       "integrity": "sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "readdirp": "^5.0.0"
+       },
+@@ -6473,7 +6483,6 @@
+       "resolved": "https://registry.npmjs.org/cytoscape/-/cytoscape-3.33.1.tgz",
+       "integrity": "sha512-iJc4TwyANnOGR1OmWhsS9ayRS3s+XQ185FmuHObThD+5AeJCakAAbWv8KimMTt08xCCLNgneQwFp+JRJOr9qGQ==",
+       "license": "MIT",
+-      "peer": true,
+       "engines": {
+         "node": ">=0.10"
+       }
+@@ -6886,7 +6895,6 @@
+       "resolved": "https://registry.npmjs.org/d3-selection/-/d3-selection-3.0.0.tgz",
+       "integrity": "sha512-fmTRWbNMmsmWq6xJV8D19U/gw/bwrHfNXxrIN+HfZgnzqTHp9jOmKMhsTUjXOJnZOdZY9Q28y4yebKzqDKlxlQ==",
+       "license": "ISC",
+-      "peer": true,
+       "engines": {
+         "node": ">=12"
+       }
+@@ -7410,7 +7418,6 @@
+       "integrity": "sha512-LEyamqS7W5HB3ujJyvi0HQK/dtVINZvd5mAAp9eT5S/ujByGjiZLCzPcHVzuXbpJDJF/cxwHlfceVUDZ2lnSTw==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@eslint-community/eslint-utils": "^4.8.0",
+         "@eslint-community/regexpp": "^4.12.1",
+@@ -7735,7 +7742,6 @@
+       "integrity": "sha512-hIS4idWWai69NezIdRt2xFVofaF4j+6INOpJlVOLDO8zXGpUVEVzIYk12UUi2JzjEzWL3IOAxcTubgz9Po0yXw==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "accepts": "^2.0.0",
+         "body-parser": "^2.2.1",
+@@ -8768,7 +8774,6 @@
+       "integrity": "sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "bin": {
+         "jiti": "bin/jiti.js"
+       }
+@@ -8809,7 +8814,6 @@
+       "integrity": "sha512-mjzqwWRD9Y1J1KUi7W97Gja1bwOOM5Ug0EZ6UDK3xS7j7mndrkwozHtSblfomlzyB4NepioNt+B2sOSzczVgtQ==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@acemir/cssom": "^0.9.28",
+         "@asamuzakjp/dom-selector": "^6.7.6",
+@@ -8984,7 +8988,6 @@
+       "resolved": "https://registry.npmjs.org/keycloak-js/-/keycloak-js-26.2.2.tgz",
+       "integrity": "sha512-ug7pNZ1xNkd7PPkerOJCEU2VnUhS7CYStDOCFJgqCNQ64h53ppxaKrh4iXH0xM8hFu5b1W6e6lsyYWqBMvaQFg==",
+       "license": "Apache-2.0",
+-      "peer": true,
+       "workspaces": [
+         "test"
+       ]
+@@ -9066,7 +9069,6 @@
+       "integrity": "sha512-ME4Fb83LgEgwNw96RKNvKV4VTLuXfoKudAmm2lP8Kk87KaMK0/Xrx/aAkMWmT8mDb+3MlFDspfbCs7adjRxA2g==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "cli-truncate": "^5.0.0",
+         "colorette": "^2.0.20",
+@@ -9347,7 +9349,6 @@
+       "resolved": "https://registry.npmjs.org/marked/-/marked-17.0.1.tgz",
+       "integrity": "sha512-boeBdiS0ghpWcSwoNm/jJBwdpFaMnZWRzjA6SkUMYb40SVaN1x7mmfGKp0jvexGcx+7y2La5zRZsYFZI6Qpypg==",
+       "license": "MIT",
+-      "peer": true,
+       "bin": {
+         "marked": "bin/marked.js"
+       },
+@@ -10575,13 +10576,13 @@
+       }
+     },
+     "node_modules/playwright": {
+-      "version": "1.57.0",
+-      "resolved": "https://registry.npmjs.org/playwright/-/playwright-1.57.0.tgz",
+-      "integrity": "sha512-ilYQj1s8sr2ppEJ2YVadYBN0Mb3mdo9J0wQ+UuDhzYqURwSoW4n1Xs5vs7ORwgDGmyEh33tRMeS8KhdkMoLXQw==",
++      "version": "1.58.0",
++      "resolved": "https://registry.npmjs.org/playwright/-/playwright-1.58.0.tgz",
++      "integrity": "sha512-2SVA0sbPktiIY/MCOPX8e86ehA/e+tDNq+e5Y8qjKYti2Z/JG7xnronT/TXTIkKbYGWlCbuucZ6dziEgkoEjQQ==",
+       "dev": true,
+       "license": "Apache-2.0",
+       "dependencies": {
+-        "playwright-core": "1.57.0"
++        "playwright-core": "1.58.0"
+       },
+       "bin": {
+         "playwright": "cli.js"
+@@ -10594,9 +10595,9 @@
+       }
+     },
+     "node_modules/playwright-core": {
+-      "version": "1.57.0",
+-      "resolved": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.57.0.tgz",
+-      "integrity": "sha512-agTcKlMw/mjBWOnD6kFZttAAGHgi/Nw0CZ2o6JqWSbMlI219lAFLZZCyqByTsvVAJq5XA5H8cA6PrvBRpBWEuQ==",
++      "version": "1.58.0",
++      "resolved": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.58.0.tgz",
++      "integrity": "sha512-aaoB1RWrdNi3//rOeKuMiS65UCcgOVljU46At6eFcOFPFHWtd2weHRRow6z/n+Lec0Lvu0k9ZPKJSjPugikirw==",
+       "dev": true,
+       "license": "Apache-2.0",
+       "bin": {
+@@ -10648,7 +10649,6 @@
+         }
+       ],
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "nanoid": "^3.3.11",
+         "picocolors": "^1.1.1",
+@@ -11207,7 +11207,6 @@
+       "resolved": "https://registry.npmjs.org/rxjs/-/rxjs-7.8.2.tgz",
+       "integrity": "sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==",
+       "license": "Apache-2.0",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.1.0"
+       }
+@@ -11829,7 +11828,6 @@
+       "integrity": "sha512-3ofp+LL8E+pK/JuPLPggVAIaEuhvIz4qNcf3nA1Xn2o/7fb7s/TYpHhwGDv1ZU3PkBluUVaF8PyCHcm48cKLWQ==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@alloc/quick-lru": "^5.2.0",
+         "arg": "^5.0.2",
+@@ -12128,8 +12126,7 @@
+       "version": "2.8.1",
+       "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz",
+       "integrity": "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==",
+-      "license": "0BSD",
+-      "peer": true
++      "license": "0BSD"
+     },
+     "node_modules/tuf-js": {
+       "version": "4.1.0",
+@@ -12180,7 +12177,6 @@
+       "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
+       "dev": true,
+       "license": "Apache-2.0",
+-      "peer": true,
+       "bin": {
+         "tsc": "bin/tsc",
+         "tsserver": "bin/tsserver"
+@@ -12387,7 +12383,6 @@
+       "integrity": "sha512-dZwN5L1VlUBewiP6H9s2+B3e3Jg96D0vzN+Ry73sOefebhYr9f94wwkMNN/9ouoU8pV1BqA1d1zGk8928cx0rg==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "esbuild": "^0.27.0",
+         "fdir": "^6.5.0",
+@@ -12478,7 +12473,6 @@
+       "integrity": "sha512-hOQuK7h0FGKgBAas7v0mSAsnvrIgAvWmRFjmzpJ7SwFHH3g1k2u37JtYwOwmEKhK6ZO3v9ggDBBm0La1LCK4uQ==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@vitest/expect": "4.0.18",
+         "@vitest/mocker": "4.0.18",
+@@ -12948,7 +12942,6 @@
+       "integrity": "sha512-k7Nwx6vuWx1IJ9Bjuf4Zt1PEllcwe7cls3VNzm4CQ1/hgtFUK2bRNG3rvnpPUhFjmqJKAKtjV576KnUkHocg/g==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "funding": {
+         "url": "https://github.com/sponsors/colinhacks"
+       }
+@@ -12967,8 +12960,7 @@
+       "version": "0.16.0",
+       "resolved": "https://registry.npmjs.org/zone.js/-/zone.js-0.16.0.tgz",
+       "integrity": "sha512-LqLPpIQANebrlxY6jKcYKdgN5DTXyyHAKnnWWjE5pPfEQ4n7j5zn7mOEEpwNZVKGqx3kKKmvplEmoBrvpgROTA==",
+-      "license": "MIT",
+-      "peer": true
++      "license": "MIT"
+     }
+   }
+ }
+diff --git a/praxis/web-client/package.json b/praxis/web-client/package.json
+index fc28c24..2f55286 100644
+--- a/praxis/web-client/package.json
++++ b/praxis/web-client/package.json
+@@ -60,6 +60,7 @@
+     "mermaid": "^11.12.2",
+     "ngx-markdown": "^21.0.1",
+     "ngx-skeleton-loader": "^11.3.0",
++    "playwright": "^1.58.0",
+     "plotly.js-dist-min": "^3.3.1",
+     "pyodide": "^0.29.0",
+     "rxjs": "~7.8.0",
+@@ -69,6 +70,7 @@
+     "zone.js": "^0.16.0"
+   },
+   "devDependencies": {
++    "playwright": "^1.58.0",
+     "@angular-eslint/builder": "^21.1.0",
+     "@angular-eslint/eslint-plugin": "^21.1.0",
+     "@angular-eslint/eslint-plugin-template": "^21.1.0",
+@@ -92,4 +94,4 @@
+     "typescript-eslint": "^8.52.0",
+     "vitest": "^4.0.8"
+   }
+-}
+\ No newline at end of file
++}
+diff --git a/praxis/web-client/src/app/core/workers/sqlite-opfs.worker.ts b/praxis/web-client/src/app/core/workers/sqlite-opfs.worker.ts
+index b2d4bfb..7df6439 100644
+--- a/praxis/web-client/src/app/core/workers/sqlite-opfs.worker.ts
++++ b/praxis/web-client/src/app/core/workers/sqlite-opfs.worker.ts
+@@ -92,7 +92,8 @@ async function handleInit(id: string, payload: SqliteInitRequest) {
+         poolUtil = await (sqlite3 as any).installOpfsSAHPoolVfs({
+             name: 'opfs-sahpool', // Standard name used by the library
+             directory: 'praxis-data',
+-            clearOnInit: false
++            clearOnInit: false,
++            proxyUri: `${wasmPath}sqlite3-opfs-async-proxy.js`
+         });
+     } catch (err) {
+         console.error('[SqliteOpfsWorker] Failed to install opfs-sahpool VFS:', err);
+diff --git a/praxis/web-client/src/app/features/playground/components/playground-header/playground-header.component.ts b/praxis/web-client/src/app/features/playground/components/playground-header/playground-header.component.ts
+new file mode 100644
+index 0000000..6bd4a13
+--- /dev/null
++++ b/praxis/web-client/src/app/features/playground/components/playground-header/playground-header.component.ts
+@@ -0,0 +1,102 @@
++import { Component, inject, computed } from '@angular/core';
++import { MatIconModule } from '@angular/material/icon';
++import { MatButtonModule } from '@angular/material/button';
++import { MatTooltipModule } from '@angular/material/tooltip';
++
++import { ModeService } from '@core/services/mode.service';
++import { PlaygroundJupyterliteService } from '../../services/playground-jupyterlite.service';
++import { PlaygroundAssetService } from '../../services/playground-asset.service';
++import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
++
++@Component({
++  selector: 'app-playground-header',
++  standalone: true,
++  imports: [
++    MatIconModule,
++    MatButtonModule,
++    MatTooltipModule,
++    HardwareDiscoveryButtonComponent
++  ],
++  template: `
++    <div class="repl-header">
++      <div class="header-title">
++        <mat-icon>auto_stories</mat-icon>
++        <h2>Playground ({{ modeLabel() }})</h2>
++      </div>
++      
++      <div class="header-actions flex items-center gap-2">
++        <app-hardware-discovery-button></app-hardware-discovery-button>
++        <button 
++          mat-icon-button 
++          (click)="jupyterliteService.reloadNotebook()"
++          matTooltip="Restart Kernel (reload notebook)"
++          aria-label="Restart Kernel (reload notebook)">
++          <mat-icon>restart_alt</mat-icon>
++        </button>
++        <button 
++          mat-icon-button 
++          (click)="assetService.openAssetWizard('MACHINE')"
++          matTooltip="Add Machine"
++          aria-label="Add Machine"
++          color="primary">
++          <mat-icon>precision_manufacturing</mat-icon>
++        </button>
++        <button 
++          mat-icon-button 
++          (click)="assetService.openAssetWizard('RESOURCE')"
++          matTooltip="Add Resource"
++          aria-label="Add Resource"
++          color="primary">
++          <mat-icon>science</mat-icon>
++        </button>
++        <button 
++          mat-icon-button 
++          (click)="assetService.openAssetWizard()"
++          matTooltip="Browse Inventory"
++          aria-label="Browse Inventory"
++          color="primary">
++          <mat-icon>inventory_2</mat-icon>
++        </button>
++      </div>
++    </div>
++  `,
++  styles: [`
++    .repl-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      padding: 8px 16px;
++      background: var(--mat-sys-surface-container-high);
++      border-bottom: 1px solid var(--mat-sys-outline-variant);
++      flex-shrink: 0;
++      height: 56px;
++      box-sizing: border-box;
++    }
++
++    .header-title {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .repl-header mat-icon {
++      color: var(--mat-sys-primary);
++    }
++
++    .repl-header h2 {
++      margin: 0;
++      font-size: 1.1rem;
++      font-weight: 500;
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++    }
++  `]
++})
++export class PlaygroundHeaderComponent {
++  private modeService = inject(ModeService);
++  public jupyterliteService = inject(PlaygroundJupyterliteService);
++  public assetService = inject(PlaygroundAssetService);
++
++  modeLabel = computed(() => this.modeService.modeLabel());
++}
+diff --git a/praxis/web-client/src/app/features/playground/components/playground-machine-selector/playground-machine-selector.component.ts b/praxis/web-client/src/app/features/playground/components/playground-machine-selector/playground-machine-selector.component.ts
+new file mode 100644
+index 0000000..70abc2c
+--- /dev/null
++++ b/praxis/web-client/src/app/features/playground/components/playground-machine-selector/playground-machine-selector.component.ts
+@@ -0,0 +1,224 @@
++import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
++import { CommonModule } from '@angular/common';
++import { MatIconModule } from '@angular/material/icon';
++import { MatButtonModule } from '@angular/material/button';
++import { MatTooltipModule } from '@angular/material/tooltip';
++
++import { Machine } from '@features/assets/models/asset.models';
++import { PlaygroundAssetService } from '../../services/playground-asset.service';
++
++@Component({
++  selector: 'app-playground-machine-selector',
++  standalone: true,
++  imports: [
++    CommonModule,
++    MatIconModule,
++    MatButtonModule,
++    MatTooltipModule
++  ],
++  template: `
++    <div class="machine-selector-panel">
++      <div class="panel-header">
++        <h3>Available Machines</h3>
++        <button mat-icon-button (click)="refreshMachines.emit()" matTooltip="Refresh machines">
++          <mat-icon>refresh</mat-icon>
++        </button>
++      </div>
++      
++      <div *ngIf="availableMachines.length === 0" class="empty-machines">
++        <mat-icon>precision_manufacturing</mat-icon>
++        <p>No machines registered</p>
++        <button mat-stroked-button (click)="assetService.openAssetWizard('MACHINE')">
++          <mat-icon>add</mat-icon>
++          Add Machine
++        </button>
++      </div>
++      
++      <div *ngIf="availableMachines.length > 0" class="machine-list">
++        <div 
++          *ngFor="let machine of availableMachines"
++          class="machine-card" 
++          [class.selected]="selectedMachine?.accession_id === machine.accession_id"
++          (click)="selectMachine.emit(machine)">
++          <div class="machine-icon">
++            <mat-icon>{{ getMachineIcon(machine.machine_category || '') }}</mat-icon>
++          </div>
++          <div class="machine-info">
++            <span class="machine-name">{{ machine.name }}</span>
++            <span class="machine-category">{{ machine.machine_category || 'Machine' }}</span>
++          </div>
++          <div class="machine-status" [class]="(machine.status || 'offline').toLowerCase()">
++            <span class="status-dot"></span>
++          </div>
++        </div>
++      </div>
++    </div>
++  `,
++  styles: [`
++    .machine-selector-panel {
++      width: 280px;
++      min-width: 280px;
++      border-right: 1px solid var(--mat-sys-outline-variant);
++      background: var(--mat-sys-surface-container);
++      display: flex;
++      flex-direction: column;
++      overflow: hidden;
++    }
++
++    .panel-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      padding: 12px 16px;
++      border-bottom: 1px solid var(--mat-sys-outline-variant);
++      background: var(--mat-sys-surface-container-high);
++    }
++
++    .panel-header h3 {
++      margin: 0;
++      font-size: 0.875rem;
++      font-weight: 500;
++      color: var(--mat-sys-on-surface);
++    }
++
++    .machine-list {
++      flex: 1;
++      overflow-y: auto;
++      padding: 8px;
++    }
++
++    .machine-card {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      padding: 12px;
++      border-radius: 8px;
++      cursor: pointer;
++      transition: background-color 0.15s ease, box-shadow 0.15s ease;
++      margin-bottom: 4px;
++      background: var(--mat-sys-surface);
++      border: 1px solid transparent;
++    }
++
++    .machine-card:hover {
++      background: var(--mat-sys-surface-container-highest);
++    }
++
++    .machine-card.selected {
++      background: color-mix(in srgb, var(--mat-sys-primary) 12%, var(--mat-sys-surface));
++      border-color: var(--mat-sys-primary);
++    }
++
++    .machine-icon {
++      width: 40px;
++      height: 40px;
++      border-radius: 8px;
++      background: var(--mat-sys-primary-container);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      flex-shrink: 0;
++    }
++
++    .machine-icon mat-icon {
++      color: var(--mat-sys-on-primary-container);
++    }
++
++    .machine-info {
++      flex: 1;
++      min-width: 0;
++      display: flex;
++      flex-direction: column;
++      gap: 2px;
++    }
++
++    .machine-name {
++      font-size: 0.875rem;
++      font-weight: 500;
++      color: var(--mat-sys-on-surface);
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++    }
++
++    .machine-category {
++      font-size: 0.75rem;
++      color: var(--mat-sys-on-surface-variant);
++    }
++
++    .machine-status {
++      flex-shrink: 0;
++    }
++
++    .status-dot {
++      display: block;
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: var(--mat-sys-outline);
++    }
++
++    .machine-status.idle .status-dot {
++      background: var(--mat-sys-tertiary);
++    }
++
++    .machine-status.running .status-dot,
++    .machine-status.connected .status-dot {
++      background: var(--mat-sys-primary);
++      animation: pulse 2s infinite;
++    }
++
++    .machine-status.error .status-dot {
++      background: var(--mat-sys-error);
++    }
++
++    @keyframes pulse {
++      0%, 100% { opacity: 1; }
++      50% { opacity: 0.5; }
++    }
++
++    .empty-machines {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      height: 100%;
++      padding: 24px;
++      gap: 12px;
++      color: var(--mat-sys-on-surface-variant);
++      text-align: center;
++    }
++
++    .empty-machines mat-icon {
++      font-size: 40px;
++      width: 40px;
++      height: 40px;
++      opacity: 0.5;
++    }
++
++    .empty-machines p {
++      margin: 0;
++      font-size: 0.875rem;
++    }
++  `]
++})
++export class PlaygroundMachineSelectorComponent {
++  @Input() availableMachines: Machine[] = [];
++  @Input() selectedMachine: Machine | null = null;
++  @Output() selectMachine = new EventEmitter<Machine>();
++  @Output() refreshMachines = new EventEmitter<void>();
++
++  public assetService = inject(PlaygroundAssetService);
++
++  getMachineIcon(category: string): string {
++    const iconMap: Record<string, string> = {
++      'LiquidHandler': 'science',
++      'PlateReader': 'visibility',
++      'Shaker': 'vibration',
++      'Centrifuge': 'loop',
++      'Incubator': 'thermostat',
++      'Other': 'precision_manufacturing'
++    };
++    return iconMap[category] || 'precision_manufacturing';
++  }
++}
+diff --git a/praxis/web-client/src/app/features/playground/playground.component.spec.ts b/praxis/web-client/src/app/features/playground/playground.component.spec.ts
+index 1119583..92486c3 100644
+--- a/praxis/web-client/src/app/features/playground/playground.component.spec.ts
++++ b/praxis/web-client/src/app/features/playground/playground.component.spec.ts
+@@ -1,74 +1,62 @@
+ 
+-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
++import { ComponentFixture, TestBed } from '@angular/core/testing';
+ import { PlaygroundComponent } from './playground.component';
+ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
++import { describe, it, expect, beforeEach, vi } from 'vitest';
+ import { AppStore } from '../../core/store/app.store';
+ import { ModeService } from '../../core/services/mode.service';
+-import { AssetService } from '../assets/services/asset.service';
+-import { SerialManagerService } from '../../core/services/serial-manager.service';
+-import { MatSnackBar } from '@angular/material/snack-bar';
+-import { signal, WritableSignal } from '@angular/core'; // Import signal
++import { signal, WritableSignal } from '@angular/core';
+ import { of } from 'rxjs';
+-
+-// Mock BroadcastChannel
+-class MockBroadcastChannel {
+-    name: string;
+-    onmessage: ((event: MessageEvent) => void) | null = null;
+-    closed = false;
+-
+-    constructor(name: string) {
+-        this.name = name;
+-        // Store reference to this instance for testing
+-        (globalThis as any).mockChannels = (globalThis as any).mockChannels || {};
+-        (globalThis as any).mockChannels[name] = this;
+-    }
+-
+-    postMessage(message: any) {
+-        // No-op for now unless we need to simulate self-messages
+-    }
+-
+-    close() {
+-        this.closed = true;
+-    }
+-}
++import { PlaygroundJupyterliteService } from './services/playground-jupyterlite.service';
++import { PlaygroundAssetService } from './services/playground-asset.service';
++import { MatSnackBar } from '@angular/material/snack-bar';
++import { DirectControlKernelService } from './services/direct-control-kernel.service';
+ 
+ describe('PlaygroundComponent', () => {
+     let component: PlaygroundComponent;
+     let fixture: ComponentFixture<PlaygroundComponent>;
++    let jupyterliteServiceMock: Partial<PlaygroundJupyterliteService>;
++    let assetServiceMock: Partial<PlaygroundAssetService>;
+ 
+-    // Signals for mocks
+-    let themeSignal: WritableSignal<string>; // Use WritableSignal
+-    let modeLabelSignal: WritableSignal<string>; // Use WritableSignal
++    let themeSignal: WritableSignal<string>;
++    let modeLabelSignal: WritableSignal<string>;
++    let jupyterliteUrlSignal: WritableSignal<string | undefined>;
++    let isLoadingSignal: WritableSignal<boolean>;
+ 
+     beforeEach(async () => {
+-        // Initialize signals here
+         themeSignal = signal('light');
+         modeLabelSignal = signal('Test Mode');
++        jupyterliteUrlSignal = signal(undefined);
++        isLoadingSignal = signal(true);
++
++        jupyterliteServiceMock = {
++            initialize: vi.fn(),
++            destroy: vi.fn(),
++            reloadNotebook: vi.fn(),
++            jupyterliteUrl: jupyterliteUrlSignal,
++            isLoading: isLoadingSignal,
++        };
+ 
+-        (globalThis as any).BroadcastChannel = MockBroadcastChannel;
+-        (globalThis as any).mockChannels = {};
++        assetServiceMock = {
++            getMachines: vi.fn().mockReturnValue(of([])),
++            openAssetWizard: vi.fn(),
++        };
+ 
+         await TestBed.configureTestingModule({
+             imports: [PlaygroundComponent, NoopAnimationsModule],
+             providers: [
+                 {
+                     provide: AppStore,
+-                    useValue: { theme: themeSignal } // Pass the signal directly
++                    useValue: { theme: themeSignal }
+                 },
+                 {
+                     provide: ModeService,
+-                    useValue: { modeLabel: modeLabelSignal } // Pass the signal directly
+-                },
+-                {
+-                    provide: AssetService,
+-                    useValue: {
+-                        getMachines: () => of([]),
+-                        getResources: () => of([])
+-                    }
++                    useValue: { modeLabel: modeLabelSignal }
+                 },
+-                { provide: SerialManagerService, useValue: {} },
+-                { provide: MatSnackBar, useValue: { open: vi.fn() } }
++                { provide: PlaygroundJupyterliteService, useValue: jupyterliteServiceMock },
++                { provide: PlaygroundAssetService, useValue: assetServiceMock },
++                { provide: MatSnackBar, useValue: { open: vi.fn() } },
++                { provide: DirectControlKernelService, useValue: {} }
+             ]
+         }).compileComponents();
+ 
+@@ -77,46 +65,35 @@ describe('PlaygroundComponent', () => {
+         fixture.detectChanges();
+     });
+ 
+-    afterEach(() => {
+-        delete (globalThis as any).BroadcastChannel;
+-        delete (globalThis as any).mockChannels;
+-    });
+-
+     it('should create', () => {
+         expect(component).toBeTruthy();
+     });
+ 
+-    it('should set up ready listener on init', () => {
+-        const channel = (globalThis as any).mockChannels['praxis_repl'];
+-        expect(channel).toBeDefined();
+-        expect(channel.onmessage).toBeDefined();
++    it('should initialize jupyterlite service on init', () => {
++        expect(jupyterliteServiceMock.initialize).toHaveBeenCalled();
+     });
+ 
+-    it('should handle ready signal', async () => {
+-        expect(component.isLoading).toBe(true);
+-
+-        const channel = (globalThis as any).mockChannels['praxis_repl'];
+-        channel.onmessage!({ data: { type: 'praxis:ready' } } as MessageEvent);
+-
+-        // Ready signal processing is direct, but let's be safe
+-        expect(component.isLoading).toBe(false);
++    it('should load machines on init', () => {
++        expect(assetServiceMock.getMachines).toHaveBeenCalled();
+     });
+ 
+-    it('should reset state on reload', async () => {
+-        // First Simulate ready
+-        const channel = (globalThis as any).mockChannels['praxis_repl'];
+-        channel.onmessage!({ data: { type: 'praxis:ready' } } as MessageEvent);
+-        expect(component.isLoading).toBe(false);
+-
+-        // Now reload
+-        component.reloadNotebook();
+-        expect(component.isLoading).toBe(true);
+-        expect(component.jupyterliteUrl).toBeUndefined();
++    it('should show loading spinner when jupyterlite is loading', () => {
++        isLoadingSignal.set(true);
++        fixture.detectChanges();
++        const spinner = fixture.nativeElement.querySelector('mat-spinner');
++        expect(spinner).toBeTruthy();
++    });
+ 
+-        // Wait for timeout in reloadNotebook (100ms)
+-        await new Promise(resolve => setTimeout(resolve, 150));
++    it('should not show loading spinner when jupyterlite is not loading', () => {
++        isLoadingSignal.set(false);
++        fixture.detectChanges();
++        const spinner = fixture.nativeElement.querySelector('mat-spinner');
++        expect(spinner).toBeFalsy();
++    });
+ 
+-        // Check if URL is rebuilt
+-        expect(component.jupyterliteUrl).toBeDefined();
++    it('should call reloadNotebook on the service when the button is clicked', () => {
++        const button = fixture.nativeElement.querySelector('button[aria-label="Restart Kernel (reload notebook)"]');
++        button.click();
++        expect(jupyterliteServiceMock.reloadNotebook).toHaveBeenCalled();
+     });
+ });
+diff --git a/praxis/web-client/src/app/features/playground/playground.component.ts b/praxis/web-client/src/app/features/playground/playground.component.ts
+index a493b93..e7369e9 100644
+--- a/praxis/web-client/src/app/features/playground/playground.component.ts
++++ b/praxis/web-client/src/app/features/playground/playground.component.ts
+@@ -5,18 +5,10 @@ import {
+   OnDestroy,
+   ViewChild,
+   inject,
+-  effect,
+-  ChangeDetectorRef,
+   signal,
+   computed,
+-  AfterViewInit,
+ } from '@angular/core';
+-import { InteractionService } from '@core/services/interaction.service';
+-import { AppStore } from '@core/store/app.store';
+-
+ import { FormsModule } from '@angular/forms';
+-import { DeckCatalogService } from '@features/run-protocol/services/deck-catalog.service';
+-
+ import { MatCardModule } from '@angular/material/card';
+ import { MatIconModule } from '@angular/material/icon';
+ import { MatButtonModule } from '@angular/material/button';
+@@ -30,35 +22,24 @@ import { MatMenuModule } from '@angular/material/menu';
+ import { MatDividerModule } from '@angular/material/divider';
+ import { MatChipsModule } from '@angular/material/chips';
+ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+-import { ModeService } from '@core/services/mode.service';
+-import { AssetService } from '@features/assets/services/asset.service';
+-import { Machine, Resource, MachineStatus } from '@features/assets/models/asset.models';
+-import { Subscription } from 'rxjs';
+-import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
++import { MatTabsModule } from '@angular/material/tabs';
+ 
+-import { serial as polyfillSerial } from 'web-serial-polyfill';
+-import { SerialManagerService } from '@core/services/serial-manager.service';
+-import { MatDialog } from '@angular/material/dialog';
+-import { AssetWizard } from '@shared/components/asset-wizard/asset-wizard';
++import { Subscription } from 'rxjs';
+ 
+-import { MatTabsModule } from '@angular/material/tabs';
++import { ModeService } from '@core/services/mode.service';
++import { Machine } from '@features/assets/models/asset.models';
+ import { DirectControlComponent } from './components/direct-control/direct-control.component';
+ import { DirectControlKernelService } from './services/direct-control-kernel.service';
+-import { MachineRead } from '@api/models/MachineRead';
++import { PlaygroundJupyterliteService } from './services/playground-jupyterlite.service';
++import { PlaygroundAssetService } from './services/playground-asset.service';
++import { PlaygroundHeaderComponent } from './components/playground-header/playground-header.component';
++import { PlaygroundMachineSelectorComponent } from './components/playground-machine-selector/playground-machine-selector.component';
+ 
+-/**
+- * Playground Component
+- *
+- * Replaces the xterm.js-based REPL with an embedded JupyterLite notebook.
+- * Uses iframe embedding with URL parameters for configuration.
+- */
+ @Component({
+   selector: 'app-playground',
+   standalone: true,
+   imports: [
+     FormsModule,
+-
+     MatCardModule,
+     MatIconModule,
+     MatButtonModule,
+@@ -73,67 +54,25 @@ import { MachineRead } from '@api/models/MachineRead';
+     MatChipsModule,
+     MatProgressSpinnerModule,
+     MatTabsModule,
+-    HardwareDiscoveryButtonComponent,
+     DirectControlComponent,
++    PlaygroundHeaderComponent,
++    PlaygroundMachineSelectorComponent,
+   ],
+   template: `
+     <div class="repl-container">
+-      <!-- Main Notebook Area -->
+       <div class="notebook-area">
+         <mat-card class="repl-card">
+-          <!-- Menu Bar -->
+-          <div class="repl-header">
+-            <div class="header-title">
+-              <mat-icon>auto_stories</mat-icon>
+-              <h2>Playground ({{ modeLabel() }})</h2>
+-            </div>
+-            
+-            <div class="header-actions flex items-center gap-2">
+-              <app-hardware-discovery-button></app-hardware-discovery-button>
+-              <button 
+-                mat-icon-button 
+-                (click)="reloadNotebook()"
+-                matTooltip="Restart Kernel (reload notebook)"
+-                aria-label="Restart Kernel (reload notebook)">
+-                <mat-icon>restart_alt</mat-icon>
+-              </button>
+-              <button 
+-                mat-icon-button 
+-                (click)="openAddMachine()"
+-                matTooltip="Add Machine"
+-                aria-label="Add Machine"
+-                color="primary">
+-                <mat-icon>precision_manufacturing</mat-icon>
+-              </button>
+-              <button 
+-                mat-icon-button 
+-                (click)="openAddResource()"
+-                matTooltip="Add Resource"
+-                aria-label="Add Resource"
+-                color="primary">
+-                <mat-icon>science</mat-icon>
+-              </button>
+-              <button 
+-                mat-icon-button 
+-                (click)="openInventory()"
+-                matTooltip="Browse Inventory"
+-                aria-label="Browse Inventory"
+-                color="primary">
+-                <mat-icon>inventory_2</mat-icon>
+-              </button>
+-            </div>
+-          </div>
++          <app-playground-header></app-playground-header>
+ 
+           <mat-tab-group class="repl-tabs" [selectedIndex]="selectedTabIndex()" (selectedIndexChange)="selectedTabIndex.set($event)">
+             <mat-tab label="REPL Notebook">
+               <ng-template matTabContent>
+-                <!-- JupyterLite iframe -->
+                 <div class="repl-notebook-wrapper" data-tour-id="repl-notebook">
+ 
+-                  @if (jupyterliteUrl) {
++                  @if (jupyterliteService.jupyterliteUrl()) {
+                     <iframe
+                       #notebookFrame
+-                      [src]="jupyterliteUrl"
++                      [src]="jupyterliteService.jupyterliteUrl()"
+                       class="notebook-frame"
+                       (load)="onIframeLoad()"
+                       allow="cross-origin-isolated; usb; serial"
+@@ -141,13 +80,13 @@ import { MachineRead } from '@api/models/MachineRead';
+                     ></iframe>
+                   }
+ 
+-                  @if (isLoading()) {
++                  @if (jupyterliteService.isLoading()) {
+                     <div class="loading-overlay">
+                       <div class="loading-content">
+                         <mat-spinner diameter="48"></mat-spinner>
+                         <p>Initializing Pyodide Environment...</p>
+-                        @if (loadingError()) {
+-                          <button mat-flat-button color="warn" (click)="reloadNotebook()">
++                        @if (jupyterliteService.loadingError()) {
++                          <button mat-flat-button color="warn" (click)="jupyterliteService.reloadNotebook()">
+                             <mat-icon>refresh</mat-icon>
+                             Retry Loading
+                           </button>
+@@ -162,48 +101,13 @@ import { MachineRead } from '@api/models/MachineRead';
+             <mat-tab label="Direct Control">
+               <ng-template matTabContent>
+                 <div class="direct-control-dashboard">
+-                  <!-- Machine Selector Sidebar -->
+-                  <div class="machine-selector-panel">
+-                    <div class="panel-header">
+-                      <h3>Available Machines</h3>
+-                      <button mat-icon-button (click)="loadMachinesForDirectControl()" matTooltip="Refresh machines">
+-                        <mat-icon>refresh</mat-icon>
+-                      </button>
+-                    </div>
+-                    
+-                    @if (availableMachines().length === 0) {
+-                      <div class="empty-machines">
+-                        <mat-icon>precision_manufacturing</mat-icon>
+-                        <p>No machines registered</p>
+-                        <button mat-stroked-button (click)="openAssetWizard('MACHINE')">
+-                          <mat-icon>add</mat-icon>
+-                          Add Machine
+-                        </button>
+-                      </div>
+-                    } @else {
+-                      <div class="machine-list">
+-                        @for (machine of availableMachines(); track machine.accession_id) {
+-                          <div 
+-                            class="machine-card" 
+-                            [class.selected]="selectedMachine()?.accession_id === machine.accession_id"
+-                            (click)="selectMachineForControl(machine)">
+-                            <div class="machine-icon">
+-                              <mat-icon>{{ getMachineIcon($any(machine).machine_category) }}</mat-icon>
+-                            </div>
+-                            <div class="machine-info">
+-                              <span class="machine-name">{{ machine.name }}</span>
+-                              <span class="machine-category">{{ $any(machine).machine_category || 'Machine' }}</span>
+-                            </div>
+-                            <div class="machine-status" [class]="$any(machine).status?.toLowerCase() || 'offline'">
+-                              <span class="status-dot"></span>
+-                            </div>
+-                          </div>
+-                        }
+-                      </div>
+-                    }
+-                  </div>
++                  <app-playground-machine-selector
++                    [availableMachines]="availableMachines()"
++                    [selectedMachine]="selectedMachine()"
++                    (selectMachine)="selectMachineForControl($event)"
++                    (refreshMachines)="loadMachinesForDirectControl()"
++                  ></app-playground-machine-selector>
+                   
+-                  <!-- Control Panel -->
+                   <div class="control-panel">
+                     @if (selectedMachine()) {
+                       <app-direct-control 
+@@ -226,7 +130,7 @@ import { MachineRead } from '@api/models/MachineRead';
+     </div>
+   `,
+   styles: [
+-    `
++        `
+       .repl-container {
+         height: 100%;
+         width: 100%;
+@@ -257,37 +161,6 @@ import { MachineRead } from '@api/models/MachineRead';
+         overflow: hidden;
+       }
+ 
+-      .repl-header {
+-        display: flex;
+-        align-items: center;
+-        justify-content: space-between;
+-        padding: 8px 16px;
+-        background: var(--mat-sys-surface-container-high);
+-        border-bottom: 1px solid var(--mat-sys-outline-variant);
+-        flex-shrink: 0;
+-        height: 56px;
+-        box-sizing: border-box;
+-      }
+-
+-      .header-title {
+-        display: flex;
+-        align-items: center;
+-        gap: 12px;
+-      }
+-
+-      .repl-header mat-icon {
+-        color: var(--mat-sys-primary);
+-      }
+-
+-      .repl-header h2 {
+-        margin: 0;
+-        font-size: 1.1rem;
+-        font-weight: 500;
+-        white-space: nowrap;
+-        overflow: hidden;
+-        text-overflow: ellipsis;
+-      }
+-
+       .repl-tabs {
+         flex: 1;
+         display: flex;
+@@ -365,159 +238,12 @@ import { MachineRead } from '@api/models/MachineRead';
+         letter-spacing: 0.02em;
+       }
+ 
+-      /* Direct Control Dashboard */
+       .direct-control-dashboard {
+         display: flex;
+         height: 100%;
+         background: var(--mat-sys-surface-container-low);
+       }
+ 
+-      .machine-selector-panel {
+-        width: 280px;
+-        min-width: 280px;
+-        border-right: 1px solid var(--mat-sys-outline-variant);
+-        background: var(--mat-sys-surface-container);
+-        display: flex;
+-        flex-direction: column;
+-        overflow: hidden;
+-      }
+-
+-      .panel-header {
+-        display: flex;
+-        align-items: center;
+-        justify-content: space-between;
+-        padding: 12px 16px;
+-        border-bottom: 1px solid var(--mat-sys-outline-variant);
+-        background: var(--mat-sys-surface-container-high);
+-      }
+-
+-      .panel-header h3 {
+-        margin: 0;
+-        font-size: 0.875rem;
+-        font-weight: 500;
+-        color: var(--mat-sys-on-surface);
+-      }
+-
+-      .machine-list {
+-        flex: 1;
+-        overflow-y: auto;
+-        padding: 8px;
+-      }
+-
+-      .machine-card {
+-        display: flex;
+-        align-items: center;
+-        gap: 12px;
+-        padding: 12px;
+-        border-radius: 8px;
+-        cursor: pointer;
+-        transition: background-color 0.15s ease, box-shadow 0.15s ease;
+-        margin-bottom: 4px;
+-        background: var(--mat-sys-surface);
+-        border: 1px solid transparent;
+-      }
+-
+-      .machine-card:hover {
+-        background: var(--mat-sys-surface-container-highest);
+-      }
+-
+-      .machine-card.selected {
+-        background: color-mix(in srgb, var(--mat-sys-primary) 12%, var(--mat-sys-surface));
+-        border-color: var(--mat-sys-primary);
+-      }
+-
+-      .machine-icon {
+-        width: 40px;
+-        height: 40px;
+-        border-radius: 8px;
+-        background: var(--mat-sys-primary-container);
+-        display: flex;
+-        align-items: center;
+-        justify-content: center;
+-        flex-shrink: 0;
+-      }
+-
+-      .machine-icon mat-icon {
+-        color: var(--mat-sys-on-primary-container);
+-      }
+-
+-      .machine-info {
+-        flex: 1;
+-        min-width: 0;
+-        display: flex;
+-        flex-direction: column;
+-        gap: 2px;
+-      }
+-
+-      .machine-name {
+-        font-size: 0.875rem;
+-        font-weight: 500;
+-        color: var(--mat-sys-on-surface);
+-        white-space: nowrap;
+-        overflow: hidden;
+-        text-overflow: ellipsis;
+-      }
+-
+-      .machine-category {
+-        font-size: 0.75rem;
+-        color: var(--mat-sys-on-surface-variant);
+-      }
+-
+-      .machine-status {
+-        flex-shrink: 0;
+-      }
+-
+-      .status-dot {
+-        display: block;
+-        width: 8px;
+-        height: 8px;
+-        border-radius: 50%;
+-        background: var(--mat-sys-outline);
+-      }
+-
+-      .machine-status.idle .status-dot {
+-        background: var(--mat-sys-tertiary);
+-      }
+-
+-      .machine-status.running .status-dot,
+-      .machine-status.connected .status-dot {
+-        background: var(--mat-sys-primary);
+-        animation: pulse 2s infinite;
+-      }
+-
+-      .machine-status.error .status-dot {
+-        background: var(--mat-sys-error);
+-      }
+-
+-      @keyframes pulse {
+-        0%, 100% { opacity: 1; }
+-        50% { opacity: 0.5; }
+-      }
+-
+-      .empty-machines {
+-        display: flex;
+-        flex-direction: column;
+-        align-items: center;
+-        justify-content: center;
+-        height: 100%;
+-        padding: 24px;
+-        gap: 12px;
+-        color: var(--mat-sys-on-surface-variant);
+-        text-align: center;
+-      }
+-
+-      .empty-machines mat-icon {
+-        font-size: 40px;
+-        width: 40px;
+-        height: 40px;
+-        opacity: 0.5;
+-      }
+-
+-      .empty-machines p {
+-        margin: 0;
+-        font-size: 0.875rem;
+-      }
+-
+       .control-panel {
+         flex: 1;
+         overflow-y: auto;
+@@ -527,161 +253,46 @@ import { MachineRead } from '@api/models/MachineRead';
+     `,
+   ],
+ })
+-export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
++export class PlaygroundComponent implements OnInit, OnDestroy {
+   @ViewChild('notebookFrame') notebookFrame!: ElementRef<HTMLIFrameElement>;
+ 
+-  private modeService = inject(ModeService);
+-  private store = inject(AppStore);
+   private snackBar = inject(MatSnackBar);
+-  private cdr = inject(ChangeDetectorRef);
+-  private assetService = inject(AssetService);
+-  private deckService = inject(DeckCatalogService);
+-  private sanitizer = inject(DomSanitizer);
+-  private dialog = inject(MatDialog);
+-  private interactionService = inject(InteractionService);
+-
+-  // Serial Manager for main-thread I/O (Phase B)
+-  private serialManager = inject(SerialManagerService);
+-
+-  // Direct Control dedicated kernel (separate from JupyterLite)
+   private directControlKernel = inject(DirectControlKernelService);
+-
+-  modeLabel = computed(() => this.modeService.modeLabel());
+-
+-  // JupyterLite Iframe Configuration
+-  jupyterliteUrl: SafeResourceUrl | undefined;
+-  currentTheme = '';
+-  isLoading = signal(true);
+-  loadingError = signal(false);
+-  private loadingTimeout: ReturnType<typeof setTimeout> | undefined;
+-  private viewInitialized = false;
++  public jupyterliteService = inject(PlaygroundJupyterliteService);
++  public assetService = inject(PlaygroundAssetService);
+ 
+   private subscription = new Subscription();
+ 
+-  // Selected machine for Direct Control
+   selectedMachine = signal<Machine | null>(null);
+   availableMachines = signal<Machine[]>([]);
+   selectedTabIndex = signal(0);
+ 
+-  // Event listener for machine-registered events
+   private machineRegisteredHandler = () => {
+     console.log('[Playground] machine-registered event received, refreshing list...');
+     this.loadMachinesForDirectControl();
+   };
+ 
+-  // Ready signal handshake
+-  private replChannel: BroadcastChannel | null = null;
+-
+-  constructor() {
+-    effect(() => {
+-      const theme = this.store.theme();
+-      // Only update if view is initialized to avoid early DOM mounting issues
+-      if (this.viewInitialized) {
+-        this.updateJupyterliteTheme(theme);
+-      }
+-    });
+-    // Initialize WebSerial Polyfill if WebUSB is available
+-    if (typeof navigator !== 'undefined' && 'usb' in navigator) {
+-      try {
+-        (window as any).polyfillSerial = polyfillSerial; // Expose the serial API interface
+-        console.log('[REPL] WebSerial Polyfill loaded and exposed as window.polyfillSerial');
+-      } catch (e) {
+-        console.warn('[REPL] Failed to load WebSerial polyfill', e);
+-      }
+-    }
+-
+-    // SerialManager is auto-initialized and listening for BroadcastChannel messages
+-    console.log('[REPL] SerialManager ready for main-thread serial I/O');
+-  }
+-
+   ngOnInit() {
+-    this.setupReadyListener();
++    this.jupyterliteService.initialize();
+     this.loadMachinesForDirectControl();
+-
+-    // Listen for new machine registrations
+     window.addEventListener('machine-registered', this.machineRegisteredHandler);
+   }
+ 
+-  ngAfterViewInit() {
+-    this.viewInitialized = true;
+-    // Trigger initial load now that view is ready
+-    this.updateJupyterliteTheme(this.store.theme());
+-    this.cdr.detectChanges();
+-  }
+-
+-  /**
+-   * Set up the BroadcastChannel listener for the ready signal.
+-   * This must be done early (before iframe load) to avoid race conditions.
+-   */
+-  private setupReadyListener() {
+-    if (this.replChannel) {
+-      this.replChannel.close();
+-    }
+-
+-    // Set up BroadcastChannel listener for ready signal from Pyodide kernel
+-    this.replChannel = new BroadcastChannel('praxis_repl');
+-    this.replChannel.onmessage = (event) => {
+-      const data = event.data;
+-      if (data?.type === 'praxis:ready') {
+-        console.log('[REPL] Received kernel ready signal');
+-        this.isLoading.set(false);
+-        if (this.loadingTimeout) {
+-          clearTimeout(this.loadingTimeout);
+-          this.loadingTimeout = undefined;
+-        }
+-        this.cdr.detectChanges();
+-      } else if (data?.type === 'USER_INTERACTION') {
+-        console.log('[REPL] USER_INTERACTION received via BroadcastChannel:', data.payload);
+-        this.handleUserInteraction(data.payload);
+-      }
+-    };
+-  }
+-
+-  /**
+-   * Handle USER_INTERACTION requests from the REPL channel and show UI dialogs
+-   */
+-  private async handleUserInteraction(payload: any) {
+-    console.log('[REPL] Opening interaction dialog:', payload.interaction_type);
+-    const result = await this.interactionService.handleInteraction({
+-      interaction_type: payload.interaction_type,
+-      payload: payload.payload
+-    });
+-
+-    console.log('[REPL] Interaction result obtained:', result);
+-
+-    if (this.replChannel) {
+-      this.replChannel.postMessage({
+-        type: 'praxis:interaction_response',
+-        id: payload.id,
+-        value: result
+-      });
+-    }
+-  }
+-
+   ngOnDestroy() {
+     this.subscription.unsubscribe();
+-    // Clean up event listener
++    this.jupyterliteService.destroy();
+     window.removeEventListener('machine-registered', this.machineRegisteredHandler);
+-    // Clean up ready signal channel
+-    if (this.replChannel) {
+-      this.replChannel.close();
+-      this.replChannel = null;
+-    }
+-    if (this.loadingTimeout) {
+-      clearTimeout(this.loadingTimeout);
+-    }
+   }
+ 
+-  /**
+-   * Load registered machines for Direct Control tab.
+-   * Auto-selects the most recently created machine if none is selected.
+-   */
++  onIframeLoad() {
++    console.log('[REPL] Iframe loaded event fired');
++  }
++
+   loadMachinesForDirectControl(): void {
+     this.subscription.add(
+       this.assetService.getMachines().subscribe({
+         next: (machines) => {
+           console.log('[Playground] Loaded machines for Direct Control:', machines.length, machines);
+-          // Sort by created_at descending (most recent first)
+           const sorted = [...machines].sort((a, b) => {
+             const aDate = (a as any).created_at ? new Date((a as any).created_at).getTime() : 0;
+             const bDate = (b as any).created_at ? new Date((b as any).created_at).getTime() : 0;
+@@ -689,7 +300,6 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
+           });
+           this.availableMachines.set(sorted);
+ 
+-          // Auto-select the first (most recent) machine if none selected
+           if (!this.selectedMachine() && sorted.length > 0) {
+             this.selectedMachine.set(sorted[0]);
+             console.log('[Playground] Auto-selected machine for Direct Control:', sorted[0].name);
+@@ -702,345 +312,11 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
+     );
+   }
+ 
+-  /**
+-   * Select a machine for Direct Control
+-   */
+   selectMachineForControl(machine: Machine): void {
+     this.selectedMachine.set(machine);
+   }
+ 
+-  /**
+-   * Get icon for machine category
+-   */
+-  getMachineIcon(category: string): string {
+-    const iconMap: Record<string, string> = {
+-      'LiquidHandler': 'science',
+-      'PlateReader': 'visibility',
+-      'Shaker': 'vibration',
+-      'Centrifuge': 'loop',
+-      'Incubator': 'thermostat',
+-      'Other': 'precision_manufacturing'
+-    };
+-    return iconMap[category] || 'precision_manufacturing';
+-  }
+-
+-  openAddMachine() {
+-    this.openAssetWizard('MACHINE');
+-  }
+-
+-  openAddResource() {
+-    this.openAssetWizard('RESOURCE');
+-  }
+-
+-  openInventory() {
+-    this.openAssetWizard();
+-  }
+-
+-  openAssetWizard(preselectedType?: 'MACHINE' | 'RESOURCE') {
+-    const dialogRef = this.dialog.open(AssetWizard, {
+-      minWidth: '600px',
+-      maxWidth: '1000px',
+-      width: '80vw',
+-      height: 'auto',
+-      minHeight: '400px',
+-      maxHeight: '90vh',
+-      data: {
+-        ...(preselectedType ? { preselectedType } : {}),
+-        context: 'playground'
+-      }
+-    });
+-
+-    dialogRef.afterClosed().subscribe((result: any) => {
+-      if (result && typeof result === 'object') {
+-        const type = result.asset_type === 'MACHINE' ? 'machine' : 'resource';
+-        this.insertAsset(type, result);
+-      }
+-    });
+-  }
+-
+-  // Helper for AssetService (kept for reference or if we need to reload dialog data via service, though dialog handles it)
+-  // loadInventory removed as Dialog manages its own data.
+-  /* Helper methods for Code Generation */
+-
+-  /**
+-   * Helper to determine if dark mode is active based on body class or store
+-   */
+-  private getIsDarkMode(): boolean {
+-    // Single source of truth for the UI is the class on document.body
+-    return document.body.classList.contains('dark-theme');
+-  }
+-
+-  /**
+-   * Build the JupyterLite URL with configuration parameters
+-   */
+-  private async buildJupyterliteUrl() {
+-    if (this.loadingTimeout) {
+-      clearTimeout(this.loadingTimeout);
+-    }
+-
+-    this.isLoading.set(true);
+-    this.loadingError.set(false);
+-    this.jupyterliteUrl = undefined;
+-    this.cdr.detectChanges();
+-
+-    const isDark = this.getIsDarkMode();
+-    this.currentTheme = isDark ? 'dark' : 'light';
+-
+-    // Build bootstrap code for asset preloading
+-    const bootstrapCode = await this.getOptimizedBootstrap();
+-
+-    console.log('[REPL] Building JupyterLite URL. Calculated isDark:', isDark, 'Effective Theme Class:', this.currentTheme);
+-
+-    // JupyterLite REPL URL with parameters
+-    const baseUrl = './assets/jupyterlite/repl/index.html';
+-    const params = new URLSearchParams({
+-      kernel: 'python',
+-      toolbar: '1',
+-      theme: isDark ? 'JupyterLab Dark' : 'JupyterLab Light',
+-    });
+-
+-    console.log('[REPL] Generated Params:', params.toString());
+-
+-    // Add bootstrap code if we have assets
+-    if (bootstrapCode) {
+-      params.set('code', bootstrapCode);
+-    }
+-
+-    const fullUrl = `${baseUrl}?${params.toString()}`;
+-    this.jupyterliteUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
+-
+-    // Set a timeout to show error/retry if iframe load is slow
+-    // Pyodide/JupyterLite can take 20+ seconds to fully boot on slower connections
+-    this.loadingTimeout = setTimeout(() => {
+-      if (this.isLoading()) {
+-        console.warn('[REPL] Loading timeout (30s) reached - Pyodide kernel may still be booting');
+-        console.warn('[REPL] Tip: Check browser console in the iframe for bootstrap errors');
+-        this.isLoading.set(false);
+-        this.cdr.detectChanges();
+-      }
+-    }, 30000); // 30 second fallback (was 15s, but Pyodide needs more time)
+-
+-    this.cdr.detectChanges();
+-  }
+-
+-  /**
+-   * Update theme when app theme changes
+-   */
+-  private async updateJupyterliteTheme(_: string) {
+-    const isDark = this.getIsDarkMode();
+-    const newTheme = isDark ? 'dark' : 'light';
+-
+-    // Only reload if theme actually changed
+-    if (this.currentTheme !== newTheme) {
+-      console.log('[REPL] Theme changed from', this.currentTheme, 'to', newTheme, '- rebuilding URL');
+-      this.currentTheme = newTheme;
+-      await this.buildJupyterliteUrl();
+-    }
+-  }
+-
+-  /**
+-   * Generate Python bootstrap code for asset preloading
+-   */
+-  private generateBootstrapCode(): string {
+-    // Generate code to install local pylabrobot wheel and load browser I/O shims
+-    const lines = [
+-      '# PyLabRobot Interactive Notebook',
+-      '# Installing pylabrobot from local wheel...',
+-      'import micropip',
+-      'await micropip.install(f"{PRAXIS_HOST_ROOT}assets/wheels/pylabrobot-0.1.6-py3-none-any.whl")',
+-      '',
+-      '# Ensure WebSerial, WebUSB, and WebFTDI are in builtins for all cells',
+-      'import builtins',
+-      'if "WebSerial" in globals():',
+-      '    builtins.WebSerial = WebSerial',
+-      'if "WebUSB" in globals():',
+-      '    builtins.WebUSB = WebUSB',
+-      'if "WebFTDI" in globals():',
+-      '    builtins.WebFTDI = WebFTDI',
+-      '',
+-      '# Mock pylibftdi (not supported in browser/Pyodide)',
+-      'import sys',
+-      'from unittest.mock import MagicMock',
+-      'sys.modules["pylibftdi"] = MagicMock()',
+-      '',
+-      '# Load WebSerial/WebUSB/WebFTDI shims for browser I/O',
+-      '# Note: These are pre-loaded to avoid extra network requests',
+-      'try:',
+-      '    import pyodide_js',
+-      '    from pyodide.ffi import to_js',
+-      'except ImportError:',
+-      '    pass',
+-      '',
+-      '# Shims will be injected directly via code to avoid 404s',
+-      '# Patching is done in the bootstrap below',
+-      '',
+-      '# Patch pylabrobot.io to use browser shims',
+-      'import pylabrobot.io.serial as _ser',
+-      'import pylabrobot.io.usb as _usb',
+-      'import pylabrobot.io.ftdi as _ftdi',
+-      '_ser.Serial = WebSerial',
+-      '_usb.USB = WebUSB',
+-      '',
+-      '# CRITICAL: Patch FTDI for backends like CLARIOstarBackend',
+-      '_ftdi.FTDI = WebFTDI',
+-      '_ftdi.HAS_PYLIBFTDI = True',
+-      'print("✓ Patched pylabrobot.io with WebSerial/WebUSB/WebFTDI")',
+-      '',
+-      '# Import pylabrobot',
+-      'import pylabrobot',
+-      'from pylabrobot.resources import *',
+-      '',
+-      '# Message listener for asset injection via BroadcastChannel',
+-      '# We use BroadcastChannel because it works across Window/Worker contexts',
+-      'import js',
+-      'import json',
+-      '',
+-      'def _praxis_message_handler(event):',
+-      '    try:',
+-      '        data = event.data',
+-      '        # Convert JsProxy to dict if needed',
+-      '        if hasattr(data, "to_py"):',
+-      '            data = data.to_py()',
+-      '        ',
+-      '        if isinstance(data, dict) and data.get("type") == "praxis:execute":',
+-      '            code = data.get("code", "")',
+-      '            print(f"Executing: {code}")',
+-      '            # Handle async code (contains await)',
+-      '            if "await " in code:',
+-      '                import asyncio',
+-      '                # Wrap in async function and schedule',
+-      '                async def _run_async():',
+-      '                    exec(f"async def __praxis_async__(): return {code}", globals())',
+-      '                    result = await __praxis_async__()',
+-      '                    if result is not None:',
+-      '                        print(result)',
+-      '                asyncio.ensure_future(_run_async())',
+-      '            else:',
+-      '                exec(code, globals())',
+-      '        elif isinstance(data, dict) and data.get("type") == "praxis:interaction_response":',
+-      '            try:',
+-      '                import web_bridge',
+-      '                web_bridge.handle_interaction_response(data.get("id"), data.get("value"))',
+-      '            except ImportError:',
+-      '                print("! web_bridge not found for interaction response")',
+-      '    except Exception as e:',
+-      '        import traceback',
+-      '        print(f"Error executing injected code: {e}")',
+-      '        print(traceback.format_exc())',
+-      '',
+-      '# Setup BroadcastChannel',
+-      'try:',
+-      '    if hasattr(js, "BroadcastChannel"):',
+-      '        # Try .new() first (Pyodide convention)',
+-      '        if hasattr(js.BroadcastChannel, "new"):',
+-      '            _praxis_channel = js.BroadcastChannel.new("praxis_repl")',
+-      '        else:',
+-      '            # Fallback to direct constructor',
+-      '            _praxis_channel = js.BroadcastChannel("praxis_repl")',
+-      '        ',
+-      '        _praxis_channel.onmessage = _praxis_message_handler',
+-      '        ',
+-      '        # Register channel with web_bridge for interactive protocols',
+-      '        try:',
+-      '            import web_bridge',
+-      '            web_bridge.register_broadcast_channel(_praxis_channel)',
+-      '            print("✓ Interactive protocols enabled (channel registered)")',
+-      '        except ImportError:',
+-      '            print("! web_bridge not available for channel registration")',
+-      '        ',
+-      '        print("✓ Asset injection ready (channel created)")',
+-      '    else:',
+-      '        print("! BroadcastChannel not available")',
+-      'except Exception as e:',
+-      '    print(f"! Failed to setup injection channel: {e}")',
+-      '',
+-      'print("✓ pylabrobot loaded with browser I/O shims (including FTDI)!")',
+-      'print(f"  Version: {pylabrobot.__version__}")',
+-      'print("Use the Inventory button to insert asset variables.")',
+-      '',
+-      '# Send ready signal to Angular host',
+-      'try:',
+-      '    # Must convert dict to JS Object for structured clone in BroadcastChannel',
+-      '    from pyodide.ffi import to_js',
+-      '    ready_msg = to_js({"type": "praxis:ready"}, dict_converter=js.Object.fromEntries)',
+-      '    _praxis_channel.postMessage(ready_msg)',
+-      '    print("✓ Ready signal sent")',
+-      'except Exception as e:',
+-      '    print(f"! Ready signal failed: {e}")',
+-    ];
+-
+-    return lines.join('\n');
+-  }
+-
+-  /**
+-   * Enhanced bootstrap that includes shims directly or uses more efficient fetching
+-   */
+-  private async getOptimizedBootstrap(): Promise<string> {
+-    // We cannot inline the shims because they are too large for the URL parameters (causes 431 error).
+-    // Instead, we generate Python code to fetch and execute them from within the kernel.
+-    // IMPORTANT: web_ftdi_shim.py is critical for CLARIOstarBackend and similar FTDI-based devices
+-    const shims = ['web_serial_shim.py', 'web_usb_shim.py', 'web_ftdi_shim.py'];
+-
+-    // Calculate host root in TypeScript (reliable) instead of Python/Worker (unreliable)
+-    const hostRoot = this.calculateHostRoot();
+-
+-    let shimInjections = '# --- Host Root (injected from Angular) --- \n';
+-    shimInjections += `PRAXIS_HOST_ROOT = "${hostRoot}"\n`;
+-    shimInjections += 'print(f"PylibPraxis: Using Host Root: {PRAXIS_HOST_ROOT}")\n\n';
+-
+-    shimInjections += '# --- Browser Hardware Shims --- \n';
+-    shimInjections += 'import pyodide.http\n';
+-
+-    for (const shim of shims) {
+-      // Generate Python code to fetch and exec
+-      shimInjections += `
+-print("PylibPraxis: Loading ${shim}...")
+-try:
+-    _shim_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/shims/${shim}')).string()
+-    exec(_shim_code, globals())
+-    print("PylibPraxis: Loaded ${shim}")
+-except Exception as e:
+-    print(f"PylibPraxis: Failed to load ${shim}: {e}")
+-`;
+-    }
+-
+-    // Load web_bridge.py as a module
+-    // Use relative path (no leading slash) for GitHub Pages compatibility
+-    shimInjections += `
+-print("PylibPraxis: Loading web_bridge.py...")
+-try:
+-    _bridge_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/python/web_bridge.py')).string()
+-    with open('web_bridge.py', 'w') as f:
+-        f.write(_bridge_code)
+-    print("PylibPraxis: Loaded web_bridge.py")
+-except Exception as e:
+-    print(f"PylibPraxis: Failed to load web_bridge.py: {e}")
+-
+-# Load praxis package
+-import os
+-if not os.path.exists('praxis'):
+-    os.makedirs('praxis')
+-    
+-for _p_file in ['__init__.py', 'interactive.py']:
+-    try:
+-        print(f"PylibPraxis: Loading praxis/{_p_file}...")
+-        _p_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/python/praxis/{_p_file}')).string()
+-        with open(f'praxis/{_p_file}', 'w') as f:
+-            f.write(_p_code)
+-        print(f"PylibPraxis: Loaded praxis/{_p_file}")
+-    except Exception as e:
+-        print(f"PylibPraxis: Failed to load praxis/{_p_file}: {e}")
+-`;
+-
+-    const baseBootstrap = this.generateBootstrapCode();
+-    return shimInjections + '\n' + baseBootstrap;
+-  }
+-
+-  /**
+-   * Generate a Python-safe variable name from an asset
+-   */
+   private assetToVarName(asset: { name: string; accession_id: string }): string {
+-    // Convert name to snake_case and add UUID prefix
+     const desc = asset.name
+       .toLowerCase()
+       .replace(/[^a-z0-9]+/g, '_')
+@@ -1049,239 +325,8 @@ for _p_file in ['__init__.py', 'interactive.py']:
+     return `${desc}_${prefix}`;
+   }
+ 
+-  /**
+-   * Calculate the absolute host root URL for asset injection.
+-   * This is done in TypeScript because window.location in the Pyodide worker is unreliable.
+-   */
+-  private calculateHostRoot(): string {
+-    const href = window.location.href;
+-    const anchor = '/assets/jupyterlite/';
+-
+-    if (href.includes(anchor)) {
+-      // We are likely inside the iframe context (if code runs there) or main window
+-      return href.split(anchor)[0] + '/';
+-    }
+-
+-    // Fallback: We are in the main Angular app (e.g., localhost:4200/app/playground)
+-    // We need to construct the root path to where assets are served.
+-    const baseHref = document.querySelector('base')?.getAttribute('href') || '/';
+-    // Remove leading slash from baseHref if it exists to avoid double slash with origin
+-    const cleanBase = baseHref.startsWith('/') ? baseHref : '/' + baseHref;
+-    // Ensure trailing slash
+-    const finalBase = cleanBase.endsWith('/') ? cleanBase : cleanBase + '/';
+-
+-    return window.location.origin + finalBase;
+-  }
+-
+-  /**
+-   * Handle iframe load event
+-   */
+-  onIframeLoad() {
+-    console.log('[REPL] Iframe loaded event fired');
+-
+-    // Check if iframe has actual content
+-    const iframe = this.notebookFrame?.nativeElement;
+-    // We try to access contentDocument. If it fails (cross-origin) or is empty/about:blank, likely failed or just initialized.
+-    let hasContent = false;
+-    try {
+-      hasContent = (iframe?.contentDocument?.body?.childNodes?.length ?? 0) > 0;
+-    } catch (e) {
+-      console.warn('[REPL] Cannot access iframe content (possibly 431 error or cross-origin):', e);
+-      hasContent = false;
+-    }
+-
+-    if (hasContent) {
+-      console.log('[REPL] Iframe content detected');
+-      // Success case - but we wait for 'ready' signal to clear isLoading for the user.
+-      // However, if we don't get 'ready' signal, we rely on timeout.
+-      // We do NOT clear isLoading here immediately because the kernel is still booting.
+-
+-      // Inject fetch interceptor to suppress 404s for virtual filesystem lookups
+-      try {
+-        const script = iframe!.contentWindow?.document.createElement('script');
+-        if (script) {
+-          script.textContent = `
+-            (function() {
+-              const originalFetch = window.fetch;
+-              window.fetch = function(input, init) {
+-                const url = typeof input === 'string' ? input : (input instanceof URL ? input.href : input.url);
+-                // Suppress network requests for pylabrobot modules that are already in VFS
+-                if (url.includes('pylabrobot') && (url.endsWith('.py') || url.endsWith('.so') || url.includes('/__init__.py'))) {
+-                  // We could return a fake response here, but Pyodide might need a real network 404 
+-                  // to move to the next finder. However, we can log it gracefully.
+-                }
+-                return originalFetch(input, init);
+-              };
+-            })();
+-          `;
+-          iframe!.contentWindow?.document.head.appendChild(script);
+-          console.log('[REPL] Fetch interceptor injected into iframe');
+-        }
+-      } catch (e) {
+-        console.warn('[REPL] Could not inject interceptor (likely cross-origin):', e);
+-      }
+-    } else {
+-      console.warn('[REPL] Iframe load event fired but no content detected (or access denied)');
+-      // If we loaded blank/error page (like 431), we should probably fail.
+-      // But 'about:blank' also fires load.
+-      // Let's assume if it's a 431 error page, it has SOME content but maybe not what we expect?
+-      // Actually, if it's 431, the browser shows an error page.
+-
+-      // If we clear isLoading here, we hide the spinner and show the error page (white screen or browser error).
+-      // If we don't clear it, the timeout will eventually catch it.
+-      // Let's rely on the timeout to show "Retry" if the kernel doesn't say "Ready".
+-    }
+-  }
+-
+-  /**
+-   * Reload the notebook (restart kernel)
+-   */
+-  reloadNotebook() {
+-    // Force iframe reload by momentarily clearing URL or just rebuilding
+-    this.jupyterliteUrl = undefined; // Force DOM cleanup
+-    this.cdr.detectChanges();
+-
+-    setTimeout(async () => {
+-      await this.buildJupyterliteUrl();
+-      this.cdr.detectChanges();
+-    }, 100);
+-  }
+-
+-  /**
+-   * Generate Python code to instantiate a resource
+-   */
+-  private generateResourceCode(resource: Resource, variableName?: string): string {
+-    const varName = variableName || this.assetToVarName(resource);
+-    const fqn = resource.fqn || resource.plr_definition?.fqn;
+-
+-    if (!fqn) {
+-      // Fallback: just create a comment with the name
+-      return `# Resource: ${resource.name} (no FQN available)`;
+-    }
+-
+-    const parts = fqn.split('.');
+-    const className = parts[parts.length - 1];
+-
+-    const lines = [
+-      `# Resource: ${resource.name}`,
+-      `from pylabrobot.resources import ${className}`,
+-      `${varName} = ${className}(name="${varName}")`,
+-      `print(f"Created: {${varName}}")`
+-    ];
+-
+-    return lines.join('\n');
+-  }
+-
+-  /**
+-   * Generate Python code to instantiate a machine.
+-   */
+-  private async generateMachineCode(machine: Machine, variableName?: string, deckConfigId?: string): Promise<string> {
+-    const varName = variableName || this.assetToVarName(machine);
+-
+-    // Extract FQNs
+-    const frontendFqn = machine.plr_definition?.frontend_fqn || machine.frontend_definition?.fqn;
+-    const backendFqn = machine.plr_definition?.fqn || machine.backend_definition?.fqn || machine.simulation_backend_name;
+-    const isSimulated = !!(machine.is_simulation_override || machine.simulation_backend_name);
+-
+-    if (!frontendFqn) {
+-      return `# Machine: ${machine.name} (Missing Frontend FQN)`;
+-    }
+-
+-    const frontendClass = frontendFqn.split('.').pop()!;
+-    const frontendModule = frontendFqn.substring(0, frontendFqn.lastIndexOf('.'));
+-
+-    const config = {
+-      backend_fqn: backendFqn || 'pylabrobot.liquid_handling.backends.simulation.SimulatorBackend',
+-      port_id: machine.connection_info?.['address'] || machine.connection_info?.['port_id'] || '',
+-      is_simulated: isSimulated,
+-      baudrate: machine.connection_info?.['baudrate'] || 9600
+-    };
+-
+-    const lines = [
+-      `# Machine: ${machine.name}`,
+-      `from web_bridge import create_configured_backend`,
+-      `from ${frontendModule} import ${frontendClass}`,
+-      ``,
+-      `config = ${JSON.stringify(config, null, 2)}`,
+-      `backend = create_configured_backend(config)`,
+-      `${varName} = ${frontendClass}(backend=backend)`,
+-      `await ${varName}.setup()`,
+-      `print(f"Created: {${varName}}")`
+-    ];
+-
+-    return lines.join('\n');
+-  }
+-
+-  /**
+-   * Check if a machine is currently in use by a protocol run
+-   */
+-  isMachineInUse(machine: Machine): boolean {
+-    // Check if machine has an active protocol run
+-    return machine.status === MachineStatus.RUNNING;
+-  }
+-
+-  /**
+-   * Insert asset into the notebook by generating and executing Python code
+-   */
+-  async insertAsset(
+-    type: 'machine' | 'resource',
+-    asset: Machine | Resource,
+-    variableName?: string,
+-    deckConfigId?: string
+-  ) {
+-    const varName = variableName || this.assetToVarName(asset);
+-
+-    // If implementing physical machine, check prior authorization
+-    if (type === 'machine') {
+-      const machine = asset as Machine;
+-      this.selectedMachine.set(machine);
+-      // If it's a physical machine (not simulated)
+-      if (!machine.is_simulation_override) {
+-        try {
+-          // We might want to check ports here, but for now assuming user knows what they are doing
+-          // or logic is handled elsewhere.
+-        } catch (err) {
+-          console.error('Failed to check hardware permissions:', err);
+-        }
+-      }
+-    }
+-
+-    // Generate appropriate Python code
+-    let code: string;
+-    if (type === 'machine') {
+-      code = await this.generateMachineCode(asset as Machine, varName, deckConfigId);
+-    } else {
+-      code = this.generateResourceCode(asset as Resource, varName);
+-    }
+-
+-    // Send code via BroadcastChannel
+-    try {
+-      const channel = new BroadcastChannel('praxis_repl');
+-      channel.postMessage({
+-        type: 'praxis:execute',
+-        code: code
+-      });
+-      setTimeout(() => channel.close(), 100);
+-
+-      this.snackBar.open(`Inserted ${varName}`, 'OK', { duration: 2000 });
+-    } catch (e) {
+-      console.error('Failed to send asset to REPL:', e);
+-      // Fallback: copy code to clipboard
+-      navigator.clipboard.writeText(code).then(() => {
+-        this.snackBar.open(`Code copied to clipboard (BroadcastChannel failed)`, 'OK', {
+-          duration: 2000,
+-        });
+-      });
+-    }
+-  }
+-
+-  /**
+-   * Handle executeCommand from DirectControlComponent
+-   * Uses a dedicated Pyodide kernel that persists across tab switches
+-   */
+   async onExecuteCommand(event: { machineName: string, methodName: string, args: Record<string, unknown> }) {
+     const { methodName, args } = event;
+-
+     const asset = this.selectedMachine();
+     if (!asset) return;
+ 
+@@ -1289,16 +334,14 @@ for _p_file in ['__init__.py', 'interactive.py']:
+     const machineId = asset.accession_id;
+     const connectionInfo = asset.connection_info as Record<string, unknown> || {};
+     const plrBackend = connectionInfo['plr_backend'] as string || '';
+-    const category = (asset as unknown as { machine_category?: string }).machine_category || 'LiquidHandler';
++    const category = (asset as any).machine_category || 'LiquidHandler';
+ 
+     try {
+-      // Boot kernel if needed (this is idempotent)
+       if (!this.directControlKernel.isReady()) {
+         this.snackBar.open('Booting Python kernel...', 'OK', { duration: 3000 });
+         await this.directControlKernel.boot();
+       }
+ 
+-      // Ensure machine is instantiated
+       await this.directControlKernel.ensureMachineInstantiated(
+         machineId,
+         asset.name,
+@@ -1307,7 +350,6 @@ for _p_file in ['__init__.py', 'interactive.py']:
+         category
+       );
+ 
+-      // Execute the method
+       this.snackBar.open(`Executing ${methodName}...`, 'OK', { duration: 2000 });
+       const output = await this.directControlKernel.executeMethod(varName, methodName, args);
+ 
+diff --git a/praxis/web-client/src/app/features/playground/services/playground-asset.service.ts b/praxis/web-client/src/app/features/playground/services/playground-asset.service.ts
+new file mode 100644
+index 0000000..726dbaa
+--- /dev/null
++++ b/praxis/web-client/src/app/features/playground/services/playground-asset.service.ts
+@@ -0,0 +1,142 @@
++import { Injectable, inject } from '@angular/core';
++import { MatDialog } from '@angular/material/dialog';
++import { MatSnackBar } from '@angular/material/snack-bar';
++import { AssetService } from '@features/assets/services/asset.service';
++import { Machine, Resource } from '@features/assets/models/asset.models';
++import { AssetWizard } from '@shared/components/asset-wizard/asset-wizard';
++import { Observable } from 'rxjs';
++
++@Injectable({
++  providedIn: 'root'
++})
++export class PlaygroundAssetService {
++  private dialog = inject(MatDialog);
++  private snackBar = inject(MatSnackBar);
++  private assetService = inject(AssetService);
++
++  public getMachines(): Observable<Machine[]> {
++    return this.assetService.getMachines();
++  }
++
++  public openAssetWizard(preselectedType?: 'MACHINE' | 'RESOURCE'): void {
++    const dialogRef = this.dialog.open(AssetWizard, {
++      minWidth: '600px',
++      maxWidth: '1000px',
++      width: '80vw',
++      height: 'auto',
++      minHeight: '400px',
++      maxHeight: '90vh',
++      data: {
++        ...(preselectedType ? { preselectedType } : {}),
++        context: 'playground'
++      }
++    });
++
++    dialogRef.afterClosed().subscribe((result: any) => {
++      if (result && typeof result === 'object') {
++        const type = result.asset_type === 'MACHINE' ? 'machine' : 'resource';
++        this.insertAsset(type, result);
++      }
++    });
++  }
++
++  public async insertAsset(
++    type: 'machine' | 'resource',
++    asset: Machine | Resource,
++    variableName?: string,
++    deckConfigId?: string
++  ): Promise<void> {
++    const varName = variableName || this.assetToVarName(asset);
++    let code: string;
++
++    if (type === 'machine') {
++      code = await this.generateMachineCode(asset as Machine, varName, deckConfigId);
++    } else {
++      code = this.generateResourceCode(asset as Resource, varName);
++    }
++
++    try {
++      const channel = new BroadcastChannel('praxis_repl');
++      channel.postMessage({
++        type: 'praxis:execute',
++        code: code
++      });
++      setTimeout(() => channel.close(), 100);
++
++      this.snackBar.open(`Inserted ${varName}`, 'OK', { duration: 2000 });
++    } catch (e) {
++      console.error('Failed to send asset to REPL:', e);
++      navigator.clipboard.writeText(code).then(() => {
++        this.snackBar.open(`Code copied to clipboard (BroadcastChannel failed)`, 'OK', {
++          duration: 2000,
++        });
++      });
++    }
++  }
++
++  private assetToVarName(asset: { name: string; accession_id: string }): string {
++    const desc = asset.name
++      .toLowerCase()
++      .replace(/[^a-z0-9]+/g, '_')
++      .replace(/^_|_$/g, '');
++    const prefix = asset.accession_id.slice(0, 6);
++    return `${desc}_${prefix}`;
++  }
++
++  private generateResourceCode(resource: Resource, variableName?: string): string {
++    const varName = variableName || this.assetToVarName(resource);
++    const fqn = resource.fqn || resource.plr_definition?.fqn;
++
++    if (!fqn) {
++      return `# Resource: ${resource.name} (no FQN available)`;
++    }
++
++    const parts = fqn.split('.');
++    const className = parts[parts.length - 1];
++
++    const lines = [
++      `# Resource: ${resource.name}`,
++      `from pylabrobot.resources import ${className}`,
++      `${varName} = ${className}(name="${varName}")`,
++      `print(f"Created: {${varName}}")`
++    ];
++
++    return lines.join('\n');
++  }
++
++  private async generateMachineCode(machine: Machine, variableName?: string, deckConfigId?: string): Promise<string> {
++    const varName = variableName || this.assetToVarName(machine);
++
++    const frontendFqn = machine.plr_definition?.frontend_fqn || machine.frontend_definition?.fqn;
++    const backendFqn = machine.plr_definition?.fqn || machine.backend_definition?.fqn || machine.simulation_backend_name;
++    const isSimulated = !!(machine.is_simulation_override || machine.simulation_backend_name);
++
++    if (!frontendFqn) {
++      return `# Machine: ${machine.name} (Missing Frontend FQN)`;
++    }
++
++    const frontendClass = frontendFqn.split('.').pop()!;
++    const frontendModule = frontendFqn.substring(0, frontendFqn.lastIndexOf('.'));
++
++    const config = {
++      backend_fqn: backendFqn || 'pylabrobot.liquid_handling.backends.simulation.SimulatorBackend',
++      port_id: machine.connection_info?.['address'] || machine.connection_info?.['port_id'] || '',
++      is_simulated: isSimulated,
++      baudrate: machine.connection_info?.['baudrate'] || 9600
++    };
++
++    const lines = [
++      `# Machine: ${machine.name}`,
++      `from web_bridge import create_configured_backend`,
++      `from ${frontendModule} import ${frontendClass}`,
++      ``,
++      `config = ${JSON.stringify(config, null, 2)}`,
++      `backend = create_configured_backend(config)`,
++      `${varName} = ${frontendClass}(backend=backend)`,
++      `await ${varName}.setup()`,
++      `print(f"Created: {${varName}}")`
++    ];
++
++    return lines.join('\n');
++  }
++}
+diff --git a/praxis/web-client/src/app/features/playground/services/playground-jupyterlite.service.ts b/praxis/web-client/src/app/features/playground/services/playground-jupyterlite.service.ts
+new file mode 100644
+index 0000000..830c4b7
+--- /dev/null
++++ b/praxis/web-client/src/app/features/playground/services/playground-jupyterlite.service.ts
+@@ -0,0 +1,339 @@
++import { Injectable, signal, inject, effect } from '@angular/core';
++import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
++import { AppStore } from '@core/store/app.store';
++import { InteractionService } from '@core/services/interaction.service';
++
++@Injectable({
++  providedIn: 'root'
++})
++export class PlaygroundJupyterliteService {
++  private sanitizer = inject(DomSanitizer);
++  private store = inject(AppStore);
++  private interactionService = inject(InteractionService);
++
++  // JupyterLite Iframe Configuration
++  jupyterliteUrl = signal<SafeResourceUrl | undefined>(undefined);
++  isLoading = signal(true);
++  loadingError = signal(false);
++  private currentTheme = '';
++  private loadingTimeout: ReturnType<typeof setTimeout> | undefined;
++  private replChannel: BroadcastChannel | null = null;
++
++  constructor() {
++    effect(() => {
++      const theme = this.store.theme();
++      this.updateJupyterliteTheme(theme);
++    });
++  }
++
++  public initialize(): void {
++    this.setupReadyListener();
++    this.buildJupyterliteUrl();
++  }
++
++  public reloadNotebook(): void {
++    this.jupyterliteUrl.set(undefined);
++    setTimeout(() => {
++      this.buildJupyterliteUrl();
++    }, 100);
++  }
++
++  public destroy(): void {
++    if (this.replChannel) {
++      this.replChannel.close();
++      this.replChannel = null;
++    }
++    if (this.loadingTimeout) {
++      clearTimeout(this.loadingTimeout);
++    }
++  }
++
++  private setupReadyListener(): void {
++    if (this.replChannel) {
++      this.replChannel.close();
++    }
++
++    this.replChannel = new BroadcastChannel('praxis_repl');
++    this.replChannel.onmessage = (event) => {
++      const data = event.data;
++      if (data?.type === 'praxis:ready') {
++        console.log('[REPL] Received kernel ready signal');
++        this.isLoading.set(false);
++        if (this.loadingTimeout) {
++          clearTimeout(this.loadingTimeout);
++          this.loadingTimeout = undefined;
++        }
++      } else if (data?.type === 'USER_INTERACTION') {
++        console.log('[REPL] USER_INTERACTION received via BroadcastChannel:', data.payload);
++        this.handleUserInteraction(data.payload);
++      }
++    };
++  }
++
++  private async handleUserInteraction(payload: any): Promise<void> {
++    console.log('[REPL] Opening interaction dialog:', payload.interaction_type);
++    const result = await this.interactionService.handleInteraction({
++      interaction_type: payload.interaction_type,
++      payload: payload.payload
++    });
++
++    console.log('[REPL] Interaction result obtained:', result);
++
++    if (this.replChannel) {
++      this.replChannel.postMessage({
++        type: 'praxis:interaction_response',
++        id: payload.id,
++        value: result
++      });
++    }
++  }
++
++  private async buildJupyterliteUrl(): Promise<void> {
++    if (this.loadingTimeout) {
++      clearTimeout(this.loadingTimeout);
++    }
++
++    this.isLoading.set(true);
++    this.loadingError.set(false);
++    this.jupyterliteUrl.set(undefined);
++
++    const isDark = this.getIsDarkMode();
++    this.currentTheme = isDark ? 'dark' : 'light';
++
++    const bootstrapCode = await this.getOptimizedBootstrap();
++
++    console.log('[REPL] Building JupyterLite URL. Calculated isDark:', isDark, 'Effective Theme Class:', this.currentTheme);
++
++    const baseUrl = './assets/jupyterlite/repl/index.html';
++    const params = new URLSearchParams({
++      kernel: 'python',
++      toolbar: '1',
++      theme: isDark ? 'JupyterLab Dark' : 'JupyterLab Light',
++    });
++
++    if (bootstrapCode) {
++      params.set('code', bootstrapCode);
++    }
++
++    const fullUrl = `${baseUrl}?${params.toString()}`;
++    this.jupyterliteUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl));
++
++    this.loadingTimeout = setTimeout(() => {
++      if (this.isLoading()) {
++        console.warn('[REPL] Loading timeout (30s) reached');
++        this.isLoading.set(false);
++      }
++    }, 30000);
++  }
++
++  private async updateJupyterliteTheme(_: string): Promise<void> {
++    const isDark = this.getIsDarkMode();
++    const newTheme = isDark ? 'dark' : 'light';
++
++    if (this.currentTheme !== newTheme) {
++      console.log('[REPL] Theme changed from', this.currentTheme, 'to', newTheme, '- rebuilding URL');
++      this.currentTheme = newTheme;
++      await this.buildJupyterliteUrl();
++    }
++  }
++
++  private getIsDarkMode(): boolean {
++    return document.body.classList.contains('dark-theme');
++  }
++
++  private async getOptimizedBootstrap(): Promise<string> {
++    const shims = ['web_serial_shim.py', 'web_usb_shim.py', 'web_ftdi_shim.py'];
++    const hostRoot = this.calculateHostRoot();
++
++    let shimInjections = `# --- Host Root (injected from Angular) --- \n`;
++    shimInjections += `PRAXIS_HOST_ROOT = "${hostRoot}"\n`;
++    shimInjections += 'print(f"PylibPraxis: Using Host Root: {PRAXIS_HOST_ROOT}")\n\n';
++    shimInjections += '# --- Browser Hardware Shims --- \n';
++    shimInjections += 'import pyodide.http\n';
++
++    for (const shim of shims) {
++      shimInjections += `
++print("PylibPraxis: Loading ${shim}...")
++try:
++    _shim_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/shims/${shim}')).string()
++    exec(_shim_code, globals())
++    print("PylibPraxis: Loaded ${shim}")
++except Exception as e:
++    print(f"PylibPraxis: Failed to load ${shim}: {e}")
++`;
++    }
++
++    shimInjections += `
++print("PylibPraxis: Loading web_bridge.py...")
++try:
++    _bridge_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/python/web_bridge.py')).string()
++    with open('web_bridge.py', 'w') as f:
++        f.write(_bridge_code)
++    print("PylibPraxis: Loaded web_bridge.py")
++except Exception as e:
++    print(f"PylibPraxis: Failed to load web_bridge.py: {e}")
++
++import os
++if not os.path.exists('praxis'):
++    os.makedirs('praxis')
++    
++for _p_file in ['__init__.py', 'interactive.py']:
++    try:
++        print(f"PylibPraxis: Loading praxis/{_p_file}...")
++        _p_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/python/praxis/{_p_file}')).string()
++        with open(f'praxis/{_p_file}', 'w') as f:
++            f.write(_p_code)
++        print(f"PylibPraxis: Loaded praxis/{_p_file}")
++    except Exception as e:
++        print(f"PylibPraxis: Failed to load praxis/{_p_file}: {e}")
++`;
++
++    const baseBootstrap = this.generateBootstrapCode();
++    return shimInjections + '\n' + baseBootstrap;
++  }
++
++  private generateBootstrapCode(): string {
++    const lines = [
++      '# PyLabRobot Interactive Notebook',
++      '# Installing pylabrobot from local wheel...',
++      'import micropip',
++      'await micropip.install(f"{PRAXIS_HOST_ROOT}assets/wheels/pylabrobot-0.1.6-py3-none-any.whl")',
++      '',
++      '# Ensure WebSerial, WebUSB, and WebFTDI are in builtins for all cells',
++      'import builtins',
++      'if "WebSerial" in globals():',
++      '    builtins.WebSerial = WebSerial',
++      'if "WebUSB" in globals():',
++      '    builtins.WebUSB = WebUSB',
++      'if "WebFTDI" in globals():',
++      '    builtins.WebFTDI = WebFTDI',
++      '',
++      '# Mock pylibftdi (not supported in browser/Pyodide)',
++      'import sys',
++      'from unittest.mock import MagicMock',
++      'sys.modules["pylibftdi"] = MagicMock()',
++      '',
++      '# Load WebSerial/WebUSB/WebFTDI shims for browser I/O',
++      '# Note: These are pre-loaded to avoid extra network requests',
++      'try:',
++      '    import pyodide_js',
++      '    from pyodide.ffi import to_js',
++      'except ImportError:',
++      '    pass',
++      '',
++      '# Shims will be injected directly via code to avoid 404s',
++      '# Patching is done in the bootstrap below',
++      '',
++      '# Patch pylabrobot.io to use browser shims',
++      'import pylabrobot.io.serial as _ser',
++      'import pylabrobot.io.usb as _usb',
++      'import pylabrobot.io.ftdi as _ftdi',
++      '_ser.Serial = WebSerial',
++      '_usb.USB = WebUSB',
++      '',
++      '# CRITICAL: Patch FTDI for backends like CLARIOstarBackend',
++      '_ftdi.FTDI = WebFTDI',
++      '_ftdi.HAS_PYLIBFTDI = True',
++      'print("✓ Patched pylabrobot.io with WebSerial/WebUSB/WebFTDI")',
++      '',
++      '# Import pylabrobot',
++      'import pylabrobot',
++      'from pylabrobot.resources import *',
++      '',
++      '# Message listener for asset injection via BroadcastChannel',
++      '# We use BroadcastChannel because it works across Window/Worker contexts',
++      'import js',
++      'import json',
++      '',
++      'def _praxis_message_handler(event):',
++      '    try:',
++      '        data = event.data',
++      '        # Convert JsProxy to dict if needed',
++      '        if hasattr(data, "to_py"):',
++      '            data = data.to_py()',
++      '        ',
++      '        if isinstance(data, dict) and data.get("type") == "praxis:execute":',
++      '            code = data.get("code", "")',
++      '            print(f"Executing: {code}")',
++      '            # Handle async code (contains await)',
++      '            if "await " in code:',
++      '                import asyncio',
++      '                # Wrap in async function and schedule',
++      '                async def _run_async():',
++      '                    exec(f"async def __praxis_async__(): return {code}", globals())',
++      '                    result = await __praxis_async__()',
++      '                    if result is not None:',
++      '                        print(result)',
++      '                asyncio.ensure_future(_run_async())',
++      '            else:',
++      '                exec(code, globals())',
++      '        elif isinstance(data, dict) and data.get("type") == "praxis:interaction_response":',
++      '            try:',
++      '                import web_bridge',
++      '                web_bridge.handle_interaction_response(data.get("id"), data.get("value"))',
++      '            except ImportError:',
++      '                print("! web_bridge not found for interaction response")',
++      '    except Exception as e:',
++      '        import traceback',
++      '        print(f"Error executing injected code: {e}")',
++      '        print(traceback.format_exc())',
++      '',
++      '# Setup BroadcastChannel',
++      'try:',
++      '    if hasattr(js, "BroadcastChannel"):',
++      '        # Try .new() first (Pyodide convention)',
++      '        if hasattr(js.BroadcastChannel, "new"):',
++      '            _praxis_channel = js.BroadcastChannel.new("praxis_repl")',
++      '        else:',
++      '            # Fallback to direct constructor',
++      '            _praxis_channel = js.BroadcastChannel("praxis_repl")',
++      '        ',
++      '        _praxis_channel.onmessage = _praxis_message_handler',
++      '        ',
++      '        # Register channel with web_bridge for interactive protocols',
++      '        try:',
++      '            import web_bridge',
++      '            web_bridge.register_broadcast_channel(_praxis_channel)',
++      '            print("✓ Interactive protocols enabled (channel registered)")',
++      '        except ImportError:',
++      '            print("! web_bridge not available for channel registration")',
++      '        ',
++      '        print("✓ Asset injection ready (channel created)")',
++      '    else:',
++      '        print("! BroadcastChannel not available")',
++      'except Exception as e:',
++      '    print(f"! Failed to setup injection channel: {e}")',
++      '',
++      'print("✓ pylabrobot loaded with browser I/O shims (including FTDI)!")',
++      'print(f"  Version: {pylabrobot.__version__}")',
++      'print("Use the Inventory button to insert asset variables.")',
++      '',
++      '# Send ready signal to Angular host',
++      'try:',
++      '    # Must convert dict to JS Object for structured clone in BroadcastChannel',
++      '    from pyodide.ffi import to_js',
++      '    ready_msg = to_js({"type": "praxis:ready"}, dict_converter=js.Object.fromEntries)',
++      '    _praxis_channel.postMessage(ready_msg)',
++      '    print("✓ Ready signal sent")',
++      'except Exception as e:',
++      '    print(f"! Ready signal failed: {e}")',
++    ];
++
++    return lines.join('\n');
++  }
++
++  private calculateHostRoot(): string {
++    const href = window.location.href;
++    const anchor = '/assets/jupyterlite/';
++
++    if (href.includes(anchor)) {
++      return href.split(anchor)[0] + '/';
++    }
++
++    const baseHref = document.querySelector('base')?.getAttribute('href') || '/';
++    const cleanBase = baseHref.startsWith('/') ? baseHref : '/' + baseHref;
++    const finalBase = cleanBase.endsWith('/') ? cleanBase : cleanBase + '/';
++
++    return window.location.origin + finalBase;
++  }
++}
+

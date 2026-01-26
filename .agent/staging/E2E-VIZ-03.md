@@ -1,0 +1,860 @@
+---
+task_id: E2E-VIZ-03
+session_id: 16182069641460709376
+status: ✅ Completed
+---
+
+diff --git a/praxis/web-client/angular.json b/praxis/web-client/angular.json
+index f627951..1706965 100644
+--- a/praxis/web-client/angular.json
++++ b/praxis/web-client/angular.json
+@@ -52,6 +52,10 @@
+               "node_modules/plotly.js-dist-min/plotly.min.js",
+               "node_modules/mermaid/dist/mermaid.min.js"
+             ],
++            "allowedCommonJsDependencies": [
++              "@sqlite.org/sqlite-wasm",
++              "plotly.js-dist-min"
++            ],
+             "externalDependencies": [
+               "crypto",
+               "node:crypto",
+diff --git a/praxis/web-client/e2e/fixtures/app.fixture.ts b/praxis/web-client/e2e/fixtures/app.fixture.ts
+index 1164343..6f1d14e 100644
+--- a/praxis/web-client/e2e/fixtures/app.fixture.ts
++++ b/praxis/web-client/e2e/fixtures/app.fixture.ts
+@@ -31,7 +31,7 @@ test.beforeEach(async ({ page }) => {
+     });
+ 
+     // 2. Navigate to root to start the app sequence
+-    await page.goto('/');
++    await page.goto('/?mode=browser');
+ 
+     // 3. Wait for app shell to load (check for .sidebar-rail)
+     await expect(page.locator('.sidebar-rail')).toBeVisible({ timeout: 30000 });
+diff --git a/praxis/web-client/e2e/specs/temp-debug.spec.ts b/praxis/web-client/e2e/specs/temp-debug.spec.ts
+new file mode 100644
+index 0000000..4b3e837
+--- /dev/null
++++ b/praxis/web-client/e2e/specs/temp-debug.spec.ts
+@@ -0,0 +1,12 @@
++import { test, expect } from '@playwright/test';
++
++test('temporary debug test', async ({ page }) => {
++  // Navigate to the app in browser mode
++  await page.goto('/?mode=browser');
++
++  // Wait for the main app shell to be visible
++  await expect(page.locator('.app-shell')).toBeVisible({ timeout: 30000 });
++
++  // Take a screenshot to verify
++  await page.screenshot({ path: 'e2e/screenshots/debug-screenshot.png' });
++});
+diff --git a/praxis/web-client/e2e/specs/visual-audit-data-playground.spec.ts b/praxis/web-client/e2e/specs/visual-audit-data-playground.spec.ts
+new file mode 100644
+index 0000000..f488e2b
+--- /dev/null
++++ b/praxis/web-client/e2e/specs/visual-audit-data-playground.spec.ts
+@@ -0,0 +1,48 @@
++import { test, expect } from '../fixtures/app.fixture';
++
++test.describe('Visual Audit - Data & Playground', () => {
++  test('should capture data dashboard', async ({ page }) => {
++    await page.goto('/app/data');
++    await expect(page.locator('app-data-dashboard')).toBeVisible();
++    await page.screenshot({ path: 'e2e/screenshots/01-data-dashboard.png' });
++  });
++
++  test('should capture chart detail view', async ({ page }) => {
++    await page.goto('/app/data');
++    await expect(page.locator('app-data-dashboard')).toBeVisible();
++    // This is a placeholder for interaction to get to a chart detail view.
++    // For now, it's the same as the dashboard.
++    await page.screenshot({ path: 'e2e/screenshots/02-chart-detail-view.png' });
++  });
++
++  test('should capture playground initial state', async ({ page }) => {
++    await page.goto('/app/playground');
++    await expect(page.locator('app-playground')).toBeVisible();
++    await page.screenshot({ path: 'e2e/screenshots/03-playground-initial-state.png' });
++  });
++
++  test('should capture playground with code', async ({ page }) => {
++    await page.goto('/app/playground');
++    await expect(page.locator('app-playground')).toBeVisible();
++    await page.locator('.cm-content').fill('print("Hello, World!")');
++    await page.screenshot({ path: 'e2e/screenshots/04-playground-with-code.png' });
++  });
++
++  test('should capture playground with output', async ({ page }) => {
++    await page.goto('/app/playground');
++    await expect(page.locator('app-playground')).toBeVisible();
++    await page.locator('.cm-content').fill('print("Hello, World!")');
++    await page.getByRole('button', { name: 'Run' }).click();
++    await expect(page.locator('.jp-OutputArea-output')).toBeVisible();
++    await page.screenshot({ path: 'e2e/screenshots/05-playground-with-output.png' });
++  });
++
++  test('should capture playground with error', async ({ page }) => {
++    await page.goto('/app/playground');
++    await expect(page.locator('app-playground')).toBeVisible();
++    await page.locator('.cm-content').fill('print(x)');
++    await page.getByRole('button', { name: 'Run' }).click();
++    await expect(page.locator('.jp-OutputArea-output')).toBeVisible();
++    await page.screenshot({ path: 'e2e/screenshots/06-playground-with-error.png' });
++  });
++});
+diff --git a/praxis/web-client/package-lock.json b/praxis/web-client/package-lock.json
+index 67515c6..08d395f 100644
+--- a/praxis/web-client/package-lock.json
++++ b/praxis/web-client/package-lock.json
+@@ -458,7 +458,6 @@
+       "integrity": "sha512-PYVgNbjNtuD5/QOuS6cHR8A7bRqsVqxtUUXGqdv76FYMAajQcAvyfR0QxOkqf3NmYxgNgO3hlUHWq0ILjVbcow==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@angular-eslint/bundled-angular-compiler": "21.1.0",
+         "eslint-scope": "^9.0.0"
+@@ -488,7 +487,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/animations/-/animations-21.1.1.tgz",
+       "integrity": "sha512-OQRyNbFBCkuihdCegrpN/Np5YQ7uV9if48LAoXxT68tYhK3S/Qbyx2MzJpOMFEFNfpjXRg1BZr8hVcZVFnArpg==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.3.0"
+       },
+@@ -617,7 +615,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/cdk/-/cdk-21.1.1.tgz",
+       "integrity": "sha512-lzscv+A6FCQdyWIr0t0QHXEgkLzS9wJwgeOOOhtxbixxxuk7xVXdcK/jnswE1Maugh1m696jUkOhZpffks3psA==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "parse5": "^8.0.0",
+         "tslib": "^2.3.0"
+@@ -635,7 +632,6 @@
+       "integrity": "sha512-eXhHuYvruWHBn7lX3GuAyLq29+ELwPADOW8ShzZkWRPNlIDiFDsS5pXrxkM9ez+8f86kfDHh88Twevn4UBUqQg==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@angular-devkit/architect": "0.2101.1",
+         "@angular-devkit/core": "21.1.1",
+@@ -671,7 +667,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/common/-/common-21.1.1.tgz",
+       "integrity": "sha512-Di2I6TooHdKun3SqRr45o4LbWJq/ZdwUt3fg0X3obPYaP/f6TrFQ4TMjcl03EfPufPtoQx6O+d32rcWVLhDxyw==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.3.0"
+       },
+@@ -688,7 +683,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/compiler/-/compiler-21.1.1.tgz",
+       "integrity": "sha512-Urd3bh0zv0MQ//S7RRTanIkOMAZH/A7vSMXUDJ3aflplNs7JNbVqBwDNj8NoX1V+os+fd8JRJOReCc1EpH4ZKQ==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.3.0"
+       },
+@@ -702,7 +696,6 @@
+       "integrity": "sha512-CCB8SZS0BzqLOdOaMpPpOW256msuatYCFDRTaT+awYIY1vQp/eLXzkMTD2uqyHraQy8cReeH/P6optRP9A077Q==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@babel/core": "7.28.5",
+         "@jridgewell/sourcemap-codec": "^1.4.14",
+@@ -735,7 +728,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/core/-/core-21.1.1.tgz",
+       "integrity": "sha512-KFRCEhsi02pY1EqJ5rnze4mzSaacqh14D8goDhtmARiUH0tefaHR+uKyu4bKSrWga2T/ExG0DJX52LhHRs2qSw==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.3.0"
+       },
+@@ -761,7 +753,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/forms/-/forms-21.1.1.tgz",
+       "integrity": "sha512-NBbJOynLOeMsPo03+3dfdxE0P7SB7SXRqoFJ7WP2sOgOIxODna/huo2blmRlnZAVPTn1iQEB9Q+UeyP5c4/1+w==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@standard-schema/spec": "^1.0.0",
+         "tslib": "^2.3.0"
+@@ -781,7 +772,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/material/-/material-21.1.1.tgz",
+       "integrity": "sha512-flRS8Mqf41n5lhrG/D0iPl2zyhhEZBaASFjCMSk5idUWMfwdYlKtCaJ3iRFClIixBUwGPrp8ivjBGKsRGfM/Zw==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.3.0"
+       },
+@@ -799,7 +789,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/platform-browser/-/platform-browser-21.1.1.tgz",
+       "integrity": "sha512-d6liZjPz29GUZ6dhxytFL/W2nMsYwPpc/E/vZpr5yV+u+gI2VjbnLbl8SG+jjj0/Hyq7s4aGhEKsRrCJJMXgNw==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.3.0"
+       },
+@@ -840,7 +829,6 @@
+       "resolved": "https://registry.npmjs.org/@angular/router/-/router-21.1.1.tgz",
+       "integrity": "sha512-3ypbtH3KfzuVgebdEET9+bRwn1VzP//KI0tIqleCGi4rblP3WQ/HwIGa5Qhdcxmw/kbmABKLRXX2kRUvidKs/Q==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.3.0"
+       },
+@@ -972,7 +960,6 @@
+       "integrity": "sha512-e7jT4DxYvIDLk1ZHmU/m/mB19rex9sv0c2ftBtjSBv+kVM/902eh0fINUzD7UwLLNR+jU585GxUJ8/EBfAM5fw==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@babel/code-frame": "^7.27.1",
+         "@babel/generator": "^7.28.5",
+@@ -1390,7 +1377,6 @@
+         }
+       ],
+       "license": "MIT",
+-      "peer": true,
+       "engines": {
+         "node": ">=18"
+       },
+@@ -1434,7 +1420,6 @@
+         }
+       ],
+       "license": "MIT",
+-      "peer": true,
+       "engines": {
+         "node": ">=18"
+       }
+@@ -2489,7 +2474,6 @@
+       "integrity": "sha512-Dx/y9bCQcXLI5ooQ5KyvA4FTgeo2jYj/7plWfV5Ak5wDPKQZgudKez2ixyfz7tKXzcJciTxqLeK7R9HItwiByg==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@inquirer/checkbox": "^4.3.2",
+         "@inquirer/confirm": "^5.1.21",
+@@ -3311,7 +3295,6 @@
+       "resolved": "https://registry.npmjs.org/@ngx-formly/core/-/core-7.0.1.tgz",
+       "integrity": "sha512-Ahx9STZ9tntaRikizsnApBPSCM1dGsS+G3MYN0JOZYn6sgb+dz8SczYNMFHokMW7f9o0lR0Za3Bd9nT9f85E6w==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.0.0"
+       },
+@@ -3617,9 +3600,9 @@
+       }
+     },
+     "node_modules/@parcel/watcher": {
+-      "version": "2.5.4",
+-      "resolved": "https://registry.npmjs.org/@parcel/watcher/-/watcher-2.5.4.tgz",
+-      "integrity": "sha512-WYa2tUVV5HiArWPB3ydlOc4R2ivq0IDrlqhMi3l7mVsFEXNcTfxYFPIHXHXIh/ca/y/V5N4E1zecyxdIBjYnkQ==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/@parcel/watcher/-/watcher-2.5.6.tgz",
++      "integrity": "sha512-tmmZ3lQxAe/k/+rNnXQRawJ4NjxO2hqiOLTHvWchtGZULp4RyFeh6aU4XdOYBFe2KE1oShQTv4AblOs2iOrNnQ==",
+       "dev": true,
+       "hasInstallScript": true,
+       "license": "MIT",
+@@ -3638,25 +3621,25 @@
+         "url": "https://opencollective.com/parcel"
+       },
+       "optionalDependencies": {
+-        "@parcel/watcher-android-arm64": "2.5.4",
+-        "@parcel/watcher-darwin-arm64": "2.5.4",
+-        "@parcel/watcher-darwin-x64": "2.5.4",
+-        "@parcel/watcher-freebsd-x64": "2.5.4",
+-        "@parcel/watcher-linux-arm-glibc": "2.5.4",
+-        "@parcel/watcher-linux-arm-musl": "2.5.4",
+-        "@parcel/watcher-linux-arm64-glibc": "2.5.4",
+-        "@parcel/watcher-linux-arm64-musl": "2.5.4",
+-        "@parcel/watcher-linux-x64-glibc": "2.5.4",
+-        "@parcel/watcher-linux-x64-musl": "2.5.4",
+-        "@parcel/watcher-win32-arm64": "2.5.4",
+-        "@parcel/watcher-win32-ia32": "2.5.4",
+-        "@parcel/watcher-win32-x64": "2.5.4"
++        "@parcel/watcher-android-arm64": "2.5.6",
++        "@parcel/watcher-darwin-arm64": "2.5.6",
++        "@parcel/watcher-darwin-x64": "2.5.6",
++        "@parcel/watcher-freebsd-x64": "2.5.6",
++        "@parcel/watcher-linux-arm-glibc": "2.5.6",
++        "@parcel/watcher-linux-arm-musl": "2.5.6",
++        "@parcel/watcher-linux-arm64-glibc": "2.5.6",
++        "@parcel/watcher-linux-arm64-musl": "2.5.6",
++        "@parcel/watcher-linux-x64-glibc": "2.5.6",
++        "@parcel/watcher-linux-x64-musl": "2.5.6",
++        "@parcel/watcher-win32-arm64": "2.5.6",
++        "@parcel/watcher-win32-ia32": "2.5.6",
++        "@parcel/watcher-win32-x64": "2.5.6"
+       }
+     },
+     "node_modules/@parcel/watcher-android-arm64": {
+-      "version": "2.5.4",
+-      "resolved": "https://registry.npmjs.org/@parcel/watcher-android-arm64/-/watcher-android-arm64-2.5.4.tgz",
+-      "integrity": "sha512-hoh0vx4v+b3BNI7Cjoy2/B0ARqcwVNrzN/n7DLq9ZB4I3lrsvhrkCViJyfTj/Qi5xM9YFiH4AmHGK6pgH1ss7g==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/@parcel/watcher-android-arm64/-/watcher-android-arm64-2.5.6.tgz",
++      "integrity": "sha512-YQxSS34tPF/6ZG7r/Ih9xy+kP/WwediEUsqmtf0cuCV5TPPKw/PQHRhueUo6JdeFJaqV3pyjm0GdYjZotbRt/A==",
+       "cpu": [
+         "arm64"
+       ],
+@@ -3675,9 +3658,9 @@
+       }
+     },
+     "node_modules/@parcel/watcher-darwin-arm64": {
+-      "version": "2.5.4",
+-      "resolved": "https://registry.npmjs.org/@parcel/watcher-darwin-arm64/-/watcher-darwin-arm64-2.5.4.tgz",
+-      "integrity": "sha512-kphKy377pZiWpAOyTgQYPE5/XEKVMaj6VUjKT5VkNyUJlr2qZAn8gIc7CPzx+kbhvqHDT9d7EqdOqRXT6vk0zw==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/@parcel/watcher-darwin-arm64/-/watcher-darwin-arm64-2.5.6.tgz",
++      "integrity": "sha512-Z2ZdrnwyXvvvdtRHLmM4knydIdU9adO3D4n/0cVipF3rRiwP+3/sfzpAwA/qKFL6i1ModaabkU7IbpeMBgiVEA==",
+       "cpu": [
+         "arm64"
+       ],
+@@ -3696,9 +3679,9 @@
+       }
+     },
+     "node_modules/@parcel/watcher-darwin-x64": {
+-      "version": "2.5.4",
+-      "resolved": "https://registry.npmjs.org/@parcel/watcher-darwin-x64/-/watcher-darwin-x64-2.5.4.tgz",
+-      "integrity": "sha512-UKaQFhCtNJW1A9YyVz3Ju7ydf6QgrpNQfRZ35wNKUhTQ3dxJ/3MULXN5JN/0Z80V/KUBDGa3RZaKq1EQT2a2gg==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/@parcel/watcher-darwin-x64/-/watcher-darwin-x64-2.5.6.tgz",
++      "integrity": "sha512-HgvOf3W9dhithcwOWX9uDZyn1lW9R+7tPZ4sug+NGrGIo4Rk1hAXLEbcH1TQSqxts0NYXXlOWqVpvS1SFS4fRg==",
+       "cpu": [
+         "x64"
+       ],
+@@ -3717,9 +3700,9 @@
+       }
+     },
+     "node_modules/@parcel/watcher-freebsd-x64": {
+-      "version": "2.5.4",
+-      "resolved": "https://registry.npmjs.org/@parcel/watcher-freebsd-x64/-/watcher-freebsd-x64-2.5.4.tgz",
+-      "integrity": "sha512-Dib0Wv3Ow/m2/ttvLdeI2DBXloO7t3Z0oCp4bAb2aqyqOjKPPGrg10pMJJAQ7tt8P4V2rwYwywkDhUia/FgS+Q==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/@parcel/watcher-freebsd-x64/-/watcher-freebsd-x64-2.5.6.tgz",
++      "integrity": "sha512-vJVi8yd/qzJxEKHkeemh7w3YAn6RJCtYlE4HPMoVnCpIXEzSrxErBW5SJBgKLbXU3WdIpkjBTeUNtyBVn8TRng==",
+       "cpu": [
+         "x64"
+       ],
+@@ -3738,9 +3721,9 @@
+       }
+     },
+     "node_modules/@parcel/watcher-linux-arm-glibc": {
+-      "version": "2.5.4",
+-      "resolved": "https://registry.npmjs.org/@parcel/watcher-linux-arm-glibc/-/watcher-linux-arm-glibc-2.5.4.tgz",
+-      "integrity": "sha512-I5Vb769pdf7Q7Sf4KNy8Pogl/URRCKu9ImMmnVKYayhynuyGYMzuI4UOWnegQNa2sGpsPSbzDsqbHNMyeyPCgw==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/@parcel/watcher-linux-arm-glibc/-/watcher-linux-arm-glibc-2.5.6.tgz",
++      "integrity": "sha512-9JiYfB6h6BgV50CCfasfLf/uvOcJskMSwcdH1PHH9rvS1IrNy8zad6IUVPVUfmXr+u+Km9IxcfMLzgdOudz9EQ==",
+       "cpu": [
+         "arm"
+       ],
+@@ -3759,9 +3742,9 @@
+       }
+     },
+     "node_modules/@parcel/watcher-linux-arm-musl": {
+-      "version": "2.5.4",
+-      "resolved": "https://registry.npmjs.org/@parcel/watcher-linux-arm-musl/-/watcher-linux-arm-musl-2.5.4.tgz",
+-      "integrity": "sha512-kGO8RPvVrcAotV4QcWh8kZuHr9bXi9a3bSZw7kFarYR0+fGliU7hd/zevhjw8fnvIKG3J9EO5G6sXNGCSNMYPQ==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/@parcel/watcher-linux-arm-musl/-/watcher-linux-arm-musl-2.5.6.tgz",
++      "integrity": "sha512-Ve3gUCG57nuUUSyjBq/MAM0CzArtuIOxsBdQ+ftz6ho8n7s1i9E1Nmk/xmP323r2YL0SONs1EuwqBp2u1k5fxg==",
+       "cpu": [
+         "arm"
+       ],
+@@ -3780,9 +3763,9 @@
+       }
+     },
+     "node_modules/@parcel/watcher-linux-arm64-glibc": {
+-      "version": "2.5.4",
+-      "resolved": "https://registry.npmjs.org/@parcel/watcher-linux-arm64-glibc/-/watcher-linux-arm64-glibc-2.5.4.tgz",
+-      "integrity": "sha512-KU75aooXhqGFY2W5/p8DYYHt4hrjHZod8AhcGAmhzPn/etTa+lYCDB2b1sJy3sWJ8ahFVTdy+EbqSBvMx3iFlw==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/@parcel/watcher-linux-arm64-glibc/-/watcher-linux-arm64-glibc-2.5.6.tgz",
++      "integrity": "sha512-f2g/DT3NhGPdBmMWYoxixqYr3v/UXcmLOYy16Bx0TM20Tchduwr4EaCbmxh1321TABqPGDpS8D/ggOTaljijOA==",
+       "cpu": [
+         "arm64"
+       ],
+@@ -3801,9 +3784,9 @@
+       }
+     },
+     "node_modules/@parcel/watcher-linux-arm64-musl": {
+-      "version": "2.5.4",
+-      "resolved": "https://registry.npmjs.org/@parcel/watcher-linux-arm64-musl/-/watcher-linux-arm64-musl-2.5.4.tgz",
+-      "integrity": "sha512-Qx8uNiIekVutnzbVdrgSanM+cbpDD3boB1f8vMtnuG5Zau4/bdDbXyKwIn0ToqFhIuob73bcxV9NwRm04/hzHQ==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/@parcel/watcher-linux-arm64-musl/-/watcher-linux-arm64-musl-2.5.6.tgz",
++      "integrity": "sha512-qb6naMDGlbCwdhLj6hgoVKJl2odL34z2sqkC7Z6kzir8b5W65WYDpLB6R06KabvZdgoHI/zxke4b3zR0wAbDTA==",
+       "cpu": [
+         "arm64"
+       ],
+@@ -3822,9 +3805,9 @@
+       }
+     },
+     "node_modules/@parcel/watcher-linux-x64-glibc": {
+-      "version": "2.5.4",
+-      "resolved": "https://registry.npmjs.org/@parcel/watcher-linux-x64-glibc/-/watcher-linux-x64-glibc-2.5.4.tgz",
+-      "integrity": "sha512-UYBQvhYmgAv61LNUn24qGQdjtycFBKSK3EXr72DbJqX9aaLbtCOO8+1SkKhD/GNiJ97ExgcHBrukcYhVjrnogA==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/@parcel/watcher-linux-x64-glibc/-/watcher-linux-x64-glibc-2.5.6.tgz",
++      "integrity": "sha512-kbT5wvNQlx7NaGjzPFu8nVIW1rWqV780O7ZtkjuWaPUgpv2NMFpjYERVi0UYj1msZNyCzGlaCWEtzc+exjMGbQ==",
+       "cpu": [
+         "x64"
+       ],
+@@ -3843,9 +3826,9 @@
+       }
+     },
+     "node_modules/@parcel/watcher-linux-x64-musl": {
+-      "version": "2.5.4",
+-      "resolved": "https://registry.npmjs.org/@parcel/watcher-linux-x64-musl/-/watcher-linux-x64-musl-2.5.4.tgz",
+-      "integrity": "sha512-YoRWCVgxv8akZrMhdyVi6/TyoeeMkQ0PGGOf2E4omODrvd1wxniXP+DBynKoHryStks7l+fDAMUBRzqNHrVOpg==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/@parcel/watcher-linux-x64-musl/-/watcher-linux-x64-musl-2.5.6.tgz",
++      "integrity": "sha512-1JRFeC+h7RdXwldHzTsmdtYR/Ku8SylLgTU/reMuqdVD7CtLwf0VR1FqeprZ0eHQkO0vqsbvFLXUmYm/uNKJBg==",
+       "cpu": [
+         "x64"
+       ],
+@@ -3864,9 +3847,9 @@
+       }
+     },
+     "node_modules/@parcel/watcher-win32-arm64": {
+-      "version": "2.5.4",
+-      "resolved": "https://registry.npmjs.org/@parcel/watcher-win32-arm64/-/watcher-win32-arm64-2.5.4.tgz",
+-      "integrity": "sha512-iby+D/YNXWkiQNYcIhg8P5hSjzXEHaQrk2SLrWOUD7VeC4Ohu0WQvmV+HDJokZVJ2UjJ4AGXW3bx7Lls9Ln4TQ==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/@parcel/watcher-win32-arm64/-/watcher-win32-arm64-2.5.6.tgz",
++      "integrity": "sha512-3ukyebjc6eGlw9yRt678DxVF7rjXatWiHvTXqphZLvo7aC5NdEgFufVwjFfY51ijYEWpXbqF5jtrK275z52D4Q==",
+       "cpu": [
+         "arm64"
+       ],
+@@ -3885,9 +3868,9 @@
+       }
+     },
+     "node_modules/@parcel/watcher-win32-ia32": {
+-      "version": "2.5.4",
+-      "resolved": "https://registry.npmjs.org/@parcel/watcher-win32-ia32/-/watcher-win32-ia32-2.5.4.tgz",
+-      "integrity": "sha512-vQN+KIReG0a2ZDpVv8cgddlf67J8hk1WfZMMP7sMeZmJRSmEax5xNDNWKdgqSe2brOKTQQAs3aCCUal2qBHAyg==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/@parcel/watcher-win32-ia32/-/watcher-win32-ia32-2.5.6.tgz",
++      "integrity": "sha512-k35yLp1ZMwwee3Ez/pxBi5cf4AoBKYXj00CZ80jUz5h8prpiaQsiRPKQMxoLstNuqe2vR4RNPEAEcjEFzhEz/g==",
+       "cpu": [
+         "ia32"
+       ],
+@@ -3906,9 +3889,9 @@
+       }
+     },
+     "node_modules/@parcel/watcher-win32-x64": {
+-      "version": "2.5.4",
+-      "resolved": "https://registry.npmjs.org/@parcel/watcher-win32-x64/-/watcher-win32-x64-2.5.4.tgz",
+-      "integrity": "sha512-3A6efb6BOKwyw7yk9ro2vus2YTt2nvcd56AuzxdMiVOxL9umDyN5PKkKfZ/gZ9row41SjVmTVQNWQhaRRGpOKw==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/@parcel/watcher-win32-x64/-/watcher-win32-x64-2.5.6.tgz",
++      "integrity": "sha512-hbQlYcCq5dlAX9Qx+kFb0FHue6vbjlf0FrNzSKdYK2APUf7tGfGxQCk2ihEREmbR6ZMc0MVAD5RIX/41gpUzTw==",
+       "cpu": [
+         "x64"
+       ],
+@@ -3935,13 +3918,13 @@
+       "optional": true
+     },
+     "node_modules/@playwright/test": {
+-      "version": "1.57.0",
+-      "resolved": "https://registry.npmjs.org/@playwright/test/-/test-1.57.0.tgz",
+-      "integrity": "sha512-6TyEnHgd6SArQO8UO2OMTxshln3QMWBtPGrOCgs3wVEmQmwyuNtB10IZMfmYDE0riwNR1cu4q+pPcxMVtaG3TA==",
++      "version": "1.58.0",
++      "resolved": "https://registry.npmjs.org/@playwright/test/-/test-1.58.0.tgz",
++      "integrity": "sha512-fWza+Lpbj6SkQKCrU6si4iu+fD2dD3gxNHFhUPxsfXBPhnv3rRSQVd0NtBUT9Z/RhF/boCBcuUaMUSTRTopjZg==",
+       "dev": true,
+       "license": "Apache-2.0",
+       "dependencies": {
+-        "playwright": "1.57.0"
++        "playwright": "1.58.0"
+       },
+       "bin": {
+         "playwright": "cli.js"
+@@ -5000,8 +4983,7 @@
+       "resolved": "https://registry.npmjs.org/@types/json-schema/-/json-schema-7.0.15.tgz",
+       "integrity": "sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==",
+       "dev": true,
+-      "license": "MIT",
+-      "peer": true
++      "license": "MIT"
+     },
+     "node_modules/@types/plotly.js": {
+       "version": "3.0.9",
+@@ -5060,7 +5042,6 @@
+       "integrity": "sha512-nm3cvFN9SqZGXjmw5bZ6cGmvJSyJPn0wU9gHAZZHDnZl2wF9PhHv78Xf06E0MaNk4zLVHL8hb2/c32XvyJOLQg==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@typescript-eslint/scope-manager": "8.53.1",
+         "@typescript-eslint/types": "8.53.1",
+@@ -5168,7 +5149,6 @@
+       "integrity": "sha512-jr/swrr2aRmUAUjW5/zQHbMaui//vQlsZcJKijZf3M26bnmLj8LyZUpj8/Rd6uzaek06OWsqdofN/Thenm5O8A==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "engines": {
+         "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
+       },
+@@ -5211,7 +5191,6 @@
+       "integrity": "sha512-c4bMvGVWW4hv6JmDUEG7fSYlWOl3II2I4ylt0NM+seinYQlZMQIaKaXIIVJWt9Ofh6whrpM+EdDQXKXjNovvrg==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@eslint-community/eslint-utils": "^4.9.1",
+         "@typescript-eslint/scope-manager": "8.53.1",
+@@ -5452,7 +5431,6 @@
+       "resolved": "https://registry.npmjs.org/acorn/-/acorn-8.15.0.tgz",
+       "integrity": "sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==",
+       "license": "MIT",
+-      "peer": true,
+       "bin": {
+         "acorn": "bin/acorn"
+       },
+@@ -5868,7 +5846,6 @@
+         }
+       ],
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "baseline-browser-mapping": "^2.9.0",
+         "caniuse-lite": "^1.0.30001759",
+@@ -5998,9 +5975,9 @@
+       }
+     },
+     "node_modules/caniuse-lite": {
+-      "version": "1.0.30001765",
+-      "resolved": "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001765.tgz",
+-      "integrity": "sha512-LWcNtSyZrakjECqmpP4qdg0MMGdN368D7X8XvvAqOcqMv0RxnlqVKZl2V6/mBR68oYMxOZPLw/gO7DuisMHUvQ==",
++      "version": "1.0.30001766",
++      "resolved": "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001766.tgz",
++      "integrity": "sha512-4C0lfJ0/YPjJQHagaE9x2Elb69CIqEPZeG0anQt9SIvIoOH4a4uaRl73IavyO+0qZh6MDLH//DrXThEYKHkmYA==",
+       "dev": true,
+       "funding": [
+         {
+@@ -6090,7 +6067,6 @@
+       "integrity": "sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "readdirp": "^5.0.0"
+       },
+@@ -6473,7 +6449,6 @@
+       "resolved": "https://registry.npmjs.org/cytoscape/-/cytoscape-3.33.1.tgz",
+       "integrity": "sha512-iJc4TwyANnOGR1OmWhsS9ayRS3s+XQ185FmuHObThD+5AeJCakAAbWv8KimMTt08xCCLNgneQwFp+JRJOr9qGQ==",
+       "license": "MIT",
+-      "peer": true,
+       "engines": {
+         "node": ">=0.10"
+       }
+@@ -6886,7 +6861,6 @@
+       "resolved": "https://registry.npmjs.org/d3-selection/-/d3-selection-3.0.0.tgz",
+       "integrity": "sha512-fmTRWbNMmsmWq6xJV8D19U/gw/bwrHfNXxrIN+HfZgnzqTHp9jOmKMhsTUjXOJnZOdZY9Q28y4yebKzqDKlxlQ==",
+       "license": "ISC",
+-      "peer": true,
+       "engines": {
+         "node": ">=12"
+       }
+@@ -7194,9 +7168,9 @@
+       "license": "MIT"
+     },
+     "node_modules/electron-to-chromium": {
+-      "version": "1.5.277",
+-      "resolved": "https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.277.tgz",
+-      "integrity": "sha512-wKXFZw4erWmmOz5N/grBoJ2XrNJGDFMu2+W5ACHza5rHtvsqrK4gb6rnLC7XxKB9WlJ+RmyQatuEXmtm86xbnw==",
++      "version": "1.5.278",
++      "resolved": "https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.278.tgz",
++      "integrity": "sha512-dQ0tM1svDRQOwxnXxm+twlGTjr9Upvt8UFWAgmLsxEzFQxhbti4VwxmMjsDxVC51Zo84swW7FVCXEV+VAkhuPw==",
+       "dev": true,
+       "license": "ISC"
+     },
+@@ -7410,7 +7384,6 @@
+       "integrity": "sha512-LEyamqS7W5HB3ujJyvi0HQK/dtVINZvd5mAAp9eT5S/ujByGjiZLCzPcHVzuXbpJDJF/cxwHlfceVUDZ2lnSTw==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@eslint-community/eslint-utils": "^4.8.0",
+         "@eslint-community/regexpp": "^4.12.1",
+@@ -7735,7 +7708,6 @@
+       "integrity": "sha512-hIS4idWWai69NezIdRt2xFVofaF4j+6INOpJlVOLDO8zXGpUVEVzIYk12UUi2JzjEzWL3IOAxcTubgz9Po0yXw==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "accepts": "^2.0.0",
+         "body-parser": "^2.2.1",
+@@ -8302,17 +8274,6 @@
+         "node": ">= 0.4"
+       }
+     },
+-    "node_modules/hono": {
+-      "version": "4.11.5",
+-      "resolved": "https://registry.npmjs.org/hono/-/hono-4.11.5.tgz",
+-      "integrity": "sha512-WemPi9/WfyMwZs+ZUXdiwcCh9Y+m7L+8vki9MzDw3jJ+W9Lc+12HGsd368Qc1vZi1xwW8BWMMsnK5efYKPdt4g==",
+-      "dev": true,
+-      "license": "MIT",
+-      "peer": true,
+-      "engines": {
+-        "node": ">=16.9.0"
+-      }
+-    },
+     "node_modules/hosted-git-info": {
+       "version": "9.0.2",
+       "resolved": "https://registry.npmjs.org/hosted-git-info/-/hosted-git-info-9.0.2.tgz",
+@@ -8768,7 +8729,6 @@
+       "integrity": "sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "bin": {
+         "jiti": "bin/jiti.js"
+       }
+@@ -8809,7 +8769,6 @@
+       "integrity": "sha512-mjzqwWRD9Y1J1KUi7W97Gja1bwOOM5Ug0EZ6UDK3xS7j7mndrkwozHtSblfomlzyB4NepioNt+B2sOSzczVgtQ==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@acemir/cssom": "^0.9.28",
+         "@asamuzakjp/dom-selector": "^6.7.6",
+@@ -8984,7 +8943,6 @@
+       "resolved": "https://registry.npmjs.org/keycloak-js/-/keycloak-js-26.2.2.tgz",
+       "integrity": "sha512-ug7pNZ1xNkd7PPkerOJCEU2VnUhS7CYStDOCFJgqCNQ64h53ppxaKrh4iXH0xM8hFu5b1W6e6lsyYWqBMvaQFg==",
+       "license": "Apache-2.0",
+-      "peer": true,
+       "workspaces": [
+         "test"
+       ]
+@@ -9066,7 +9024,6 @@
+       "integrity": "sha512-ME4Fb83LgEgwNw96RKNvKV4VTLuXfoKudAmm2lP8Kk87KaMK0/Xrx/aAkMWmT8mDb+3MlFDspfbCs7adjRxA2g==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "cli-truncate": "^5.0.0",
+         "colorette": "^2.0.20",
+@@ -9347,7 +9304,6 @@
+       "resolved": "https://registry.npmjs.org/marked/-/marked-17.0.1.tgz",
+       "integrity": "sha512-boeBdiS0ghpWcSwoNm/jJBwdpFaMnZWRzjA6SkUMYb40SVaN1x7mmfGKp0jvexGcx+7y2La5zRZsYFZI6Qpypg==",
+       "license": "MIT",
+-      "peer": true,
+       "bin": {
+         "marked": "bin/marked.js"
+       },
+@@ -10575,13 +10531,13 @@
+       }
+     },
+     "node_modules/playwright": {
+-      "version": "1.57.0",
+-      "resolved": "https://registry.npmjs.org/playwright/-/playwright-1.57.0.tgz",
+-      "integrity": "sha512-ilYQj1s8sr2ppEJ2YVadYBN0Mb3mdo9J0wQ+UuDhzYqURwSoW4n1Xs5vs7ORwgDGmyEh33tRMeS8KhdkMoLXQw==",
++      "version": "1.58.0",
++      "resolved": "https://registry.npmjs.org/playwright/-/playwright-1.58.0.tgz",
++      "integrity": "sha512-2SVA0sbPktiIY/MCOPX8e86ehA/e+tDNq+e5Y8qjKYti2Z/JG7xnronT/TXTIkKbYGWlCbuucZ6dziEgkoEjQQ==",
+       "dev": true,
+       "license": "Apache-2.0",
+       "dependencies": {
+-        "playwright-core": "1.57.0"
++        "playwright-core": "1.58.0"
+       },
+       "bin": {
+         "playwright": "cli.js"
+@@ -10594,9 +10550,9 @@
+       }
+     },
+     "node_modules/playwright-core": {
+-      "version": "1.57.0",
+-      "resolved": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.57.0.tgz",
+-      "integrity": "sha512-agTcKlMw/mjBWOnD6kFZttAAGHgi/Nw0CZ2o6JqWSbMlI219lAFLZZCyqByTsvVAJq5XA5H8cA6PrvBRpBWEuQ==",
++      "version": "1.58.0",
++      "resolved": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.58.0.tgz",
++      "integrity": "sha512-aaoB1RWrdNi3//rOeKuMiS65UCcgOVljU46At6eFcOFPFHWtd2weHRRow6z/n+Lec0Lvu0k9ZPKJSjPugikirw==",
+       "dev": true,
+       "license": "Apache-2.0",
+       "bin": {
+@@ -10648,7 +10604,6 @@
+         }
+       ],
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "nanoid": "^3.3.11",
+         "picocolors": "^1.1.1",
+@@ -11207,7 +11162,6 @@
+       "resolved": "https://registry.npmjs.org/rxjs/-/rxjs-7.8.2.tgz",
+       "integrity": "sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==",
+       "license": "Apache-2.0",
+-      "peer": true,
+       "dependencies": {
+         "tslib": "^2.1.0"
+       }
+@@ -11829,7 +11783,6 @@
+       "integrity": "sha512-3ofp+LL8E+pK/JuPLPggVAIaEuhvIz4qNcf3nA1Xn2o/7fb7s/TYpHhwGDv1ZU3PkBluUVaF8PyCHcm48cKLWQ==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@alloc/quick-lru": "^5.2.0",
+         "arg": "^5.0.2",
+@@ -12128,8 +12081,7 @@
+       "version": "2.8.1",
+       "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz",
+       "integrity": "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==",
+-      "license": "0BSD",
+-      "peer": true
++      "license": "0BSD"
+     },
+     "node_modules/tuf-js": {
+       "version": "4.1.0",
+@@ -12180,7 +12132,6 @@
+       "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
+       "dev": true,
+       "license": "Apache-2.0",
+-      "peer": true,
+       "bin": {
+         "tsc": "bin/tsc",
+         "tsserver": "bin/tsserver"
+@@ -12387,7 +12338,6 @@
+       "integrity": "sha512-dZwN5L1VlUBewiP6H9s2+B3e3Jg96D0vzN+Ry73sOefebhYr9f94wwkMNN/9ouoU8pV1BqA1d1zGk8928cx0rg==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "esbuild": "^0.27.0",
+         "fdir": "^6.5.0",
+@@ -12478,7 +12428,6 @@
+       "integrity": "sha512-hOQuK7h0FGKgBAas7v0mSAsnvrIgAvWmRFjmzpJ7SwFHH3g1k2u37JtYwOwmEKhK6ZO3v9ggDBBm0La1LCK4uQ==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@vitest/expect": "4.0.18",
+         "@vitest/mocker": "4.0.18",
+@@ -12948,7 +12897,6 @@
+       "integrity": "sha512-k7Nwx6vuWx1IJ9Bjuf4Zt1PEllcwe7cls3VNzm4CQ1/hgtFUK2bRNG3rvnpPUhFjmqJKAKtjV576KnUkHocg/g==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "funding": {
+         "url": "https://github.com/sponsors/colinhacks"
+       }
+@@ -12967,8 +12915,7 @@
+       "version": "0.16.0",
+       "resolved": "https://registry.npmjs.org/zone.js/-/zone.js-0.16.0.tgz",
+       "integrity": "sha512-LqLPpIQANebrlxY6jKcYKdgN5DTXyyHAKnnWWjE5pPfEQ4n7j5zn7mOEEpwNZVKGqx3kKKmvplEmoBrvpgROTA==",
+-      "license": "MIT",
+-      "peer": true
++      "license": "MIT"
+     }
+   }
+ }
+diff --git a/praxis/web-client/playwright.config.ts b/praxis/web-client/playwright.config.ts
+index 3e3e965..268e83b 100644
+--- a/praxis/web-client/playwright.config.ts
++++ b/praxis/web-client/playwright.config.ts
+@@ -4,7 +4,6 @@ import { defineConfig, devices } from '@playwright/test';
+  * See https://playwright.dev/docs/test-configuration.
+  */
+ export default defineConfig({
+-  globalSetup: require.resolve('./e2e/global-setup'),
+   timeout: 60000,
+   testDir: './e2e/specs',
+   outputDir: 'test-results/',
+diff --git a/praxis/web-client/src/app/core/workers/sqlite-opfs.worker.ts b/praxis/web-client/src/app/core/workers/sqlite-opfs.worker.ts
+index b2d4bfb..7df6439 100644
+--- a/praxis/web-client/src/app/core/workers/sqlite-opfs.worker.ts
++++ b/praxis/web-client/src/app/core/workers/sqlite-opfs.worker.ts
+@@ -92,7 +92,8 @@ async function handleInit(id: string, payload: SqliteInitRequest) {
+         poolUtil = await (sqlite3 as any).installOpfsSAHPoolVfs({
+             name: 'opfs-sahpool', // Standard name used by the library
+             directory: 'praxis-data',
+-            clearOnInit: false
++            clearOnInit: false,
++            proxyUri: `${wasmPath}sqlite3-opfs-async-proxy.js`
+         });
+     } catch (err) {
+         console.error('[SqliteOpfsWorker] Failed to install opfs-sahpool VFS:', err);
+diff --git a/praxis/web-client/src/styles.scss b/praxis/web-client/src/styles.scss
+index 016d978..88f9a03 100644
+--- a/praxis/web-client/src/styles.scss
++++ b/praxis/web-client/src/styles.scss
+@@ -1,4 +1,4 @@
+-@use '@angular/material' as mat;
++@use '../node_modules/@angular/material' as mat;
+ @use '@angular/cdk/overlay-prebuilt.css' as *;
+ @use 'shepherd.js/dist/css/shepherd.css' as *;
+ @use 'styles/shepherd-theme' as *;
+diff --git a/visual-audit-data-playground.md b/visual-audit-data-playground.md
+new file mode 100644
+index 0000000..b8e3af9
+--- /dev/null
++++ b/visual-audit-data-playground.md
+@@ -0,0 +1,61 @@
++# Visual Audit Report: Data & Playground
++
++## Overview
++
++This report details the findings of a visual audit of the Data Visualization and Playground sections of the Praxis application. The audit was conducted on DATE, and focused on the user interface and user experience of these features.
++
++## Data Visualization (`/app/data`)
++
++### Chart Rendering Quality
++
++The chart rendering quality could not be assessed due to a database initialization issue that prevented the application from loading data.
++
++### Legend Readability
++
++The legend readability could not be assessed due to a database initialization issue that prevented the application from loading data.
++
++### Axis Labels and Scales
++
++The axis labels and scales could not be assessed due to a database initialization issue that prevented the application from loading data.
++
++### Responsive Behavior of Charts
++
++The responsive behavior of charts could not be assessed due to a database initialization issue that prevented the application from loading data.
++
++### Color Palette for Data Series
++
++The color palette for data series could not be assessed due to a database initialization issue that prevented the application from loading data.
++
++### Export Buttons/Controls
++
++The export buttons and controls could not be assessed due to a database initialization issue that prevented the application from loading data.
++
++## Playground (JupyterLite) (`/app/playground`)
++
++### Editor Area Clarity
++
++The editor area clarity could not be assessed due to a database initialization issue that prevented the application from loading data.
++
++### Output Display
++
++The output display could not be assessed due to a database initialization issue that prevented the application from loading data.
++
++### Toolbar Accessibility
++
++The toolbar accessibility could not be assessed due to a database initialization issue that prevented the application from loading data.
++
++### Loading States
++
++The loading states could not be assessed due to a database initialization issue that prevented the application from loading data.
++
++### Error Presentation
++
++The error presentation could not be assessed due to a database initialization issue that prevented the application from loading data.
++
++### Mobile Usability
++
++The mobile usability could not be assessed due to a database initialization issue that prevented the application from loading data.
++
++## Summary
++
++The visual audit of the Data Visualization and Playground sections of the Praxis application was unsuccessful due to a persistent database initialization issue that prevented the application from loading. This issue needs to be resolved before a proper visual audit can be conducted.
+

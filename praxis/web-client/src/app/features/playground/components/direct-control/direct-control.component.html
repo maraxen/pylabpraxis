@@ -18,8 +18,8 @@
         Quick Actions
       </h4>
       <div class="method-chips">
-        <button *ngFor="let method of methods" mat-stroked-button class="method-chip"
-          [class.lifecycle]="isLifecycleMethod(method.name)" [class.selected]="selectedMethod?.name === method.name"
+        <button *ngFor="let method of methods()" mat-stroked-button class="method-chip"
+          [class.lifecycle]="isLifecycleMethod(method.name)" [class.selected]="selectedMethod()?.name === method.name"
           (click)="onMethodSelected(method)">
           <mat-icon class="method-icon">{{ getMethodIcon(method.name) }}</mat-icon>
           {{ formatMethodName(method.name) }}
@@ -28,28 +28,28 @@
     </div>
 
     <!-- Selected Method Details -->
-    <div class="method-panel" *ngIf="selectedMethod">
+    <div class="method-panel" *ngIf="selectedMethod()">
       <div class="method-header">
         <div class="method-title">
-          <mat-icon class="method-icon-lg">{{ getMethodIcon(selectedMethod.name) }}</mat-icon>
+          <mat-icon class="method-icon-lg">{{ getMethodIcon(selectedMethod()!.name) }}</mat-icon>
           <div>
-            <h4>{{ formatMethodName(selectedMethod.name) }}</h4>
-            <p class="method-doc" *ngIf="selectedMethod?.doc">{{ selectedMethod?.doc }}</p>
+            <h4>{{ formatMethodName(selectedMethod()!.name) }}</h4>
+            <p class="method-doc" *ngIf="selectedMethod()?.description">{{ selectedMethod()?.description }}</p>
           </div>
         </div>
       </div>
 
       <form [formGroup]="form" class="args-form">
         <!-- No args message -->
-        <div *ngIf="selectedMethod.args.length === 0" class="no-args">
+        <div *ngIf="(selectedMethod()?.args?.length ?? 0) === 0" class="no-args">
           <mat-icon>check_circle</mat-icon>
           <span>No parameters required</span>
         </div>
 
         <!-- Args grid -->
-        <div class="args-grid" *ngIf="selectedMethod.args.length > 0">
-          <ng-container *ngFor="let arg of selectedMethod.args">
-            <div class="arg-item" [ngSwitch]="getArgType(arg)">
+        <div class="args-grid" *ngIf="(selectedMethod()?.args?.length ?? 0) > 0">
+          <ng-container *ngFor="let arg of selectedMethod()?.args ?? []">
+            <div class="arg-item" [ngSwitch]="getArgType(arg.type!)">
 
               <!-- Checkbox for Booleans -->
               <div *ngSwitchCase="'checkbox'" class="checkbox-field">
@@ -81,21 +81,36 @@
 
         <!-- Execute Button -->
         <div class="actions">
-          <button mat-flat-button color="primary" class="execute-btn" (click)="runCommand()" [disabled]="!form.valid">
+          <button mat-flat-button color="primary" class="execute-btn" (click)="runCommand()" [disabled]="!form.valid || isExecuting()">
             <mat-icon>play_arrow</mat-icon>
-            Execute {{ formatMethodName(selectedMethod.name) }}
+            Execute {{ formatMethodName(selectedMethod()!.name) }}
           </button>
         </div>
       </form>
+
+      <!-- Loading state -->
+      <mat-progress-bar *ngIf="isExecuting()" mode="indeterminate"></mat-progress-bar>
+
+      <!-- Result display -->
+      <div class="command-result" *ngIf="commandResult()">
+        <mat-icon color="primary">check_circle</mat-icon>
+        <pre>{{ commandResult() | json }}</pre>
+      </div>
+
+      <!-- Error display -->
+      <div class="command-error" *ngIf="commandError()">
+        <mat-icon color="warn">error</mat-icon>
+        <span>{{ commandError() }}</span>
+      </div>
     </div>
 
     <!-- Empty State -->
-    <div *ngIf="!selectedMethod && methods.length > 0" class="empty-state">
+    <div *ngIf="!selectedMethod() && methods().length > 0" class="empty-state">
       <mat-icon class="empty-icon">touch_app</mat-icon>
       <p>Select a method to configure and execute</p>
     </div>
 
-    <div *ngIf="methods.length === 0" class="empty-state error">
+    <div *ngIf="methods().length === 0" class="empty-state error">
       <mat-icon class="empty-icon">warning</mat-icon>
       <p>No methods available for this machine</p>
     </div>

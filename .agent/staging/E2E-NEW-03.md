@@ -1,0 +1,50 @@
+---
+task_id: E2E-NEW-03
+session_id: 8998018472489986175
+status: ✅ Completed
+---
+
+diff --git a/praxis/web-client/e2e/page-objects/workcell.page.ts b/praxis/web-client/e2e/page-objects/workcell.page.ts
+new file mode 100644
+index 0000000..4a5a8e0
+--- /dev/null
++++ b/praxis/web-client/e2e/page-objects/workcell.page.ts
+@@ -0,0 +1,23 @@
++import { type Page, type Locator } from '@playwright/test';
++
++export class WorkcellPage {
++  readonly page: Page;
++  readonly workcellList: Locator;
++
++  constructor(page: Page) {
++    this.page = page;
++    this.workcellList = page.locator('app-workcell-list');
++  }
++
++  async navigateToWorkcellList(): Promise<void> {
++    await this.page.goto('/app/workcell');
++  }
++
++  async selectWorkcell(name: string): Promise<void> {
++    await this.page.getByRole('link', { name }).click();
++  }
++
++  async getFirstWorkcell(): Promise<Locator> {
++    return this.page.locator('app-workcell-card').first();
++  }
++}
+diff --git a/praxis/web-client/src/app/core/workers/sqlite-opfs.worker.ts b/praxis/web-client/src/app/core/workers/sqlite-opfs.worker.ts
+index b2d4bfb..7df6439 100644
+--- a/praxis/web-client/src/app/core/workers/sqlite-opfs.worker.ts
++++ b/praxis/web-client/src/app/core/workers/sqlite-opfs.worker.ts
+@@ -92,7 +92,8 @@ async function handleInit(id: string, payload: SqliteInitRequest) {
+         poolUtil = await (sqlite3 as any).installOpfsSAHPoolVfs({
+             name: 'opfs-sahpool', // Standard name used by the library
+             directory: 'praxis-data',
+-            clearOnInit: false
++            clearOnInit: false,
++            proxyUri: `${wasmPath}sqlite3-opfs-async-proxy.js`
+         });
+     } catch (err) {
+         console.error('[SqliteOpfsWorker] Failed to install opfs-sahpool VFS:', err);
+

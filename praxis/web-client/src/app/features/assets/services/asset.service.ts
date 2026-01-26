@@ -516,9 +516,22 @@ export class AssetService {
     );
   }
 
-  syncDefinitions(): Observable<{ message: string }> {
+  syncDefinitions(): Observable<{ message:string }> {
     return this.apiWrapper.wrap(DiscoveryService.syncAllDefinitionsApiV1DiscoverySyncAllPost()).pipe(
       map(result => result as { message: string })
     );
+  }
+
+  /**
+   * Resolves an asset path, accounting for baseHref in production/GH-Pages builds.
+   * @param assetPath The path to the asset relative to the 'assets' folder.
+   * @returns A fully resolved URL to the asset.
+   */
+  resolve(assetPath: string): string {
+    const baseHref = document.querySelector('base')?.getAttribute('href') || '/';
+    const cleanBase = baseHref.endsWith('/') ? baseHref : `${baseHref}/`;
+    // Prevent double slashes if assetPath already starts with one
+    const cleanAssetPath = assetPath.startsWith('/') ? assetPath.substring(1) : assetPath;
+    return `${cleanBase}assets/${cleanAssetPath}`;
   }
 }
