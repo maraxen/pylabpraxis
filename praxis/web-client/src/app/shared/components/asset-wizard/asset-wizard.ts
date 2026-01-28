@@ -198,8 +198,8 @@ export class AssetWizard implements OnInit {
     }
 
     // Resource search logic (kept for resources)
-    const assetType$ = this.typeStepFormGroup.get('assetType')!.valueChanges.pipe(startWith(''));
-    const category$ = this.categoryStepFormGroup.get('category')!.valueChanges.pipe(startWith(''));
+    const assetType$ = this.typeStepFormGroup.get('assetType')!.valueChanges.pipe(startWith(this.typeStepFormGroup.get('assetType')?.value || ''));
+    const category$ = this.categoryStepFormGroup.get('category')!.valueChanges.pipe(startWith(this.categoryStepFormGroup.get('category')?.value || ''));
     const query$ = this.searchSubject.pipe(startWith(''), debounceTime(300), distinctUntilChanged());
 
     this.searchResults$ = combineLatest([assetType$, category$, query$]).pipe(

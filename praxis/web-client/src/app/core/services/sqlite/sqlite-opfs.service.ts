@@ -42,7 +42,11 @@ export class SqliteOpfsService {
      * @returns Observable that completes when initialization is successful
      */
     init(dbName?: string): Observable<void> {
-        return new Observable<void>(subscriber => {
+        if (this.initPromise) {
+            return from(this.initPromise);
+        }
+
+        this.initPromise = new Promise<void>((resolve, reject) => {
             if (!this.worker) {
                 // Initialize the worker using the standard Angular worker pattern.
                 // Note: The bundler (esbuild/webpack) detects this pattern to chunk the worker.
@@ -56,7 +60,7 @@ export class SqliteOpfsService {
 
                 this.worker.onerror = (err) => {
                     console.error('[SqliteOpfsService] Worker error:', err);
-                    subscriber.error(err);
+                    reject(err);
                 };
             }
 
@@ -74,29 +78,41 @@ export class SqliteOpfsService {
             ).subscribe({
                 next: () => {
                     console.log('[SqliteOpfsService] Database initialized successfully.');
-                    subscriber.next();
-                    subscriber.complete();
+                    resolve();
                 },
                 error: (err) => {
                     console.error('[SqliteOpfsService] Database initialization failed:', err);
-                    subscriber.error(err);
+                    this.initPromise = null; // Reset promise so it can be retried
+                    reject(err);
                 }
             });
         });
+
+        return from(this.initPromise);
     }
 
     /**
      * Ensure the database has the required schema and initial data.
+     * 
+     * CRITICAL: We check for protocols specifically, not just tables.
+     * Protocols ONLY exist in the prebuilt praxis.db - the TypeScript fallback
+     * seeds machines/resources but NOT protocols. Without this check, E2E tests
+     * with stale OPFS state would have tables but no protocols.
      */
     private ensureSchemaAndSeeds(): Observable<void> {
-        return this.exec("SELECT COUNT(*) as count FROM sqlite_master WHERE type='table'").pipe(
+        // Check for protocols specifically - they only exist in praxis.db
+        return this.exec("SELECT COUNT(*) as count FROM function_protocol_definitions").pipe(
+            catchError(() => {
+                // Table doesn't exist yet - need full initialization
+                return of({ resultRows: [{ count: 0 }] } as SqliteExecResult);
+            }),
             switchMap(result => {
                 const count = (result.resultRows[0] as any)?.count || 0;
                 if (count === 0) {
-                    console.log('[SqliteOpfsService] Database is empty. Initializing schema and seeds...');
+                    console.log('[SqliteOpfsService] No protocols found. Loading fresh database from praxis.db...');
                     return this.initializeFreshDatabase();
                 }
-                console.log(`[SqliteOpfsService] Database already has ${count} tables.`);
+                console.log(`[SqliteOpfsService] Database has ${count} protocols. Ready.`);
                 return of(void 0);
             })
         );

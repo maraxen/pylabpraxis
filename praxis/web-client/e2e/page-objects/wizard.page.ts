@@ -5,6 +5,7 @@ export class WizardPage {
     private readonly parameterStep: Locator;
     private readonly machineStep: Locator;
     private readonly assetsStep: Locator;
+    private readonly wellStep: Locator;
     private readonly deckStep: Locator;
     private readonly reviewHeading: Locator;
     private readonly reviewProtocolName: Locator;
@@ -15,9 +16,10 @@ export class WizardPage {
         this.parameterStep = page.locator('[data-tour-id="run-step-params"]');
         this.machineStep = page.locator('[data-tour-id="run-step-machine"]');
         this.assetsStep = page.locator('[data-tour-id="run-step-assets"]');
+        this.wellStep = page.locator('[data-tour-id="run-step-wells"]');
         this.deckStep = page.locator('[data-tour-id="run-step-deck"]');
         this.reviewHeading = page.locator('h2', { hasText: 'Ready to Launch' });
-        this.reviewProtocolName = page.locator('[data-testid="review-protocol-name"]').first();
+        this.reviewProtocolName = page.getByTestId('review-protocol-name').first();
         this.runProtocolRoot = page.locator('app-run-protocol').first();
     }
 
@@ -59,26 +61,21 @@ export class WizardPage {
     }
 
     private async markAssetsValid() {
-        await this.page.evaluate(() => {
-            const cmp = (window as any).ng?.getComponent?.(document.querySelector('app-run-protocol'));
-            if (!cmp) return;
-            const protocol = cmp.selectedProtocol?.();
-            const stubAssets: Record<string, any> = {};
-            if (protocol?.assets?.length) {
-                protocol.assets.forEach((a: any) => {
-                    stubAssets[a.accession_id] = { accession_id: a.accession_id, name: a.name };
-                });
-            }
-            cmp.configuredAssets?.set?.(Object.keys(stubAssets).length ? stubAssets : { placeholder: true });
-            cmp.assetsFormGroup?.patchValue?.({ valid: true });
-        }).catch(() => undefined);
+        console.log('[Wizard] Verifying asset selection validity via UI...');
+        const continueButton = this.assetsStep.getByRole('button', { name: /Continue/i }).first();
+        if (await continueButton.isVisible() && !(await continueButton.isEnabled())) {
+            console.warn('[Wizard] Assets not valid via UI, attempting manual selection...');
+            await this.autoConfigureAssetsManual();
+        }
+        await expect(continueButton).toBeEnabled({ timeout: 10000 });
     }
 
     private async markDeckValid() {
-        await this.page.evaluate(() => {
-            const cmp = (window as any).ng?.getComponent?.(document.querySelector('app-run-protocol'));
-            cmp?.deckFormGroup?.patchValue?.({ valid: true });
-        }).catch(() => undefined);
+        console.log('[Wizard] Advancing deck setup step...');
+        const skipButton = this.deckStep.getByRole('button', { name: /Skip Setup|Continue/i }).first();
+        if (await skipButton.isVisible()) {
+            await skipButton.click();
+        }
     }
 
     async completeParameterStep() {
@@ -93,15 +90,58 @@ export class WizardPage {
         const spinner = this.machineStep.locator('mat-spinner');
         await spinner.waitFor({ state: 'detached', timeout: 15000 }).catch(() => undefined);
 
-        const machineCards = this.machineStep.locator('app-machine-card');
-        await machineCards.first().waitFor({ state: 'visible', timeout: 15000 });
+        // Target new selector sections first
+        const sections = this.machineStep.locator('.machine-arg-section');
+        const sectionCount = await sections.count();
 
-        const simulationCard = machineCards.filter({ hasText: /Simulation|Simulated/i }).first();
-        const target = (await simulationCard.count()) ? simulationCard : machineCards.first();
-        await target.click();
+        if (sectionCount > 0) {
+            console.log(`[Wizard] Found ${sectionCount} machine requirement sections.`);
+            for (let i = 0; i < sectionCount; i++) {
+                const section = sections.nth(i);
+                await section.scrollIntoViewIfNeeded();
 
-        // Handle Configure Simulation dialog if it appears
-        await this.handleConfigureSimulationDialog();
+                // If not already complete/selected
+                const isComplete = await section.evaluate(el => el.classList.contains('complete'));
+                if (!isComplete) {
+                    await section.click(); // Expand if needed
+                    const options = section.locator('.option-card:not(.disabled)');
+                    // Wait for options or a "no options" message
+                    const noOptions = section.locator('.empty-state, .no-machines-state');
+                    await Promise.race([
+                        options.first().waitFor({ state: 'visible', timeout: 5000 }),
+                        noOptions.first().waitFor({ state: 'visible', timeout: 5000 })
+                    ]).catch(() => { });
+
+                    if (await options.count() > 0) {
+                        // Prefer simulation/chatterbox in simulation mode
+                        const simulationOption = options.filter({ hasText: /Simulation|Chatterbox|Simulated/i }).first();
+                        const target = (await simulationOption.count()) ? simulationOption : options.first();
+
+                        console.log(`[Wizard] Selecting machine option for section ${i}...`);
+                        await target.click();
+                        await this.handleConfigureSimulationDialog();
+                    }
+                }
+            }
+        } else {
+            // Fallback: check if we just have a "no machines" state or if continue is enabled
+            const noMachines = this.machineStep.locator('.no-machines-state, .empty-state');
+            const machineCards = this.machineStep.locator('app-machine-card, .option-card');
+            const continueButton = this.machineStep.getByRole('button', { name: /Continue/i }).first();
+
+            await Promise.race([
+                machineCards.first().waitFor({ state: 'visible', timeout: 5000 }),
+                noMachines.first().waitFor({ state: 'visible', timeout: 5000 }),
+                expect(continueButton).toBeEnabled({ timeout: 5000 })
+            ]).catch(() => { });
+
+            if (await machineCards.count() > 0) {
+                const simulationCard = machineCards.filter({ hasText: /Simulation|Simulated|Chatterbox/i }).first();
+                const target = (await simulationCard.count()) ? simulationCard : machineCards.first();
+                await target.click();
+                await this.handleConfigureSimulationDialog();
+            }
+        }
 
 
         const continueButton = this.machineStep.getByRole('button', { name: /Continue/i }).first();
@@ -109,48 +149,158 @@ export class WizardPage {
         await continueButton.click();
     }
 
+    async selectAssetForRequirement(requirementName: string, assetName: string) {
+        await this.assetsStep.waitFor({ state: 'visible' });
+
+        // Find the requirement section/row
+        // Note: Selector depends on actual DOM structure. Adjusting based on common patterns or assumptions from previous context.
+        // Assuming a list of requirements, each with a selector.
+        // If the UI uses distinct cards for requirements:
+        const requirementCard = this.assetsStep.locator('.requirement-card, .asset-requirement').filter({ hasText: requirementName });
+        await expect(requirementCard).toBeVisible({ timeout: 5000 });
+
+        // Click to open selection if needed (e.g. dropdown or modal)
+        // If it's a dropdown:
+        const select = requirementCard.locator('mat-select, [role="combobox"]');
+        if (await select.isVisible()) {
+            await select.click();
+            await this.page.getByRole('option', { name: assetName }).click();
+        } else {
+            // Maybe it's a list of radio buttons or cards inside the requirement block
+            const assetOption = requirementCard.locator('.asset-option, .candidate-card').filter({ hasText: assetName });
+            await assetOption.click();
+        }
+    }
+
+    async autoConfigureAssetsManual() {
+        await this.assetsStep.waitFor({ state: 'visible' });
+
+        const requirements = this.assetsStep.locator('.requirement-item');
+        const count = await requirements.count();
+
+        for (let i = 0; i < count; i++) {
+            const req = requirements.nth(i);
+            const name = await req.locator('.req-name').innerText().catch(() => 'Unknown');
+            const isCompleted = await req.evaluate(el => el.classList.contains('completed') || el.classList.contains('autofilled'));
+
+            if (!isCompleted) {
+                console.log(`[Wizard] Manually configuring requirement: ${name}`);
+
+                // Open dropdown/autocomplete
+                const input = req.locator('input[placeholder*="Search inventory"]');
+                if (await input.isVisible()) {
+                    await input.click();
+
+                    // Wait for dropdown options to appear
+                    const options = this.page.locator('mat-option');
+                    await options.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => { });
+
+                    if (await options.count() > 0) {
+                        await options.first().click();
+                        // Wait for option to be selected
+                        await expect(input).not.toHaveValue('', { timeout: 3000 }).catch(() => { });
+                    } else {
+                        console.log(`[Wizard] No options found for ${name}`);
+                    }
+                }
+            }
+        }
+    }
+
     async waitForAssetsAutoConfigured() {
         await this.assetsStep.waitFor({ state: 'visible' });
+
+        // Try manual config if not ready
+        await this.autoConfigureAssetsManual();
+
+        // Wait for the "Continue" button to be enabled
         const continueButton = this.assetsStep.getByRole('button', { name: /Continue/i }).first();
-        await this.markAssetsValid();
         await expect(continueButton).toBeEnabled({ timeout: 20000 });
-        await continueButton.click({ force: true });
+        await continueButton.click();
+    }
+
+    async completeWellSelectionStep() {
+        // Only wait and complete if the step is visible
+        if (await this.wellStep.isVisible({ timeout: 5000 }).catch(() => false)) {
+            console.log('[Wizard] Completing Well Selection step...');
+
+            // Check if there are "Click to select wells" buttons
+            const selectButtons = this.wellStep.getByRole('button', { name: /select wells/i });
+            const count = await selectButtons.count();
+
+            for (let i = 0; i < count; i++) {
+                const btn = selectButtons.nth(i);
+                await btn.click();
+
+                // Dialog should open
+                const dialog = this.page.getByRole('dialog').filter({ hasText: /Select Wells/i });
+                await dialog.waitFor({ state: 'visible' });
+
+                // Select first available well
+                const well = dialog.locator('.well.available').first();
+                if (await well.isVisible()) {
+                    await well.click();
+                }
+
+                // Confirm selection
+                await dialog.getByRole('button', { name: /Confirm/i }).click();
+                await dialog.waitFor({ state: 'hidden' });
+            }
+
+            const continueButton = this.wellStep.getByRole('button', { name: /Continue/i }).first();
+            await expect(continueButton).toBeEnabled({ timeout: 5000 });
+            await continueButton.click();
+        }
     }
 
     async advanceDeckSetup() {
         await this.deckStep.waitFor({ state: 'visible' });
-        const skipButton = this.deckStep.getByRole('button', { name: /Skip Setup/i }).first();
-        await expect(skipButton).toBeVisible({ timeout: 15000 });
-        await skipButton.click();
 
-        const continueButton = this.deckStep.getByRole('button', { name: /Continue to Review/i }).first();
-        if (await continueButton.isVisible().catch(() => false)) {
-            await continueButton.click();
+        // Click Skip Setup if visible
+        const skipButton = this.deckStep.getByRole('button', { name: /Skip Setup/i }).first();
+        if (await skipButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+            await skipButton.click();
         }
 
-        await this.markDeckValid();
+        // Click Continue to Review if visible (some flows show this after skip)
+        const continueButton = this.deckStep.getByRole('button', { name: /Continue to Review|Continue/i }).first();
+        if (await continueButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+            await continueButton.click();
+        }
+        // Don't call markDeckValid() - we've already advanced
     }
 
     async openReviewStep() {
         const reviewTab = this.page.getByRole('tab', { name: /Review & Run/i }).first();
         await expect(reviewTab).toBeVisible({ timeout: 15000 });
-        if (!(await reviewTab.isEnabled())) {
-            const deckContinue = this.deckStep.getByRole('button', { name: /Continue/i }).last();
-            if (await deckContinue.isVisible().catch(() => false)) {
-                await expect(deckContinue).toBeEnabled({ timeout: 15000 });
-                await deckContinue.click();
-            }
-            await this.markDeckValid();
+
+        // Check if we're already on the review step
+        const isSelected = await reviewTab.getAttribute('aria-selected');
+        if (isSelected === 'true') {
+            console.log('[Wizard] Already on review step');
+            // Just wait for review content
+            await this.reviewHeading.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {
+                console.log('[Wizard] Review heading not found, but already on review tab');
+            });
+            return;
         }
-        const state = await this.getFormState();
-        console.log('Wizard form state before review click:', state);
+
+        // Need to navigate to review
         await expect(reviewTab).toBeEnabled({ timeout: 15000 });
         await reviewTab.click();
-        await this.reviewHeading.waitFor({ state: 'visible' });
+        await this.reviewHeading.waitFor({ state: 'visible', timeout: 10000 });
     }
 
     async assertReviewSummary(protocolName: string) {
-        await expect(this.reviewProtocolName).toHaveText(protocolName, { timeout: 15000 });
+        try {
+            await expect(this.reviewProtocolName).toHaveText(protocolName, { timeout: 15000 });
+        } catch (e) {
+            const text = await this.reviewProtocolName.innerText().catch(() => 'NULL');
+            const html = await this.page.locator('[data-tour-id="run-step-ready"], .mat-step-content').last().innerHTML().catch(() => 'NULL');
+            console.error(`[Wizard] Review protocol name mismatch. Expected: "${protocolName}", Found: "${text}"`);
+            console.error(`[Wizard] Review step HTML: ${html}`);
+            throw e;
+        }
     }
 
     async waitForStartReady(): Promise<Locator> {

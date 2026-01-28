@@ -31,7 +31,9 @@ import {
     AsyncDeckDefinitionRepository,
     AsyncDeckPositionRepository,
     AsyncWorkcellRepository,
-    AsyncDataOutputRepository
+    AsyncDataOutputRepository,
+    AsyncParameterRepository,
+    AsyncProtocolAssetRequirementRepository,
 } from '@core/db/async-repositories';
 
 @Injectable({ providedIn: 'root' })
@@ -160,6 +162,14 @@ export class SqliteService {
 
     public get functionCallLogs(): Observable<AsyncFunctionCallLogRepository> {
         return this.getAsyncRepositories().pipe(map(r => r.functionCallLogs));
+    }
+
+    public get parameters(): Observable<AsyncParameterRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.parameters));
+    }
+
+    public get assetRequirements(): Observable<AsyncProtocolAssetRequirementRepository> {
+        return this.getAsyncRepositories().pipe(map(r => r.assetRequirements));
     }
 
     // ============================================

@@ -8,8 +8,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
+import { Subject, takeUntil } from 'rxjs';
 
 import { RunHistoryService } from '../services/run-history.service';
 import { RunDetail } from '../models/monitor.models';
@@ -37,6 +38,7 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
     MatChipsModule,
     MatDividerModule,
     MatTabsModule,
+    MatSnackBarModule,
     NgxSkeletonLoaderModule,
     StateInspectorComponent,
     StateHistoryTimelineComponent,
@@ -59,7 +61,7 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
               Run Details
             }
           </h1>
-          <p class="text-sys-text-secondary">{{ runId }}</p>
+          <p class="text-sys-text-secondary">{{ runId() }}</p>
         </div>
       </div>
 
@@ -124,7 +126,7 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
                   <mat-icon [class]="runHistoryService.getStatusColor(run()!.status)" class="!w-5 !h-5 !text-[20px]">
                     {{ runHistoryService.getStatusIcon(run()!.status) }}
                   </mat-icon>
-                  <span class="font-semibold">{{ run()!.status }}</span>
+                  <span class="font-semibold" data-testid="run-status">{{ run()!.status }}</span>
                 </div>
               </div>
               <mat-divider></mat-divider>
@@ -158,7 +160,7 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
               @if (run()!.input_parameters_json && hasKeys(run()!.input_parameters_json)) {
                 <div class="mt-4">
                   <h3 class="font-semibold text-sys-text-primary mb-2">Input Parameters</h3>
-                  <app-parameter-viewer [parameters]="run()!.input_parameters_json" />
+                  <app-parameter-viewer [parameters]="run()!.input_parameters_json" data-testid="parameter-viewer" />
                 </div>
               }
             </mat-card-content>
@@ -272,7 +274,7 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
               <mat-card-title>Execution Logs</mat-card-title>
             </mat-card-header>
             <mat-card-content class="pt-4">
-              <div class="bg-[#1e1e1e] text-green-400 p-4 rounded-lg font-mono text-sm max-h-96 overflow-y-auto">
+              <div class="bg-[#1e1e1e] text-green-400 p-4 rounded-lg font-mono text-sm max-h-96 overflow-y-auto" data-testid="execution-logs">
                 @for (log of run()!.logs; track $index) {
                   <div class="log-line">{{ log }}</div>
                 }
@@ -394,6 +396,7 @@ export class RunDetailComponent implements OnInit, OnDestroy {
 
   isCancelling = signal(false);
   isToggling = signal(false);
+  private destroy$ = new Subject<void>();
 
   readonly isLive = computed(() => {
     const r = this.run();
@@ -438,13 +441,27 @@ export class RunDetailComponent implements OnInit, OnDestroy {
     ];
   });
 
-  runId = '';
+  runId = signal(''); // Changed runId to a signal
 
   ngOnInit(): void {
-    this.runId = this.route.snapshot.paramMap.get('id') || '';
-    if (this.runId) {
+    const runId = this.route.snapshot.paramMap.get('id');
+    if (runId) {
+      this.runId.set(runId);
       this.loadRunDetail();
-      this.loadStateHistory();
+      this.loadStateHistory(); // Kept loadStateHistory
+      this.executionService.connectWebSocket(runId);
+
+      // Subscribe to real-time errors
+      this.executionService.errors$
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(err => {
+          this.snackBar.open(`Connection Error: ${err.message}`, 'Retry', {
+            duration: 5000,
+            panelClass: ['snackbar-error']
+          }).onAction().subscribe(() => {
+            window.location.reload();
+          });
+        });
     } else {
       this.isLoading.set(false);
     }
@@ -452,16 +469,18 @@ export class RunDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.executionService.disconnect();
+    this.destroy$.next(); // Added destroy$.next()
+    this.destroy$.complete(); // Added destroy$.complete()
   }
 
   loadRunDetail(): void {
     this.isLoading.set(true);
-    this.runHistoryService.getRunDetail(this.runId).subscribe({
+    this.runHistoryService.getRunDetail(this.runId()).subscribe({ // Updated to use runId()
       next: (detail) => {
         this.run.set(detail);
         this.isLoading.set(false);
         if (this.isLive()) {
-          this.executionService.connectWebSocket(this.runId);
+          this.executionService.connectWebSocket(this.runId());
         }
       },
       error: (err) => {
@@ -504,7 +523,7 @@ export class RunDetailComponent implements OnInit, OnDestroy {
 
   loadStateHistory(): void {
     this.isLoadingStateHistory.set(true);
-    this.simulationService.getStateHistory(this.runId).subscribe({
+    this.simulationService.getStateHistory(this.runId()).subscribe({
       next: (history) => {
         this.stateHistory.set(history);
         this.isLoadingStateHistory.set(false);
@@ -522,9 +541,9 @@ export class RunDetailComponent implements OnInit, OnDestroy {
 
   cancelRun() {
     this.isCancelling.set(true);
-    this.executionService.cancel(this.runId).subscribe({
+    this.executionService.cancel(this.runId()).subscribe({
       next: () => this.snackBar.open('Run cancelled', 'Close', { duration: 3000 }),
-      error: (err) => this.snackBar.open('Failed to cancel: ' + err.message, 'Close'),
+      error: (err: Error) => this.snackBar.open('Failed to cancel: ' + err.message, 'Close'),
       complete: () => this.isCancelling.set(false)
     });
   }
@@ -532,9 +551,9 @@ export class RunDetailComponent implements OnInit, OnDestroy {
   togglePause() {
     this.isToggling.set(true);
     const action = this.run()?.status === 'PAUSED' ? 'resume' : 'pause';
-    this.executionService[action](this.runId).subscribe({
-      next: () => {},
-      error: (err) => this.snackBar.open('Failed to ' + action + ': ' + err.message, 'Close'),
+    this.executionService[action](this.runId()).subscribe({
+      next: () => { },
+      error: (err: Error) => this.snackBar.open('Failed to ' + action + ': ' + err.message, 'Close'),
       complete: () => this.isToggling.set(false)
     });
   }

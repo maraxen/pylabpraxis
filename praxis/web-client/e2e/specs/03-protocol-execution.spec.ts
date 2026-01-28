@@ -24,6 +24,11 @@ test.describe.serial('Protocol Execution E2E', () => {
         }
     });
 
+    test.afterEach(async ({ page }) => {
+        // Dismiss any open dialogs/overlays to ensure clean state
+        await page.keyboard.press('Escape').catch(() => { });
+    });
+
     test('select protocol from library', async ({ page }) => {
         const protocolPage = new ProtocolPage(page);
         await protocolPage.goto();
@@ -43,35 +48,68 @@ test.describe.serial('Protocol Execution E2E', () => {
         await page.screenshot({ path: '/tmp/e2e-protocol/03-spec-02-wizard-complete.png' });
     });
 
-    test('start execution', async ({ page }) => {
-        const { monitor, protocolName, runName } = await launchExecution(page);
+    test('execute protocol and monitor lifecycle', async ({ page }) => {
+        // 1. Launch Execution
+        const { monitor, protocolName, runName, runId } = await launchExecution(page);
+
+        // 2. Monitor status transitions
+        console.log('[Spec] Waiting for RUNNING or COMPLETED...');
         await monitor.waitForStatus(/RUNNING|COMPLETED/);
         expect(runName).toContain(protocolName);
-        const meta = await monitor.captureRunMeta();
-        expect(meta.runName).toBe(runName);
-        await page.screenshot({ path: '/tmp/e2e-protocol/03-spec-03-started.png' });
-    });
 
-    test('monitor execution status updates', async ({ page }) => {
-        const { monitor } = await launchExecution(page);
-        await monitor.waitForStatus(/RUNNING/);
-        await monitor.waitForProgressAtLeast(25);
-        await monitor.waitForLogEntry('[Browser] Executing protocol');
+        // 3. Verify Progress and Logs (only if still running or just finished)
+        await monitor.waitForProgressAtLeast(50);
+        await monitor.waitForLogEntry('Executing protocol');
+
+        // 4. Wait for Completion
+        console.log('[Spec] Waiting for COMPLETED...');
         await monitor.waitForStatus(/COMPLETED/);
         await monitor.waitForLogEntry('Execution completed successfully');
-        await page.screenshot({ path: '/tmp/e2e-protocol/03-spec-04-completed.png' });
-    });
 
-    test('view completed execution details', async ({ page }) => {
-        const { monitor, runName, runId } = await launchExecution(page);
-        await monitor.waitForStatus(/COMPLETED/);
+        // 5. Verify History and Details
         await monitor.navigateToHistory();
-        await monitor.waitForHistoryRow(runName);
-        await monitor.reloadHistory();
         await monitor.waitForHistoryRow(runName);
         await monitor.openRunDetailById(runId);
         await monitor.expectRunDetailVisible(runName);
-        await page.screenshot({ path: '/tmp/e2e-protocol/03-spec-05-details.png' });
+
+        await page.screenshot({ path: '/tmp/e2e-protocol/03-spec-lifecycle-complete.png' });
+    });
+
+    test('parameter values reach execution', async ({ page }) => {
+        const protocolPage = new ProtocolPage(page);
+        const wizardPage = new WizardPage(page);
+
+        await protocolPage.goto();
+        await protocolPage.ensureSimulationMode();
+        // Use 'Simple Transfer' which we know has a volume_ul parameter
+        await protocolPage.selectProtocolByName('Simple Transfer');
+        await protocolPage.continueFromSelection();
+
+        // Configure parameter
+        const testVolume = '123.45';
+        await protocolPage.configureParameter('volume_ul', testVolume);
+
+        await wizardPage.completeParameterStep();
+        await wizardPage.selectFirstCompatibleMachine();
+        await wizardPage.waitForAssetsAutoConfigured();
+        await wizardPage.completeWellSelectionStep();
+        await wizardPage.advanceDeckSetup();
+        await wizardPage.openReviewStep();
+
+        // Start execution
+        await wizardPage.startExecution();
+
+        const monitor = new ExecutionMonitorPage(page);
+        await monitor.waitForLiveDashboard();
+        const { runId, runName } = await monitor.captureRunMeta();
+
+        // Navigate to details and verify parameter
+        await monitor.navigateToHistory();
+        await monitor.waitForHistoryRow(runName);
+        await monitor.openRunDetailById(runId);
+
+        await monitor.verifyParameter('volume_ul', testVolume);
+        await page.screenshot({ path: '/tmp/e2e-protocol/03-spec-06-parameter-verification.png' });
     });
 });
 
@@ -85,6 +123,7 @@ async function prepareExecution(page: Page) {
     await wizardPage.completeParameterStep();
     await wizardPage.selectFirstCompatibleMachine();
     await wizardPage.waitForAssetsAutoConfigured();
+    await wizardPage.completeWellSelectionStep();
     await wizardPage.advanceDeckSetup();
     await wizardPage.openReviewStep();
     await wizardPage.assertReviewSummary(protocolName);

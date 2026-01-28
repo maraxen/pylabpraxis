@@ -40,7 +40,8 @@ export class ProtocolPage extends BasePage {
     }
 
     async selectProtocolByName(name: string): Promise<string> {
-        const card = this.protocolCards.filter({ hasText: name }).first();
+        const cardHost = this.protocolCards.filter({ hasText: name }).first();
+        const card = cardHost.locator('.praxis-card');
         await expect(card, `Protocol card for ${name} should be visible`).toBeVisible({ timeout: 15000 });
         await this.dismissOverlays();
         await card.click();
@@ -49,11 +50,11 @@ export class ProtocolPage extends BasePage {
     }
 
     async selectFirstProtocol(): Promise<string> {
-        const firstCard = this.protocolCards.first();
+        const firstCardHost = this.protocolCards.first();
+        const firstCard = firstCardHost.locator('.praxis-card');
         await firstCard.waitFor({ state: 'visible' });
-        const name = (await firstCard.locator('mat-card-title').textContent())?.trim() || 'Protocol';
+        const name = (await firstCardHost.locator('h3.card-title').textContent())?.trim() || 'Protocol';
         await this.dismissOverlays();
-        await firstCard.click({ trial: true }).catch(() => undefined);
         await firstCard.click({ force: true });
         await this.assertProtocolSelected(name);
         return name;
@@ -76,11 +77,33 @@ export class ProtocolPage extends BasePage {
 
     async configureParameter(name: string, value: string) {
         // Assuming we are on the parameters step
-        const paramInput = this.page.getByLabel(name).or(this.page.locator(`input[name="${name}"]`)).first();
-        if (await paramInput.isVisible()) {
+        const label = name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const paramInput = this.page.getByLabel(label, { exact: false })
+            .or(this.page.getByLabel(name, { exact: false }))
+            .or(this.page.locator(`input[name="${name}"]`))
+            .first();
+
+        if (await paramInput.isVisible({ timeout: 5000 }).catch(() => false)) {
             await paramInput.fill(value);
         } else {
-            console.log(`Parameter ${name} not found or not visible, skipping.`);
+            console.log(`Parameter ${name} (Label: ${label}) not found or not visible.`);
+
+            // Debug: List all labels and headers
+            const labels = await this.page.locator('mat-label').allTextContents();
+            const headers = await this.page.locator('h3').allTextContents();
+            const emptyState = await this.page.locator('.empty-state').isVisible();
+            console.log(`[Debug] Visible labels: ${labels.join(', ') || 'NONE'}`);
+            console.log(`[Debug] Visible headers: ${headers.join(', ') || 'NONE'}`);
+            console.log(`[Debug] Empty state visible: ${emptyState}`);
+
+            // Fallback: try to find any input in a form-field that has the label text nearby
+            const fallback = this.page.locator('mat-form-field').filter({ hasText: new RegExp(label, 'i') }).locator('input').first();
+            if (await fallback.isVisible({ timeout: 2000 }).catch(() => false)) {
+                console.log(`[Debug] Found fallback for ${label}`);
+                await fallback.fill(value);
+            } else {
+                console.log(`[Debug] Fallback also failed for ${label}`);
+            }
         }
     }
 

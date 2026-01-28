@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+test.afterEach(async ({ page }) => {
+    // Dismiss any open dialogs/overlays to ensure clean state
+    await page.keyboard.press('Escape').catch(() => { });
+});
+
 test('should handle pause, confirm, and input interactions', async ({ page }) => {
     test.setTimeout(120000);
     page.on('console', msg => console.log(`BROWSER LOG: ${msg.text()}`));

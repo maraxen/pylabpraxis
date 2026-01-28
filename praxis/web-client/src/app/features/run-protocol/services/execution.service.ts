@@ -110,10 +110,10 @@ export class ExecutionService {
   ): Observable<{ run_id: string }> {
     // AUDIT-01: Defense-in-depth validation
     if (!simulationMode && parameters) {
-      const hasSimulatedConfig = Object.values(parameters).some((val: any) => 
+      const hasSimulatedConfig = Object.values(parameters).some((val: any) =>
         val && typeof val === 'object' && val.is_simulated === true
       );
-      
+
       if (hasSimulatedConfig) {
         return throwError(() => new Error('Cannot start physical run with simulated machine configuration'));
       }
@@ -447,32 +447,25 @@ print(f"[Browser] Protocol finished with result: {result}")
   /**
    * Connect to WebSocket for real-time updates
    */
+  // Error stream for UI feedback
+  private _errors = new Subject<Error>();
+  errors$ = this._errors.asObservable();
+
   connectWebSocket(runId: string) {
     if (this.socket$) {
       this.socket$.complete();
+      this.socket$ = null;
     }
 
-    this.socket$ = webSocket<ExecutionMessage>({
-      url: `${this.WS_URL}/execution/${runId}`,
-      openObserver: {
-        next: () => {
-          console.log('WebSocket connected for run:', runId);
-          this._isConnected.set(true);
-        }
-      },
-      closeObserver: {
-        next: () => {
-          console.log('WebSocket disconnected');
-          this._isConnected.set(false);
-        }
-      }
-    });
+    this.socket$ = webSocket(`${this.WS_URL}/ws/runs/${runId}`);
+    this._isConnected.set(true);
 
     this.socket$.pipe(
       retry({ delay: 3000, count: 3 }),
       catchError(error => {
         console.error('WebSocket error:', error);
         this._isConnected.set(false);
+        this._errors.next(error);
         return of();
       })
     ).subscribe({
@@ -480,6 +473,7 @@ print(f"[Browser] Protocol finished with result: {result}")
       error: (err) => console.error('WebSocket subscription error:', err)
     });
   }
+
 
   /**
    * Handle incoming WebSocket messages

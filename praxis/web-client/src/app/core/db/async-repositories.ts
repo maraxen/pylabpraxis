@@ -1,11 +1,4 @@
-/**
- * Async Entity-specific Repository Implementations
- *
- * Provides specialized repositories for key entities using the SqliteAsyncRepository base.
- * All methods return Observables.
- */
-
-import { Observable, map, switchMap } from 'rxjs';
+import { Observable, map, switchMap, forkJoin, of } from 'rxjs';
 import { SqliteOpfsService } from '@core/services/sqlite';
 import { SqliteAsyncRepository, type QueryOptions } from './sqlite-async-repository';
 import { BaseEntity } from './base-sqlite-repository';
@@ -24,6 +17,8 @@ import type {
     DeckPositionDefinition,
     Workcell,
     FunctionDataOutput,
+    ParameterDefinition,
+    ProtocolAssetRequirement,
 } from './schema';
 import type { ProtocolRunStatus, MachineStatus, ResourceStatus } from './enums';
 import type { ProtocolDefinition, SimulationResult } from '@features/protocols/models/protocol.models';
@@ -147,19 +142,68 @@ function mapProtocolEntity(row: any): ProtocolDefinition {
 }
 
 /**
- * Repository for Protocol Definitions
+ * Repository for Parameter Definitions
  */
-export class AsyncProtocolDefinitionRepository extends SqliteAsyncRepository<WithIndex<FunctionProtocolDefinition>> {
+export class AsyncParameterRepository extends SqliteAsyncRepository<WithIndex<ParameterDefinition>> {
     constructor(opfs: SqliteOpfsService) {
-        super(opfs, 'function_protocol_definitions', 'accession_id');
+        super(opfs, 'parameter_definitions', 'accession_id');
     }
 
     /**
-     * Find top-level (executable) protocols
+     * Find parameters for a specific protocol definition
+     */
+    findByProtocolDefinition(protocolDefinitionId: string): Observable<ParameterDefinition[]> {
+        return this.findBy(
+            { protocol_definition_accession_id: protocolDefinitionId } as Partial<ParameterDefinition>,
+            { orderBy: { column: 'name', direction: 'ASC' } }
+        );
+    }
+}
+
+/**
+ * Repository for Protocol Asset Requirements
+ */
+export class AsyncProtocolAssetRequirementRepository extends SqliteAsyncRepository<WithIndex<ProtocolAssetRequirement>> {
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'protocol_asset_requirements', 'accession_id');
+    }
+
+    /**
+     * Find asset requirements for a specific protocol definition
+     */
+    findByProtocolDefinition(protocolDefinitionId: string): Observable<ProtocolAssetRequirement[]> {
+        return this.findBy(
+            { protocol_definition_accession_id: protocolDefinitionId } as Partial<ProtocolAssetRequirement>,
+            { orderBy: { column: 'name', direction: 'ASC' } }
+        );
+    }
+}
+
+/**
+ * Repository for Protocol Definitions
+ */
+export class AsyncProtocolDefinitionRepository extends SqliteAsyncRepository<WithIndex<FunctionProtocolDefinition>> {
+    private parameterRepo: AsyncParameterRepository;
+    private assetRequirementRepo: AsyncProtocolAssetRequirementRepository;
+
+    constructor(opfs: SqliteOpfsService) {
+        super(opfs, 'function_protocol_definitions', 'accession_id');
+        this.parameterRepo = new AsyncParameterRepository(opfs);
+        this.assetRequirementRepo = new AsyncProtocolAssetRequirementRepository(opfs);
+    }
+
+    /**
+     * Find top-level (executable) protocols with associations
      */
     findTopLevel(): Observable<ProtocolDefinition[]> {
         return this.findBy({ is_top_level: true } as Partial<FunctionProtocolDefinition>).pipe(
-            map(rows => rows.map(mapProtocolEntity))
+            switchMap(rows => {
+                if (rows.length === 0) return of([]);
+                // For list view, we usually just want the basic data, 
+                // but the wizards expect parameters. 
+                // To keep it simple and correct, we'll fetch for all in this list.
+                return forkJoin(rows.map(row => this.fetchAssociations(row)));
+            })
         );
     }
 
@@ -168,7 +212,10 @@ export class AsyncProtocolDefinitionRepository extends SqliteAsyncRepository<Wit
      */
     findByCategory(category: string): Observable<ProtocolDefinition[]> {
         return this.findBy({ category } as Partial<FunctionProtocolDefinition>).pipe(
-            map(rows => rows.map(mapProtocolEntity))
+            switchMap(rows => {
+                if (rows.length === 0) return of([]);
+                return forkJoin(rows.map(row => this.fetchAssociations(row)));
+            })
         );
     }
 
@@ -177,7 +224,10 @@ export class AsyncProtocolDefinitionRepository extends SqliteAsyncRepository<Wit
      */
     findActive(): Observable<ProtocolDefinition[]> {
         return this.findBy({ deprecated: false } as Partial<FunctionProtocolDefinition>).pipe(
-            map(rows => rows.map(mapProtocolEntity))
+            switchMap(rows => {
+                if (rows.length === 0) return of([]);
+                return forkJoin(rows.map(row => this.fetchAssociations(row)));
+            })
         );
     }
 
@@ -192,20 +242,94 @@ export class AsyncProtocolDefinitionRepository extends SqliteAsyncRepository<Wit
         `;
         const pattern = `%${query}%`;
         return this.executeQuery(sql, [pattern, pattern, pattern]).pipe(
-            map(rows => rows.map(mapProtocolEntity))
+            switchMap(rows => {
+                if (rows.length === 0) return of([]);
+                return forkJoin(rows.map(row => this.fetchAssociations(row)));
+            })
         );
     }
 
     override findAll(options?: QueryOptions<WithIndex<FunctionProtocolDefinition>>): Observable<WithIndex<FunctionProtocolDefinition>[]> {
-        return super.findAll(options).pipe(
-            map(rows => rows.map(mapProtocolEntity) as unknown as WithIndex<FunctionProtocolDefinition>[])
+        return (super.findAll(options) as any).pipe(
+            switchMap((rows: any[]) => {
+                if (rows.length === 0) return of([]);
+                return forkJoin(rows.map(row => this.fetchAssociations(row)));
+            })
         );
     }
 
     override findById(id: string): Observable<WithIndex<FunctionProtocolDefinition> | null> {
-        return super.findById(id).pipe(
-            map(row => row ? (mapProtocolEntity(row) as unknown as WithIndex<FunctionProtocolDefinition>) : null)
+        return (super.findById(id) as any).pipe(
+            switchMap((row: any) => {
+                if (!row) return of(null);
+                return this.fetchAssociations(row);
+            })
         );
+    }
+
+    /**
+     * Fetches parameters and assets for a protocol row and maps it to a domain object
+     */
+    private fetchAssociations(row: any): Observable<ProtocolDefinition> {
+        const id = row.accession_id;
+        console.log(`[AsyncProtocolDefinitionRepository] Fetching associations for protocol: ${row.name} (${id})`);
+        return forkJoin({
+            parameters: this.parameterRepo.findByProtocolDefinition(id),
+            assets: this.assetRequirementRepo.findByProtocolDefinition(id)
+        }).pipe(
+            map(({ parameters, assets }) => {
+                console.log(`[AsyncProtocolDefinitionRepository] Protocol ${row.name}: Found ${parameters.length} parameters, ${assets.length} assets`);
+                const protocol = mapProtocolEntity(row);
+                return {
+                    ...protocol,
+                    parameters: parameters.map(p => this.mapParameter(p)),
+                    assets: assets.map(a => this.mapAssetRequirement(a))
+                };
+            })
+        );
+    }
+
+    private mapParameter(p: any): any {
+        console.log(`[AsyncProtocolDefinitionRepository] Mapping parameter: ${p.name}`);
+        let constraints = {};
+        if (p.constraints_json) {
+            constraints = typeof p.constraints_json === 'string' ? JSON.parse(p.constraints_json) : p.constraints_json;
+        }
+
+        let itemizedSpec = undefined;
+        if (p.itemized_spec_json) {
+            itemizedSpec = typeof p.itemized_spec_json === 'string' ? JSON.parse(p.itemized_spec_json) : p.itemized_spec_json;
+        }
+
+        let uiHint = undefined;
+        if (p.ui_hint_json) {
+            uiHint = typeof p.ui_hint_json === 'string' ? JSON.parse(p.ui_hint_json) : p.ui_hint_json;
+        }
+
+        return {
+            ...p,
+            constraints,
+            itemized_spec: itemizedSpec,
+            ui_hint: uiHint
+        };
+    }
+
+    private mapAssetRequirement(a: any): any {
+        let constraints = {};
+        if (a.constraints_json) {
+            constraints = typeof a.constraints_json === 'string' ? JSON.parse(a.constraints_json) : a.constraints_json;
+        }
+
+        let locationConstraints = {};
+        if (a.location_constraints_json) {
+            locationConstraints = typeof a.location_constraints_json === 'string' ? JSON.parse(a.location_constraints_json) : a.location_constraints_json;
+        }
+
+        return {
+            ...a,
+            constraints,
+            location_constraints: locationConstraints
+        };
     }
 }
 
@@ -545,7 +669,7 @@ export class AsyncResourceDefinitionRepository extends SqliteAsyncRepository<Wit
      * Find by PLR category
      */
     findByPlrCategory(category: string): Observable<ResourceDefinitionCatalog[]> {
-        return this.findBy({ plr_category: category } as Partial<ResourceDefinitionCatalog>);
+        return this.rawQuery(`SELECT * FROM ${this.tableName} WHERE LOWER(plr_category) = LOWER(?)`, [category]);
     }
 
     /**
@@ -684,6 +808,8 @@ export interface AsyncRepositories {
     deckPositions: AsyncDeckPositionRepository;
     workcells: AsyncWorkcellRepository;
     dataOutputs: AsyncDataOutputRepository;
+    parameters: AsyncParameterRepository;
+    assetRequirements: AsyncProtocolAssetRequirementRepository;
 }
 
 /**
@@ -705,5 +831,7 @@ export function createAsyncRepositories(opfs: SqliteOpfsService): AsyncRepositor
         deckPositions: new AsyncDeckPositionRepository(opfs),
         workcells: new AsyncWorkcellRepository(opfs),
         dataOutputs: new AsyncDataOutputRepository(opfs),
+        parameters: new AsyncParameterRepository(opfs),
+        assetRequirements: new AsyncProtocolAssetRequirementRepository(opfs),
     };
 }

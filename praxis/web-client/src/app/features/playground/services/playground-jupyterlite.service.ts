@@ -88,6 +88,38 @@ export class PlaygroundJupyterliteService {
     }
   }
 
+  private getIsDarkMode(): boolean {
+    return document.body.classList.contains('dark-theme');
+  }
+
+  public getMinimalBootstrap(): string {
+    return `
+import js
+from pyodide.ffi import to_js
+
+def _boot_handler(event):
+    data = event.data
+    if hasattr(data, "to_py"):
+        data = data.to_py()
+    if isinstance(data, dict) and data.get("type") == "praxis:bootstrap":
+        print("PRAXIS: Receiving full bootstrap...")
+        try:
+            exec(data.get("code"), globals())
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"PRAXIS: Bootstrap failed: {e}")
+
+if hasattr(js, "BroadcastChannel"):
+    _boot_channel = js.BroadcastChannel.new("praxis_repl")
+    _boot_channel.onmessage = _boot_handler
+    _boot_channel.postMessage(to_js({"type": "praxis:boot_ready"}, dict_converter=js.Object.fromEntries))
+    print("PRAXIS: Minimal bootstrap ready, waiting for payload...")
+else:
+    print("PRAXIS: Critical - BroadcastChannel missing")
+`.trim();
+  }
+
   private async buildJupyterliteUrl(): Promise<void> {
     if (this.loadingTimeout) {
       clearTimeout(this.loadingTimeout);
@@ -100,7 +132,9 @@ export class PlaygroundJupyterliteService {
     const isDark = this.getIsDarkMode();
     this.currentTheme = isDark ? 'dark' : 'light';
 
-    const bootstrapCode = await this.getOptimizedBootstrap();
+    // AUDIT-07: Use minimal bootstrap to avoid URL length limits
+    // The full bootstrap will be injected via BroadcastChannel
+    const bootstrapCode = this.getMinimalBootstrap();
 
     console.log('[REPL] Building JupyterLite URL. Calculated isDark:', isDark, 'Effective Theme Class:', this.currentTheme);
 
@@ -136,12 +170,7 @@ export class PlaygroundJupyterliteService {
       await this.buildJupyterliteUrl();
     }
   }
-
-  private getIsDarkMode(): boolean {
-    return document.body.classList.contains('dark-theme');
-  }
-
-  private async getOptimizedBootstrap(): Promise<string> {
+  public async getOptimizedBootstrap(): Promise<string> {
     const shims = ['web_serial_shim.py', 'web_usb_shim.py', 'web_ftdi_shim.py'];
     const hostRoot = this.calculateHostRoot();
 

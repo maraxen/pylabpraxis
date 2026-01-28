@@ -34,27 +34,63 @@ export class PythonRuntimeService implements ReplRuntime {
 
   isReady = signal(false);
 
+  // AUDIT-06: Status signaling for UI recovery
+  status = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  lastError = signal<string | null>(null);
+
   constructor() {
+    this.initWorker();
+  }
+
+  restartWorker() {
+    if (this.worker) {
+      this.worker.terminate();
+      this.worker = null;
+    }
+    this.isReady.set(false);
+    this.status.set('idle');
+    this.lastError.set(null);
     this.initWorker();
   }
 
   private initWorker() {
     if (typeof Worker !== 'undefined') {
-      this.worker = new Worker(new URL('../workers/python.worker', import.meta.url), {
-        type: 'module'
-      });
+      this.status.set('loading');
 
-      this.worker.onmessage = ({ data }: { data: WorkerResponse }) => {
-        this.handleMessage(data);
-      };
+      try {
+        this.worker = new Worker(new URL('../workers/python.worker', import.meta.url), {
+          type: 'module'
+        });
 
-      this.sendMessage('INIT').then(() => {
-        this.isReady.set(true);
-      }).catch(err => {
-        console.error('[PythonRuntime] Failed to initialize Pyodide:', err);
-      });
+        this.worker.onmessage = ({ data }: { data: WorkerResponse }) => {
+          this.handleMessage(data);
+        };
+
+        // Listen for worker errors (loading/parsing errors)
+        this.worker.onerror = (evt) => {
+          console.error('[PythonRuntime] Worker error:', evt);
+          this.status.set('error');
+          this.lastError.set(evt.message);
+        };
+
+        this.sendMessage('INIT').then(() => {
+          this.isReady.set(true);
+          this.status.set('ready');
+          console.log('[PythonRuntime] Pyodide ready');
+        }).catch(err => {
+          console.error('[PythonRuntime] Failed to initialize Pyodide:', err);
+          this.status.set('error');
+          this.lastError.set(String(err));
+        });
+      } catch (err: any) {
+        console.error('[PythonRuntime] Failed to create worker:', err);
+        this.status.set('error');
+        this.lastError.set(err.message || String(err));
+      }
     } else {
       console.warn('Web Workers are not supported in this environment.');
+      this.status.set('error');
+      this.lastError.set('Web Workers not supported');
     }
   }
 

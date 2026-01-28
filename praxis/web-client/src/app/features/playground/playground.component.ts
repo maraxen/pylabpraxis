@@ -46,6 +46,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { DirectControlComponent } from './components/direct-control/direct-control.component';
 import { DirectControlKernelService } from './services/direct-control-kernel.service';
 import { JupyterChannelService } from './services/jupyter-channel.service';
+import { PlaygroundJupyterliteService } from './services/playground-jupyterlite.service';
 
 /**
  * Playground Component
@@ -529,6 +530,7 @@ import { JupyterChannelService } from './services/jupyter-channel.service';
 })
 export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('notebookFrame') notebookFrame!: ElementRef<HTMLIFrameElement>;
+  @ViewChild(DirectControlComponent) directControlComponent?: DirectControlComponent;
 
   private modeService = inject(ModeService);
   private store = inject(AppStore);
@@ -539,6 +541,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   private dialog = inject(MatDialog);
   private interactionService = inject(InteractionService);
   private jupyterChannel = inject(JupyterChannelService);
+  private jupyterliteService = inject(PlaygroundJupyterliteService);
 
   // Serial Manager for main-thread I/O (Phase B)
   private serialManager = inject(SerialManagerService);
@@ -622,17 +625,14 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
             this.loadingTimeout = undefined;
           }
           this.cdr.detectChanges();
+        } else if (msg.type === 'praxis:boot_ready') {
+          // AUDIT-07: Minimal bootstrap loaded, sending full payload
+          console.log('[REPL] Minimal bootstrap ready. Injecting full payload...');
+          this.sendBootstrapCode();
         } else if (msg.type === 'USER_INTERACTION') {
           console.log('[REPL] USER_INTERACTION received via BroadcastChannel:', msg['payload']);
           this.handleUserInteraction(msg['payload']);
         }
-      })
-    );
-
-    // Wait specifically for the first 'ready' signal to send bootstrap
-    this.subscription.add(
-      this.jupyterChannel.onReady$.pipe(first()).subscribe(() => {
-        this.sendBootstrapCode();
       })
     );
   }
@@ -642,16 +642,14 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
    */
   private async sendBootstrapCode() {
     try {
-      const response = await fetch(this.getBootstrapPath());
-      if (!response.ok) {
-        throw new Error(`Failed to fetch bootstrap.py: ${response.statusText}`);
-      }
-      const bootstrapCode = await response.text();
+      // AUDIT-07: Send full optimized bootstrap code via channel
+      const bootstrapCode = await this.jupyterliteService.getOptimizedBootstrap();
+
       this.jupyterChannel.sendMessage({
-        type: 'execute',
+        type: 'praxis:bootstrap',
         code: bootstrapCode,
       });
-      console.log('[REPL] Bootstrap code sent to kernel.');
+      console.log('[REPL] Full bootstrap code sent to kernel.');
     } catch (error) {
       console.error('[REPL] Error sending bootstrap code:', error);
       this.snackBar.open('Failed to initialize Python environment.', 'Retry', {
@@ -829,7 +827,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
         this.isLoading.set(false);
         this.cdr.detectChanges();
       }
-    }, 30000); // 30 second fallback (was 15s, but Pyodide needs more time)
+    }, 60000); // 60 second fallback (was 30s, but Pyodide needs more time)
 
     this.cdr.detectChanges();
   }
@@ -1096,11 +1094,21 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
    * Handle executeCommand from DirectControlComponent
    * Uses a dedicated Pyodide kernel that persists across tab switches
    */
-  async onExecuteCommand(event: { machineName: string, methodName: string, args: Record<string, unknown> }) {
-    const { methodName, args } = event;
 
-    const asset = this.selectedMachine();
-    if (!asset) return;
+
+  async onExecuteCommand(event: { machineName: string, methodName: string, args: Record<string, unknown> }) {
+    const { machineName, methodName, args } = event;
+    console.log(`[DirectControl] Executing ${methodName} on ${machineName}`, args);
+
+    // Find machine asset
+    const machines = this.availableMachines();
+    const asset = machines.find(m => m.name === machineName);
+    if (!asset) {
+      const err = `Machine ${machineName} not found`;
+      this.snackBar.open(err, 'OK');
+      this.directControlComponent?.handleCommandError(err);
+      return;
+    }
 
     const varName = this.assetToVarName(asset);
     const machineId = asset.accession_id;
@@ -1131,11 +1139,17 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
       if (output.trim()) {
         console.log('[DirectControl] Output:', output);
         this.snackBar.open(output.split('\n')[0].substring(0, 80), 'OK', { duration: 5000 });
+        // AUDIT-09: Pass valid result to DirectControl
+        this.directControlComponent?.handleCommandResult(output);
+      } else {
+        this.directControlComponent?.handleCommandResult("Command completed (no output)");
       }
     } catch (e) {
       console.error('[DirectControl] Command failed:', e);
       const errorMsg = e instanceof Error ? e.message : String(e);
       this.snackBar.open(`Error: ${errorMsg.substring(0, 80)}`, 'Dismiss', { duration: 5000 });
+      // AUDIT-09: Pass error to DirectControl
+      this.directControlComponent?.handleCommandError(errorMsg);
     }
   }
 }

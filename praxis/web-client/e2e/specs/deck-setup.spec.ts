@@ -28,6 +28,11 @@ test.describe('E2E Deck Setup', () => {
         }
     });
 
+    test.afterEach(async ({ page }) => {
+        // Dismiss any open dialogs/overlays to ensure clean state
+        await page.keyboard.press('Escape').catch(() => { });
+    });
+
     test('should navigate to deck setup and capture screenshots', async ({ page }) => {
         // Navigate to Run Protocol
         await page.goto('/app/run');

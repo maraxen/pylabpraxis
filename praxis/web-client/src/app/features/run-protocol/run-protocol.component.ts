@@ -601,9 +601,11 @@ interface FilterCategory {
       display: flex !important;
       flex-direction: column !important;
       min-height: 0 !important;
-      /* Ensure overflow is hidden on the container so inner scrollable div takes over */
-      overflow: hidden !important;
+      flex: 1 1 auto !important;
+      /* Ensure overflow is visible for the active step so Playwright can see it */
+      overflow: visible !important;
       visibility: visible !important;
+      opacity: 1 !important;
     }
 
     /* Inactive Step Content: Hide everything else */
@@ -1031,6 +1033,13 @@ export class RunProtocolComponent implements OnInit {
 
     // Always load compatibility to show templates or machines
     this.loadCompatibility(protocol.accession_id);
+
+    // Sync to URL
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { protocolId: protocol.accession_id },
+      queryParamsHandling: 'merge'
+    });
   }
 
   loadCompatibility(protocolId: string) {
@@ -1079,8 +1088,9 @@ export class RunProtocolComponent implements OnInit {
           console.log('[RunProtocol] Debug Machine Filtering:', {
             protocolName: protocol.name,
             requiresDeck: protocol.requires_deck,
-            assets: protocol.assets,
-            allCompatLength: allCompat.length
+            assets: protocol.assets?.map(a => ({ name: a.name, cat: a.required_plr_category, hint: a.type_hint_str })),
+            allCompatLength: allCompat.length,
+            allCompatNames: allCompat.map(c => c.machine.name)
           });
 
           // Identify required machine categories from assets
@@ -1277,6 +1287,16 @@ export class RunProtocolComponent implements OnInit {
   }
 
   clearProtocol() {
+    // Audit-fix: prevent accidental clearing if wizard successfully advanced
+    // Use optional chaining. If stepper is not yet ready but we have a selection, 
+    // treat it as "deep in wizard" to prevent clearing during initialization races.
+    const stepperIndex = this.stepper ? this.stepper.selectedIndex : (this.selectedProtocol() ? 1 : 0);
+
+    if (stepperIndex > 0) {
+      console.warn('[RunProtocol] clearProtocol called while deep in wizard (step > 0). Ignoring to prevent state loss.');
+      return;
+    }
+
     this.selectedProtocol.set(null);
     this.selectedMachine.set(null);
     this.compatibilityData.set([]);

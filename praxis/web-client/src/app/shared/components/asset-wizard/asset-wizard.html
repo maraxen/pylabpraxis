@@ -12,6 +12,7 @@
             <!-- Machine Type Card -->
             <div class="praxis-card premium type-card group"
               [class.selected]="typeStepFormGroup.get('assetType')?.value === 'MACHINE'"
+              data-testid="type-card-machine"
               (click)="typeStepFormGroup.get('assetType')?.setValue('MACHINE')">
               <div class="card-header">
                 <div class="flex items-center gap-3 w-full">
@@ -32,6 +33,7 @@
             <!-- Resource Type Card -->
             <div class="praxis-card premium type-card group"
               [class.selected]="typeStepFormGroup.get('assetType')?.value === 'RESOURCE'"
+              data-testid="type-card-resource"
               (click)="typeStepFormGroup.get('assetType')?.setValue('RESOURCE')">
               <div class="card-header">
                 <div class="flex items-center gap-3 w-full">
@@ -68,6 +70,7 @@
             <div class="category-grid">
               @for (cat of (categories$ | async); track cat) {
               <div class="category-card" [class.selected]="categoryStepFormGroup.get('category')?.value === cat"
+                [attr.data-testid]="'category-card-' + cat"
                 (click)="categoryStepFormGroup.get('category')?.setValue(cat)">
                 <mat-icon>{{ getCategoryIcon(cat) }}</mat-icon>
                 <span class="category-label">{{ cat }}</span>
@@ -142,6 +145,7 @@
             @for (frontend of (frontends$ | async); track frontend.accession_id) {
             <div class="praxis-card premium result-card group"
               [class.selected]="selectedFrontend?.accession_id === frontend.accession_id"
+              [attr.data-testid]="'frontend-card-' + frontend.accession_id"
               (click)="selectFrontend(frontend)">
               <div class="card-header">
                 <div class="flex items-center gap-3 w-full">
@@ -199,6 +203,7 @@
             @for (backend of (backends$ | async); track backend.accession_id) {
             <div class="praxis-card premium result-card group"
               [class.selected]="selectedBackend?.accession_id === backend.accession_id"
+              [attr.data-testid]="'backend-card-' + backend.accession_id"
               (click)="selectBackend(backend)">
               <div class="card-header">
                 <div class="flex items-center gap-3 w-full">
@@ -269,7 +274,9 @@
           <div class="results-grid">
             @for (def of results; track def.accession_id) {
             <div class="praxis-card premium result-card group"
-              [class.selected]="selectedDefinition?.accession_id === def.accession_id" (click)="selectDefinition(def)">
+              [class.selected]="selectedDefinition?.accession_id === def.accession_id"
+              [attr.data-testid]="'definition-card-' + def.accession_id"
+              (click)="selectDefinition(def)">
               <div class="card-header">
                 <div class="flex items-center gap-3 w-full">
                   <div class="card-icon-avatar bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-primary)]">
@@ -327,7 +334,7 @@
           <div class="form-grid">
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Instance Name</mat-label>
-              <input matInput formControlName="name" placeholder="e.g. Primary Hamilton, Plate Bench 1">
+              <input matInput formControlName="name" placeholder="e.g. Primary Hamilton, Plate Bench 1" data-testid="input-instance-name">
               <mat-icon matSuffix>badge</mat-icon>
               @if (configStepFormGroup.get('name')?.hasError('required')) {
               <mat-error>Name is required</mat-error>
@@ -420,7 +427,7 @@
       </div>
       <div class="step-actions">
         <button mat-button matStepperPrevious [disabled]="isLoading()">Back</button>
-        <button mat-flat-button color="primary" (click)="createAsset()" [disabled]="isLoading()">
+        <button mat-flat-button color="primary" (click)="createAsset()" [disabled]="isLoading()" data-testid="wizard-create-btn">
           {{ isLoading() ? 'Creating...' : 'Create Asset' }}
         </button>
       </div>

@@ -18,6 +18,7 @@ import { Observable, of, map, forkJoin } from 'rxjs';
 import { SqliteService } from '@core/services/sqlite';
 import { ProtocolRun, Machine, Resource } from '@core/db/schema';
 import { GlobalInjector } from '@core/utils/global-injector';
+import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 
 function getSqliteService(): SqliteService {
     return GlobalInjector.get(SqliteService);
@@ -48,7 +49,16 @@ export class BrowserMockRouter {
 
         // Protocol definitions - return list from SQLite
         if (url.includes('/protocols/definitions') && method === 'GET') {
-            return db.getProtocols() as Observable<T>;
+            return db.getProtocols().pipe(
+                map(protocols => {
+                    const domainProtocols = protocols as unknown as ProtocolDefinition[];
+                    console.log(`[BrowserMockRouter] Returning ${domainProtocols.length} protocols`);
+                    domainProtocols.forEach(p => {
+                        console.log(`[BrowserMockRouter] Protocol: ${p.name}, Parameters: ${p.parameters?.length || 0}`);
+                    });
+                    return domainProtocols;
+                })
+            ) as unknown as Observable<T>;
         }
 
         // Protocol run queue - return active/running runs
@@ -331,11 +341,29 @@ export class BrowserMockRouter {
 
         // Hardware connection
         if (url.includes('/hardware/connect') && method === 'POST') {
+            const devId = (body as { device_id?: string })?.device_id || 'unknown';
+            console.log(`[BrowserMockRouter] Mock connecting to hardware: ${devId}`);
             return of({
-                device_id: (body as { device_id?: string })?.device_id || 'unknown',
+                device_id: devId,
                 status: 'connected',
-                message: 'Connected successfully (browser mode)',
+                message: devId.includes('sim') ? 'Simulator connected' : 'Physical hardware mock connected',
                 connection_handle: `local-handle-${Date.now()}`,
+                capabilities: ['liquid_handling', 'plate_reading', 'shaking']
+            }) as Observable<T>;
+        }
+
+        // Hardware status
+        if (url.includes('/hardware/status') && method === 'GET') {
+            const devIdMatch = url.match(/\/hardware\/status\/([a-f0-9-]+)$/);
+            return of({
+                device_id: devIdMatch ? devIdMatch[1] : 'unknown',
+                status: 'ready',
+                uptime_seconds: 3600,
+                diagnostics: {
+                    temp: 24.5,
+                    voltages: [5.0, 12.0, 24.0],
+                    errors: []
+                }
             }) as Observable<T>;
         }
 

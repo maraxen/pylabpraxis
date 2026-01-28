@@ -48,27 +48,19 @@ export abstract class BasePage {
         const { timeout = 10000, dismissWithEscape = true } = options;
         const overlay = this.page.locator('.cdk-overlay-backdrop');
 
-        const startTime = Date.now();
-
-        while (await overlay.isVisible({ timeout: 500 }).catch(() => false)) {
-            const elapsed = Date.now() - startTime;
-
-            if (elapsed > timeout) {
-                if (dismissWithEscape) {
-                    console.log('[Base] Overlay persisted, attempting Escape key dismiss...');
-                    await this.page.keyboard.press('Escape');
-                    await this.page.waitForTimeout(500);
-
-                    if (await overlay.isVisible({ timeout: 500 }).catch(() => false)) {
-                        console.warn('[Base] Overlay still visible after Escape');
-                        break; // Give up but don't throw
-                    }
-                } else {
-                    break;
-                }
+        // Try to wait for overlay to disappear naturally
+        try {
+            await overlay.waitFor({ state: 'hidden', timeout });
+        } catch {
+            // Overlay didn't disappear in time
+            if (dismissWithEscape) {
+                console.log('[Base] Overlay persisted, attempting Escape key dismiss...');
+                await this.page.keyboard.press('Escape');
+                // Wait for overlay to hide after escape
+                await overlay.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {
+                    console.warn('[Base] Overlay still visible after Escape');
+                });
             }
-
-            await this.page.waitForTimeout(200); // Poll interval
         }
     }
 }

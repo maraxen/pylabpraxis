@@ -37,6 +37,11 @@ test.describe('Browser Mode Execution', () => {
         }
     });
 
+    test.afterEach(async ({ page }) => {
+        // Dismiss any open dialogs/overlays to ensure clean state
+        await page.keyboard.press('Escape').catch(() => { });
+    });
+
     test('should start protocol execution in browser mode', async ({ page }) => {
         // Navigate to Run Protocol page
         await page.goto('/app/run');

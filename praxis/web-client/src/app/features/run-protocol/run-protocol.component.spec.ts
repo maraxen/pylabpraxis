@@ -156,4 +156,38 @@ describe('RunProtocolComponent', () => {
             expect(component.showMachineError()).toBe(false);
         });
     });
+
+    describe('clearProtocol', () => {
+        it('should NOT clear protocol if stepper index > 0', () => {
+            const protocol = { accession_id: 'p1', name: 'Test' } as any;
+            component.selectedProtocol.set(protocol);
+            (component as any).stepper = { selectedIndex: 1 };
+
+            component.clearProtocol();
+
+            expect(component.selectedProtocol()).toBe(protocol);
+        });
+
+        it('should NOT clear protocol if stepper is undefined but protocol is already selected', () => {
+            // This guards against initialization race conditions
+            const protocol = { accession_id: 'p1', name: 'Test' } as any;
+            component.selectedProtocol.set(protocol);
+            (component as any).stepper = undefined;
+
+            component.clearProtocol();
+
+            // Guard treats undefined stepper + existing protocol as "deep in wizard"
+            expect(component.selectedProtocol()).toBe(protocol);
+        });
+
+        it('should allow clearing when no protocol selected and stepper at step 0', () => {
+            component.selectedProtocol.set(null);
+            (component as any).stepper = { selectedIndex: 0 };
+
+            component.clearProtocol();
+
+            // Clearing proceeds since no protocol was selected
+            expect(component.selectedProtocol()).toBeNull();
+        });
+    });
 });

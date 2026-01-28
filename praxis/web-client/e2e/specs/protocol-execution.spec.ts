@@ -27,6 +27,11 @@ test.describe('Protocol Wizard Flow', () => {
         }
     });
 
+    test.afterEach(async ({ page }) => {
+        // Dismiss any open dialogs/overlays to ensure clean state
+        await page.keyboard.press('Escape').catch(() => { });
+    });
+
     test('should display protocol library', async ({ page }) => {
         await protocolPage.navigateToProtocols();
         await expect(protocolPage.protocolCards.first()).toBeVisible();

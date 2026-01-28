@@ -17,6 +17,12 @@ let db: Database | null = null;
 let poolUtil: any = null;
 
 /**
+ * VFS requires absolute paths (leading /)
+ * This is an internal virtual path within the OPFS origin-private sandbox.
+ */
+const VFS_DB_NAME = '/praxis.db';
+
+/**
  * Handle incoming messages from the main thread
  */
 addEventListener('message', async ({ data }: { data: SqliteWorkerRequest }) => {
@@ -105,7 +111,7 @@ async function handleInit(id: string, payload: SqliteInitRequest) {
     console.log('[SqliteOpfsWorker] opfs-sahpool VFS installed successfully');
 
     // Open the database using the sahpool VFS
-    const dbName = payload.dbName || 'praxis.db';
+    const dbName = payload.dbName || VFS_DB_NAME;
 
     // Use the specialized DB class provided by the pool utility if available
     if (poolUtil.OpfsSAHPoolDb) {
@@ -195,19 +201,36 @@ async function handleExport(id: string) {
 async function handleImport(id: string, payload: SqliteImportRequest) {
     if (!sqlite3 || !poolUtil) throw new Error('SQLite not initialized');
 
+    const { data } = payload;
+    const dbName = VFS_DB_NAME;
+
+    console.log(`[SqliteOpfsWorker] Importing database to ${dbName}, size: ${data.byteLength} bytes`);
+    if (typeof poolUtil.getFileNames === 'function') {
+        console.log('[SqliteOpfsWorker] VFS files before import:', poolUtil.getFileNames());
+    }
+
+    // Close current database if open
     if (db) {
         console.log('[SqliteOpfsWorker] Closing current DB before import');
         db.close();
         db = null;
     }
 
-    const { data } = payload;
-    const dbName = 'praxis.db'; // Target name
+    // CRITICAL: Delete existing OPFS file before import.
+    // The SAH Pool VFS importDb may not properly overwrite existing files.
+    if (typeof poolUtil.unlink === 'function') {
+        try {
+            await poolUtil.unlink(dbName);
+            console.log(`[SqliteOpfsWorker] Deleted existing ${dbName}`);
+        } catch (err: any) {
+            // File may not exist yet, that's fine
+            console.log(`[SqliteOpfsWorker] No existing ${dbName} to delete (or error):`, err.message);
+        }
+    }
 
-    console.log(`[SqliteOpfsWorker] Importing database to ${dbName}, size: ${data.byteLength} bytes`);
-
-    // Use the pool utility to import the file directly into OPFS
+    // Import the new database file into OPFS
     await poolUtil.importDb(dbName, data);
+    console.log(`[SqliteOpfsWorker] Database file imported`);
 
     // Re-open the database
     if (poolUtil.OpfsSAHPoolDb) {
@@ -274,8 +297,8 @@ async function handleClear(id: string) {
     } else if (poolUtil && typeof poolUtil.unlink === 'function') {
         // Try to delete the main database file
         try {
-            await poolUtil.unlink('praxis.db');
-            console.log('[SqliteOpfsWorker] Deleted praxis.db');
+            await poolUtil.unlink(VFS_DB_NAME);
+            console.log(`[SqliteOpfsWorker] Deleted ${VFS_DB_NAME}`);
         } catch (err) {
             console.warn('[SqliteOpfsWorker] Could not delete praxis.db:', err);
         }
