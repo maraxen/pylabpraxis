@@ -47,7 +47,7 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
     DeckViewComponent
   ],
   template: `
-    <div class="p-6 max-w-screen-xl mx-auto">
+    <div class="p-6 max-w-screen-xl mx-auto" data-testid="run-detail-view">
       <!-- Header -->
       <div class="flex items-center gap-4 mb-6">
         <button mat-icon-button (click)="goBack()" aria-label="Go back">
@@ -176,10 +176,10 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
               <mat-card-content class="pt-4 space-y-2">
                 @if (run()?.status === 'RUNNING' || run()?.status === 'PAUSED') {
                   <div class="run-controls">
-                    <button mat-raised-button color="warn" (click)="cancelRun()" [disabled]="isCancelling()">
+                    <button mat-raised-button color="warn" (click)="cancelRun()" [disabled]="isCancelling()" data-testid="cancel-button">
                       <mat-icon>stop</mat-icon> Cancel
                     </button>
-                    <button mat-raised-button (click)="togglePause()" [disabled]="isToggling()">
+                    <button mat-raised-button (click)="togglePause()" [disabled]="isToggling()" data-testid="pause-button">
                       <mat-icon>{{ run()?.status === 'PAUSED' ? 'play_arrow' : 'pause' }}</mat-icon>
                       {{ run()?.status === 'PAUSED' ? 'Resume' : 'Pause' }}
                     </button>
@@ -274,7 +274,7 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
               <mat-card-title>Execution Logs</mat-card-title>
             </mat-card-header>
             <mat-card-content class="pt-4">
-              <div class="bg-[#1e1e1e] text-green-400 p-4 rounded-lg font-mono text-sm max-h-96 overflow-y-auto" data-testid="execution-logs">
+              <div class="bg-[#1e1e1e] text-green-400 p-4 rounded-lg font-mono text-sm max-h-96 overflow-y-auto" data-testid="log-panel">
                 @for (log of run()!.logs; track $index) {
                   <div class="log-line">{{ log }}</div>
                 }
@@ -324,7 +324,8 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
               @if (isLive()) {
                 @if (executionService.currentRun(); as runState) {
                   @if (runState.plr_definition) {
-                    <app-deck-view 
+                    <app-deck-view
+                      data-testid="deck-view"
                       [resource]="runState.plr_definition"
                       [state]="runState.wellState || {}">
                     </app-deck-view>
@@ -497,7 +498,7 @@ export class RunDetailComponent implements OnInit, OnDestroy {
   formatDateTime(isoDate?: string): string {
     if (!isoDate) return '-';
     try {
-      return new Date(isoDate).toLocaleString();
+      return new Date(iso-date).toLocaleString();
     } catch {
       return isoDate;
     }

@@ -16,28 +16,15 @@ export class ExecutionMonitorPage extends BasePage {
     constructor(page: Page) {
         super(page, '/app/monitor');
         this.liveHeader = page.getByRole('heading', { name: /Execution Monitor/i }).first();
-        // AUDIT: More specific locator to avoid picking up arbitrary font-semibold text.
-        this.statusChip = page.locator('.info-row, .status-container, mat-card-content')
-            .locator('[data-testid="run-status"], mat-chip, .font-semibold')
-            .first();
-        this.runInfoCard = page.locator('mat-card').filter({ hasText: 'Run ID:' }).first();
-        this.logPanel = page.locator('[data-testid="execution-logs"], .font-mono, .bg-gray-900').first();
+        this.statusChip = page.getByTestId('run-status');
+        this.runInfoCard = page.locator('mat-card').filter({ hasText: 'Run Information' }).first();
+        this.logPanel = page.getByTestId('log-panel');
         this.historyTable = page.locator('app-run-history-table table');
     }
 
     async waitForLiveDashboard() {
-        // AUDIT: startExecution can redirect either to dashboard or directly to detail.
-        // Wait for ANY heading that indicates we've arrived at the monitor feature.
-        const monitorHeading = this.page.locator('h1, h2').filter({ hasText: /Execution Monitor|Run Details|Transfer|Protocol/i }).first();
-        await monitorHeading.waitFor({ state: 'visible', timeout: 30000 });
-
-        // Ensure either the active runs card or the run info card is present
-        await Promise.race([
-            this.runInfoCard.waitFor({ state: 'visible', timeout: 10000 }),
-            this.page.locator('app-active-runs-panel').waitFor({ state: 'visible', timeout: 10000 })
-        ]).catch(() => {
-            console.warn('[Monitor] Neither Run Info nor Active Runs panel found, but heading is visible.');
-        });
+        const detailView = this.page.getByTestId('run-detail-view');
+        await detailView.waitFor({ state: 'visible', timeout: 30000 });
     }
 
     async captureRunMeta(): Promise<RunMeta> {

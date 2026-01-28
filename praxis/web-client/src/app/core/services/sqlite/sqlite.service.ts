@@ -57,14 +57,17 @@ export class SqliteService {
             (window as any).sqliteService = this;
         }
 
-        // Initialize OPFS and sync status
+        // Initialize OPFS and sync status.
+        // The isReady$ signal is now emitted *after* opfs.init() completes,
+        // which includes schema creation and seeding.
         this.opfs.init().subscribe({
             next: () => {
                 this.statusSubject.next({
                     initialized: true,
                     source: 'opfs',
-                    tableCount: 0
+                    tableCount: 0 // Note: tableCount is not accurately tracked here yet.
                 });
+                console.log('[SqliteService] OPFS init complete, signaling DB is ready.');
                 this.isReady$.next(true);
             },
             error: (err) => {
@@ -74,6 +77,8 @@ export class SqliteService {
                     tableCount: 0,
                     error: err.message
                 });
+                // Ensure isReady remains false on error
+                this.isReady$.next(false);
             }
         });
     }
@@ -327,9 +332,11 @@ export class SqliteService {
      * Clears all user data and reloads from the prebuilt praxis.db.
      */
     public resetToDefaults(): Observable<void> {
+        console.log('[SqliteService] Resetting database to defaults...');
         this.isReady$.next(false);
         return this.opfs.resetToDefaults().pipe(
             map(() => {
+                console.log('[SqliteService] Reset complete, signaling DB is ready.');
                 this.isReady$.next(true);
             })
         );

@@ -31,10 +31,11 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ModeService } from '@core/services/mode.service';
+import { SqliteService } from '@core/services/sqlite';
 import { AssetService } from '@features/assets/services/asset.service';
 import { Machine, Resource, MachineStatus } from '@features/assets/models/asset.models';
 import { Subscription } from 'rxjs';
-import { first } from 'rxjs/operators';
+import { filter, first, take } from 'rxjs/operators';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 
 import { serial as polyfillSerial } from 'web-serial-polyfill';
@@ -537,6 +538,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   private snackBar = inject(MatSnackBar);
   private cdr = inject(ChangeDetectorRef);
   private assetService = inject(AssetService);
+  private sqliteService = inject(SqliteService);
   private sanitizer = inject(DomSanitizer);
   private dialog = inject(MatDialog);
   private interactionService = inject(InteractionService);
@@ -596,7 +598,18 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnInit() {
     this.initKernel();
-    this.loadMachinesForDirectControl();
+
+    // Wait for the database to be ready before loading assets.
+    // This prevents race conditions on initial load or after a db reset.
+    this.subscription.add(
+      this.sqliteService.isReady$.pipe(
+        filter(ready => ready),
+        take(1)
+      ).subscribe(() => {
+        console.log('[Playground] Database is ready, loading machines for Direct Control.');
+        this.loadMachinesForDirectControl();
+      })
+    );
 
     // Listen for new machine registrations
     window.addEventListener('machine-registered', this.machineRegisteredHandler);

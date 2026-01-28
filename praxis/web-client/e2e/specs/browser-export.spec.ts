@@ -5,6 +5,13 @@ test.describe('Browser Mode Database Export', () => {
     test.beforeEach(async ({ page }) => {
         // Navigate to Settings page directly
         await page.goto('/app/settings');
+
+    // Handle welcome dialog if it appears
+    const welcomeDialog = page.getByRole('dialog', { name: 'Welcome to Praxis' });
+    if (await welcomeDialog.isVisible()) {
+      await page.getByRole('button', { name: 'Skip for Now' }).click();
+    }
+
         // Ensure the page is loaded by checking for the header
         await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible({ timeout: 15000 });
     });
@@ -22,8 +29,8 @@ test.describe('Browser Mode Database Export', () => {
 
         const download = await downloadPromise;
 
-        // Verify filename format (e.g. praxis_backup_YYYY-MM-DD...)
-        expect(download.suggestedFilename()).toContain('praxis_backup');
+// Verify filename format (e.g. praxis-backup-YYYY-MM-DD...)
+expect(download.suggestedFilename()).toContain('praxis-backup');
         expect(download.suggestedFilename()).toContain('.db');
 
         // Verify success snackbar
