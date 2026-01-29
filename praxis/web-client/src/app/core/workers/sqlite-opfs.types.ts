@@ -4,9 +4,16 @@
 
 export type RowMode = 'array' | 'object';
 
+export interface SqliteBatchExecRequest {
+    operations: {
+        sql: string;
+        bind?: any[];
+    }[];
+}
+
 export interface SqliteWorkerRequest {
     id: string;
-    type: 'init' | 'exec' | 'export' | 'import' | 'status' | 'close' | 'clear';
+    type: 'init' | 'exec' | 'execBatch' | 'export' | 'import' | 'status' | 'close' | 'clear';
     payload: any;
 }
 

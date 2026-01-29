@@ -9,6 +9,7 @@ import {
     SqliteInitRequest,
     SqliteImportRequest,
     SqliteErrorResponse,
+    SqliteBatchExecRequest,
     CURRENT_SCHEMA_VERSION
 } from './sqlite-opfs.types';
 
@@ -35,6 +36,9 @@ addEventListener('message', async ({ data }: { data: SqliteWorkerRequest }) => {
                 break;
             case 'exec':
                 await handleExec(id, payload);
+                break;
+            case 'execBatch':
+                await handleExecBatch(id, payload);
                 break;
             case 'export':
                 await handleExport(id);
@@ -174,6 +178,39 @@ async function handleExec(id: string, payload: SqliteExecRequest) {
     };
 
     sendResponse(id, 'execResult', result);
+}
+
+/**
+ * Execute multiple SQL statements in a single transaction
+ */
+async function handleExecBatch(id: string, payload: SqliteBatchExecRequest) {
+    if (!db) throw new Error('Database not initialized');
+
+    const { operations } = payload;
+
+    try {
+        db.exec('BEGIN TRANSACTION');
+        for (const op of operations) {
+            db.exec({
+                sql: op.sql,
+                bind: op.bind
+            });
+        }
+        db.exec('COMMIT');
+    } catch (err) {
+        try {
+            db.exec('ROLLBACK');
+        } catch (_) {
+            // Rollback failed, likely already rolled back or connection lost
+        }
+        throw err;
+    }
+
+    sendResponse(id, 'execResult', {
+        rowCount: operations.length,
+        resultRows: [],
+        changes: db.changes()
+    });
 }
 
 /**

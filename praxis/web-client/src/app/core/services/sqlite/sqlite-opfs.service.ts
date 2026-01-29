@@ -8,6 +8,7 @@ import {
     SqliteExecRequest,
     SqliteInitRequest,
     SqliteImportRequest,
+    SqliteBatchExecRequest,
     SqliteSchemaMismatchPayload,
     CURRENT_SCHEMA_VERSION
 } from '@core/workers/sqlite-opfs.types';
@@ -64,6 +65,7 @@ export class SqliteOpfsService {
                 };
             }
 
+            console.time('DB_INIT_TOTAL');
             const payload: SqliteInitRequest = { dbName };
             this.sendRequest<unknown>('init', payload).pipe(
                 switchMap((result: any) => {
@@ -77,6 +79,7 @@ export class SqliteOpfsService {
                 })
             ).subscribe({
                 next: () => {
+                    console.timeEnd('DB_INIT_TOTAL');
                     console.log('[SqliteOpfsService] Database initialized successfully.');
                     resolve();
                 },
@@ -205,10 +208,9 @@ export class SqliteOpfsService {
      * Seed definition catalogs from PLR definitions.
      */
     private seedDefinitionCatalogs(): Observable<void> {
-        console.log('[SqliteOpfsService] Seeding definition catalogs...');
+        console.log('[SqliteOpfsService] Seeding definition catalogs (Batched)...');
 
-        const tasks: Observable<any>[] = [];
-        tasks.push(this.exec('BEGIN TRANSACTION'));
+        const operations: { sql: string; bind: any[] }[] = [];
 
         // 1. Resources
         const insertResDef = `
@@ -217,19 +219,22 @@ export class SqliteOpfsService {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         for (const def of PLR_RESOURCE_DEFINITIONS) {
-            tasks.push(this.exec(insertResDef, [
-                def.accession_id,
-                def.name,
-                def.fqn,
-                def.plr_category,
-                def.vendor || null,
-                def.description || null,
-                JSON.stringify(def.properties_json),
-                def.is_consumable ? 1 : 0,
-                def.num_items || null,
-                def.plr_category,
-                def.is_reusable ? 1 : 0
-            ]));
+            operations.push({
+                sql: insertResDef,
+                bind: [
+                    def.accession_id,
+                    def.name,
+                    def.fqn,
+                    def.plr_category,
+                    def.vendor || null,
+                    def.description || null,
+                    JSON.stringify(def.properties_json),
+                    def.is_consumable ? 1 : 0,
+                    def.num_items || null,
+                    def.plr_category,
+                    def.is_reusable ? 1 : 0
+                ]
+            });
         }
 
         // 2. Machines
@@ -243,21 +248,24 @@ export class SqliteOpfsService {
             if (!capConfig && OFFLINE_CAPABILITY_OVERRIDES[def.fqn]) {
                 capConfig = OFFLINE_CAPABILITY_OVERRIDES[def.fqn];
             }
-            tasks.push(this.exec(insertMachDef, [
-                def.accession_id,
-                def.name,
-                def.fqn,
-                def.machine_type,
-                def.vendor || null,
-                def.description || null,
-                def.has_deck ? 1 : 0,
-                JSON.stringify(def.properties_json),
-                capConfig ? JSON.stringify(capConfig) : null,
-                def.frontend_fqn || null,
-                def.is_simulated_frontend ? 1 : 0,
-                def.available_simulation_backends ? JSON.stringify(def.available_simulation_backends) : null,
-                'Machine'
-            ]));
+            operations.push({
+                sql: insertMachDef,
+                bind: [
+                    def.accession_id,
+                    def.name,
+                    def.fqn,
+                    def.machine_type,
+                    def.vendor || null,
+                    def.description || null,
+                    def.has_deck ? 1 : 0,
+                    JSON.stringify(def.properties_json),
+                    capConfig ? JSON.stringify(capConfig) : null,
+                    def.frontend_fqn || null,
+                    def.is_simulated_frontend ? 1 : 0,
+                    def.available_simulation_backends ? JSON.stringify(def.available_simulation_backends) : null,
+                    'Machine'
+                ]
+            });
         }
 
         // 3. Frontends
@@ -267,17 +275,20 @@ export class SqliteOpfsService {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         for (const def of PLR_FRONTEND_DEFINITIONS) {
-            tasks.push(this.exec(insertFrontendDef, [
-                def.accession_id,
-                def.name,
-                def.fqn,
-                def.machine_category,
-                def.description || null,
-                def.has_deck ? 1 : 0,
-                def.capabilities ? JSON.stringify(def.capabilities) : null,
-                def.capabilities_config ? JSON.stringify(def.capabilities_config) : null,
-                'Machine'
-            ]));
+            operations.push({
+                sql: insertFrontendDef,
+                bind: [
+                    def.accession_id,
+                    def.name,
+                    def.fqn,
+                    def.machine_category,
+                    def.description || null,
+                    def.has_deck ? 1 : 0,
+                    def.capabilities ? JSON.stringify(def.capabilities) : null,
+                    def.capabilities_config ? JSON.stringify(def.capabilities_config) : null,
+                    'Machine'
+                ]
+            });
         }
 
         // 4. Backends
@@ -287,25 +298,26 @@ export class SqliteOpfsService {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
         `;
         for (const def of PLR_BACKEND_DEFINITIONS) {
-            tasks.push(this.exec(insertBackendDef, [
-                def.accession_id,
-                def.fqn,
-                def.name,
-                def.description || null,
-                def.backend_type,
-                def.connection_config ? JSON.stringify(def.connection_config) : null,
-                def.manufacturer || null,
-                def.model || null,
-                def.frontend_definition_accession_id
-            ]));
+            operations.push({
+                sql: insertBackendDef,
+                bind: [
+                    def.accession_id,
+                    def.fqn,
+                    def.name,
+                    def.description || null,
+                    def.backend_type,
+                    def.connection_config ? JSON.stringify(def.connection_config) : null,
+                    def.manufacturer || null,
+                    def.model || null,
+                    def.frontend_definition_accession_id
+                ]
+            });
         }
 
-        tasks.push(this.exec('COMMIT'));
-
-        return from(tasks).pipe(
-            concatMap(task => task),
-            last(),
-            map(() => void 0)
+        return this.execBatch(operations).pipe(
+            map(() => {
+                console.log(`[SqliteOpfsService] Seeded ${operations.length} definitions via batch.`);
+            })
         );
     }
 
@@ -380,6 +392,17 @@ export class SqliteOpfsService {
             returnValue: 'resultRows'
         };
         return this.sendRequest<SqliteExecResult>('exec', payload);
+    }
+
+    /**
+     * Execute multiple SQL statements in a single transaction.
+     * 
+     * @param operations List of SQL strings and optional parameter bindings
+     * @returns Observable that completes when the batch is finished
+     */
+    execBatch(operations: { sql: string; bind?: any[] }[]): Observable<void> {
+        const payload: SqliteBatchExecRequest = { operations };
+        return this.sendRequest<void>('execBatch', payload);
     }
 
     /**
