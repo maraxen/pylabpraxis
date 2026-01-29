@@ -42,6 +42,12 @@ mcp_orbitalvelocity_dispatch(action: "complete", payload: {
 
 ---
 
+## Protocols
+
+**Verification Visibility Protocol:** To ensure transparency and prevent hallucination, the agent must redirect output from all critical verification steps (compilation, tests, benchmarks) to a log file. This file must be dynamically filtered (e.g., `tail`, `grep`) to capture essential success/failure evidence without spamming context. The filtered artifact must be committed to the repository.
+
+---
+
 ## Project: praxis
 
 | Action | Command |
