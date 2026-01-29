@@ -138,7 +138,7 @@ export class PraxisAutocompleteComponent implements ControlValueAccessor {
     );
   });
 
-  displayFn = (val: any): string => {
+  displayFn = (val: unknown): string => {
     if (val === null || val === undefined) return '';
     const match = this.options.find(o => this.compareValues(o.value, val));
     return match ? match.label : (typeof val === 'string' ? val : '');
@@ -205,8 +205,8 @@ export class PraxisAutocompleteComponent implements ControlValueAccessor {
   compareValues(v1: unknown, v2: unknown): boolean {
     if (v1 === v2) return true;
     if (typeof v1 === 'object' && v1 !== null && typeof v2 === 'object' && v2 !== null) {
-      const a = v1 as any;
-      const b = v2 as any;
+      const a = v1 as { accession_id?: string, id?: string | number };
+      const b = v2 as { accession_id?: string, id?: string | number };
       // Check accession_id
       if (a.accession_id && b.accession_id) {
         return a.accession_id === b.accession_id;

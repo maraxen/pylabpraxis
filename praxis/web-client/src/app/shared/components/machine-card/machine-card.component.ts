@@ -8,6 +8,13 @@ import { MachineCompatibility } from '@features/run-protocol/models/machine-comp
 import { HardwareBadgeComponent } from '../hardware-badge/hardware-badge.component';
 import { CommonModule } from '@angular/common';
 
+// Local type to handle properties not strictly defined in the Machine model
+type MachineWithFlags = Machine & {
+  is_simulated?: boolean;
+  is_template?: boolean;
+  type?: string;
+};
+
 @Component({
   selector: 'app-machine-card',
   standalone: true,
@@ -149,22 +156,22 @@ export class MachineCardComponent {
   }
 
   isSimulated(): boolean {
-    const m = this.getMachine();
+    const m = this.getMachine() as MachineWithFlags;
     if (!m) return false;
 
     const connectionInfo = m.connection_info || {};
     const backend = (connectionInfo['backend'] || '').toString();
-    const type = (m as any).type || '';
+    const type = m.type || '';
 
     return m.is_simulation_override === true ||
-      (m as any).is_simulated === true ||
+      m.is_simulated === true ||
       backend.includes('Simulator') ||
       backend.includes('Simulation') ||
       type.toLowerCase().includes('simulator');
   }
 
   isTemplate(): boolean {
-    return (this.getMachine() as any).is_template === true;
+    return (this.getMachine() as MachineWithFlags).is_template === true;
   }
 
   onClick() {

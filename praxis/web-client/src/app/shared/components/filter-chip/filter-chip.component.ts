@@ -219,16 +219,16 @@ import { FilterOption } from '../../services/filter-result.service';
     `],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class FilterChipComponent {
+export class FilterChipComponent<T> {
     @Input() label: string = '';
-    @Input() options: FilterOption[] = [];
-    @Input() selectedValue: any | any[] = null;
+    @Input() options: FilterOption<T>[] = [];
+    @Input() selectedValue: T | T[] | null = null;
     @Input() disabled: boolean = false;
     @Input() resultCount: number | null = null;
     @Input() multiple: boolean = false;
     @Input() isToggle: boolean = false;
 
-    @Output() selectionChange = new EventEmitter<any>();
+    @Output() selectionChange = new EventEmitter<T | T[] | null>();
 
     @ViewChild(MatMenuTrigger) menuTrigger?: MatMenuTrigger;
 
@@ -257,7 +257,7 @@ export class FilterChipComponent {
         if (!this.isActive) return '';
 
         if (this.multiple) {
-            const selected = (this.selectedValue as any[])
+            const selected = (this.selectedValue as T[])
                 .map(val => {
                     const opt = this.options.find(o => o.value === val);
                     return opt ? (opt.fullName || opt.label) : val;
@@ -276,7 +276,9 @@ export class FilterChipComponent {
             return;
         }
         if (this.isToggle) {
-            this.selectionChange.emit(!this.isActive);
+            // When used as a toggle, the value is always a boolean.
+            // We cast here to satisfy the generic type T.
+            this.selectionChange.emit(!this.isActive as unknown as T);
         }
     }
 
@@ -285,27 +287,28 @@ export class FilterChipComponent {
         setTimeout(() => this.isShaking = false, 300); // 300ms matches CSS animation
     }
 
-    selectOption(value: any) {
+    selectOption(value: T | null) {
         if (this.multiple) {
-            const CURRENT = Array.isArray(this.selectedValue) ? [...this.selectedValue] : [];
+            const current = (this.selectedValue as T[] | null) || [];
             if (value === null) {
                 // "All" selected -> clear selection
                 this.selectionChange.emit([]);
             } else {
-                const INDEX = CURRENT.indexOf(value);
-                if (INDEX > -1) {
-                    CURRENT.splice(INDEX, 1);
+                const index = current.indexOf(value);
+                const newSelection = [...current];
+                if (index > -1) {
+                    newSelection.splice(index, 1);
                 } else {
-                    CURRENT.push(value);
+                    newSelection.push(value);
                 }
-                this.selectionChange.emit(CURRENT);
+                this.selectionChange.emit(newSelection);
             }
         } else {
             this.selectionChange.emit(value);
         }
     }
 
-    isSelected(value: any): boolean {
+    isSelected(value: T): boolean {
         if (this.multiple) {
             return Array.isArray(this.selectedValue) && this.selectedValue.includes(value);
         }

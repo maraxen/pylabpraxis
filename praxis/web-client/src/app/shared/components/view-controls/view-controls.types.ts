@@ -8,10 +8,10 @@ export interface SelectOption {
     disabled?: boolean;
 }
 
-export interface ActiveFilter {
+export interface ActiveFilter<T = unknown> {
     filterId: string;
     label: string;
-    values: any[];
+    values: T[];
     displayText: string;
 }
 

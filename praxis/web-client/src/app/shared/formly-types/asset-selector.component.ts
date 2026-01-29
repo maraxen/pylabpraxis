@@ -13,7 +13,10 @@ import { MatDialog } from '@angular/material/dialog';
 import { AssetService } from '@features/assets/services/asset.service';
 import { Observable, forkJoin, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, startWith } from 'rxjs/operators';
-import { AssetBase, Resource, ResourceDefinition } from '@features/assets/models/asset.models';
+import { AssetBase, Machine, Resource, ResourceDefinition } from '@features/assets/models/asset.models';
+
+// Type alias for assets that can have a status and other specific properties
+type StatusAsset = Machine | Resource;
 
 interface AssetOption {
   asset: AssetBase;
@@ -315,7 +318,7 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
 
   private calculateAssetScore(asset: AssetBase): number {
     let score = 0;
-    const status = (asset as any).status?.toLowerCase() || 'unknown';
+    const status = (asset as StatusAsset).status?.toLowerCase() || 'unknown';
 
     // Status scoring (Lower is better)
     switch (status) {
@@ -410,10 +413,12 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
 
   private getAssetTags(asset: AssetBase): string[] {
     const tags: string[] = [];
+    const statusAsset = asset as StatusAsset;
+    const machineAsset = asset as Machine;
 
     // Add status tag first
-    if ((asset as any).status) {
-      tags.push((asset as any).status);
+    if (statusAsset.status) {
+      tags.push(statusAsset.status);
     }
 
     const res = asset as Resource;
@@ -424,9 +429,9 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
         if (def.plate_type) tags.push(def.plate_type);
         if (def.tip_volume_ul) tags.push(`${def.tip_volume_ul}µL`);
       }
-    } else if ((asset as any).machine_type) {
+    } else if (machineAsset.machine_type) {
       // Machine fallback
-      tags.push((asset as any).machine_type);
+      tags.push(machineAsset.machine_type);
     }
 
     return tags;

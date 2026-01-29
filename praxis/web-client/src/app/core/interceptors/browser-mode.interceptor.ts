@@ -3,7 +3,16 @@ import { Observable, of, delay, switchMap, map } from 'rxjs';
 import { inject } from '@angular/core';
 import { ModeService } from '@core/services/mode.service';
 import { SqliteService } from '@core/services/sqlite';
-import { ProtocolRun } from '@core/db/schema';
+import { Machine, ProtocolRun } from '@core/db/schema';
+
+// Import new request body interfaces
+import {
+  isConnectHardwareBody,
+  isCreateProtocolRunBody,
+  isRegisterHardwareBody,
+  isReplCommandBody,
+  MockMachine
+} from './interceptor.models';
 
 // Import mock data for fallback
 
@@ -12,6 +21,7 @@ import { MOCK_MACHINES } from '@assets/browser-data/machines';
 import { PLR_RESOURCE_DEFINITIONS, PLR_MACHINE_DEFINITIONS } from '@assets/browser-data/plr-definitions';
 
 const LATENCY_MS = 150;
+
 
 /**
  * Get mock response for a given URL and method
@@ -30,7 +40,7 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
         return sqliteService.getProtocolRuns().pipe(
             map((runs: ProtocolRun[]) => {
                 const activeRuns = runs.filter((r: ProtocolRun) =>
-                    r.status && ['pending', 'preparing', 'queued', 'running'].includes(r.status.toLowerCase() as any)
+                    r.status && ['pending', 'preparing', 'queued', 'running'].includes(r.status.toLowerCase())
                 ).map(r => ({
                     accession_id: r.accession_id,
                     name: r.name,
@@ -174,16 +184,17 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
 
     // POST protocol run - simulate creation
     if (url.includes('/protocols/runs') && method === 'POST') {
-        const newRun: any = {
+        const body = req.body;
+        const newRun: ProtocolRun = {
             accession_id: crypto.randomUUID(),
-            protocol_definition_accession_id: (req.body as any)?.protocol_definition_accession_id || 'unknown',
-            name: (req.body as any)?.name || 'Run',
-            status: 'QUEUED',
+            protocol_definition_accession_id: (isCreateProtocolRunBody(body) ? body.protocol_definition_accession_id : undefined) || 'unknown',
+            name: (isCreateProtocolRunBody(body) ? body.name : undefined) || 'Run',
+            status: 'queued',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             properties_json: {},
-            input_parameters_json: (req.body as any)?.parameters || {},
-            top_level_protocol_definition_accession_id: (req.body as any)?.protocol_definition_accession_id || 'unknown',
+            input_parameters_json: (isCreateProtocolRunBody(body) ? body.parameters : undefined) || {},
+            top_level_protocol_definition_accession_id: (isCreateProtocolRunBody(body) ? body.protocol_definition_accession_id : undefined) || 'unknown',
             start_time: null,
             end_time: null,
             duration_ms: null,
@@ -193,9 +204,7 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
             initial_state_json: null,
             final_state_json: null,
             created_by_user: null,
-            previous_accession_id: null,
-            status_details: null,
-            worker_id: null
+            previous_accession_id: null
         };
         return sqliteService.createProtocolRun(newRun);
     }
@@ -278,8 +287,9 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
 
     // Hardware connection (browser mode - always succeed)
     if (url.includes('/hardware/connect') && method === 'POST') {
+        const body = req.body;
         return of({
-            device_id: (req.body as { device_id?: string })?.device_id || 'unknown',
+            device_id: (isConnectHardwareBody(body) ? body.device_id : undefined) || 'unknown',
             status: 'connected',
             message: 'Connected successfully (browser mode)',
             connection_handle: `local-handle-${Date.now()}`,
@@ -293,13 +303,14 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
 
     // Hardware registration
     if (url.includes('/hardware/register') && method === 'POST') {
-        const body = req.body as { device_id?: string; name?: string; plr_backend?: string; connection_type?: string; configuration?: any };
-        console.log('[BrowserModeIntercepter] Hardware register body:', body);
+        const body = req.body;
+        const registrationBody = isRegisterHardwareBody(body) ? body : {};
+        console.log('[BrowserModeIntercepter] Hardware register body:', registrationBody);
         return sqliteService.createMachine({
-            name: body?.name || 'Registered Machine',
-            plr_backend: body?.plr_backend || '',
-            connection_type: body?.connection_type,
-            configuration: body?.configuration
+            name: registrationBody?.name || 'Registered Machine',
+            plr_backend: registrationBody?.plr_backend || '',
+            connection_type: registrationBody?.connection_type,
+            configuration: registrationBody?.configuration
         });
     }
 
@@ -308,14 +319,14 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
         // Return compatibility data based on actual machines in SQLite
         return sqliteService.getMachines().pipe(
             map(machines => {
-                return machines.map(machine => ({
+                return machines.map((machine: MockMachine) => ({
                     machine: {
                         accession_id: machine.accession_id,
                         name: machine.name,
-                        machine_category: machine.machine_category || (machine as any).machine_type || 'LiquidHandler',
+                        machine_category: machine.machine_category || machine.machine_type || 'LiquidHandler',
                         // Add other fields needed by MachineCard / MachineSelection
-                        is_simulation_override: (machine as any).is_simulation_override || true,
-                        backend_definition: (machine as any).backend_definition
+                        is_simulation_override: machine.is_simulation_override || true,
+                        backend_definition: machine.backend_definition
                     },
                     compatibility: {
                         is_compatible: true, // In browser mode, we assume compatibility or handle it in frontend
@@ -330,11 +341,12 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
 
     // Hardware REPL command
     if (url.includes('/hardware/repl') && method === 'POST') {
-        const body = req.body as { device_id?: string; command?: string };
+        const body = req.body;
+        const replBody = isReplCommandBody(body) ? body : {};
         return of({
-            device_id: body?.device_id || 'unknown',
-            command: body?.command || '',
-            output: `[Browser Playground] Executed: ${body?.command}\n> OK`,
+            device_id: replBody?.device_id || 'unknown',
+            command: replBody?.command || '',
+            output: `[Browser Playground] Executed: ${replBody?.command}\n> OK`,
             success: true,
             error: null,
         });

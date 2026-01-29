@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 
-export interface FilterOption {
+export interface FilterOption<T = unknown> {
     label: string;
-    value: any;
+    value: T;
     count?: number;
     disabled?: boolean;
     fullName?: string;
@@ -24,13 +24,13 @@ export class FilterResultService {
      * @param currentSelected The currently selected values for this filter axis.
      * @param isMultiSelect Whether this filter axis supports multiple selection.
      */
-    computeOptionMetrics<T>(
+    computeOptionMetrics<T, V>(
         items: T[],
-        filterFn: (item: T, value: any) => boolean,
-        options: FilterOption[],
-        currentSelected: any | any[] = null,
+        filterFn: (item: T, value: V) => boolean,
+        options: FilterOption<V>[],
+        currentSelected: V | V[] | null = null,
         isMultiSelect: boolean = false
-    ): FilterOption[] {
+    ): FilterOption<V>[] {
         return options.map(option => {
             let matches: number;
 

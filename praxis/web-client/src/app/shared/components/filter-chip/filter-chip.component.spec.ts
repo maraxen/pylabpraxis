@@ -6,10 +6,10 @@ import { FilterOption } from '../../services/filter-result.service';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('FilterChipComponent', () => {
-    let component: FilterChipComponent;
-    let fixture: ComponentFixture<FilterChipComponent>;
+    let component: FilterChipComponent<any>;
+    let fixture: ComponentFixture<FilterChipComponent<any>>;
 
-    const mockOptions: FilterOption[] = [
+    const mockOptions: FilterOption<any>[] = [
         { label: 'Option 1', value: 'opt1', count: 5 },
         { label: 'Option 2', value: 'opt2', count: 0, disabled: true },
     ];
@@ -20,7 +20,7 @@ describe('FilterChipComponent', () => {
         })
             .compileComponents();
 
-        fixture = TestBed.createComponent(FilterChipComponent);
+        fixture = TestBed.createComponent(FilterChipComponent<any>);
         component = fixture.componentInstance;
 
         // Use setInput for OnPush components

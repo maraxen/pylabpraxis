@@ -6,10 +6,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActiveFilter } from '../view-controls/view-controls.types';
 
 /** Flattened chip representing a single filter value */
-export interface FilterChip {
+export interface FilterChip<T = unknown> {
     filterId: string;
     filterLabel: string;
-    value: unknown;
+    value: T;
     displayValue: string;
     icon: string;
 }
@@ -172,15 +172,15 @@ export interface FilterChip {
   `],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class FilterChipBarComponent {
-    private _filters = signal<ActiveFilter[]>([]);
+export class FilterChipBarComponent<T> {
+    private _filters = signal<ActiveFilter<T>[]>([]);
 
-    @Input() set filters(value: ActiveFilter[]) {
+    @Input() set filters(value: ActiveFilter<T>[]) {
         this._filters.set(value || []);
     }
 
     /** Emits { filterId, value } when a specific value is removed */
-    @Output() removeValue = new EventEmitter<{ filterId: string; value: unknown }>();
+    @Output() removeValue = new EventEmitter<{ filterId: string; value: T }>();
 
     /** Emits filterId when the entire filter group should be removed (legacy support) */
     @Output() remove = new EventEmitter<string>();
@@ -204,8 +204,8 @@ export class FilterChipBarComponent {
     };
 
     /** Flatten filters into individual chips - one per value */
-    chips = computed<FilterChip[]>(() => {
-        const result: FilterChip[] = [];
+    chips = computed<FilterChip<T>[]>(() => {
+        const result: FilterChip<T>[] = [];
 
         for (const filter of this._filters()) {
             const icon = this.getIcon(filter.filterId);
@@ -239,7 +239,7 @@ export class FilterChipBarComponent {
     }
 
     onRemoveValue(chip: FilterChip): void {
-        this.removeValue.emit({ filterId: chip.filterId, value: chip.value });
+        this.removeValue.emit({ filterId: chip.filterId, value: chip.value as T });
     }
 
     onClearAll(): void {
