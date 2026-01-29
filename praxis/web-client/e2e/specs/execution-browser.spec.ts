@@ -18,6 +18,12 @@ test.describe('Browser Mode Execution', () => {
         await page.waitForURL('**/app/home', { timeout: 15000 }).catch(() => {
             console.log('Did not redirect to /app/home automatically');
         });
+        // Wait for SQLite DB to be ready
+        await page.waitForFunction(
+            () => (window as any).sqliteService?.isReady$?.getValue() === true,
+            null,
+            { timeout: 30000 }
+        );
         // Ensure shell layout is visible
         await expect(page.locator('.sidebar-rail')).toBeVisible({ timeout: 10000 });
 

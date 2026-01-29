@@ -5,6 +5,12 @@ test.describe('Catalog to Inventory Workflow', () => {
     test.beforeEach(async ({ page }) => {
         // Go to playground with resetdb to ensure clean slate (no machines)
         await page.goto('/app/playground?resetdb=1');
+        // Wait for SQLite DB to be ready
+        await page.waitForFunction(
+            () => (window as any).sqliteService?.isReady$?.getValue() === true,
+            null,
+            { timeout: 30000 }
+        );
     });
 
     test('should show catalog tab and add simulated machine', async ({ page }) => {

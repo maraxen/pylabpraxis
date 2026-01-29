@@ -9,6 +9,12 @@ test.describe('Data Visualization Page', () => {
             (window as any).E2E_TEST = true;
         });
         await page.goto('/run/data-visualization');
+        // Wait for SQLite DB to be ready
+        await page.waitForFunction(
+            () => (window as any).sqliteService?.isReady$?.getValue() === true,
+            null,
+            { timeout: 30000 }
+        );
     });
 
     test('should load the data visualization page', async ({ page }) => {

@@ -9,6 +9,12 @@ test.describe('Capture remaining dialogs', () => {
 
     test.beforeEach(async ({ page }) => {
         await page.goto('/app/home');
+        // Wait for SQLite DB to be ready
+        await page.waitForFunction(
+            () => (window as any).sqliteService?.isReady$?.getValue() === true,
+            null,
+            { timeout: 30000 }
+        );
         await page.evaluate(() => {
             localStorage.setItem('praxis_onboarding_completed', 'true');
         });
