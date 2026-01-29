@@ -28,7 +28,7 @@ export class AssetsPage extends BasePage {
         const wizard = this.page.locator('app-asset-wizard');
         await expect(wizard).toBeVisible({ timeout: 15000 });
         // Wait for the first step to be rendered
-        await expect(wizard.getByTestId('wizard-step-type')).toBeVisible({ timeout: 10000 });
+        await expect(wizard.getByTestId('wizard-step-category')).toBeVisible({ timeout: 10000 });
         return wizard;
     }
 
@@ -88,11 +88,7 @@ export class AssetsPage extends BasePage {
         await this.addMachineButton.click();
         const wizard = await this.waitForWizard();
 
-        // Step 1: Select Type
-        await this.selectWizardCard(wizard, 'type-card-machine');
-        await this.clickNextButton(wizard);
-
-        // Step 2: Select Category
+        // Step 1: Select Category
         await this.selectWizardCard(wizard, `category-card-${categoryName}`);
         await this.clickNextButton(wizard);
 
@@ -119,11 +115,7 @@ export class AssetsPage extends BasePage {
         await this.addResourceButton.click();
         const wizard = await this.waitForWizard();
 
-        // Step 1: Select Type
-        await this.selectWizardCard(wizard, 'type-card-resource');
-        await this.clickNextButton(wizard);
-
-        // Step 2: Select Category
+        // Step 1: Select Category
         await this.selectWizardCard(wizard, `category-card-${categoryName}`);
         await this.clickNextButton(wizard);
 

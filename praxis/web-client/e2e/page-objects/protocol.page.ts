@@ -1,5 +1,7 @@
 import { Page, Locator, expect } from '@playwright/test';
 import { BasePage } from './base.page';
+import { WizardPage } from './wizard.page';
+import { ExecutionMonitorPage } from './monitor.page';
 
 export class ProtocolPage extends BasePage {
     readonly protocolStep: Locator;
@@ -112,7 +114,6 @@ export class ProtocolPage extends BasePage {
         // We might need to import WizardPage or duplicate some logic here if we want to be strictly independent,
         // but ideally we should reuse. Since I cannot easily inject WizardPage here without changing the constructor signature significantly 
         // or instantiating it internally, I'll instantiate it internally.
-        const { WizardPage } = await import('./wizard.page');
         const wizard = new WizardPage(this.page);
 
         await wizard.completeParameterStep();
@@ -123,13 +124,11 @@ export class ProtocolPage extends BasePage {
     }
 
     async startExecution() {
-        const { WizardPage } = await import('./wizard.page');
         const wizard = new WizardPage(this.page);
         await wizard.startExecution();
     }
 
     async getExecutionStatus(): Promise<string> {
-        const { ExecutionMonitorPage } = await import('./monitor.page');
         const monitor = new ExecutionMonitorPage(this.page);
         // We assume we are on the monitor page now
         const statusChip = this.page.locator('mat-chip'); // Using locator from monitor page logic
@@ -137,7 +136,6 @@ export class ProtocolPage extends BasePage {
     }
 
     async waitForCompletion(timeout: number = 300000) { // 5 minutes default
-        const { ExecutionMonitorPage } = await import('./monitor.page');
         const monitor = new ExecutionMonitorPage(this.page);
         await monitor.waitForStatus(/(Completed|Succeeded|Finished)/i, timeout);
     }
