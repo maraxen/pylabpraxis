@@ -49,6 +49,17 @@
 (cd praxis/web-client && npx playwright test data-visualization.spec.ts --project=chromium)
 ```
 
+### 🆕 Post-Fix Finding (12:30)
+
+DB readiness fix (`cd652c9b`) confirmed working - tests no longer fail in <500ms.
+
+**New Issue Revealed:** Canvas not rendering in `data-visualization.spec.ts`
+- All 6 tests fail waiting for `canvas` element
+- Tests now reach the page but chart component doesn't render
+- Likely cause: Missing mock data or chart initialization issue
+
+**Next:** Investigate `app-data-visualization` component rendering in browser mode.
+
 ---
 
 ## Infrastructure Note
