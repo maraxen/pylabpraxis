@@ -2,6 +2,15 @@
 
 import { loadPyodide, PyodideInterface } from 'pyodide';
 
+// Define a typed worker scope
+interface PythonWorkerGlobalScope extends WorkerGlobalScope {
+  protocol_bytes: Uint8Array;
+  machine_config: any;
+  deck_setup_script: string;
+  handlePythonOutput: (type: string, content: string) => void;
+}
+declare const self: PythonWorkerGlobalScope;
+
 let pyodide: PyodideInterface;
 let pyConsole: {
   push: (code: string) => any;
@@ -12,6 +21,41 @@ interface PythonMessage {
   type: 'INIT' | 'PUSH' | 'EXEC' | 'INSTALL' | 'COMPLETE' | 'SIGNATURES' | 'PLR_COMMAND' | 'RAW_IO' | 'RAW_IO_RESPONSE' | 'WELL_STATE_UPDATE' | 'FUNCTION_CALL_LOG' | 'EXECUTE_BLOB' | 'USER_INTERACTION' | 'USER_INTERACTION_RESPONSE' | 'INTERRUPT';
   id?: string;
   payload?: unknown;
+}
+
+// Payload Interfaces
+interface PLRCommandPayload {
+  command: string;
+  data: any;
+}
+
+interface WellStateUpdatePayload {
+  [resource_name: string]: {
+    liquid_mask?: string;
+    volumes?: number[];
+    tip_mask?: string;
+  };
+}
+
+interface FunctionCallLogPayload {
+  call_id: string;
+  run_id: string;
+  sequence: number;
+  method_name: string;
+  args: any;
+  state_before: any;
+  state_after: any;
+  status: string;
+  start_time: number;
+  end_time?: number;
+  duration_ms?: number;
+  error_message?: string;
+}
+
+interface UserInteractionPayload {
+  id: string;
+  interaction_type: string;
+  payload: any;
 }
 
 const interruptBuffer = new Uint8Array(new SharedArrayBuffer(1));
@@ -90,19 +134,19 @@ addEventListener('message', async (event) => {
         break;
 
       case 'PLR_COMMAND':
-        postMessage({ type: 'PLR_COMMAND', id: currentExecutionId, payload: payload as any });
+        postMessage({ type: 'PLR_COMMAND', id: currentExecutionId, payload: payload as PLRCommandPayload });
         break;
 
       case 'WELL_STATE_UPDATE':
-        postMessage({ type: 'WELL_STATE_UPDATE', id: currentExecutionId, payload: payload as any });
+        postMessage({ type: 'WELL_STATE_UPDATE', id: currentExecutionId, payload: payload as WellStateUpdatePayload });
         break;
 
       case 'FUNCTION_CALL_LOG':
-        postMessage({ type: 'FUNCTION_CALL_LOG', id: currentExecutionId, payload: payload as any });
+        postMessage({ type: 'FUNCTION_CALL_LOG', id: currentExecutionId, payload: payload as FunctionCallLogPayload });
         break;
 
       case 'USER_INTERACTION':
-        postMessage({ type: 'USER_INTERACTION', id: currentExecutionId, payload: payload as any });
+        postMessage({ type: 'USER_INTERACTION', id: currentExecutionId, payload: payload as UserInteractionPayload });
         break;
 
       case 'INSTALL':
@@ -163,9 +207,9 @@ addEventListener('message', async (event) => {
         currentExecutionId = id;
         try {
           const { blob, machine_config, deck_setup_script } = payload as { blob: ArrayBuffer, machine_config: any, deck_setup_script?: string };
-          (self as any).protocol_bytes = new Uint8Array(blob);
-          (self as any).machine_config = machine_config;
-          (self as any).deck_setup_script = deck_setup_script || '';
+          self.protocol_bytes = new Uint8Array(blob);
+          self.machine_config = machine_config;
+          self.deck_setup_script = deck_setup_script || '';
 
           await pyodide.runPythonAsync(`
 import cloudpickle
@@ -243,7 +287,7 @@ await run_wrapper()
 });
 
 // Expose callbacks for Python to call
-(self as any).handlePythonOutput = (type: string, content: string) => {
+self.handlePythonOutput = (type: string, content: string) => {
   // Always log to console for debugging/testing visibility
   console.log(`[Python ${type}]: ${content}`);
 

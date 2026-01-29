@@ -132,13 +132,24 @@ Sessions touching the **same file zone** cannot run in parallel:
 
 | Session ID | Stage | Task | Started | Status |
 |------------|-------|------|---------|--------|
-| 2920010481660839573 | 0 | OPFS optimization | 2026-01-29 09:00 | ✅ COMPLETE |
-| 15794144165487980335 | 1A | Interceptor types | 2026-01-29 11:02 | 🔄 IN PROGRESS |
+| 2920010481660839573 | 0 | OPFS optimization | 2026-01-29 09:00 | ✅ COMPLETE - committed |
+| 15794144165487980335 | 1A | Interceptor types | 2026-01-29 11:02 | ✅ APPLIED (c82031a8) |
+| 3493277385922095211 | 1C | Shared component types | 2026-01-29 11:03 | ✅ APPLIED (c82031a8) |
 | 2027710808879946702 | 1B | Dead code removal | 2026-01-29 11:02 | 🔄 IN PROGRESS |
-| 3493277385922095211 | 1C | Shared component types | 2026-01-29 11:03 | 🔄 IN PROGRESS |
-| 1907399999957321808 | 1D | Worker types | 2026-01-29 11:03 | 🔄 IN PROGRESS |
-| 13931300007146917902 | 1E | SQLite service types | 2026-01-29 11:03 | 🔄 IN PROGRESS |
+| 1907399999957321808 | 1D | Worker types | 2026-01-29 11:03 | ✅ COMPLETE - needs zip |
+| 13931300007146917902 | 1E | SQLite service types | 2026-01-29 11:03 | ⚠️ BLOCKED - needs guidance |
 | 3029736680512750348 | - | E2E Failures Audit | 2026-01-29 11:03 | 🔄 IN PROGRESS |
+
+### Session 1E Guidance (SQLite types)
+
+The `as any` casts in SQLite services hide deep type incompatibilities:
+- `properties_json` and `state_history` are stored as JSON but accessed as typed objects
+- Repository generic types don't flow through the RxJS operators properly
+
+**Recommended approach:** Cancel this session and handle manually with a focused strategy:
+1. Create explicit `DbRowResult` interfaces matching SQLite return shapes
+2. Add type-safe JSON parsing helpers with validation
+3. Keep `as any` only at the JSON boundary (1-2 locations) instead of scattered
 
 ---
 
