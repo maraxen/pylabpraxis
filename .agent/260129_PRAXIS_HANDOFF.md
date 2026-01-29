@@ -1,105 +1,108 @@
-# Praxis Audit Remediation Handoff
+# Praxis E2E Remediation Handoff
 
-**Created:** 2026-01-29 10:43  
-**Updated:** 2026-01-29 12:04  
+**Session:** 2026-01-29 12:00 - 13:28  
 **Orchestrator:** Antigravity Session 6fc12504
 
 ---
 
-## Current Status
+## Session Summary
 
-### ✅ Completed This Session (260129)
+### ✅ Completed This Session
 
 | Commit | Task | Details |
 |--------|------|---------|
-| `71487f8e` | OPFS Batch Optimization | DB init 30s → 142ms |
-| `c82031a8` | Interceptor Types | 12 `as any` removed |
-| `c82031a8` | Shared Component Types | 6 `as any` removed, generic ActiveFilter<T> |
-| `280d11fa` | Worker Types | 4 `as any` removed, typed worker scope |
-| `472150c6` | E2E Audit Docs | E2E failures audit and handoff |
-| `cd652c9b` | **E2E DB Readiness Fix** | Added `waitForFunction` guard to 5 specs |
+| `cd652c9b` | E2E DB Readiness Fix | Added `waitForFunction` guard to 5 specs |
+| `fb8de5f4` | Handoff Update | Documented post-fix findings |
+| `9a253714` | name-parser refactor | Decomposed CC=10 function into 5 helpers |
+| `9a253714` | data-viz investigation | Added `.agent/DATA_VIZ_E2E_INVESTIGATION.md` |
 
-### ⚠️ Pending/Blocked
+### Jules Sessions Dispatched (Today)
 
-| Session ID | Task | Status |
-|------------|------|--------|
-| 2027710808879946702 | Dead code removal | ❌ FAILED - no diff |
-| 13931300007146917902 | SQLite service types | ⚠️ BLOCKED - recommend cancel |
+| Session ID | Task | Status | Action Needed |
+|------------|------|--------|---------------|
+| `474392...` | name-parser refactor | ✅ Applied | — |
+| `3306634...` | data-viz canvas | ✅ Applied | Needs mock data implementation |
+| `10398531...` | browser-persistence | ✅ Completed | Pull & review zip |
+| `13148013...` | catalog/deck/exec | ✅ Completed | Pull & review zip |
+| `14221701...` | asset-management | ❌ Failed | Needs guidance (see below) |
 
 ---
 
-## E2E Status (Post-Fix)
+## E2E Suite Status
 
-**Fix Applied:** `cd652c9b` - Added SQLite DB readiness guards to rapid-failing specs
+### Cluster Overview
 
-### Specs Fixed
-- `data-visualization.spec.ts`
-- `catalog-workflow.spec.ts`
-- `deck-setup.spec.ts`
-- `execution-browser.spec.ts`
-- `capture-remaining.spec.ts`
-- `functional-asset-selection.spec.ts` (already covered via BasePage)
+| Cluster | Specs | Status | Root Cause |
+|---------|-------|--------|------------|
+| **Rapid Failures** | 6 specs | ✅ Fixed | Missing DB readiness guard |
+| **data-visualization** | 6 tests | 🔍 Diagnosed | Needs mock data for ProtocolService |
+| **asset-management** | 8 tests | ❌ Stuck | Dialog not rendering (button/overlay issue?) |
+| **browser-persistence** | 1 test | ⏳ Review pending | Jules completed, zip needs pull |
+| **catalog/deck/exec** | 4 tests | ⏳ Review pending | Jules completed, zip needs pull |
+| **Complex workflows** | 2 specs | 🔒 Deferred | Fix foundations first |
 
-### Remaining Clusters
-1. **Asset Management Timeouts** (~30s) - May be change detection race condition
-2. **Complex Workflows** (2+ min) - Defer until foundations fixed
+### Progress
 
-### Verification Command
-```bash
-(cd praxis/web-client && npx playwright test data-visualization.spec.ts --project=chromium)
+```
+[DONE] DB readiness guards added (5 specs)
+[DONE] Root cause: data-viz needs mock data
+[DONE] name-parser refactor (CC reduction)
+[PENDING] Review 2 completed Jules sessions (browser-persistence, catalog/deck/exec)
+[BLOCKED] asset-management - Jules failed, needs different approach
+[DEFERRED] protocol-execution, asset-wizard (complex workflows)
 ```
 
-### 🆕 Post-Fix Finding (12:30)
+---
 
-DB readiness fix (`cd652c9b`) confirmed working - tests no longer fail in <500ms.
+## Outstanding Jules Zips to Pull
 
-**New Issue Revealed:** Canvas not rendering in `data-visualization.spec.ts`
-- All 6 tests fail waiting for `canvas` element
-- Tests now reach the page but chart component doesn't render
-- Likely cause: Missing mock data or chart initialization issue
+```bash
+# Browser Persistence (completed)
+jules remote pull --session 10398531418121265844
 
-**Next:** Investigate `app-data-visualization` component rendering in browser mode.
+# Catalog/Deck/Execution (completed)
+jules remote pull --session 13148013958322937082
+```
 
 ---
 
-## Infrastructure Note
+## Asset Management Guidance
 
-Antigravity dispatch `d260129115511813_c648` stalled:
-- Daemon not responding on port 9797
-- Worker claimed but no heartbeat
-- Implemented fix directly instead
+The Jules session failed after trying signals, MatTabGroup, ChangeDetectorRef, ngZone. 
 
-**Lesson:** Check daemon status before dispatching.
+**Likely issue:** The E2E test button click fails silently - the button is either:
+1. Disabled (`isLoading() || isSyncing()` is true)
+2. Obscured by an overlay
+3. The selector `data-tour-id="add-asset-btn"` isn't matching
 
----
-
-## File Conflict Zones
-
-| Zone | Files | Conflict Risk |
-|------|-------|---------------|
-| **ZONE-SQLITE** | `sqlite.service.ts`, `sqlite-opfs.service.ts`, `sqlite-opfs.worker.ts` | HIGH |
-| **ZONE-RUN-PROTOCOL** | `run-protocol.component.ts`, `execution.service.ts` | HIGH |
-| **ZONE-ASSETS** | `asset-wizard.*`, `assets.page.ts` | MEDIUM |
-| **ZONE-E2E** | `e2e/specs/*.spec.ts` | LOW |
+**Next approach:** Debug the test interaction, not the component:
+```typescript
+const addBtn = page.locator('[data-tour-id="add-asset-btn"]');
+await expect(addBtn).toBeVisible({ timeout: 10000 });
+await expect(addBtn).toBeEnabled();
+console.log('Button state:', await addBtn.isEnabled());
+await addBtn.click();
+await page.waitForSelector('mat-dialog-container', { timeout: 10000 });
+```
 
 ---
 
 ## Recommended Next Steps
 
-1. **Verify E2E fix** - Run isolated rapid-failure tests
-2. **Cancel SQLite types session** - Handle manually at JSON boundary
-3. **Stage 2: name-parser refactor** (CC=10) - Isolated, no conflicts
-4. **Investigate asset management timeouts** - Change detection hypothesis
+1. **Pull & review** completed Jules sessions (browser-persistence, catalog/deck/exec)
+2. **Apply data-viz fix** - implement mock data as per investigation doc
+3. **New approach for asset-management** - debug test interaction not component
+4. **Run E2E suite** to get updated pass/fail count
 
 ---
 
-## Session 1E Guidance (SQLite types - Deferred)
+## Files Modified This Session
 
-The `as any` casts hide deep type incompatibilities:
-- `properties_json` and `state_history` are JSON but accessed as typed objects
-- Repository generics don't flow through RxJS operators
-
-**Manual approach:**
-1. Create explicit `DbRowResult` interfaces
-2. Add type-safe JSON parsing helpers
-3. Keep `as any` only at JSON boundary (1-2 locations)
+- `praxis/web-client/e2e/specs/data-visualization.spec.ts` (DB guard)
+- `praxis/web-client/e2e/specs/catalog-workflow.spec.ts` (DB guard)
+- `praxis/web-client/e2e/specs/deck-setup.spec.ts` (DB guard)
+- `praxis/web-client/e2e/specs/execution-browser.spec.ts` (DB guard)
+- `praxis/web-client/e2e/specs/capture-remaining.spec.ts` (DB guard)
+- `praxis/web-client/src/app/shared/utils/name-parser.ts` (refactor)
+- `.agent/DATA_VIZ_E2E_INVESTIGATION.md` (new)
+- `.agent/260129_PRAXIS_HANDOFF.md` (updated)
