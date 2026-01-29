@@ -1,7 +1,7 @@
 <div class="asset-wizard-container">
   <mat-stepper orientation="horizontal" [linear]="true" #stepper>
     <!-- Step 1: Asset Type -->
-    <mat-step [stepControl]="typeStepFormGroup">
+    <mat-step [stepControl]="typeStepFormGroup" data-testid="wizard-step-type">
       <form [formGroup]="typeStepFormGroup">
         <ng-template matStepLabel>Type</ng-template>
 
@@ -54,13 +54,14 @@
         </div>
 
         <div class="step-actions">
-          <button mat-flat-button color="primary" matStepperNext [disabled]="typeStepFormGroup.invalid">Next</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="typeStepFormGroup.invalid"
+            data-testid="wizard-next-button">Next</button>
         </div>
       </form>
     </mat-step>
 
     <!-- Step 2: Category -->
-    <mat-step [stepControl]="categoryStepFormGroup">
+    <mat-step [stepControl]="categoryStepFormGroup" data-testid="wizard-step-category">
       <form [formGroup]="categoryStepFormGroup">
         <ng-template matStepLabel>Category</ng-template>
 
@@ -88,16 +89,16 @@
         </div>
 
         <div class="step-actions">
-          <button mat-button matStepperPrevious>Back</button>
-          <button mat-flat-button color="primary" matStepperNext
-            [disabled]="categoryStepFormGroup.invalid">Next</button>
+          <button mat-button matStepperPrevious data-testid="wizard-back-button">Back</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="categoryStepFormGroup.invalid"
+            data-testid="wizard-next-button">Next</button>
         </div>
       </form>
     </mat-step>
 
     <!-- Step 3A: Frontend Selection (MACHINES ONLY) -->
     @if (isMachine) {
-    <mat-step [stepControl]="frontendStepFormGroup">
+    <mat-step [stepControl]="frontendStepFormGroup" data-testid="wizard-step-frontend">
       <form [formGroup]="frontendStepFormGroup">
         <ng-template matStepLabel>Machine Type</ng-template>
         <div class="step-content">
@@ -176,7 +177,7 @@
             }
 
             @if ((frontends$ | async)?.length === 0) {
-            <div class="no-results">
+            <div class="no-results" data-testid="no-results-message">
               <mat-icon>search_off</mat-icon>
               <p>No machine types found for this category</p>
             </div>
@@ -184,15 +185,15 @@
           </div>
         </div>
         <div class="step-actions">
-          <button mat-button matStepperPrevious>Back</button>
-          <button mat-flat-button color="primary" matStepperNext
-            [disabled]="frontendStepFormGroup.invalid">Next</button>
+          <button mat-button matStepperPrevious data-testid="wizard-back-button">Back</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="frontendStepFormGroup.invalid"
+            data-testid="wizard-next-button">Next</button>
         </div>
       </form>
     </mat-step>
 
     <!-- Step 4: Backend Selection (MACHINES ONLY) -->
-    <mat-step [stepControl]="backendStepFormGroup">
+    <mat-step [stepControl]="backendStepFormGroup" data-testid="wizard-step-backend">
       <form [formGroup]="backendStepFormGroup">
         <ng-template matStepLabel>Driver</ng-template>
         <div class="step-content">
@@ -237,7 +238,7 @@
             }
 
             @if ((backends$ | async)?.length === 0) {
-            <div class="no-results">
+            <div class="no-results" data-testid="no-results-message">
               <mat-icon>search_off</mat-icon>
               <p>No drivers found for {{ selectedFrontend?.name }}</p>
               <p class="text-xs text-sys-text-tertiary mt-2">Try selecting a different machine type</p>
@@ -246,8 +247,9 @@
           </div>
         </div>
         <div class="step-actions">
-          <button mat-button matStepperPrevious>Back</button>
-          <button mat-flat-button color="primary" matStepperNext [disabled]="backendStepFormGroup.invalid">Next</button>
+          <button mat-button matStepperPrevious data-testid="wizard-back-button">Back</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="backendStepFormGroup.invalid"
+            data-testid="wizard-next-button">Next</button>
         </div>
       </form>
     </mat-step>
@@ -255,7 +257,7 @@
 
     <!-- Step 3B: Definition Selection (RESOURCES ONLY) -->
     @if (!isMachine) {
-    <mat-step [stepControl]="definitionStepFormGroup">
+    <mat-step [stepControl]="definitionStepFormGroup" data-testid="wizard-step-definition">
       <form [formGroup]="definitionStepFormGroup">
         <ng-template matStepLabel>Definition</ng-template>
         <div class="step-content">
@@ -271,7 +273,7 @@
           </div>
 
           @if (searchResults$ | async; as results) {
-          <div class="results-grid">
+          <div class="results-grid" data-testid="results-grid">
             @for (def of results; track def.accession_id) {
             <div class="praxis-card premium result-card group"
               [class.selected]="selectedDefinition?.accession_id === def.accession_id"
@@ -305,7 +307,7 @@
             }
 
             @if (results.length === 0) {
-            <div class="no-results">
+            <div class="no-results" data-testid="no-results-message">
               <mat-icon>search_off</mat-icon>
               <p>No definitions found matching "{{ searchInput.value }}"</p>
               <button mat-button color="primary" (click)="searchInput.value = ''; searchDefinitions('')">Clear
@@ -316,16 +318,16 @@
           }
         </div>
         <div class="step-actions">
-          <button mat-button matStepperPrevious>Back</button>
-          <button mat-flat-button color="primary" matStepperNext
-            [disabled]="definitionStepFormGroup.invalid">Next</button>
+          <button mat-button matStepperPrevious data-testid="wizard-back-button">Back</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="definitionStepFormGroup.invalid"
+            data-testid="wizard-next-button">Next</button>
         </div>
       </form>
     </mat-step>
     }
 
     <!-- Step N: Configuration -->
-    <mat-step [stepControl]="configStepFormGroup">
+    <mat-step [stepControl]="configStepFormGroup" data-testid="wizard-step-config">
       <form [formGroup]="configStepFormGroup">
         <ng-template matStepLabel>Config</ng-template>
         <div class="step-content">
@@ -334,7 +336,8 @@
           <div class="form-grid">
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Instance Name</mat-label>
-              <input matInput formControlName="name" placeholder="e.g. Primary Hamilton, Plate Bench 1" data-testid="input-instance-name">
+              <input matInput formControlName="name" placeholder="e.g. Primary Hamilton, Plate Bench 1"
+                data-testid="input-instance-name">
               <mat-icon matSuffix>badge</mat-icon>
               @if (configStepFormGroup.get('name')?.hasError('required')) {
               <mat-error>Name is required</mat-error>
@@ -368,14 +371,15 @@
           </div>
         </div>
         <div class="step-actions">
-          <button mat-button matStepperPrevious>Back</button>
-          <button mat-flat-button color="primary" matStepperNext [disabled]="configStepFormGroup.invalid">Next</button>
+          <button mat-button matStepperPrevious data-testid="wizard-back-button">Back</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="configStepFormGroup.invalid"
+            data-testid="wizard-next-button">Next</button>
         </div>
       </form>
     </mat-step>
 
     <!-- Step N+1: Review -->
-    <mat-step>
+    <mat-step data-testid="wizard-step-review">
       <ng-template matStepLabel>Review</ng-template>
       <div class="step-content">
         <h3><mat-icon>assignment_turned_in</mat-icon> Final Review</h3>
@@ -426,8 +430,9 @@
         }
       </div>
       <div class="step-actions">
-        <button mat-button matStepperPrevious [disabled]="isLoading()">Back</button>
-        <button mat-flat-button color="primary" (click)="createAsset()" [disabled]="isLoading()" data-testid="wizard-create-btn">
+        <button mat-button matStepperPrevious [disabled]="isLoading()" data-testid="wizard-back-button">Back</button>
+        <button mat-flat-button color="primary" (click)="createAsset()" [disabled]="isLoading()"
+          data-testid="wizard-create-btn">
           {{ isLoading() ? 'Creating...' : 'Create Asset' }}
         </button>
       </div>

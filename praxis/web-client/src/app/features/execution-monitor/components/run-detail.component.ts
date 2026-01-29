@@ -498,7 +498,7 @@ export class RunDetailComponent implements OnInit, OnDestroy {
   formatDateTime(isoDate?: string): string {
     if (!isoDate) return '-';
     try {
-      return new Date(iso-date).toLocaleString();
+      return new Date(isoDate).toLocaleString();
     } catch {
       return isoDate;
     }
