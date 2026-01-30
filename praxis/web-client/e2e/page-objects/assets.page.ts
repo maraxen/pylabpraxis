@@ -27,8 +27,9 @@ export class AssetsPage extends BasePage {
     private async waitForWizard() {
         const wizard = this.page.locator('app-asset-wizard');
         await expect(wizard).toBeVisible({ timeout: 15000 });
-        // Wait for the first step to be rendered
-        await expect(wizard.getByTestId('wizard-step-category')).toBeVisible({ timeout: 10000 });
+        // Wait for any visible h3 in the wizard - use filter to find actually visible one
+        // Material stepper renders all steps but only shows the active one
+        await expect(wizard.locator('h3:visible').first()).toBeVisible({ timeout: 15000 });
         return wizard;
     }
 
@@ -41,7 +42,7 @@ export class AssetsPage extends BasePage {
         const nextButton = currentStep.getByTestId('wizard-next-button');
 
         await expect(nextButton).toBeEnabled({ timeout: 10000 });
-        await nextButton.click();
+        await nextButton.click({ force: true }); // Force click to bypass any animation overlays
     }
 
     /**
@@ -88,26 +89,47 @@ export class AssetsPage extends BasePage {
         await this.addMachineButton.click();
         const wizard = await this.waitForWizard();
 
-        // Step 1: Select Category
+        // Step 2: Select Category
+        await expect(wizard.locator('h3:has-text("Select Category")')).toBeVisible({ timeout: 10000 });
         await this.selectWizardCard(wizard, `category-card-${categoryName}`);
         await this.clickNextButton(wizard);
 
         // Step 3: Select Machine Type (Frontend)
+        // Wait for heading to appear - indicates step transition complete
+        await expect(wizard.locator('h3:has-text("Select Machine Type")')).toBeVisible({ timeout: 10000 });
+        // Brief pause for Material stepper animation to settle
+        await this.page.waitForTimeout(100);
         const frontendCard = wizard.locator('[data-testid^="frontend-card-"]').first();
-        await frontendCard.click();
+        await expect(frontendCard).toBeVisible({ timeout: 10000 });
+        await frontendCard.click({ force: true, noWaitAfter: true, timeout: 10000 });
+        await expect(frontendCard).toHaveClass(/selected/, { timeout: 5000 });
         await this.clickNextButton(wizard);
 
         // Step 4: Select Driver (Backend)
+        await expect(wizard.locator('h3:has-text("Select Driver")')).toBeVisible({ timeout: 10000 });
+        await this.page.waitForTimeout(100);
         const backendCard = wizard.locator('[data-testid^="backend-card-"]').first();
-        await backendCard.click();
+        await expect(backendCard).toBeVisible({ timeout: 15000 });
+        // Use noWaitAfter to prevent Playwright from waiting for navigations that may never complete
+        await backendCard.click({ force: true, noWaitAfter: true, timeout: 10000 });
+        await expect(backendCard).toHaveClass(/selected/, { timeout: 5000 });
         await this.clickNextButton(wizard);
 
         // Step 5: Config
-        await wizard.getByTestId('input-instance-name').fill(name);
+        await expect(wizard.locator('h3:has-text("Complete Configuration")')).toBeVisible({ timeout: 10000 });
+        const instanceNameInput = wizard.getByTestId('input-instance-name');
+        await expect(instanceNameInput).toBeVisible({ timeout: 5000 });
+        await instanceNameInput.fill(name);
         await this.clickNextButton(wizard);
 
-        // Step 6: Create
-        await wizard.getByTestId('wizard-create-btn').click();
+        // Step 6: Review and Create
+        // Wait for animation to settle before checking for review step content
+        await this.page.waitForTimeout(100);
+        await expect(wizard.locator('h3:visible:has-text("Final Review")')).toBeVisible({ timeout: 15000 });
+        const createBtn = wizard.getByTestId('wizard-create-btn');
+        await expect(createBtn).toBeVisible({ timeout: 5000 });
+        await expect(createBtn).toBeEnabled({ timeout: 5000 });
+        await createBtn.click({ force: true });
         await expect(wizard).not.toBeVisible({ timeout: 15000 });
     }
 
