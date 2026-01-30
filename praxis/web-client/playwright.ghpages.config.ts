@@ -44,7 +44,7 @@ export default defineConfig({
 
     use: {
         // Base URL points to the /praxis/ subdirectory
-        baseURL: 'http://localhost:8080/praxis',
+        baseURL: 'http://localhost:8080/praxis/',
 
         // Capture artifacts for debugging
         trace: 'on-first-retry',

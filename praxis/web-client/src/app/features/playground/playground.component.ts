@@ -824,6 +824,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
     const baseUrl = './assets/jupyterlite/repl/index.html';
     const params = new URLSearchParams({
+      kernel: 'python',
       toolbar: '1',
       theme: isDark ? 'JupyterLab Dark' : 'JupyterLab Light',
     });

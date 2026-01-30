@@ -57,10 +57,16 @@ export class SqliteService {
             (window as any).sqliteService = this;
         }
 
+        // Get database name from URL params (for E2E test isolation)
+        const dbName = this.getDbNameFromUrl();
+        if (dbName) {
+            console.log(`[SqliteService] Using database from URL: ${dbName}`);
+        }
+
         // Initialize OPFS and sync status.
         // The isReady$ signal is now emitted *after* opfs.init() completes,
         // which includes schema creation and seeding.
-        this.opfs.init().subscribe({
+        this.opfs.init(dbName).subscribe({
             next: () => {
                 this.statusSubject.next({
                     initialized: true,
@@ -81,6 +87,22 @@ export class SqliteService {
                 this.isReady$.next(false);
             }
         });
+    }
+
+    // ============================================
+    // Private Helpers
+    // ============================================
+
+    /**
+     * Extract database name from URL query parameters.
+     * Used for E2E test isolation - each Playwright worker uses a unique DB.
+     * Format: ?dbName=praxis-worker-0
+     */
+    private getDbNameFromUrl(): string | undefined {
+        if (typeof window === 'undefined') return undefined;
+        const params = new URLSearchParams(window.location.search);
+        const dbName = params.get('dbName');
+        return dbName ? `/${dbName}.db` : undefined;
     }
 
     // ============================================

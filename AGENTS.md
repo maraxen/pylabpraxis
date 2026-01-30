@@ -81,3 +81,7 @@ src/
 
 e2e/                    # Playwright E2E tests
 ```
+
+### Reference Documents
+
+- **Playwright + Angular Best Practices (2026)**: See `.agent/staging/playwright-angular-best-practices-2026.md` for comprehensive E2E testing guidelines including locator strategies, web-first assertions, Page Object patterns, and Angular-specific debugging tips.
