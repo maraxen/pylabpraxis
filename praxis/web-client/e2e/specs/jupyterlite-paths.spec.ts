@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 
 /**
  * JupyterLite Path Resolution E2E Tests

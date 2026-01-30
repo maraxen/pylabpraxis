@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 
 test.describe('Asset Wizard Visual Validation', () => {
 
@@ -46,9 +46,9 @@ test.describe('Asset Wizard Visual Validation', () => {
             if (await dismissBtn.isVisible({ timeout: 5000 })) {
                 await dismissBtn.click();
                 // Wait for backdrop to disappear or detach
-                await page.waitForSelector('.cdk-overlay-backdrop', { state: 'detached', timeout: 5000 }).catch(() => { });
+                await page.waitForSelector('.cdk-overlay-backdrop', { state: 'detached', timeout: 5000 }).catch((e) => console.log('[Test] Silent catch (Overlay backdrop):', e));
             }
-        } catch (e) { }
+        } catch (e) { console.log('[Test] Caught:', (e as Error).message); }
 
         // Open Wizard
         const addAssetBtn = page.locator('[data-tour-id="add-asset-btn"]');

@@ -1,8 +1,8 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 
 test.afterEach(async ({ page }) => {
     // Dismiss any open dialogs/overlays to ensure clean state
-    await page.keyboard.press('Escape').catch(() => { });
+    await page.keyboard.press('Escape').catch((e) => console.log('[Test] Silent catch (Escape):', e));
 });
 
 test('should handle pause, confirm, and input interactions', async ({ page }) => {
@@ -24,7 +24,7 @@ test('should handle pause, confirm, and input interactions', async ({ page }) =>
         if (await dismissBtn.isVisible({ timeout: 5000 })) {
             await dismissBtn.click();
         }
-    } catch (e) { }
+    } catch (e) { console.log('[Test] Caught:', (e as Error).message); }
 
     // Wait for JupyterLite/REPL to be ready (spinner to disappear)
     const loadingOverlay = page.locator('.loading-overlay');
@@ -42,7 +42,7 @@ test('should handle pause, confirm, and input interactions', async ({ page }) =>
             await jupyterDialogBtn.click();
             await page.waitForTimeout(1000);
         }
-    } catch (e) { }
+    } catch (e) { console.log('[Test] Caught:', (e as Error).message); }
 
     // 3. Type code into the editor
     // Target the last cell (which should be the new empty one) and its editor

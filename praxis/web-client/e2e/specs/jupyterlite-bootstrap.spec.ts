@@ -1,82 +1,161 @@
 
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '../fixtures/worker-db.fixture';
 
 test.describe('JupyterLite Bootstrap Verification', () => {
-    test('Bootstrap code executes successfully and loads shims', async ({ page }) => {
+    test('JupyterLite Seamless Bootstrap Validation', async ({ page }) => {
         const consoleLogs: string[] = [];
-        const failedRequests: string[] = [];
-        const successfulRequests: string[] = [];
+        page.on('console', msg => consoleLogs.push(msg.text()));
 
-        // Capture console logs
-        page.on('console', msg => {
-            const text = msg.text();
-            consoleLogs.push(text);
-            // Print critical python errors to test output
-            if (text.includes('Error') || text.includes('Exception') || text.includes('Failed')) {
-                console.log(`[Browser Console Error] ${text}`);
-            }
+        // 1. Navigate to origin to set localStorage BEFORE Angular loads
+        await page.goto('/');
+        await page.evaluate(() => {
+            localStorage.setItem('praxis_onboarding_completed', 'true');
+            localStorage.setItem('praxis_tutorial_completed', 'true');
         });
 
-        // Monitor network
-        page.on('response', response => {
-            const url = response.url();
-            if (response.status() === 404) {
-                failedRequests.push(url);
-            } else if (response.status() === 200) {
-                successfulRequests.push(url);
-            }
-        });
-
-        // Go to playground (Browser Mode)
+        // 2. Navigate to playground - Welcome dialog should be bypassed now
         await page.goto('/app/playground?mode=browser&resetdb=1');
 
-        // Wait for JupyterLite frame
+        // 3. ASSERTION: Welcome Dialog should NOT be visible (bypassed via localStorage)
+        const skipBtn = page.getByRole('button', { name: 'Skip for Now' });
+        await expect(skipBtn).not.toBeVisible({ timeout: 3000 });
+        console.log('[Test] Verified: Welcome dialog did NOT appear');
+
+        const jupyterFrame = page.frameLocator('iframe.notebook-frame');
+
+        // Wait for iframe to be attached first
         const frameElement = page.locator('iframe.notebook-frame');
         await expect(frameElement).toBeVisible({ timeout: 20000 });
+        console.log('[Test] JupyterLite iframe attached');
 
-        // Wait for "Ready signal sent" logs or similar indicating success
-        // Based on playground.component.ts logs: "✓ Ready signal sent"
-        // But these are printed in Python. Where do they go?
-        // Usually Pyodide stdout goes to console.log.
+        // 4. ASSERTION: Kernel Selection Dialog should NOT appear
+        const jpKernelDialog = jupyterFrame.locator('.jp-Dialog').filter({ hasText: /kernel|select/i });
+        await expect(jpKernelDialog).not.toBeVisible({ timeout: 5000 });
+        console.log('[Test] Verified: Kernel dialog did NOT appear');
 
-        // Wait up to 30s for bootstrap
+        // Wait for Angular loading overlay to disappear
+        const loadingOverlay = page.locator('.loading-overlay');
+        await expect(loadingOverlay).toBeHidden({ timeout: 60000 });
+        console.log('[Test] Loading overlay cleared');
+
+        // Dismiss any dialogs (theme errors, etc.)
+        for (let i = 0; i < 3; i++) {
+            try {
+                const okButton = jupyterFrame.getByRole('button', { name: 'OK' });
+                if (await okButton.isVisible({ timeout: 1000 })) {
+                    await okButton.click();
+                    console.log('[Test] Dismissed dialog (attempt ' + (i + 1) + ')');
+                    await page.waitForTimeout(500);
+                }
+            } catch {
+                // No dialog to dismiss
+            }
+        }
+
+        // 5. VALIDATION: Check for Kernel Readiness
         try {
-            await expect.poll(async () => {
-                return consoleLogs.some(log => log.includes('Ready signal sent') || log.includes('✓ Asset injection ready'));
-            }, { timeout: 45000, intervals: [1000] }).toBe(true);
+            await jupyterFrame.locator('.jp-mod-idle').first().waitFor({
+                timeout: 45000,
+                state: 'visible'
+            });
+            console.log('[Test] Kernel auto-started successfully');
         } catch (e) {
-            console.log('Timed out waiting for ready signal.');
+            console.log('[Test] Warning: Could not confirm kernel idle state');
+            console.log('[Test] Last 10 console logs:', consoleLogs.slice(-10));
         }
 
-        // Diagnostic checks
+        // 6. BOOTSTRAP VALIDATION: Verify Praxis-specific shims loaded
+        await expect.poll(() => {
+            const pyodideReady = consoleLogs.some(log => log.includes('[PythonRuntime] Pyodide ready'));
+            const shimsInjected = consoleLogs.some(log => log.includes('WebSerial injected') || log.includes('WebUSB injected'));
+            return pyodideReady && shimsInjected;
+        }, {
+            timeout: 60000,
+            message: 'Pyodide ready or WebSerial/WebUSB shims never detected in console'
+        }).toBe(true);
 
-        // 1. Check if shims were loaded
-        const shimsLoaded = consoleLogs.some(log => log.includes('PylibPraxis: Loaded web_serial_shim.py'));
-        console.log(`Shims Loaded: ${shimsLoaded}`);
+        console.log('[Test] Bootstrap complete with zero user intervention.');
 
-        // 2. Check if wheels were installed
-        const wheelsInstalled = consoleLogs.some(log => log.includes('Installing pylabrobot from local wheel'));
-        console.log(`Wheels Installation Started: ${wheelsInstalled}`);
+        // 7. KERNEL EXECUTION VALIDATION: Execute print('hello world')
+        const codeInput = jupyterFrame.locator('.jp-CodeConsole-input .jp-InputArea-editor');
+        await expect(codeInput).toBeVisible({ timeout: 10000 });
 
-        // 3. Check for specific Python syntax errors
-        const syntaxErrors = consoleLogs.filter(log => log.includes('SyntaxError'));
-        if (syntaxErrors.length > 0) {
-            console.error('Syntax Errors detected:', syntaxErrors);
+        // Ensure any dialogs are closed before interacting
+        try {
+            const okButton = jupyterFrame.getByRole('button', { name: 'OK' });
+            if (await okButton.isVisible({ timeout: 500 })) {
+                await okButton.click();
+            }
+        } catch (e) {
+            console.log('[Test] Silent catch (ignored - theme error):', e);
         }
 
-        // 4. Verify request statuses for critical assets
-        const whlRequest = successfulRequests.find(u => u.includes('.whl'));
-        const shimRequest = successfulRequests.find(u => u.includes('web_serial_shim.py'));
+        // Type and execute 'print("hello world")'
+        await codeInput.click({ force: true });
+        await page.keyboard.type('print("hello world")');
+        await page.keyboard.press('Shift+Enter');
 
-        console.log(`Wheel Request Found: ${!!whlRequest}`);
-        console.log(`Shim Request Found: ${!!shimRequest}`);
+        // Wait for output containing 'hello world'
+        await expect.poll(() => {
+            return consoleLogs.some(log => log.includes('hello world'));
+        }, {
+            timeout: 15000,
+            message: 'Expected "hello world" output from kernel'
+        }).toBe(true);
+        console.log('[Test] Kernel execution validated: print("hello world") succeeded');
 
-        // Fail if we see "Failed to load" from our bootstrap print statements
-        const bootstrapFailures = consoleLogs.filter(log => log.includes('PylibPraxis: Failed to load'));
-        expect(bootstrapFailures, `Bootstrap failed to load components: ${bootstrapFailures.join('\n')}`).toHaveLength(0);
+        // 8. PYLABROBOT IMPORT VALIDATION
+        // Dismiss any dialogs first
+        try {
+            const okButton = jupyterFrame.getByRole('button', { name: 'OK' });
+            if (await okButton.isVisible({ timeout: 500 })) {
+                await okButton.click();
+            }
+        } catch (e) {
+            console.log('[Test] Silent catch (ignored - kernel select):', (e as Error).message);
+        }
 
-        // Fail if no ready signal
-        const ready = consoleLogs.some(log => log.includes('Ready signal sent'));
-        expect(ready, 'Kernel did not signal ready state').toBe(true);
+        await codeInput.click({ force: true });
+        await page.keyboard.type('import pylabrobot; print(f"PLR v{pylabrobot.__version__}")');
+        await page.keyboard.press('Shift+Enter');
+
+        await expect.poll(() => {
+            return consoleLogs.some(log => log.includes('PLR v'));
+        }, {
+            timeout: 15000,
+            message: 'Expected pylabrobot version output'
+        }).toBe(true);
+        console.log('[Test] PyLabRobot import validated');
+
+        // 9. CUSTOM INTERACTIONS VALIDATION (web_bridge)
+        try {
+            const okButton = jupyterFrame.getByRole('button', { name: 'OK' });
+            if (await okButton.isVisible({ timeout: 500 })) {
+                await okButton.click();
+            }
+        } catch (e) {
+            console.log('[Test] Silent catch (ignored - welcome dialog):', (e as Error).message);
+        }
+
+        await codeInput.click({ force: true });
+        await page.keyboard.type('import web_bridge; print("web_bridge:", hasattr(web_bridge, "request_user_interaction"))');
+        await page.keyboard.press('Shift+Enter');
+
+        await expect.poll(() => {
+            return consoleLogs.some(log => log.includes('web_bridge: True'));
+        }, {
+            timeout: 15000,
+            message: 'Expected web_bridge import to succeed with request_user_interaction'
+        }).toBe(true);
+        console.log('[Test] Custom interactions (web_bridge) validated');
+
+        // Final assertions
+        const pyodideReady = consoleLogs.some(log => log.includes('[PythonRuntime] Pyodide ready'));
+        const shimsInjected = consoleLogs.some(log => log.includes('WebSerial injected') || log.includes('WebUSB injected'));
+        console.log(`[Test] Pyodide Ready: ${pyodideReady}`);
+        console.log(`[Test] Shims Injected: ${shimsInjected}`);
+
+        expect(pyodideReady, 'Pyodide runtime did not signal ready state').toBe(true);
+        expect(shimsInjected, 'WebSerial/WebUSB shims were not injected').toBe(true);
     });
 });

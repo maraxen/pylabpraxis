@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 import * as path from 'path';
 
 test.describe('Browser Mode Database Export', () => {

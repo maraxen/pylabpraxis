@@ -1,5 +1,5 @@
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 
 test('logo rendering verification', async ({ page }) => {
     await page.goto('http://localhost:8080/praxis/');

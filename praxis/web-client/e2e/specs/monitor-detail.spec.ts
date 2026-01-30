@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 import { MonitorPage } from '../page-objects/monitor.page';
 
 test.describe('Run Detail View', () => {

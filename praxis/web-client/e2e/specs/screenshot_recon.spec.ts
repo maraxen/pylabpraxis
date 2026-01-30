@@ -1,5 +1,5 @@
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 
 test('capture protocol runner screenshots', async ({ page }) => {
     console.log('Navigating to Protocol Runner...');

@@ -20,9 +20,9 @@ export class ProtocolPage extends BasePage {
             .locator('.cdk-overlay-container button, .mat-mdc-dialog-container button')
             .filter({ hasText: /Close|Dismiss|Got it|OK|Continue|Skip|Start/i });
         if (await dismissButtons.count()) {
-            await dismissButtons.first().click({ timeout: 2000 }).catch(() => undefined);
+            await dismissButtons.first().click({ timeout: 2000 }).catch((e) => console.log('[Test] Silent catch (Overlay dismiss button click):', e));
         }
-        await this.page.keyboard.press('Escape').catch(() => undefined);
+        await this.page.keyboard.press('Escape').catch((e) => console.log('[Test] Silent catch (Overlay Escape):', e));
     }
 
     async goto() {
@@ -85,7 +85,10 @@ export class ProtocolPage extends BasePage {
             .or(this.page.locator(`input[name="${name}"]`))
             .first();
 
-        if (await paramInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+        if (await paramInput.isVisible({ timeout: 5000 }).catch((e) => {
+            console.log('[Test] Silent catch (paramInput isVisible):', e);
+            return false;
+        })) {
             await paramInput.fill(value);
         } else {
             console.log(`Parameter ${name} (Label: ${label}) not found or not visible.`);
@@ -100,7 +103,10 @@ export class ProtocolPage extends BasePage {
 
             // Fallback: try to find any input in a form-field that has the label text nearby
             const fallback = this.page.locator('mat-form-field').filter({ hasText: new RegExp(label, 'i') }).locator('input').first();
-            if (await fallback.isVisible({ timeout: 2000 }).catch(() => false)) {
+            if (await fallback.isVisible({ timeout: 2000 }).catch((e) => {
+                console.log('[Test] Silent catch (fallback isVisible):', e);
+                return false;
+            })) {
                 console.log(`[Debug] Found fallback for ${label}`);
                 await fallback.fill(value);
             } else {

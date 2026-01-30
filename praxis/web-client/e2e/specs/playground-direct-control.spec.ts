@@ -1,9 +1,9 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 import { AssetsPage } from '../page-objects/assets.page';
 
 test.afterEach(async ({ page }) => {
     // Dismiss any open dialogs/overlays to ensure clean state
-    await page.keyboard.press('Escape').catch(() => { });
+    await page.keyboard.press('Escape').catch((e) => console.log('[Test] Silent catch (Escape):', e));
 });
 
 test('should allow adding a machine and using direct control', async ({ page }) => {
@@ -54,7 +54,7 @@ test('should allow adding a machine and using direct control', async ({ page }) 
         if (await dismissBtn.isVisible({ timeout: 5000 })) {
             await dismissBtn.click();
         }
-    } catch (e) { }
+    } catch (e) { console.log('[Test] Caught:', (e as Error).message); }
 
     await page.screenshot({ path: 'e2e/screenshots/direct-control-step1.png' });
 
@@ -83,8 +83,8 @@ test('should allow adding a machine and using direct control', async ({ page }) 
 
     // Wait for either method chips or no-methods message
     await Promise.race([
-        methodChips.first().waitFor({ timeout: 10000 }).catch(() => { }),
-        noMethodsMessage.waitFor({ timeout: 10000 }).catch(() => { })
+        methodChips.first().waitFor({ timeout: 10000 }).catch((e) => console.log('[Test] Silent catch (Method chips):', e)),
+        noMethodsMessage.waitFor({ timeout: 10000 }).catch((e) => console.log('[Test] Silent catch (No methods msg):', e))
     ]);
 
     const hasMethodChips = await methodChips.count() > 0;

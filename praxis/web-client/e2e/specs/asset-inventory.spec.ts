@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 
 /**
  * E2E Tests for Asset Inventory Persistence
@@ -12,8 +12,8 @@ test.describe('Asset Inventory Persistence', () => {
         await page.goto('/');
 
         // In browser mode, we expect a redirect to /app/home
-        await page.waitForURL('**/app/home', { timeout: 15000 }).catch(() => {
-            console.log('Did not redirect to /app/home automatically');
+        await page.waitForURL('**/app/home', { timeout: 15000 }).catch((e) => {
+            console.log('[Test] Silent catch (waitForURL home):', e);
         });
 
         // Ensure shell layout is visible

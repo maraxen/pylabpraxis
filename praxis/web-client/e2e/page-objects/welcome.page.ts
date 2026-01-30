@@ -25,7 +25,7 @@ export class WelcomePage extends BasePage {
             }
         } catch (e) {
             // Splash might not appear if already visited or not in that mode
-            console.log('Splash screen skipped or not present');
+            console.log('[Test] Caught (Splash screen):', (e as Error).message);
         }
     }
 

@@ -44,7 +44,10 @@ export class WizardPage {
             this.page.evaluate(() => {
                 const cmp = (window as any).ng?.getComponent?.(document.querySelector('app-run-protocol'));
                 return cmp?.modeService?.isBrowserMode?.();
-            }).catch(() => null),
+            }).catch((e) => {
+                console.log('[Test] Silent catch (isBrowserMode evaluate):', e);
+                return null;
+            }),
         ]);
 
         return {
@@ -88,7 +91,7 @@ export class WizardPage {
     async selectFirstCompatibleMachine() {
         await this.machineStep.waitFor({ state: 'visible' });
         const spinner = this.machineStep.locator('mat-spinner');
-        await spinner.waitFor({ state: 'detached', timeout: 15000 }).catch(() => undefined);
+        await spinner.waitFor({ state: 'detached', timeout: 15000 }).catch((e) => console.log('[Test] Silent catch (Machine step spinner):', e));
 
         // Target new selector sections first
         const sections = this.machineStep.locator('.machine-arg-section');
@@ -110,7 +113,7 @@ export class WizardPage {
                     await Promise.race([
                         options.first().waitFor({ state: 'visible', timeout: 5000 }),
                         noOptions.first().waitFor({ state: 'visible', timeout: 5000 })
-                    ]).catch(() => { });
+                    ]).catch((e) => console.log('[Test] Silent catch (Machine options race):', e));
 
                     if (await options.count() > 0) {
                         // Prefer simulation/chatterbox in simulation mode
@@ -133,7 +136,7 @@ export class WizardPage {
                 machineCards.first().waitFor({ state: 'visible', timeout: 5000 }),
                 noMachines.first().waitFor({ state: 'visible', timeout: 5000 }),
                 expect(continueButton).toBeEnabled({ timeout: 5000 })
-            ]).catch(() => { });
+            ]).catch((e) => console.log('[Test] Silent catch (Machine cards fallback race):', e));
 
             if (await machineCards.count() > 0) {
                 const simulationCard = machineCards.filter({ hasText: /Simulation|Simulated|Chatterbox/i }).first();
@@ -180,7 +183,10 @@ export class WizardPage {
 
         for (let i = 0; i < count; i++) {
             const req = requirements.nth(i);
-            const name = await req.locator('.req-name').innerText().catch(() => 'Unknown');
+            const name = await req.locator('.req-name').innerText().catch((e) => {
+                console.log('[Test] Silent catch (Requirement name innerText):', e);
+                return 'Unknown';
+            });
             const isCompleted = await req.evaluate(el => el.classList.contains('completed') || el.classList.contains('autofilled'));
 
             if (!isCompleted) {
@@ -193,12 +199,12 @@ export class WizardPage {
 
                     // Wait for dropdown options to appear
                     const options = this.page.locator('mat-option');
-                    await options.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => { });
+                    await options.first().waitFor({ state: 'visible', timeout: 5000 }).catch((e) => console.log('[Test] Silent catch (Asset options waitFor):', e));
 
                     if (await options.count() > 0) {
                         await options.first().click();
                         // Wait for option to be selected
-                        await expect(input).not.toHaveValue('', { timeout: 3000 }).catch(() => { });
+                        await expect(input).not.toHaveValue('', { timeout: 3000 }).catch((e) => console.log('[Test] Silent catch (Input value expect):', e));
                     } else {
                         console.log(`[Wizard] No options found for ${name}`);
                     }
@@ -221,7 +227,10 @@ export class WizardPage {
 
     async completeWellSelectionStep() {
         // Only wait and complete if the step is visible
-        if (await this.wellStep.isVisible({ timeout: 5000 }).catch(() => false)) {
+        if (await this.wellStep.isVisible({ timeout: 5000 }).catch((e) => {
+            console.log('[Test] Silent catch (wellStep isVisible):', e);
+            return false;
+        })) {
             console.log('[Wizard] Completing Well Selection step...');
 
             // Check if there are "Click to select wells" buttons
@@ -258,13 +267,19 @@ export class WizardPage {
 
         // Click Skip Setup if visible
         const skipButton = this.deckStep.getByRole('button', { name: /Skip Setup/i }).first();
-        if (await skipButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+        if (await skipButton.isVisible({ timeout: 5000 }).catch((e) => {
+            console.log('[Test] Silent catch (skipButton isVisible):', e);
+            return false;
+        })) {
             await skipButton.click();
         }
 
         // Click Continue to Review if visible (some flows show this after skip)
         const continueButton = this.deckStep.getByRole('button', { name: /Continue to Review|Continue/i }).first();
-        if (await continueButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+        if (await continueButton.isVisible({ timeout: 2000 }).catch((e) => {
+            console.log('[Test] Silent catch (continueButton isVisible):', e);
+            return false;
+        })) {
             await continueButton.click();
         }
         // Don't call markDeckValid() - we've already advanced
@@ -279,8 +294,8 @@ export class WizardPage {
         if (isSelected === 'true') {
             console.log('[Wizard] Already on review step');
             // Just wait for review content
-            await this.reviewHeading.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {
-                console.log('[Wizard] Review heading not found, but already on review tab');
+            await this.reviewHeading.waitFor({ state: 'visible', timeout: 10000 }).catch((e) => {
+                console.log('[Test] Silent catch (reviewHeading waitFor):', e);
             });
             return;
         }
@@ -295,8 +310,14 @@ export class WizardPage {
         try {
             await expect(this.reviewProtocolName).toHaveText(protocolName, { timeout: 15000 });
         } catch (e) {
-            const text = await this.reviewProtocolName.innerText().catch(() => 'NULL');
-            const html = await this.page.locator('[data-tour-id="run-step-ready"], .mat-step-content').last().innerHTML().catch(() => 'NULL');
+            const text = await this.reviewProtocolName.innerText().catch((e) => {
+                console.log('[Test] Silent catch (reviewProtocolName innerText):', e);
+                return 'NULL';
+            });
+            const html = await this.page.locator('[data-tour-id="run-step-ready"], .mat-step-content').last().innerHTML().catch((e) => {
+                console.log('[Test] Silent catch (Review step innerHTML):', e);
+                return 'NULL';
+            });
             console.error(`[Wizard] Review protocol name mismatch. Expected: "${protocolName}", Found: "${text}"`);
             console.error(`[Wizard] Review step HTML: ${html}`);
             throw e;
@@ -321,12 +342,18 @@ export class WizardPage {
         // Check if Configure Simulation dialog is visible
         const dialog = this.page.getByRole('dialog').filter({ hasText: /Configure Simulation|Simulation/i });
 
-        if (await dialog.isVisible({ timeout: 2000 }).catch(() => false)) {
+        if (await dialog.isVisible({ timeout: 2000 }).catch((e) => {
+            console.log('[Test] Silent catch (Simulation dialog isVisible):', e);
+            return false;
+        })) {
             console.log('[Wizard] Handling Configure Simulation dialog...');
 
             // Fill instance name if required
             const nameInput = dialog.locator('input[formcontrolname="instanceName"], input[name="name"]');
-            if (await nameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+            if (await nameInput.isVisible({ timeout: 1000 }).catch((e) => {
+                console.log('[Test] Silent catch (nameInput isVisible):', e);
+                return false;
+            })) {
                 await nameInput.fill('E2E Simulation');
             }
 

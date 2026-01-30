@@ -1,5 +1,5 @@
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 
 test.describe('Catalog to Inventory Workflow', () => {
     test.beforeEach(async ({ page }) => {

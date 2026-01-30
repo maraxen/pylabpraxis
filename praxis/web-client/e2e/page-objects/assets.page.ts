@@ -41,8 +41,39 @@ export class AssetsPage extends BasePage {
         const currentStep = wizard.locator('.mat-step-content:visible, [role="tabpanel"]:visible').first();
         const nextButton = currentStep.getByTestId('wizard-next-button');
 
+        // Wait for button to be attached and stable
+        await nextButton.waitFor({ state: 'attached', timeout: 5000 });
         await expect(nextButton).toBeEnabled({ timeout: 10000 });
         await nextButton.click({ force: true }); // Force click to bypass any animation overlays
+
+        // Brief wait for click to register and animation to start
+        await this.page.waitForTimeout(100);
+    }
+
+    /**
+     * Waits for a wizard step transition to complete by verifying:
+     * 1. Material animation settles
+     * 2. The target step heading becomes visible
+     */
+    private async waitForStepTransition(wizard: Locator, headingPattern: RegExp): Promise<void> {
+        // Wait for Material animation to settle
+        await this.page.waitForTimeout(150);
+
+        // Wait for heading to become visible in the active panel
+        const heading = wizard.locator('h3:visible').filter({ hasText: headingPattern });
+        await expect(heading).toBeVisible({ timeout: 15000 });
+    }
+
+    /**
+     * Waits for CDK overlay backdrops to dismiss before interacting with elements.
+     * Prevents "Target intercepted by cdk-overlay-container" errors.
+     */
+    private async waitForOverlaysToDismiss(): Promise<void> {
+        // Wait for any active overlay backdrops to disappear
+        // Use .catch() to gracefully handle case where no overlays exist
+        await this.page.locator('.cdk-overlay-backdrop').waitFor({ state: 'hidden', timeout: 2000 }).catch((e) => console.log('[Test] Silent catch (Overlays to dismiss):', e));
+        // Brief pause to ensure overlay container is stable
+        await this.page.waitForTimeout(50);
     }
 
     /**
@@ -86,19 +117,17 @@ export class AssetsPage extends BasePage {
     }
 
     async createMachine(name: string, categoryName: string = 'LiquidHandler', modelQuery: string = 'STAR') {
+        await this.waitForOverlaysToDismiss();
         await this.addMachineButton.click();
         const wizard = await this.waitForWizard();
 
         // Step 2: Select Category
-        await expect(wizard.locator('h3:has-text("Select Category")')).toBeVisible({ timeout: 10000 });
+        await this.waitForStepTransition(wizard, /Select Category/i);
         await this.selectWizardCard(wizard, `category-card-${categoryName}`);
         await this.clickNextButton(wizard);
 
         // Step 3: Select Machine Type (Frontend)
-        // Wait for heading to appear - indicates step transition complete
-        await expect(wizard.locator('h3:has-text("Select Machine Type")')).toBeVisible({ timeout: 10000 });
-        // Brief pause for Material stepper animation to settle
-        await this.page.waitForTimeout(100);
+        await this.waitForStepTransition(wizard, /Select Machine Type/i);
         const frontendCard = wizard.locator('[data-testid^="frontend-card-"]').first();
         await expect(frontendCard).toBeVisible({ timeout: 10000 });
         await frontendCard.click({ force: true, noWaitAfter: true, timeout: 10000 });
@@ -106,8 +135,7 @@ export class AssetsPage extends BasePage {
         await this.clickNextButton(wizard);
 
         // Step 4: Select Driver (Backend)
-        await expect(wizard.locator('h3:has-text("Select Driver")')).toBeVisible({ timeout: 10000 });
-        await this.page.waitForTimeout(100);
+        await this.waitForStepTransition(wizard, /Select Driver/i);
         const backendCard = wizard.locator('[data-testid^="backend-card-"]').first();
         await expect(backendCard).toBeVisible({ timeout: 15000 });
         // Use noWaitAfter to prevent Playwright from waiting for navigations that may never complete
@@ -116,16 +144,14 @@ export class AssetsPage extends BasePage {
         await this.clickNextButton(wizard);
 
         // Step 5: Config
-        await expect(wizard.locator('h3:has-text("Complete Configuration")')).toBeVisible({ timeout: 10000 });
+        await this.waitForStepTransition(wizard, /Complete Configuration/i);
         const instanceNameInput = wizard.getByTestId('input-instance-name');
         await expect(instanceNameInput).toBeVisible({ timeout: 5000 });
         await instanceNameInput.fill(name);
         await this.clickNextButton(wizard);
 
         // Step 6: Review and Create
-        // Wait for animation to settle before checking for review step content
-        await this.page.waitForTimeout(100);
-        await expect(wizard.locator('h3:visible:has-text("Final Review")')).toBeVisible({ timeout: 15000 });
+        await this.waitForStepTransition(wizard, /Final Review/i);
         const createBtn = wizard.getByTestId('wizard-create-btn');
         await expect(createBtn).toBeVisible({ timeout: 5000 });
         await expect(createBtn).toBeEnabled({ timeout: 5000 });
@@ -134,6 +160,7 @@ export class AssetsPage extends BasePage {
     }
 
     async createResource(name: string, categoryName: string = 'Plate', modelQuery: string = '96') {
+        await this.waitForOverlaysToDismiss();
         await this.addResourceButton.click();
         const wizard = await this.waitForWizard();
 
@@ -232,8 +259,8 @@ export class AssetsPage extends BasePage {
         const chip = this.page.locator('app-filter-chip').filter({ hasText: new RegExp(category, 'i') });
         await chip.click();
         // Wait for chip to show selected state
-        await expect(chip).toHaveClass(/selected|active/, { timeout: 5000 }).catch(() => {
-            // Some implementations may not use a class - just ensure click was processed
+        await expect(chip).toHaveClass(/selected|active/, { timeout: 5000 }).catch((e) => {
+            console.log('[Test] Silent catch (Category chip class check):', e);
         });
     }
 
@@ -247,8 +274,8 @@ export class AssetsPage extends BasePage {
         if (await clearBtn.isVisible({ timeout: 1000 })) {
             await clearBtn.click();
             // Wait for clear button to disappear or filters to reset
-            await expect(clearBtn).not.toBeVisible({ timeout: 5000 }).catch(() => {
-                // Button may stay visible - that's OK
+            await expect(clearBtn).not.toBeVisible({ timeout: 5000 }).catch((e) => {
+                console.log('[Test] Silent catch (Clear button not visible):', e);
             });
         }
     }
@@ -286,7 +313,10 @@ export class AssetsPage extends BasePage {
 
         // Use search to find the asset
         const searchInput = this.page.getByPlaceholder(/search/i).first();
-        if (await searchInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+        if (await searchInput.isVisible({ timeout: 2000 }).catch((e) => {
+            console.log('[Test] Silent catch (Search input isVisible):', e);
+            return false;
+        })) {
             await searchInput.fill(name);
             // Wait for search debounce
             await this.page.waitForTimeout(500);

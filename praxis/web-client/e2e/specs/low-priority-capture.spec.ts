@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 import { WelcomePage } from '../page-objects/welcome.page';
 import * as path from 'path';
 import * as fs from 'fs';

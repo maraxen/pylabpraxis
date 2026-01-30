@@ -1,5 +1,5 @@
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 
 test.describe('Data Visualization Page', () => {
     test.beforeEach(async ({ page }) => {

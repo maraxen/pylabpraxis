@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 
 test.describe('Run Protocol - Machine Selection', () => {
     test.beforeEach(async ({ page }) => {
@@ -20,7 +20,10 @@ test.describe('Run Protocol - Machine Selection', () => {
         // Handle splash screens/onboarding
         // The welcome dialog often appears for first-time users in browser mode
         const welcomeHeading = page.getByRole('heading', { name: /Welcome to Praxis/i });
-        if (await welcomeHeading.isVisible({ timeout: 5000 }).catch(() => false)) {
+        if (await welcomeHeading.isVisible({ timeout: 5000 }).catch((e) => {
+            console.log('[Test] Silent catch (welcomeHeading isVisible):', e);
+            return false;
+        })) {
             await page.getByRole('button', { name: /Skip/i }).click();
         }
 
@@ -29,7 +32,7 @@ test.describe('Run Protocol - Machine Selection', () => {
         const protocolCard = page.locator('app-protocol-card').first();
         await expect(protocolCard).toBeVisible({ timeout: 15000 });
         await protocolCard.click();
-        
+
         // Move from Step 1 (Protocol) to Step 2 (Parameters)
         const continueToParams = page.getByRole('button', { name: /Continue/i }).last();
         await expect(continueToParams).toBeVisible();

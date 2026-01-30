@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 import { WelcomePage } from '../page-objects/welcome.page';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -57,7 +57,7 @@ test.describe('Visual Review Screenshot Capture', () => {
 
         // 6. nav-rail.png
         const navRail = page.locator('.sidebar-rail');
-        await navRail.waitFor({ state: 'visible', timeout: 30000 }).catch(() => console.log('Sidebar rail not visible after 30s'));
+        await navRail.waitFor({ state: 'visible', timeout: 30000 }).catch((e) => console.log('[Test] Silent catch (Sidebar rail):', e));
         if (await navRail.isVisible()) {
             await navRail.screenshot({ path: path.join(screenshotDir, 'nav-rail.png') });
             console.log('Captured nav-rail.png');
@@ -84,7 +84,7 @@ test.describe('Visual Review Screenshot Capture', () => {
         await page.waitForTimeout(5000);
 
         const themeToggle = page.locator('[data-tour-id="theme-toggle"]');
-        
+
         if (await themeToggle.isVisible({ timeout: 10000 })) {
             // 3. global-dark-mode.png
             await themeToggle.click({ force: true }); // Light -> Dark
@@ -103,7 +103,7 @@ test.describe('Visual Review Screenshot Capture', () => {
                 // Currently in Dark mode (from previous toggle)
                 await page.screenshot({ path: path.join(screenshotDir, 'deck-view-dark.png') });
                 console.log('Captured deck-view-dark.png');
-                
+
                 await themeToggle.click({ force: true }); // Dark -> System
                 await themeToggle.click({ force: true }); // System -> Light
                 await page.waitForTimeout(1000);
@@ -120,7 +120,7 @@ test.describe('Visual Review Screenshot Capture', () => {
         const row = page.locator('tr[mat-row], app-protocol-card').first();
         if (await row.isVisible()) {
             await row.click();
-            await page.waitForSelector('.mat-mdc-dialog-container, app-protocol-detail', { timeout: 10000 }).catch(() => {});
+            await page.waitForSelector('.mat-mdc-dialog-container, app-protocol-detail', { timeout: 10000 }).catch((e) => console.log('[Test] Silent catch (Dialog/Detail):', e));
             await page.screenshot({ path: path.join(screenshotDir, 'protocol-detail-panel.png') });
             console.log('Captured protocol-detail-panel.png');
         }

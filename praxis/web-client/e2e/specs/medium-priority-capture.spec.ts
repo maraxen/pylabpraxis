@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 import { WelcomePage } from '../page-objects/welcome.page';
 import { ProtocolPage } from '../page-objects/protocol.page';
 import { WizardPage } from '../page-objects/wizard.page';
@@ -25,12 +25,12 @@ test.describe('Medium Priority Screenshot Capture', () => {
 
     test('Capture Empty States', async ({ page }) => {
         test.setTimeout(120000);
-        
+
         // Empty protocol library - use filter that returns no results
         await page.goto(`${APP_URL}/app/protocols?${MODE_PARAMS}`);
         await handleSplash(page);
         await page.waitForTimeout(2000);
-        
+
         // Try to trigger empty state via search
         const searchInput = page.locator('input[placeholder*="Search"], input[type="search"]').first();
         if (await searchInput.isVisible()) {
@@ -39,7 +39,7 @@ test.describe('Medium Priority Screenshot Capture', () => {
         }
         await page.screenshot({ path: path.join(screenshotDir, 'empty-protocol-library.png') });
         console.log('Captured empty-protocol-library.png');
-        
+
         // Empty assets - similar approach
         await page.goto(`${APP_URL}/app/assets?${MODE_PARAMS}`);
         await handleSplash(page);
@@ -51,7 +51,7 @@ test.describe('Medium Priority Screenshot Capture', () => {
         }
         await page.screenshot({ path: path.join(screenshotDir, 'empty-assets.png') });
         console.log('Captured empty-assets.png');
-        
+
         // Workcell page
         await page.goto(`${APP_URL}/app/workcell?${MODE_PARAMS}`);
         await handleSplash(page);
@@ -62,14 +62,14 @@ test.describe('Medium Priority Screenshot Capture', () => {
 
     test('Capture Loading States', async ({ page }) => {
         test.setTimeout(60000);
-        
+
         // Capture initial load of workcell (loading spinner)
         await page.goto(`${APP_URL}/app/workcell?${MODE_PARAMS}`);
         // Don't wait for splash - capture loading state
         await page.waitForTimeout(500);
         await page.screenshot({ path: path.join(screenshotDir, 'workcell-loading.png') });
         console.log('Captured workcell-loading.png');
-        
+
         // Login page - Normal State
         await page.goto(`${APP_URL}/login?forceLogin=true`);
         await page.waitForTimeout(1000);
@@ -91,7 +91,7 @@ test.describe('Medium Priority Screenshot Capture', () => {
 
     test('Capture Charts and Visualizations', async ({ page }) => {
         test.setTimeout(180000);
-        
+
         const protocolPage = new ProtocolPage(page);
         const wizardPage = new WizardPage(page);
 
@@ -99,7 +99,7 @@ test.describe('Medium Priority Screenshot Capture', () => {
         await page.goto(`${APP_URL}/app/run?mode=browser&resetdb=true`);
         await handleSplash(page);
         console.log('Wizard Step: Selection started');
-        
+
         // 2. Selects the first protocol
         await protocolPage.protocolCards.first().waitFor({ state: 'visible', timeout: 30000 });
         await protocolPage.ensureSimulationMode();
@@ -137,7 +137,7 @@ test.describe('Medium Priority Screenshot Capture', () => {
         // 6. Waits for app-telemetry-chart to be visible and have data (wait 3s)
         const telemetryChart = page.locator('app-telemetry-chart, .telemetry-chart').first();
         await expect(telemetryChart).toBeVisible({ timeout: 30000 });
-        
+
         // Wait for data to populate/animations to settle
         await page.waitForTimeout(3000);
 
@@ -147,11 +147,14 @@ test.describe('Medium Priority Screenshot Capture', () => {
 
         // Optional: Look for plate heatmap
         const plateHeatmap = page.locator('app-plate-heatmap, .plate-heatmap').first();
-        if (await plateHeatmap.isVisible({ timeout: 5000 }).catch(() => false)) {
+        if (await plateHeatmap.isVisible({ timeout: 5000 }).catch((e) => {
+            console.log('[Test] Silent catch (plateHeatmap isVisible):', e);
+            return false;
+        })) {
             await plateHeatmap.screenshot({ path: path.join(screenshotDir, 'plate-heatmap.png') });
             console.log('Captured plate-heatmap.png');
         }
-        
+
         // Full workcell view
         await page.screenshot({ path: path.join(screenshotDir, 'workcell-full.png') });
         console.log('Captured workcell-full.png');

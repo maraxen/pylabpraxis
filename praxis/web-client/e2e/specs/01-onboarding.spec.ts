@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test } from '../fixtures/worker-db.fixture';
 import { WelcomePage } from '../page-objects/welcome.page';
 
 test.describe('First-Time User Experience', () => {

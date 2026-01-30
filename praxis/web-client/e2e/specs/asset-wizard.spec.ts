@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 
 /**
  * Asset Wizard E2E Test
@@ -10,7 +10,7 @@ test.describe('Asset Wizard Journey', () => {
 
     test.afterEach(async ({ page }) => {
         // Dismiss any open dialogs/overlays to ensure clean state
-        await page.keyboard.press('Escape').catch(() => { });
+        await page.keyboard.press('Escape').catch((e) => console.log('[Test] Silent catch (Escape):', e));
     });
 
     test('should guide the user through creating a Hamilton STAR machine', async ({ page }) => {
@@ -57,7 +57,7 @@ test.describe('Asset Wizard Journey', () => {
             if (await dismissBtn.isVisible({ timeout: 5000 })) {
                 await dismissBtn.click();
             }
-        } catch (e) { }
+        } catch (e) { console.log('[Test] Caught:', (e as Error).message); }
 
         await page.screenshot({ path: 'praxis/web-client/e2e/screenshots/asset-wizard-step1.png' });
 

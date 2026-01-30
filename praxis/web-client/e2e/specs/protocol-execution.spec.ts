@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 import { ProtocolPage } from '../page-objects/protocol.page';
 
 test.describe('Protocol Wizard Flow', () => {
@@ -18,8 +18,8 @@ test.describe('Protocol Wizard Flow', () => {
         );
 
         // In browser mode, we expect a redirect to /app/home
-        await page.waitForURL('**/app/home', { timeout: 15000 }).catch(() => {
-            console.log('Did not redirect to /app/home automatically');
+        await page.waitForURL('**/app/home', { timeout: 15000 }).catch((e) => {
+            console.log('[Test] Silent catch (waitForURL home):', e);
         });
 
         // Ensure shell layout is visible
@@ -36,7 +36,7 @@ test.describe('Protocol Wizard Flow', () => {
 
     test.afterEach(async ({ page }) => {
         // Dismiss any open dialogs/overlays to ensure clean state
-        await page.keyboard.press('Escape').catch(() => { });
+        await page.keyboard.press('Escape').catch((e) => console.log('[Test] Silent catch (Escape):', e));
     });
 
     test('should display protocol library', async ({ page }) => {
@@ -58,7 +58,10 @@ test.describe('Protocol Wizard Flow', () => {
         await test.step('Select and Configure Protocol', async () => {
             // Find a protocol, preferably "Simple Transfer" or just the first one
             const protocolName = 'Simple Transfer';
-            const hasProtocol = await page.getByText(protocolName).isVisible().catch(() => false);
+            const hasProtocol = await page.getByText(protocolName).isVisible().catch((e) => {
+                console.log('[Test] Silent catch (protocol visibility check):', e);
+                return false;
+            });
 
             if (hasProtocol) {
                 await protocolPage.selectProtocol(protocolName);

@@ -55,8 +55,8 @@ export class ExecutionMonitorPage extends BasePage {
             return;
         }
 
-        await expect(progressBar).toBeVisible({ timeout: 10000 }).catch(() => {
-            console.warn('[Monitor] Progress bar not visible, checking if status changed to COMPLETED');
+        await expect(progressBar).toBeVisible({ timeout: 10000 }).catch((e) => {
+            console.log('[Test] Silent catch (Progress bar not visible):', e);
         });
 
         const chipText = await this.statusChip.innerText();
@@ -74,7 +74,7 @@ export class ExecutionMonitorPage extends BasePage {
             [handle, minValue] as const,
             { timeout: 30000 }
         ).catch(e => {
-            console.warn(`[Monitor] Progress check timed out for ${minValue}%, continuing...`);
+            console.log(`[Test] Silent catch (Progress check timeout):`, e);
         });
     }
 

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 import { WelcomePage } from '../page-objects/welcome.page';
 import { AssetsPage } from '../page-objects/assets.page';
 import { ProtocolPage } from '../page-objects/protocol.page';
@@ -21,7 +21,7 @@ test.describe('Functional Asset Selection', () => {
 
     test.afterEach(async ({ page }) => {
         // Dismiss any open dialogs/overlays to ensure clean state
-        await page.keyboard.press('Escape').catch(() => { });
+        await page.keyboard.press('Escape').catch((e) => console.log('[Test] Silent catch (Escape):', e));
     });
 
     test.setTimeout(300000); // 5 minutes for full E2E flow
@@ -90,13 +90,13 @@ test.describe('Functional Asset Selection', () => {
         const protocolName = await protocolNameEl.innerText();
         if (!protocolName || protocolName.trim() === '') {
             console.error('[E2E] Protocol name is empty at review step! Capturing debug state...');
-            await page.screenshot({ path: '/tmp/e2e-protocol/review-empty-protocol.png' }).catch(() => { });
+            await page.screenshot({ path: '/tmp/e2e-protocol/review-empty-protocol.png' }).catch((e) => console.log('[Test] Silent catch (Screenshot):', e));
             throw new Error('Protocol name was unexpectedly empty at review step');
         }
         await expect(protocolNameEl).toContainText('Simple Transfer');
 
         console.log('Review step reached successfully - wizard flow complete');
 
-        await page.screenshot({ path: '/tmp/e2e-protocol/functional-asset-selection.png' }).catch(() => { });
+        await page.screenshot({ path: '/tmp/e2e-protocol/functional-asset-selection.png' }).catch((e) => console.log('[Test] Silent catch (Screenshot):', e));
     });
 });

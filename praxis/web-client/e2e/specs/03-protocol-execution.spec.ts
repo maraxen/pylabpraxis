@@ -1,4 +1,4 @@
-import { expect, test, Page } from '@playwright/test';
+import { expect, test, Page } from '../fixtures/worker-db.fixture';
 import { WelcomePage } from '../page-objects/welcome.page';
 import { ProtocolPage } from '../page-objects/protocol.page';
 import { ExecutionMonitorPage } from '../page-objects/monitor.page';
@@ -8,8 +8,8 @@ test.describe.serial('Protocol Execution E2E', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/');
         // In browser mode, we expect a redirect to /app/home
-        await page.waitForURL('**/app/home', { timeout: 15000 }).catch(() => {
-            console.log('Did not redirect to /app/home automatically');
+        await page.waitForURL('**/app/home', { timeout: 15000 }).catch((e) => {
+            console.log('[Test] Silent catch (waitForURL home):', e);
         });
 
         // Ensure shell layout is visible
@@ -26,7 +26,7 @@ test.describe.serial('Protocol Execution E2E', () => {
 
     test.afterEach(async ({ page }) => {
         // Dismiss any open dialogs/overlays to ensure clean state
-        await page.keyboard.press('Escape').catch(() => { });
+        await page.keyboard.press('Escape').catch((e) => console.log('[Test] Silent catch (Escape):', e));
     });
 
     test('select protocol from library', async ({ page }) => {

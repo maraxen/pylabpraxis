@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/worker-db.fixture';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -14,8 +14,8 @@ test.describe('E2E Deck Setup', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/');
         // In browser mode, we expect a redirect to /app/home
-        await page.waitForURL('**/app/home', { timeout: 15000 }).catch(() => {
-            console.log('Did not redirect to /app/home automatically');
+        await page.waitForURL('**/app/home', { timeout: 15000 }).catch((e) => {
+            console.log('[Test] Silent catch (waitForURL home):', e);
         });
         // Wait for SQLite DB to be ready
         await page.waitForFunction(
@@ -36,7 +36,7 @@ test.describe('E2E Deck Setup', () => {
 
     test.afterEach(async ({ page }) => {
         // Dismiss any open dialogs/overlays to ensure clean state
-        await page.keyboard.press('Escape').catch(() => { });
+        await page.keyboard.press('Escape').catch((e) => console.log('[Test] Silent catch (Escape):', e));
     });
 
     test('should navigate to deck setup and capture screenshots', async ({ page }) => {
