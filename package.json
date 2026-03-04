@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "lint": "cd praxis/web-client && bun run lint",
+    "build": "cd praxis/web-client && bun run build"
+  },
   "devDependencies": {
     "jsdom": "^27.4.0"
   }
