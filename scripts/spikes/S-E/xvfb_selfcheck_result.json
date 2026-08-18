@@ -1,0 +1,70 @@
+{
+  "api": "serial",
+  "topologies": {
+    "toplevel": {
+      "api": "serial",
+      "console_tail": [
+        {
+          "text": "Failed to load resource: the server responded with a status of 404 (File not found)",
+          "type": "error"
+        },
+        {
+          "text": "[ Federation Runtime ] Version 6.6.0 from CORE_FEDERATION of shared singleton module @jupyterlab/coreutils does not satisfy the requirement of undefined which needs ^6.6.1)",
+          "type": "warning"
+        },
+        {
+          "text": "[ Federation Runtime ] Version 4.6.0 from CORE_FEDERATION of shared singleton module @jupyterlab/logconsole does not satisfy the requirement of undefined which needs ^4.6.1)",
+          "type": "warning"
+        },
+        {
+          "text": "Registering new JupyterLite ServiceWorker http://127.0.0.1:44805/assets/jupyterlite/service-worker.js?enableCache=false",
+          "type": "info"
+        },
+        {
+          "text": "Plugin '@jupyterlab/codemirror-extension:commands' failed to activate. TypeError: No provider for: @jupyterlab/notebook:INotebookTracker.\n    at o.resolveRequiredService (http://127.0.0.1:44805/assets/jupyterlite/build/jlab_core.c0153ee.js:437:178695)\n    at http://127.0.0.1:44805/assets/jupyterlite/build/jlab_core.c0153ee.js:437:177321\n    at Array.map (<anonymous>)\n    at o.activatePlugin (http://127.0.0.1:44805/assets/jupyterlite/build/jlab_core.c0153ee.js:437:177309)\n    at http://127.0.0.1:44805/assets/jupyterlite/build/jlab_core.c0153ee.js:437:177876\n    at Array.map (<anonymous>)\n    at o.activatePlugins (http://127.0.0.1:44805/assets/jupyterlite/build/jlab_core.c0153ee.js:437:177840)\n    at c.start (http://127.0.0.1:44805/assets/jupyterlite/build/jlab_core.c0153ee.js:437:163644)\n    at D (http://127.0.0.1:44805/assets/jupyterlite/build/4083.21af322.js:1:9854)\n    at async http://127.0.0.1:44805/assets/jupyterlite/build/repl/bundle.js?_=37ab623:1:2122",
+          "type": "error"
+        },
+        {
+          "text": "JupyterLite ServiceWorker was successfully registered",
+          "type": "info"
+        },
+        {
+          "text": "Pyodide contents will be synced with Jupyter Contents",
+          "type": "info"
+        },
+        {
+          "text": "Starting WebSocket: ws://127.0.0.1:44805/assets/jupyterlite/api/kernels/9d57f25a-16c6-41d2-9154-4c9f1bd1b16b",
+          "type": "debug"
+        },
+        {
+          "text": "Loading micropip",
+          "type": "log"
+        },
+        {
+          "text": "Loaded micropip",
+          "type": "log"
+        },
+        {
+          "text": "Loading Pygments, asttokens, decorator, executing, ipython, matplotlib-inline, prompt_toolkit, pure-eval, six, stack-data, traitlets, wcwidth",
+          "type": "log"
+        },
+        {
+          "text": "Loaded Pygments, asttokens, decorator, executing, ipython, matplotlib-inline, prompt_toolkit, pure-eval, six, stack-data, traitlets, wcwidth",
+          "type": "log"
+        },
+        {
+          "text": "Loading jedi, parso",
+          "type": "log"
+        },
+        {
+          "text": "Loaded jedi, parso",
+          "type": "log"
+        }
+      ],
+      "pageerrors": [],
+      "pause_only": true,
+      "reached_pause_point": false,
+      "topology": "toplevel"
+    }
+  }
+}

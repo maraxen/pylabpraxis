@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>S-E Design A host (iframe-embedded)</title>
+</head>
+<body style="font-family: sans-serif; margin: 0; padding: 0;">
+  <div style="padding:10px; background:#eef; border-bottom:3px solid #99c;">
+    <strong>S-E / Design A</strong> &mdash; iframe-embedded topology (the pre-agreed
+    non-embarrassing fallback). This TOP-level document is the "thin vanilla host".
+    The gesture button (rendered by <code>gesture_spike.py</code>'s
+    <code>GESTURE_HOST_INIT_SCRIPT</code>, injected into every frame but guarded to
+    <code>window === window.top</code>) appears HERE, in this parent document &mdash;
+    never inside the iframe below &mdash; mirroring where
+    <code>interaction-dialog.component.ts</code> and
+    <code>jupyter-channel.service.ts</code> actually live in the shipping app today.
+    The JupyterLite kernel itself runs inside the iframe.
+  </div>
+  <iframe id="praxis-kernel-frame"
+          title="praxis JupyterLite kernel (Design A, iframe-embedded)"
+          style="width:100%; height:85vh; border:0; display:block;"
+          allow="cross-origin-isolated; usb; serial; hid"></iframe>
+  <script>
+    // Forward this host page's own query string (kernel/toolbar/execute/code) onto
+    // the iframe's src, so gesture_spike.py's build_url() only has to construct ONE
+    // query string regardless of topology.
+    document.getElementById('praxis-kernel-frame').src =
+      '/assets/jupyterlite/repl/index.html' + window.location.search;
+  </script>
+</body>
+</html>
