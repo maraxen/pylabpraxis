@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pylibftdi"
+version = "0.0.0"
+description = "Stub package for pylibftdi — provides symbols without native FTDI hardware"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages]
+# exclude build/ and *.egg-info: without this, a stale in-tree setuptools
+# `build/lib/pylibftdi` byproduct from a previous build gets rediscovered as
+# a source package on the NEXT build and copied into build/lib again,
+# producing a self-nesting build/lib/build/lib/... tree. build_wheels.py
+# already builds out-of-tree (uv build --out-dir <scratch>), but that only
+# controls where the final wheel lands -- it does not stop setuptools'
+# intermediate build/lib/ byproduct from being written inside this source
+# dir, so the exclude is still required to stop it being re-ingested.
+find = {where = ["."], exclude = ["build*", "*.egg-info*"]}

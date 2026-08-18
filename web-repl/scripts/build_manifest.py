@@ -1,0 +1,404 @@
+#!/usr/bin/env python3
+"""Generate ``web-repl/overlay/assets/wheels/manifest.json`` -- the ONLY
+filename seam between hand-written source and the wheels/loose sources the
+browser bootstrap fetches.
+
+Per ADR ``.praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md``
+Sec 2.3 ("the three-detector drift design"), this script is the generator
+half of **D2** (``manifest.json`` sha256 over wheels AND loose sources) and
+the manifest half of **D1**'s dev-loop escape hatch (``--dev`` writes the
+``"dev"`` sentinel into ``praxis_git_sha``). It does not own D1's other half
+(the shell injection -- see ``inject_shell.py``) or D3 (the AST
+import-coverage test -- a later task).
+
+Manifest shape (ADR Sec 2.3, exact)::
+
+    { "praxis_git_sha": "<superproject sha, or 'dev'>",
+      "wheels":  [ {"package": "...", "filename": "...", "version": "...",
+                    "source_sha": "...", "sha256": "...", "bytes": 0} ],
+      "sources": [ {"path": "assets/shims/web_serial_shim.py", "sha256": "..."},
+                   {"path": "assets/python/web_bridge.py",     "sha256": "..."},
+                   {"path": "assets/python/praxis/interactive.py", "sha256": "..."} ] }
+
+**No source file is ever stamped.** The expected sha256 values live only in
+this generated file -- that property is what keeps edit->reload fast:
+regenerating a ~15-entry JSON is milliseconds.
+
+House rules: uv-run only, argparse + logging, narrow runs, fail loud.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import logging
+import os
+import re
+import subprocess
+import tempfile
+import zipfile
+from pathlib import Path
+
+logger = logging.getLogger("build_manifest")
+
+# --- fixed layout, overridable for testing ----------------------------------
+_THIS_FILE = Path(__file__).resolve()
+DEFAULT_WEB_REPL_ROOT = _THIS_FILE.parents[1]
+DEFAULT_REPO_ROOT = _THIS_FILE.parents[2]
+
+# Directories under overlay/assets/ that are walked for the "sources" array.
+# ADR Sec 2.1 canonical tree: shims/ and python/ (which nests praxis/ and
+# experimental/). wheels/ is handled separately (it is the "wheels" array,
+# and it is where manifest.json itself is written).
+SOURCE_SUBDIRS = ("shims", "python")
+
+# Directory names to always skip while walking for sources -- never fetched,
+# never part of the contract, and would silently bloat/drift the manifest.
+_SKIP_DIR_NAMES = {"__pycache__"}
+_SKIP_SUFFIXES = {".pyc", ".pyo"}
+
+DEV_SENTINEL = "dev"
+
+# package -> (build-info-module-relative-path, field name) for extracting a
+# wheel's source_sha from its own embedded build-info file. Only pylabrobot
+# has one today (written by build_wheels.py's write_build_info()). Anything
+# not in this table gets source_sha: null -- e.g. pylibftdi, whose
+# provenance is genuinely unknown (wheel spec OQ-6); do not invent one.
+_BUILD_INFO_FIELD = {
+    "pylabrobot": ("_praxis_build_info.py", "PLR_SOURCE_SHA"),
+}
+# Anchored, so a stray substring match elsewhere in the file can't be picked
+# up, and so it captures the whole hex string rather than one character (the
+# wheel spec calls out this exact prior bug for its own BUILD_ID regex).
+_FIELD_RE_TMPL = r"^{field}\s*=\s*['\"]([0-9a-f]{{7,40}})['\"]\s*$"
+
+
+class ManifestError(RuntimeError):
+    """Raised for any condition that must fail manifest generation loudly."""
+
+
+# --- hashing / fs helpers ----------------------------------------------------
+
+
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _git_head(repo_root: Path) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+
+# --- wheels array -------------------------------------------------------------
+
+
+def _extract_source_sha(wheel_path: Path, package: str) -> str | None:
+    """Read the package's own embedded build-info file out of the built wheel
+    and pull its source-sha field via an anchored regex (never ``exec`` --
+    the manifest generator has no need to run untrusted-by-construction wheel
+    contents, and a static read is enough here).
+
+    Returns ``None`` (never a guess) when *package* has no known build-info
+    file -- currently true for every wheel except pylabrobot.
+    """
+    entry = _BUILD_INFO_FIELD.get(package)
+    if entry is None:
+        return None
+    info_basename, field = entry
+    pattern = re.compile(_FIELD_RE_TMPL.format(field=re.escape(field)), re.MULTILINE)
+    with zipfile.ZipFile(wheel_path) as zf:
+        candidates = [n for n in zf.namelist() if n.endswith("/" + info_basename)]
+        if not candidates:
+            raise ManifestError(
+                f"{wheel_path.name}: expected to find a '*/{info_basename}' member "
+                f"(package={package!r}) to read {field} from, found none. Member "
+                f"list sample: {zf.namelist()[:10]}"
+            )
+        text = zf.read(candidates[0]).decode("utf-8")
+    match = pattern.search(text)
+    if match is None:
+        raise ManifestError(
+            f"{wheel_path.name}: {candidates[0]} did not contain an anchored "
+            f"'{field} = \"...\"' assignment -- cannot extract source_sha."
+        )
+    return match.group(1)
+
+
+def _parse_wheel_filename(wheel_path: Path) -> tuple[str, str]:
+    """Return (package, version) for a wheel filename, preferring the
+    ``packaging`` library (already a transitive dependency here) and falling
+    back to a manual split against the standard 5-field wheel filename shape
+    if it is ever unavailable.
+    """
+    try:
+        from packaging.utils import parse_wheel_filename
+
+        name, version, _build, _tags = parse_wheel_filename(wheel_path.name)
+        return name, str(version)
+    except Exception as exc:
+        logger.debug("packaging.utils.parse_wheel_filename failed (%s); falling back", exc)
+    parts = wheel_path.stem.split("-")
+    if len(parts) < 5:
+        raise ManifestError(
+            f"{wheel_path.name}: does not look like a standard "
+            "<name>-<version>-<pytag>-<abitag>-<platform>.whl filename"
+        )
+    return parts[0], parts[1]
+
+
+def collect_wheels(wheels_dir: Path) -> list[dict]:
+    entries = []
+    for wheel_path in sorted(wheels_dir.glob("*.whl")):
+        package, version = _parse_wheel_filename(wheel_path)
+        entries.append(
+            {
+                "package": package,
+                "filename": wheel_path.name,
+                "version": version,
+                "source_sha": _extract_source_sha(wheel_path, package),
+                "sha256": _sha256_file(wheel_path),
+                "bytes": wheel_path.stat().st_size,
+            }
+        )
+    return entries
+
+
+# --- sources array -------------------------------------------------------------
+
+
+def collect_sources(overlay_dir: Path) -> list[dict]:
+    """Walk ``overlay/assets/{shims,python}`` for every ``*.py`` file and
+    return sha256 entries, keyed on a path relative to ``overlay/`` (matching
+    the ADR's example: ``assets/shims/web_serial_shim.py``).
+
+    Enumerated from what actually exists on disk -- never a hardcoded list,
+    per the task brief: a hardcoded list silently goes stale the moment a
+    file is added or removed. A 0-byte file (e.g. ``praxis/__init__.py``,
+    ADR Sec 2.4) is included: D2 covers the file's PRESENCE, and presence is
+    exactly what a 0-byte sha256 entry proves.
+    """
+    entries = []
+    assets_dir = overlay_dir / "assets"
+    for subdir_name in SOURCE_SUBDIRS:
+        subdir = assets_dir / subdir_name
+        if not subdir.is_dir():
+            logger.warning(
+                "overlay/assets/%s does not exist yet -- contributing 0 source "
+                "entries from it. This is expected before the loose-file move "
+                "tasks (ADR Sec 2.1) have run; it is not an error here.",
+                subdir_name,
+            )
+            continue
+        for path in sorted(subdir.rglob("*.py")):
+            if any(part in _SKIP_DIR_NAMES for part in path.relative_to(subdir).parts[:-1]):
+                continue
+            if path.suffix in _SKIP_SUFFIXES:
+                continue
+            if subdir_name == "shims" and path.name == "__init__.py":
+                # Shims are imported as bare top-level modules, one at a time,
+                # via stages.import_shim_class("web_serial_shim", ...) ->
+                # importlib.import_module("web_serial_shim") -- never as
+                # `import shims.web_serial_shim` or `from shims import ...`
+                # (grep the tree: nothing does). A shims/__init__.py therefore
+                # serves no purpose once fetched: transport.py's
+                # dest_for_source() strips SHIMS_PREFIX unconditionally, so
+                # this path alone would land at the VFS root as bare
+                # `__init__.py`, silently turning the bootstrap's own working
+                # directory into a Python package. Contrast
+                # assets/python/praxis/__init__.py, which IS required (praxis
+                # is imported as a real package, ADR Sec 2.4) and is left
+                # alone -- this skip is scoped to shims/ only.
+                continue
+            rel = path.relative_to(overlay_dir).as_posix()
+            entries.append({"path": rel, "sha256": _sha256_file(path)})
+    # Stable order regardless of directory traversal order across platforms.
+    entries.sort(key=lambda e: e["path"])
+    return entries
+
+
+# --- manifest assembly + atomic write ------------------------------------------
+
+
+def build_manifest(*, web_repl_root: Path, repo_root: Path, dev: bool) -> dict:
+    overlay_dir = web_repl_root / "overlay"
+    wheels_dir = overlay_dir / "assets" / "wheels"
+    if not wheels_dir.is_dir():
+        raise ManifestError(
+            f"{wheels_dir} does not exist -- run build_wheels.py first "
+            "(it produces the *.whl files this manifest describes)."
+        )
+    wheels = collect_wheels(wheels_dir)
+    if not wheels:
+        raise ManifestError(
+            f"{wheels_dir} exists but contains no *.whl files -- nothing to "
+            "manifest. Run build_wheels.py first."
+        )
+    sources = collect_sources(overlay_dir)
+    praxis_git_sha = DEV_SENTINEL if dev else _git_head(repo_root)
+    return {
+        "praxis_git_sha": praxis_git_sha,
+        "wheels": wheels,
+        "sources": sources,
+    }
+
+
+def write_manifest_atomic(manifest: dict, dest: Path) -> None:
+    """Write *manifest* to *dest* via a temp file in the SAME directory,
+    then ``os.replace`` -- a half-written manifest is a boot failure with a
+    confusing signature (ADR Sec 4.3, "preserved verbatim").
+    """
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=".manifest-", suffix=".json.tmp", dir=str(dest.parent)
+    )
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(manifest, f, indent=2)
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        # mkstemp creates the file 0600 -- this is a static asset meant to be
+        # served, not a secret, so widen it to the usual 0644 before the
+        # atomic rename publishes it under its real name.
+        os.chmod(tmp_path, 0o644)
+        os.replace(tmp_path, dest)  # atomic on POSIX and Windows alike
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
+    logger.info("wrote %s (%d wheel(s), %d source(s))", dest, len(manifest["wheels"]), len(manifest["sources"]))
+
+
+# --- D2 verification (also used by tests) --------------------------------------
+
+
+def verify_manifest(manifest: dict, *, web_repl_root: Path) -> list[str]:
+    """Recompute every entry's sha256/bytes against disk and return a list of
+    human-readable mismatch descriptions (empty list == clean). Pure check,
+    no mutation -- this is what a boot-time D2 check does, minus the raise.
+    """
+    overlay_dir = web_repl_root / "overlay"
+    wheels_dir = overlay_dir / "assets" / "wheels"
+    problems: list[str] = []
+    for entry in manifest["wheels"]:
+        path = wheels_dir / entry["filename"]
+        if not path.is_file():
+            problems.append(f"wheel missing on disk: {entry['filename']}")
+            continue
+        actual_sha = _sha256_file(path)
+        if actual_sha != entry["sha256"]:
+            problems.append(
+                f"wheel sha256 mismatch: {entry['filename']} "
+                f"manifest={entry['sha256']} disk={actual_sha}"
+            )
+        actual_bytes = path.stat().st_size
+        if actual_bytes != entry["bytes"]:
+            problems.append(
+                f"wheel size mismatch: {entry['filename']} "
+                f"manifest={entry['bytes']} disk={actual_bytes}"
+            )
+    for entry in manifest["sources"]:
+        path = overlay_dir / entry["path"]
+        if not path.is_file():
+            problems.append(f"source missing on disk: {entry['path']}")
+            continue
+        actual_sha = _sha256_file(path)
+        if actual_sha != entry["sha256"]:
+            problems.append(
+                f"source sha256 mismatch: {entry['path']} "
+                f"manifest={entry['sha256']} disk={actual_sha}"
+            )
+    return problems
+
+
+# --- CLI -----------------------------------------------------------------------
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--dev",
+        action="store_true",
+        help='Write praxis_git_sha: "dev" instead of the real superproject '
+        "HEAD sha -- pairs with inject_shell.py --dev. The D1 assert is "
+        'skipped only when BOTH sides read "dev" (an emergent property of '
+        "plain string equality, not a special case -- see stages.py "
+        "assert_praxis_git_sha).",
+    )
+    parser.add_argument(
+        "--web-repl-root",
+        type=Path,
+        default=DEFAULT_WEB_REPL_ROOT,
+        help="Override web-repl/ root (testing only).",
+    )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=DEFAULT_REPO_ROOT,
+        help="Override superproject root used for `git rev-parse HEAD` (testing only).",
+    )
+    parser.add_argument(
+        "--print",
+        dest="do_print",
+        action="store_true",
+        help="Print the generated manifest to stdout after writing it.",
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="Instead of generating, read the existing manifest.json and verify "
+        "every sha256/bytes entry against disk (D2, offline). Exits 1 naming "
+        "every mismatch.",
+    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Debug-level logging.")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(levelname)s %(name)s: %(message)s",
+    )
+    web_repl_root = args.web_repl_root.resolve()
+    dest = web_repl_root / "overlay" / "assets" / "wheels" / "manifest.json"
+
+    if args.verify:
+        if not dest.is_file():
+            logger.error("%s does not exist -- nothing to verify", dest)
+            return 1
+        manifest = json.loads(dest.read_text())
+        problems = verify_manifest(manifest, web_repl_root=web_repl_root)
+        if problems:
+            for p in problems:
+                logger.error("D2 MISMATCH: %s", p)
+            return 1
+        logger.info("D2 OK: %d wheel(s), %d source(s) all match disk", len(manifest["wheels"]), len(manifest["sources"]))
+        return 0
+
+    try:
+        manifest = build_manifest(
+            web_repl_root=web_repl_root, repo_root=args.repo_root.resolve(), dev=args.dev
+        )
+        write_manifest_atomic(manifest, dest)
+    except ManifestError as exc:
+        logger.error("%s", exc)
+        return 1
+
+    if args.do_print:
+        print(json.dumps(manifest, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
