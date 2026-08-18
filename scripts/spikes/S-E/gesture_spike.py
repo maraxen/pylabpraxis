@@ -120,8 +120,18 @@ def find_repo_root(start: Path) -> Path:
     raise RuntimeError(f"could not locate pyproject.toml above {start}")
 
 
-REPO_ROOT = find_repo_root(Path("/home/marielle/projects/praxis/scripts"))
-DEFAULT_SERVE_DIR = REPO_ROOT / "praxis" / "web-client" / "src"
+REPO_ROOT = find_repo_root(Path(__file__).resolve().parent)
+# REPOINTED 260818: serve the BUILT standalone site, not the Angular asset
+# tree. The shims and web_bridge.py this spike depends on were moved out of
+# praxis/web-client/src/assets/ into web-repl/, so serving the old path now
+# 404s all seven first-party fetches -- the kernel would boot, skip shim
+# injection entirely, and never reach the device_connect pause point. That
+# failure is indistinguishable from a genuine gesture failure, which is
+# exactly the confusion this spike exists to avoid.
+# The built site also vendors Pyodide locally (dist/static/pyodide/), which
+# should remove the CDN download that made the original self-check time out
+# before reaching the pause point in up to 360s.
+DEFAULT_SERVE_DIR = REPO_ROOT / "web-repl" / "dist"
 
 
 # ---------------------------------------------------------------------------
@@ -509,7 +519,7 @@ def _kernel_url_query(code: str) -> str:
 def build_url(port: int, topology: str, code: str) -> str:
     query = _kernel_url_query(code)
     if topology == "toplevel":
-        return f"http://127.0.0.1:{port}/assets/jupyterlite/repl/index.html?{query}"
+        return f"http://127.0.0.1:{port}/repl/index.html?{query}"
     if topology == "iframe":
         return f"http://127.0.0.1:{port}{SPIKE_PREFIX}host_iframe.html?{query}"
     raise ValueError(f"unknown topology {topology!r}")
