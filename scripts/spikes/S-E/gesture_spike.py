@@ -346,7 +346,7 @@ def build_bootstrap_prelude(host_root: str) -> str:
         async def _bootstrap():
             try:
                 xhr = js.XMLHttpRequest.new()
-                xhr.open("GET", HOST_ROOT + "assets/jupyterlite/praxis_bootstrap.py", False)
+                xhr.open("GET", HOST_ROOT + "bootstrap/praxis_bootstrap.py", False)
                 xhr.send(None)
                 bootstrap_src = str(xhr.responseText)
                 exec(compile(bootstrap_src, "praxis_bootstrap.py", "exec"), globals())
@@ -595,9 +595,15 @@ def run_topology(
         pageerrors: list[str] = []
 
         with sync_playwright() as p:
+            # The real human run MUST be headed -- a visible window is the whole
+            # point, and a synthetic click carries no user activation. But
+            # --verify-pause-only runs with no human, and on a box with no display
+            # server a headed Chromium loads the page without ever running the
+            # REPL's ?execute=1 auto-run, so the payload sits in the cell as
+            # unexecuted source. Self-check therefore runs headless by default.
             browser = p.chromium.launch(
                 executable_path=chrome_path,
-                headless=False,
+                headless=pause_only,
                 args=["--no-sandbox", "--disable-dev-shm-usage", "--window-size=1280,900"],
             )
             try:
@@ -625,7 +631,17 @@ def run_topology(
                     # Self-check mode: only prove the script reaches the human pause
                     # point (a pending device_connect request exists). Never waits for
                     # or requires an actual grant. Used to verify this script without
-                    # a human/device present — see PROTOCOL.md's honest-limitation note.
+                    # a human/device present.
+                    #
+                    # On TIMEOUT this branch also captures the signals that actually
+                    # explain a non-arrival. It used to record only
+                    # __praxisPendingRequest -- the success-path variable -- so a fatal
+                    # bootstrap error that had already printed a full JSON diagnosis
+                    # into the cell 20s in was reported identically to "Pyodide is
+                    # still warming up". Four earlier runs were misattributed to slow
+                    # CDN-loaded Pyodide on exactly that basis, when the real cause was
+                    # a 404 on a stale bootstrap URL whose HTML error page was exec'd
+                    # and raised SyntaxError into a swallowing except.
                     deadline = time.monotonic() + pause_only_timeout_s
                     reached_pause = False
                     last_print = 0.0
@@ -647,7 +663,34 @@ def run_topology(
                     result["pause_only"] = True
                     result["reached_pause_point"] = reached_pause
                     result["pageerrors"] = pageerrors
-                    result["console_tail"] = console_messages[-20:]
+                    if reached_pause:
+                        result["console_tail"] = console_messages[-20:]
+                    else:
+                        # Diagnose, do not just report absence. The sentinel the kernel
+                        # prints carries praxis_ready/bootstrap_error; __praxisReadyReceived
+                        # says whether praxis:ready was ever posted. Keep the WHOLE console
+                        # -- a [-20:] tail truncates away the boot messages where a 404 shows.
+                        body_text = page.evaluate("() => document.body.innerText")
+                        result["sentinel"] = _extract_sentinel_json(body_text)
+                        # Keep the raw cell text when the sentinel is ABSENT: a null
+                        # sentinel says the JSON never printed, not why. The cell
+                        # normally carries the Python traceback that explains it.
+                        if result["sentinel"] is None:
+                            result["body_text"] = body_text[-4000:]
+                        result["ready_received"] = page.evaluate(
+                            "() => window.__praxisReadyReceived === true"
+                        )
+                        result["request_log"] = page.evaluate(
+                            "() => window.__praxisRequestLog || []"
+                        )
+                        result["console"] = console_messages
+                        LOG.error(
+                            "[%s/%s pause-only] did NOT reach the pause point. "
+                            "sentinel=%s ready_received=%s -- check result['console'] for 404s.",
+                            topology, api,
+                            "present" if result["sentinel"] else "ABSENT",
+                            result["ready_received"],
+                        )
                     return result
 
                 phase1, diag1 = _poll_for_sentinel(page, human_timeout_s, f"{topology}/{api} phase1")
