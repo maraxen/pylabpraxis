@@ -9,7 +9,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MachineRead } from '@api/models/MachineRead';
-import { MachineDefinitionService } from '@core/services/machine-definition.service';
+import { MachineDefinitionService } from './machine-definition.service';
 import { MethodInfo, ArgumentInfo } from '@core/models/machine-definition';
 
 @Component({

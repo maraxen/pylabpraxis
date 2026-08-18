@@ -1,8 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, Subject, from, of } from 'rxjs';
-import { ReplOutput, ReplRuntime, CompletionItem, SignatureInfo } from './repl-runtime.interface';
-import { HardwareDiscoveryService } from './hardware-discovery.service';
-import { InteractionService } from './interaction.service';
+import { ReplOutput, ReplRuntime, CompletionItem, SignatureInfo } from '../../core/services/repl-runtime.interface';
+import { HardwareDiscoveryService } from '../../core/services/hardware-discovery.service';
+import { InteractionService } from '../../core/services/interaction.service';
 import { PyodidePoolService } from './pyodide-pool.service';
 import { PyodideSnapshotService } from './pyodide-snapshot.service';
 import { environment } from '../../../environments/environment';

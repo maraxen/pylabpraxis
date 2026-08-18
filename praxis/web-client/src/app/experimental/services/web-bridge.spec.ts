@@ -2,8 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PythonRuntimeService } from './python-runtime.service';
-import { HardwareDiscoveryService } from './hardware-discovery.service';
-import { InteractionService } from './interaction.service';
+import { HardwareDiscoveryService } from '../../core/services/hardware-discovery.service';
+import { InteractionService } from '../../core/services/interaction.service';
 
 // Mock Serial Port Interface
 const mockReader = {

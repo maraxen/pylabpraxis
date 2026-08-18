@@ -1,6 +1,6 @@
-import { test, expect } from '../fixtures/worker-db.fixture';
-import { PlaygroundPage } from '../page-objects/playground.page';
-import { WelcomePage } from '../page-objects/welcome.page';
+import { test, expect } from '../../fixtures/worker-db.fixture';
+import { PlaygroundPage } from '../../page-objects/playground.page';
+import { WelcomePage } from '../../page-objects/welcome.page';
 
 test.describe('@slow Playground Direct Control', () => {
     let playgroundPage: PlaygroundPage;

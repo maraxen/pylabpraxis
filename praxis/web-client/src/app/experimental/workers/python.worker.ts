@@ -436,7 +436,25 @@ print("[Pyodide] Native library stubs registered (pylibftdi, usb, serial)")
       }
     })),
     // Fetch web_bridge
-    fetch(`${fullRoot}assets/python/web_bridge.py`).then(r => r.text()),
+    // NOTE (260817): assets/python/web_bridge.py was moved to web-repl/ by the Phase 3
+    // repl-refocus migration (see .praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md).
+    // This whole experimental/workers/python.worker.ts path is dead-until-Phase-5 (Phase 1 moved it
+    // here specifically to retire it; see .praxia/docs/plans/260817_praxis-repl-refocus-execution-plan.md).
+    // Unlike the sibling fetches below, this one had no .catch, so a 404 here would previously resolve
+    // (fetch only rejects on network failure, not on HTTP error status) and silently write the 404
+    // response body into the Pyodide FS as "web_bridge.py" — surfacing later as a confusing Python
+    // SyntaxError instead of naming the real cause. Fail loudly instead.
+    fetch(`${fullRoot}assets/python/web_bridge.py`).then(r => {
+      if (!r.ok) {
+        throw new Error(
+          `[python.worker] assets/python/web_bridge.py not found (HTTP ${r.status}). ` +
+          `This asset moved to web-repl/ in Phase 3; this experimental/ code path is ` +
+          `dead until Phase 5 repoints it (see .praxia/docs/decisions/` +
+          `260817_repl-layout-and-delivery-mechanism.md).`
+        );
+      }
+      return r.text();
+    }),
     // Fetch praxis package files
     fetch(`${fullRoot}assets/python/praxis/__init__.py`).then(r => r.text()).catch(() => null),
     fetch(`${fullRoot}assets/python/praxis/interactive.py`).then(r => r.text()).catch(() => null),

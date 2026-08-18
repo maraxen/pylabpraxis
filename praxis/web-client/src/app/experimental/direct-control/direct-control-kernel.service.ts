@@ -125,6 +125,22 @@ print("Browser mocks installed")
             for (const shim of shims) {
                 try {
                     const response = await fetch(`assets/shims/${shim.file}?v=${cacheBust}`);
+                    // NOTE (260817): assets/shims/ was moved to web-repl/ by the Phase 3
+                    // repl-refocus migration (see .praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md).
+                    // This whole experimental/direct-control code path is dead-until-Phase-5 (Phase 1
+                    // moved it here specifically to retire it; see .praxia/docs/plans/
+                    // 260817_praxis-repl-refocus-execution-plan.md). fetch() does not reject on HTTP
+                    // error status, so without this check a 404 here would silently write the error
+                    // page body into the Pyodide FS as this shim's ".py" file — surfacing later as a
+                    // confusing Python SyntaxError instead of naming the real cause. Fail loudly instead.
+                    if (!response.ok) {
+                        throw new Error(
+                            `[DirectControlKernel] assets/shims/${shim.file} not found (HTTP ${response.status}). ` +
+                            `This asset moved to web-repl/ in Phase 3; this experimental/ code path is ` +
+                            `dead until Phase 5 repoints it (see .praxia/docs/decisions/` +
+                            `260817_repl-layout-and-delivery-mechanism.md).`
+                        );
+                    }
                     const code = await response.text();
                     this.pyodide.FS.writeFile(shim.file, code);
                     console.log(`✓ ${shim.name} shim loaded`);
@@ -188,6 +204,22 @@ print(f"[DIAG] FTDI is WebFTDI? {_ftdi.FTDI is WebFTDI}")
             console.log('[DirectControlKernel] Preloading web_bridge.py...');
             try {
                 const bridgeResponse = await fetch(`assets/python/web_bridge.py?v=${cacheBust}`);
+                // NOTE (260817): assets/python/web_bridge.py was moved to web-repl/ by the Phase 3
+                // repl-refocus migration (see .praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md).
+                // This whole experimental/direct-control code path is dead-until-Phase-5 (Phase 1
+                // moved it here specifically to retire it; see .praxia/docs/plans/
+                // 260817_praxis-repl-refocus-execution-plan.md). fetch() does not reject on HTTP
+                // error status, so without this check a 404 here would silently write the error
+                // page body into the Pyodide FS as "web_bridge.py" — surfacing later as a confusing
+                // Python SyntaxError instead of naming the real cause. Fail loudly instead.
+                if (!bridgeResponse.ok) {
+                    throw new Error(
+                        `[DirectControlKernel] assets/python/web_bridge.py not found (HTTP ${bridgeResponse.status}). ` +
+                        `This asset moved to web-repl/ in Phase 3; this experimental/ code path is ` +
+                        `dead until Phase 5 repoints it (see .praxia/docs/decisions/` +
+                        `260817_repl-layout-and-delivery-mechanism.md).`
+                    );
+                }
                 const bridgeCode = await bridgeResponse.text();
                 this.pyodide.FS.writeFile('web_bridge.py', bridgeCode);
                 console.log('✓ web_bridge.py written to FS');

@@ -12,14 +12,12 @@ import {
   HostListener
 } from '@angular/core';
 import { InteractionService } from '@core/services/interaction.service';
-import { CommandRegistryService } from '@core/services/command-registry.service';
 
 import { FormsModule } from '@angular/forms';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatListModule } from '@angular/material/list';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -32,26 +30,19 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { ModeService } from '@core/services/mode.service';
-import { SqliteService } from '@core/services/sqlite';
-import { AssetService } from '@features/assets/services/asset.service';
 import { Machine, Resource, MachineStatus } from '@features/assets/models/asset.models';
 import { Subscription, firstValueFrom } from 'rxjs';
-import { filter, first, take } from 'rxjs/operators';
+import { first } from 'rxjs/operators';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 
 import { serial as polyfillSerial } from 'web-serial-polyfill';
-import { SerialManagerService } from '@core/services/serial-manager.service';
 import { MatDialog } from '@angular/material/dialog';
 import { AssetWizard } from '@shared/components/asset-wizard/asset-wizard';
 
-import { MatTabsModule } from '@angular/material/tabs';
-import { DirectControlComponent } from './components/direct-control/direct-control.component';
-import { DirectControlKernelService } from './services/direct-control-kernel.service';
 import { JupyterChannelService } from './services/jupyter-channel.service';
 import { PlaygroundJupyterliteService } from './services/playground-jupyterlite.service';
 import { PlaygroundAssetService } from './services/playground-asset.service';
 import { PageTooltipComponent } from '@shared/components/page-tooltip/page-tooltip.component';
-import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
 
 
 /**
@@ -69,7 +60,6 @@ import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-s
     MatCardModule,
     MatIconModule,
     MatButtonModule,
-    MatButtonToggleModule,
     MatTooltipModule,
     MatListModule,
     MatSnackBarModule,
@@ -80,11 +70,8 @@ import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-s
     MatSelectModule,
     MatChipsModule,
     MatProgressSpinnerModule,
-    MatTabsModule,
     HardwareDiscoveryButtonComponent,
-    DirectControlComponent,
-    PageTooltipComponent,
-    PraxisSelectComponent
+    PageTooltipComponent
   ],
   template: `
     <div class="playground-layout" #playgroundRoot>
@@ -96,8 +83,8 @@ import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-s
 
       <!-- Central View Area -->
       <div class="playground-canvas">
-        <!-- JupyterLite View (stays alive in DOM) -->
-        <div class="view-pane" [hidden]="playgroundMode() !== 'jupyter'">
+        <!-- JupyterLite View -->
+        <div class="view-pane">
           <div class="iframe-wrapper" data-tour-id="repl-notebook">
             @if (jupyterliteService.jupyterliteUrl()) {
               <iframe
@@ -138,38 +125,10 @@ import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-s
             }
           </div>
         </div>
-
-        <!-- Direct Control View -->
-        <div class="view-pane" [hidden]="playgroundMode() !== 'direct-control'">
-          <app-direct-control
-            [machine]="$any(selectedMachine())"
-            (executeCommand)="onExecuteCommand($event)">
-          </app-direct-control>
-        </div>
       </div>
 
       <!-- Floating Toolbar (horizontal, top right) -->
       <div class="toolbar-rail" role="toolbar" aria-label="Playground tools">
-        <!-- View Mode Split Toggle -->
-        <mat-button-toggle-group
-          [value]="playgroundMode()"
-          (change)="playgroundMode.set($event.value)"
-          class="mode-toggle"
-          hideSingleSelectionIndicator>
-          <mat-button-toggle value="jupyter"
-            matTooltip="Jupyter Notebook"
-            matTooltipPosition="left"
-            aria-label="Switch to Jupyter Notebook">
-            <mat-icon>auto_stories</mat-icon>
-          </mat-button-toggle>
-          <mat-button-toggle value="direct-control"
-            matTooltip="Direct Control"
-            matTooltipPosition="left"
-            aria-label="Switch to Direct Control">
-            <mat-icon>tune</mat-icon>
-          </mat-button-toggle>
-        </mat-button-toggle-group>
-
         <!-- Action Buttons -->
         <button mat-icon-button
           (click)="openInventory()"
@@ -180,17 +139,6 @@ import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-s
         </button>
         <app-hardware-discovery-button></app-hardware-discovery-button>
       </div>
-
-      <!-- Machine Selector (renders to left of toolbar in DC mode) -->
-      @if (playgroundMode() === 'direct-control' && availableMachines().length > 0) {
-        <div class="machine-selector-float">
-          <app-praxis-select
-            placeholder="Select Machine"
-            [options]="machineSelectOptions()"
-            (selectionChange)="onMachineSelected($event)">
-          </app-praxis-select>
-        </div>
-      }
     </div>
   `,
   styles: [
@@ -258,27 +206,6 @@ import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-s
         &:hover {
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
         }
-      }
-
-      .mode-toggle {
-        border-radius: 12px !important;
-        overflow: hidden;
-      }
-
-      ::ng-deep .mode-toggle .mat-button-toggle-appearance-standard {
-        background: transparent;
-      }
-
-      ::ng-deep .mode-toggle .mat-button-toggle-checked .mat-button-toggle-appearance-standard {
-        background: var(--mat-sys-primary);
-        color: var(--mat-sys-on-primary);
-      }
-
-      .machine-selector-float {
-        position: absolute;
-        top: 36px;
-        right: calc(16px + 240px);
-        z-index: 10;
       }
 
       .toolbar-rail button,
@@ -354,27 +281,15 @@ import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-s
 })
 export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('notebookFrame') notebookFrame!: ElementRef<HTMLIFrameElement>;
-  @ViewChild(DirectControlComponent) directControlComponent?: DirectControlComponent;
-
-  playgroundMode = signal<'jupyter' | 'direct-control'>('jupyter');
 
   private modeService = inject(ModeService);
   private snackBar = inject(MatSnackBar);
   private cdr = inject(ChangeDetectorRef);
-  private assetService = inject(AssetService);
-  private sqliteService = inject(SqliteService);
   private dialog = inject(MatDialog);
   private interactionService = inject(InteractionService);
   private jupyterChannel = inject(JupyterChannelService);
   public jupyterliteService = inject(PlaygroundJupyterliteService);
   private playgroundAssetService = inject(PlaygroundAssetService);
-  private commandRegistry = inject(CommandRegistryService);
-
-  // Serial Manager for main-thread I/O (Phase B)
-  private serialManager = inject(SerialManagerService);
-
-  // Direct Control dedicated kernel (separate from JupyterLite)
-  private directControlKernel = inject(DirectControlKernelService);
 
   modeLabel = computed(() => this.modeService.modeLabel());
 
@@ -382,25 +297,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private subscription = new Subscription();
 
-  // Selected machine for Direct Control
-  selectedMachine = signal<Machine | null>(null);
-  availableMachines = signal<Machine[]>([]);
   selectedTabIndex = signal(0);
-
-  /** Derived SelectOption[] for praxis-select — pure signal, no RxJS */
-  machineSelectOptions = computed<SelectOption[]>(() =>
-    this.availableMachines().map(m => ({
-      label: m.name,
-      value: m.name,
-      icon: this.getMachineIcon(m.asset_type || '')
-    }))
-  );
-
-  // Event listener for machine-registered events
-  private machineRegisteredHandler = () => {
-    console.log('[Playground] machine-registered event received, refreshing list...');
-    this.loadMachinesForDirectControl();
-  };
 
   constructor() {
     // Expose helpers for E2E tests
@@ -427,40 +324,10 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
         console.warn('[REPL] Failed to load WebSerial polyfill', e);
       }
     }
-
-    // SerialManager is auto-initialized and listening for BroadcastChannel messages
-    console.log('[REPL] SerialManager ready for main-thread serial I/O');
   }
 
   ngOnInit() {
     this.jupyterliteService.initialize();
-
-    // Wait for the database to be ready before loading assets.
-    // This prevents race conditions on initial load or after a db reset.
-    this.subscription.add(
-      this.sqliteService.isReady$.pipe(
-        filter(ready => ready),
-        take(1)
-      ).subscribe(() => {
-        console.log('[Playground] Database is ready, loading machines for Direct Control.');
-        this.loadMachinesForDirectControl();
-      })
-    );
-
-    // Listen for new machine registrations
-    window.addEventListener('machine-registered', this.machineRegisteredHandler);
-
-    // Register keyboard shortcut
-    this.commandRegistry.registerCommand({
-      id: 'toggle-playground-mode',
-      label: 'Toggle Playground Mode',
-      shortcut: 'Alt+T',
-      action: () => this.playgroundMode.set(
-        this.playgroundMode() === 'jupyter' ? 'direct-control' : 'jupyter'
-      ),
-      category: 'Playground',
-      keywords: ['jupyter', 'direct control', 'mode', 'toggle']
-    });
   }
 
   ngAfterViewInit() {
@@ -491,69 +358,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnDestroy() {
     this.subscription.unsubscribe();
-    window.removeEventListener('machine-registered', this.machineRegisteredHandler);
     this.jupyterliteService.destroy();
-  }
-
-  /**
-   * Load registered machines for Direct Control tab.
-   * Auto-selects the most recently created machine if none is selected.
-   */
-  loadMachinesForDirectControl(): void {
-    this.subscription.add(
-      this.assetService.getMachines().subscribe({
-        next: (machines) => {
-          console.log('[Playground] Loaded machines for Direct Control:', machines.length, machines);
-          // Sort by created_at descending (most recent first)
-          const sorted = [...machines].sort((a, b) => {
-            const aDate = (a as any).created_at ? new Date((a as any).created_at).getTime() : 0;
-            const bDate = (b as any).created_at ? new Date((b as any).created_at).getTime() : 0;
-            return bDate - aDate;
-          });
-          this.availableMachines.set(sorted);
-
-          // Auto-select the first (most recent) machine if none selected
-          if (!this.selectedMachine() && sorted.length > 0) {
-            this.selectedMachine.set(sorted[0]);
-            console.log('[Playground] Auto-selected machine for Direct Control:', sorted[0].name);
-          }
-        },
-        error: (err) => {
-          console.error('[Playground] Failed to load machines:', err);
-        }
-      })
-    );
-  }
-
-  /**
-   * Select a machine for Direct Control
-   */
-  selectMachineForControl(machine: Machine): void {
-    this.selectedMachine.set(machine);
-  }
-
-  /** Handle praxis-select machine selection */
-  onMachineSelected(value: unknown): void {
-    const name = value as string;
-    const machine = this.availableMachines().find(m => m.name === name);
-    if (machine) {
-      this.selectMachineForControl(machine);
-    }
-  }
-
-  /**
-   * Get icon for machine category
-   */
-  getMachineIcon(category: string): string {
-    const iconMap: Record<string, string> = {
-      'LiquidHandler': 'science',
-      'PlateReader': 'visibility',
-      'Shaker': 'vibration',
-      'Centrifuge': 'loop',
-      'Incubator': 'thermostat',
-      'Other': 'precision_manufacturing'
-    };
-    return iconMap[category] || 'precision_manufacturing';
   }
 
   openAddMachine() {
@@ -709,21 +514,6 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     variableName?: string,
     deckConfigId?: string
   ) {
-    // If implementing physical machine, check prior authorization
-    if (type === 'machine') {
-      const machine = asset as Machine;
-      this.selectedMachine.set(machine);
-      // If it's a physical machine (not simulated)
-      if (!machine.is_simulation_override) {
-        try {
-          // We might want to check ports here, but for now assuming user knows what they are doing
-          // or logic is handled elsewhere.
-        } catch (err) {
-          console.error('Failed to check hardware permissions:', err);
-        }
-      }
-    }
-
     // Generate appropriate Python code (delegated to service for consistency)
     let code: string;
     if (type === 'machine') {
@@ -816,69 +606,6 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     } catch (e) {
       console.warn('[Playground] Failed to inject via jupyterapp:', e);
       return false;
-    }
-  }
-
-  /**
-   * Handle executeCommand from DirectControlComponent
-   * Uses a dedicated Pyodide kernel that persists across tab switches
-   */
-
-
-  async onExecuteCommand(event: { machineName: string, methodName: string, args: Record<string, unknown> }) {
-    const { machineName, methodName, args } = event;
-    console.log(`[DirectControl] Executing ${methodName} on ${machineName} `, args);
-
-    // Find machine asset
-    const machines = this.availableMachines();
-    const asset = machines.find(m => m.name === machineName);
-    if (!asset) {
-      const err = `Machine ${machineName} not found`;
-      this.snackBar.open(err, 'OK');
-      this.directControlComponent?.handleCommandError(err);
-      return;
-    }
-
-    const varName = this.playgroundAssetService.assetToVarName(asset);
-    const machineId = asset.accession_id;
-    const connectionInfo = asset.connection_info as Record<string, unknown> || {};
-    const plrBackend = connectionInfo['plr_backend'] as string || '';
-    const category = (asset as unknown as { machine_category?: string }).machine_category || 'LiquidHandler';
-
-    try {
-      // Boot kernel if needed (this is idempotent)
-      if (!this.directControlKernel.isReady()) {
-        this.snackBar.open('Booting Python kernel...', 'OK', { duration: 3000 });
-        await this.directControlKernel.boot();
-      }
-
-      // Ensure machine is instantiated
-      await this.directControlKernel.ensureMachineInstantiated(
-        machineId,
-        asset.name,
-        varName,
-        plrBackend,
-        category
-      );
-
-      // Execute the method
-      this.snackBar.open(`Executing ${methodName}...`, 'OK', { duration: 2000 });
-      const output = await this.directControlKernel.executeMethod(varName, methodName, args);
-
-      if (output.trim()) {
-        console.log('[DirectControl] Output:', output);
-        this.snackBar.open(output.split('\n')[0].substring(0, 80), 'OK', { duration: 5000 });
-        // AUDIT-09: Pass valid result to DirectControl
-        this.directControlComponent?.handleCommandResult(output);
-      } else {
-        this.directControlComponent?.handleCommandResult("Command completed (no output)");
-      }
-    } catch (e) {
-      console.error('[DirectControl] Command failed:', e);
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      this.snackBar.open(`Error: ${errorMsg.substring(0, 80)} `, 'Dismiss', { duration: 5000 });
-      // AUDIT-09: Pass error to DirectControl
-      this.directControlComponent?.handleCommandError(errorMsg);
     }
   }
 }

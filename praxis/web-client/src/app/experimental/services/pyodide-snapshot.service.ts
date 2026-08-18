@@ -1,4 +1,4 @@
-// src/app/core/services/pyodide-snapshot.service.ts
+// src/app/experimental/services/pyodide-snapshot.service.ts
 import { Injectable } from '@angular/core';
 import { environment } from '@env/environment';
 

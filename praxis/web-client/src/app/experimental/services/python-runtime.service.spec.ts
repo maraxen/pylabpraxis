@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { PythonRuntimeService } from './python-runtime.service';
-import { InteractionService } from './interaction.service';
-import { HardwareDiscoveryService } from './hardware-discovery.service';
+import { InteractionService } from '../../core/services/interaction.service';
+import { HardwareDiscoveryService } from '../../core/services/hardware-discovery.service';
 import { firstValueFrom } from 'rxjs';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
