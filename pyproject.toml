@@ -30,8 +30,8 @@ dependencies = [
     "aiosqlite>=0.20.0", # SQLite async driver for lite mode KV store
     "zeroconf>=0.131.0", # mDNS device discovery
     "pyserial>=3.5", # Serial port device discovery
-    "jupyterlite-core>=0.7.1",
-    "jupyterlite-pyodide-kernel>=0.7.0",
+    "jupyterlite-core==0.8.1",
+    "jupyterlite-pyodide-kernel==0.8.2",
     "cloudpickle>=3.0.0", # Function serialization for caching/distributed execution
     "celery>=5.5.3",
     "numpy>=2.2.6",
@@ -214,7 +214,7 @@ line-length = 100
 indent-width = 2
 fix = true
 target-version = "py310"
-exclude = ["praxis/backend/commons", "tests", "alembic", "alembic_old", "scripts", "docs", "dependency_analysis.py"]
+exclude = ["praxis/backend/commons", "tests", "alembic", "alembic_old", "scripts", "docs", "dependency_analysis.py", "web-repl/overlay", "web-repl/bootstrap"]
 
 [tool.ruff.lint]
 select = ["ALL"]
