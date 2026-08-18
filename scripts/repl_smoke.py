@@ -1,0 +1,1021 @@
+#!/usr/bin/env python3
+"""repl_smoke.py — the ONE Playwright harness for the praxis REPL refocus (task_id 260817_praxis_repl_refocus).
+
+Two modes, one driver:
+
+  --probe        Serves a directory over http://127.0.0.1:<port>, opens a JupyterLite app
+                  page with an injected bootstrap `code` cell, waits for the in-kernel
+                  probe to finish, and prints a single JSON object to stdout.
+
+  --viz-check    ADDED for P6.3 (spec 260817_spec-visualizer-transport-shim.md, R9/T1.4,
+                  gate D3). Serves the vendored, kernel-free PyLabRobot visualizer tree
+                  directly (default web-repl/dist/assets/visualizer/), injects a
+                  pin-matched golden fixture straight into `window.receiveFromPython(...)`
+                  -- no JupyterLite, no Python kernel, no bootstrap at all -- and asserts
+                  resource/shape/layer counts plus a real state-delta fill-color
+                  transition. `web-repl/scripts/gen_viz_fixtures.py` produces the
+                  fixtures and their FIXTURE_MANIFEST.json (pin_sha + expected counts);
+                  pass --record here, once per fixture regen, to measure shape_count /
+                  layer_count from an actual Konva render and write them into that
+                  manifest -- every other run only VERIFIES against what --record wrote,
+                  and refuses to run at all if the manifest's pin_sha does not match the
+                  live `external/pylabrobot` submodule HEAD.
+
+  WHY ONE FILE, NOT scripts/viz_render_check.py: the visualizer spec proposes a separate
+  script by that name, but the execution plan overrides it explicitly -- "Do not create
+  three harnesses. The specs propose `repl_smoke.py`, `web-repl/tests/e2e/*.spec.ts`, and
+  `scripts/viz_render_check.py` ... One driver + typed modes." (plan §Phase 0, P0.4 note).
+  `--viz-check` below is that check. It reuses `ServedDir` and the same
+  pinned-Chromium-with-sandbox-disabled launch shape as `--probe` (see `run_probe`), which
+  is the whole point of keeping it in this file instead of a fresh script that would have
+  to re-derive both. It is a separate CODE PATH (`run_viz_check`, not a branch inside
+  `run_probe`/`build_probe_code`) because it drives an entirely different surface: no
+  JupyterLite console, no bootstrap fetch, no Python kernel, no probe-sentinel protocol --
+  just a static page and one JS bridge function that already exists in the vendored
+  `vis.js` (`window.receiveFromPython`). Forcing it through `build_probe_code`'s
+  kernel-cell-execution machinery would add a fake kernel dependency to a check whose
+  entire point (spec: "browserless... no Python") is not needing one.
+
+REPOINTED 2026-08-18 (post-move, web-repl/dist/ now exists — see this task's report for
+what was verified empirically, not assumed). Entry path is `lab/index.html`, not
+`repl/index.html`: `inject_shell.py` only ever injects the D1 shell script
+(`window.PRAXIS_GIT_SHA` + `<script src="./shell/praxis-shell.js">`) into
+`dist/lab/index.html` (ADR Sec 2.3/5.5) — `dist/repl/index.html` never carries it, so
+D1's `praxis:shell-ping`/`pong` handshake has no listener there and can only fail
+closed. ADR Sec 7 leaves `repl/` vs `lab/` an open product question; this is "pick what
+the build actually produces" for that question, not a preference.
+
+Do NOT create a second harness for this project — see the ADR at
+.praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md and the execution
+plan at .praxia/docs/plans/260817_praxis-repl-refocus-execution-plan.md (P0.4).
+
+Hard constraints (verified 2026-08-17, see plan section 5.6):
+  - Playwright can only launch Chromium here with the Bash sandbox DISABLED
+    (dangerouslyDisableSandbox=true) AND --no-sandbox --disable-dev-shm-usage.
+  - playwright 1.62.0 wants chromium build 1234, which is NOT installed; --chrome-path
+    must point at the 1228 build instead (default below).
+  - Serve everything over http://127.0.0.1:<port>. NEVER about:blank, NEVER file://
+    — on about:blank navigator.serial reads False because it is not a secure context,
+    which would wrongly read as a capability regression.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import re
+import subprocess
+import sys
+import textwrap
+import threading
+import urllib.parse
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+
+LOG = logging.getLogger("repl_smoke")
+
+DEFAULT_CHROME_PATH = (
+    "/home/marielle/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome"
+)
+DEFAULT_TIMEOUT_S = 120.0
+
+PROBE_START = "===PRAXIS_PROBE_JSON_START==="
+PROBE_END = "===PRAXIS_PROBE_JSON_END==="
+
+
+def find_repo_root(start: Path) -> Path:
+    """Search upward from `start` for the directory containing pyproject.toml.
+
+    Never uses Path.cwd() or a bare relative string — anchored to __file__ per
+    house script conventions (see ~/.claude/rules/CLUSTER.md §1a for the pattern).
+    """
+    cur = start.resolve()
+    for candidate in (cur, *cur.parents):
+        if (candidate / "pyproject.toml").is_file():
+            return candidate
+    raise RuntimeError(f"could not locate pyproject.toml above {start}")
+
+
+REPO_ROOT = find_repo_root(Path(__file__).parent)
+DEFAULT_SERVE_DIR = REPO_ROOT / "web-repl" / "dist"
+
+# --viz-check defaults. The dist copy (not overlay/) is served by default so the check
+# exercises what build_repl.py actually shipped -- same "pick what the build produces"
+# reasoning as DEFAULT_SERVE_DIR/lab-vs-repl above. web-repl/scripts/vendor_visualizer.py
+# copies overlay/assets/visualizer/ into dist/assets/visualizer/ byte-identically, so
+# pointing --visualizer-dir at overlay/ directly (e.g. right after a regen, before a dist
+# rebuild) is a supported override, not a special case.
+DEFAULT_VISUALIZER_DIR = REPO_ROOT / "web-repl" / "dist" / "assets" / "visualizer"
+DEFAULT_FIXTURE_DIR = REPO_ROOT / "web-repl" / "tests" / "fixtures" / "visualizer"
+DEFAULT_PLR_SUBMODULE = REPO_ROOT / "external" / "pylabrobot"
+
+
+# ---------------------------------------------------------------------------
+# Static file server: serves a directory at an optional URL prefix, with
+# optional COOP/COEP headers so the "deployed configuration" (credentialless
+# COEP) can be exercised. NOTE: `web-repl/dist/index.html` carries no
+# client-side COI config at all (no coi-serviceworker.js, unlike the
+# pre-move `praxis/web-client/src/index.html:9-22` this comment used to
+# point at) -- these server-sent headers are the only COI mechanism for the
+# new dist/, verified 2026-08-18.
+# ---------------------------------------------------------------------------
+
+
+def _normalize_base_path(base_path: str) -> str:
+    if not base_path.startswith("/"):
+        base_path = "/" + base_path
+    if not base_path.endswith("/"):
+        base_path += "/"
+    return base_path
+
+
+def make_handler(serve_dir: Path, base_path: str, coi: bool) -> type[SimpleHTTPRequestHandler]:
+    prefix = _normalize_base_path(base_path)
+
+    class Handler(SimpleHTTPRequestHandler):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, directory=str(serve_dir), **kwargs)
+
+        def translate_path(self, path: str) -> str:
+            p = path.split("?", 1)[0].split("#", 1)[0]
+            if prefix != "/" and p.startswith(prefix):
+                p = "/" + p[len(prefix) :]
+            elif prefix != "/" and p == prefix[:-1]:
+                p = "/"
+            return super().translate_path(p)
+
+        def end_headers(self) -> None:
+            if coi:
+                self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+                self.send_header("Cross-Origin-Embedder-Policy", "credentialless")
+            self.send_header("Cache-Control", "no-store")
+            super().end_headers()
+
+        def log_message(self, fmt: str, *args: Any) -> None:
+            LOG.debug("http: " + fmt, *args)
+
+    return Handler
+
+
+class ServedDir:
+    """Context manager wrapping a background ThreadingHTTPServer."""
+
+    def __init__(self, serve_dir: Path, base_path: str, coi: bool) -> None:
+        handler_cls = make_handler(serve_dir, base_path, coi)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler_cls)
+        self.port = self.httpd.server_address[1]
+        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+
+    def __enter__(self) -> ServedDir:
+        self.thread.start()
+        LOG.info("serving on http://127.0.0.1:%d", self.port)
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.httpd.shutdown()
+        self.httpd.server_close()
+
+
+# ---------------------------------------------------------------------------
+# The in-kernel probe. Runs as a single top-level `await` cell so the execute
+# request does not report idle until the whole probe (bootstrap + assertions
+# + interaction roundtrip) has finished, guaranteeing the printed JSON lands
+# in the same cell's output.
+# ---------------------------------------------------------------------------
+
+
+def build_probe_code(host_root: str, expect_praxis_sha: str | None) -> str:
+    # The `code` URL param is echoed verbatim into the console's editable cell
+    # BEFORE execution, so if the literal sentinel strings appeared contiguously
+    # in this source, Playwright's wait_for_function would match the pre-run
+    # SOURCE DISPLAY rather than the post-run PRINTED OUTPUT. Every sentinel is
+    # therefore built from two literals joined with `+` at runtime so the full
+    # contiguous string exists only in the printed output.
+    start_a, start_b = PROBE_START[: len(PROBE_START) // 2], PROBE_START[len(PROBE_START) // 2 :]
+    end_a, end_b = PROBE_END[: len(PROBE_END) // 2], PROBE_END[len(PROBE_END) // 2 :]
+    return textwrap.dedent(
+        f"""
+        import asyncio, builtins, importlib, json, sys, traceback
+        import js
+
+        HOST_ROOT = {host_root!r}
+        EXPECT_SHA = {expect_praxis_sha!r}
+        _SENTINEL_START = {start_a!r} + {start_b!r}
+        _SENTINEL_END = {end_a!r} + {end_b!r}
+        RESULT: dict = {{"host_root": HOST_ROOT}}
+
+
+        async def _main():
+            # --- 1. fetch + exec the bootstrap, then await praxis_main ---
+            try:
+                xhr = js.XMLHttpRequest.new()
+                xhr.open("GET", HOST_ROOT + "bootstrap/praxis_bootstrap.py", False)
+                xhr.send(None)
+                bootstrap_src = str(xhr.responseText)
+                exec(compile(bootstrap_src, "praxis_bootstrap.py", "exec"), globals())
+                await praxis_main(HOST_ROOT)  # noqa: F821 - injected by exec above
+                RESULT["praxis_ready"] = True
+            except Exception as e:  # noqa: BLE001 - probe must never die silently
+                RESULT["praxis_ready"] = False
+                RESULT["bootstrap_error"] = f"{{type(e).__name__}}: {{e}}"
+                RESULT["bootstrap_traceback"] = traceback.format_exc()
+
+            # --- 2. pylabrobot version/identity ---
+            try:
+                import pylabrobot
+                RESULT["pylabrobot_version"] = getattr(pylabrobot, "__version__", None)
+                RESULT["pylabrobot_file"] = getattr(pylabrobot, "__file__", None)
+            except Exception as e:  # noqa: BLE001
+                RESULT["pylabrobot_version"] = None
+                RESULT["pylabrobot_file"] = None
+                RESULT["pylabrobot_import_error"] = f"{{type(e).__name__}}: {{e}}"
+
+            # --- 3. four io classes: repr + identity vs. builtins, by `is` ---
+            io_reprs: dict = {{}}
+            io_identity: dict = {{}}
+            capability_flags: dict = {{}}
+            for mod_name, cls_attr, builtin_name, flag_name in [
+                ("pylabrobot.io.serial", "Serial", "WebSerial", "HAS_SERIAL"),
+                ("pylabrobot.io.usb", "USB", "WebUSB", "USE_USB"),
+                ("pylabrobot.io.hid", "HID", "WebHID", "USE_HID"),
+                ("pylabrobot.io.ftdi", "FTDI", "WebFTDI", "HAS_PYLIBFTDI"),
+            ]:
+                try:
+                    mod = importlib.import_module(mod_name)
+                    cls_obj = getattr(mod, cls_attr, None)
+                    io_reprs[mod_name] = repr(cls_obj)
+                    builtin_obj = getattr(builtins, builtin_name, None)
+                    io_identity[mod_name] = bool(
+                        cls_obj is not None and builtin_obj is not None and cls_obj is builtin_obj
+                    )
+                    capability_flags[flag_name] = getattr(mod, flag_name, None)
+                except Exception as e:  # noqa: BLE001
+                    io_reprs[mod_name] = f"ERROR: {{type(e).__name__}}: {{e}}"
+                    io_identity[mod_name] = False
+                    capability_flags[flag_name] = None
+            RESULT["io_class_reprs"] = io_reprs
+            RESULT["io_class_identity"] = io_identity
+            RESULT["capability_flags"] = capability_flags
+
+            # --- 4. serial module is a real module, not the load-bearing MagicMock ---
+            try:
+                serial_mod = sys.modules.get("serial")
+                RESULT["serial_module_is_not_MagicMock"] = bool(
+                    serial_mod is not None
+                    and "unittest.mock" not in type(serial_mod).__module__
+                )
+            except Exception as e:  # noqa: BLE001
+                RESULT["serial_module_is_not_MagicMock"] = None
+                RESULT["serial_module_error"] = f"{{type(e).__name__}}: {{e}}"
+
+            # --- 5. web_serial_shim.IN_PYODIDE (the known-broken `window` import bug) ---
+            try:
+                import web_serial_shim
+                RESULT["web_serial_IN_PYODIDE"] = web_serial_shim.IN_PYODIDE
+            except Exception as e:  # noqa: BLE001
+                RESULT["web_serial_IN_PYODIDE"] = None
+                RESULT["web_serial_shim_import_error"] = f"{{type(e).__name__}}: {{e}}"
+
+            # --- 6. WebSerial() construction ---
+            try:
+                builtins.WebSerial()
+                RESULT["WebSerial_construct"] = {{"raised": False}}
+            except Exception as e:  # noqa: BLE001
+                RESULT["WebSerial_construct"] = {{
+                    "raised": True,
+                    "exception": type(e).__name__,
+                    "message": str(e),
+                }}
+
+            # --- 7. polyfill lookup (window.polyfillSerial visibility from the worker) ---
+            try:
+                import web_serial_shim as _wss
+                if not _wss.IN_PYODIDE:
+                    RESULT["polyfill_lookup"] = {{
+                        "status": "not_reached",
+                        "reason": "IN_PYODIDE is False; the js.window import failed before "
+                        "the polyfill lookup branch could run",
+                    }}
+                else:
+                    RESULT["polyfill_lookup"] = {{"status": "reached"}}
+            except Exception as e:  # noqa: BLE001
+                RESULT["polyfill_lookup"] = {{"status": "error", "detail": f"{{type(e).__name__}}: {{e}}"}}
+
+            # --- 8. web_bridge wiring ---
+            try:
+                import web_bridge
+                RESULT["web_bridge_import"] = True
+                RESULT["has_request_user_interaction"] = hasattr(
+                    web_bridge, "request_user_interaction"
+                )
+                RESULT["broadcast_channel_registered"] = (
+                    getattr(web_bridge, "_broadcast_channel", None) is not None
+                )
+            except Exception as e:  # noqa: BLE001
+                RESULT["web_bridge_import"] = False
+                RESULT["has_request_user_interaction"] = False
+                RESULT["broadcast_channel_registered"] = False
+                RESULT["web_bridge_import_error"] = f"{{type(e).__name__}}: {{e}}"
+
+            # --- 9. device-auth interaction roundtrip (97a75988 chain) ---
+            # Relies on the page-side auto-responder BroadcastChannel listener
+            # installed by repl_smoke.py before navigation.
+            try:
+                import web_bridge
+                task = asyncio.ensure_future(
+                    web_bridge.request_user_interaction("confirm", {{"message": "probe"}})
+                )
+                value = await asyncio.wait_for(task, timeout=8)
+                RESULT["interaction_roundtrip"] = {{"ok": True, "value": value}}
+            except Exception as e:  # noqa: BLE001
+                RESULT["interaction_roundtrip"] = {{
+                    "ok": False,
+                    "error": f"{{type(e).__name__}}: {{e}}",
+                }}
+
+            # --- 10. praxis_git_sha drift (D1) -- not implemented pre-change ---
+            RESULT["praxis_sha_match"] = None if EXPECT_SHA is None else False
+
+            RESULT["python_version"] = list(sys.version_info[:3])
+
+
+        await _main()
+        print(_SENTINEL_START)
+        print(json.dumps(RESULT))
+        print(_SENTINEL_END)
+        """
+    ).strip()
+
+
+AUTO_RESPONDER_INIT_SCRIPT = """
+(() => {
+  try {
+    window.__praxisRequestLog = [];
+    window.__praxisAutoResponses = [];
+    window.__praxisReadyReceived = false;
+    const ch = new BroadcastChannel('praxis_repl');
+    ch.onmessage = (event) => {
+      const data = event.data;
+      window.__praxisRequestLog.push({ ts: Date.now(), data: JSON.parse(JSON.stringify(data)) });
+      if (data && typeof data === 'object') {
+        if (data.type === 'praxis:ready') {
+          window.__praxisReadyReceived = true;
+        }
+        if (data.type === 'USER_INTERACTION' && data.payload && data.payload.id) {
+          const id = data.payload.id;
+          window.__praxisAutoResponses.push(id);
+          ch.postMessage({ type: 'praxis:interaction_response', id, value: 'PROBE_AUTO_RESPONSE' });
+        }
+      }
+    };
+    window.__praxisAutoChannel = ch;
+  } catch (e) {
+    window.__praxisAutoChannelError = String(e);
+  }
+})();
+"""
+
+
+def run_probe(
+    *,
+    serve_dir: Path,
+    base_path: str,
+    coi: bool,
+    chrome_path: str,
+    timeout_s: float,
+    expect_praxis_sha: str | None,
+    entry: str = "lab",
+) -> dict[str, Any]:
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as e:  # pragma: no cover - environment problem, not a probe result
+        raise RuntimeError(f"playwright is not importable: {e}") from e
+
+    prefix = _normalize_base_path(base_path)
+    timeout_ms = timeout_s * 1000
+
+    with ServedDir(serve_dir, base_path, coi) as served:
+        url = (
+            f"http://127.0.0.1:{served.port}{prefix}{entry}/index.html"
+        )
+        code = build_probe_code(prefix, expect_praxis_sha)
+        params = urllib.parse.urlencode(
+            {"kernel": "python", "toolbar": "1", "execute": "1", "code": code}
+        )
+        full_url = f"{url}?{params}"
+        LOG.info("navigating to %s (url length %d)", url, len(full_url))
+
+        request_log: list[dict[str, Any]] = []
+        http_errors: list[dict[str, Any]] = []
+        requestfailed: list[dict[str, Any]] = []
+        pageerrors: list[str] = []
+        console_messages: list[dict[str, Any]] = []
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                executable_path=chrome_path,
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage"],
+            )
+            try:
+                context = browser.new_context()
+                page = context.new_page()
+                page.add_init_script(AUTO_RESPONDER_INIT_SCRIPT)
+
+                page.on(
+                    "request",
+                    lambda req: request_log.append(
+                        {"url": req.url, "method": req.method, "resource_type": req.resource_type}
+                    ),
+                )
+                page.on(
+                    "requestfailed",
+                    lambda req: requestfailed.append(
+                        {"url": req.url, "failure": (req.failure or {}).get("errorText")}
+                    ),
+                )
+                page.on(
+                    "response",
+                    lambda res: http_errors.append({"url": res.url, "status": res.status})
+                    if res.status >= 400
+                    else None,
+                )
+                page.on("pageerror", lambda exc: pageerrors.append(str(exc)))
+                page.on(
+                    "console",
+                    lambda msg: console_messages.append({"type": msg.type, "text": msg.text}),
+                )
+
+                page.goto(full_url, wait_until="load", timeout=timeout_ms)
+                page.wait_for_function(
+                    "sentinel => document.body.innerText.includes(sentinel)",
+                    arg=PROBE_END,
+                    timeout=timeout_ms,
+                )
+
+                body_text = page.evaluate("() => document.body.innerText")
+                cross_origin_isolated = page.evaluate("() => window.crossOriginIsolated")
+                auto_responses = page.evaluate("() => window.__praxisAutoResponses || []")
+                ready_received = page.evaluate("() => window.__praxisReadyReceived === true")
+                broadcast_log = page.evaluate("() => window.__praxisRequestLog || []")
+            finally:
+                browser.close()
+
+    match = re.search(
+        re.escape(PROBE_START) + r"\s*(.*?)\s*" + re.escape(PROBE_END), body_text, re.DOTALL
+    )
+    if not match:
+        raise RuntimeError(
+            "probe sentinel not found in page text; last 2000 chars: "
+            f"{body_text[-2000:]!r}"
+        )
+    kernel_result = json.loads(match.group(1))
+
+    # praxis_bootstrap.py's own praxis_main() wraps its entire body in one
+    # `except Exception: ... _post({"type": "praxis:error", ...})` and does NOT
+    # re-raise (verified 2026-08-18, praxis_bootstrap.py:337-342 -- "fail-closed
+    # catch-all, by design"). That means `await praxis_main(HOST_ROOT)` in the
+    # in-kernel probe below NEVER raises on a failed boot, so the kernel-side
+    # `praxis_ready` field only ever means "the call returned", not "the boot
+    # succeeded" -- it is True even for a boot that failed at the very first
+    # stage. The only trustworthy success signal is whether `praxis:ready` was
+    # actually posted on the BroadcastChannel (`broadcast_channel_ready_received`
+    # below), and the only trustworthy failure reason is a `praxis:error` message
+    # in `broadcast_channel_log`, not `kernel_result["bootstrap_error"]`.
+    broadcast_error_reason = None
+    for _log_entry in broadcast_log:
+        data = _log_entry.get("data") if isinstance(_log_entry, dict) else None
+        if isinstance(data, dict) and data.get("type") == "praxis:error":
+            broadcast_error_reason = data.get("reason")
+            break
+
+    result: dict[str, Any] = dict(kernel_result)
+    result["crossOriginIsolated"] = cross_origin_isolated
+    result["http_errors"] = http_errors
+    result["requestfailed"] = requestfailed
+    result["pageerrors"] = pageerrors
+    result["broadcast_channel_ready_received"] = ready_received
+    result["broadcast_channel_auto_responses"] = auto_responses
+    result["broadcast_channel_log"] = broadcast_log
+    result["broadcast_channel_error_reason"] = broadcast_error_reason
+    result["request_log"] = request_log
+    result["request_log_count"] = len(request_log)
+    result["console_messages_count"] = len(console_messages)
+    result["_meta"] = {
+        "url": url,
+        "entry": entry,
+        "base_path": prefix,
+        "coi": coi,
+        "chrome_path": chrome_path,
+        "timeout_s": timeout_s,
+        "serve_dir": str(serve_dir),
+    }
+    return result
+
+
+# ---------------------------------------------------------------------------
+# --viz-check: the D3 golden-render check (spec 260817_spec-visualizer-transport-shim.md
+# R9/T1.4). Browserless-Python, browser-required: no Python kernel of any kind runs on
+# the page, but a real Chromium + Konva render is what measures shape_count/layer_count,
+# which cannot be derived from the JSON payload alone (see gen_viz_fixtures.py's
+# docstring on why resource_count CAN be Python-side but shape_count cannot).
+# ---------------------------------------------------------------------------
+
+
+class VizCheckError(RuntimeError):
+    """Raised for any condition that must fail --viz-check loudly, pin mismatch included."""
+
+
+def read_submodule_sha(submodule_dir: Path) -> str:
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(submodule_dir), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as e:
+        raise VizCheckError(f"could not read submodule HEAD at {submodule_dir}: {e.stderr}") from e
+    return out.stdout.strip()
+
+
+def run_viz_check(
+    *,
+    visualizer_dir: Path,
+    fixture_dir: Path,
+    plr_submodule: Path,
+    chrome_path: str,
+    timeout_s: float,
+    record: bool,
+) -> dict[str, Any]:
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as e:  # pragma: no cover - environment problem, not a check result
+        raise RuntimeError(f"playwright is not importable: {e}") from e
+
+    manifest_path = fixture_dir / "FIXTURE_MANIFEST.json"
+    root_path = fixture_dir / "set_root_resource.json"
+    initial_state_path = fixture_dir / "set_state.json"
+    delta_path = fixture_dir / "delta_set_state.json"
+    for p in (manifest_path, root_path, initial_state_path, delta_path):
+        if not p.is_file():
+            raise VizCheckError(
+                f"missing fixture file {p}. Generate fixtures first: "
+                "uv run python web-repl/scripts/gen_viz_fixtures.py"
+            )
+
+    manifest = json.loads(manifest_path.read_text())
+
+    # THE PIN CHECK. This must run before anything else and must name both SHAs --
+    # a fixture generated at one PyLabRobot pin checked against the vendored renderer
+    # of a different pin is the exact landmine the spec calls out (485 KB / 164 KB /
+    # 137 KB schema differences across candidate pins). Fail with a message that says
+    # what to DO, not just that counts differed.
+    live_sha = read_submodule_sha(plr_submodule)
+    manifest_sha = manifest.get("pin_sha")
+    if manifest_sha != live_sha:
+        raise VizCheckError(
+            f"fixture pin mismatch: fixture was generated at pin {manifest_sha}, "
+            f"current external/pylabrobot pin is {live_sha} -- regenerate with "
+            "`uv run python web-repl/scripts/gen_viz_fixtures.py`"
+        )
+
+    root_fixture = json.loads(root_path.read_text())
+    initial_state_fixture = json.loads(initial_state_path.read_text())
+    delta_fixture = json.loads(delta_path.read_text())
+    expected = manifest["expected"]
+    delta_spec = manifest["delta"]
+    target_resource = delta_spec["target_resource"]
+    fill_before = delta_spec["fill_before"]
+    fill_after = delta_spec["fill_after"]
+
+    pageerrors: list[str] = []
+    console_errors: list[str] = []
+
+    with ServedDir(visualizer_dir, "/", coi=False) as served:
+        url = f"http://127.0.0.1:{served.port}/index.html"
+        LOG.info("navigating to %s", url)
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                executable_path=chrome_path,
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage"],
+            )
+            try:
+                context = browser.new_context()
+                page = context.new_page()
+                page.on("pageerror", lambda exc: pageerrors.append(str(exc)))
+                page.on(
+                    "console",
+                    lambda msg: console_errors.append(msg.text) if msg.type == "error" else None,
+                )
+
+                page.goto(url, wait_until="load", timeout=timeout_s * 1000)
+                # `stage`/`resources` are built inside lib.js's own `window` "load"
+                # listener (lib.js:3207-3235) -- Playwright's wait_until="load" fires
+                # after that listener has run, but poll explicitly rather than trust
+                # event-ordering across two independent "load" consumers.
+                page.wait_for_function(
+                    "() => window.stage && window.stage.getLayers().length > 0",
+                    timeout=timeout_s * 1000,
+                )
+
+                # --- inject set_root_resource ---
+                ack = page.evaluate(
+                    "async (data) => await window.receiveFromPython('set_root_resource', data)",
+                    root_fixture,
+                )
+                if not ack or ack.get("success") is not True:
+                    raise VizCheckError(f"set_root_resource injection failed: ack={ack!r}")
+
+                # --- inject the INITIAL full set_state ---
+                # Real boot always sends this immediately after set_root_resource
+                # (Visualizer._send_resources_and_state, visualizer.py:643-670).
+                # set_root_resource carries pure geometry; tip/liquid presence lives
+                # only in per-resource state, so skipping straight to the delta below
+                # made an earlier version of this check read BOTH fill_before and
+                # fill_after as Konva's default fill -- a false pass that would have
+                # masked the #1 pre-mortem risk (state updates silently dropped)
+                # instead of catching it. See gen_viz_fixtures.py's docstring.
+                ack0 = page.evaluate(
+                    "async (data) => await window.receiveFromPython('set_state', data)",
+                    initial_state_fixture,
+                )
+                if not ack0 or ack0.get("success") is not True:
+                    raise VizCheckError(f"initial set_state injection failed: ack={ack0!r}")
+
+                measured_resources = page.evaluate("() => Object.keys(window.resources).length")
+                measured_shapes = page.evaluate("() => window.stage.find('Shape').length")
+                measured_layers = page.evaluate("() => window.stage.getLayers().length")
+
+                fill_before_actual = page.evaluate(
+                    "(name) => { const r = window.resources[name]; "
+                    "const c = r && r.group.findOne('Circle'); "
+                    "return c ? c.fill() : null; }",
+                    target_resource,
+                )
+
+                # --- inject delta_set_state ---
+                ack2 = page.evaluate(
+                    "async (data) => await window.receiveFromPython('set_state', data)",
+                    delta_fixture,
+                )
+                if not ack2 or ack2.get("success") is not True:
+                    raise VizCheckError(f"delta set_state injection failed: ack={ack2!r}")
+
+                fill_after_actual = page.evaluate(
+                    "(name) => { const r = window.resources[name]; "
+                    "const c = r && r.group.findOne('Circle'); "
+                    "return c ? c.fill() : null; }",
+                    target_resource,
+                )
+            finally:
+                browser.close()
+
+    result: dict[str, Any] = {
+        "pin_sha": live_sha,
+        "measured": {
+            "resource_count": measured_resources,
+            "shape_count": measured_shapes,
+            "layer_count": measured_layers,
+        },
+        "expected": dict(expected),
+        "delta": {
+            "target_resource": target_resource,
+            "fill_before_expected": fill_before,
+            "fill_before_actual": fill_before_actual,
+            "fill_after_expected": fill_after,
+            "fill_after_actual": fill_after_actual,
+        },
+        "pageerrors": pageerrors,
+        "console_errors": console_errors,
+        "record_mode": record,
+    }
+
+    failures: list[str] = []
+
+    if pageerrors:
+        failures.append(f"{len(pageerrors)} pageerror(s): {pageerrors}")
+
+    if measured_resources != expected["resource_count"]:
+        failures.append(
+            f"resource_count mismatch: measured {measured_resources}, "
+            f"expected {expected['resource_count']} (pin {live_sha})"
+        )
+
+    if record:
+        expected["shape_count"] = measured_shapes
+        expected["layer_count"] = measured_layers
+        manifest["expected"] = expected
+        manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+        LOG.info(
+            "RECORDED shape_count=%d layer_count=%d into %s",
+            measured_shapes,
+            measured_layers,
+            manifest_path,
+        )
+    else:
+        if expected.get("shape_count") is None or expected.get("layer_count") is None:
+            failures.append(
+                "shape_count/layer_count have never been recorded for this fixture -- "
+                "run `uv run python scripts/repl_smoke.py --viz-check --record` once "
+                "(with sandbox disabled) before this check can gate anything"
+            )
+        else:
+            if measured_shapes != expected["shape_count"]:
+                failures.append(
+                    f"shape_count mismatch: measured {measured_shapes}, "
+                    f"expected {expected['shape_count']} (pin {live_sha}, recorded "
+                    f"{manifest.get('generated_at')}) -- if this is a real upstream "
+                    "render change, re-record with --viz-check --record; if it is a "
+                    "regression, that is exactly what this gate exists to catch"
+                )
+            if measured_layers != expected["layer_count"]:
+                failures.append(
+                    f"layer_count mismatch: measured {measured_layers}, "
+                    f"expected {expected['layer_count']} (pin {live_sha})"
+                )
+
+    if fill_before_actual != fill_before:
+        failures.append(
+            f"{target_resource} fill BEFORE delta: measured {fill_before_actual!r}, "
+            f"expected {fill_before!r}"
+        )
+    if fill_after_actual != fill_after:
+        failures.append(
+            f"{target_resource} fill AFTER delta: measured {fill_after_actual!r}, "
+            f"expected {fill_after!r} -- a value equal to fill_before here is the "
+            "documented failure signature (state delta silently dropped)"
+        )
+
+    result["failures"] = failures
+    result["passed"] = not failures
+    return result
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--probe",
+        action="store_true",
+        help="Run the full in-kernel probe and print JSON to stdout.",
+    )
+    p.add_argument(
+        "--viz-check",
+        action="store_true",
+        help=(
+            "Run the browserless-Python visualizer render check (gate D3) instead of "
+            "--probe: inject the golden fixture into the vendored visualizer directly, "
+            "no JupyterLite kernel involved. See --record, --visualizer-dir, "
+            "--fixture-dir, --plr-submodule."
+        ),
+    )
+    p.add_argument(
+        "--record",
+        action="store_true",
+        help=(
+            "--viz-check only. Measure shape_count/layer_count from this run's real "
+            "Konva render and WRITE them into FIXTURE_MANIFEST.json instead of "
+            "asserting against previously-recorded values. Run once after every "
+            "fixture regen (gen_viz_fixtures.py); every other run should omit this."
+        ),
+    )
+    p.add_argument(
+        "--visualizer-dir",
+        type=Path,
+        default=DEFAULT_VISUALIZER_DIR,
+        help=f"--viz-check only. Directory containing the vendored visualizer's index.html. Default: {DEFAULT_VISUALIZER_DIR}",
+    )
+    p.add_argument(
+        "--fixture-dir",
+        type=Path,
+        default=DEFAULT_FIXTURE_DIR,
+        help=f"--viz-check only. Directory containing set_root_resource.json, set_state.json, delta_set_state.json, FIXTURE_MANIFEST.json. Default: {DEFAULT_FIXTURE_DIR}",
+    )
+    p.add_argument(
+        "--plr-submodule",
+        type=Path,
+        default=DEFAULT_PLR_SUBMODULE,
+        help=f"--viz-check only. Path to the pylabrobot submodule, read-only, for the pin-match check. Default: {DEFAULT_PLR_SUBMODULE}",
+    )
+    p.add_argument(
+        "--expect-fail",
+        metavar="ExceptionName",
+        default=None,
+        help=(
+            "Assert that the run failed with an exception whose name matches this "
+            "(checked against bootstrap_error and the full result JSON). Exit 0 if "
+            "matched, 1 otherwise. Used for GATE 3's negative runs."
+        ),
+    )
+    p.add_argument(
+        "--serve-dir",
+        type=Path,
+        default=DEFAULT_SERVE_DIR,
+        help=f"Directory to serve. Default: {DEFAULT_SERVE_DIR}",
+    )
+    p.add_argument(
+        "--timeout",
+        type=float,
+        default=DEFAULT_TIMEOUT_S,
+        help=f"Timeout in seconds for navigation + probe completion. Default: {DEFAULT_TIMEOUT_S}",
+    )
+    p.add_argument(
+        "--chrome-path",
+        default=DEFAULT_CHROME_PATH,
+        help=(
+            "Path to a Chromium executable. playwright 1.62.0 wants build 1234, which is "
+            f"not installed on this box; default points at the verified-present 1228 build: "
+            f"{DEFAULT_CHROME_PATH}"
+        ),
+    )
+    p.add_argument(
+        "--coi",
+        action="store_true",
+        help=(
+            "Serve behind COOP: same-origin + COEP: credentialless -- web-repl/dist/ has "
+            "no client-side coi-serviceworker.js of its own (unlike the pre-move "
+            "praxis/web-client/src/index.html:9-22), so these are the only COI headers "
+            "available -- instead of a bare http.server."
+        ),
+    )
+    p.add_argument(
+        "--base-path",
+        default="/",
+        help="URL path prefix to serve under. Use /praxis/ to mimic GH Pages. Default: /",
+    )
+    p.add_argument(
+        "--expect-praxis-sha",
+        default=None,
+        help="Expected praxis_git_sha for the D1 whole-deployment staleness check.",
+    )
+    p.add_argument(
+        "--entry",
+        choices=["lab", "repl"],
+        default="repl",
+        help=(
+            "Which built app to navigate to (dist/<entry>/index.html). Default 'repl': "
+            "this harness drives the kernel via `?code=&execute=1`, which is a REPL-app "
+            "URL parameter. The lab app has no such parameter, so --entry lab hangs at "
+            "the 120s wait_for_function regardless of how healthy the build is -- that "
+            "is a property of JupyterLite's lab app, not a boot failure. "
+            "inject_shell.py now injects the D1 shell into EVERY dist/*/index.html, so "
+            "both entries carry window.PRAXIS_GIT_SHA (corrected 260818; the previous "
+            "help text here claimed repl had none, which was true only while injection "
+            "was lab-only)."
+        ),
+    )
+    p.add_argument("--out", type=Path, default=None, help="Also write the JSON result to this path.")
+    p.add_argument("-v", "--verbose", action="store_true", help="Enable DEBUG logging.")
+    return p.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
+    )
+
+    if not args.probe and not args.viz_check and not args.expect_fail:
+        LOG.error("nothing to do: pass --probe, --viz-check, and/or --expect-fail")
+        return 2
+
+    chrome_path = Path(args.chrome_path)
+    if not (chrome_path.is_file() and chrome_path.stat().st_mode & 0o111):
+        LOG.error(
+            "chrome executable not found or not executable at %s. "
+            "This harness requires --chrome-path pointing at a real Chromium build "
+            "(see plan section 5.6 — playwright 1.62.0 wants build 1234, not installed).",
+            chrome_path,
+        )
+        return 2
+
+    if args.viz_check:
+        visualizer_dir = args.visualizer_dir.resolve()
+        if not visualizer_dir.is_dir():
+            LOG.error("--visualizer-dir does not exist or is not a directory: %s", visualizer_dir)
+            return 2
+        try:
+            result = run_viz_check(
+                visualizer_dir=visualizer_dir,
+                fixture_dir=args.fixture_dir.resolve(),
+                plr_submodule=args.plr_submodule.resolve(),
+                chrome_path=str(chrome_path),
+                timeout_s=args.timeout,
+                record=args.record,
+            )
+        except (VizCheckError, RuntimeError) as e:
+            LOG.error("viz-check failed: %s: %s", type(e).__name__, e)
+            LOG.error(
+                "If this is a Chromium launch failure ('apply-seccomp: unshare(CLONE_NEWUSER)'), "
+                "this script must be invoked with the Bash sandbox disabled "
+                "(dangerouslyDisableSandbox=true) — see plan section 5.6."
+            )
+            return 1
+
+        output = json.dumps(result, indent=2, sort_keys=True)
+        print(output)
+        if args.out:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(output)
+            LOG.info("wrote result to %s", args.out)
+
+        if not result["passed"]:
+            for f in result["failures"]:
+                LOG.error("FAIL: %s", f)
+            return 1
+        LOG.info("viz-check PASSED")
+        return 0
+
+    serve_dir = args.serve_dir.resolve()
+    if not serve_dir.is_dir():
+        LOG.error("--serve-dir does not exist or is not a directory: %s", serve_dir)
+        return 2
+
+    try:
+        result = run_probe(
+            serve_dir=serve_dir,
+            base_path=args.base_path,
+            coi=args.coi,
+            chrome_path=str(chrome_path),
+            timeout_s=args.timeout,
+            expect_praxis_sha=args.expect_praxis_sha,
+            entry=args.entry,
+        )
+    except Exception as e:
+        LOG.error("probe run failed: %s: %s", type(e).__name__, e)
+        LOG.error(
+            "If this is a Chromium launch failure ('apply-seccomp: unshare(CLONE_NEWUSER)'), "
+            "this script must be invoked with the Bash sandbox disabled "
+            "(dangerouslyDisableSandbox=true) — see plan section 5.6."
+        )
+        return 1
+
+    output = json.dumps(result, indent=2, sort_keys=True)
+    print(output)
+
+    if args.out:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(output)
+        LOG.info("wrote result to %s", args.out)
+
+    if args.expect_fail:
+        haystack = json.dumps(result)
+        got_error = result.get("bootstrap_error") or ""
+        got_broadcast_error = result.get("broadcast_channel_error_reason") or ""
+        # `broadcast_channel_error_reason` is `str(exc)` from praxis_bootstrap.py's
+        # `_post({"type": "praxis:error", "reason": str(exc)})` -- it carries the
+        # exception's MESSAGE, never its class name (verified 2026-08-18: neither
+        # transport.py nor stages.py's raise sites put the class name in the message
+        # text). `kernel_result["bootstrap_error"]` never fires either, because
+        # `praxis_main()`'s own outer `except Exception` (praxis_bootstrap.py:337,
+        # "fail-closed catch-all, by design") swallows everything and never
+        # re-raises to this probe's caller. So a bare class-name --expect-fail can
+        # only match by the `in haystack` fallback, which is fragile. This table
+        # maps each class to a message PREFIX verified directly against its one
+        # raise site in transport.py / stages.py, for a real positive match instead
+        # of an accidental substring hit.
+        _KNOWN_MESSAGE_PREFIXES: dict[str, tuple[str, ...]] = {
+            "PraxisUnavailableError": (
+                "manifest fetch failed:",  # transport.py fetch_manifest, 404
+                "source fetch failed:",  # transport.py fetch_sources, 404
+                "D1 praxis:shell-ping timed out",  # transport.py shell_ping, no shell
+            ),
+            "PraxisDriftError": (
+                "D2 source sha256 mismatch:",  # transport.py fetch_sources
+                "D1 whole-deployment staleness check",  # stages.py assert_praxis_git_sha
+            ),
+        }
+        matched_by_message = any(
+            got_broadcast_error.startswith(prefix)
+            for prefix in _KNOWN_MESSAGE_PREFIXES.get(args.expect_fail, ())
+        )
+        matched = (
+            got_error.startswith(args.expect_fail)
+            or matched_by_message
+            or (args.expect_fail in haystack)
+        )
+        if matched:
+            LOG.info("--expect-fail %s: matched", args.expect_fail)
+            return 0
+        LOG.error(
+            "--expect-fail %s: NOT observed (bootstrap_error=%r, "
+            "broadcast_channel_error_reason=%r, broadcast_channel_ready_received=%r)",
+            args.expect_fail,
+            got_error,
+            got_broadcast_error,
+            result.get("broadcast_channel_ready_received"),
+        )
+        return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
