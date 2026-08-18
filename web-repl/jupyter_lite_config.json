@@ -1,0 +1,5 @@
+{
+  "PyodideAddon": {
+    "pyodide_url": "https://cdn.jsdelivr.net/pyodide/v314.0.1/full/pyodide.mjs"
+  }
+}
