@@ -403,15 +403,10 @@ def _materialize_slot_entry(deck, entry, resource_registry=None):
     resource_registry[entry["name"]] = resource
 
 
-# Machine type → (module_path, class_name) mapping for supported PLR machine types
-_MACHINE_CLASS_MAP = {
-  "LiquidHandler": ("pylabrobot.liquid_handling", "LiquidHandler"),
-  "PlateReader": ("pylabrobot.plate_reading", "PlateReader"),
-  "HeaterShaker": ("pylabrobot.heating_shaking", "HeaterShaker"),
-  "Shaker": ("pylabrobot.shaking", "Shaker"),
-  "Centrifuge": ("pylabrobot.centrifuge", "Centrifuge"),
-  "Incubator": ("pylabrobot.incubator", "Incubator"),
-}
+# Machine type → (module_path, class_name) mapping for supported PLR machine types.
+# Extracted to experimental/machines.py (ADR Sec 4.3); imported here so the
+# single copy stays the source of truth.
+from experimental.machines import _MACHINE_CLASS_MAP
 
 def create_machine_frontend(category, backend, name=None, deck=None):
   """Public API: Instantiate a PLR machine frontend by category string.
@@ -1448,43 +1443,19 @@ def bootstrap_playground(namespace=None):
   except ImportError:
     pass
 
-  # Inject WebSerial & WebUSB from shims if available
-  try:
-    # Ensure importability from root/current dir
-    if "." not in sys.path:
-      sys.path.append(".")
-    if "/" not in sys.path:
-      sys.path.append("/")
-
-    print(f"DEBUG: CWD={os.getcwd()}", file=sys.stderr)
-
-    # 1. Inject WebSerial
-    try:
-      from web_serial_shim import WebSerial
-
-      if namespace is not None:
-        namespace["WebSerial"] = WebSerial
-      builtins.WebSerial = WebSerial
-      print("SUCCESS: WebSerial injected into builtins", file=sys.stderr)
-    except ImportError:
-      print("WARNING: web_serial_shim not found", file=sys.stderr)
-
-    # 2. Inject WebUSB
-    try:
-      from web_usb_shim import WebUSB
-
-      if namespace is not None:
-        namespace["WebUSB"] = WebUSB
-      builtins.WebUSB = WebUSB
-      print("SUCCESS: WebUSB injected into builtins", file=sys.stderr)
-    except ImportError:
-      print("WARNING: web_usb_shim not found", file=sys.stderr)
-
-  except Exception as e:
-    import traceback
-
-    print(f"ERROR: Failed during shim injection: {e}", file=sys.stderr)
-    traceback.print_exc(file=sys.stderr)
+  # NOTE: WebSerial/WebUSB shim re-injection was DELETED here (ADR
+  # .praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md
+  # Sec 2.2, R-ID -- "bootstrap_playground's shim re-injection is DELETED,
+  # not preserved"). This block used to do
+  # `from web_serial_shim import WebSerial; builtins.WebSerial = WebSerial`,
+  # which re-imported the shim module and rebound builtins.WebSerial to a
+  # SECOND, distinct class object -- the exact mechanism that made
+  # `pylabrobot.io.serial.Serial is builtins.WebSerial` False in production.
+  # `web-repl/bootstrap/praxis_bootstrap.py` now stages WebSerial/WebUSB/
+  # WebHID/WebFTDI onto builtins exactly once, via
+  # `stages.import_shim_class()`, before this function ever runs -- so by
+  # the time `bootstrap_playground()` executes, the shims are already
+  # correctly staged and must not be touched again.
 
 
 # =============================================================================

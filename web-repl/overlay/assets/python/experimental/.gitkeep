@@ -1,0 +1,1 @@
+Empty on purpose: Phase 4 extracts _MACHINE_CLASS_MAP (currently inline at web_bridge.py:407-414) into experimental/machines.py here. This is an extraction task, not a move — the source file does not exist yet. See ADR .praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md §4.3.

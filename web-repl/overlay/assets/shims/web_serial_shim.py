@@ -21,7 +21,7 @@ from typing import Any
 
 # Import Pyodide's JavaScript bridge
 try:
-  from js import Object, Uint8Array, navigator, window
+  from js import Object, Uint8Array, navigator
   from pyodide.ffi import create_proxy, to_js
 
   IN_PYODIDE = True
@@ -412,8 +412,6 @@ class WebSerial:
 
     if window:
       polyfill = getattr(window, "polyfillSerial", None)
-      if not polyfill and hasattr(window, "parent"):
-        polyfill = getattr(window.parent, "polyfillSerial", None)
 
       if polyfill:
         try:

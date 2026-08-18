@@ -1,0 +1,19 @@
+# Generated build tree.
+/dist/
+
+# Vendored Pyodide bundle (fetched by scripts/fetch_pyodide.py).
+/vendor/
+
+# Wheels are built by scripts/build_wheels.py, not committed.
+/overlay/assets/wheels/
+
+# Defensive negation (ADR .praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md
+# §5.4, "gitignore"): the vendored visualizer renderer under overlay/assets/visualizer/
+# is COMMITTED, not generated. A bare `dist/` pattern above matches at any depth, so
+# a renderer that itself contains a `dist/` subdirectory would otherwise be silently
+# swallowed and the page would ship broken with no diff to notice. This negation must
+# survive; verify with (NOTE: -v itself exits 0 on ANY matching pattern, negation
+# included -- git 2.43 confirmed; use the non-verbose form, or `git status --porcelain`,
+# to check the FINAL ignored/not-ignored outcome):
+#   git check-ignore web-repl/overlay/assets/visualizer/lib.js   # must exit 1 (not ignored), on a file that exists
+!/overlay/assets/visualizer/**
