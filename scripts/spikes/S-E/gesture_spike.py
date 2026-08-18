@@ -340,6 +340,10 @@ def build_bootstrap_prelude(host_root: str) -> str:
         import asyncio, builtins, importlib, json, sys, traceback, time
         import js
 
+        # The kernel's JS global. JupyterLite runs Pyodide in a Web Worker, whose
+        # global is `self`, NOT `window` -- `js.window` raises AttributeError there.
+        _GLOBAL_SCOPE = getattr(js, "window", None) or js.self
+
         HOST_ROOT = {host_root!r}
         RESULT: dict = {{"host_root": HOST_ROOT}}
 
@@ -390,7 +394,13 @@ def build_gesture_probe_code(host_root: str, api: str) -> str:
                 "serial": hasattr(js.navigator, "serial"),
                 "usb": hasattr(js.navigator, "usb"),
                 "hid": hasattr(js.navigator, "hid"),
-                "isSecureContext": bool(js.window.isSecureContext),
+                # `js.window` does NOT exist in the kernel: JupyterLite runs Pyodide
+                # in a Web Worker, whose global is `self`. Reading js.window here
+                # raised AttributeError immediately after a SUCCESSFUL bootstrap and
+                # before request_user_interaction() was ever reached -- so nothing was
+                # posted, no sentinel printed, and pause-only reported a bare timeout.
+                # Same class of bug as P1.4's `window` removal from web_serial_shim.py.
+                "isSecureContext": bool(_GLOBAL_SCOPE.isSecureContext),
             }}
 
             # --- the real device-auth interaction request (web_bridge.py:1094) ---
