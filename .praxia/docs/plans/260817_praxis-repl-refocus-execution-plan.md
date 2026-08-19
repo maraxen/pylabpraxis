@@ -360,7 +360,9 @@ uv run python scripts/check_wheel_coherence.py --check-untracked       # must ex
 # THE FOUR NEGATIVE BROWSER RUNS (each with the jupyter-lite-build clobber-restore + grep assertion)
 repl_smoke --expect-fail PraxisUnavailableError   # missing wheel / missing manifest / missing praxis_browser wheel
 repl_smoke --expect-fail PraxisDriftError         # corrupted manifest source_sha
-repl_smoke --expect-fail PraxisDriftError         # BUILD_ID desync (--only praxis_browser rebuild)
+repl_smoke --expect-fail PraxisDriftError         # D1 desync: shell-injected praxis_git_sha != the sha
+#                                                 the fetched bootstrap reports (replaces the OBSOLETE
+#                                                 BUILD_ID check struck above -- ADR 2.3)
 repl_smoke --probe --coi --base-path /praxis/     # deployed config: COEP=credentialless, NOT require-corp
 ```
 
@@ -428,6 +430,15 @@ Phase 3's ADR-driven moves have already done standalone-T03, so this phase is *o
 1. `page.route()` **does not intercept Web Worker requests.** The offline gate must use chromium launch args `--host-resolver-rules="MAP cdn.jsdelivr.net 127.0.0.1:1"` (+ `pypi.org`, `files.pythonhosted.org`). A `route()`-based version passes vacuously.
 2. A **dispatched synthetic click carries no user activation.** A gesture test using `dispatchEvent` passes while proving the opposite of its claim. Real `page.click()` only.
 3. **Storage isolation must be compared BY CONTENT.** spike1d reported "B can see A's file: true" from a filename-only comparison — a false positive that spike1e corrected by content.
+4. **A stale `web-repl/.jupyterlite.doit.db` silently un-vendors Pyodide.** `PyodideAddon.post_build()` writes `litePluginSettings[...].pyodideUrl` from a doit task whose only `file_dep` is the extracted `static/pyodide/pyodide.mjs`. When the cache calls that dep unchanged the task is SKIPPED — but `jupyter-lite.json` is regenerated from scratch earlier in the same build, so the key is simply absent and the kernel falls back to `kernel.v0.schema.json`'s default, `https://cdn.jsdelivr.net/...`. Build exits 0; `dist/static/pyodide/` is fully populated (423 files) so vendoring LOOKS done; the site boots fine wherever the CDN is reachable. **`rm -rf dist` does NOT clear it** — the db lives next to `--lite-dir`, so GATE G5's clean-build line is insufficient on its own. Measured 260819: a build in this state fetched `pyodide.mjs`, `pyodide-lock.json`, `python_stdlib.zip`, `pyodide.asm.wasm` and ~10 wheels from the CDN on **every boot** — 23 non-local requests per run. Now handled structurally: `build_repl.py:discard_doit_cache()` deletes the db unconditionally before every build, and `assert_pyodide_is_local()` fails the build if the RUNTIME config's `pyodideUrl` is missing, remote, or dangling (all three failure modes exercised 260819).
+5. **`page.on("requestfailed")` was dropping every failure it saw.** The handler read `req.failure` as a `{"errorText": ...}` dict; it is a `str | None` in current Playwright, so `.get` raised inside the event callback and the entry was never appended. Nothing ever failed before `--offline` existed, so the list was always empty and looked correct — then the first genuine failure ALSO read as "0 failures", which is precisely backwards. Any conclusion drawn from an empty `requestfailed` before 260819 is unsafe.
+
+**260819 offline-gate findings (the gate's first real execution).** Non-local requests per boot went **23 → 0** once `pyodideUrl` was fixed. Two things genuinely reached the network, not one:
+- **Pyodide itself**, via the stale-doit-cache path above.
+- **`comm`**, fetched from `pypi.org` + `files.pythonhosted.org` by piplite as an `ipykernel` dependency. It is in neither `pyodide-lock.json` (359 packages) nor the kernel extension's piplite index (`ipykernel`, `piplite`, `pyodide-kernel`, `widgetsnbextension`). Resolved by vendoring `comm-0.2.3-py3-none-any.whl` (sha256 `c615d91d75f7f04f095b30d1c1711babd43bdc6419c1be9886a85f2f4e489417`) into `web-repl/vendor/wheels/` and declaring it via `PipliteAddon.piplite_urls`, which builds a second local index at `dist/pypi/all.json`. Kept OUT of `overlay/assets/wheels/` deliberately: that set is manifest-governed and D2-verified, and `comm` is a third-party build input, not one of our sources.
+- Also set `disablePyPIFallback: true` in the runtime kernel settings, so a future unbundled dependency fails loudly instead of silently reaching PyPI. Verified it merges with (does not clobber) the addon-generated `pipliteUrls`.
+- **`micropip.install("jedi")` at `web_bridge.py:~1497` needs no action**: `jedi` IS in `pyodide-lock.json`, so it is satisfiable from the local bundle. The plan's open question is closed by measurement, not assumption.
+- Final state, both directions observed: `--probe` → 0 non-local requests; `--probe --offline` → boots green with all three hosts blackholed, `offline_blackhole_verified: true`, and the ONLY non-local request is the gate's own self-test, which correctly fails `net::ERR_FAILED`.
 
 **GATE G5**
 ```bash
@@ -437,8 +448,24 @@ test -s web-repl/dist/build/lab/bundle.js
 git ls-files web-repl/dist | wc -l                        # 0
 uv run python web-repl/scripts/build_repl.py --out /tmp/claude-1000/bad --debug-skip-jupyterlite
                                                           # NONZERO, stderr has "BUILD ASSERTION FAILED"
-grep -rl 'cdn.jsdelivr.net' web-repl/dist | wc -l         # 0
-# surface: .jp-FileBrowser >=1, .jp-MainMenu >=1, docmanager:save reachable, .jp-NotebookPanel after open
+# zero-CDN, scoped to FIRST-PARTY output. An unscoped grep is unsatisfiable by any
+# real Pyodide + jupyterlite-pyodide-kernel build: 8 files carry the string, all of them
+# third-party compiled artifacts (5 under static/pyodide/, 3 under
+# extensions/@jupyterlite/pyodide-kernel-extension/static/) holding a DEFAULT that the
+# build overrides via --PyodideAddon.pyodide_url=vendor/... Measured 260819: 8, and
+# 8 is the correct number for a healthy build.
+grep -rl 'cdn.jsdelivr.net' web-repl/dist \
+  --exclude-dir=pyodide --exclude-dir=extensions | wc -l   # 0  (first-party only)
+# String-presence is NOT the real assertion -- a default constant is not a fetch.
+# The load-bearing proof that nothing reaches the CDN at boot is the offline run below.
+# surface: .jp-FileBrowser >=1, '#jp-MainMenu, .lm-MenuBar' >=1, docmanager:save reachable,
+#          .jp-NotebookPanel after open
+#   (.jp-MainMenu -- the class form -- does NOT exist in JupyterLite 0.8.1. The element is
+#    id="jp-MainMenu" carrying class .lm-MenuBar; the extraction spec at line ~139 already
+#    has '.jp-MainMenu, #jp-MainMenu' correct. This was a plan-text defect, not a build one.)
+# offline (the real zero-CDN gate -- see trap #1, must be launch-args, never page.route()):
+uv run python scripts/repl_smoke.py --probe --offline   # boots green with cdn.jsdelivr.net,
+#          pypi.org and files.pythonhosted.org blackholed to 127.0.0.1:1
 # storage: exactly one 'praxis-repl-contents', ZERO /^JupyterLite Storage - /, cross-path visible BY CONTENT
 # gesture: navigator.userActivation.isActive === true at the call, for usb AND hid AND serial, via real click
 # loud failure x3: wheel renamed / shell script stripped / inject_shell --check on a tampered file
