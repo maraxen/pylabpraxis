@@ -81,6 +81,35 @@ DEFAULT_CHROME_PATH = (
 )
 DEFAULT_TIMEOUT_S = 120.0
 
+# GATE G5's offline clause. These are blackholed at the CHROMIUM RESOLVER level, not
+# via `page.route()`: the plan's trap #1 records that `page.route()` does not intercept
+# Web Worker requests, and the Pyodide kernel IS a Web Worker -- a route()-based offline
+# gate passes vacuously while the worker happily reaches the network. Resolver rules
+# apply process-wide, workers included.
+OFFLINE_BLACKHOLE_HOSTS = ("cdn.jsdelivr.net", "pypi.org", "files.pythonhosted.org")
+
+# Sacrificial port on loopback: connections are refused fast rather than hanging until
+# the harness timeout, so a genuine offline breakage reports as an error, not a stall.
+OFFLINE_BLACKHOLE_TARGET = "127.0.0.1:1"
+
+BASE_CHROMIUM_ARGS = ["--no-sandbox", "--disable-dev-shm-usage"]
+
+
+def chromium_launch_args(*, offline: bool) -> list[str]:
+    """Base chromium args, plus resolver blackholes when *offline*.
+
+    One rule per host, comma-joined into a single `--host-resolver-rules` value
+    (chromium takes a comma-separated rule list, not a repeated flag).
+    """
+    args = list(BASE_CHROMIUM_ARGS)
+    if offline:
+        rules = ",".join(
+            f"MAP {host} {OFFLINE_BLACKHOLE_TARGET}" for host in OFFLINE_BLACKHOLE_HOSTS
+        )
+        args.append(f"--host-resolver-rules={rules}")
+    return args
+
+
 PROBE_START = "===PRAXIS_PROBE_JSON_START==="
 PROBE_END = "===PRAXIS_PROBE_JSON_END==="
 
@@ -387,6 +416,7 @@ def run_probe(
     timeout_s: float,
     expect_praxis_sha: str | None,
     entry: str = "lab",
+    offline: bool = False,
 ) -> dict[str, Any]:
     try:
         from playwright.sync_api import sync_playwright
@@ -412,12 +442,13 @@ def run_probe(
         requestfailed: list[dict[str, Any]] = []
         pageerrors: list[str] = []
         console_messages: list[dict[str, Any]] = []
+        offline_blackhole_verified: bool | None = None
 
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 executable_path=chrome_path,
                 headless=True,
-                args=["--no-sandbox", "--disable-dev-shm-usage"],
+                args=chromium_launch_args(offline=offline),
             )
             try:
                 context = browser.new_context()
@@ -430,10 +461,26 @@ def run_probe(
                         {"url": req.url, "method": req.method, "resource_type": req.resource_type}
                     ),
                 )
+                # `req.failure` is a `str | None` in current Playwright, NOT the
+                # `{"errorText": ...}` dict this handler originally assumed. The old
+                # `.get("errorText")` form raised AttributeError inside the event
+                # callback, so every failed request was silently DROPPED and the list
+                # stayed empty. That never showed up before --offline existed, because
+                # nothing ever failed; the first genuine failure then read as "0
+                # failures", which is precisely backwards. Normalised here rather than
+                # at the read sites so the list has one shape everywhere.
                 page.on(
                     "requestfailed",
                     lambda req: requestfailed.append(
-                        {"url": req.url, "failure": (req.failure or {}).get("errorText")}
+                        {
+                            "url": req.url,
+                            "failure": (
+                                req.failure
+                                if isinstance(req.failure, str) or req.failure is None
+                                else (req.failure or {}).get("errorText")
+                            ),
+                            "resource_type": req.resource_type,
+                        }
                     ),
                 )
                 page.on(
@@ -449,17 +496,75 @@ def run_probe(
                 )
 
                 page.goto(full_url, wait_until="load", timeout=timeout_ms)
-                page.wait_for_function(
-                    "sentinel => document.body.innerText.includes(sentinel)",
-                    arg=PROBE_END,
-                    timeout=timeout_ms,
-                )
+                try:
+                    page.wait_for_function(
+                        "sentinel => document.body.innerText.includes(sentinel)",
+                        arg=PROBE_END,
+                        timeout=timeout_ms,
+                    )
+                except Exception as wait_exc:  # noqa: BLE001
+                    # A bare "Timeout 120000ms exceeded" tells you NOTHING about why the
+                    # boot never finished, and the page is about to be closed in the
+                    # `finally` below -- so everything diagnostic has to be harvested
+                    # HERE or it is lost forever. This matters most for --offline, whose
+                    # whole job is to fail: without this, a genuine offline breakage and
+                    # a slow kernel are the same message.
+                    try:
+                        stuck_body = page.evaluate("() => document.body.innerText")
+                    except Exception:  # noqa: BLE001
+                        stuck_body = "<unavailable>"
+                    def _entry_url(entry: Any) -> str | None:
+                        if isinstance(entry, dict):
+                            return entry.get("url")
+                        return entry if isinstance(entry, str) else None
+
+                    failed_hosts = sorted(
+                        {
+                            urllib.parse.urlparse(u).hostname
+                            for u in (_entry_url(r) for r in requestfailed)
+                            if u
+                        }
+                        - {None}
+                    )
+                    raise RuntimeError(
+                        f"probe never printed its sentinel: {type(wait_exc).__name__}: "
+                        f"{wait_exc}\n"
+                        f"  offline={offline} blackholed={list(OFFLINE_BLACKHOLE_HOSTS) if offline else []}\n"
+                        f"  failed-request hosts ({len(requestfailed)} failures): {failed_hosts}\n"
+                        f"  failed requests (first 10): "
+                        f"{json.dumps(requestfailed[:10], indent=2)}\n"
+                        f"  console (last 40): "
+                        f"{json.dumps(console_messages[-40:], indent=2)}\n"
+                        f"  page text (last 1500 chars): {stuck_body[-1500:]!r}"
+                    ) from wait_exc
 
                 body_text = page.evaluate("() => document.body.innerText")
                 cross_origin_isolated = page.evaluate("() => window.crossOriginIsolated")
                 auto_responses = page.evaluate("() => window.__praxisAutoResponses || []")
                 ready_received = page.evaluate("() => window.__praxisReadyReceived === true")
                 broadcast_log = page.evaluate("() => window.__praxisRequestLog || []")
+
+                # NON-VACUITY SELF-TEST. An offline gate that never observes a
+                # blackholed host actually failing proves nothing -- and this whole
+                # site is deliberately self-contained, so a green offline boot is
+                # ALSO what a silently-inert blackhole looks like. The two are
+                # indistinguishable from the boot result alone. So: with the rules
+                # in force, reach for a blackholed host from the page and require
+                # the fetch to FAIL. `mode: "no-cors"` keeps CORS out of it, so a
+                # rejection means the connection itself did not happen.
+                if offline:
+                    offline_blackhole_verified = page.evaluate(
+                        """async (host) => {
+                            try {
+                                await fetch('https://' + host + '/praxis-offline-probe',
+                                            {mode: 'no-cors', cache: 'no-store'});
+                                return false;   // reachable => blackhole is NOT in force
+                            } catch (e) {
+                                return true;    // refused => rules are live
+                            }
+                        }""",
+                        arg=OFFLINE_BLACKHOLE_HOSTS[0],
+                    )
             finally:
                 browser.close()
 
@@ -503,6 +608,7 @@ def run_probe(
     result["request_log"] = request_log
     result["request_log_count"] = len(request_log)
     result["console_messages_count"] = len(console_messages)
+    result["offline_blackhole_verified"] = offline_blackhole_verified
     result["_meta"] = {
         "url": url,
         "entry": entry,
@@ -511,6 +617,8 @@ def run_probe(
         "chrome_path": chrome_path,
         "timeout_s": timeout_s,
         "serve_dir": str(serve_dir),
+        "offline": offline,
+        "offline_blackhole_hosts": list(OFFLINE_BLACKHOLE_HOSTS) if offline else [],
     }
     return result
 
@@ -549,6 +657,7 @@ def run_viz_check(
     chrome_path: str,
     timeout_s: float,
     record: bool,
+    offline: bool = False,
 ) -> dict[str, Any]:
     try:
         from playwright.sync_api import sync_playwright
@@ -602,7 +711,7 @@ def run_viz_check(
             browser = p.chromium.launch(
                 executable_path=chrome_path,
                 headless=True,
-                args=["--no-sandbox", "--disable-dev-shm-usage"],
+                args=chromium_launch_args(offline=offline),
             )
             try:
                 context = browser.new_context()
@@ -870,6 +979,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "was lab-only)."
         ),
     )
+    p.add_argument(
+        "--offline",
+        action="store_true",
+        help=(
+            "Blackhole "
+            + ", ".join(OFFLINE_BLACKHOLE_HOSTS)
+            + f" to {OFFLINE_BLACKHOLE_TARGET} via chromium --host-resolver-rules, then "
+            "require the site to boot anyway (GATE G5's offline clause). Implies a "
+            "non-vacuity self-test: the run FAILS if a blackholed host turns out to be "
+            "reachable, because a green boot with inert rules is indistinguishable from a "
+            "genuinely self-contained one. NOTE: resolver rules, never page.route() -- "
+            "route() does not intercept Web Worker requests and the kernel is a worker."
+        ),
+    )
     p.add_argument("--out", type=Path, default=None, help="Also write the JSON result to this path.")
     p.add_argument("-v", "--verbose", action="store_true", help="Enable DEBUG logging.")
     return p.parse_args(argv)
@@ -909,6 +1032,7 @@ def main(argv: list[str] | None = None) -> int:
                 chrome_path=str(chrome_path),
                 timeout_s=args.timeout,
                 record=args.record,
+                offline=args.offline,
             )
         except (VizCheckError, RuntimeError) as e:
             LOG.error("viz-check failed: %s: %s", type(e).__name__, e)
@@ -947,6 +1071,7 @@ def main(argv: list[str] | None = None) -> int:
             timeout_s=args.timeout,
             expect_praxis_sha=args.expect_praxis_sha,
             entry=args.entry,
+            offline=args.offline,
         )
     except Exception as e:
         LOG.error("probe run failed: %s: %s", type(e).__name__, e)
@@ -1013,6 +1138,38 @@ def main(argv: list[str] | None = None) -> int:
             result.get("broadcast_channel_ready_received"),
         )
         return 1
+
+    if args.offline:
+        # Two conditions, and BOTH are load-bearing. The blackhole must be proven
+        # live (else a green boot proves nothing -- see the self-test comment in
+        # run_probe), and the site must actually have booted with it live (else we
+        # proved only that the rules work, not that the site survives them).
+        verified = result.get("offline_blackhole_verified")
+        booted = result.get("broadcast_channel_ready_received")
+        if verified is not True:
+            LOG.error(
+                "--offline: blackhole NOT in force -- %s was reachable despite "
+                "--host-resolver-rules (offline_blackhole_verified=%r). The offline "
+                "gate would have passed vacuously; treating as FAIL.",
+                OFFLINE_BLACKHOLE_HOSTS[0],
+                verified,
+            )
+            return 1
+        if booted is not True:
+            LOG.error(
+                "--offline: blackhole is live, but the site did NOT boot "
+                "(broadcast_channel_ready_received=%r, error=%r). Something in the "
+                "boot path genuinely needs one of: %s.",
+                booted,
+                result.get("broadcast_channel_error_reason"),
+                ", ".join(OFFLINE_BLACKHOLE_HOSTS),
+            )
+            return 1
+        LOG.info(
+            "--offline PASSED: %s blackholed to %s and site booted anyway.",
+            ", ".join(OFFLINE_BLACKHOLE_HOSTS),
+            OFFLINE_BLACKHOLE_TARGET,
+        )
 
     return 0
 
