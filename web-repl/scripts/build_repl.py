@@ -94,6 +94,7 @@ House rules: uv-run only, argparse + logging, narrow runs, fail loud.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import shutil
 import subprocess
@@ -203,7 +204,90 @@ def resolve_pyodide_arg(*, allow_cdn: bool) -> str | None:
     return f"vendor/pyodide-{version}.tar.bz2"
 
 
+# jupyterlite drives its build with doit, which caches per-task state here (next to
+# --lite-dir). The cache is NOT inside out_dir, so `rm -rf dist` does not clear it.
+DOIT_DB_PATH = WEB_REPL_ROOT / ".jupyterlite.doit.db"
+
+
+def discard_doit_cache() -> None:
+    """Delete doit's task-state cache before every build.
+
+    WHY THIS IS UNCONDITIONAL, not an optimisation to skip:
+
+    PyodideAddon.post_build() writes `litePluginSettings[...].pyodideUrl` into
+    jupyter-lite.json from a doit task whose only `file_dep` is the extracted
+    `static/pyodide/pyodide.mjs`. When the cache says that dep is unchanged, doit
+    skips the task -- but jupyter-lite.json is REGENERATED from scratch by an
+    earlier addon in the same build. Skipped patch + regenerated config = a
+    jupyter-lite.json with no `pyodideUrl` at all, which silently falls back to the
+    kernel schema's default: https://cdn.jsdelivr.net/... (kernel.v0.schema.json).
+
+    The failure is invisible in every way that matters. The build exits 0.
+    `dist/static/pyodide/` is fully populated (423 files), so vendoring LOOKS
+    successful. The site boots fine -- as long as the CDN is reachable, which it is
+    on any developer machine. Measured 260819: a site built this way fetched
+    pyodide.mjs, pyodide-lock.json, python_stdlib.zip, pyodide.asm.wasm and ~10
+    package wheels from cdn.jsdelivr.net on every single boot, while the vendored
+    copy sat unused. Only the --offline gate exposed it.
+
+    `rm -rf dist` does NOT prevent this (verified: a clean dist with a stale cache
+    still produced no pyodideUrl), so GATE G5's clean-build line is not sufficient
+    on its own and this has to be handled here, in the build itself.
+    """
+    if DOIT_DB_PATH.exists():
+        DOIT_DB_PATH.unlink()
+        logger.info("discarded stale doit cache %s", DOIT_DB_PATH)
+    # doit may also use dbm-style sidecars depending on backend.
+    for sidecar in sorted(WEB_REPL_ROOT.glob(".jupyterlite.doit.db.*")):
+        sidecar.unlink()
+        logger.info("discarded stale doit cache sidecar %s", sidecar)
+
+
+def assert_pyodide_is_local(out_dir: Path) -> None:
+    """Fail the build if the site would fetch Pyodide from a CDN at runtime.
+
+    This is the assertion that would have caught the silent doit-cache failure
+    above on the day it started. It checks the RUNTIME config -- the only thing
+    the browser actually reads -- not the presence of the extracted files, which
+    is exactly the signal that misled us.
+    """
+    config_path = out_dir / "jupyter-lite.json"
+    if not config_path.is_file():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {config_path} does not exist."
+        )
+    settings = (
+        json.loads(config_path.read_text())
+        .get("jupyter-config-data", {})
+        .get("litePluginSettings", {})
+        .get("@jupyterlite/pyodide-kernel-extension:kernel", {})
+    )
+    url = settings.get("pyodideUrl")
+    if not url:
+        raise BuildAssertionError(
+            "BUILD ASSERTION FAILED: jupyter-lite.json sets no `pyodideUrl`, so the "
+            "kernel will silently use the schema default "
+            "(https://cdn.jsdelivr.net/...) and fetch ~30 MB of Pyodide per boot "
+            "regardless of what is in dist/static/pyodide/. Usual cause: a stale "
+            f"{DOIT_DB_PATH.name} made doit skip PyodideAddon's patch task -- see "
+            "discard_doit_cache()."
+        )
+    if "://" in url:
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: `pyodideUrl` is remote ({url!r}). The site must "
+            "load Pyodide from its own origin. Pass --allow-cdn only if you "
+            "deliberately want a CDN build."
+        )
+    if not (out_dir / url.lstrip("./")).is_file():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: `pyodideUrl` is {url!r} but "
+            f"{out_dir / url.lstrip('./')} does not exist."
+        )
+    logger.info("pyodide is local: pyodideUrl=%s", url)
+
+
 def run_jupyterlite_build(*, out_dir: Path, pyodide_arg: str | None, log_path: Path) -> None:
+    discard_doit_cache()
     args = [
         "-m",
         "jupyterlite_core",
@@ -268,12 +352,15 @@ def _copytree_filtered(src: Path, dst: Path) -> int:
     actually copied.
 
     Directories are created even when every file inside them gets filtered
-    out (currently true of ``visualizer-augmentations/``, which today holds
-    only a ``.gitkeep`` -- ADR Sec 4.2 #4 requires the directory itself to
-    exist in ``dist/`` under its preserved name, awaiting future content).
-    A file-driven ``mkdir(parents=True)`` alone would silently drop such a
-    directory; this walks real (non-skipped) directories separately so an
-    empty-of-real-content dir still lands.
+    out. This was originally load-bearing for ``visualizer-augmentations/``,
+    which held only a ``.gitkeep`` until 260819 -- ADR Sec 4.2 #4 requires that
+    directory to exist in ``dist/`` under its preserved name, because the
+    vendored ``visualizer/index.html`` reaches it by a relative ``<script src>``.
+    It now ships a real (no-op) ``index.js``, so that particular directory no
+    longer depends on this behaviour, and the build asserts on the FILE rather
+    than the directory. The walk is kept anyway: a file-driven
+    ``mkdir(parents=True)`` alone would silently drop any future
+    empty-of-real-content directory, which is exactly the 404 this prevented.
     """
     count = 0
     for item in sorted(src.rglob("*")):
@@ -374,13 +461,21 @@ def assert_dist_complete(out_dir: Path) -> None:
         out_dir / "assets" / "python" / "praxis" / "interactive.py",
         out_dir / "assets" / "visualizer" / "lib.js",
         out_dir / "assets" / "visualizer" / "index.html",
-        out_dir / "assets" / "visualizer-augmentations",
+        out_dir / "assets" / "visualizer-augmentations" / "index.js",
         out_dir / "bootstrap" / "praxis_bootstrap.py",
         out_dir / "bootstrap" / "stages.py",
         out_dir / "bootstrap" / "transport.py",
         out_dir / "shell" / "praxis-shell.js",
         out_dir / "lab" / "index.html",
         out_dir / "repl" / "index.html",
+        # The welcome notebook, and the contents index that makes it VISIBLE. Both,
+        # because they fail independently: jupyterlite-core's `contents` addon needs
+        # jupyter-server (a `dev`-group dep) to index files/, and without it the build
+        # either hard-raises or -- in the pre-260819 empty-files/ case -- merely warns.
+        # Asserting only on the .ipynb would let a site ship the notebook as an
+        # unreachable blob with an empty file browser.
+        out_dir / "files" / "welcome.ipynb",
+        out_dir / "api" / "contents" / "all.json",
     ]
     missing = [str(p) for p in required if not p.exists()]
     if missing:
@@ -470,6 +565,8 @@ def main(argv: list[str] | None = None) -> int:
             run_jupyterlite_build(out_dir=out_dir, pyodide_arg=pyodide_arg, log_path=log_path)
 
         assert_jupyterlite_output_not_hollow(out_dir)
+        if not args.debug_skip_jupyterlite and not args.allow_cdn:
+            assert_pyodide_is_local(out_dir)
 
         run_build_manifest(dev=args.dev)
         stage_overlay(out_dir)
