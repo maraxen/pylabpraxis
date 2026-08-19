@@ -9,6 +9,11 @@
     "exposeAppInBrowser": "true",
     "disabledExtensions": [
       "@jupyterlab/apputils-extension:announcements"
-    ]
+    ],
+    "litePluginSettings": {
+      "@jupyterlite/pyodide-kernel-extension:kernel": {
+        "disablePyPIFallback": true
+      }
+    }
   }
 }
