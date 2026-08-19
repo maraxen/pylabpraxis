@@ -499,6 +499,18 @@ def test_praxis_namespace_not_shadowed_by_overlay() -> None:
         )
 
     for entry in getattr(praxis, "__path__", []):
+        # Only real directories can shadow a package. An editable install puts a
+        # NON-PATH marker on __path__ -- setuptools' finder hook, e.g.
+        # '__editable__.praxis-0.0.1.finder.__path_hook__' -- and feeding that to
+        # Path.resolve() anchors it to the CURRENT WORKING DIRECTORY. These tests run
+        # from web-repl/, so the marker resolved to
+        # <repo>/web-repl/__editable__.praxis-0.0.1.finder.__path_hook__ and tripped
+        # the "web-repl" substring check, reporting overlay shadowing that was not
+        # happening (the real entry, <repo>/praxis, was correct all along). Skipping
+        # non-directories loses no coverage: something that is not a directory cannot
+        # shadow anything.
+        if not Path(entry).is_dir():
+            continue
         assert "web-repl" not in str(Path(entry).resolve()), (
             f"praxis.__path__ entry ({entry!r}) resolves under web-repl/ -- "
             "sys.path was polluted with the overlay shadow copy"
