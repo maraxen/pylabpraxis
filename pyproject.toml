@@ -302,6 +302,17 @@ dev = [
     "factory-boy>=3.3.3",
     "fakeredis>=2.32.0",
     "freezegun>=1.5.5",
+    # BUILD-TIME ONLY, and required -- not optional. jupyterlite-core's `contents`
+    # addon hard-raises "jupyter-server is not installed. You cannot add custom
+    # content to jupyterlite." the moment web-repl/files/ is non-empty
+    # (jupyterlite_core/addons/contents.py:173). Without any files/ it merely warned
+    # and no-op'd, which is why this coupling only surfaced when welcome.ipynb was
+    # added (260819). It indexes contents at BUILD time and ships nothing to the
+    # browser, so it has no bearing on the vendored-Pyodide / offline story.
+    # Lives in `dev` rather than [project].dependencies because it pulls ~58
+    # transitive packages and is never imported at runtime; `uv run` includes the
+    # `dev` group by default, which is also how playwright below is reached.
+    "jupyter-server==2.20.0",
     "playwright>=1.57.0",
     "pytest-asyncio>=1.2.0",
     "pytest-cov>=7.0.0",
