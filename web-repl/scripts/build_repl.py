@@ -286,6 +286,57 @@ def assert_pyodide_is_local(out_dir: Path) -> None:
     logger.info("pyodide is local: pyodideUrl=%s", url)
 
 
+# Runtime deps that the browser needs but Pyodide does NOT bundle, and that
+# `disablePyPIFallback: true` therefore makes unobtainable at runtime. Each must
+# be vendored through PipliteAddon.piplite_urls. Keyed by import/dist name.
+REQUIRED_PIPLITE_PACKAGES = ("comm",)
+
+
+def assert_required_piplite_wheels(out_dir: Path) -> None:
+    """Fail the build if a required unbundled runtime dep is not vendored.
+
+    `comm` is an ipykernel dependency present in NEITHER pyodide-lock.json nor the
+    default piplite index. With `disablePyPIFallback: true` set in jupyter-lite.json,
+    a missing wheel cannot be fetched at runtime -- piplite fails without even
+    attempting a network request.
+
+    This assertion exists because that failure is otherwise UNATTRIBUTED. Measured
+    2026-08-20 by removing comm from piplite_urls and rebuilding: the build passed,
+    `--probe` passed, and `--probe --offline` failed only as a bare 120s
+    wait_for_function timeout. The kernel died in its Web Worker with the console
+    ending at "Loaded micropip" -- no error naming comm, piplite, or any failed
+    import, and zero failed requests (nothing ever reached the network to fail).
+
+    Catching it here turns a silent two-minute browser timeout into an immediate
+    build error naming the missing package.
+    """
+    index_path = out_dir / "pypi" / "all.json"
+    if not index_path.is_file():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {index_path} does not exist, so NO wheels are "
+            "vendored for piplite. With disablePyPIFallback the kernel cannot fetch "
+            f"them at runtime and will die silently in its worker. Required: "
+            f"{', '.join(REQUIRED_PIPLITE_PACKAGES)}. Check PipliteAddon.piplite_urls "
+            "in web-repl/jupyter_lite_config.json."
+        )
+    raw = json.loads(index_path.read_text())
+    names = {str(k).lower().replace("_", "-") for k in raw} if isinstance(raw, dict) else set()
+    names |= {
+        w.name.split("-")[0].lower().replace("_", "-")
+        for w in (out_dir / "pypi").glob("*.whl")
+    }
+    missing = [p for p in REQUIRED_PIPLITE_PACKAGES if p.lower().replace("_", "-") not in names]
+    if missing:
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: required piplite wheel(s) not vendored: "
+            f"{', '.join(missing)}. Found: {sorted(names) or 'nothing'}. These are not "
+            "in pyodide-lock.json and disablePyPIFallback blocks the PyPI fallback, so "
+            "the kernel will fail to start OFFLINE with no error naming the cause. Add "
+            "the wheel to web-repl/piplite-wheels/ and to PipliteAddon.piplite_urls."
+        )
+    logger.info("required piplite wheels vendored: %s", ", ".join(REQUIRED_PIPLITE_PACKAGES))
+
+
 def run_jupyterlite_build(*, out_dir: Path, pyodide_arg: str | None, log_path: Path) -> None:
     discard_doit_cache()
     args = [
@@ -567,6 +618,7 @@ def main(argv: list[str] | None = None) -> int:
         assert_jupyterlite_output_not_hollow(out_dir)
         if not args.debug_skip_jupyterlite and not args.allow_cdn:
             assert_pyodide_is_local(out_dir)
+        assert_required_piplite_wheels(out_dir)
 
         run_build_manifest(dev=args.dev)
         stage_overlay(out_dir)
