@@ -1391,6 +1391,26 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
+    # Default success criterion for --probe. Without this the command printed its
+    # JSON and returned 0 UNCONDITIONALLY: a site whose bootstrap raised -- a
+    # tampered loader, a 404, a drift error -- was reported as a clean pass by exit
+    # code alone, and only --offline enforced anything. Found 260820 by tampering
+    # with dist/bootstrap/stages.py to test the new loader sha pin: the pin
+    # correctly refused to execute the modified file, and this harness still
+    # exited 0. --expect-fail returns before this point, so a deliberately-failing
+    # run is unaffected.
+    if result.get("broadcast_channel_ready_received") is not True:
+        LOG.error(
+            "PROBE FAILED: the site did not boot "
+            "(broadcast_channel_ready_received=%r). praxis_ready=%r "
+            "bootstrap_error=%r broadcast_channel_error_reason=%r",
+            result.get("broadcast_channel_ready_received"),
+            result.get("praxis_ready"),
+            result.get("bootstrap_error"),
+            result.get("broadcast_channel_error_reason"),
+        )
+        return 1
+
     if args.offline:
         # Two conditions, and BOTH are load-bearing. The blackhole must be proven
         # live (else a green boot proves nothing -- see the self-test comment in

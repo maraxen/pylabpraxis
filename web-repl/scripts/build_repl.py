@@ -94,6 +94,7 @@ House rules: uv-run only, argparse + logging, narrow runs, fail loud.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import shutil
@@ -459,6 +460,50 @@ def stage_overlay(out_dir: Path) -> int:
     return n
 
 
+LOADER_SHA_MARKER = "# PRAXIS-LOADER-SHA-INJECT"
+LOADER_MODULES = ("stages.py", "transport.py")
+
+
+def stamp_loader_shas(bootstrap_py: Path, source_dir: Path) -> dict[str, str]:
+    """Stamp the loader modules' sha256 into the STAGED praxis_bootstrap.py.
+
+    praxis_bootstrap.py fetches stages.py and transport.py by hardcoded URL over
+    a raw synchronous XHR and executes them. Until this stamp existed, `status
+    != 200` was the only check -- and these two files run BEFORE D1 and D2 can
+    check anything, because transport.py *is* D2's fetch loop. The manifest
+    cannot vouch for its own fetcher, so the expectation has to be baked into
+    the one file that runs earlier.
+
+    Rewrites the whole marker line, so stamping is idempotent and a stale value
+    cannot survive a rebuild. Fails loudly if the marker is absent -- a silently
+    unstamped bootstrap would fail closed at runtime with a confusing
+    "no pinned sha256" error, and the build is where that should surface.
+    """
+    text = bootstrap_py.read_text()
+    marker_lines = [ln for ln in text.splitlines() if LOADER_SHA_MARKER in ln]
+    if len(marker_lines) != 1:
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: expected exactly one {LOADER_SHA_MARKER!r} line "
+            f"in {bootstrap_py}, found {len(marker_lines)}. Loader sha pinning cannot "
+            "be stamped, and the kernel would refuse to boot rather than run "
+            "unverified loader code."
+        )
+
+    shas: dict[str, str] = {}
+    for name in LOADER_MODULES:
+        path = source_dir / name
+        if not path.is_file():
+            raise BuildError(f"{path} missing -- cannot stamp loader sha256.")
+        shas[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+
+    rendered = ", ".join(f'"{n}": "{s}"' for n, s in shas.items())
+    bootstrap_py.write_text(
+        text.replace(marker_lines[0], f"_LOADER_MODULE_SHA256 = {{{rendered}}}  {LOADER_SHA_MARKER}")
+    )
+    logger.info("stamped loader sha256 for %s", ", ".join(shas))
+    return shas
+
+
 def stage_bootstrap(out_dir: Path) -> int:
     dst = out_dir / "bootstrap"
     if dst.exists():
@@ -469,6 +514,10 @@ def stage_bootstrap(out_dir: Path) -> int:
         if not src.is_file():
             raise BuildError(f"{src} missing -- cannot stage bootstrap/.")
         shutil.copy2(src, dst / name)
+    # Stamp the STAGED copy only. The source tree keeps the empty placeholder,
+    # so a tree served straight from source fails closed instead of running
+    # unverified loader code.
+    stamp_loader_shas(dst / "praxis_bootstrap.py", BOOTSTRAP_DIR)
     logger.info("staged %d file(s) from bootstrap/ -> %s", len(_BOOTSTRAP_FILES), dst)
     return len(_BOOTSTRAP_FILES)
 

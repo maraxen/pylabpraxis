@@ -224,6 +224,18 @@ def loader(tmp_path, monkeypatch):
     import importlib
 
     module = importlib.import_module("praxis_bootstrap")
+    # Stamp the loader sha pins the way build_repl.stage_bootstrap() does. The
+    # SOURCE tree ships _LOADER_MODULE_SHA256 empty on purpose -- an unstamped
+    # bootstrap fails closed rather than executing unverified loader code -- so
+    # without this every test here would fail with "no pinned sha256" instead of
+    # exercising what it is actually about. Stamping from the same files
+    # _bootstrap_self_fetch_routes() serves keeps the REAL fetch and the REAL
+    # verification in the loop; a test that monkeypatched the check away would
+    # quietly stop covering it.
+    module._LOADER_MODULE_SHA256 = {
+        name: hashlib.sha256((_BOOTSTRAP_DIR / name).read_bytes()).hexdigest()
+        for name in module._LOADER_MODULE_FILES
+    }
     yield module
     sys.modules.pop("praxis_bootstrap", None)
 
@@ -421,3 +433,85 @@ def test_r_id_double_exec_is_observed_failing(monkeypatch) -> None:
 
     with pytest.raises(stages.PraxisDriftError, match="single-class-object invariant"):
         stages.assert_identity(fake_module, "Serial", class_b, "WebSerial")  # "class B" staged after
+
+
+# ---------------------------------------------------------------------------
+# Loader sha pinning (the pre-existing audit CANDIDATE, closed 260820).
+# ---------------------------------------------------------------------------
+def test_tampered_loader_module_is_refused(loader, monkeypatch) -> None:
+    """A modified stages.py must never be executed.
+
+    stages.py and transport.py are fetched by hardcoded URL over a raw
+    synchronous XHR and then RUN. They execute before D1 (the shell
+    praxis_git_sha handshake) and before D2 (manifest source verification) exist
+    to check anything -- transport.py *is* D2's fetch loop, so the manifest
+    cannot vouch for its own fetcher. Until this pin landed, `status != 200` was
+    the only barrier between the kernel and substituted loader code.
+    """
+    _install_fake_js(monkeypatch, pong_sha="dev")
+    _install_fake_micropip(monkeypatch, installed=[])
+    routes = _bootstrap_self_fetch_routes()
+    url = HOST_ROOT + "bootstrap/stages.py"
+    status, text = routes[url]
+    routes[url] = (status, text + "\n# tampered\n")
+    _ROUTES_HOLDER["routes"] = routes
+
+    with pytest.raises(RuntimeError, match="sha256 mismatch"):
+        loader._bootstrap_loader_modules(HOST_ROOT)
+
+
+def test_tampered_transport_module_is_refused(loader, monkeypatch) -> None:
+    """Same for transport.py -- both files are pinned, not just the first."""
+    _install_fake_js(monkeypatch, pong_sha="dev")
+    _install_fake_micropip(monkeypatch, installed=[])
+    routes = _bootstrap_self_fetch_routes()
+    url = HOST_ROOT + "bootstrap/transport.py"
+    status, text = routes[url]
+    routes[url] = (status, text + "\n# tampered\n")
+    _ROUTES_HOLDER["routes"] = routes
+
+    with pytest.raises(RuntimeError, match="transport.py"):
+        loader._bootstrap_loader_modules(HOST_ROOT)
+
+
+def test_unstamped_bootstrap_fails_closed(loader, monkeypatch) -> None:
+    """An unstamped copy must refuse to run, not fall back to trusting the fetch.
+
+    Failing OPEN here would be the worst of both worlds: the pin would appear to
+    exist while doing nothing on exactly the deployments that skipped stamping.
+    """
+    _install_fake_js(monkeypatch, pong_sha="dev")
+    _install_fake_micropip(monkeypatch, installed=[])
+    _ROUTES_HOLDER["routes"] = _bootstrap_self_fetch_routes()
+    loader._LOADER_MODULE_SHA256 = {}  # as the SOURCE tree ships it
+
+    with pytest.raises(RuntimeError, match="no pinned sha256"):
+        loader._bootstrap_loader_modules(HOST_ROOT)
+
+
+def test_matching_shas_are_accepted(loader, monkeypatch) -> None:
+    """Positive control: the pin does not simply reject everything."""
+    _install_fake_js(monkeypatch, pong_sha="dev")
+    _install_fake_micropip(monkeypatch, installed=[])
+    _ROUTES_HOLDER["routes"] = _bootstrap_self_fetch_routes()
+
+    loader._bootstrap_loader_modules(HOST_ROOT)  # must not raise
+
+    import stages  # noqa: F401 - importable only if the fetch+write succeeded
+    import transport  # noqa: F401
+
+
+def test_source_tree_ships_the_placeholder_empty() -> None:
+    """The stamping marker must exist exactly once, and ship EMPTY.
+
+    build_repl.stamp_loader_shas() rewrites this line wholesale; if the marker
+    were missing the build fails loudly, and if the source shipped real values
+    they would go stale silently the moment either loader changed.
+    """
+    text = (_BOOTSTRAP_DIR / "praxis_bootstrap.py").read_text()
+    marker_lines = [ln for ln in text.splitlines() if "PRAXIS-LOADER-SHA-INJECT" in ln]
+    assert len(marker_lines) == 1, f"expected exactly one marker line, got {marker_lines}"
+    assert "_LOADER_MODULE_SHA256 = {}" in marker_lines[0], (
+        "the source tree must ship the pin dict EMPTY so an unbuilt tree fails "
+        f"closed; got {marker_lines[0]!r}"
+    )

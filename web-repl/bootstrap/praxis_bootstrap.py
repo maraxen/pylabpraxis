@@ -60,11 +60,27 @@ and ``praxis:ready`` fired anyway with ``builtins.Plate`` absent.
 from __future__ import annotations
 
 import builtins
+import hashlib
 import importlib
 
 
 # The one hardcoded-URL exception -- see the module docstring above.
 _LOADER_MODULE_FILES = ("stages.py", "transport.py")
+
+# sha256 of each loader module, STAMPED INTO THE STAGED COPY by
+# build_repl.stage_bootstrap(). The source tree deliberately ships this empty:
+# an empty dict is not "no pinning configured", it is a hard failure (see
+# _bootstrap_loader_modules), so a tree served straight from source rather than
+# from a real build cannot silently run unverified loader code.
+#
+# WHY THE VALUES CANNOT COME FROM manifest.json: transport.py is what fetches
+# and verifies the manifest, and it is one of the two files being bootstrapped
+# here. The manifest cannot vouch for its own fetcher. Stamping is the only
+# place the expectation can live that is earlier than the thing it checks.
+#
+# The line below is rewritten wholesale on every stage, so stamping is
+# idempotent and a stale value cannot survive a rebuild.
+_LOADER_MODULE_SHA256 = {}  # PRAXIS-LOADER-SHA-INJECT
 
 
 def _bootstrap_loader_modules(host_root: str) -> None:
@@ -89,8 +105,40 @@ def _bootstrap_loader_modules(host_root: str) -> None:
         if xhr.status != 200:
             js.console.error(f"[Bootstrap] failed to fetch {filename} from {url}: HTTP {xhr.status}")
             raise RuntimeError(f"failed to fetch loader module {filename!r}: HTTP {xhr.status}")
+
+        body = str(xhr.responseText)
+
+        # Integrity gate. These two files are executed as code, and they run
+        # BEFORE D1 (the shell praxis_git_sha handshake) and D2 (manifest source
+        # verification) exist to check anything -- transport.py IS D2's fetch
+        # loop. Until this pin landed, `status != 200` was the only thing
+        # standing between the kernel and arbitrary substituted loader code.
+        #
+        # Hashing convention matches D2's exactly (transport.fetch_sources):
+        # sha256 over text.encode("utf-8"), compared against a hash the build
+        # computed over the file's bytes.
+        expected = _LOADER_MODULE_SHA256.get(filename)
+        if not expected:
+            js.console.error(f"[Bootstrap] no pinned sha256 for {filename}")
+            raise RuntimeError(
+                f"no pinned sha256 for loader module {filename!r}. The staged copy "
+                "of praxis_bootstrap.py is stamped by build_repl.stage_bootstrap(); "
+                "an unstamped copy means this site is being served from the source "
+                "tree rather than a real build. Refusing to execute unverified "
+                "loader code."
+            )
+        actual = hashlib.sha256(body.encode("utf-8")).hexdigest()
+        if actual != expected:
+            js.console.error(f"[Bootstrap] sha256 mismatch for {filename}")
+            raise RuntimeError(
+                f"loader module sha256 mismatch for {filename!r}: pinned {expected}, "
+                f"fetched {actual}. Refusing to execute. Usual cause: dist/ was "
+                "rebuilt from a different source tree than the one that stamped "
+                "this bootstrap; a rebuild restamps both."
+            )
+
         with open(filename, "w") as f:
-            f.write(str(xhr.responseText))
+            f.write(body)
 
     importlib.invalidate_caches()
 
