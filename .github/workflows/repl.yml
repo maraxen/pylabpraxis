@@ -70,7 +70,7 @@ jobs:
       # tree with no playwright in it and every browser gate below fails to import.
       - name: Install dependencies
         run: |
-          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv sync
 
       # ~430 MB Pyodide tarball + the pinned piplite wheels. Without this every
@@ -88,7 +88,7 @@ jobs:
 
       - name: Install Chromium
         run: |
-          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run playwright install --with-deps chromium
 
       # --base-path /praxis/ matches the Pages project-site URL
@@ -98,18 +98,18 @@ jobs:
       # Web Worker with no document location).
       - name: Build the site
         run: |
-          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python web-repl/scripts/build_repl.py --base-path /praxis/
 
       - name: Wheel coherence and contract
         run: |
-          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python web-repl/scripts/check_wheel_coherence.py --check-untracked
           uv run python web-repl/scripts/check_wheel_contract.py
 
       - name: Probe the kernel
         run: |
-          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --probe --base-path /praxis/
 
       # GATE G5's offline clause. Blackholes cdn.jsdelivr.net, pypi.org and
@@ -119,19 +119,19 @@ jobs:
       # blackhole is really in force before trusting a green boot.
       - name: Offline gate
         run: |
-          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --probe --offline --base-path /praxis/
 
       - name: Execute welcome.ipynb
         run: |
-          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --notebook-check --base-path /praxis/
 
       # Not prefixed: --viz-check serves the vendored renderer tree directly, with
       # no JupyterLite app and no base path involved.
       - name: Visualizer render + praxis_viz channel
         run: |
-          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --viz-check
 
       # One process per file, deliberately. These tests manipulate sys.path,
@@ -140,7 +140,7 @@ jobs:
       # failures that would be far harder to read than this list.
       - name: Tests
         run: |
-          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python -m pytest web-repl/tests/test_base_path.py -q
           uv run python -m pytest web-repl/tests/test_browser_visualizer.py -q
           uv run python -m pytest web-repl/tests/test_build_manifest.py -q

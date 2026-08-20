@@ -49,7 +49,7 @@ jobs:
       # [dependency-groups] dev, not in the extras, and the gates below need it.
       - name: Install Python dependencies
         run: |
-          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv sync
 
       - name: Cache vendored runtime
@@ -67,12 +67,12 @@ jobs:
       # fails only on its first cell.
       - name: Build the REPL
         run: |
-          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python web-repl/scripts/build_repl.py --base-path /praxis/
 
       - name: Install Chromium
         run: |
-          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run playwright install --with-deps chromium
 
       # Gate the ARTIFACT ABOUT TO BE PUBLISHED, not a parallel one. repl.yml also
@@ -82,12 +82,12 @@ jobs:
       # this exact build and ran the notebook".
       - name: Offline gate on the built artifact
         run: |
-          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --probe --offline --base-path /praxis/
 
       - name: Execute welcome.ipynb on the built artifact
         run: |
-          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --notebook-check --base-path /praxis/
 
       # .nojekyll is required, not cosmetic: dist/assets/shims/__init__.py starts
