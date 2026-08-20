@@ -581,6 +581,116 @@ def assert_no_root_host_root(out_dir: Path, base_path: str) -> None:
         )
 
 
+def _dir_bytes(path: Path) -> int:
+    return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+
+
+def prune_pyodide_bundle(out_dir: Path) -> dict[str, int]:
+    """Drop payload from the vendored Pyodide bundle that nothing can reach.
+
+    The bundle is the FULL Pyodide distribution -- 307 WASM wheels covering the
+    whole scientific Python stack, plus 62 test-suite tarballs. Measured 260820:
+    512 MB, of which a real boot fetches 20 files / 17.9 MB (3.5%). The rest is
+    hosting cost: Pages storage, artifact upload on every deploy, and headroom
+    against the 1 GB limit.
+
+    It is all vendored because `disablePyPIFallback: true` makes anything not
+    hosted UNOBTAINABLE at runtime rather than merely slow -- that is what makes
+    GATE G5's offline clause meaningful. So pruning is deliberately conservative:
+    only two categories, each provably unreachable.
+
+    1. TEST SUITES. 62 lock entries ending in `-tests` (plus `test`, CPython's
+       own suite). Verified: no real package `depends` on any of them, and this
+       function re-verifies that on every build rather than trusting the 260820
+       measurement -- if upstream ever makes a package depend on its test suite,
+       the build fails instead of silently shipping a broken import.
+    2. STALE DUPLICATES. A `*.whl` no lock entry references, where a DIFFERENT
+       version of the same package IS referenced -- e.g. upstream shipped both
+       scipy 1.17.0 and 1.17.1 while the lock names only 1.17.1. Nothing can load
+       a file the lock does not name.
+
+    Deliberately NOT pruned: unreferenced non-wheel files (`console.html`,
+    `package.json`, `ffi.d.ts`) and `.whl.metadata` siblings of kept wheels --
+    micropip reads those for dependency resolution WITHOUT downloading the wheel,
+    so they are unreferenced by the lock and still load-bearing. "Unreferenced by
+    pyodide-lock.json" is not on its own a safe deletion rule.
+
+    Domain-irrelevant heavyweights (python_flint 70 MB, geospatial, pymupdf) are
+    left in place: with no PyPI fallback, pruning one is permanent for that
+    deploy, and a protocol author reaching for scipy or pandas is plausible.
+    That is a product call, not a build-script call.
+    """
+    pyodide_dir = out_dir / "static" / "pyodide"
+    lock_path = pyodide_dir / "pyodide-lock.json"
+    if not lock_path.is_file():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {lock_path} does not exist; cannot prune."
+        )
+
+    before = _dir_bytes(pyodide_dir)
+    lock = json.loads(lock_path.read_text())
+    packages: dict = lock["packages"]
+
+    test_names = {k for k in packages if k.endswith("-tests") or k == "test"}
+    # Upstream's lock mixes separators between keys and `depends`: keys use
+    # hyphens (`prompt-toolkit`, `ruamel-yaml`) while depends use underscores or
+    # dots (`prompt_toolkit`, `ruamel.yaml`). Comparing raw names would let a
+    # dependency written as `scipy_tests` slip past this guard -- the one thing it
+    # exists to catch. Normalize both sides.
+    def _norm(name: str) -> str:
+        return name.lower().replace("_", "-").replace(".", "-")
+
+    normalized_tests = {_norm(n) for n in test_names}
+    dependents = sorted(
+        {
+            name
+            for name, meta in packages.items()
+            if name not in test_names
+            for dep in meta.get("depends", [])
+            if _norm(dep) in normalized_tests
+        }
+    )
+    if dependents:
+        raise BuildAssertionError(
+            "BUILD ASSERTION FAILED: these packages now depend on a test-suite "
+            f"package, so pruning would break them: {dependents}. Upstream changed "
+            "shape; re-check prune_pyodide_bundle before shipping."
+        )
+
+    doomed: set[str] = set()
+    for name in test_names:
+        doomed.add(packages[name]["file_name"])
+
+    # Stale duplicates: unreferenced wheel whose package has a referenced sibling.
+    referenced = {meta["file_name"] for meta in packages.values()}
+    referenced_stems = {f.split("-")[0].lower().replace("_", "-") for f in referenced}
+    for wheel in pyodide_dir.glob("*.whl"):
+        if wheel.name in referenced:
+            continue
+        stem = wheel.name.split("-")[0].lower().replace("_", "-")
+        if stem in referenced_stems:
+            doomed.add(wheel.name)
+
+    removed_files = 0
+    for filename in sorted(doomed):
+        for candidate in (pyodide_dir / filename, pyodide_dir / f"{filename}.metadata"):
+            if candidate.is_file():
+                candidate.unlink()
+                removed_files += 1
+
+    for name in test_names:
+        packages.pop(name, None)
+    lock_path.write_text(json.dumps(lock))
+
+    after = _dir_bytes(pyodide_dir)
+    logger.info(
+        "pruned pyodide bundle: %d file(s), %d lock entr(ies) -- %.0f MB -> %.0f MB "
+        "(saved %.0f MB)",
+        removed_files, len(test_names), before / 1e6, after / 1e6, (before - after) / 1e6,
+    )
+    return {"before": before, "after": after, "files": removed_files}
+
+
 def stage_bootstrap(out_dir: Path) -> int:
     dst = out_dir / "bootstrap"
     if dst.exists():
@@ -725,6 +835,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "(default: remove it first, matching GATE G5's `rm -rf dist`).",
     )
     parser.add_argument(
+        "--no-prune-pyodide",
+        action="store_true",
+        help=(
+            "Keep the full vendored Pyodide bundle. By default the build drops the "
+            "62 test-suite packages and stale duplicate wheels, which nothing can "
+            "reach -- see prune_pyodide_bundle."
+        ),
+    )
+    parser.add_argument(
         "--base-path",
         default="/",
         help=(
@@ -774,6 +893,9 @@ def main(argv: list[str] | None = None) -> int:
         if not args.debug_skip_jupyterlite and not args.allow_cdn:
             assert_pyodide_is_local(out_dir)
         assert_required_piplite_wheels(out_dir)
+
+        if not args.debug_skip_jupyterlite and not args.no_prune_pyodide:
+            prune_pyodide_bundle(out_dir)
 
         base_path = normalize_base_path(args.base_path)
         apply_base_path(out_dir, base_path)
