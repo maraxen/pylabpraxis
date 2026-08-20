@@ -1,6 +1,8 @@
 """Fetch the pinned piplite wheels into ``web-repl/vendor/piplite-wheels/``.
 
-The recipe half of ``web-repl/piplite_wheels.json``. Deliberately mirrors
+The recipe half of ``web-repl/vendored_wheels.json``. Each entry names its own
+``dest`` -- ``vendor/piplite-wheels`` for wheels piplite resolves, or
+``overlay/assets/wheels`` for wheels D2 verifies and the bootstrap installs. Deliberately mirrors
 ``fetch_pyodide.py``: resolve a pinned artifact from an upstream API that
 publishes its own sha256, stream-download while hashing, verify, and only then
 rename into place. A failed or interrupted fetch can never be mistaken for a
@@ -47,14 +49,18 @@ from pathlib import Path
 
 _THIS_FILE = Path(__file__).resolve()
 WEB_REPL_ROOT = _THIS_FILE.parents[1]
-DEFAULT_PIN_PATH = WEB_REPL_ROOT / "piplite_wheels.json"
+DEFAULT_PIN_PATH = WEB_REPL_ROOT / "vendored_wheels.json"
 DEFAULT_DEST_DIR = WEB_REPL_ROOT / "vendor" / "piplite-wheels"
+#: Destinations an entry may name, relative to web-repl/. Anything else is a typo,
+#: and a typo that silently wrote a wheel somewhere unread would be invisible
+#: until the browser failed -- which is how websockets went missing.
+ALLOWED_DESTS = ("vendor/piplite-wheels", "overlay/assets/wheels")
 
 PYPI_JSON_URL = "https://pypi.org/pypi/{name}/{version}/json"
 _CHUNK_SIZE = 1 << 16  # wheels here are kilobytes, not hundreds of megabytes
-_USER_AGENT = "praxis-fetch-piplite-wheels/1"
+_USER_AGENT = "praxis-fetch-vendored-wheels/1"
 
-logger = logging.getLogger("fetch_piplite_wheels")
+logger = logging.getLogger("fetch_vendored_wheels")
 
 
 class FetchError(RuntimeError):
@@ -72,6 +78,13 @@ def load_pins(pin_path: Path = DEFAULT_PIN_PATH) -> dict:
         missing = [k for k in ("name", "version", "filename", "sha256") if not entry.get(k)]
         if missing:
             raise FetchError(f"{pin_path}: wheel entry {entry!r} is missing {missing}")
+        dest = entry.get("dest")
+        if dest is not None and dest not in ALLOWED_DESTS:
+            raise FetchError(
+                f"{pin_path}: wheel {entry['name']!r} names dest {dest!r}, which is not "
+                f"one of {ALLOWED_DESTS}. A wheel written somewhere nothing reads is "
+                "invisible until the browser fails."
+            )
     return data
 
 
@@ -191,10 +204,22 @@ def fetch_one(entry: dict, dest_dir: Path, *, force: bool = False) -> Path:
     return dest
 
 
-def fetch_all(*, pin_path: Path = DEFAULT_PIN_PATH, dest_dir: Path = DEFAULT_DEST_DIR,
+def fetch_all(*, pin_path: Path = DEFAULT_PIN_PATH, dest_dir: Path | None = None,
               force: bool = False) -> list[Path]:
+    """Fetch every pinned wheel into the destination its entry names.
+
+    ``dest_dir`` overrides every entry's own ``dest`` -- used by tests; leave it
+    None in real builds so each wheel lands where the thing that reads it looks.
+    """
     pins = load_pins(pin_path)
-    return [fetch_one(entry, dest_dir, force=force) for entry in pins["wheels"]]
+    fetched = []
+    for entry in pins["wheels"]:
+        if dest_dir is not None:
+            target = dest_dir
+        else:
+            target = WEB_REPL_ROOT / entry.get("dest", "vendor/piplite-wheels")
+        fetched.append(fetch_one(entry, target, force=force))
+    return fetched
 
 
 def main(argv: list[str] | None = None) -> int:

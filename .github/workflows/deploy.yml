@@ -59,7 +59,7 @@ jobs:
           key: >-
             vendor-${{ runner.os }}-${{ hashFiles(
               'web-repl/jupyter_lite_config.json',
-              'web-repl/piplite_wheels.json') }}
+              'web-repl/vendored_wheels.json') }}
 
       # build_repl.py fetches the piplite wheels itself but REQUIRES the Pyodide
       # tarball to already be vendored -- it fails with "pyodide-<v>.tar.bz2 not
@@ -70,6 +70,15 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python web-repl/scripts/fetch_pyodide.py
+
+      # build_repl.py orchestrates the site build but does NOT produce the wheels
+      # it describes: build_manifest.py fails with "overlay/assets/wheels does not
+      # exist" without this. The wheels are gitignored (R6/R8 -- zero tracked
+      # .whl repo-wide), so a clean checkout has none.
+      - name: Build the wheels
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python web-repl/scripts/build_wheels.py
 
       # /praxis/ is the Pages project-site prefix (maraxen.github.io/praxis/).
       # Without it welcome.ipynb's HOST_ROOT stays "/" and every bootstrap fetch

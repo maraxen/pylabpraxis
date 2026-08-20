@@ -102,7 +102,7 @@ import subprocess
 import time
 from pathlib import Path
 
-import fetch_piplite_wheels  # same directory; sys.path[0] is this script's dir
+import fetch_vendored_wheels  # same directory; sys.path[0] is this script's dir
 import fetch_pyodide  # same directory; sys.path[0] is this script's dir
 
 logger = logging.getLogger("build_repl")
@@ -303,12 +303,12 @@ def required_piplite_packages() -> tuple[str, ...]:
 
     `disablePyPIFallback: true` makes these unobtainable at runtime, so each must
     be vendored through PipliteAddon.piplite_urls. Read from
-    ``web-repl/piplite_wheels.json`` rather than hardcoded here, so the pin table
+    ``web-repl/vendored_wheels.json`` rather than hardcoded here, so the pin table
     and this guard cannot drift into disagreeing about what is required -- the
     same duplicate-source-of-truth defect that made D3 report a covered module as
     uncovered (see test_contract_covers_imports.py).
     """
-    return tuple(fetch_piplite_wheels.load_pins().get("required", ()))
+    return tuple(fetch_vendored_wheels.load_pins().get("required", ()))
 
 
 def assert_required_piplite_wheels(out_dir: Path) -> None:
@@ -336,7 +336,7 @@ def assert_required_piplite_wheels(out_dir: Path) -> None:
             "vendored for piplite. With disablePyPIFallback the kernel cannot fetch "
             f"them at runtime and will die silently in its worker. Required: "
             f"{', '.join(required_piplite_packages())}. Usual cause: "
-            "scripts/fetch_piplite_wheels.py did not run, or PipliteAddon.piplite_urls "
+            "scripts/fetch_vendored_wheels.py did not run, or PipliteAddon.piplite_urls "
             "in web-repl/jupyter_lite_config.json does not point at the fetched "
             "vendor/piplite-wheels/<filename>."
         )
@@ -353,9 +353,9 @@ def assert_required_piplite_wheels(out_dir: Path) -> None:
             f"{', '.join(missing)}. Found: {sorted(names) or 'nothing'}. These are not "
             "in pyodide-lock.json and disablePyPIFallback blocks the PyPI fallback, so "
             "the kernel will fail to start OFFLINE with no error naming the cause. Pin "
-            "it in web-repl/piplite_wheels.json (name/version/filename/sha256) and add "
+            "it in web-repl/vendored_wheels.json (name/version/filename/sha256) and add "
             "the matching vendor/piplite-wheels/<filename> path to "
-            "PipliteAddon.piplite_urls; scripts/fetch_piplite_wheels.py fetches it. Do "
+            "PipliteAddon.piplite_urls; scripts/fetch_vendored_wheels.py fetches it. Do "
             "NOT commit the .whl -- R6/R8 require zero tracked wheels repo-wide."
         )
     logger.info("required piplite wheels vendored: %s", ", ".join(required_piplite_packages()))
@@ -900,8 +900,8 @@ def main(argv: list[str] | None = None) -> int:
             # Vendor the pinned piplite wheels first: the jupyterlite build reads
             # them through PipliteAddon.piplite_urls, which now points into
             # web-repl/vendor/ (gitignored) rather than at a committed .whl. See
-            # fetch_piplite_wheels.py for why the tracked binary was retired.
-            fetch_piplite_wheels.fetch_all()
+            # fetch_vendored_wheels.py for why the tracked binary was retired.
+            fetch_vendored_wheels.fetch_all()
             pyodide_arg = resolve_pyodide_arg(allow_cdn=args.allow_cdn)
             log_path = out_dir.parent / f".{out_dir.name}-jupyterlite-build.log"
             run_jupyterlite_build(out_dir=out_dir, pyodide_arg=pyodide_arg, log_path=log_path)

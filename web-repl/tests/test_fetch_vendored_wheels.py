@@ -1,4 +1,4 @@
-"""Tests for ``web-repl/scripts/fetch_piplite_wheels.py``.
+"""Tests for ``web-repl/scripts/fetch_vendored_wheels.py``.
 
 Network-free: the PyPI JSON lookup and the download are both faked, so these run
 in CI and offline. The point of the fetcher is INTEGRITY, and integrity checks
@@ -24,7 +24,7 @@ _SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-import fetch_piplite_wheels as F  # noqa: E402 -- path setup must precede this
+import fetch_vendored_wheels as F  # noqa: E402 -- path setup must precede this
 
 _PAYLOAD = b"pretend wheel bytes"
 _GOOD_SHA = hashlib.sha256(_PAYLOAD).hexdigest()
@@ -201,23 +201,58 @@ def test_real_pin_file_matches_piplite_urls():
     runtime as the kernel dying in its worker with no error naming the cause.
     """
     web_repl = Path(__file__).resolve().parents[1]
-    pins = F.load_pins(web_repl / "piplite_wheels.json")
+    pins = F.load_pins(web_repl / "vendored_wheels.json")
     config = json.loads((web_repl / "jupyter_lite_config.json").read_text())
     urls = config["PipliteAddon"]["piplite_urls"]
 
-    for entry in pins["wheels"]:
+    # Scope by destination: only the piplite-dest wheels belong in piplite_urls.
+    # The overlay/assets/wheels ones are picked up by build_manifest.py and
+    # installed by the bootstrap instead -- a different channel entirely.
+    piplite_entries = [
+        e for e in pins["wheels"] if e.get("dest", "vendor/piplite-wheels") == "vendor/piplite-wheels"
+    ]
+    assert piplite_entries, "no piplite-dest wheels pinned at all"
+    for entry in piplite_entries:
         assert any(u.endswith(entry["filename"]) for u in urls), (
-            f"{entry['filename']} is pinned but no piplite_urls entry references it"
+            f"{entry['filename']} is pinned for piplite but no piplite_urls entry "
+            "references it, so it would be fetched and then ignored"
         )
     for url in urls:
-        assert any(url.endswith(e["filename"]) for e in pins["wheels"]), (
+        assert any(url.endswith(e["filename"]) for e in piplite_entries), (
             f"piplite_urls references {url} but nothing pins it, so nothing fetches it"
+        )
+
+
+def test_websockets_is_pinned_into_the_manifest_wheel_dir():
+    """Regression: websockets existed only on one developer's disk.
+
+    overlay/assets/wheels/ is gitignored (R6/R8: zero tracked .whl repo-wide) and
+    build_wheels.py produces only pylabrobot and pylibftdi, so a hand-placed
+    websockets wheel was absent from every clean checkout -- including CI. PLR's
+    Visualizer raises in __init__ when HAS_WEBSOCKETS is False, so the whole
+    Phase 6 visualizer would have failed anywhere but that one machine.
+    """
+    web_repl = Path(__file__).resolve().parents[1]
+    pins = F.load_pins(web_repl / "vendored_wheels.json")
+    ws = [e for e in pins["wheels"] if e["name"] == "websockets"]
+    assert ws, "websockets is not pinned; it has no recipe and will vanish on a clean checkout"
+    assert ws[0]["dest"] == "overlay/assets/wheels", (
+        "websockets must land where build_manifest.py looks, not in the piplite dir"
+    )
+
+
+def test_every_entry_names_an_allowed_dest():
+    web_repl = Path(__file__).resolve().parents[1]
+    pins = F.load_pins(web_repl / "vendored_wheels.json")
+    for entry in pins["wheels"]:
+        assert entry.get("dest") in F.ALLOWED_DESTS, (
+            f"{entry['name']} names dest {entry.get('dest')!r}, not in {F.ALLOWED_DESTS}"
         )
 
 
 def test_required_packages_are_actually_pinned():
     web_repl = Path(__file__).resolve().parents[1]
-    pins = F.load_pins(web_repl / "piplite_wheels.json")
+    pins = F.load_pins(web_repl / "vendored_wheels.json")
     pinned = {e["name"] for e in pins["wheels"]}
     for name in pins.get("required", []):
         assert name in pinned, f"{name!r} is required but not pinned"
@@ -233,5 +268,44 @@ def test_no_tracked_wheel_remains_under_piplite_wheels():
     legacy = web_repl / "piplite-wheels"
     assert not legacy.exists(), (
         f"{legacy} is back. Wheels belong in gitignored vendor/piplite-wheels/, "
-        "fetched by scripts/fetch_piplite_wheels.py -- see its module docstring."
+        "fetched by scripts/fetch_vendored_wheels.py -- see its module docstring."
     )
+
+
+def test_fetch_all_honours_per_entry_dest(tmp_path, fake_pypi, monkeypatch):
+    """A wheel written where nothing reads it is invisible until the browser fails."""
+    monkeypatch.setattr(F, "WEB_REPL_ROOT", tmp_path)
+    pins = tmp_path / "pins.json"
+    pins.write_text(
+        json.dumps(
+            {
+                "wheels": [
+                    {
+                        "name": _NAME, "version": _VERSION, "filename": _FILENAME,
+                        "sha256": _GOOD_SHA, "dest": "overlay/assets/wheels",
+                    }
+                ]
+            }
+        )
+    )
+    paths = F.fetch_all(pin_path=pins)
+    assert paths[0].parent == tmp_path / "overlay" / "assets" / "wheels"
+    assert paths[0].read_bytes() == _PAYLOAD
+
+
+def test_unknown_dest_is_refused(tmp_path):
+    pins = tmp_path / "pins.json"
+    pins.write_text(
+        json.dumps(
+            {
+                "wheels": [
+                    {
+                        "name": _NAME, "version": _VERSION, "filename": _FILENAME,
+                        "sha256": _GOOD_SHA, "dest": "somewhere/nothing/reads",
+                    }
+                ]
+            }
+        )
+    )
+    with pytest.raises(F.FetchError, match="not one of"):
+        F.load_pins(pins)
