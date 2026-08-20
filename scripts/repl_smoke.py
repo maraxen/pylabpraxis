@@ -292,6 +292,43 @@ def build_probe_code(host_root: str, expect_praxis_sha: str | None) -> str:
                 RESULT["plr_has_websockets"] = None
                 RESULT["plr_visualizer_import_error"] = f"{{type(e).__name__}}: {{e}}"
 
+            # --- 2c. praxis.viz in a REAL kernel (P6.4/P6.5 counterpart) ---
+            # web-repl/tests/test_browser_visualizer.py proves the ordering under
+            # CPython with an injected transport. That cannot prove the module is
+            # fetched by the bootstrap, that pylabrobot imports beside it in
+            # Pyodide, or that Visualizer.__init__'s HAS_WEBSOCKETS guard passes
+            # against the VENDORED websockets wheel. This does.
+            #
+            # Uses RecordingTransport, not a BroadcastChannel: the assertion here
+            # is that the emit chain runs in-kernel, and a real channel would add
+            # a second failure mode (origin scoping) to a check that is not about
+            # that. GATE G6's pick_up_tips arm still needs a LiquidHandler and is
+            # NOT covered here.
+            try:
+                from praxis.viz.browser import BrowserVisualizer
+                from praxis.viz.transport import RecordingTransport
+                from pylabrobot.resources import Coordinate, Resource
+
+                _root = Resource(name="probe_root", size_x=100, size_y=100, size_z=10)
+                _tr = RecordingTransport()
+                _viz = BrowserVisualizer(
+                    _root, transport=_tr, show_machine_tools_at_start=False
+                )
+                await _viz.setup()
+                for _ in range(5):
+                    await asyncio.sleep(0)
+                _kid = Resource(name="probe_child", size_x=10, size_y=10, size_z=5)
+                _root.assign_child_resource(_kid, location=Coordinate(0, 0, 0))
+                for _ in range(5):
+                    await asyncio.sleep(0)
+                RESULT["viz_events"] = list(_tr.events)
+                RESULT["viz_stats"] = _viz.stats()
+                RESULT["viz_ok"] = True
+            except Exception as e:  # noqa: BLE001
+                RESULT["viz_ok"] = False
+                RESULT["viz_error"] = f"{{type(e).__name__}}: {{e}}"
+                RESULT["viz_traceback"] = traceback.format_exc()
+
             # --- 3. four io classes: repr + identity vs. builtins, by `is` ---
             io_reprs: dict = {{}}
             io_identity: dict = {{}}
