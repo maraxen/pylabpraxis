@@ -86,6 +86,16 @@ jobs:
               'web-repl/jupyter_lite_config.json',
               'web-repl/piplite_wheels.json') }}
 
+      # build_repl.py fetches the piplite wheels itself but REQUIRES the Pyodide
+      # tarball to already be vendored -- it fails with "pyodide-<v>.tar.bz2 not
+      # found" otherwise. The cache above only restores it; nothing populated it
+      # on a cold run. On a cache hit this is a no-op: fetch_pyodide verifies the
+      # tarball's sha256 and skips the ~430 MB download.
+      - name: Vendor Pyodide
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python web-repl/scripts/fetch_pyodide.py
+
       - name: Install Chromium
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
