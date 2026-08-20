@@ -137,6 +137,10 @@ DEFAULT_SERVE_DIR = REPO_ROOT / "web-repl" / "dist"
 # pointing --visualizer-dir at overlay/ directly (e.g. right after a regen, before a dist
 # rebuild) is a supported override, not a special case.
 DEFAULT_VISUALIZER_DIR = REPO_ROOT / "web-repl" / "dist" / "assets" / "visualizer"
+#: How long --viz-check waits for a praxis_viz envelope to reach the renderer.
+#: Deliberately short: delivery is sub-second when the wiring is intact, and a
+#: long budget only delays an already-certain failure.
+CHANNEL_DISPATCH_TIMEOUT_S = 15.0
 DEFAULT_FIXTURE_DIR = REPO_ROOT / "web-repl" / "tests" / "fixtures" / "visualizer"
 DEFAULT_PLR_SUBMODULE = REPO_ROOT / "external" / "pylabrobot"
 
@@ -487,6 +491,7 @@ def run_probe(
     offline: bool = False,
 ) -> dict[str, Any]:
     try:
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
         from playwright.sync_api import sync_playwright
     except ImportError as e:  # pragma: no cover - environment problem, not a probe result
         raise RuntimeError(f"playwright is not importable: {e}") from e
@@ -728,6 +733,7 @@ def run_viz_check(
     offline: bool = False,
 ) -> dict[str, Any]:
     try:
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
         from playwright.sync_api import sync_playwright
     except ImportError as e:  # pragma: no cover - environment problem, not a check result
         raise RuntimeError(f"playwright is not importable: {e}") from e
@@ -771,9 +777,21 @@ def run_viz_check(
     pageerrors: list[str] = []
     console_errors: list[str] = []
 
-    with ServedDir(visualizer_dir, "/", coi=False) as served:
-        url = f"http://127.0.0.1:{served.port}/index.html"
-        LOG.info("navigating to %s", url)
+    # Serve the PARENT directory, not visualizer_dir itself. index.html's last body
+    # element is
+    #     <script type="module" src="../visualizer-augmentations/index.js"></script>
+    # so serving the visualizer directory AS root puts that path above the document
+    # root, where it 404s. Until this was fixed, every --viz-check run loaded the
+    # renderer with the augmentation module missing -- which the direct-injection
+    # assertions could not notice, because they call window.receiveFromPython
+    # themselves and never exercise the module. Serving the parent reproduces the
+    # real dist/assets/ layout, where visualizer/ and visualizer-augmentations/ are
+    # siblings.
+    assets_dir = visualizer_dir.parent
+    viz_name = visualizer_dir.name
+    with ServedDir(assets_dir, "/", coi=False) as served:
+        url = f"http://127.0.0.1:{served.port}/{viz_name}/index.html"
+        LOG.info("navigating to %s (serving %s)", url, assets_dir)
 
         with sync_playwright() as p:
             browser = p.chromium.launch(
@@ -849,6 +867,70 @@ def run_viz_check(
                     "return c ? c.fill() : null; }",
                     target_resource,
                 )
+
+                # --- P6.6: drive the SAME renderer through the praxis_viz channel ---
+                # Everything above injects into window.receiveFromPython directly,
+                # which proves the renderer works but says nothing about the
+                # augmentation module that is supposed to feed it in production.
+                # This stage posts a real PLR envelope onto the channel from a
+                # SECOND BroadcastChannel instance (a channel never receives its own
+                # messages, so a second instance is required) and asserts the render
+                # actually changed -- counters alone would pass even if the payload
+                # never reached Konva.
+                #
+                # It restores the INITIAL state, so the assertion is that fill goes
+                # back to fill_before: a real, observable reversal of the delta the
+                # direct injection just applied.
+                aug_before = page.evaluate(
+                    "() => globalThis.__praxisVisualizerAugmentations || null"
+                )
+                dispatched_before = (aug_before or {}).get("dispatched", 0)
+                page.evaluate(
+                    """(payload) => {
+                        const ch = new BroadcastChannel('praxis_viz');
+                        ch.postMessage(payload);
+                        ch.close();
+                    }""",
+                    json.dumps(
+                        {
+                            "id": 9001,
+                            "version": "praxis-viz-check",
+                            "event": "set_state",
+                            "data": initial_state_fixture,
+                        }
+                    ),
+                )
+                # Bounded, NON-raising wait. A hard wait_for_function here aborts
+                # the run with a bare "Timeout 120000ms exceeded" and the
+                # informative checks below never execute -- observed by deleting
+                # dist/assets/visualizer-augmentations/ and watching a 2-minute
+                # unattributed stack trace replace the one-line "module did not
+                # load" diagnosis. Channel delivery is sub-second when it works at
+                # all, so a short budget is right: swallow the timeout and let the
+                # failure block say WHY.
+                try:
+                    page.wait_for_function(
+                        "(n) => ((globalThis.__praxisVisualizerAugmentations || {})"
+                        ".dispatched || 0) > n",
+                        arg=dispatched_before,
+                        timeout=CHANNEL_DISPATCH_TIMEOUT_S * 1000,
+                    )
+                except PlaywrightTimeoutError:
+                    LOG.error(
+                        "no praxis_viz envelope dispatched within %.0fs -- "
+                        "continuing so the reason is reported rather than a bare "
+                        "timeout",
+                        CHANNEL_DISPATCH_TIMEOUT_S,
+                    )
+                augmentations = page.evaluate(
+                    "() => globalThis.__praxisVisualizerAugmentations"
+                )
+                fill_after_channel = page.evaluate(
+                    "(name) => { const r = window.resources[name]; "
+                    "const c = r && r.group.findOne('Circle'); "
+                    "return c ? c.fill() : null; }",
+                    target_resource,
+                )
             finally:
                 browser.close()
 
@@ -867,6 +949,11 @@ def run_viz_check(
             "fill_after_expected": fill_after,
             "fill_after_actual": fill_after_actual,
         },
+        "channel": {
+            "augmentations": augmentations,
+            "fill_after_channel_actual": fill_after_channel,
+            "fill_after_channel_expected": fill_before,
+        },
         "pageerrors": pageerrors,
         "console_errors": console_errors,
         "record_mode": record,
@@ -876,6 +963,37 @@ def run_viz_check(
 
     if pageerrors:
         failures.append(f"{len(pageerrors)} pageerror(s): {pageerrors}")
+
+    # P6.6 channel path. Checked here rather than inline so a failure is reported
+    # alongside every other measurement instead of aborting the run.
+    if not augmentations:
+        failures.append(
+            "visualizer-augmentations module did not load: "
+            "globalThis.__praxisVisualizerAugmentations is absent. The renderer "
+            "would receive nothing from the kernel."
+        )
+    else:
+        if augmentations.get("noop"):
+            failures.append(
+                "visualizer-augmentations is still the pre-Phase-6 NO-OP stub "
+                "(noop=true); it does not listen on praxis_viz at all."
+            )
+        if augmentations.get("errors"):
+            failures.append(
+                f"augmentation reported errors: {augmentations['errors']}"
+            )
+        if not augmentations.get("dispatched"):
+            failures.append(
+                "no envelope was dispatched to the renderer over praxis_viz "
+                f"(received={augmentations.get('received')}). BroadcastChannel is "
+                "origin-scoped and drops cross-origin posts SILENTLY."
+            )
+    if fill_after_channel != fill_before:
+        failures.append(
+            f"channel-driven set_state did not reach Konva: {target_resource} fill "
+            f"is {fill_after_channel!r}, expected the restored {fill_before!r}. "
+            "Counters can increment while the payload never renders."
+        )
 
     if measured_resources != expected["resource_count"]:
         failures.append(
