@@ -92,4 +92,12 @@ CONTRACT: tuple[tuple[str, str], ...] = (
     ("pylabrobot.liquid_handling.backends", "LiquidHandlerBackend"),
     ("pylabrobot.liquid_handling.backends.hamilton", "STAR"),
     ("pylabrobot.plate_reading.clario_star_backend", "CLARIOstarBackend"),
+    # -- the visualizer base class praxis/viz/browser.py subclasses (P6.4).
+    # Added because D3 caught its absence: BrowserVisualizer imports this module
+    # and the contract did not cover it, so the wheel could have stopped
+    # providing it without any check going red. Importing the module is safe
+    # without websockets installed -- the HAS_WEBSOCKETS guard raises in
+    # Visualizer.__init__, not at import time -- so the throwaway-venv contract
+    # check does not need websockets to verify this symbol resolves.
+    ("pylabrobot.visualizer.visualizer", "Visualizer"),
 )

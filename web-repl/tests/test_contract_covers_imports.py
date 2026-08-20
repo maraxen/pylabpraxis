@@ -18,15 +18,16 @@ package).
 WHERE THE CONTRACT COMES FROM (read before editing ``_CONTRACT_MODULES``):
 wheel-spec T15 (:325-329) creates a real ``web-repl/tests/plr_contract.py``
 -- a module-level tuple of ``(module_path, symbol_name)`` -- and this test
-is specified to assert against ITS module set. That file does not exist yet
-(a separate, not-yet-scheduled task owns it); this task owns only THIS
-file. ``_CONTRACT_MODULES`` below is a deliberate, self-contained stand-in:
-the set of pylabrobot module paths T15's own description says the browser
-path needs "at minimum", plus every module path this test's own AST walk
-currently finds in the real tree, WITH ONE DELIBERATE EXCEPTION -- see next
-paragraph. When ``plr_contract.py`` lands, replace ``_CONTRACT_MODULES``
-with ``{path for path, _symbol in plr_contract.CONTRACT}`` and delete this
-note.
+is specified to assert against ITS module set. That file HAS landed, and
+``_CONTRACT_MODULES`` below is now derived from it exactly as this note used
+to instruct. The hand-maintained stand-in that preceded it is gone.
+
+It is worth recording why, because the stand-in did not fail loudly: it was a
+second copy of the same set, and when ``praxis/viz/browser.py`` added an import
+of ``pylabrobot.visualizer.visualizer``, adding that module to the REAL contract
+did not clear the failure -- this test was reading the copy. A stale duplicate
+reports a covered module as uncovered, which reads as a defect in the code under
+test rather than in the test.
 
 THE KNOWN-STALE ENTRY (task brief, "machine-map subtlety"): today
 ``web_bridge.py``'s ``_MACHINE_CLASS_MAP`` maps ``"Incubator"`` to
@@ -79,35 +80,16 @@ _OVERLAY_DIRS = (_OVERLAY_PYTHON_DIR, _OVERLAY_SHIMS_DIR)
 _MACHINE_MAP_NAME = "_MACHINE_CLASS_MAP"
 
 # See the module docstring's "WHERE THE CONTRACT COMES FROM" section.
-_CONTRACT_MODULES = frozenset(
-    {
-        # pylabrobot.io.{serial,usb,hid,ftdi} -- wheel-spec :327 "at minimum".
-        "pylabrobot.io.serial",
-        "pylabrobot.io.usb",
-        "pylabrobot.io.hid",
-        "pylabrobot.io.ftdi",
-        # pylabrobot.resources.{...} -- wheel-spec :327 "at minimum", plus
-        # the deeper submodules the current source actually imports.
-        "pylabrobot.resources",
-        "pylabrobot.resources.carrier",
-        "pylabrobot.resources.resource_holder",
-        "pylabrobot.resources.coordinate",
-        # The six experimental machine frontends (_MACHINE_CLASS_MAP module
-        # halves), corrected per wheel-spec :327 -- "pylabrobot.storage.
-        # Incubator", NOT "pylabrobot.incubator". See the module docstring.
-        "pylabrobot.liquid_handling",
-        "pylabrobot.plate_reading",
-        "pylabrobot.heating_shaking",
-        "pylabrobot.shaking",
-        "pylabrobot.centrifuge",
-        "pylabrobot.storage",
-        # Deeper submodules the current shims/web_bridge actually import,
-        # beyond plr_contract's "at minimum" list.
-        "pylabrobot.liquid_handling.backends",
-        "pylabrobot.liquid_handling.backends.hamilton",
-        "pylabrobot.plate_reading.clario_star_backend",
-    }
-)
+# Derived from plr_contract.CONTRACT, per this module's docstring: "When
+# plr_contract.py lands, replace _CONTRACT_MODULES with {path for path,
+# _symbol in plr_contract.CONTRACT} and delete this note." That file has landed,
+# and the hand-maintained stand-in that used to sit here had already drifted --
+# it was missing pylabrobot.visualizer.visualizer, which praxis/viz/browser.py
+# imports, so D3 reported a module as uncovered that the real contract covered.
+# Two sources of truth for the same set is the whole defect; there is now one.
+import plr_contract  # noqa: E402 -- same directory as this test
+
+_CONTRACT_MODULES = frozenset(path for path, _symbol in plr_contract.CONTRACT)
 
 
 def _iter_py_files(dirs: tuple[Path, ...] = _OVERLAY_DIRS) -> list[Path]:
