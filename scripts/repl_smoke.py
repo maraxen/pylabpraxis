@@ -788,6 +788,230 @@ def read_submodule_sha(submodule_dir: Path) -> str:
     return out.stdout.strip()
 
 
+DEFAULT_NOTEBOOK = "welcome.ipynb"
+
+#: Strings the welcome notebook must print. These are the notebook's own output,
+#: not the harness's -- if the notebook's cells change, this list must change with
+#: them, and that coupling is deliberate: it is what makes this a test OF the
+#: notebook rather than a test that some notebook ran.
+NOTEBOOK_EXPECTED = (
+    "bootstrap complete",
+    "PyLabRobot 0.2.2+g",
+    "Serial is the browser shim: True",
+)
+
+
+class NotebookCheckError(RuntimeError):
+    """Raised when the welcome notebook does not execute cleanly."""
+
+
+def run_notebook_check(
+    *,
+    serve_dir: Path,
+    base_path: str,
+    chrome_path: str,
+    timeout_s: float,
+    notebook: str = DEFAULT_NOTEBOOK,
+    offline: bool = False,
+) -> dict[str, Any]:
+    """Open the welcome notebook in the real lab app and RUN it.
+
+    Why this mode exists: welcome.ipynb is the entry point every user lands on,
+    and nothing had ever executed it. Its bootstrap cell is byte-identical to
+    build_probe_code()'s, but "identical to something that works" is not the same
+    as "works" -- the notebook also has to be staged into the built site, indexed
+    in the contents API, openable, and runnable against a kernel it did not
+    configure itself. None of that is exercised by --probe.
+
+    Driven through the lab app's exposed command registry
+    (`window.jupyterapp.commands.execute('notebook:run-all-cells')`), which
+    `exposeAppInBrowser: "true"` in jupyter-lite.json makes available. The lab app
+    has no `?code=&execute=1` parameter -- that is a REPL-app feature -- so
+    clicking or command-dispatch is the only way to run cells there.
+    """
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.sync_api import sync_playwright
+
+    prefix = _normalize_base_path(base_path)
+    timeout_ms = timeout_s * 1000
+    console_messages: list[dict[str, Any]] = []
+    pageerrors: list[str] = []
+
+    with ServedDir(serve_dir, base_path, coi=False) as served:
+        url = (
+            f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+            f"?path={urllib.parse.quote(notebook)}"
+        )
+        LOG.info("navigating to %s", url)
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                executable_path=chrome_path,
+                headless=True,
+                args=chromium_launch_args(offline=offline),
+            )
+            try:
+                page = browser.new_context().new_page()
+                page.on("pageerror", lambda exc: pageerrors.append(str(exc)))
+                page.on(
+                    "console",
+                    lambda msg: console_messages.append({"type": msg.type, "text": msg.text}),
+                )
+                page.goto(url, wait_until="load", timeout=timeout_ms)
+
+                # The app object and the notebook widget appear independently;
+                # waiting on only one of them races the other.
+                page.wait_for_function(
+                    "() => !!window.jupyterapp && !!document.querySelector('.jp-Notebook')",
+                    timeout=timeout_ms,
+                )
+                # JupyterLite prompts for kernel selection when opening a
+                # notebook with no saved preference, and that dialog blocks
+                # execution silently: run-all dispatches, resolves, and nothing
+                # runs. Observed as a 150s timeout whose only clue was the words
+                # "Select Kernel" in the page text. Accept the preselected kernel
+                # (Python (Pyodide)) if the dialog is up.
+                try:
+                    page.wait_for_selector(".jp-Dialog", timeout=10_000)
+                    LOG.info("kernel-selection dialog present; accepting")
+                    page.click(".jp-Dialog .jp-mod-accept")
+                    page.wait_for_selector(".jp-Dialog", state="detached", timeout=timeout_ms)
+                except PlaywrightTimeoutError:
+                    LOG.info("no kernel-selection dialog appeared")
+
+                # Count from the MODEL, not the DOM: JupyterLab 4 renders
+                # notebooks windowed, so document.querySelectorAll('.jp-Cell')
+                # returns only the cells currently scrolled into view (measured: 1
+                # of 8). A DOM count here looks like a truncated notebook.
+                cell_count = page.evaluate(
+                    """() => {
+                        const w = window.jupyterapp?.shell?.currentWidget;
+                        const cells = w?.content?.model?.cells;
+                        const n = cells?.length ?? cells?.size;
+                        return typeof n === 'number'
+                            ? n
+                            : document.querySelectorAll('.jp-Notebook .jp-Cell').length;
+                    }"""
+                )
+                LOG.info("notebook open with %d cell(s); running all", cell_count)
+
+                # Dispatch WITHOUT awaiting. The run-all promise does not settle
+                # until every cell has finished, and a cell that blocks (or a
+                # kernel that never becomes ready) leaves page.evaluate awaiting
+                # forever -- page.evaluate has no implicit timeout, so the whole
+                # run hangs with no diagnostic. Observed before this change: the
+                # harness sat past 280s with nothing after "running all". Fire it
+                # and poll the outputs, which is what we assert on anyway.
+                run = page.evaluate(
+                    """() => {
+                        try {
+                            const pr = window.jupyterapp.commands.execute(
+                                'notebook:run-all-cells');
+                            if (pr && typeof pr.catch === 'function') {
+                                pr.catch(e => { window.__praxisRunAllError = String(e); });
+                            }
+                            return {dispatched: true};
+                        } catch (e) {
+                            return {dispatched: false, error: String(e)};
+                        }
+                    }"""
+                )
+                if not run.get("dispatched"):
+                    raise NotebookCheckError(
+                        f"could not dispatch notebook:run-all-cells: {run.get('error')!r}"
+                    )
+
+                # Read OUTPUTS from the notebook MODEL, never document.body.innerText.
+                # Two independent reasons:
+                #  1. The cell SOURCE is rendered in the DOM, so a body-text search
+                #     for `bootstrap complete` matches the literal
+                #     print("bootstrap complete") in cell 3 whether or not it ever
+                #     ran. Measured: that needle reported found on a notebook whose
+                #     kernel dialog was still open and which had executed nothing.
+                #     This is the same false-positive class the probe's sentinels
+                #     are split in half to avoid.
+                #  2. JupyterLab 4 windows the notebook, so outputs of off-screen
+                #     cells are not in the DOM at all -- a DOM-only read would miss
+                #     real output for the opposite reason.
+                # r-string: the JS below contains \n escapes that must reach the
+                # browser as backslash-n, not as real newlines inside a string literal
+                # (which is a JS SyntaxError -- "Invalid or unexpected token").
+                collect_outputs = r"""() => {
+                    const w = window.jupyterapp?.shell?.currentWidget;
+                    const cells = w?.content?.model?.cells;
+                    const n = cells?.length ?? cells?.size;
+                    if (typeof n !== 'number') return null;
+                    const chunks = [];
+                    for (let i = 0; i < n; i++) {
+                        const cell = cells.get ? cells.get(i) : cells[i];
+                        const outs = cell?.outputs;
+                        const m = outs?.length ?? 0;
+                        for (let j = 0; j < m; j++) {
+                            const o = outs.get ? outs.get(j) : outs[j];
+                            const d = o?.toJSON ? o.toJSON() : o;
+                            if (!d) continue;
+                            if (typeof d.text === 'string') chunks.push(d.text);
+                            else if (Array.isArray(d.text)) chunks.push(d.text.join(''));
+                            if (d.data && typeof d.data['text/plain'] === 'string') {
+                                chunks.push(d.data['text/plain']);
+                            }
+                            if (d.ename) chunks.push(d.ename + ': ' + d.evalue);
+                            if (Array.isArray(d.traceback)) chunks.push(d.traceback.join('\n'));
+                        }
+                    }
+                    return chunks.join('\n');
+                }"""
+                # Install the collector as a page global once, rather than
+                # threading its source through wait_for_function and eval()-ing it
+                # there -- that shape broke on the function body's own quoting
+                # ("SyntaxError: Invalid or unexpected token") for no benefit.
+                page.evaluate("() => { window.__praxisCollectOutputs = %s; }" % collect_outputs)
+                try:
+                    page.wait_for_function(
+                        "(needles) => { const t = window.__praxisCollectOutputs(); "
+                        "return t !== null && needles.every(n => t.includes(n)); }",
+                        arg=list(NOTEBOOK_EXPECTED),
+                        timeout=timeout_ms,
+                    )
+                    timed_out = False
+                except PlaywrightTimeoutError:
+                    timed_out = True
+
+                outputs_text = page.evaluate("() => window.__praxisCollectOutputs() || ''") or ""
+                body_text = page.evaluate("() => document.body.innerText")
+                run_all_error = page.evaluate("() => window.__praxisRunAllError || null")
+                found = {n: (n in outputs_text) for n in NOTEBOOK_EXPECTED}
+                # A traceback in the rendered output is the single most useful
+                # signal and is invisible to a needle check that only looks for
+                # success strings.
+                tracebacks = page.evaluate(
+                    "() => Array.from(document.querySelectorAll("
+                    "'.jp-OutputArea-output[data-mime-type=\"application/vnd.jupyter.stderr\"],"
+                    " .jp-RenderedText.jp-mod-trusted')).map(e => e.innerText).filter("
+                    "t => t.includes('Traceback') || t.includes('Error'))"
+                )
+                result: dict[str, Any] = {
+                    "notebook": notebook,
+                    "url": url,
+                    "cell_count": cell_count,
+                    "expected": list(NOTEBOOK_EXPECTED),
+                    "found": found,
+                    "all_found": all(found.values()),
+                    "timed_out": timed_out,
+                    "run_all_error": run_all_error,
+                    "tracebacks": tracebacks,
+                    "pageerrors": pageerrors,
+                    "offline": offline,
+                }
+                if not result["all_found"]:
+                    result["outputs_text"] = outputs_text[-3000:]
+                    result["body_text_tail"] = body_text[-2000:]
+                    result["console"] = console_messages
+                return result
+            finally:
+                browser.close()
+
+
 def run_viz_check(
     *,
     visualizer_dir: Path,
@@ -1127,6 +1351,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Run the full in-kernel probe and print JSON to stdout.",
     )
     p.add_argument(
+        "--notebook-check",
+        action="store_true",
+        help=(
+            "Open web-repl/files/<--notebook> in the REAL lab app and run every "
+            "cell, asserting the notebook's own printed output. --probe cannot "
+            "cover this: it injects its payload via the REPL app's ?code= "
+            "parameter, so it never exercises the notebook being staged, indexed "
+            "in the contents API, opened, or run against a kernel it did not "
+            "configure. Driven via window.jupyterapp's command registry."
+        ),
+    )
+    p.add_argument(
+        "--notebook",
+        default=DEFAULT_NOTEBOOK,
+        help=f"--notebook-check only. Notebook path within the site. Default: {DEFAULT_NOTEBOOK}",
+    )
+    p.add_argument(
         "--viz-check",
         action="store_true",
         help=(
@@ -1257,8 +1498,10 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
     )
 
-    if not args.probe and not args.viz_check and not args.expect_fail:
-        LOG.error("nothing to do: pass --probe, --viz-check, and/or --expect-fail")
+    if not args.probe and not args.viz_check and not args.notebook_check and not args.expect_fail:
+        LOG.error(
+            "nothing to do: pass --probe, --viz-check, --notebook-check, and/or --expect-fail"
+        )
         return 2
 
     chrome_path = Path(args.chrome_path)
@@ -1270,6 +1513,57 @@ def main(argv: list[str] | None = None) -> int:
             chrome_path,
         )
         return 2
+
+    if args.notebook_check:
+        serve_dir = args.serve_dir.resolve()
+        if not serve_dir.is_dir():
+            LOG.error("--serve-dir does not exist or is not a directory: %s", serve_dir)
+            return 2
+        try:
+            result = run_notebook_check(
+                serve_dir=serve_dir,
+                base_path=args.base_path,
+                chrome_path=str(chrome_path),
+                timeout_s=args.timeout,
+                notebook=args.notebook,
+                offline=args.offline,
+            )
+        except Exception as e:  # noqa: BLE001
+            LOG.error("notebook-check failed: %s: %s", type(e).__name__, e)
+            LOG.error(
+                "If this is a Chromium launch failure ('apply-seccomp: unshare(CLONE_NEWUSER)'), "
+                "this script must be invoked with the Bash sandbox disabled "
+                "(dangerouslyDisableSandbox=true) — see plan section 5.6."
+            )
+            return 1
+
+        output = json.dumps(result, indent=2, sort_keys=True)
+        print(output)
+        if args.out:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(output)
+            LOG.info("wrote result to %s", args.out)
+
+        if result["pageerrors"]:
+            LOG.error("notebook-check: %d pageerror(s): %s", len(result["pageerrors"]), result["pageerrors"])
+            return 1
+        if result["tracebacks"]:
+            LOG.error("notebook-check: a cell raised:\n%s", "\n".join(result["tracebacks"])[:2000])
+            return 1
+        if not result["all_found"]:
+            missing = [k for k, v in result["found"].items() if not v]
+            LOG.error(
+                "notebook-check FAILED: %s did not print %r. The notebook opened "
+                "with %d cell(s) and run-all was dispatched, so this is the "
+                "notebook's own execution failing, not the harness.",
+                result["notebook"], missing, result["cell_count"],
+            )
+            return 1
+        LOG.info(
+            "notebook-check PASSED: %s ran %d cell(s) and printed all %d expected "
+            "output(s).", result["notebook"], result["cell_count"], len(NOTEBOOK_EXPECTED),
+        )
+        return 0
 
     if args.viz_check:
         visualizer_dir = args.visualizer_dir.resolve()
