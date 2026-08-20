@@ -110,11 +110,12 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # ~584 MB, of which ~512 MB is dist/static/pyodide (320 wheels). Within
-      # Pages' 1 GB limit with ~40% headroom. Pruning the unused Pyodide packages
-      # is a known follow-up, deliberately not done here: disablePyPIFallback is
-      # true, so a pruned package is unobtainable at runtime rather than merely
-      # slow to fetch.
+      # ~479 MB after build_repl.py prunes the 62 test-suite packages and stale
+      # duplicate wheels (584 MB before). Comfortably inside Pages' 1 GB limit.
+      # The remainder is the vendored Pyodide distribution, kept whole on purpose:
+      # disablePyPIFallback is true, so a pruned package is unobtainable at
+      # runtime rather than merely slow, and a protocol author reaching for scipy
+      # or pandas is plausible. A boot downloads ~18 MB of it, not 479.
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
