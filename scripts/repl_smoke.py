@@ -261,6 +261,37 @@ def build_probe_code(host_root: str, expect_praxis_sha: str | None) -> str:
                 RESULT["pylabrobot_file"] = None
                 RESULT["pylabrobot_import_error"] = f"{{type(e).__name__}}: {{e}}"
 
+            # --- 2b. websockets + HAS_WEBSOCKETS (the visualizer's precondition) ---
+            # G2 criterion 1 passed only as a MECHANISM pass: it was measured with
+            # micropip.install("websockets") against live PyPI. That install was
+            # then superseded (it would fail GATE G5's offline run), and
+            # websockets-17.0.1 was vendored into overlay/assets/wheels/ instead --
+            # but the verdict's own section 8(a) notes the in-kernel probe stayed
+            # OPEN. This closes it, and closes it in the configuration that matters:
+            # under --offline the wheel is the only possible source.
+            #
+            # Load-bearing because the guard is in Visualizer.__init__ (visualizer.py
+            # :144 at this pin), not in setup(). A False flag here means the class
+            # cannot even be CONSTRUCTED, so BrowserVisualizer's setup()/stop()/
+            # has_connection()/send_command() override design collapses to the
+            # stub-websockets fallback before any of it runs.
+            try:
+                import websockets
+                RESULT["websockets_version"] = getattr(websockets, "__version__", None)
+                RESULT["websockets_file"] = getattr(websockets, "__file__", None)
+            except Exception as e:  # noqa: BLE001
+                RESULT["websockets_version"] = None
+                RESULT["websockets_import_error"] = f"{{type(e).__name__}}: {{e}}"
+            try:
+                from pylabrobot.visualizer import visualizer as _plr_viz
+                RESULT["plr_has_websockets"] = bool(_plr_viz.HAS_WEBSOCKETS)
+                RESULT["plr_websockets_import_error"] = str(
+                    getattr(_plr_viz, "_WEBSOCKETS_IMPORT_ERROR", None)
+                )
+            except Exception as e:  # noqa: BLE001
+                RESULT["plr_has_websockets"] = None
+                RESULT["plr_visualizer_import_error"] = f"{{type(e).__name__}}: {{e}}"
+
             # --- 3. four io classes: repr + identity vs. builtins, by `is` ---
             io_reprs: dict = {{}}
             io_identity: dict = {{}}
