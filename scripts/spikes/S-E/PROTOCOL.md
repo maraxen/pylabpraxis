@@ -37,7 +37,7 @@ personally responsible for.**
 | The static server serves both the real repo assets and this spike's overlay host page correctly, on one origin | ✅ (verified directly, no browser needed) | — |
 | Chromium launches non-headless with the sandbox disabled and the real REPL console loads with zero page/console errors | ✅ (self-check, 4 runs) | — |
 | The real Pyodide kernel boots far enough to load IPython/jedi/parso | ✅ (self-check) | — |
-| The real Pyodide kernel goes on to fetch the unmodified shims/`web_bridge.py` and posts a real `USER_INTERACTION`/`device_connect` message, i.e. reaches the actual human-pause point | ❌ **NOT established** — see "Honest limitation" below; 4 self-check attempts (up to 360s) never observed this. Likely just slow (CDN-loaded Pyodide + Xvfb), but not confirmed. | ✅ (your terminal's progress line will show `pending={...}` once it happens; if it never does within ~5 min, see the note below before continuing) |
+| The real Pyodide kernel goes on to fetch the unmodified shims/`web_bridge.py` and posts a real `USER_INTERACTION`/`device_connect` message, i.e. reaches the actual human-pause point | ✅ (self-check, headless, reached in ~8s — see "Honest limitation" below for the defect that made 4 earlier attempts fail and what that does *not* prove) | ✅ (your terminal's progress line will show `pending={...}` once it happens) |
 | A real visible button appears in a real (non-headless) Chromium window | ❌ not observed by the self-check (never reached) | ✅ |
 | `requestDevice()`/`requestPort()` actually resolves with a real device, inside a real user-activation window, when a human clicks | ❌ — **cannot be simulated. A synthetic `dispatchEvent` click carries no activation and would prove the opposite of what it claims to prove (see execution plan §"three test-design traps", trap 2).** | ✅ **only you, clicking with a real device plugged in** |
 | The kernel can then actually open/read/write the granted device | ❌ | ✅ (script attempts it automatically right after your click; you read the result) |
@@ -199,49 +199,57 @@ button would be visible to a human at that point) — **without ever calling
 structurally cannot: there is no display a click could land on inside Xvfb in a way
 that constitutes a real gesture, and there was no device attached to that machine.
 
-Four self-check runs were made (`xvfb_selfcheck.log` + `xvfb_selfcheck_result.json` in
-this directory hold the last one, raw and unedited). Across all four:
+Four self-check runs were made before the harness was correct, and **all four were
+misleading**. They are recorded here rather than deleted, because the way they misled
+is the most useful thing in this document.
+
+Across all four:
 - The static server correctly serves both the real, unmodified repo assets and the
   spike's own overlay host page on the same origin (verified directly with `urllib`,
   no browser needed: `/_spike/host_iframe.html` → 200 with the expected content,
   `/assets/jupyterlite/repl/index.html` → 200 with the real REPLite page).
-- Chromium launches non-headless under Xvfb with the sandbox disabled, navigates to
-  the real REPL console, and the real JupyterLite/Pyodide boot sequence proceeds with
-  **zero page errors and zero console errors** (`pageerrors: []` every run) through
-  micropip, Pygments/IPython/jedi/parso loading, and JupyterLite's own service-worker
-  registration.
-- **None of the four runs reached `__praxisPendingRequest` within the time budgeted**
-  (up to 360s on the longest run) — i.e. the self-check did not confirm the kernel
-  actually got as far as posting the `device_connect` interaction request before the
-  self-check's own clock ran out. The last (longest, most informative) run's tail is
-  reproduced here verbatim:
+- Chromium launches, navigates to the real REPL console, and the real
+  JupyterLite/Pyodide boot sequence proceeds with **zero page errors and zero console
+  errors** (`pageerrors: []` every run) through micropip, Pygments/IPython/jedi/parso
+  loading, and JupyterLite's own service-worker registration.
+- **None of the four reached `__praxisPendingRequest`** within budgets up to 360s:
 
   ```json
   { "pageerrors": [], "pause_only": true, "reached_pause_point": false, "topology": "toplevel" }
   ```
 
-**Why, honestly:** the JupyterLite build's Pyodide runtime is CDN-loaded (see
-`assets/jupyterlite/extensions/@jupyterlite/pyodide-kernel-extension/static/716.*.js`,
-which references `cdn.jsdelivr.net`), and the JupyterLite service worker triggers a
-second full asset reload after first registering — both add real, variable latency on
-top of Pyodide's own package loading, and Xvfb + this VM's resource contention likely
-compounds it further. **This is a plausible explanation, not a confirmed one** — the
-self-check's own polling loop had no per-iteration progress instrumentation for the
-part of the chain between "jedi/parso loaded" and "interaction posted" (fixed after
-these runs; current `gesture_spike.py` logs progress there too), so it cannot rule out
-a genuine hang. If your real run also sits quietly for several minutes past
-"Loaded jedi, parso" in the console output, that by itself is not evidence of a bug —
-but if it exceeds roughly 5 minutes with the terminal's periodic
-`waiting for human ... pending=None` lines never changing to a real id, note that
-explicitly in what you send back; it may be worth someone re-running
-`--verify-pause-only` (fast, no device needed) to re-confirm the harness still reaches
-the pause point before you spend your own time on a run that can't succeed.
+**The explanation given here previously — that CDN-loaded Pyodide plus Xvfb latency
+was making the boot merely slow — was wrong, and was wrong twice over.** It was
+labelled "plausible, not confirmed" at the time, and it should have stayed a suspicion
+rather than an explanation. Pyodide was later vendored locally (0 non-local requests
+per boot, enforced by `build_repl.py`'s `assert_pyodide_is_local`), and the spike still
+failed identically. Latency was never the cause.
+
+**The real cause (found 2026-08-20, fixed):** the probe builders interpolate an
+already-dedented `prelude` into a `textwrap.dedent()`-ed f-string. `dedent()` strips the
+*common* leading whitespace across all lines — and the injected prelude sits at column
+0, so the common prefix was `""` and the template's own 8-space indent was never
+removed. Every trailing line (`API = ...`, `async def _main()`, and crucially
+`await _main()`) was therefore absorbed into the `except Exception as e:` block of
+`_bootstrap()` that immediately precedes them.
+
+The payload still **compiled**. `_main` was simply never defined at module level and
+`await _main()` never ran — dead code inside an exception handler that never fired. The
+cell defined `_bootstrap`, printed nothing, and reported idle. No syntax error, no
+traceback, no `pageerror`, no sentinel, no posted message: a perfectly silent no-op that
+looked exactly like a slow boot. A syntax check would not have caught it; only a
+structural one does, and `_assert_toplevel_entrypoint()` in `gesture_spike.py` now runs
+that check on every generated payload and has been observed both passing and failing.
+
+With that fixed, `--verify-pause-only` reaches the pause point in **~8 seconds**. If
+your real run sits past ~60s with `pending=None`, that is now a genuine anomaly worth
+reporting, not expected warm-up.
 
 **What this does and does not establish:** the self-check is real evidence that the
 harness's serving, browser-launch, and real-kernel-boot mechanics are correct and
-error-free. It is **not** evidence that the kernel ever reaches the point of asking for
-a device, and it is **not**, and structurally cannot be, evidence about the actual
-question S-E exists to answer. The gesture chain from a real click through a real OS
+error-free, and — since the dedent fix — that the kernel really does reach the point of
+asking for a device. It is **not**, and structurally cannot be, evidence about the
+actual question S-E exists to answer. The gesture chain from a real click through a real OS
 device picker to a real granted, openable device has never been exercised by anyone or
 anything at the time this protocol was handed to you. **G2 criterion 5 is UNMET** until
 you complete the steps above.
