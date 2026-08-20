@@ -64,6 +64,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import re
 import subprocess
 import sys
@@ -76,9 +77,82 @@ from typing import Any
 
 LOG = logging.getLogger("repl_smoke")
 
-DEFAULT_CHROME_PATH = (
+#: Last-resort Chromium path. Kept because playwright 1.62.0 on THIS box wants
+#: build 1234, which is not installed, while 1228 is -- see the module docstring.
+#: It is a fallback, not the default: hardcoding one developer's home directory as
+#: the default made every browser gate unrunnable anywhere else, CI included.
+LOCAL_FALLBACK_CHROME_PATH = (
     "/home/marielle/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome"
 )
+CHROME_PATH_ENV_VAR = "PRAXIS_CHROME_PATH"
+
+
+def _is_executable(path: Path) -> bool:
+    return path.is_file() and bool(path.stat().st_mode & 0o111)
+
+
+def _chromium_build_number(path: Path) -> int:
+    """Sort key for `.../chromium-1228/chrome-linux64/chrome`. 0 when unparseable."""
+    name = path.parent.parent.name  # e.g. "chromium-1228" or "chromium_headless_shell-1234"
+    digits = name.rsplit("-", 1)[-1]
+    return int(digits) if digits.isdigit() else 0
+
+
+def resolve_chrome_path(explicit: str | None = None) -> Path:
+    """Find a usable Chromium, in descending order of explicitness.
+
+    ``--chrome-path`` -> ``$PRAXIS_CHROME_PATH`` -> Playwright's own bundled
+    Chromium -> this box's 1228 build. Raises with all four sources named rather
+    than letting Playwright fail later about a missing executable, which reads as
+    a browser bug instead of a configuration one.
+    """
+    tried: list[str] = []
+
+    if explicit:
+        tried.append(f"--chrome-path={explicit}")
+        if _is_executable(Path(explicit)):
+            return Path(explicit)
+
+    env_value = os.environ.get(CHROME_PATH_ENV_VAR)
+    if env_value:
+        tried.append(f"${CHROME_PATH_ENV_VAR}={env_value}")
+        if _is_executable(Path(env_value)):
+            return Path(env_value)
+
+    # Playwright's own download location -- what `playwright install chromium`
+    # produces, and the only Chromium present in CI. Discovered by globbing the
+    # browsers cache rather than by reading p.chromium.executable_path: that
+    # requires spinning up the Playwright driver connection, which (a) reports the
+    # build playwright WANTS rather than one that exists, and (b) emits
+    # "Task was destroyed but it is pending" teardown noise into every run's logs.
+    # Highest build number first, so a newer install wins over a stale one.
+    browsers_root = Path(
+        os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+        or (Path.home() / ".cache" / "ms-playwright")
+    )
+    candidates = sorted(
+        browsers_root.glob("chromium*/chrome-linux*/chrome"),
+        key=lambda q: _chromium_build_number(q),
+        reverse=True,
+    )
+    tried.append(
+        f"playwright cache={browsers_root} "
+        f"({len(candidates)} candidate(s): {[c.parent.parent.name for c in candidates]})"
+    )
+    for candidate in candidates:
+        if _is_executable(candidate):
+            return candidate
+
+    tried.append(f"local fallback={LOCAL_FALLBACK_CHROME_PATH}")
+    if _is_executable(Path(LOCAL_FALLBACK_CHROME_PATH)):
+        return Path(LOCAL_FALLBACK_CHROME_PATH)
+
+    raise FileNotFoundError(
+        "no usable Chromium found. Tried, in order:\n  "
+        + "\n  ".join(tried)
+        + "\nInstall one with `uv run playwright install --with-deps chromium`, or "
+        f"point --chrome-path / ${CHROME_PATH_ENV_VAR} at an existing build."
+    )
 DEFAULT_TIMEOUT_S = 120.0
 
 # GATE G5's offline clause. These are blackholed at the CHROMIUM RESOLVER level, not
@@ -1429,11 +1503,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     p.add_argument(
         "--chrome-path",
-        default=DEFAULT_CHROME_PATH,
+        default=None,
         help=(
-            "Path to a Chromium executable. playwright 1.62.0 wants build 1234, which is "
-            f"not installed on this box; default points at the verified-present 1228 build: "
-            f"{DEFAULT_CHROME_PATH}"
+            "Path to a Chromium executable. When omitted, resolution order is "
+            f"${CHROME_PATH_ENV_VAR}, then Playwright's own bundled Chromium (what "
+            "`playwright install chromium` produces, and the only one present in CI), "
+            f"then this box's 1228 build ({LOCAL_FALLBACK_CHROME_PATH}) -- playwright "
+            "1.62.0 wants build 1234, which is not installed here."
         ),
     )
     p.add_argument(
@@ -1504,15 +1580,12 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    chrome_path = Path(args.chrome_path)
-    if not (chrome_path.is_file() and chrome_path.stat().st_mode & 0o111):
-        LOG.error(
-            "chrome executable not found or not executable at %s. "
-            "This harness requires --chrome-path pointing at a real Chromium build "
-            "(see plan section 5.6 — playwright 1.62.0 wants build 1234, not installed).",
-            chrome_path,
-        )
+    try:
+        chrome_path = resolve_chrome_path(args.chrome_path)
+    except FileNotFoundError as exc:
+        LOG.error("%s", exc)
         return 2
+    LOG.info("using chromium at %s", chrome_path)
 
     if args.notebook_check:
         serve_dir = args.serve_dir.resolve()

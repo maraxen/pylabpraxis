@@ -504,6 +504,83 @@ def stamp_loader_shas(bootstrap_py: Path, source_dir: Path) -> dict[str, str]:
     return shas
 
 
+SOURCE_HOST_ROOT = 'HOST_ROOT = "/"'
+
+
+def normalize_base_path(value: str) -> str:
+    """Return *value* with exactly one leading and one trailing slash."""
+    stripped = value.strip().strip("/")
+    return "/" if not stripped else f"/{stripped}/"
+
+
+def apply_base_path(out_dir: Path, base_path: str) -> int:
+    """Rewrite the notebooks' absolute HOST_ROOT for a subpath deploy.
+
+    GitHub Pages serves a project site under /<repo>/, so a notebook that fetches
+    from "/" reaches the DOMAIN root and 404s on every bootstrap file. HOST_ROOT
+    cannot be derived at runtime: the kernel is a Web Worker whose global is
+    `self`, not `window`, so there is no document location to read. It has to be
+    substituted at build time.
+
+    Rewrites the STAGED copy only -- web-repl/files/*.ipynb stays
+    deployment-agnostic, the same discipline stamp_loader_shas() uses for the
+    bootstrap. Returns the number of notebooks changed.
+    """
+    if base_path == "/":
+        return 0
+
+    files_dir = out_dir / "files"
+    if not files_dir.is_dir():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {files_dir} does not exist, so --base-path "
+            "cannot be applied and the deployed notebooks would fetch from the "
+            "domain root."
+        )
+
+    replacement = f'HOST_ROOT = "{base_path}"'
+    changed = 0
+    for notebook in sorted(files_dir.rglob("*.ipynb")):
+        text = notebook.read_text()
+        # The notebook stores source as JSON string literals, so the quotes are
+        # escaped on disk; handle both forms rather than guessing which.
+        for needle, sub in (
+            (SOURCE_HOST_ROOT, replacement),
+            (SOURCE_HOST_ROOT.replace('"', '\\"'), replacement.replace('"', '\\"')),
+        ):
+            if needle in text:
+                text = text.replace(needle, sub)
+                changed += 1
+        notebook.write_text(text)
+
+    if changed == 0:
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: --base-path {base_path} was requested but no "
+            f"notebook under {files_dir} contained {SOURCE_HOST_ROOT!r}. The deployed "
+            "site would boot, open the notebook, and 404 on its first cell. Either "
+            "the notebook changed shape or the substitution needle is stale."
+        )
+    logger.info("applied base path %s to %d notebook occurrence(s)", base_path, changed)
+    return changed
+
+
+def assert_no_root_host_root(out_dir: Path, base_path: str) -> None:
+    """Fail if any staged notebook still fetches from the domain root."""
+    if base_path == "/":
+        return
+    offenders = [
+        str(nb)
+        for nb in sorted((out_dir / "files").rglob("*.ipynb"))
+        if SOURCE_HOST_ROOT in nb.read_text()
+        or SOURCE_HOST_ROOT.replace('"', '\\"') in nb.read_text()
+    ]
+    if offenders:
+        raise BuildAssertionError(
+            "BUILD ASSERTION FAILED: these staged notebooks still carry "
+            f"{SOURCE_HOST_ROOT!r} despite --base-path {base_path}: {offenders}. "
+            "They would 404 on their first cell against a subpath deploy."
+        )
+
+
 def stage_bootstrap(out_dir: Path) -> int:
     dst = out_dir / "bootstrap"
     if dst.exists():
@@ -647,6 +724,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Do not remove an existing --out directory before building "
         "(default: remove it first, matching GATE G5's `rm -rf dist`).",
     )
+    parser.add_argument(
+        "--base-path",
+        default="/",
+        help=(
+            "URL prefix the built site will be served under. Default '/'. Set this "
+            "for a subpath deploy (GitHub Pages project sites serve at /<repo>/, so "
+            "the praxis site needs '/praxis/'): it rewrites the absolute HOST_ROOT in "
+            "the STAGED notebooks, which cannot be derived at runtime because the "
+            "kernel is a Web Worker with no document location."
+        ),
+    )
     parser.add_argument("-v", "--verbose", action="store_true", help="Debug-level logging.")
     return parser.parse_args(argv)
 
@@ -686,6 +774,10 @@ def main(argv: list[str] | None = None) -> int:
         if not args.debug_skip_jupyterlite and not args.allow_cdn:
             assert_pyodide_is_local(out_dir)
         assert_required_piplite_wheels(out_dir)
+
+        base_path = normalize_base_path(args.base_path)
+        apply_base_path(out_dir, base_path)
+        assert_no_root_host_root(out_dir, base_path)
 
         run_build_manifest(dev=args.dev)
         stage_overlay(out_dir)
