@@ -4,7 +4,7 @@
   },
   "PipliteAddon": {
     "piplite_urls": [
-      "piplite-wheels/comm-0.2.3-py3-none-any.whl"
+      "vendor/piplite-wheels/comm-0.2.3-py3-none-any.whl"
     ]
   }
 }
