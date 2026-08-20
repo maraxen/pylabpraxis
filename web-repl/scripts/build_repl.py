@@ -178,16 +178,26 @@ def resolve_pyodide_arg(*, allow_cdn: bool) -> str | None:
     """Return the ``--PyodideAddon.pyodide_url`` value to pass, or ``None``
     to leave ``jupyter_lite_config.json``'s own (CDN) value in force.
 
+    Note what ``None`` does NOT mean: it does not produce a site that loads
+    Pyodide from a CDN at runtime. ``PyodideAddon`` treats ``pyodide_url`` as a
+    SOURCE, vendoring whatever it points at into ``static/pyodide/`` and
+    rewriting the runtime ``pyodideUrl`` to that local path. Building a genuinely
+    CDN-loading site would need a post-build step that rewrites ``pyodideUrl``
+    back to the remote URL and deletes ``static/pyodide/`` -- filed as debt, not
+    implemented.
+
     Reuses ``fetch_pyodide.read_pinned_version`` rather than re-parsing the
     config -- one parser for "what version does this build target", not two
     that can drift against each other.
     """
     if allow_cdn:
         logger.warning(
-            "--allow-cdn: leaving PyodideAddon.pyodide_url on the CDN URL "
-            "already pinned in jupyter_lite_config.json. GATE G5's "
-            "'grep cdn.jsdelivr.net dist | wc -l == 0' check will NOT pass "
-            "in this mode -- it exists for local iteration only."
+            "--allow-cdn: sourcing Pyodide from the CDN URL pinned in "
+            "jupyter_lite_config.json instead of the vendored tarball. The BUILT "
+            "SITE still loads Pyodide locally -- PyodideAddon vendors whatever URL "
+            "it is given into static/pyodide/ -- so this neither produces a "
+            "CDN-loading site nor shrinks the artifact. assert_pyodide_is_local is "
+            "skipped in this mode even though it would pass."
         )
         return None
     version = fetch_pyodide.read_pinned_version(CONFIG_PATH)
@@ -823,10 +833,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--allow-cdn",
         action="store_true",
-        help="Leave PyodideAddon.pyodide_url on the CDN URL already pinned "
-        "in jupyter_lite_config.json instead of requiring the vendored "
-        "tarball from fetch_pyodide.py. For local iteration only -- GATE "
-        "G5's zero-cdn.jsdelivr.net check will not pass in this mode.",
+        help=(
+            "SOURCE Pyodide from the CDN URL pinned in jupyter_lite_config.json "
+            "instead of requiring the vendored tarball from fetch_pyodide.py. "
+            "This changes where the build FETCHES Pyodide, NOT how the built site "
+            "loads it: PyodideAddon vendors whatever URL it is given into "
+            "static/pyodide/ and rewrites pyodideUrl to that local path either "
+            "way. Measured 260820 -- --allow-cdn produced a byte-comparable 479 MB "
+            "site with pyodideUrl=./static/pyodide/pyodide.mjs. It does NOT "
+            "produce a CDN-loading site, and it does NOT make the artifact "
+            "smaller. For local iteration when the tarball has not been fetched."
+        ),
     )
     parser.add_argument(
         "--no-clean",
