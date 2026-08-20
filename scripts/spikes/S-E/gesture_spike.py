@@ -88,9 +88,13 @@ from typing import Any
 
 LOG = logging.getLogger("gesture_spike")
 
-DEFAULT_CHROME_PATH = (
-    "/home/marielle/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome"
-)
+# Chromium resolution is shared with the main harness rather than duplicated.
+# This file used to hardcode one developer's home directory, which made the S-E
+# spike unrunnable by whoever actually has the hardware -- the one person who
+# needs to run it. resolve_chrome_path() tries --chrome-path, then
+# $PRAXIS_CHROME_PATH, then Playwright's browser cache, then this box's build.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from repl_smoke import resolve_chrome_path  # noqa: E402 - path setup must precede it
 DEFAULT_HUMAN_TIMEOUT_S = 600.0  # 10 minutes per phase — a human has to find/plug in a device
 DEFAULT_PAUSE_ONLY_TIMEOUT_S = 30.0
 POLL_INTERVAL_S = 2.0
@@ -820,7 +824,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--topology", choices=(*TOPOLOGIES, "both"), default="both")
     p.add_argument("--api", choices=APIS, default="serial")
-    p.add_argument("--chrome-path", default=DEFAULT_CHROME_PATH)
+    p.add_argument(
+        "--chrome-path",
+        default=None,
+        help=(
+            "Chromium executable. Resolution order when omitted: "
+            "$PRAXIS_CHROME_PATH, Playwright's browser cache, then this box's "
+            "1228 build. See repl_smoke.resolve_chrome_path."
+        ),
+    )
     p.add_argument("--serve-dir", type=Path, default=DEFAULT_SERVE_DIR)
     p.add_argument("--overlay-dir", type=Path, default=OVERLAY_DIR)
     p.add_argument("--human-timeout", type=float, default=DEFAULT_HUMAN_TIMEOUT_S,
@@ -857,9 +869,10 @@ def main(argv: list[str] | None = None) -> int:
     if not (overlay_dir / "host_iframe.html").is_file():
         LOG.error("overlay host page missing: %s/host_iframe.html", overlay_dir)
         return 2
-    chrome_path = Path(args.chrome_path)
-    if not (chrome_path.is_file() and chrome_path.stat().st_mode & 0o111):
-        LOG.error("chrome executable not found or not executable at %s", chrome_path)
+    try:
+        chrome_path = resolve_chrome_path(args.chrome_path)
+    except FileNotFoundError as exc:
+        LOG.error("%s", exc)
         return 2
 
     topologies = list(TOPOLOGIES) if args.topology == "both" else [args.topology]

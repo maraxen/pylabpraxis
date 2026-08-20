@@ -1,5 +1,14 @@
 name: Deploy to GitHub Pages
 
+# Publishes the static JupyterLite REPL built by web-repl/scripts/build_repl.py.
+#
+# This file previously built the pre-refocus architecture: generate_browser_db.py,
+# `jupyter lite build` against praxis/web-client/jupyterlite-config.json, a
+# git-checkout-four-files overlay, bun install, and an Angular build:gh-pages,
+# publishing praxis/web-client/dist/web-client/browser. None of that is the
+# current build, and the Angular embed was dropped by decision (execution plan
+# P7.3's own "or skip entirely", open question Q8).
+
 on:
   push:
     branches:
@@ -17,10 +26,16 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      # submodules: recursive is load-bearing -- build_wheels.py builds the
+      # pylabrobot wheel via `git archive <sha>` against external/pylabrobot.
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
+
+      - name: Assert the submodule is actually present
+        run: test -f external/pylabrobot/pyproject.toml
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -30,59 +45,80 @@ jobs:
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
+      # `uv sync`, not `uv pip install -e ".[dev]"`: playwright lives in
+      # [dependency-groups] dev, not in the extras, and the gates below need it.
       - name: Install Python dependencies
-        run: uv sync
-
-      - name: Generate assets
-        run: uv run --with pylibftdi scripts/generate_browser_db.py
-
-      - name: Build JupyterLite REPL
         run: |
-          uv run jupyter lite build --config praxis/web-client/jupyterlite-config.json --output-dir praxis/web-client/src/assets/jupyterlite
-          git checkout praxis/web-client/src/assets/jupyterlite/jupyter-lite.gh-pages.json \
-                      praxis/web-client/src/assets/jupyterlite/praxis_bootstrap.py \
-                      praxis/web-client/src/assets/jupyterlite/service-worker.js \
-                      praxis/web-client/src/assets/jupyterlite/build/service-worker.js
+          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          uv sync
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Cache vendored runtime
+        uses: actions/cache@v4
         with:
-          bun-version: latest
+          path: web-repl/vendor
+          key: >-
+            vendor-${{ runner.os }}-${{ hashFiles(
+              'web-repl/jupyter_lite_config.json',
+              'web-repl/piplite_wheels.json') }}
 
-      - name: Install Node dependencies
-        working-directory: ./praxis/web-client
-        run: bun install
-
-      - name: Build web client
-        working-directory: ./praxis/web-client
-        run: bun run build:gh-pages
-
-      - name: Fix JupyterLite config for deployment
-        working-directory: ./praxis/web-client
+      # /praxis/ is the Pages project-site prefix (maraxen.github.io/praxis/).
+      # Without it welcome.ipynb's HOST_ROOT stays "/" and every bootstrap fetch
+      # 404s against the domain root -- a site that boots, opens the notebook, and
+      # fails only on its first cell.
+      - name: Build the REPL
         run: |
-          # build:gh-pages overwrites the build-generated jupyter-lite.json with a stale copy.
-          # Restore the build-generated config (correct extension refs) and patch only baseUrl.
-          sed 's|"baseUrl": "./"|"baseUrl": "/praxis/assets/jupyterlite/"|' \
-            src/assets/jupyterlite/jupyter-lite.json > \
-            dist/web-client/browser/assets/jupyterlite/jupyter-lite.json
+          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          uv run python web-repl/scripts/build_repl.py --base-path /praxis/
 
-      - name: SPA Fix (404.html + .nojekyll)
+      - name: Install Chromium
         run: |
-          cp ./praxis/web-client/dist/web-client/browser/index.html ./praxis/web-client/dist/web-client/browser/404.html
-          touch ./praxis/web-client/dist/web-client/browser/.nojekyll
+          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          uv run playwright install --with-deps chromium
 
-      - name: Add COOP/COEP service worker
+      # Gate the ARTIFACT ABOUT TO BE PUBLISHED, not a parallel one. repl.yml also
+      # runs on pushes to main, but it is a separate workflow: nothing stops this
+      # job from publishing while that one goes red. Re-running the two decisive
+      # gates here costs a few minutes and makes "deployed" mean "a browser opened
+      # this exact build and ran the notebook".
+      - name: Offline gate on the built artifact
         run: |
-          curl -sSL https://raw.githubusercontent.com/gzuidhof/coi-serviceworker/master/coi-serviceworker.js \
-            -o ./praxis/web-client/dist/web-client/browser/coi-serviceworker.js
+          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          uv run python scripts/repl_smoke.py --probe --offline --base-path /praxis/
+
+      - name: Execute welcome.ipynb on the built artifact
+        run: |
+          source $HOME/.local/bin/env 2>/dev/null || source $HOME/.cargo/env
+          uv run python scripts/repl_smoke.py --notebook-check --base-path /praxis/
+
+      # .nojekyll is required, not cosmetic: dist/assets/shims/__init__.py starts
+      # with an underscore, and Jekyll strips underscore-prefixed paths. Without
+      # it the shims package silently does not ship.
+      # 404.html backs deep links into the lab app.
+      - name: SPA fix (.nojekyll + 404.html)
+        run: |
+          touch web-repl/dist/.nojekyll
+          cp web-repl/dist/index.html web-repl/dist/404.html
+
+      # NO coi-serviceworker.js. The old deploy curled it unpinned from
+      # raw.githubusercontent.com into the published site. Measured 2026-08-20:
+      # every non-COI probe reports crossOriginIsolated=false and the site still
+      # boots fully -- kernel ready, GATE G6 passing, visualizer green. Pyodide
+      # needs cross-origin isolation only for threading, which this build does not
+      # use. Dropping it removes an unverified third-party fetch from the deployed
+      # site; if a future change needs COI, add it back PINNED.
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      # ~584 MB, of which ~512 MB is dist/static/pyodide (320 wheels). Within
+      # Pages' 1 GB limit with ~40% headroom. Pruning the unused Pyodide packages
+      # is a known follow-up, deliberately not done here: disablePyPIFallback is
+      # true, so a pruned package is unobtainable at runtime rather than merely
+      # slow to fetch.
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./praxis/web-client/dist/web-client/browser
+          path: ./web-repl/dist
 
   deploy:
     environment:
