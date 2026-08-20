@@ -333,6 +333,72 @@ def build_probe_code(host_root: str, expect_praxis_sha: str | None) -> str:
                 RESULT["viz_error"] = f"{{type(e).__name__}}: {{e}}"
                 RESULT["viz_traceback"] = traceback.format_exc()
 
+            # --- 2d. GATE G6's decisive arm, IN A REAL KERNEL ---
+            # "pick_up_tips produces set_state AFTER set_root_resource;
+            #  viz.stats()['sent'] >= 2 -- exactly 1 is the documented FAILURE
+            #  signature." The browserless half lives in
+            #  web-repl/tests/test_browser_visualizer.py; this is the half the gate
+            #  text actually specifies ("in a real kernel").
+            #
+            # set_tip_tracking(True) is REQUIRED and the gate text omits it:
+            # does_tip_tracking() defaults to False, and with tracking off
+            # pick_up_tips mutates no resource state, so no callback fires and no
+            # set_state is emitted -- the gate then fails for a reason unrelated to
+            # the transport, while chatterbox still prints a full pickup.
+            try:
+                from pylabrobot.liquid_handling import LiquidHandler
+                from pylabrobot.liquid_handling.backends import (
+                    LiquidHandlerChatterboxBackend,
+                )
+                from pylabrobot.resources import (
+                    STARLetDeck,
+                    does_tip_tracking,
+                    set_tip_tracking,
+                )
+                from pylabrobot.resources.hamilton import (
+                    hamilton_96_tiprack_1000uL_filter as _TipRack1000,
+                )
+                from praxis.viz.browser import BrowserVisualizer as _BV
+                from praxis.viz.transport import RecordingTransport as _RT
+
+                _prev_tracking = does_tip_tracking()
+                set_tip_tracking(True)
+                try:
+                    _deck = STARLetDeck()
+                    _lh = LiquidHandler(
+                        backend=LiquidHandlerChatterboxBackend(num_channels=8),
+                        deck=_deck,
+                    )
+                    _t2 = _RT()
+                    _v2 = _BV(_deck, transport=_t2, show_machine_tools_at_start=False)
+                    await _lh.setup()
+                    await _v2.setup()
+                    await asyncio.sleep(0.05)
+                    _rack = _TipRack1000(name="tips_01")
+                    _deck.assign_child_resource(_rack, rails=3)
+                    await asyncio.sleep(0.05)
+                    _before = len(_t2.events)
+                    await _lh.pick_up_tips(_rack["A1:D1"])
+                    await asyncio.sleep(0.3)
+                    _ev = list(_t2.events)
+                    RESULT["g6_events"] = _ev
+                    RESULT["g6_after_pickup"] = _ev[_before:]
+                    RESULT["g6_stats"] = _v2.stats()
+                    RESULT["g6_last_state_keys"] = sorted(
+                        _t2.decoded(len(_t2.messages) - 1).get("data", {{}})
+                    )
+                    RESULT["g6_pass"] = bool(
+                        _ev and _ev[0] == "set_root_resource"
+                        and "set_state" in _ev[_before:]
+                        and _v2.stats().get("sent", 0) >= 2
+                    )
+                finally:
+                    set_tip_tracking(_prev_tracking)
+            except Exception as e:  # noqa: BLE001
+                RESULT["g6_pass"] = False
+                RESULT["g6_error"] = f"{{type(e).__name__}}: {{e}}"
+                RESULT["g6_traceback"] = traceback.format_exc()
+
             # --- 3. four io classes: repr + identity vs. builtins, by `is` ---
             io_reprs: dict = {{}}
             io_identity: dict = {{}}

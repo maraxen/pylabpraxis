@@ -288,3 +288,117 @@ def test_transport_module_does_not_import_js() -> None:
         "transport.py imports `js`, which makes it unimportable under CPython and "
         "kills every browserless test in this file."
     )
+
+
+# --------------------------------------------------------------------------
+# GATE G6's decisive arm, browserless.
+# --------------------------------------------------------------------------
+def test_pick_up_tips_emits_set_state_after_set_root_resource() -> None:
+    """The check the execution plan calls decisive, run against a real LiquidHandler.
+
+    G6: "in a real kernel, pick_up_tips produces set_state AFTER set_root_resource;
+    viz.stats()['sent'] >= 2 -- a result of exactly 1 is the documented FAILURE
+    signature." This is the browserless half; repl_smoke.py --probe runs the
+    in-kernel half.
+
+    NOTE THE PRECONDITION THE GATE TEXT OMITS: ``does_tip_tracking()`` defaults to
+    FALSE. With tracking off, pick_up_tips mutates no resource state, so no
+    state-update callback fires and NO set_state is emitted -- the gate fails for
+    a reason that has nothing to do with the transport. Measured 2026-08-20:
+    without set_tip_tracking(True) the post-pickup event slice is empty; with it,
+    a single batched set_state naming exactly the four picked tipspots.
+    """
+    from pylabrobot.liquid_handling import LiquidHandler
+    from pylabrobot.liquid_handling.backends import LiquidHandlerChatterboxBackend
+    from pylabrobot.resources import STARLetDeck, does_tip_tracking, set_tip_tracking
+    from pylabrobot.resources.hamilton import (
+        hamilton_96_tiprack_1000uL_filter as TipRack1000,
+    )
+
+    async def scenario():
+        deck = STARLetDeck()
+        lh = LiquidHandler(
+            backend=LiquidHandlerChatterboxBackend(num_channels=8), deck=deck
+        )
+        tr = RecordingTransport()
+        viz = BrowserVisualizer(deck, transport=tr, show_machine_tools_at_start=False)
+        await lh.setup()
+        await viz.setup()
+        await _settle()
+
+        rack = TipRack1000(name="tips_01")
+        deck.assign_child_resource(rack, rails=3)
+        await _settle()
+
+        before = len(tr.events)
+        await lh.pick_up_tips(rack["A1:D1"])
+        # A real await, not sleep(0): the update hops call_soon_threadsafe ->
+        # call_soon -> ensure_future before it reaches the transport.
+        await asyncio.sleep(0.2)
+        return list(tr.events), before, viz.stats(), tr.decoded(len(tr.messages) - 1)
+
+    previous = does_tip_tracking()
+    set_tip_tracking(True)
+    try:
+        events, before, stats, last = asyncio.run(scenario())
+    finally:
+        set_tip_tracking(previous)  # global; do not leak into other tests
+
+    assert events[0] == "set_root_resource"
+    assert "set_state" in events[before:], (
+        "pick_up_tips emitted no set_state. If tip tracking is on, the state-update "
+        f"callback chain is not wired. sequence={events}"
+    )
+    assert stats["sent"] >= 2, f"exactly-1 is the documented failure signature: {stats}"
+    assert last["event"] == "set_state"
+    picked = set(last["data"])
+    assert picked == {f"tips_01_tipspot_{w}1" for w in "ABCD"}, (
+        f"set_state should name exactly the four picked tipspots, got {sorted(picked)}"
+    )
+
+
+def test_pick_up_tips_without_tip_tracking_emits_nothing() -> None:
+    """Pins the precondition above, so it cannot silently become untrue.
+
+    This is the failure mode that made the gate look broken: chatterbox prints a
+    full pickup, so the operation plainly ran, yet the transport sees nothing.
+    Anyone hitting an empty slice should reach for set_tip_tracking before
+    suspecting BrowserVisualizer.
+    """
+    from pylabrobot.liquid_handling import LiquidHandler
+    from pylabrobot.liquid_handling.backends import LiquidHandlerChatterboxBackend
+    from pylabrobot.resources import STARLetDeck, does_tip_tracking, set_tip_tracking
+    from pylabrobot.resources.hamilton import (
+        hamilton_96_tiprack_1000uL_filter as TipRack1000,
+    )
+
+    async def scenario():
+        deck = STARLetDeck()
+        lh = LiquidHandler(
+            backend=LiquidHandlerChatterboxBackend(num_channels=8), deck=deck
+        )
+        tr = RecordingTransport()
+        viz = BrowserVisualizer(deck, transport=tr, show_machine_tools_at_start=False)
+        await lh.setup()
+        await viz.setup()
+        await _settle()
+        rack = TipRack1000(name="tips_02")
+        deck.assign_child_resource(rack, rails=3)
+        await _settle()
+        before = len(tr.events)
+        await lh.pick_up_tips(rack["A1:D1"])
+        await asyncio.sleep(0.2)
+        return list(tr.events)[before:]
+
+    previous = does_tip_tracking()
+    set_tip_tracking(False)
+    try:
+        after = asyncio.run(scenario())
+    finally:
+        set_tip_tracking(previous)
+
+    assert after == [], (
+        "tip tracking is off, so pick_up_tips should mutate no state and emit "
+        f"nothing -- got {after}. If this now emits, the precondition documented "
+        "in the sibling test no longer holds and GATE G6's text should be updated."
+    )

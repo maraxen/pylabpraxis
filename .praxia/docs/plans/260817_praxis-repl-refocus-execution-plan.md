@@ -487,19 +487,60 @@ uv run python scripts/repl_smoke.py --probe --offline   # boots green with cdn.j
 
 **GATE X (fires any time):** if `vendor_visualizer.py` ever needs a **fifth** vis.js anchor, **stop and escalate to V4** (upstream a transport hook into PLR). Anchor-count growth is a design regression, not a maintenance chore.
 
-**GATE G6**
+**GATE G6** — **[CORRECTED + RUN 260820]**. Four defects in the original text, all
+found by running it. `<ADR path>` = `web-repl/overlay/assets/visualizer/`.
+
 ```bash
-uv run python scripts/vendor_visualizer.py --src external/pylabrobot/pylabrobot/visualizer --out <ADR path> \
-  && git diff --exit-code -- <ADR path>                       # 0 (reproducible)
-cmp external/pylabrobot/pylabrobot/visualizer/lib.js <ADR path>/lib.js    # 0 (renderer never forked)
-grep -c 'https://' <ADR path>/index.html                       # 0
-grep -E 'href="/|src="/' <ADR path>/index.html                 # exit 1
-uv run pytest praxis-browser/tests/viz/test_browser_visualizer.py -q      # 0
-# THE ONE THAT MATTERS: in a real kernel, pick_up_tips produces set_state AFTER set_root_resource
-#   viz.stats()['sent'] >= 2  — a result of exactly 1 is the documented FAILURE signature
-grep -rnE 'requestDevice|requestPort' web-repl/augmentations/  # exit 1
-git diff --exit-code -- web-repl/augmentations/                # untouched by regeneration
+# --konva is REQUIRED (vendor_visualizer.py:472, no default -- upstream's declared
+# unpkg.com source is unreachable). The original line omitted it and exits 2.
+# Copy the vendored konva.min.js aside first: --out is the directory that holds it.
+cp web-repl/overlay/assets/visualizer/konva.min.js /tmp/konva.min.js
+uv run python web-repl/scripts/vendor_visualizer.py \
+  --src external/pylabrobot/pylabrobot/visualizer \
+  --out web-repl/overlay/assets/visualizer --konva /tmp/konva.min.js \
+  && git diff --exit-code -- web-repl/overlay/assets/visualizer   # 0 (reproducible) [ran]
+cmp external/pylabrobot/pylabrobot/visualizer/lib.js \
+    web-repl/overlay/assets/visualizer/lib.js                     # 0 (never forked) [ran]
+grep -c 'https://' web-repl/overlay/assets/visualizer/index.html  # 0 [ran]
+grep -E 'href="/|src="/' web-repl/overlay/assets/visualizer/index.html   # exit 1 [ran]
+
+# PATH CORRECTED: the ADR rejected the praxis_browser package, so the tests live in
+# web-repl/tests/, not praxis-browser/tests/viz/.
+uv run python -m pytest web-repl/tests/test_browser_visualizer.py -q     # 0 (13) [ran]
+
+# PATH CORRECTED: there is no web-repl/augmentations/; the ADR's home is
+# overlay/assets/visualizer-augmentations/ (name load-bearing -- index.html's
+# relative <script src> resolves only while it is a sibling of visualizer/).
+grep -rnE 'requestDevice|requestPort' \
+  web-repl/overlay/assets/visualizer-augmentations/               # exit 1 [ran]
+
+# THE ONE THAT MATTERS: in a real kernel, pick_up_tips produces set_state AFTER
+# set_root_resource; viz.stats()['sent'] >= 2 -- exactly 1 is the documented
+# FAILURE signature.
+uv run python scripts/repl_smoke.py --probe --offline             # g6_pass true [ran]
 ```
+
+**PRECONDITION THE ORIGINAL TEXT OMITTED — `set_tip_tracking(True)`.**
+`does_tip_tracking()` defaults to **False**. With tracking off, `pick_up_tips`
+mutates no resource state, so no state-update callback fires and **no `set_state`
+is emitted** — the decisive arm then fails for a reason that has nothing to do
+with the transport, while the chatterbox backend still prints a full, convincing
+pickup. Measured 260820: without it the post-pickup event slice is `[]`; with it,
+one batched `set_state`. Both directions are pinned by tests in
+`web-repl/tests/test_browser_visualizer.py`.
+
+**Measured 260820, real Pyodide kernel, `--offline`:**
+```
+g6_pass           = true
+g6_events         = ["set_root_resource","set_state","resource_assigned","set_state"]
+g6_after_pickup   = ["set_state"]
+g6_stats          = {"sent": 4}
+g6_last_state_keys= ["tips_01_tipspot_A1","B1","C1","D1"]   (exactly the four picked)
+```
+
+Not run: `git diff --exit-code -- <augmentations>` "untouched by regeneration" —
+the augmentation module is hand-authored and Phase 6 rewrote it deliberately, so
+that clause only becomes meaningful once the module is stable.
 
 ---
 
