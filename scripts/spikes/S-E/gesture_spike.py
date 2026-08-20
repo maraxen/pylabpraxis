@@ -73,6 +73,7 @@ Real production mechanism this script mirrors (verified by reading, not invented
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import logging
 import re
@@ -347,14 +348,38 @@ def build_bootstrap_prelude(host_root: str) -> str:
         HOST_ROOT = {host_root!r}
         RESULT: dict = {{"host_root": HOST_ROOT}}
 
+        # Boot markers. Split literal for the SAME reason the JSON sentinels are
+        # split (see build_probe_code's note): the `code` URL param is echoed
+        # verbatim into the cell BEFORE execution, so a contiguous marker string
+        # would match the SOURCE DISPLAY rather than the printed OUTPUT.
+        #
+        # These exist because a bootstrap HANG and a bootstrap RAISE are
+        # indistinguishable from the outside: both yield no sentinel, no post,
+        # and zero pageerrors. A raise is caught below and reported via the
+        # sentinel; a hang never returns and reports nothing at all. The marks
+        # say which, and where.
+        _MARK_A = "===PRAXIS_"
+        _MARK_B = "BOOT_MARK==="
+        MARKS: list = []
+
+        def _mark(tag):
+            MARKS.append(tag)
+            print(_MARK_A + _MARK_B + tag, flush=True)
+
+        _mark("cell_start")
+
         async def _bootstrap():
+            _mark("bootstrap_enter")
             try:
                 xhr = js.XMLHttpRequest.new()
                 xhr.open("GET", HOST_ROOT + "bootstrap/praxis_bootstrap.py", False)
                 xhr.send(None)
                 bootstrap_src = str(xhr.responseText)
+                _mark("fetched_%d" % len(bootstrap_src))
                 exec(compile(bootstrap_src, "praxis_bootstrap.py", "exec"), globals())
+                _mark("exec_done")
                 await praxis_main(HOST_ROOT)  # noqa: F821 - injected by exec above
+                _mark("praxis_main_done")
                 RESULT["praxis_ready"] = True
             except Exception as e:  # noqa: BLE001
                 RESULT["praxis_ready"] = False
@@ -362,6 +387,38 @@ def build_bootstrap_prelude(host_root: str) -> str:
                 RESULT["bootstrap_traceback"] = traceback.format_exc()
         """
     ).strip()
+
+
+def _assert_toplevel_entrypoint(code: str) -> str:
+    """Fail loudly if the payload's `await _main()` is not at MODULE level.
+
+    This exists because of a defect that cost a full debugging session and was
+    invisible to every other check: the probe builders interpolate an already
+    -dedented `prelude` into a textwrap.dedent()-ed f-string. dedent() removes the
+    COMMON leading whitespace across all lines -- and the injected prelude sits at
+    column 0, so the common prefix is "" and the template's own 8-space indent is
+    never stripped. The payload then still COMPILES, because the trailing lines
+    (`API = ...`, `async def _main()`, `await _main()`) are absorbed into the
+    `except Exception as e:` block of _bootstrap() that happens to precede them.
+
+    The failure is perfectly silent: _main is never defined at top level, nothing
+    is ever awaited, no exception is raised, no sentinel prints, and the kernel
+    reports idle. Observed as `reached_pause_point: false` with zero pageerrors.
+
+    A syntax check would NOT have caught this. Only a structural check does.
+    """
+    tree = ast.parse(code)
+    for node in tree.body:
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Await):
+            call = node.value.value
+            if isinstance(call, ast.Call) and getattr(call.func, "id", None) == "_main":
+                return code
+    raise AssertionError(
+        "generated payload has no top-level `await _main()` -- it was almost "
+        "certainly swallowed by an enclosing block via the dedent/indent defect "
+        "described in _assert_toplevel_entrypoint. The payload would run "
+        "silently and report nothing."
+    )
 
 
 def build_gesture_probe_code(host_root: str, api: str) -> str:
@@ -376,16 +433,19 @@ def build_gesture_probe_code(host_root: str, api: str) -> str:
     start_a, start_b = _sentinel_halves(PROBE_START)
     end_a, end_b = _sentinel_halves(PROBE_END)
     prelude = build_bootstrap_prelude(host_root)
-    return textwrap.dedent(
+    body = textwrap.dedent(
         f"""
-        {prelude}
+        __PRELUDE__
 
         API = {api!r}
         _SENTINEL_START = {start_a!r} + {start_b!r}
         _SENTINEL_END = {end_a!r} + {end_b!r}
 
         async def _main():
+            _mark("main_enter")
             await _bootstrap()
+            _mark("bootstrap_returned")
+            RESULT["marks"] = list(MARKS)
             if not RESULT.get("praxis_ready"):
                 return
 
@@ -467,7 +527,8 @@ def build_gesture_probe_code(host_root: str, api: str) -> str:
         print(json.dumps(RESULT))
         print(_SENTINEL_END)
         """
-    ).strip()
+    ).strip().replace("__PRELUDE__", prelude)
+    return _assert_toplevel_entrypoint(body)
 
 
 def build_persistence_probe_code(host_root: str, api: str) -> str:
@@ -478,16 +539,19 @@ def build_persistence_probe_code(host_root: str, api: str) -> str:
     start_a, start_b = _sentinel_halves(PROBE_START)
     end_a, end_b = _sentinel_halves(PROBE_END)
     prelude = build_bootstrap_prelude(host_root)
-    return textwrap.dedent(
+    body = textwrap.dedent(
         f"""
-        {prelude}
+        __PRELUDE__
 
         API = {api!r}
         _SENTINEL_START = {start_a!r} + {start_b!r}
         _SENTINEL_END = {end_a!r} + {end_b!r}
 
         async def _main():
+            _mark("main_enter")
             await _bootstrap()
+            _mark("bootstrap_returned")
+            RESULT["marks"] = list(MARKS)
             if not RESULT.get("praxis_ready"):
                 return
             persisted: dict = {{}}
@@ -512,7 +576,8 @@ def build_persistence_probe_code(host_root: str, api: str) -> str:
         print(json.dumps(RESULT))
         print(_SENTINEL_END)
         """
-    ).strip()
+    ).strip().replace("__PRELUDE__", prelude)
+    return _assert_toplevel_entrypoint(body)
 
 
 # ---------------------------------------------------------------------------
@@ -682,6 +747,19 @@ def run_topology(
                         # -- a [-20:] tail truncates away the boot messages where a 404 shows.
                         body_text = page.evaluate("() => document.body.innerText")
                         result["sentinel"] = _extract_sentinel_json(body_text)
+                        # Boot marks discriminate the three silent failure modes:
+                        #   []                     -> the cell never executed at all
+                        #   [cell_start, ...]      -> execution stopped AT the last
+                        #                             mark listed (a hang, since a
+                        #                             raise would print a traceback)
+                        #   [... bootstrap_returned] -> bootstrap completed; the
+                        #                             fault is downstream of it
+                        _needle = "===PRAXIS_" + "BOOT_MARK==="
+                        result["boot_marks"] = [
+                            line.split(_needle, 1)[1].strip()
+                            for line in body_text.splitlines()
+                            if _needle in line
+                        ]
                         # Keep the raw cell text when the sentinel is ABSENT: a null
                         # sentinel says the JSON never printed, not why. The cell
                         # normally carries the Python traceback that explains it.
@@ -696,10 +774,12 @@ def run_topology(
                         result["console"] = console_messages
                         LOG.error(
                             "[%s/%s pause-only] did NOT reach the pause point. "
-                            "sentinel=%s ready_received=%s -- check result['console'] for 404s.",
+                            "sentinel=%s ready_received=%s marks=%s -- check "
+                            "result['console'] for 404s.",
                             topology, api,
                             "present" if result["sentinel"] else "ABSENT",
                             result["ready_received"],
+                            result["boot_marks"] or "NONE (cell never executed)",
                         )
                     return result
 
