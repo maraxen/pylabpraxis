@@ -13,6 +13,7 @@
 - [260121_final-merge-handoff](handoffs/260121_final-merge-handoff.md)
 
 ## Plans
+- [260824_repl-autocomplete-scope](plans/260824_repl-autocomplete-scope.md) — Scope and outcome for as-you-type completion in the JupyterLite PLR REPL; the planned jedi preload proved unnecessary
 - [260817_praxis-repl-refocus-execution-plan](plans/260817_praxis-repl-refocus-execution-plan.md) — Dependency-ordered 8-phase execution plan composed from three adversarially-reviewed specs and five executed spikes, with per-phase gates, audit strategy, rollback, and an unproven-assumptions ledger.
 - [260210_final-protocol-execution-fix-plan](plans/260210_final-protocol-execution-fix-plan.md)
 - [260210_protocol-playground-fix-plan](plans/260210_protocol-playground-fix-plan.md)
@@ -74,6 +75,7 @@
 - [251222_pyodide-integration-audit](audits/251222_pyodide-integration-audit.md)
 
 ## Research
+- [260824_gemma-finetuned-plr-voice-text-copilot-scoping](research/260824_gemma-finetuned-plr-voice-text-copilot-scoping.md) — Scoping assessment for a Gemma model fine-tuned to translate voice/text lab instructions into validated PyLabRobot calls inside the JupyterLite Playground rebase: training-data sourcing, browser deployment feasibility, clarification UX, and build-location recommendation.
 - [260817_g2-spike-battery-verdict](research/260817_g2-spike-battery-verdict.md) — Adjudication of the five G2 criteria from spikes S-A/S-B/S-C/S-D/S-E/S-F, with independent spot-check output; overall PARTIAL-GO.
 - [260817_spike-evidence-repl-refocus](research/260817_spike-evidence-repl-refocus.md) — Five executed browser/CPython spikes grounding the refocus specs; every finding tagged ran/read with verbatim commands and output.
 - [260817_standalone-web-repl-extraction-shell-and-brainstorm](research/260817_standalone-web-repl-extraction-shell-and-brainstorm.md)
