@@ -259,10 +259,16 @@ jobs:
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
+      # --all-packages, not a bare `uv run`: coxswain is a uv WORKSPACE MEMBER
+      # but the root project does not depend on it, so the default sync installs
+      # only the root env and `import coxswain` fails at collection
+      # (ModuleNotFoundError). --all-packages installs every member; --no-sync
+      # then keeps pytest from re-syncing the member back out.
       - name: Coxswain Python tests
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-          uv run pytest coxswain/tests -q
+          uv sync --all-packages
+          uv run --no-sync pytest coxswain/tests -q
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
