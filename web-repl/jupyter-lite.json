@@ -10,6 +10,11 @@
     "disabledExtensions": [
       "@jupyterlab/apputils-extension:announcements"
     ],
+    "settingsOverrides": {
+      "@jupyterlab/completer-extension:manager": {
+        "autoCompletion": true
+      }
+    },
     "litePluginSettings": {
       "@jupyterlite/pyodide-kernel-extension:kernel": {
         "disablePyPIFallback": true
