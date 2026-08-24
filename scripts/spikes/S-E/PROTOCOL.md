@@ -60,26 +60,134 @@ UNMET.** That is the honest, expected state until you do the real run below.
 - A normal terminal — **not** a sandboxed tool call. This launches a real, visible,
   non-headless browser window that you will personally click inside.
 
+## Running this somewhere that isn't the dev box (e.g. a Raspberry Pi)
+
+Everything below was measured on 2026-08-24, not assumed.
+
+**You do not need to build the site on the Pi.** `web-repl/dist/` is
+architecture-independent: it contains **zero** native binaries (`.so`/`.dylib`/`.dll`)
+and every wheel in it is either `none-any` (pure Python) or
+`...-pyemscripten_2026_0_wasm32.whl` (WebAssembly). Build it once on any machine and
+copy it over. That skips the ~430 MB Pyodide fetch, `build_wheels.py` (which needs the
+`external/pylabrobot` submodule and `git archive`), and the JupyterLite build.
+
+**The harness needs only the standard library plus `playwright`.** Both
+`gesture_spike.py` and `repl_smoke.py` import nothing but stdlib at module level;
+Playwright is imported lazily inside the functions that use it. So the Pi needs a venv
+containing `playwright` and nothing else -- *not* a `uv sync` of the full praxis
+dependency tree.
+
+**Minimal bundle** -- 479 MB, 1196 files, only six of them outside `dist/`:
+
+```
+praxis/
+  pyproject.toml                            # only needed as the repo-root anchor
+  web-repl/dist/                            # the built site (479 MB)
+  scripts/repl_smoke.py                     # resolve_chrome_path lives here
+  scripts/spikes/S-E/gesture_spike.py
+  scripts/spikes/S-E/overlay/host_iframe.html
+  scripts/spikes/S-E/PROTOCOL.md            # this file
+```
+
+`gesture_spike.py` locates the root by walking up from its own `__file__` looking for
+`pyproject.toml`, so the layout above must be preserved; the file's *contents* are
+irrelevant to the spike.
+
+Copy it across with `rsync` (resumable, and it skips what is already there on a second
+run -- worth it for 479 MB):
+
+```bash
+# from a full checkout, after `build_repl.py` has produced web-repl/dist/
+PI=pi@raspberrypi.local
+rsync -azP --relative --exclude='__pycache__' \
+  ./pyproject.toml \
+  ./web-repl/dist \
+  ./scripts/repl_smoke.py \
+  ./scripts/spikes/S-E \
+  "$PI:~/praxis/"
+```
+
+Either build works -- `--base-path` does not matter here. It rewrites `HOST_ROOT` in
+`welcome.ipynb`, and the spike never opens that notebook: it injects its own probe code
+with `host_root="/"` hardcoded (`gesture_spike.py:669`) and fetches
+`/bootstrap/praxis_bootstrap.py` straight from the server root, which is where it sits
+in `dist/` under any base path. The 2026-08-24 self-check above passed against a dist
+stamped `HOST_ROOT = "/praxis/"`. (An earlier draft of this paragraph claimed a
+`/praxis/` build would 404 every fetch. That was wrong, and checking it against the
+actual dist is what caught it.)
+
+On the Pi:
+
+```bash
+sudo apt install -y chromium            # Playwright ships NO linux-arm64 Chromium
+python3 -m venv ~/.venv-spike && ~/.venv-spike/bin/pip install playwright
+```
+
+**Confirm the setup before you plug anything in.** This boots the kernel and checks it
+reaches the device_connect pause point. It needs no device and no human:
+
+```bash
+cd /path/to/praxis
+~/.venv-spike/bin/python scripts/spikes/S-E/gesture_spike.py \
+  --verify-pause-only --topology toplevel --api serial \
+  --chrome-path /usr/bin/chromium --pause-only-timeout 90
+```
+
+Exit 0 + `self-check OK` means the bundle is good. Exit 1 + `self-check FAILED` means
+the kernel never booted -- check `--serve-dir` really points at a built `dist/`. Do
+this first: an empty device picker caused by a broken bundle is indistinguishable, to
+the naked eye, from an empty picker caused by udev permissions, and step 5 below treats
+the latter as a real finding.
+
+**Then check device permissions, still before the real run.** On most distros serial
+device nodes are gated by group:
+
+```bash
+ls -l /dev/ttyUSB* /dev/ttyACM*    # note the group, usually `dialout`
+groups                             # you must be in it; if not:
+                                   #   sudo usermod -aG dialout $USER, then re-login
+```
+
+**Use VNC, not plain SSH.** The real run is headed on purpose
+(`gesture_spike.py`, `headless=pause_only`), and step 5 requires you to *see* the
+native device picker and identify your device by name. Chromium must run **on the Pi**,
+since it enumerates the Pi's own USB bus. VNC input is real OS input, so the click
+counts as a genuine user activation gesture.
+
 ## Exact command
 
 From a normal terminal (any working directory — the script anchors itself to the repo
 via `pyproject.toml` lookup):
 
+`$PY` below is whatever interpreter has `playwright` installed: `uv run python` in a
+full checkout on the dev box, or `~/.venv-spike/bin/python` on the Pi. `$SPIKE` is
+`scripts/spikes/S-E/gesture_spike.py`. On the Pi, add `--chrome-path /usr/bin/chromium`
+to every command (Playwright ships no linux-arm64 Chromium).
+
+An earlier revision of this section began `cd /tmp/claude-1000/praxis-spikes/S-E` and
+hardcoded `--project /home/marielle/projects/praxis`. That scratch directory no longer
+exists and that path is one machine's home, so both were removed 2026-08-24 rather than
+sending whoever runs this to a missing directory.
+
 ```bash
-cd /tmp/claude-1000/praxis-spikes/S-E
+cd /path/to/praxis
 
 # One topology, one API, generous timeout (10 min to find/plug in the device + click):
-uv run --project /home/marielle/projects/praxis python3 gesture_spike.py \
+$PY $SPIKE \
   --topology toplevel --api serial \
   --human-timeout 600 \
   --out results_toplevel_serial.json -v
 
 # Then the comparison run — SAME device, iframe-embedded topology:
-uv run --project /home/marielle/projects/praxis python3 gesture_spike.py \
+$PY $SPIKE \
   --topology iframe --api serial \
   --human-timeout 600 \
   --out results_iframe_serial.json -v
 ```
+
+Run **both** topologies. The toplevel-vs-iframe difference is the entire deliverable:
+it is what decides design B-prime versus design A, and one topology alone cannot
+answer it.
 
 If your machine has no real X display available to a plain terminal session (unlikely
 if you're at a normal desktop; more likely if you're SSH'd in without `-X`/`-Y`), you

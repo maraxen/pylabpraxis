@@ -909,6 +909,33 @@ def main(argv: list[str] | None = None) -> int:
         args.out.write_text(output)
         LOG.info("wrote result to %s", args.out)
 
+    # --verify-pause-only is a SETUP check: its whole job is to answer "does this
+    # machine boot the kernel and reach the device_connect pause point?". It used
+    # to `return 0` unconditionally, so a bundle that never booted reported
+    # healthy -- the same defect --probe had (fixed 260820). Whoever runs this on
+    # the Pi to confirm their setup would have been told it was fine and then
+    # blamed the hardware. Measured 260821: an empty --serve-dir yields
+    # reached_pause_point=false and, before this, exit 0.
+    #
+    # Deliberately NOT applied to a real (non-pause-only) run. There, failing to
+    # reach the pause point is a FINDING the human adjudicates via PROTOCOL.md,
+    # not a script error, and the exit code must not pre-empt that judgement.
+    if args.verify_pause_only:
+        unreached = [
+            topo
+            for topo, res in all_results["topologies"].items()
+            if not res.get("reached_pause_point")
+        ]
+        if unreached:
+            LOG.error(
+                "self-check FAILED: never reached the pause point for topology/-ies %s. "
+                "The kernel did not boot or the shims did not load -- check --serve-dir "
+                "points at a built web-repl/dist.",
+                ", ".join(unreached),
+            )
+            return 1
+        LOG.info("self-check OK: reached the pause point for %s", ", ".join(all_results["topologies"]))
+
     return 0
 
 
