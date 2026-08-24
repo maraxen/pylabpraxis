@@ -2,18 +2,11 @@ import { Component, signal, WritableSignal, NO_ERRORS_SCHEMA } from '@angular/co
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 // Mock sub-components MUST be defined BEFORE PlaygroundComponent is imported
-vi.mock('./components/direct-control/direct-control.component', () => ({
-    DirectControlComponent: Component({ selector: 'app-direct-control', standalone: true, template: '' })(class { })
-}));
 vi.mock('@shared/components/hardware-discovery-button/hardware-discovery-button.component', () => ({
     HardwareDiscoveryButtonComponent: Component({ selector: 'app-hardware-discovery-button', standalone: true, template: '' })(class { })
 }));
 vi.mock('@shared/components/page-tooltip/page-tooltip.component', () => ({
     PageTooltipComponent: Component({ selector: 'app-page-tooltip', standalone: true, template: '' })(class { })
-}));
-vi.mock('@shared/components/praxis-select/praxis-select.component', () => ({
-    PraxisSelectComponent: Component({ selector: 'app-praxis-select', standalone: true, template: '', inputs: ['options', 'placeholder'] })(class { }),
-    SelectOption: class { }
 }));
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -21,18 +14,13 @@ import { PlaygroundComponent } from './playground.component';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { AppStore } from '@core/store/app.store';
 import { ModeService } from '@core/services/mode.service';
-import { AssetService } from '@features/assets/services/asset.service';
-import { SerialManagerService } from '@core/services/serial-manager.service';
-import { SqliteService } from '@core/services/sqlite';
 import { PlaygroundJupyterliteService } from './services/playground-jupyterlite.service';
-import { CommandRegistryService } from '@core/services/command-registry.service';
 import { InteractionService } from '@core/services/interaction.service';
 import { JupyterChannelService } from './services/jupyter-channel.service';
-import { DirectControlKernelService } from './services/direct-control-kernel.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { Overlay } from '@angular/cdk/overlay';
-import { of, BehaviorSubject } from 'rxjs';
+import { of } from 'rxjs';
 
 // Mock BroadcastChannel
 class MockBroadcastChannel {
@@ -56,7 +44,6 @@ describe('PlaygroundComponent', () => {
 
     let themeSignal: WritableSignal<string>;
     let modeLabelSignal: WritableSignal<string>;
-    let isReady$ = new BehaviorSubject<boolean>(true);
 
     let jupyterliteMock = {
         isLoading: signal(true),
@@ -87,23 +74,8 @@ describe('PlaygroundComponent', () => {
                     useValue: { modeLabel: modeLabelSignal }
                 },
                 {
-                    provide: AssetService,
-                    useValue: {
-                        getMachines: () => of([]),
-                        getResources: () => of([])
-                    }
-                },
-                {
-                    provide: SqliteService,
-                    useValue: { isReady$: isReady$.asObservable() }
-                },
-                {
                     provide: PlaygroundJupyterliteService,
                     useValue: jupyterliteMock
-                },
-                {
-                    provide: CommandRegistryService,
-                    useValue: { registerCommand: vi.fn() }
                 },
                 {
                     provide: InteractionService,
@@ -113,11 +85,6 @@ describe('PlaygroundComponent', () => {
                     provide: JupyterChannelService,
                     useValue: { message$: of(), postMessage: vi.fn() }
                 },
-                {
-                    provide: DirectControlKernelService,
-                    useValue: { execute: vi.fn() }
-                },
-                { provide: SerialManagerService, useValue: { availablePorts: signal([]) } },
                 { provide: MatSnackBar, useValue: { open: vi.fn() } },
                 { provide: MatDialog, useValue: { open: vi.fn() } },
                 { provide: Overlay, useValue: { create: vi.fn(), position: vi.fn() } }

@@ -5,13 +5,11 @@ import { JupyterlitePage } from './jupyterlite.page';
 
 export class PlaygroundPage extends BasePage {
     readonly inventoryButton: Locator;
-    readonly directControlTab: Locator;
     readonly jupyter: JupyterlitePage;
 
     constructor(page: Page, testInfo?: TestInfo) {
         super(page, '/app/playground', testInfo);
         this.inventoryButton = page.locator('button').filter({ has: page.locator('mat-icon', { hasText: 'inventory_2' }) });
-        this.directControlTab = page.getByRole('tab', { name: 'Direct Control' });
         this.jupyter = new JupyterlitePage(page);
     }
 
@@ -34,41 +32,6 @@ export class PlaygroundPage extends BasePage {
         const inventoryDialog = new InventoryDialogPage(this.page);
         await inventoryDialog.waitForDialogVisible();
         return inventoryDialog;
-    }
-
-    async selectModule(moduleName: string): Promise<void> {
-        // This method is a placeholder for future functionality where multiple modules might be selectable.
-        // For now, we assume the machine is already selected via the inventory.
-        console.log(`[PlaygroundPage] Selecting module: ${moduleName}`);
-        await this.directControlTab.click();
-        await expect(this.page.locator('app-direct-control')).toBeVisible({ timeout: 10000 });
-    }
-
-    async executeCurrentMethod(methodName: RegExp = /Setup/i): Promise<void> {
-        const directControl = this.page.locator('app-direct-control');
-        const methodChip = directControl.getByRole('button', { name: methodName });
-
-        await expect(methodChip.first()).toBeVisible({ timeout: 10000 });
-        await methodChip.first().click();
-
-        const executeBtn = directControl.getByRole('button', { name: /execute/i });
-        await expect(executeBtn).toBeVisible();
-        await expect(executeBtn).toBeEnabled();
-        await executeBtn.click();
-    }
-
-    async waitForSuccess(expectedResult: string | RegExp = /OK/i): Promise<void> {
-        const directControl = this.page.locator('app-direct-control');
-        const resultLocator = directControl.locator('.command-result');
-        await expect(resultLocator).toBeVisible({ timeout: 15000 });
-        await expect(resultLocator).toContainText(expectedResult);
-    }
-
-    async verifyBackendInstantiation(machineName: string): Promise<void> {
-        const backendReady = await this.page.evaluate((name) => {
-            return (window as any).machineService?.getBackendInstance(name) !== undefined;
-        }, machineName);
-        expect(backendReady).toBe(true);
     }
 
     /**

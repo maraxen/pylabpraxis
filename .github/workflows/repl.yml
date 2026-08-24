@@ -1,0 +1,186 @@
+name: REPL
+
+# GATE G7. The execution plan's reason for this file existing, verbatim:
+# "Nothing merges on a locally-green suite: this repo shipped an unservable build
+# precisely because no CI gate looked at the browser."
+#
+# Every step below already exists as a script and has been observed FAILING as
+# well as passing locally -- none of them is a check that has only ever been seen
+# green.
+
+on:
+  push:
+    branches: [main]
+    # NOTE: duplicated deliberately. GitHub Actions does not support YAML
+    # anchors/aliases in workflow files, so a &anchor here would either be
+    # rejected or silently mis-parsed.
+    paths:
+      - 'web-repl/**'
+      - 'scripts/repl_smoke.py'
+      - 'external/pylabrobot'
+      - '.github/workflows/repl.yml'
+      - 'pyproject.toml'
+      - 'uv.lock'
+  pull_request:
+    paths:
+      - 'web-repl/**'
+      - 'scripts/repl_smoke.py'
+      - 'external/pylabrobot'
+      - '.github/workflows/repl.yml'
+      - 'pyproject.toml'
+      - 'uv.lock'
+
+concurrency:
+  group: repl-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repl:
+    name: Build + browser gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
+
+    steps:
+      # submodules: recursive is LOAD-BEARING. build_wheels.py builds the
+      # pylabrobot wheel with `git archive <sha>` against external/pylabrobot; a
+      # bare checkout (which is what all five jobs in ci.yml use) fails deep
+      # inside that script with a confusing git error instead of here.
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Assert the submodule is actually present
+        run: test -f external/pylabrobot/pyproject.toml
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          # Inside the repo's 3.10-3.12 test matrix. Local dev is 3.14; scripts
+          # must stay 3.10-compatible.
+          python-version: "3.12"
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      # `uv sync`, NOT `uv pip install -e ".[dev]"` as ci.yml does: playwright is
+      # declared in [dependency-groups] dev (pyproject.toml:299+), not in the
+      # [project.optional-dependencies] dev extra, so the extras form installs a
+      # tree with no playwright in it and every browser gate below fails to import.
+      - name: Install dependencies
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv sync
+
+      # ~430 MB Pyodide tarball + the pinned piplite wheels. Without this every
+      # run re-downloads them. Keyed on the two files that pin what gets fetched:
+      # jupyter_lite_config.json carries the Pyodide version, vendored_wheels.json
+      # the wheel pins.
+      - name: Cache vendored runtime
+        uses: actions/cache@v4
+        with:
+          path: web-repl/vendor
+          key: >-
+            vendor-${{ runner.os }}-${{ hashFiles(
+              'web-repl/jupyter_lite_config.json',
+              'web-repl/vendored_wheels.json') }}
+
+      # build_repl.py fetches the piplite wheels itself but REQUIRES the Pyodide
+      # tarball to already be vendored -- it fails with "pyodide-<v>.tar.bz2 not
+      # found" otherwise. The cache above only restores it; nothing populated it
+      # on a cold run. On a cache hit this is a no-op: fetch_pyodide verifies the
+      # tarball's sha256 and skips the ~430 MB download.
+      - name: Vendor Pyodide
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python web-repl/scripts/fetch_pyodide.py
+
+      # build_repl.py orchestrates the site build but does NOT produce the wheels
+      # it describes: build_manifest.py fails with "overlay/assets/wheels does not
+      # exist" without this. The wheels are gitignored (R6/R8 -- zero tracked
+      # .whl repo-wide), so a clean checkout has none.
+      - name: Build the wheels
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python web-repl/scripts/build_wheels.py
+
+      - name: Install Chromium
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run playwright install --with-deps chromium
+
+      # --base-path /praxis/ matches the Pages project-site URL
+      # (https://maraxen.github.io/praxis/). This is the ONLY place the subpath
+      # deploy is exercised before users see it: welcome.ipynb's HOST_ROOT is
+      # rewritten at build time and cannot be derived at runtime (the kernel is a
+      # Web Worker with no document location).
+      - name: Build the site
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python web-repl/scripts/build_repl.py --base-path /praxis/
+
+      - name: Wheel coherence and contract
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python web-repl/scripts/check_wheel_coherence.py --check-untracked
+          uv run python web-repl/scripts/check_wheel_contract.py
+
+      - name: Probe the kernel
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --probe --base-path /praxis/
+
+      # GATE G5's offline clause. Blackholes cdn.jsdelivr.net, pypi.org and
+      # files.pythonhosted.org at the Chromium resolver (NOT page.route(), which
+      # does not intercept Web Worker requests -- and the kernel is a worker, so a
+      # route()-based gate passes vacuously). The run self-tests that the
+      # blackhole is really in force before trusting a green boot.
+      - name: Offline gate
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --probe --offline --base-path /praxis/
+
+      - name: Execute welcome.ipynb
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --notebook-check --base-path /praxis/
+
+      # Not prefixed: --viz-check serves the vendored renderer tree directly, with
+      # no JupyterLite app and no base path involved.
+      - name: Visualizer render + praxis_viz channel
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --viz-check
+
+      # One process per file, deliberately. These tests manipulate sys.path,
+      # cache modules under synthetic names, and toggle PyLabRobot globals
+      # (set_tip_tracking); sharing one interpreter invites order-dependent
+      # failures that would be far harder to read than this list.
+      - name: Tests
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python -m pytest web-repl/tests/test_base_path.py -q
+          uv run python -m pytest web-repl/tests/test_browser_visualizer.py -q
+          uv run python -m pytest web-repl/tests/test_build_manifest.py -q
+          uv run python -m pytest web-repl/tests/test_contract_covers_imports.py -q
+          uv run python -m pytest web-repl/tests/test_d1_praxis_git_sha.py -q
+          uv run python -m pytest web-repl/tests/test_fetch_vendored_wheels.py -q
+          uv run python -m pytest web-repl/tests/test_plr_contract.py -q
+          uv run python -m pytest web-repl/tests/test_praxis_bootstrap_loader.py -q
+          uv run python -m pytest web-repl/tests/test_rid_invariant.py -q
+          uv run python -m pytest web-repl/tests/test_stamp_loader_shas.py -q
+          uv run python -m pytest web-repl/tests/test_transport.py -q
+
+      - name: Upload diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repl-failure-diagnostics
+          # dist/ itself is ~584 MB and not worth uploading; these are the small
+          # files that explain a failure.
+          path: |
+            web-repl/.dist-jupyterlite-build.log
+            web-repl/dist/jupyter-lite.json
+            web-repl/dist/api/contents/all.json
+          if-no-files-found: ignore

@@ -5,7 +5,10 @@ import { ExecutionService } from './execution.service';
 import { ExecutionStatus } from '../models/execution.models';
 import { ModeService } from '@core/services/mode.service';
 import { SqliteService } from '@core/services/sqlite';
-import { PythonRuntimeService } from '@core/services/python-runtime.service';
+// See execution.service.ts for why this points at experimental/ — PythonRuntimeService
+// was retired there by ADR 260817 (T17) but ExecutionService's browser-mode usage of it
+// was out of scope for that move.
+import { PythonRuntimeService } from '../../../experimental/services/python-runtime.service';
 import { ApiWrapperService } from '@core/services/api-wrapper.service';
 import { WizardStateService } from './wizard-state.service';
 import { MatSnackBar } from '@angular/material/snack-bar';

@@ -1,0 +1,10 @@
+{
+  "PyodideAddon": {
+    "pyodide_url": "https://cdn.jsdelivr.net/pyodide/v314.0.1/full/pyodide.mjs"
+  },
+  "PipliteAddon": {
+    "piplite_urls": [
+      "vendor/piplite-wheels/comm-0.2.3-py3-none-any.whl"
+    ]
+  }
+}

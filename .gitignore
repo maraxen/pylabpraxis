@@ -21,8 +21,6 @@ parts/
 sdist/
 var/
 wheels/
-# But do NOT ignore JupyterLite/Pyodide asset wheels (deployed assets, not build artifacts)
-!**/src/assets/wheels/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
@@ -169,3 +167,8 @@ session-*.md
 .agent/scripts/jules-diff-tool/jules-diff-tool.worktrees/
 .worktrees/
 .jupyterlite.doit.db
+.fastembed_cache/
+
+# P1.5 repo hygiene (debt-1292)
+.benchmarks/
+tmp/

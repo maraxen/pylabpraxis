@@ -3,7 +3,15 @@ import { HttpClient } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { ModeService } from '@core/services/mode.service';
-import { PythonRuntimeService } from '@core/services/python-runtime.service';
+// NOTE: PythonRuntimeService was retired to experimental/ scope by ADR
+// .praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md (see T17 in the
+// standalone spec). This import was repointed here — not left broken — because
+// ExecutionService's browser-mode Pyodide execution path (startBrowserRun/
+// executeBrowserProtocol/interrupt) is live, non-trivial business logic that was NOT
+// in T17's file list to move; gutting it was out of scope for this fixer pass. This is
+// a known, flagged gap against the "zero non-experimental references" verification —
+// see the P1.1/P1.2 fixer report for task 260817_praxis_repl_refocus.
+import { PythonRuntimeService } from '../../../experimental/services/python-runtime.service';
 import { SqliteService } from '@core/services/sqlite';
 import { environment } from '@env/environment';
 import { Observable, Subject, of, firstValueFrom, throwError } from 'rxjs';

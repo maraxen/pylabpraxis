@@ -30,8 +30,8 @@ dependencies = [
     "aiosqlite>=0.20.0", # SQLite async driver for lite mode KV store
     "zeroconf>=0.131.0", # mDNS device discovery
     "pyserial>=3.5", # Serial port device discovery
-    "jupyterlite-core>=0.7.1",
-    "jupyterlite-pyodide-kernel>=0.7.0",
+    "jupyterlite-core==0.8.1",
+    "jupyterlite-pyodide-kernel==0.8.2",
     "cloudpickle>=3.0.0", # Function serialization for caching/distributed execution
     "celery>=5.5.3",
     "numpy>=2.2.6",
@@ -214,7 +214,7 @@ line-length = 100
 indent-width = 2
 fix = true
 target-version = "py310"
-exclude = ["praxis/backend/commons", "tests", "alembic", "alembic_old", "scripts", "docs", "dependency_analysis.py"]
+exclude = ["praxis/backend/commons", "tests", "alembic", "alembic_old", "scripts", "docs", "dependency_analysis.py", "web-repl/overlay", "web-repl/bootstrap"]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -302,6 +302,17 @@ dev = [
     "factory-boy>=3.3.3",
     "fakeredis>=2.32.0",
     "freezegun>=1.5.5",
+    # BUILD-TIME ONLY, and required -- not optional. jupyterlite-core's `contents`
+    # addon hard-raises "jupyter-server is not installed. You cannot add custom
+    # content to jupyterlite." the moment web-repl/files/ is non-empty
+    # (jupyterlite_core/addons/contents.py:173). Without any files/ it merely warned
+    # and no-op'd, which is why this coupling only surfaced when welcome.ipynb was
+    # added (260819). It indexes contents at BUILD time and ships nothing to the
+    # browser, so it has no bearing on the vendored-Pyodide / offline story.
+    # Lives in `dev` rather than [project].dependencies because it pulls ~58
+    # transitive packages and is never imported at runtime; `uv run` includes the
+    # `dev` group by default, which is also how playwright below is reached.
+    "jupyter-server==2.20.0",
     "playwright>=1.57.0",
     "pytest-asyncio>=1.2.0",
     "pytest-cov>=7.0.0",

@@ -1,0 +1,68 @@
+{
+  "generator": "vendor_visualizer.py",
+  "generator_version": "1.0.0",
+  "source_sha": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+  "pylabrobot_version": "0.2.2",
+  "files": [
+    {
+      "path": "favicon.png",
+      "sha256": "d46bd7548cefa597d8f215a41323c540c9420c95d93e6918cc1d7a391273805b",
+      "bytes": 162290
+    },
+    {
+      "path": "gif.js",
+      "sha256": "a8b111071bb3b123c302e6182c01d6b3550f93a4b627398b07c46875d84090bb",
+      "bytes": 13451
+    },
+    {
+      "path": "gif.worker.js",
+      "sha256": "ca9e3048557ec05d619e18b83403cd3669c88939e5fa2d6034ce7625d445970d",
+      "bytes": 16636
+    },
+    {
+      "path": "img/integrated_arm.png",
+      "sha256": "ccf1d7fab7164d83e7226f03e5245af32cda8c150c31184ef7a31320941c20ac",
+      "bytes": 28655
+    },
+    {
+      "path": "img/logo.png",
+      "sha256": "d46bd7548cefa597d8f215a41323c540c9420c95d93e6918cc1d7a391273805b",
+      "bytes": 162290
+    },
+    {
+      "path": "img/multi_channel_pipette.png",
+      "sha256": "1695def59ec47aeab75dc5514e944eaec954c32449cb37bddc286e5940e1dc88",
+      "bytes": 38330
+    },
+    {
+      "path": "img/single_channel_pipette.png",
+      "sha256": "f165f81700430f2ad6ef43406dc44d167c4802a4a2cbf3624cfe0289ae35d718",
+      "bytes": 7490
+    },
+    {
+      "path": "index.html",
+      "sha256": "239592c70702d5d3928645304a976286df7c1933b57a083bfb543b0875cb7c85",
+      "bytes": 18012
+    },
+    {
+      "path": "konva.min.js",
+      "sha256": "bcf15fc061be942780cfd3a42a0d451fa91cc4f463e561a9f13b43a43d88e2fb",
+      "bytes": 158587
+    },
+    {
+      "path": "lib.js",
+      "sha256": "f7cb2cdd9cc010ae9dfedd58001738c3aa1aff15bd9c3aa0be4a6d60f92df1df",
+      "bytes": 213771
+    },
+    {
+      "path": "main.css",
+      "sha256": "71b2e37fec3c8d52eb7532aa35ee2564961829db1ffddd8f9625357b7d64402c",
+      "bytes": 19841
+    },
+    {
+      "path": "vis.js",
+      "sha256": "6e92f16a609ff1e7d1cd0ff354def7b042d6a7eb8dd7d5342b007ad631ccbe10",
+      "bytes": 8382
+    }
+  ]
+}

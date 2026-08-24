@@ -1,0 +1,11 @@
+# web-repl has no coverage target of its own: the root pyproject.toml's
+# [tool.pytest.ini_options] sets testpaths = ["tests"] and addopts includes
+# "--cov=praxis" (root pyproject.toml, `[tool.pytest.ini_options]`). Without a
+# local override here, running pytest inside web-repl/ would inherit that
+# addopts, report ~0% coverage of `praxis`, and hard-fail once CI restores
+# --cov-fail-under. This section exists ONLY to opt out of that inherited
+# coverage requirement — see ADR .praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md
+# §5.4 ("pytest").
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--no-cov"]

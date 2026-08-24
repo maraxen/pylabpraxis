@@ -1,0 +1,17 @@
+{
+  "delta": {
+    "fill_after": "white",
+    "fill_before": "#40CDA1",
+    "target_resource": "tips_01_tipspot_A1"
+  },
+  "expected": {
+    "layer_count": 3,
+    "resource_count": 220,
+    "shape_count": 394
+  },
+  "generated_at": "2026-08-18T19:53:35.058115+00:00",
+  "generator": "gen_viz_fixtures.py",
+  "generator_version": "1.0.0",
+  "pin_sha": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+  "pylabrobot_version": "0.2.2"
+}
