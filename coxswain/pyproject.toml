@@ -10,10 +10,12 @@ authors = [{name = "Marielle Russo"}]
 requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "MIT"}
-# Intentionally empty. Model-loading (Transformers.js/ONNX), the FFT triage gate,
-# and propose/confirm primitives are not yet implemented -- see
-# ../.praxia/docs/research/260824_gemma-finetuned-plr-voice-text-copilot-scoping.md.
-dependencies = []
+# The FFT gate and its tests are pure stdlib (NFR-1/NFR-2). The ONE exception
+# is coxswain/fft/preconditions/: the W0-approved port of the dependency-free
+# simulation subset keeps its upstream pydantic result models as-is
+# (recon record 260824_w0_simulation_reuse_verdict classifies them as
+# "pydantic-only, DB-free" members), so pydantic is declared here.
+dependencies = ["pydantic>=2.0.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
