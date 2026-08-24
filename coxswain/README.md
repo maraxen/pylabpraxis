@@ -15,7 +15,10 @@ kernel-ownership fork that hasn't been resolved yet.
 
 ## Status
 
-Scaffold only. No model loading, no FFT gate, no PLR integration yet.
+W1 foundation landed: correlation contracts (`records.py`, `ids.py`, `schema/types.py`,
+`timing.py` + `web-repl/shell/coxswain/timing.js`/`envelope.js`) and the pure persistence
+store (`persistence/store.py`) with lifecycle/eviction/schema-version rules. No model
+loading, no FFT gate, no PLR integration yet -- those are W2+.
 
 ## Boundary
 
