@@ -146,6 +146,17 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --notebook-check --base-path /praxis/
 
+      # A brand-new notebook is not covered by --notebook-check: that runs
+      # welcome.ipynb, which carries its own build-stamped HOST_ROOT and its own
+      # fetch-and-exec cell. This runs the two lines a user is actually told to
+      # type in a notebook they created, in a bare kernel, and then checks BOTH
+      # that pylabrobot imports and that its Serial is the browser shim --
+      # praxis_main() never re-raises, so awaiting it proves nothing on its own.
+      - name: Fresh notebook bootstraps in two lines
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --fresh-boot-check --base-path /praxis/
+
       # Completion has three tiers and they see different things. build_repl.py's
       # assert_completion_autocompletion already covered tier 1 (the setting reached
       # the runtime config) during the build step above. These two cover the rest:

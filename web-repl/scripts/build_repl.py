@@ -343,6 +343,51 @@ def assert_completion_autocompletion(out_dir: Path) -> None:
     logger.info("as-you-type completion enabled: %s.autoCompletion=true", plugin)
 
 
+def assert_praxis_boot_shipped(out_dir: Path) -> None:
+    """Fail the build if the fresh-notebook bootstrap is not reachable.
+
+    `praxis_boot.py` is what lets a brand-new notebook come up in two lines
+    (`import praxis_boot` / `await praxis_boot.setup()`). It is importable for
+    one specific reason: the kernel mounts the JupyterLite contents drive at
+    `/drive`, runs with that as its working directory, and `sys.path` starts
+    with `''`. So the file has to be BOTH staged into `files/` and listed in the
+    static contents index -- the index is a build artifact, and a file missing
+    from it does not appear in the drive no matter what is on disk.
+
+    Both halves are checked because they fail differently and neither is
+    visible from the other: a staged-but-unindexed file is invisible to the
+    kernel, and an indexed-but-missing file yields `FileNotFoundError:
+    /drive/praxis_boot.py` at import. Measured 2026-08-24 -- deleting the staged
+    file while the index still listed it produced exactly that second shape.
+    """
+    staged = out_dir / "files" / "praxis_boot.py"
+    if not staged.is_file():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {staged} does not exist, so a fresh notebook "
+            "cannot `import praxis_boot` and every new notebook is back to a "
+            "hand-pasted loader fetch. Expected it to be staged from web-repl/files/."
+        )
+
+    index_path = out_dir / "api" / "contents" / "all.json"
+    if not index_path.is_file():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {index_path} does not exist, so the contents "
+            "index was never generated and the kernel's /drive mount will be empty."
+        )
+    listed = {
+        entry.get("path") for entry in json.loads(index_path.read_text()).get("content", [])
+    }
+    if "praxis_boot.py" not in listed:
+        raise BuildAssertionError(
+            "BUILD ASSERTION FAILED: praxis_boot.py is staged but MISSING from the "
+            f"contents index {index_path} (which lists {sorted(listed)!r}). The index "
+            "is a static build artifact, so an unindexed file never appears in the "
+            "kernel's /drive mount and `import praxis_boot` fails despite the file "
+            "being present on disk."
+        )
+    logger.info("fresh-notebook bootstrap shipped: files/praxis_boot.py staged and indexed")
+
+
 def required_piplite_packages() -> tuple[str, ...]:
     """Runtime deps the browser needs that Pyodide does NOT bundle.
 
@@ -957,6 +1002,7 @@ def main(argv: list[str] | None = None) -> int:
         assert_required_piplite_wheels(out_dir)
         if not args.debug_skip_jupyterlite:
             assert_completion_autocompletion(out_dir)
+            assert_praxis_boot_shipped(out_dir)
 
         if not args.debug_skip_jupyterlite and not args.no_prune_pyodide:
             prune_pyodide_bundle(out_dir)
