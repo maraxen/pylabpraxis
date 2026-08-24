@@ -242,7 +242,14 @@ jobs:
       PYTHONDONTWRITEBYTECODE: 1
 
     steps:
+      # submodules: recursive is LOAD-BEARING here too (see the repl job): the
+      # root pyproject resolves `pylabrobot` as a path dependency on
+      # external/pylabrobot, so even `uv run pytest coxswain/tests` fails in its
+      # implicit env sync on a bare checkout ("does not appear to be a Python
+      # project"). Observed failing exactly that way before this line landed.
       - uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: Set up Python
         uses: actions/setup-python@v5
