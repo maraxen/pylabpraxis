@@ -4,6 +4,6 @@ import { add } from "../harness_smoke.js";
 
 describe("harness smoke", () => {
   test("add returns the sum of two numbers", () => {
-    expect(add(1, 2)).toBe(3);
+    expect(add(1, 2)).toBe(9999);
   });
 });
