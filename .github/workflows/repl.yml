@@ -16,6 +16,7 @@ on:
     # rejected or silently mis-parsed.
     paths:
       - 'web-repl/**'
+      - 'coxswain/**'
       - 'scripts/repl_smoke.py'
       - 'external/pylabrobot'
       - '.github/workflows/repl.yml'
@@ -24,6 +25,7 @@ on:
   pull_request:
     paths:
       - 'web-repl/**'
+      - 'coxswain/**'
       - 'scripts/repl_smoke.py'
       - 'external/pylabrobot'
       - '.github/workflows/repl.yml'
@@ -223,3 +225,40 @@ jobs:
             web-repl/dist/jupyter-lite.json
             web-repl/dist/api/contents/all.json
           if-no-files-found: ignore
+
+  # Coxswain W1.0 (260824_coxswain-mvp-ux-spec.md). The root pyproject sets
+  # testpaths = ["tests"], so ci.yml never collects coxswain/tests; this job
+  # runs them via an explicit path argument, which overrides testpaths.
+  # coxswain/pyproject.toml carries its own [tool.pytest.ini_options]
+  # (--no-cov) so the root --cov addopts do not leak into this run.
+  # `bun test web-repl/shell/coxswain` needs no package.json by design; the
+  # harness under that directory was observed failing as well as passing
+  # before it was depended on here (same rule as every gate above).
+  coxswain:
+    name: Coxswain pytest + JS harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Coxswain Python tests
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run pytest coxswain/tests -q
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Coxswain JS harness
+        run: bun test web-repl/shell/coxswain
