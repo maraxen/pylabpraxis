@@ -146,6 +146,34 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --notebook-check --base-path /praxis/
 
+      # Completion has three tiers and they see different things. build_repl.py's
+      # assert_completion_autocompletion already covered tier 1 (the setting reached
+      # the runtime config) during the build step above. These two cover the rest:
+      # the kernel half (is jedi resident, does it answer, how fast) and the browser
+      # half (does the popup open from typing alone). Neither subsumes the other --
+      # the config assertion passes on a build whose kernel cannot complete, and the
+      # kernel probe passes on a build where the frontend setting never applied.
+      # --max-completion-ms is deliberately NOT set yet. Cold completion measured
+      # 415-543 ms on the dev box, and the ceiling that matters is the completer's
+      # 1000 ms providerTimeout -- but a GitHub runner is slower than this box by an
+      # unmeasured factor, so any threshold picked from local numbers is a guess that
+      # fails as flake rather than as signal. The step logs the number; set the bound
+      # once a few CI runs have established the runner's own baseline.
+      - name: Completion — kernel (jedi resident, answers, latency)
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --completion-check --require-jedi \
+            --base-path /praxis/
+
+      # Never presses Tab. Tab-completion worked before autoCompletion was enabled,
+      # so a Tab-pressing gate would pass identically with the setting off and
+      # assert nothing. Verified sensitive 2026-08-24: stripping settingsOverrides
+      # from the built config makes this step fail.
+      - name: Completion — as-you-type (no Tab pressed)
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --typeahead-check --base-path /praxis/
+
       # Not prefixed: --viz-check serves the vendored renderer tree directly, with
       # no JupyterLite app and no base path involved.
       - name: Visualizer render + praxis_viz channel

@@ -298,6 +298,51 @@ def assert_pyodide_is_local(out_dir: Path) -> None:
     logger.info("pyodide is local: pyodideUrl=%s", url)
 
 
+def assert_completion_autocompletion(out_dir: Path) -> None:
+    """Fail the build if as-you-type completion did not reach the runtime config.
+
+    JupyterLab plugin settings do NOT travel in `litePluginSettings` -- that key is
+    for LITE plugins (the Pyodide kernel). They travel in `settingsOverrides`,
+    which jupyterlite_core merges from any `overrides.json` and validates against
+    `build/schemas/<ext>/<plugin>.json` (addons/settings.py:54-125).
+
+    Two channels in one file, and each silently ignores a key meant for the other.
+    A setting misfiled into `litePluginSettings` yields a site that boots fine,
+    completes on Tab, and simply never completes as you type -- indistinguishable
+    by eye from the default we are trying to change. So assert on the RUNTIME
+    config, which is the only thing the browser reads, not on the source file.
+    """
+    config_path = out_dir / "jupyter-lite.json"
+    if not config_path.is_file():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {config_path} does not exist."
+        )
+    plugin = "@jupyterlab/completer-extension:manager"
+    overrides = (
+        json.loads(config_path.read_text())
+        .get("jupyter-config-data", {})
+        .get("settingsOverrides", {})
+        .get(plugin, {})
+    )
+    if overrides.get("autoCompletion") is not True:
+        raise BuildAssertionError(
+            "BUILD ASSERTION FAILED: jupyter-lite.json does not set "
+            f"`settingsOverrides[{plugin!r}].autoCompletion = true`, so the REPL "
+            "falls back to the schema default (false) and completes only on an "
+            "explicit Tab. Usual cause: the key was filed under "
+            "`litePluginSettings`, which is the LITE-plugin channel and ignores it."
+        )
+    schema = (
+        out_dir / "build" / "schemas" / "@jupyterlab" / "completer-extension" / "manager.json"
+    )
+    if not schema.is_file():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {schema} is missing, so the completer plugin "
+            "is not in this build at all and the override above configures nothing."
+        )
+    logger.info("as-you-type completion enabled: %s.autoCompletion=true", plugin)
+
+
 def required_piplite_packages() -> tuple[str, ...]:
     """Runtime deps the browser needs that Pyodide does NOT bundle.
 
@@ -910,6 +955,8 @@ def main(argv: list[str] | None = None) -> int:
         if not args.debug_skip_jupyterlite and not args.allow_cdn:
             assert_pyodide_is_local(out_dir)
         assert_required_piplite_wheels(out_dir)
+        if not args.debug_skip_jupyterlite:
+            assert_completion_autocompletion(out_dir)
 
         if not args.debug_skip_jupyterlite and not args.no_prune_pyodide:
             prune_pyodide_bundle(out_dir)

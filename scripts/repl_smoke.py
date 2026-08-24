@@ -590,6 +590,131 @@ def build_probe_code(host_root: str, expect_praxis_sha: str | None) -> str:
     ).strip()
 
 
+def build_completion_probe_code(host_root: str) -> str:
+    """In-kernel payload measuring what the completer ACTUALLY does (gate T2).
+
+    Answers the two questions a config diff cannot. First, whether jedi is
+    loaded: `IPython/core/completer.py:254` does `import jedi` at MODULE IMPORT
+    time and `use_jedi` is only `Bool(default_value=JEDI_INSTALLED)` (line 998),
+    so if jedi is not resident before the kernel imports IPython the completer is
+    permanently on the `dir()`-based fallback and no runtime toggle fixes it
+    (setting use_jedi True then selects `_jedi_matcher` against an unbound name).
+
+    Second, and the reason this gate exists at all: LATENCY. The frontend gives a
+    completion `providerTimeout` of 1000 ms by default. Jedi builds a parso
+    grammar cache on its first call, single-threaded, in WASM. If that first call
+    overruns the timeout the user sees NOTHING -- strictly worse than the fast
+    fallback we already ship. So this times a cold call, a warm call, and a light
+    control, and reports all three rather than asserting a threshold here: the
+    threshold is a judgement made against the measurement, not baked into it.
+
+    Deliberately mirrors build_probe_code's split-sentinel construction (the `code`
+    URL param is echoed into the cell BEFORE execution, so a contiguous sentinel
+    literal in this source would match the source display, not the output).
+    """
+    start_a, start_b = PROBE_START[: len(PROBE_START) // 2], PROBE_START[len(PROBE_START) // 2 :]
+    end_a, end_b = PROBE_END[: len(PROBE_END) // 2], PROBE_END[len(PROBE_END) // 2 :]
+    return textwrap.dedent(
+        f"""
+        import json, sys, time, traceback
+        import js
+
+        HOST_ROOT = {host_root!r}
+        _SENTINEL_START = {start_a!r} + {start_b!r}
+        _SENTINEL_END = {end_a!r} + {end_b!r}
+        RESULT: dict = {{"host_root": HOST_ROOT}}
+
+
+        async def _main():
+            # --- 1. boot praxis so pylabrobot is importable at all ---
+            try:
+                xhr = js.XMLHttpRequest.new()
+                xhr.open("GET", HOST_ROOT + "bootstrap/praxis_bootstrap.py", False)
+                xhr.send(None)
+                exec(compile(str(xhr.responseText), "praxis_bootstrap.py", "exec"), globals())
+                await praxis_main(HOST_ROOT)  # noqa: F821 - injected by exec above
+                RESULT["praxis_ready"] = True
+            except Exception as e:  # noqa: BLE001 - probe must never die silently
+                RESULT["praxis_ready"] = False
+                RESULT["bootstrap_error"] = f"{{type(e).__name__}}: {{e}}"
+                RESULT["bootstrap_traceback"] = traceback.format_exc()
+
+            # --- 2. is jedi resident, and did IPython latch onto it? ---
+            try:
+                import IPython.core.completer as _c
+                RESULT["jedi_installed"] = bool(_c.JEDI_INSTALLED)
+            except Exception as e:  # noqa: BLE001
+                RESULT["jedi_installed"] = None
+                RESULT["completer_import_error"] = f"{{type(e).__name__}}: {{e}}"
+            try:
+                import jedi
+                RESULT["jedi_version"] = getattr(jedi, "__version__", None)
+            except Exception as e:  # noqa: BLE001
+                RESULT["jedi_version"] = None
+                RESULT["jedi_import_error"] = f"{{type(e).__name__}}: {{e}}"
+
+            # --- 3. reach the live shell WITHOUT constructing one ---
+            # InteractiveShell.instance() would CREATE a shell if none existed,
+            # which would measure a completer that is not the kernel's. Read the
+            # existing instance or report unreachable; never fabricate.
+            ip = None
+            try:
+                from IPython.core.getipython import get_ipython
+                ip = get_ipython()
+                if ip is None:
+                    from IPython.core.interactiveshell import InteractiveShell
+                    ip = InteractiveShell._instance
+            except Exception as e:  # noqa: BLE001
+                RESULT["shell_error"] = f"{{type(e).__name__}}: {{e}}"
+            if ip is None:
+                RESULT["completer_reachable"] = False
+                RESULT["python_version"] = list(sys.version_info[:3])
+                return
+            RESULT["completer_reachable"] = True
+            RESULT["use_jedi"] = bool(getattr(ip.Completer, "use_jedi", False))
+
+            try:
+                exec("from pylabrobot.liquid_handling import LiquidHandler", ip.user_ns)
+                RESULT["plr_import"] = True
+            except Exception as e:  # noqa: BLE001
+                RESULT["plr_import"] = False
+                RESULT["plr_import_error"] = f"{{type(e).__name__}}: {{e}}"
+
+            from IPython.core.completer import provisionalcompleter
+
+            def _timed(text):
+                t0 = time.perf_counter()
+                err = None
+                comps = []
+                try:
+                    with provisionalcompleter():
+                        comps = list(ip.Completer.completions(text, len(text)))
+                except Exception as e:  # noqa: BLE001
+                    err = f"{{type(e).__name__}}: {{e}}"
+                ms = (time.perf_counter() - t0) * 1000.0
+                return {{
+                    "ms": round(ms, 1),
+                    "n": len(comps),
+                    "sample": sorted({{c.text for c in comps}})[:8],
+                    "error": err,
+                }}
+
+            # Order matters: the FIRST call pays jedi's grammar-cache cost, and
+            # that is the number the providerTimeout decision turns on.
+            RESULT["plr_cold"] = _timed("LiquidHandler.")
+            RESULT["plr_warm"] = _timed("LiquidHandler.")
+            RESULT["sys_light"] = _timed("sys.")
+            RESULT["python_version"] = list(sys.version_info[:3])
+
+
+        await _main()
+        print(_SENTINEL_START)
+        print(json.dumps(RESULT))
+        print(_SENTINEL_END)
+        """
+    ).strip()
+
+
 AUTO_RESPONDER_INIT_SCRIPT = """
 (() => {
   try {
@@ -629,7 +754,14 @@ def run_probe(
     expect_praxis_sha: str | None,
     entry: str = "lab",
     offline: bool = False,
+    code_override: str | None = None,
 ) -> dict[str, Any]:
+    # `code_override` lets a caller drive this same browser/serve/sentinel
+    # machinery with a DIFFERENT in-kernel payload. It exists so --completion-check
+    # does not have to edit build_probe_code: that builder is shared by --probe and
+    # --offline (both CI gates), and its f-string + textwrap.dedent + split-sentinel
+    # construction is the path that silently produced a mis-dedented payload once
+    # already. A new payload is a new function; this is the seam that allows it.
     try:
         from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
         from playwright.sync_api import sync_playwright
@@ -643,7 +775,11 @@ def run_probe(
         url = (
             f"http://127.0.0.1:{served.port}{prefix}{entry}/index.html"
         )
-        code = build_probe_code(prefix, expect_praxis_sha)
+        code = (
+            code_override
+            if code_override is not None
+            else build_probe_code(prefix, expect_praxis_sha)
+        )
         params = urllib.parse.urlencode(
             {"kernel": "python", "toolbar": "1", "execute": "1", "code": code}
         )
@@ -847,6 +983,139 @@ def run_probe(
 
 class VizCheckError(RuntimeError):
     """Raised for any condition that must fail --viz-check loudly, pin mismatch included."""
+
+
+TYPEAHEAD_EDITOR_SELECTORS = (
+    ".jp-CodeConsole-promptCell .cm-content",
+    ".jp-InputArea-editor .cm-content",
+    ".jp-CodeConsole-promptCell .CodeMirror",
+    ".cm-content",
+)
+
+
+def run_typeahead_check(
+    *,
+    serve_dir: Path,
+    base_path: str,
+    chrome_path: str,
+    timeout_s: float,
+    entry: str = "repl",
+    offline: bool = False,
+) -> dict[str, Any]:
+    """Assert the completer opens WITHOUT Tab -- the as-you-type gate (T3).
+
+    This is the only tier that can see the frontend setting at all. The build
+    assertion proves `autoCompletion: true` reached the runtime config; the
+    in-kernel probe proves the kernel can complete. Neither can tell you whether
+    the browser actually opens a completer on keystrokes, because that behaviour
+    lives entirely in the JupyterLab completer plugin.
+
+    Deliberately never presses Tab. Tab-completion already worked before this
+    change, so a gate that pressed Tab would pass identically with the setting
+    off -- it would assert nothing. The whole content of this check is that the
+    popup appears from typing alone.
+    """
+    try:
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+        from playwright.sync_api import sync_playwright
+    except ImportError as e:  # pragma: no cover - environment problem
+        raise RuntimeError(f"playwright is not importable: {e}") from e
+
+    prefix = _normalize_base_path(base_path)
+    timeout_ms = timeout_s * 1000
+    result: dict[str, Any] = {"passed": False, "failures": []}
+
+    # Split like every other sentinel here: the `code` param is echoed into the
+    # cell BEFORE execution, so a contiguous literal would match the source.
+    ready_code = "import sys\nprint('TYPEAHEAD' + '_READY')"
+
+    with ServedDir(serve_dir, base_path, False) as served:
+        url = f"http://127.0.0.1:{served.port}{prefix}{entry}/index.html"
+        params = urllib.parse.urlencode(
+            {"kernel": "python", "toolbar": "1", "execute": "1", "code": ready_code}
+        )
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                executable_path=chrome_path,
+                headless=True,
+                args=chromium_launch_args(offline=offline),
+            )
+            try:
+                page = browser.new_context().new_page()
+                page.goto(f"{url}?{params}", timeout=timeout_ms)
+                page.wait_for_function(
+                    "() => document.body.innerText.includes('TYPEAHEAD_READY')",
+                    timeout=timeout_ms,
+                )
+                LOG.info("kernel is up (sys imported); locating the prompt editor")
+
+                editor = None
+                for sel in TYPEAHEAD_EDITOR_SELECTORS:
+                    loc = page.locator(sel).last
+                    try:
+                        loc.wait_for(state="visible", timeout=5000)
+                        editor = loc
+                        result["editor_selector"] = sel
+                        break
+                    except PlaywrightTimeoutError:
+                        continue
+                if editor is None:
+                    result["failures"].append(
+                        "no prompt editor matched any of "
+                        f"{list(TYPEAHEAD_EDITOR_SELECTORS)} -- the console DOM has "
+                        "changed shape and this gate needs a new selector"
+                    )
+                    return result
+
+                # Control: nothing should be open before we type. Without this a
+                # stale/hidden completer node would make the assertion below pass
+                # for the wrong reason.
+                pre = page.locator(".jp-Completer").count()
+                result["completer_nodes_before_typing"] = pre
+
+                # Type an IDENTIFIER PREFIX after the dot, not a bare `sys.`.
+                # Continuous hinting fires on identifier characters, and a `.` is
+                # not one -- measured 2026-08-24: typing `sys` opens the popup,
+                # the following `.` DISMISSES it, and `pa` reopens it. A gate that
+                # stopped at the trailing dot therefore reported "no completer" on
+                # a build where as-you-type was working perfectly. Do not "simplify"
+                # this back to `sys.`.
+                editor.click()
+                page.keyboard.type("sys.pa", delay=80)
+                LOG.info("typed 'sys.pa' with no Tab; waiting for the completer")
+
+                try:
+                    page.wait_for_selector(".jp-Completer", state="visible", timeout=15000)
+                    result["completer_appeared"] = True
+                except PlaywrightTimeoutError:
+                    result["completer_appeared"] = False
+                    result["failures"].append(
+                        "the completer did not appear within 15s of typing 'sys.pa' "
+                        "with no Tab pressed. Either autoCompletion is not in force "
+                        "at runtime, or the kernel was too slow to answer within the "
+                        "completer's providerTimeout (default 1000 ms)."
+                    )
+                    result["body_tail"] = page.inner_text("body")[-1500:]
+                    return result
+
+                items = page.locator(".jp-Completer .jp-Completer-item")
+                result["completer_item_count"] = items.count()
+                try:
+                    result["completer_sample"] = [
+                        items.nth(i).inner_text().strip() for i in range(min(6, items.count()))
+                    ]
+                except Exception:  # noqa: BLE001 - sample is diagnostics, not the assertion
+                    result["completer_sample"] = None
+                if not result["completer_item_count"]:
+                    result["failures"].append(
+                        "completer opened but listed 0 items -- it is rendering an "
+                        "empty popup rather than completing"
+                    )
+            finally:
+                browser.close()
+
+    result["passed"] = not result["failures"]
+    return result
 
 
 def read_submodule_sha(submodule_dir: Path) -> str:
@@ -1442,6 +1711,45 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=f"--notebook-check only. Notebook path within the site. Default: {DEFAULT_NOTEBOOK}",
     )
     p.add_argument(
+        "--completion-check",
+        action="store_true",
+        help=(
+            "Measure the REPL's code completion in a REAL kernel (gate T2): whether "
+            "jedi is resident, whether IPython latched onto it, and how long a cold "
+            "completion takes against the frontend's 1000 ms providerTimeout. Reports "
+            "the numbers; --require-jedi turns the jedi half into an assertion."
+        ),
+    )
+    p.add_argument(
+        "--typeahead-check",
+        action="store_true",
+        help=(
+            "Assert the completer opens from TYPING ALONE, no Tab (gate T3). The only "
+            "check that can see the frontend `autoCompletion` setting: the build "
+            "assertion sees the config and --completion-check sees the kernel, but "
+            "neither can tell whether the browser opens a popup on keystrokes."
+        ),
+    )
+    p.add_argument(
+        "--require-jedi",
+        action="store_true",
+        help=(
+            "--completion-check only. FAIL unless jedi is resident and IPython is "
+            "using it. Off by default so the same command measures the pre-change "
+            "baseline; CI turns it on once the preload has landed."
+        ),
+    )
+    p.add_argument(
+        "--max-completion-ms",
+        type=float,
+        default=None,
+        help=(
+            "--completion-check only. FAIL if the COLD completion exceeds this many "
+            "milliseconds. Left unset by default because the threshold is a judgement "
+            "against a measurement, not a constant to bake in blind."
+        ),
+    )
+    p.add_argument(
         "--viz-check",
         action="store_true",
         help=(
@@ -1574,9 +1882,17 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
     )
 
-    if not args.probe and not args.viz_check and not args.notebook_check and not args.expect_fail:
+    if (
+        not args.probe
+        and not args.viz_check
+        and not args.notebook_check
+        and not args.completion_check
+        and not args.typeahead_check
+        and not args.expect_fail
+    ):
         LOG.error(
-            "nothing to do: pass --probe, --viz-check, --notebook-check, and/or --expect-fail"
+            "nothing to do: pass --probe, --viz-check, --notebook-check, "
+            "--completion-check, --typeahead-check, and/or --expect-fail"
         )
         return 2
 
@@ -1674,6 +1990,130 @@ def main(argv: list[str] | None = None) -> int:
                 LOG.error("FAIL: %s", f)
             return 1
         LOG.info("viz-check PASSED")
+        return 0
+
+    if args.typeahead_check:
+        serve_dir = args.serve_dir.resolve()
+        if not serve_dir.is_dir():
+            LOG.error("--serve-dir does not exist or is not a directory: %s", serve_dir)
+            return 2
+        try:
+            result = run_typeahead_check(
+                serve_dir=serve_dir,
+                base_path=args.base_path,
+                chrome_path=str(chrome_path),
+                timeout_s=args.timeout,
+                entry=args.entry,
+                offline=args.offline,
+            )
+        except Exception as e:  # noqa: BLE001
+            LOG.error("typeahead-check run failed: %s: %s", type(e).__name__, e)
+            return 2
+
+        if args.out:
+            args.out.write_text(json.dumps(result, indent=2) + "\n")
+            LOG.info("wrote result to %s", args.out)
+
+        LOG.info(
+            "typeahead: appeared=%s items=%s sample=%s (editor=%s)",
+            result.get("completer_appeared"),
+            result.get("completer_item_count"),
+            result.get("completer_sample"),
+            result.get("editor_selector"),
+        )
+        if not result["passed"]:
+            for f in result["failures"]:
+                LOG.error("FAIL: %s", f)
+            return 1
+        LOG.info("typeahead-check PASSED (completer opened with no Tab pressed)")
+        return 0
+
+    if args.completion_check:
+        serve_dir = args.serve_dir.resolve()
+        if not serve_dir.is_dir():
+            LOG.error("--serve-dir does not exist or is not a directory: %s", serve_dir)
+            return 2
+        try:
+            result = run_probe(
+                serve_dir=serve_dir,
+                base_path=args.base_path,
+                coi=args.coi,
+                chrome_path=str(chrome_path),
+                timeout_s=args.timeout,
+                expect_praxis_sha=None,
+                entry=args.entry,
+                offline=args.offline,
+                code_override=build_completion_probe_code(
+                    _normalize_base_path(args.base_path)
+                ),
+            )
+        except Exception as e:  # noqa: BLE001
+            LOG.error("completion-check run failed: %s: %s", type(e).__name__, e)
+            LOG.error(
+                "If this is a Chromium launch failure ('apply-seccomp: "
+                "unshare(CLONE_NEWUSER)'), this script must be invoked with the Bash "
+                "sandbox disabled (dangerouslyDisableSandbox=true)."
+            )
+            return 2
+
+        if args.out:
+            args.out.write_text(json.dumps(result, indent=2) + "\n")
+            LOG.info("wrote result to %s", args.out)
+
+        cold = result.get("plr_cold") or {}
+        warm = result.get("plr_warm") or {}
+        light = result.get("sys_light") or {}
+        LOG.info(
+            "completion: jedi_installed=%s use_jedi=%s jedi_version=%s",
+            result.get("jedi_installed"),
+            result.get("use_jedi"),
+            result.get("jedi_version"),
+        )
+        LOG.info(
+            "latency ms: LiquidHandler. cold=%s warm=%s | sys. light=%s",
+            cold.get("ms"), warm.get("ms"), light.get("ms"),
+        )
+        LOG.info(
+            "matches: cold n=%s sample=%s", cold.get("n"), cold.get("sample")
+        )
+
+        failures: list[str] = []
+        if not result.get("completer_reachable"):
+            failures.append(
+                "could not reach the kernel's IPython shell, so NOTHING here was "
+                "measured -- treat the latency fields as absent, not as fast"
+            )
+        if cold.get("error"):
+            failures.append(f"cold completion raised: {cold['error']}")
+        elif not cold.get("n"):
+            failures.append(
+                "cold completion returned 0 matches for 'LiquidHandler.' -- the "
+                "completer is reachable but producing nothing"
+            )
+        if args.require_jedi:
+            if not result.get("jedi_installed"):
+                failures.append(
+                    "--require-jedi: jedi is NOT resident in the kernel. It must be "
+                    "loaded BEFORE IPython imports (loadPyodideOptions.packages), "
+                    "because IPython latches JEDI_INSTALLED at module import."
+                )
+            elif not result.get("use_jedi"):
+                failures.append(
+                    "--require-jedi: jedi is resident but IPython is not using it "
+                    "(use_jedi False) -- load order is wrong, not the package set."
+                )
+        if args.max_completion_ms is not None and cold.get("ms") is not None:
+            if cold["ms"] > args.max_completion_ms:
+                failures.append(
+                    f"cold completion {cold['ms']} ms exceeds "
+                    f"--max-completion-ms {args.max_completion_ms}"
+                )
+
+        if failures:
+            for f in failures:
+                LOG.error("FAIL: %s", f)
+            return 1
+        LOG.info("completion-check PASSED")
         return 0
 
     serve_dir = args.serve_dir.resolve()
