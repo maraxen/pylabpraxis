@@ -501,17 +501,19 @@ def assert_jupyterlite_output_not_hollow(out_dir: Path) -> None:
 # --- step 2: manifest regeneration --------------------------------------
 
 
-def run_build_manifest(*, dev: bool) -> None:
+def run_build_manifest(*, dev: bool, with_coxswain: bool = False) -> None:
     args = [str(SCRIPTS_DIR / "build_manifest.py")]
     if dev:
         args.append("--dev")
+    if with_coxswain:
+        args.append("--with-coxswain")
     _uv_run(args, cwd=REPO_ROOT, timeout=60)
 
 
 # --- step 3: staging overlay/ + bootstrap/ + shell/ into <out> ----------
 
 
-def _copytree_filtered(src: Path, dst: Path) -> int:
+def _copytree_filtered(src: Path, dst: Path, *, skip=None) -> int:
     """Copy *src* -> *dst* recursively, skipping ``__pycache__``, ``.pyc``/
     ``.pyo``, and ``.gitkeep`` placeholder files. Returns the count of files
     actually copied.
@@ -532,6 +534,8 @@ def _copytree_filtered(src: Path, dst: Path) -> int:
         rel = item.relative_to(src)
         if any(part in _SKIP_DIR_NAMES for part in rel.parts):
             continue
+        if skip is not None and skip(rel):
+            continue
         if item.is_dir():
             (dst / rel).mkdir(parents=True, exist_ok=True)
             continue
@@ -544,19 +548,33 @@ def _copytree_filtered(src: Path, dst: Path) -> int:
     return count
 
 
-def stage_overlay(out_dir: Path) -> int:
+def stage_overlay(out_dir: Path, *, include_coxswain: bool = False) -> int:
     if not OVERLAY_ASSETS_DIR.is_dir():
         raise BuildError(f"{OVERLAY_ASSETS_DIR} does not exist -- nothing to stage.")
     dst = out_dir / "assets"
     if dst.exists():
         shutil.rmtree(dst)
-    n = _copytree_filtered(OVERLAY_ASSETS_DIR, dst)
+
+    def skip(rel: Path) -> bool:
+        # FR-12: overlay/assets/coxswain/ reaches dist ONLY under
+        # --with-coxswain. A default build stages zero files whose path
+        # contains "coxswain" (asserted later by assert_no_coxswain_anywhere).
+        if not include_coxswain and "coxswain" in rel.parts:
+            return True
+        return False
+
+    n = _copytree_filtered(OVERLAY_ASSETS_DIR, dst, skip=skip)
     if n == 0:
         raise BuildAssertionError(
             f"BUILD ASSERTION FAILED: staged 0 files from {OVERLAY_ASSETS_DIR} "
             "-- overlay/assets/ appears empty."
         )
-    logger.info("staged %d file(s) from overlay/assets/ -> %s", n, dst)
+    logger.info(
+        "staged %d file(s) from overlay/assets/ -> %s%s",
+        n,
+        dst,
+        " (with coxswain assets)" if include_coxswain else "",
+    )
     return n
 
 
@@ -826,20 +844,104 @@ def stage_shell(out_dir: Path) -> Path:
     return dst
 
 
+COXSWAIN_SHELL_ENTRY = SHELL_DIR / "coxswain-shell.js"
+COXSWAIN_JS_MODULES = SHELL_DIR / "coxswain"
+_REQUIRED_COXSWAIN_MODULES = (
+    "card_state.js",
+    "propose_card.js",
+    "failure_card.js",
+    "phrase.js",
+    "text.js",
+    "ids.js",
+    "vdom.js",
+    "envelope.js",
+    "timing.js",
+)
+
+
+def stage_coxswain_shell(out_dir: Path) -> int:
+    """FR-12's conditional half of the D1 shell path: the Coxswain panel entry
+    plus its DOM-free modules land at <out>/shell/coxswain-shell.js and
+    <out>/shell/coxswain/ -- ONLY called under --with-coxswain."""
+    if not COXSWAIN_SHELL_ENTRY.is_file():
+        raise BuildError(f"{COXSWAIN_SHELL_ENTRY} missing -- cannot stage coxswain shell.")
+    if not COXSWAIN_JS_MODULES.is_dir():
+        raise BuildError(f"{COXSWAIN_JS_MODULES} missing -- cannot stage coxswain modules.")
+    missing = [
+        name for name in _REQUIRED_COXSWAIN_MODULES if not (COXSWAIN_JS_MODULES / name).is_file()
+    ]
+    if missing:
+        raise BuildError(
+            f"{COXSWAIN_JS_MODULES} is missing required module(s): {missing} -- "
+            "the panel imports them by relative path, so a partial copy would "
+            "404 in the browser."
+        )
+    dst_shell_dir = out_dir / "shell"
+    dst_shell_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(COXSWAIN_SHELL_ENTRY, dst_shell_dir / "coxswain-shell.js")
+    dst_modules = dst_shell_dir / "coxswain"
+    if dst_modules.exists():
+        shutil.rmtree(dst_modules)
+    staged = _copytree_filtered(
+        COXSWAIN_JS_MODULES,
+        dst_modules,
+        # Test files never ship: bun discovers them from the source tree, so
+        # a copy under dist/ is dead weight on every page load path.
+        skip=lambda rel: "__tests__" in rel.parts,
+    )
+    logger.info(
+        "staged coxswain-shell.js + %d module file(s) -> %s", staged, dst_modules
+    )
+    return staged + 1
+
+
 # --- step 4: D1 shell injection ------------------------------------------
 
 
-def run_inject_shell(*, dev: bool) -> None:
-    # No --target: inject_shell.py discovers every dist/*/index.html carrying
-    # the anchor, so all app entries get the shell, not just lab/.
+def _dist_entry_targets(out_dir: Path) -> list[Path]:
+    """Every <out>/<entry>/index.html carrying the D1 anchor.
+
+    Explicit --target threading fixes a latent trap: inject_shell.py's own
+    default discovery looks at <web-repl-root>/dist, so ANY build_repl.py run
+    with a non-default --out used to inject (and --check) the WRONG tree --
+    the stale default dist rather than the one just built. Default builds are
+    unaffected (their out_dir IS web-repl/dist)."""
+    import inject_shell  # same directory; sys.path[0] is this script's dir
+
+    targets = inject_shell.discover_targets(out_dir)
+    if not targets:
+        raise BuildError(
+            f"no */index.html carrying anchor id={inject_shell._ANCHOR_ID!r} found "
+            f"under {out_dir} -- refusing to inject nothing."
+        )
+    return targets
+
+
+def run_inject_shell(
+    *, dev: bool, with_coxswain: bool = False, out_dir: Path | None = None
+) -> None:
+    # No --target (default dist): inject_shell.py discovers every
+    # dist/*/index.html carrying the anchor, so all app entries get the shell,
+    # not just lab/. Non-default --out builds thread their OWN entries through
+    # explicit --target flags (see _dist_entry_targets).
     args = [str(SCRIPTS_DIR / "inject_shell.py")]
     if dev:
         args.append("--dev")
+    if with_coxswain:
+        args.append("--with-coxswain")
+    if out_dir is not None:
+        for target in _dist_entry_targets(out_dir):
+            args.extend(["--target", str(target)])
     _uv_run(args, cwd=REPO_ROOT, timeout=60)
 
 
-def run_inject_shell_check() -> None:
+def run_inject_shell_check(*, with_coxswain: bool = False, out_dir: Path | None = None) -> None:
     args = [str(SCRIPTS_DIR / "inject_shell.py"), "--check"]
+    if with_coxswain:
+        args.append("--with-coxswain")
+    if out_dir is not None:
+        for target in _dist_entry_targets(out_dir):
+            args.extend(["--target", str(target)])
     try:
         _uv_run(args, cwd=REPO_ROOT, timeout=60)
     except BuildError as exc:
@@ -849,7 +951,7 @@ def run_inject_shell_check() -> None:
 # --- step 5: final completeness assertion --------------------------------
 
 
-def assert_dist_complete(out_dir: Path) -> None:
+def assert_dist_complete(out_dir: Path, *, with_coxswain: bool = False) -> None:
     required = [
         out_dir / "assets" / "wheels" / "manifest.json",
         out_dir / "assets" / "shims" / "web_serial_shim.py",
@@ -888,7 +990,104 @@ def assert_dist_complete(out_dir: Path) -> None:
         raise BuildAssertionError(
             "BUILD ASSERTION FAILED: dist/assets/wheels/ contains zero *.whl files."
         )
-    logger.info("dist/ completeness OK (%d wheel(s) staged)", wheel_count)
+
+    coxswain_required: list[Path] = []
+    if with_coxswain:
+        # FR-12's flagged half: a --with-coxswain build must actually carry the
+        # panel entry, its DOM-free modules, and its stylesheet.
+        coxswain_required = [
+            out_dir / "shell" / "coxswain-shell.js",
+            *(out_dir / "shell" / "coxswain" / name for name in _REQUIRED_COXSWAIN_MODULES),
+            out_dir / "assets" / "coxswain" / "coxswain.css",
+        ]
+    missing_cx = [str(p) for p in coxswain_required if not p.exists()]
+    if missing_cx:
+        raise BuildAssertionError(
+            "BUILD ASSERTION FAILED: --with-coxswain dist/ is missing Coxswain "
+            "asset(s):\n  " + "\n  ".join(missing_cx)
+        )
+
+    logger.info(
+        "dist/ completeness OK (%d wheel(s) staged%s)",
+        wheel_count,
+        ", coxswain assets present" if with_coxswain else "",
+    )
+
+
+# --- AC-11 assertions (FR-12's enforcement mechanism) ------------------------
+
+
+def _tracked_augmentation_path() -> Path:
+    return OVERLAY_ASSETS_DIR / "visualizer-augmentations" / "index.js"
+
+
+def assert_augmentation_byte_identity(out_dir: Path) -> None:
+    """AC-11 clause 1, asserted in EVERY build mode: a default build's staged
+    visualizer-augmentations/index.js is byte-identical (sha256) to the tracked
+    source. The augmentation file ships in every build and is NOT modified by
+    the Coxswain spec at all; this is the tripwire that catches anyone putting
+    Coxswain code back into it (FR-12's whole reason for the byte-identity
+    clause). Runs unconditionally because it must hold either way."""
+    tracked = _tracked_augmentation_path()
+    staged = out_dir / "assets" / "visualizer-augmentations" / "index.js"
+    if not tracked.is_file():
+        raise BuildError(f"{tracked} missing -- cannot assert byte identity.")
+    if not staged.is_file():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {staged} was not staged, so AC-11's "
+            "byte-identity clause cannot hold and every entry page would lose "
+            "the visualizer augmentation."
+        )
+    tracked_sha = hashlib.sha256(tracked.read_bytes()).hexdigest()
+    staged_sha = hashlib.sha256(staged.read_bytes()).hexdigest()
+    if tracked_sha != staged_sha:
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: staged {staged} sha256 {staged_sha} != "
+            f"tracked {tracked} sha256 {tracked_sha}. The staging pass rewrote "
+            "the augmentation file -- visualizer-augmentations/index.js must be "
+            "byte-identical to the tracked source in EVERY build (AC-11)."
+        )
+    logger.info("visualizer-augmentations/index.js byte-identity OK (%s)", tracked_sha[:12])
+
+
+def assert_no_coxswain_anywhere(out_dir: Path) -> None:
+    """FR-12 / AC-11 first clause for a DEFAULT build: zero paths under out_dir
+    contain 'coxswain'. This covers the manifest substring check AND asset/
+    shell staging in one structural sweep -- stronger than the manifest-only
+    check, because it also catches stray copies anywhere else in dist."""
+    offenders = sorted(str(p.relative_to(out_dir)) for p in out_dir.rglob("*coxswain*"))
+    if offenders:
+        raise BuildAssertionError(
+            "BUILD ASSERTION FAILED: this is a DEFAULT build (no --with-coxswain) "
+            "but these dist paths contain 'coxswain' (FR-12 requires none):\n  "
+            + "\n  ".join(offenders[:20])
+        )
+    logger.info("default build carries zero coxswain paths (FR-12/AC-11)")
+
+
+def assert_visualizer_html_free_of_coxswain(out_dir: Path) -> None:
+    """AC-11 clause 3, DEFAULT half: a default build's vendored
+    visualizer/index.html contains no <script> tag referencing coxswain.
+    (The '--with-coxswain contains exactly one' half lands with W4, which owns
+    injecting the viz_highlight tag into this document.)"""
+    html_path = out_dir / "assets" / "visualizer" / "index.html"
+    if not html_path.is_file():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {html_path} does not exist."
+        )
+    html = html_path.read_text()
+    offenders = [
+        line.strip()
+        for line in html.splitlines()
+        if "<script" in line.lower() and "coxswain" in line.lower()
+    ]
+    if offenders:
+        raise BuildAssertionError(
+            "BUILD ASSERTION FAILED: a DEFAULT build's visualizer/index.html "
+            "references coxswain from a <script> tag (AC-11 clause 3):\n  "
+            + "\n  ".join(offenders[:5])
+        )
+    logger.info("default visualizer/index.html references no coxswain scripts (AC-11)")
 
 
 # --- CLI -------------------------------------------------------------------
@@ -961,6 +1160,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "kernel is a Web Worker with no document location."
         ),
     )
+    parser.add_argument(
+        "--with-coxswain",
+        action="store_true",
+        help="Stage and inject the Coxswain MVP panel (FR-12): overlay/assets/"
+        "coxswain/*, shell/coxswain-shell.js + shell/coxswain/*, the manifest's "
+        "coxswain_assets sha entries, and the coxswain-shell.js <script "
+        "type=module> tag on every entry page. WITHOUT this flag the build "
+        "carries zero coxswain paths -- asserted post-build (AC-11), along "
+        "with visualizer-augmentations/index.js byte identity in BOTH modes.",
+    )
     parser.add_argument("-v", "--verbose", action="store_true", help="Debug-level logging.")
     return parser.parse_args(argv)
 
@@ -1011,15 +1220,26 @@ def main(argv: list[str] | None = None) -> int:
         apply_base_path(out_dir, base_path)
         assert_no_root_host_root(out_dir, base_path)
 
-        run_build_manifest(dev=args.dev)
-        stage_overlay(out_dir)
+        run_build_manifest(dev=args.dev, with_coxswain=args.with_coxswain)
+        stage_overlay(out_dir, include_coxswain=args.with_coxswain)
         stage_bootstrap(out_dir)
         stage_shell(out_dir)
+        if args.with_coxswain:
+            stage_coxswain_shell(out_dir)
 
-        run_inject_shell(dev=args.dev)
-        run_inject_shell_check()
+        run_inject_shell(dev=args.dev, with_coxswain=args.with_coxswain, out_dir=out_dir)
+        run_inject_shell_check(with_coxswain=args.with_coxswain, out_dir=out_dir)
 
-        assert_dist_complete(out_dir)
+        assert_dist_complete(out_dir, with_coxswain=args.with_coxswain)
+
+        # AC-11: byte identity holds in EVERY mode; the zero-coxswain-path and
+        # no-coxswain-script clauses hold in DEFAULT builds. The flagged half of
+        # clause 3 (visualizer/index.html carries exactly one coxswain tag) is
+        # W4's viz_highlight injection and is asserted there.
+        assert_augmentation_byte_identity(out_dir)
+        if not args.with_coxswain:
+            assert_no_coxswain_anywhere(out_dir)
+            assert_visualizer_html_free_of_coxswain(out_dir)
 
     except BuildAssertionError as exc:
         msg = str(exc)
