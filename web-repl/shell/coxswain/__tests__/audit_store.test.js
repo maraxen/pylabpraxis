@@ -14,6 +14,7 @@ import {
   OpenTurnCapacityExceeded,
   ReadOnlyStoreError,
 } from "../audit_store.js";
+import { createAuditPersistence } from "../export.js";
 import { FakeIndexedDBFactory } from "./fake_indexeddb.js";
 
 const T0_MS = 1_700_000_000_000;
@@ -437,5 +438,181 @@ describe("queries", () => {
     expect(bundle.exported_by_schema_version).toBe(SCHEMA_VERSION);
     expect(Object.keys(bundle.turns)).toEqual([TURN_ID]);
     expect(bundle.overrides).toEqual([]);
+  });
+});
+
+// --- export.js: L1/L2/L3 treat BOTH stores as ONE bundle ------------------------
+
+describe("audit persistence tiers (§2.3 last clause)", () => {
+  const OTHER_TURN = "cx-1700000000500-other1";
+  const OVERRIDE = {
+    schema_version: SCHEMA_VERSION,
+    override_id: `${OTHER_TURN}:3:ovr`,
+    turn_id: OTHER_TURN,
+    gate_seq: 3,
+    cue: 3,
+    justification: "operator confirmed plate assignment",
+    ts: 1700000005,
+  };
+
+  async function seededStore() {
+    const { store } = await openedStore();
+    await store.beginTurn(TURN_ID, SESSION);
+    await store.applyWriteRequest(
+      writeRequest("decision", TURN_ID, {
+        record: makeDecisionPayload(TURN_ID, "clarify:not_found"),
+      }),
+    );
+    await store.applyWriteRequest(writeRequest("override", TURN_ID, { record: OVERRIDE }));
+    return store;
+  }
+
+  test("L1 persist() serializes BOTH stores into one self-describing JSON doc; restore() rebuilds them", async () => {
+    const source = await seededStore();
+    const persistence = createAuditPersistence({ store: source });
+    const snapshot = persistence.persist();
+
+    const parsed = JSON.parse(snapshot);
+    expect(parsed.exported_by_schema_version).toBe(SCHEMA_VERSION);
+    expect(Object.keys(parsed.turns)).toContain(TURN_ID);
+    expect(parsed.overrides.map((o) => o.override_id)).toContain(OVERRIDE.override_id);
+
+    // A FRESH store restores the whole bundle -- join still works.
+    const target = new AuditStore({
+      idbFactory: new FakeIndexedDBFactory(),
+      nowMs: steppedClock(),
+      onSystemLine: () => {},
+    });
+    await target.open();
+    const targetPersistence = createAuditPersistence({ store: target });
+    await targetPersistence.restore(snapshot);
+
+    const joined = target.queryTurn(TURN_ID);
+    expect(joined.turn.decisions[0].disposition).toBe("clarify:not_found");
+    expect(joined.overrides).toHaveLength(0); // this override belongs to OTHER_TURN
+    expect(target.queryTurn(OTHER_TURN)).toBeNull(); // its turn record absent...
+    expect(target.overridesForTurn(OTHER_TURN)).toHaveLength(1); // ...override survives anyway
+  });
+
+  test("L2 saves to / loads from a File System Access working folder as one file", async () => {
+    const files = new Map();
+
+    function makeDirHandle() {
+      return {
+        async getFileHandle(name, { create = false } = {}) {
+          if (!create && !files.has(name)) {
+            const err = new Error(`${name} not found`);
+            err.name = "NotFoundError";
+            throw err;
+          }
+          let text = files.get(name) ?? "";
+          return {
+            async createWritable() {
+              text = "";
+              return {
+                async write(chunk) {
+                  text += chunk;
+                },
+                async close() {
+                  files.set(name, text);
+                },
+              };
+            },
+            async getFile() {
+              if (!files.has(name)) {
+                const err = new Error("gone");
+                err.name = "NotFoundError";
+                throw err;
+              }
+              return { text: () => Promise.resolve(files.get(name)) };
+            },
+          };
+        },
+      };
+    }
+
+    const dirHandle = makeDirHandle();
+    const source = await seededStore();
+    const sourcePersistence = createAuditPersistence({ store: source });
+    await sourcePersistence.bindWorkingFolder(dirHandle);
+    await sourcePersistence.saveToWorkingFolder();
+    expect(files.has("coxswain-audit-bundle.json")).toBe(true);
+
+    const target = new AuditStore({
+      idbFactory: new FakeIndexedDBFactory(),
+      nowMs: steppedClock(),
+      onSystemLine: () => {},
+    });
+    await target.open();
+    const targetPersistence = createAuditPersistence({ store: target });
+    await targetPersistence.bindWorkingFolder(dirHandle);
+    await targetPersistence.loadFromWorkingFolder();
+
+    expect(target.queryTurn(TURN_ID).turn.decisions).toHaveLength(1);
+    expect(target.overridesForTurn(OTHER_TURN)).toHaveLength(1);
+  });
+
+  test("L2 load from a folder with no bundle yet resolves without importing anything", async () => {
+    const emptyDir = {
+      async getFileHandle(name, { create = false } = {}) {
+        if (!create) {
+          const err = new Error("not found");
+          err.name = "NotFoundError";
+          throw err;
+        }
+        throw new Error("should not create on load");
+      },
+    };
+    const { store } = await openedStore();
+    const persistence = createAuditPersistence({ store });
+    await persistence.bindWorkingFolder(emptyDir);
+    const outcome = await persistence.loadFromWorkingFolder();
+    expect(outcome.imported).toBe(false);
+    expect(store.turnCount).toBe(0);
+  });
+
+  test("L3 export/import refuse foreign-schema bundles loudly (no silent coercion)", async () => {
+    const { store, systemLines } = await openedStore();
+    const persistence = createAuditPersistence({ store });
+    const foreign = {
+      exported_by_schema_version: SCHEMA_VERSION + 3,
+      turns: {},
+      overrides: [],
+    };
+    await expect(persistence.importBundle(foreign)).rejects.toBeInstanceOf(ReadOnlyStoreError);
+  });
+
+  test("read-only stores can still EXPORT (AC-21) but not import or restore", async () => {
+    const idbFactory = new FakeIndexedDBFactory();
+    const lines = [];
+    await idbFactory.__seed(DB_NAME, SCHEMA_VERSION + 1, (db) => {
+      db.createObjectStore("coxswain_turns", { keyPath: "turn_id" });
+      db.createObjectStore("coxswain_overrides", { keyPath: "override_id" });
+      db._stores.coxswain_turns[TURN_ID] = {
+        schema_version: SCHEMA_VERSION + 1,
+        turn_id: TURN_ID,
+        session_id: SESSION,
+        state: "closed",
+        opened_at: 1699999999,
+        closed_at: 1700000000,
+        transcript: [],
+        pending_intents: [],
+        decisions: [],
+        fingerprints: [],
+        outcome: null,
+      };
+    });
+    const roStore = new AuditStore({
+      idbFactory,
+      nowMs: steppedClock(),
+      onSystemLine: (l) => lines.push(l),
+    });
+    await roStore.open();
+    expect(roStore.mode).toBe("read_only");
+
+    const persistence = createAuditPersistence({ store: roStore });
+    const bundle = persistence.exportBundle(); // readable + exportable
+    expect(Object.keys(bundle.turns)).toEqual([TURN_ID]);
+    await expect(persistence.importBundle(bundle)).rejects.toBeInstanceOf(ReadOnlyStoreError);
   });
 });

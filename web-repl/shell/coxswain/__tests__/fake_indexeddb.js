@@ -147,6 +147,7 @@ class FakeTransaction {
     this.oncomplete = null;
     this.onerror = null;
     this.onabort = null;
+    this.error = undefined;
     this._pending = 0;
     this._settled = false;
     this.objectStoreNames = Object.freeze([...storeNames]);
@@ -158,6 +159,9 @@ class FakeTransaction {
         );
       }
     }
+    // A transaction with zero requests still commits (real IDB behaviour):
+    // give it one microtask for synchronous request issuance to land first.
+    queueMicrotask(() => this._maybeCommit());
   }
 
   objectStore(name) {

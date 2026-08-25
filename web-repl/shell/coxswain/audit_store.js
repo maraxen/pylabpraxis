@@ -586,6 +586,14 @@ export class AuditStore {
         .map((r) => r.schema_version)
         .filter((v) => v !== SCHEMA_VERSION),
     );
+    // The bundle header is part of the self-describing contract (§2.5): a
+    // document written by another build refuses to import even when empty.
+    if (
+      typeof bundle.exported_by_schema_version === "number" &&
+      bundle.exported_by_schema_version !== SCHEMA_VERSION
+    ) {
+      foreign.add(bundle.exported_by_schema_version);
+    }
     if (foreign.size > 0) {
       const version = [...foreign][0];
       // Same loud refusal as §2.5 -- importing foreign-schema records would be
