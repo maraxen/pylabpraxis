@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Final
+from typing import Any, Final
 
 from coxswain.ids import override_id_for
 from coxswain.records import SCHEMA_VERSION, OverrideRecord
@@ -83,10 +83,15 @@ class CompletenessExitPayload:
 
 @dataclass(frozen=True)
 class GroundingExitPayload:
-    """Cue 2 -- symbolic resolution of an ambiguous reference."""
+    """Cue 2 -- symbolic resolution of an ambiguous reference.
+
+    ``candidates`` entries are KernelInstance objects (name/resource_type/
+    position, from plr.grounding / fft.context); the JS candidate picker
+    renders their labels and positions. Typed Any to keep this module
+    import-cycle-free of the grounding layer."""
 
     slot: str = ""
-    candidates: tuple[str, ...] = ()
+    candidates: tuple[Any, ...] = ()
     message: str = ""
 
 
