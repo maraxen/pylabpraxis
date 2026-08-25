@@ -999,6 +999,9 @@ def assert_dist_complete(out_dir: Path, *, with_coxswain: bool = False) -> None:
             out_dir / "shell" / "coxswain-shell.js",
             *(out_dir / "shell" / "coxswain" / name for name in _REQUIRED_COXSWAIN_MODULES),
             out_dir / "assets" / "coxswain" / "coxswain.css",
+            # W4: the conditionally-staged highlight subscriber must actually
+            # ship, or the injected script tag would 404 in the browser.
+            out_dir / "assets" / "coxswain" / "viz_highlight.js",
         ]
     missing_cx = [str(p) for p in coxswain_required if not p.exists()]
     if missing_cx:
@@ -1067,9 +1070,7 @@ def assert_no_coxswain_anywhere(out_dir: Path) -> None:
 
 def assert_visualizer_html_free_of_coxswain(out_dir: Path) -> None:
     """AC-11 clause 3, DEFAULT half: a default build's vendored
-    visualizer/index.html contains no <script> tag referencing coxswain.
-    (The '--with-coxswain contains exactly one' half lands with W4, which owns
-    injecting the viz_highlight tag into this document.)"""
+    visualizer/index.html contains no <script> tag referencing coxswain."""
     html_path = out_dir / "assets" / "visualizer" / "index.html"
     if not html_path.is_file():
         raise BuildAssertionError(
@@ -1088,6 +1089,55 @@ def assert_visualizer_html_free_of_coxswain(out_dir: Path) -> None:
             + "\n  ".join(offenders[:5])
         )
     logger.info("default visualizer/index.html references no coxswain scripts (AC-11)")
+
+
+def inject_viz_highlight_tag(out_dir: Path) -> None:
+    """W4's flagged half of AC-11 clause 3: inject EXACTLY ONE second module
+    tag -- <script type=module src="../coxswain/viz_highlight.js"> -- into the
+    STAGED dist copy of visualizer/index.html under --with-coxswain.
+
+    The tracked overlay/assets/visualizer/index.html is never touched: it
+    ships in every build and must stay coxswain-free. The transformation lives
+    in vendor_visualizer.inject_coxswain_highlight_tag so the tag machinery
+    (and its sibling-directory constraint) stays in one file."""
+    import vendor_visualizer  # same directory; sys.path[0] is this script's dir
+
+    html_path = out_dir / "assets" / "visualizer" / "index.html"
+    if not html_path.is_file():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {html_path} does not exist -- cannot "
+            "inject the coxswain highlight tag into a missing document."
+    )
+    try:
+        tagged = vendor_visualizer.inject_coxswain_highlight_tag(html_path.read_text())
+    except vendor_visualizer.VendorError as exc:
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: coxswain highlight-tag injection failed: {exc}"
+        ) from exc
+    html_path.write_text(tagged)
+    logger.info("injected coxswain viz_highlight <script> tag -> %s", html_path)
+
+
+def assert_visualizer_html_exactly_one_coxswain_tag(out_dir: Path) -> None:
+    """AC-11 clause 3, FLAGGED half: a --with-coxswain build's staged
+    visualizer/index.html contains exactly one <script> tag referencing
+    coxswain -- the viz_highlight subscriber, beside (never instead of) the
+    augmentation tag."""
+    html_path = out_dir / "assets" / "visualizer" / "index.html"
+    if not html_path.is_file():
+        raise BuildAssertionError(f"BUILD ASSERTION FAILED: {html_path} does not exist.")
+    offenders = [
+        line.strip()
+        for line in html_path.read_text().splitlines()
+        if "<script" in line.lower() and "coxswain" in line.lower()
+    ]
+    if len(offenders) != 1:
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: a --with-coxswain build's visualizer/index.html "
+            f"must carry EXACTLY ONE coxswain <script> tag (AC-11 clause 3), found "
+            f"{len(offenders)}:\n  " + "\n  ".join(offenders[:5])
+        )
+    logger.info("--with-coxswain visualizer/index.html carries exactly one coxswain tag (AC-11)")
 
 
 # --- CLI -------------------------------------------------------------------
@@ -1230,16 +1280,25 @@ def main(argv: list[str] | None = None) -> int:
         run_inject_shell(dev=args.dev, with_coxswain=args.with_coxswain, out_dir=out_dir)
         run_inject_shell_check(with_coxswain=args.with_coxswain, out_dir=out_dir)
 
+        if args.with_coxswain:
+            # W4 / deviation D-C: inject the SECOND module tag into the STAGED
+            # visualizer/index.html only. Runs after stage_overlay (which resets
+            # assets/ from the tracked, coxswain-free source every build), so
+            # this is per-build state and can never leak into a default build.
+            inject_viz_highlight_tag(out_dir)
+
         assert_dist_complete(out_dir, with_coxswain=args.with_coxswain)
 
         # AC-11: byte identity holds in EVERY mode; the zero-coxswain-path and
-        # no-coxswain-script clauses hold in DEFAULT builds. The flagged half of
-        # clause 3 (visualizer/index.html carries exactly one coxswain tag) is
-        # W4's viz_highlight injection and is asserted there.
+        # no-coxswain-script clauses hold in DEFAULT builds; the flagged half of
+        # clause 3 (exactly one coxswain tag) is asserted in --with-coxswain
+        # builds right after the injection above.
         assert_augmentation_byte_identity(out_dir)
         if not args.with_coxswain:
             assert_no_coxswain_anywhere(out_dir)
             assert_visualizer_html_free_of_coxswain(out_dir)
+        else:
+            assert_visualizer_html_exactly_one_coxswain_tag(out_dir)
 
     except BuildAssertionError as exc:
         msg = str(exc)
