@@ -1176,6 +1176,28 @@ of scope per N4-C, and a follow-up spec is required before any pre-simulation wo
 
 **Gate**: not applicable until W0 resolves. **Depends on**: W0.
 
+#### W6 scope amendment (2026-08-25, post-W0 verdict `partially_reusable` conf 0.9; owner: orchestrator rhino; user go received)
+
+W6 is activated per the condition above. **Exact reused subset** = the `reusable_subset` array of
+recon record `260824_w0_simulation_reuse_verdict` in `.praxia/recon.jsonl`, reproduced here as
+authoritative:
+
+- whole modules (already ported by W2 into `coxswain/src/coxswain/fft/preconditions/` — no new work):
+  `method_contracts`, `bounds_analyzer`, `simulation.state_models`
+- from `pipeline.py`: `InferredRequirement`, `HierarchicalSimulationResult`, `StatefulSimulationResult`
+- from `failure_detector.py`: `FailureMode`, `FailureDetectionResult`, `BooleanStateConfig`,
+  `generate_boolean_states`
+- from `simulator.py`: `ProtocolSimulationResult`, `SIMULATION_VERSION`, `is_cache_valid`
+
+Explicitly NOT reused: `HierarchicalSimulator` itself (its constructor requires ProtocolTracing's
+closure) and anything reaching `praxis.backend.core.tracing.*`. The two coupling mechanisms W0
+identified (tracing imports at pipeline.py:30-35; package-init chains via `core/__init__` → ORM
+models and `utils/__init__` → db.py + redis_lock.py) are cut by porting the named symbols into new
+stdlib/pydantic-only modules under `coxswain/src/coxswain/sim/` with zero runtime imports of
+`praxis.backend.*`; an AST-walking import-boundary test (same pattern as W2's) must enforce this.
+Pre-simulation runs at propose time only, feeding existing gate/card surfaces; it introduces no new
+kernel-side authority. All W2/W3 ACs continue to hold unchanged.
+
 ---
 
 ## 7. Out of scope
