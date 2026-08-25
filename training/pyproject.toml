@@ -38,11 +38,12 @@ coxswain = { workspace = true }
 # pylabrobot needs NO local source here: the workspace root already pins it
 # to external/pylabrobot (editable), and uv applies root sources workspace-wide.
 
-# MERGED packaging for four layouts in one member:
+# MERGED packaging for five layouts in one member:
 # - src/praxis_training/  (P2.1 golden_build + baseline_eval)
 # - verify/               (P2.2 execution-verify harness)
 # - floor_gen/            (P2.3 coverage-floor generator)
 # - overlay_gen/          (P2.4 naturalness overlay)
+# - assemble/             (P2.5 corpus assembly + slice gate, backlog 480)
 # setuptools packages.find accepts MULTIPLE `where` bases; each sub-pipeline's
 # package glob is listed explicitly so nobody's package silently drops out of
 # installs/wheel builds. DO NOT replace this block wholesale when editing your
@@ -54,6 +55,7 @@ include = [
     "verify*",
     "floor_gen*",
     "overlay_gen*",
+    "assemble*",
 ]
 
 # Same override rationale as coxswain/pyproject.toml: the root pyproject's

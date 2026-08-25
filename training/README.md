@@ -95,3 +95,56 @@ baseline run (AC-2.1.x "local CPU lane exercised") needs:
 
 Until then the harness is proven in recorded-artifact mode against the tiny
 hand-made fixture (mechanics proof only; report labeled RECORDED/PARTIAL).
+
+## P2.5 (backlog 480) -- corpus assembly + slice gate
+
+### Layout
+
+```
+assemble/
+  developer_scaffold_template.txt   EXACT developer-turn scaffold (D6-rev2,
+                                    no date injection; header states it)
+  scaffold.py                       loader (bytes live in the template file)
+  build.py                          deterministic assembly core + manifest
+  __main__.py                       CLI
+  out/
+    corpus_p25.jsonl                ONE FunctionGemma-native JSONL
+                                    {metadata, tools[], messages[]}
+    corpus_p25_sidecar.jsonl        parallel lineage rows, line N <-> line N
+    manifest.json                   PLR sha, versions, counts, exclusions,
+                                    shortfall, split rule
+```
+
+### Run
+
+```bash
+uv run --package training python -m assemble          # idempotent regeneration
+uv run pytest training/tests/test_assembly_split_disjointness.py \
+              training/tests/test_assembly_scaffold_byte_match.py \
+              training/tests/test_assembly_manifest_completeness.py \
+              training/tests/test_assembly_idempotent.py -q
+```
+
+### Recorded decisions (P2.5)
+
+- **Metadata normalization**: every emitted row carries `metadata` = FINAL
+  assembled split ("train"|"eval"), assigned HERE per the recorded rule --
+  golden-provenance ALL eval (instruments never train), synthetic strata
+  (provenance x class x verb) sorted by record_id with last k -> eval,
+  k = min(n-1, floor(0.2n)), bumped to >=1 once n>=4. Splits disjoint by
+  construction; sidecar keeps each row's full lineage.
+- **Uniform tool block**: every row repeats the FULL 13-tool declaration list
+  (mobile-actions pattern) regardless of source branch's embedded block.
+- **Validation gate excludes whole records loudly** (manifest `exclusions`):
+  calls outside PHASE2_TOOL_NAMES, params outside the canonical namespace,
+  numeric literals as strings, multi-value args on scalar-declared params
+  (parallel/multi-channel calls the declared grammar cannot express).
+- **Shortfall is recorded, never padded**: smoke-scale inputs yield 188 rows
+  vs the ~1000 target; see manifest `target.shortfall_reason`.
+- **Idempotency**: assembly is a pure function of committed inputs; upstream
+  teacher caches (R4/D9) make same-inputs => same-corpus bytes. Drift-alarm
+  test compares committed artifacts against a fresh build.
+- **Gate docs**: thresholds PROVISIONAL at
+  `.praxia/docs/specs/260825_p25_provisional_thresholds.md`; GO/NO-GO jury doc
+  at `.praxia/docs/specs/260825_p25_slice_gate.md`; storage ledger entry in
+  `.praxia/docs/research/260825_functiongemma-footprint.md` §6.
