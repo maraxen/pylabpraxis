@@ -59,6 +59,14 @@ design ambiguity.
    persistence by default with `navigator.storage.persist()` requested after first download.
 5. **F5 Text-first**: Web Speech API push-to-talk is a later phase; not in this DAG.
 6. **F6 Roles**: strong models (teacher) generate NL + judge quality; FunctionGemma only ever distills.
+   **Amendment (260825, user-directed): the teacher does NOT require external Opus/Sonnet routing.**
+   Two sanctioned teacher backends, both already wired: (a) **ox-alpha via spawned jcode swarm
+   workers** — each generation batch is a worker task writing JSONL directly (same mechanism used to
+   build Coxswain itself); (b) **titanix-vllm-primary** (`~/.praxia/backends.toml`, localhost vLLM,
+   verified live 260825, 32k ctx, max_concurrent 3) for high-volume bulk passes where per-example
+   cost matters more than peak quality. Quality tiering: ox-alpha authors the ambiguity-injection
+   and golden-set work; titanix handles mechanical NL-ification volume; P2.1's golden-50 stays
+   human-reviewed regardless of generator.
 
 ## 4. Corrected ground truth (recon findings the implementer MUST honor)
 
