@@ -24,3 +24,20 @@ won and truncated `daily.jsonl` to O_TRUNC before the append).
 
 **Lesson:** appends must be `flock <lockfile> -c 'printf ... >> file'` or an MCP
 append action; NEVER open the data file with `>` in any redirect position.
+
+## Recovery addendum (orchestrator rhino, 2026-08-25T22:16Z)
+
+Final state: **9/13 records present**. Restored by orchestrator from session context (verbatim
+re-authoring, marked `"restored_after_truncation": true`): `w2_fft_gate_landed`, `w3_propose_card_landed`,
+`w4_clarification_card_landed`, `w5_audit_trail_landed`. Previously recovered by skunk: w6_presim
+(via octopus journal), phase2_spec_dag + p20 (pre-truncation tail capture), plus post-truncation
+appends p21 + p23.
+
+Permanently unrecoverable (~4 records, content unknown to any surviving source): pre-MVP records
+`260824_repl_autocomplete_scope`, `260824_repl_fresh_boot`, `260824_coxswain_spec_design_close`,
+plus any W0/W1-era worker records (unicorn/kangaroo likely never wrote them, consistent with the
+worker-reliability lesson #410). Impact assessed as LOW: all four were narrative status records;
+their substance is preserved in git history (specs, commits, PRs) and in backlog item states.
+
+Adopted mitigation: appends via `>>` only (never `>`), flock or MCP where concurrent writers exist;
+orchestrator holds canonical re-authoring capability for orchestrator-written records.
