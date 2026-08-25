@@ -1,7 +1,7 @@
 {
   "generator": "fetch_models.py --runtime",
   "generator_version": "1.0.0",
-  "generated_at": "2026-08-25T21:43:15Z",
+  "generated_at": "2026-08-25T22:09:28Z",
   "pins": {
     "transformers.js": {
       "npm": "@huggingface/transformers",
@@ -16,7 +16,7 @@
     "substitutions": [
       {
         "what": "wasmPaths jsDelivr default -> ./ort/",
-        "why": "GATE G5 forbids cdn.jsdelivr.net anywhere in dist",
+        "why": "GATE G5 forbids the jsDelivr CDN host anywhere in dist",
         "matches_expected": 1
       }
     ]
@@ -24,8 +24,8 @@
   "files": [
     {
       "path": "model_integrity.js",
-      "sha256": "2cafde3a4a671323e0b94a835ecf56a1f7312a15a5db84c02269c92932b53442",
-      "bytes": 10968,
+      "sha256": "8411efce516361625e0c56c75ced393a6771b89016ee9d23ee5e4758b2f22c4c",
+      "bytes": 11127,
       "tracked": true,
       "role": "hand-authored"
     },
@@ -44,9 +44,9 @@
       "role": "fetched-binary-untracked"
     },
     {
-      "path": "transformers.web.min.js",
-      "sha256": "f196c37d24711639a1ef7ae138ed4170cd6af434ad1b081b028eafd1726cff26",
-      "bytes": 431589,
+      "path": "transformers.min.js",
+      "sha256": "1ed1ea40eb4d142e3773bf03985b69da5a781c33053eacb48eb3e54d406c4b27",
+      "bytes": 558310,
       "tracked": true,
       "role": "vendored-lib"
     }

@@ -35,7 +35,7 @@ def fake_overlay(tmp_path: Path) -> Path:
     vendor = assets / "coxswain" / "vendor"
     (vendor / "ort").mkdir(parents=True)
     (vendor / "model_integrity.js").write_text("export const x = 1;\n")
-    (vendor / "transformers.web.min.js").write_text("// patched bundle\n")
+    (vendor / "transformers.min.js").write_text("// patched bundle\n")
     (vendor / "ort" / "ort-wasm-simd-threaded.asyncify.mjs").write_text("// ort mjs\n")
     (vendor / "ort" / "ort-wasm-simd-threaded.asyncify.wasm").write_bytes(b"\x00asm\x01")
     return assets
@@ -66,7 +66,7 @@ def test_flagged_build_stages_vendor_dir_including_untracked_wasm(
     (fake_assets / "visualizer" / "index.html").write_text("<html></html>")
     vendor = fake_assets / "coxswain" / "vendor"
     (vendor / "ort").mkdir(parents=True)
-    (vendor / "transformers.web.min.js").write_text("// bundle\n")
+    (vendor / "transformers.min.js").write_text("// bundle\n")
     (vendor / "model_integrity.js").write_text("export {};\n")
     (vendor / "ort" / "ort-wasm-simd-threaded.asyncify.wasm").write_bytes(b"\x00asm")
 
@@ -75,7 +75,7 @@ def test_flagged_build_stages_vendor_dir_including_untracked_wasm(
     build_repl.stage_overlay(out_dir, include_coxswain=True)
 
     staged_vendor = out_dir / "assets" / "coxswain" / "vendor"
-    assert (staged_vendor / "transformers.web.min.js").is_file()
+    assert (staged_vendor / "transformers.min.js").is_file()
     assert (staged_vendor / "model_integrity.js").is_file()
     wasm = staged_vendor / "ort" / "ort-wasm-simd-threaded.asyncify.wasm"
     assert wasm.is_file(), "flagged dist must carry the ORT backend binary"
@@ -90,7 +90,7 @@ def test_vendored_bundle_is_g5_clean() -> None:
         build_repl.OVERLAY_ASSETS_DIR
         / "coxswain"
         / "vendor"
-        / "transformers.web.min.js"
+        / "transformers.min.js"
     )
     if not bundle.is_file():
         pytest.skip("runtime not vendored yet (fetch_models.py --runtime)")

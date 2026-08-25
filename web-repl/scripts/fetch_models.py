@@ -97,14 +97,20 @@ ORT_WEB_TARBALL_SHA512 = (
     "mj2CQiw=="
 )
 
-#: Files taken from the two npm packages, <member-path-in-tarball> -> dest path
-#: relative to the runtime vendor dir. Only what a browser ESM load actually
-#: needs: the web ESM bundle + the asyncify ORT pair (the non-Safari default in
-#: transformers.js v4's env bootstrap, and the build whose binary carries the
-#: WebGPU EP for this ORT version). The Safari-named artifacts are deliberately
+#: Files taken from the two npm packages, <member-path-in-tarball> -> dest
+#: path relative to the runtime vendor dir. ``transformers.min.js`` is the
+#: FULLY SELF-CONTAINED browser ESM bundle (the file jsDelivr's default entry
+#: serves): ORT is inlined and there are NO bare module specifiers. The
+#: ``transformers.web(.min).js`` variants are NOT shippable origin-local:
+#: they carry static `import ... from "onnxruntime-web/webgpu"` /
+#: `"onnxruntime-common"` externals that only resolve under a bundler or an
+#: import map (measured 260825: a page importing the .web variant fails at
+#: link with 'Failed to resolve module specifier'). The asyncify ORT pair is
+#: the non-Safari default in v4's env bootstrap AND its binary carries the
+#: WebGPU EP for this ORT version. The Safari-named artifacts are deliberately
 #: NOT shipped (Safari < 26 has no WebGPU per research §4; matrix follow-up).
 RUNTIME_FILES: dict[str, str] = {
-    "package/dist/transformers.web.min.js": "transformers.web.min.js",
+    "package/dist/transformers.min.js": "transformers.min.js",
     "package/dist/ort-wasm-simd-threaded.asyncify.mjs": "ort/ort-wasm-simd-threaded.asyncify.mjs",
     "package/dist/ort-wasm-simd-threaded.asyncify.wasm": "ort/ort-wasm-simd-threaded.asyncify.wasm",
 }
@@ -468,7 +474,7 @@ def vendor_runtime(
         "substitutions": [
             {
                 "what": "wasmPaths jsDelivr default -> ./ort/",
-                "why": "GATE G5 forbids cdn.jsdelivr.net anywhere in dist",
+                "why": "GATE G5 forbids the jsDelivr CDN host anywhere in dist",
                 "matches_expected": 1,
             }
         ],
@@ -510,7 +516,7 @@ def vendor_runtime(
     _extract_members(ort_tgz, ort_members, extract_root)
 
     # Patch the G5 anchor BEFORE publishing; publish atomically per file.
-    staged_bundle = extract_root / RUNTIME_FILES["package/dist/transformers.web.min.js"]
+    staged_bundle = extract_root / RUNTIME_FILES["package/dist/transformers.min.js"]
     patched = patch_jsdelivr_default(staged_bundle.read_text(encoding="utf-8"))
     staged_bundle.write_text(patched, encoding="utf-8")
 

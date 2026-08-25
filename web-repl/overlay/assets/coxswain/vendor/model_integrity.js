@@ -42,8 +42,10 @@ export class ModelIntegrityError extends Error {
  * assets/coxswain/vendor/ -> ../../ = assets/ -> wheels/manifest.json. */
 const BUILD_MANIFEST_URL = new URL("../../wheels/manifest.json", import.meta.url);
 
-/** Vendored transformers.js bundle sits beside this file. */
-const TRANSFORMERS_BUNDLE_URL = new URL("./transformers.web.min.js", import.meta.url);
+/** Vendored transformers.js bundle sits beside this file. This is the
+ * SELF-CONTAINED build (ORT inlined, no bare module specifiers -- the .web
+ * variants fail to link origin-local, see fetch_models.py RUNTIME_FILES). */
+const TRANSFORMERS_BUNDLE_URL = new URL("./transformers.min.js", import.meta.url);
 
 /** Vendored ORT backend directory (wasmPaths), sibling ort/. */
 const ORT_WASM_DIR_URL = new URL("./ort/", import.meta.url);
