@@ -1,0 +1,84 @@
+"""Local inference lane (transformers) -- LAZY, isolated heavy imports.
+
+BLOCKED-RUN NOTE (surfaced, not faked): ``google/functiongemma-270m-it`` is a
+GATED HF repo. Loading it requires (a) accepting Google's Gemma terms on the
+hub, and (b) an ``HF_TOKEN`` env var carrying an access token with that
+acceptance. Without both, :func:`make_generate` raises a loud, actionable
+error; it must NEVER silently fall back to something that only looks like
+inference.
+
+Decode config per F4/D3: greedy (``do_sample=False``), max_new_tokens=128,
+stop at ``<end_of_turn>`` and ``<start_function_response>``.
+"""
+
+from __future__ import annotations
+
+from typing import Callable
+
+__all__ = ["make_generate", "HF_REPO_ID", "GATED_REPO_HINT"]
+
+HF_REPO_ID = "google/functiongemma-270m-it"
+GATED_REPO_HINT = (
+    f"{HF_REPO_ID} is a GATED Hugging Face repo: accept the Gemma terms at "
+    f"https://huggingface.co/{HF_REPO_ID} with the account owning the token, "
+    "then export HF_TOKEN=<token> and re-run with --model."
+)
+
+StopStrings = ("<end_of_turn>", "<start_function_response>")
+
+
+def make_generate(
+    model_id: str,
+    *,
+    revision: str = "main",
+    device: str = "cpu",
+    dtype: str | None = None,
+    max_new_tokens: int = 128,
+) -> Callable[[str], str]:
+    """Build a prompt->raw-output callable from transformers AutoModelForCausalLM.
+
+    Heavy imports happen HERE, inside the function, so importing
+    praxis_training.baseline_eval never drags torch in.
+    """
+    import os
+
+    if not os.environ.get("HF_TOKEN") and not os.environ.get("HUGGING_FACE_HUB_TOKEN"):
+        # Fail BEFORE transformers tries the hub: the error must name the fix.
+        raise RuntimeError(
+            "HF_TOKEN/HUGGING_FACE_HUB_TOKEN not set. " + GATED_REPO_HINT
+        )
+
+    import torch  # noqa: F401 - required by transformers model load
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    torch_dtype = None
+    if dtype:
+        torch_dtype = getattr(torch, dtype, None)
+        if torch_dtype is None:
+            raise ValueError(f"unknown torch dtype {dtype!r}")
+
+    tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_id, revision=revision, torch_dtype=torch_dtype
+    ).to(device)
+    model.eval()
+
+    def generate(prompt: str) -> str:
+        inputs = tokenizer(prompt, return_tensors="pt").to(device)
+        with __import__("torch").no_grad():
+            out = model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                do_sample=False,
+                num_beams=1,
+            )
+        # Slice off the prompt tokens so the parser sees ONLY generation.
+        completion = out[0][inputs["input_ids"].shape[1]:]
+        text = tokenizer.decode(completion, skip_special_tokens=False)
+        for stop in StopStrings:
+            idx = text.find(stop)
+            if idx != -1:
+                text = text[:idx]
+        return text
+
+    return generate
