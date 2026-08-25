@@ -1,0 +1,68 @@
+{
+ "accepted": 30,
+ "cache_hits": 36,
+ "cache_misses": 0,
+ "examples_total": 36,
+ "format_validation_pass_rate": 0.8333,
+ "generator_version": "0.1.0",
+ "matrix_version": "1",
+ "per_class": {
+  "ambiguous-referent": 7,
+  "missing-slot": 5,
+  "none": 9,
+  "out-of-surface": 9
+ },
+ "pipeline": "p23_coverage_floor",
+ "plr_submodule_sha": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+ "prompt_version": "p23_nlify_v1",
+ "rejected": 6,
+ "selected_cell_ids": [
+  "aspirate__none",
+  "aspirate__missing-slot",
+  "aspirate__ambiguous-referent",
+  "mix__out-of-surface",
+  "dispense__none",
+  "dispense__missing-slot",
+  "dispense__ambiguous-referent",
+  "blow_out__out-of-surface",
+  "transfer__none",
+  "transfer__missing-slot",
+  "transfer__ambiguous-referent",
+  "touch_tip__out-of-surface"
+ ],
+ "supervision_kinds": {
+  "nl_clarification": "nl_clarification",
+  "tool_call": "tool_call"
+ },
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ",
+ "value_format_conventions": {
+  "ambiguous_references": {
+   "examples": [
+    "the plate",
+    "the same well",
+    "the source well",
+    "the destination well"
+   ],
+   "style": "short vague noun phrases; only in ambiguous-referent cells"
+  },
+  "deck_resource_names": {
+   "examples": [
+    "plate_1_A3",
+    "tip_rack_2_A4",
+    "reservoir_1"
+   ],
+   "style": "lowercase snake_case stable ids resolvable by grounding"
+  },
+  "volumes": {
+   "example": 50.0,
+   "json_type": "float",
+   "rule": "positive finite floats; spoken/written as 'microliters' in utterances",
+   "unit": "uL"
+  },
+  "well_references": {
+   "example": "B3",
+   "regex": "^([A-H])(10|11|12|[1-9])$",
+   "style": "uppercase <row A-H><col 1-12>, e.g. A1 / B12"
+  }
+ }
+}
