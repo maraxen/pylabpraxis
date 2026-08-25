@@ -1,204 +1,164 @@
 ---
 title: 'Coxswain Phase 2: FunctionGemma copilot pipeline'
-description: 'Spec for the synthetic-data pipeline, functiongemma-270m-it fine-tune, browser serving via Transformers.js/WebGPU behind --with-coxswain, and ParseSource integration. Authored from contemplex session 70ae4959 (winner: Approach C hybrid staged corpus), recon 260825_copilot-pipeline-recon.md, and research 260825_functiongemma-training-serving-research.md.'
-status: draft-adversarial
+description: 'Spec for the synthetic-data pipeline, functiongemma-270m-it fine-tune, browser serving via Transformers.js/WebGPU behind --with-coxswain, and ParseSource integration. REV 2: reconciled from challenger (2 blockers, 7 majors, 8 minors) and defender (11 robustness findings) reviews of 260825.'
+status: draft-rev2
 task_id: 260825_copilot_pipeline_spec
 date: '260825'
 ---
 
-# Coxswain Phase 2 — FunctionGemma copilot pipeline
+# Coxswain Phase 2 — FunctionGemma copilot pipeline (rev 2)
+
+Revision log: rev1 authored from contemplex session 70ae4959 + recon + research. rev2 adopts all
+challenger blockers/majors (C-B1, C-B2, C-M1..C-M7, minors m1-m8) and all defender robustness
+findings (R1-R11). Reviews preserved at `.praxia/docs/specs/260825_copilot-pipeline-{challenger,
+defender}.md`. Changes are marked **[rev2]** inline.
 
 ## 1. Problem and goal
 
-Coxswain's deterministic substrate shipped complete (W0–W6, backlog 4388–4395): FFT gate,
-propose/confirm and clarification cards, audit trail, pre-simulation preview, `--with-coxswain`
-build plumbing. The parse layer is a fixture-backed stub (`FixtureParseSource`,
-`coxswain/src/coxswain/parse_source.py`) and the chat panel runs a demo regex stub mirroring three
-golden utterances (`coxswain-shell.js:52-81`). This spec covers everything needed to replace those
-stubs with a real model: generate execution-verified training data, fine-tune
-`google/functiongemma-270m-it`, serve it in-browser, and integrate it through the existing
+Coxswain's deterministic substrate shipped complete (W0–W6, backlog 4388–4395). The parse layer is
+a fixture-backed stub (`FixtureParseSource`) plus a client-side demo regex stub
+(`coxswain-shell.js`). This spec covers replacing those with a real model: execution-verified
+training data, `google/functiongemma-270m-it` fine-tune, browser serving, integration through the
 `ParseSource` seam — decomposed into a backlog DAG where every item dispatches without further
 design ambiguity.
 
-**Inputs this spec is bound by** (do not re-litigate):
-- Scoping: `.praxia/docs/research/260824_gemma-finetuned-plr-voice-text-copilot-scoping.md`
-- Recon: `.praxia/docs/research/260825_copilot-pipeline-recon.md` (code-verified, corrects several scoping-doc claims)
-- Research: `.praxia/docs/research/260825_functiongemma-training-serving-research.md` (primary-source web facts)
-- Contemplex session `70ae4959`: winner = Approach C hybrid staged corpus; pre-mortem counters adopted below.
-- Locked constraints (from session frame): safety architecture [F1], import boundary [F2], delivery mechanism [F3],
-  lazy-load own-worker [F4], text-input-first [F5], teacher/distillation split [F6]. Details §3.
+Bound inputs (do not re-litigate): scoping `260824_gemma-finetuned-plr-voice-text-copilot-scoping.md`;
+recon `260825_copilot-pipeline-recon.md`; research `260825_functiongemma-training-serving-research.md`;
+contemplex session `70ae4959`; MVP spec `260824_coxswain-mvp-ux-spec.md`.
 
-## 2. Decisions locked by this brainstorm
+## 2. Decisions locked
 
 | # | Decision | Basis |
 |---|----------|-------|
-| D1 | Data strategy = Approach C: schema-driven synthesis floor (B) + corpus naturalness overlay (A), deduped, all execution-verified | session 70ae4959 winner; B alone is fallback under time pressure (steelman recorded) |
-| D2 | Baseline-first gate inside C: measure off-the-shelf model on a ~50-pair golden set before committing generation effort | Approach D absorbed as internal gate |
-| D3 | Serving = greedy decoding (`do_sample:false`) + hardened parser for FunctionGemma's native call syntax + schema validation + bounded repair-retry (max 2). Constrained decoding explicitly OUT (transformers.js PR #1758 unmerged, package unpublished; FunctionGemma emits bespoke `<escape>` token syntax, not JSON) | research §4; Physics Playground precedent (greedy + regex works in production) |
-| D4 | Quantization = ONNX q4f16 (~426 MB) primary, fp16 (~570 MB) fallback for weak WebGPU; exactly one dtype cached per device class | research §3; q4 (801 MB) rejected — untied 262k-vocab embeddings dominate, q4 saves nothing |
-| D5 | Fine-tune = TRL SFTTrainer FULL-parameter (no LoRA at 270M), Google Mobile-Actions recipe hyperparams (lr 1e-5 cosine, completion_only_loss=True, bf16), venue decided at run time: Colab/Kaggle A100 default, Engaging SLURM via myxcel fallback, google/functiongemma-tuning-lab Space as no-code option | research §2; scoping doc's LoRA-family idea DEMOTED to post-MVP (no official multi-adapter story) |
-| D6 | Dataset format = FunctionGemma-native JSONL `{metadata, tools[], messages[]}`, developer-role scaffold verbatim per formatting guide, assistant supervision as tool_calls, `completion_only_loss` | research §2a/§2b; mobile-actions shape |
-| D7 | Clarify supervision is a FIRST-CLASS class: negative examples (out-of-surface utterances → NL clarification turn, not tool_call) and incomplete-slot examples (→ clarification naming the missing argument) mixed into training at a controlled ratio; base model's Irrelevance prior (73.7 BFCL) must be preserved, not overwritten | research §7; pre-mortem failure #2 |
-| D8 | Promotion gates are THREE-number: parse exact-match accuracy ≥ threshold T_acc on held-out eval, clarify recall ≥ T_clr_recall AND clarify precision ≥ T_clr_prec (exact thresholds set at item P2.5 from baseline-measured spread, not invented now) | pre-mortem counter for clarify-class collapse |
-| D9 | Eval set is versioned and regenerable, keyed to PLR wheel `PLR_SOURCE_SHA`; regeneration is a pipeline stage, never a one-time artifact | pre-mortem failure #1 |
-| D10 | Phase-2 scope boundary: voice input, candidate-resolution adapter (free-text clarify answers), visual ghost rendering, and multi-step call chaining are ALL OUT. Single-turn parses only; clarification re-entry stays deterministic (existing FFT/cards) | session frame F5/F6; scoping doc LoRA note |
+| D1 | Data strategy = Approach C hybrid staged corpus (schema-driven floor + naturalness overlay), all execution-verified; B-alone is the fallback | session winner; defender steelman §1 |
+| D2 | Baseline-first gate: off-the-shelf accuracy on golden set measured BEFORE generation spend; golden-50 stays human-reviewed regardless of teacher | D absorbed; F6 amendment |
+| D3 | Serving = greedy decode (`do_sample:false`) + hardened parser for FunctionGemma native `<start_function_call>` syntax + schema validation + bounded retry (≤2). Constrained decoding OUT (PR #1758 open/unmerged, package unpublished, targets JSON not the escape-syntax) | research §4; Physics Playground precedent |
+| D4 | **[rev2]** Exactly ONE dtype ships globally, chosen at P2.7a go/no-go (q4f16 ~426 MB expected primary; fp16 only if q4f16 fails footprint/quality gates). Unsupported-device degrade is a LOUD SYSTEM LINE, not a second shipped artifact (two dtypes ≈ 1.48 GB > Pages 1 GB limit) | C-M5 fix; recon §7 budget math |
+| D5 | TRL SFTTrainer FULL-parameter (no LoRA at 270M), Mobile-Actions hyperparams (lr 1e-5 cosine, bf16, completion_only_loss=True), deps pinned `transformers==4.57.1 trl==0.25.1`; venue empirical at run time (Colab A100 default → Engaging SLURM via myxcel → functiongemma-tuning-lab Space) | research §2 |
+| D6 | Dataset format = FunctionGemma-native JSONL `{metadata, tools[], messages[]}`; developer-role scaffold committed as an exact template in P2.5 **[rev2: dates/timestamp injection OMITTED — stated explicitly]**; assistant supervision as tool_calls; completion_only_loss | research §2; C-m3 fix |
+| D7 | Clarify supervision first-class: negatives mixed at controlled ratio. **[rev2] Supervision shape: out-of-surface utterances supervise an NL clarification turn (no tool_call); incomplete-slot utterances supervise a tool_call with `missing_required` derivable deterministically — see D11 — NOT free-text slot naming** | research §7; C-B1 fix |
+| D8 | Promotion gates THREE-number: exact-match accuracy, clarify recall, clarify precision. **[rev2]** Eval split sized for the decision: ≥30 held-out clarify examples spanning all three classes; Wilson intervals reported beside point estimates; ONE threshold revision permitted at P2.6 with recorded justification (P2.5 numbers are provisional anchors, not final) | C-M6 + R9 fixes |
+| D9 | Eval set versioned + regenerable keyed to `PLR_SOURCE_SHA`; **[rev2]** golden-provenance pairs EXEMPT (human-authored, re-not-regenerated); teacher outputs cached content-addressed `(prompt_version, input_hash)` with `teacher_model_version` in manifest — same sha ⇒ same corpus | C-m1 + R4 fixes |
+| D10 | Out of scope: voice, candidate-resolution adapter, ghost rendering, multi-step chaining, production-mode backend, LoRA family, public dataset/model publishing | session frame; model card single-turn-only fact |
+| **D11** | **[rev2] Prediction target = `{name, params}` ONLY.** `missing_required` and `unresolved_slots` are derived DETERMINISTICALLY post-parse from the P2.0 canonical tables (required-set per verb; slot-classification rule over string-valued resource-typed args). Rationale: FunctionGemma's native call syntax cannot express these fields (C-B1); deriving keeps them out of model hands AND makes them trustworthy for cue 1/cue 2. Clarify-expected training examples = utterances whose supervision target is deliberately NO tool_call or an incomplete tool_call, teaching abstention — the fields themselves stay deterministic | C-B1 fix, option (b) |
+| **D12** | **[rev2] Parse topology (MVP) = CLIENT-SIDE JS implementation** consuming the same fixture corpus, dual-language FR-3 parity tests against the kernel-side `ParseSource` contract (house pattern from W3). The sync Python Protocol ↔ async JS worker mismatch (defender R1) is resolved by NOT bridging: the kernel-side `ParseSource` remains the contract/spec surface + test harness; production parsing happens in the JS layer where async lives naturally. Kernel-side delegation is a documented non-goal for phase 2 | defender R1 top concern |
+| **D13** | **[rev2] Gemma license & deployment-audience gate runs at P2.0 time** (before any teacher spend): read terms + prohibited-use policy once; decide deployment audience (private/internal Pages vs gated fetch); record as constraint. Public anonymous serving of a Gemma derivative IS redistribution — decided early, not at P2.6 | defender R3 |
 
-## 3. Fixed constraints (inherited, enforced by tests)
+## 3. Fixed constraints (inherited)
 
-1. **F1 Safety**: FFT gate unchanged and model-free; the model produces candidate `ParsedCall`s only;
-   zero new kernel-side authority; audit trail semantics untouched.
-2. **F2 Import boundary**: `coxswain/` never imports `praxis.backend.*` (NFR-1/NFR-2, AST-enforced);
-   training/generation code lives in a NEW top-level `training/` directory (uv workspace member),
-   which MAY import praxis.backend pieces (it runs in CPython CI/lab context, never ships to browser).
-3. **F3 Delivery**: model artifacts NEVER git-committed (R6/R8 zero-tracked-binaries); fetched by a
-   script into gitignored `web-repl/vendor/models/`, tracked via a NEW `models` array in build manifest
-   (wheels-shaped: name/filename/source_sha/sha256/bytes — NOT the js/css coxswain_assets key);
-   G5 forbids CDN at runtime; lazy fetch on first chat interaction from site origin.
-4. **F4 Worker**: inference in its own module Web Worker (mount point per recon §5.2:
-   `overlay/assets/coxswain/parse_worker.js`), progress events surfaced as system lines, Cache API
-   persistence by default with `navigator.storage.persist()` requested after first download.
-5. **F5 Text-first**: Web Speech API push-to-talk is a later phase; not in this DAG.
-6. **F6 Roles**: strong models (teacher) generate NL + judge quality; FunctionGemma only ever distills.
-   **Amendment (260825, user-directed): the teacher does NOT require external Opus/Sonnet routing.**
-   Two sanctioned teacher backends, both already wired: (a) **ox-alpha via spawned jcode swarm
-   workers** — each generation batch is a worker task writing JSONL directly (same mechanism used to
-   build Coxswain itself); (b) **titanix-vllm-primary** (`~/.praxia/backends.toml`, localhost vLLM,
-   verified live 260825, 32k ctx, max_concurrent 3) for high-volume bulk passes where per-example
-   cost matters more than peak quality. Quality tiering: ox-alpha authors the ambiguity-injection
-   and golden-set work; titanix handles mechanical NL-ification volume; P2.1's golden-50 stays
-   human-reviewed regardless of generator.
+1. **F1 Safety**: FFT gate unchanged, model-free; candidate parses only; zero new kernel authority.
+   **[rev2 strengthening per C-M1]** Kernel-side validation that every resource-typed arg either
+   resolves against live state or exits `clarify:*` is MANDATORY before propose; the worker's
+   slot/unresolved reporting is ADVISORY ONLY (under-prediction cannot bypass cue 2).
+2. **F2 Import boundary**: `coxswain/` never imports `praxis.backend.*`; `training/` (new uv
+   workspace member) may, in CPython context only. **[rev2]** AST boundary test also asserts
+   `coxswain/` never imports `training/`, overlay/staged python never sees `training/`, and browser
+   bundles never contain it (C-m5).
+3. **F3 Delivery**: model binaries never git-tracked; fetched to gitignored `web-repl/vendor/models/`
+   via fetch script; NEW `models` manifest array (wheels-shaped: name/filename/source_sha/sha256/
+   bytes); G5 forbids CDN at runtime; lazy fetch from site origin on first chat interaction.
+   **[rev2]** The @huggingface/transformers LIBRARY ITSELF is vendored origin-local the same way as
+   visualizer's gif.js (tracked vendored lib + VENDOR_MANIFEST treatment), pinned to an exact
+   version — a jsDelivr import would fail the G5 grep (C-M4.1/R6).
+4. **F4 Worker**: own module Web Worker under `overlay/assets/coxswain/`; progress as system lines;
+   Cache API persistence + `navigator.storage.persist()` after first download.
+   **[rev2]** Lifecycle fixed in one place (C-m4): session_id/turn_id passed via worker init message;
+   main thread owns `seq` allocation; envelopes wrapped on MAIN thread through
+   `assertValidEnvelope` (worker emits raw results); decode config = stop tokens
+   [`<end_of_turn>`, `<start_function_response>`], max_new_tokens 128, greedy.
+5. **F5 Text-first**; voice push-to-talk later.
+6. **F6 Teacher backends (amended 260825, user-directed)**: ox-alpha via spawned jcode workers
+   (ambiguity-injection, golden authoring) + titanix-vllm-primary localhost vLLM (verified live;
+   bulk mechanical passes); external routing not required; golden-50 human-reviewed always.
 
-## 4. Corrected ground truth (recon findings the implementer MUST honor)
+## 4. Corrected ground truth (implementer must honor)
 
-- Execution backend is `LiquidHandlerChatterboxBackend`
-  (`external/pylabrobot/pylabrobot/liquid_handling/backends/chatterbox.py:24-242`); `ChatterBoxBackend`
-  is a deprecated tombstone raising NotImplementedError. Verification harness builds on
-  `praxis/backend/core/simulation/chatterbox_runner.py` (`DeckFactory.create_setup`, `run_single`;
-  DB-free by design, imports verified SQLAlchemy-free).
-- Runnable protocol corpus = `praxis/protocol/protocols/` (6 `@protocol_function` files,
-  keyword-call style `vols=[...]`). `tests/fixtures/protocols/*.py` are static-analysis fixtures,
-  NOT executable — do not use as pairing material.
-- PLR docs corpus = **58** notebooks; LH-core subset is `user_guide/00_liquid-handling/**` (16).
-- Golden fixtures live at `coxswain/tests/fixtures/parsed_calls/` (6 files); their shape IS the
-  ParseSource contract: `{utterance, name, verb, receiver_type, params, missing_required,
-  unresolved_slots[{arg_name, reference, resource_type}], expected_phrase}`. The model predicts
-  `{name, params, missing_required?, unresolved_slots?}` ONLY — tier/verb/effects metadata comes from
-  `TOOL_SCHEMA` keyed by `name` (`tool_schema.py:147-150`) and is never a prediction target.
-- **TOOL_SCHEMA drift (must fix before any data generation)**: `tool_schema.py` declares `mix`,
-  `blow_out`, `touch_tip` (:103-111) and `dispense_to_waste` (:83-90); vendored LiquidHandler has
-  NONE of these (verified by inspect + grep). Reconciliation is item P2.0.
+Unchanged from rev1 (recon-verified): tombstone backend name (`LiquidHandlerChatterboxBackend`, not
+`ChatterBoxBackend`); runnable corpus = `praxis/protocol/protocols/` (6 protocols); 58 notebooks
+(16 LH-core); fixture location `coxswain/tests/fixtures/parsed_calls/` (6 files, all clean-parse —
+hard-case fixtures added by P2.9 per C-m6); TOOL_SCHEMA drift (phantom verbs) drives P2.0.
+**[rev2 additions]** TOOL_SCHEMA has **21** entries (not 20); shell has 16 modules + 17 test files;
+demo stub mirrors two golden entries by regex (its comment says three) — re-stamped here per R11.
+**Param-name vocabularies (C-B2)**: fixtures use normalized names (`source`/`volume_ul`/
+`destination`/`wavelength_nm`) ≠ PLR signatures (`resources`/`vols`/`targets`) and NO dispatcher
+exists today (`execute.py:163` takes abstract executor). P2.0 owns the canonical mapping table;
+everything downstream consumes it.
 
-## 5. Work items (the DAG, one line each; full ACs §7)
+## 5. Work items — the DAG
 
 | ID | Item | Depends on |
 |----|------|-----------|
-| P2.0 | Tool-schema reconciliation: generated-signature sweep vs `TOOL_SCHEMA`, pinned to `PLR_SOURCE_SHA`; remove/justify phantom verbs; assert subset relation as a test | — |
-| P2.1 | Golden-50 set (hand-authored, human-reviewed, provenance=golden) + baseline eval harness reporting the three D8 metrics for off-the-shelf checkpoint | P2.0 |
-| P2.2 | Execution-verify harness: `chatterbox_runner`-based async verifier with tracker post-conditions + `set_strictness(STRICT)` + intent-record slot-agreement axis | — (parallel with P2.1) |
-| P2.3 | Coverage-floor generator: enumerate tool schema × deck shapes → structured calls + systematic ambiguity matrix (missing-slot / ambiguous-referent / out-of-surface classes) → teacher NL-ification prompts | P2.0 |
-| P2.4 | Naturalness overlay: mine 16 LH-core notebooks + 6 runnable protocols → real calls → teacher NL pairs → dedupe against floor | P2.0 |
-| P2.5 | Corpus assembly + slice gate: assemble ~1000-example calibration/training split (train/eval stratified by provenance and ambiguity class), regenerate keyed to PLR sha; GO/NO-GO review comparing baseline (P2.1) failure distribution vs coverage plan | P2.1, P2.2, P2.3, P2.4 |
-| P2.6 | Fine-tune run: TRL SFT full-parameter on chosen venue; produce merged checkpoint + eval report against P2.1 harness + held-out eval split; promotion per D8 thresholds | P2.5 |
-| P2.7 | Export/delivery spike: optimum ONNX export of fine-tuned gemma3_text checkpoint → q4f16 quantization; `fetch_models.py` + `models` manifest array + first-use integrity check; measure real footprint beside live Pyodide | P2.6 |
-| P2.8 | Serving worker: `parse_worker.js` (lazy module worker), greedy decode, hardened `<start_function_call>` grammar parser, schema validation + bounded retry, envelope-wrapped results on `praxis_coxswain`, progress/cache system lines | P2.7 |
-| P2.9 | ParseSource integration: worker-backed `ParseSource` implementation behind the existing interface; swap stub at shell layer; FR-3 parity tests extended to model outputs; kernel-guard bridge for in-tab grounding if still missing (recon GAPS #6) | P2.8 |
+| P2.0 | Schema reconciliation: signature sweep vs TOOL_SCHEMA pinned to submodule HEAD; phantom removal/exclusion; **include/exclude list as recorded product decision** (96-channel, tip-return families excluded unless promoted); receiver-by-receiver verification plan (HeaterShaker = experimental/excluded until backend exists); **canonical param namespace + (schema name ↔ PLR kwarg) mapping table + symbolic-slot classification rule + required/type tables** (feeds D11, C-B2); intent-record shape definition (C-M3); **Gemma license + deployment-audience gate (D13)** | — |
+| P2.1 | Golden set + baseline harness. Pair count DERIVES from reconciled verb count (≥2 per included verb + ≥30 clarify examples spanning 3 classes — R9 sizing); harness reports 3 metrics + Wilson intervals; **local CPU inference lane exercised in-phase** (270M × N pairs is minutes) + base-revision pin beside any recorded outputs (R7) | P2.0 |
+| P2.2 | Execution-verify harness: chatterbox_runner-based, STRICT mode, tracker post-conditions, intent-record slot-agreement axis (**intent record defined in P2.0** — dependency added per C-M3) | P2.0 |
+| P2.3 | Coverage-floor generator: verb × ambiguity matrix → structured calls → teacher NL-ification; **teacher-output content-hash cache** (R4) | P2.0 |
+| P2.4 | Naturalness overlay: notebooks + runnable protocols → verified calls → teacher pairs; dedupe | P2.0 |
+| P2.5 | Assembly + slice gate: ~1000-example stratified split; **exact scaffold template committed (no date injection)**; thresholds PROVISIONAL; GO/NO-GO comparing baseline failure distribution vs coverage plan; **storage-budget ledger started** (C-m8) | P2.1, P2.2, P2.3, P2.4 |
+| P2.6 | Fine-tune run (D5 recipe); eval report w/ intervals; promotion per D8 (one threshold revision allowed, justified); clarify tripwire (zero tool_call on out-of-surface) | P2.5 |
+| **P2.7a** | **Delivery plumbing + footprint spike — runs EARLY, parallel off P2.0/P2.1 (C-M7)**: optimum ONNX export path proven on the COMMUNITY functiongemma ONNX export (checkpoint-independent); transformers.js runtime vendoring + G5 compliance; `fetch_models.py` + `models` manifest array; first-use integrity check; footprint doc incl. **prefill TTFT at realistic preamble length (21-tool preamble is multi-thousand tokens — R2)**, decode tok/s, Cache-retention across reloads, browser×OS matrix (dev machine = pessimistic bound, R10); single-dtype global choice (D4); running storage ledger | P2.0 |
+| **P2.7b** | Fine-tuned-checkpoint export parity: token-level greedy equality on 20 fixed utterances (C-m7 — deviations are go/no-go signals, not "semantic equivalence") | P2.6, P2.7a |
+| P2.8 | Serving worker: lazy module worker; lifecycle per F4; hardened grammar parser; schema validation + bounded retry → **vocabulary amendment owned here: `clarify:parse_failed` disposition added to audit-writer allowlist + envelope kinds enumerated + audit semantics of failed parses specified (C-M2)**; transformers.js version pinned exact (R8); re-check #1758 status at dispatch | P2.7a |
+| P2.9 | Integration: **client-side JS ParseSource implementation (D12)** consuming fixture corpus + model; dual-language FR-3 parity; **mandatory kernel-side resource-arg validation before propose (C-M1)**; **fixture corpus extended with hard cases** (missing_required, unresolved_slots, refusal — C-m6); demo stub deleted; end-to-end audit trail check | P2.7b, P2.8 |
 
-Critical path: P2.0 → P2.1 → P2.5 → P2.6 → P2.7 → P2.8 → P2.9. Parallel branches: P2.2 ∥ P2.1;
-P2.3 ∥ P2.4 after P2.0.
+Critical path: P2.0 → {P2.1 → P2.5 → P2.6} ∥ P2.2 ∥ {P2.3, P2.4} ; P2.7a ∥ (P2.1..P2.6) after P2.0;
+then P2.7b, P2.8 → P2.9. The C-M7 fix moves serving-feasibility evidence months earlier: P2.7a can
+conclude while generation/fine-tune still run.
 
-## 6. Non-goals (explicit)
+## 6. Non-goals
 
-Voice input; candidate-resolution adapter; visual ghosting of disambiguation candidates; multi-step
-chained calls; production-mode (`WorkcellRuntime`) backend; LoRA adapter family; publishing the
-dataset or model publicly (Gemma license + lab-specificity).
+Voice input; candidate-resolution adapter; ghost rendering; multi-step chained calls;
+production-mode `WorkcellRuntime` backend; LoRA family; public dataset/model publishing;
+kernel-side parse delegation (D12); constrained decoding (D3).
 
-## 7. Acceptance criteria (per DAG item)
+## 7. Acceptance criteria
 
-**P2.0 — Schema reconciliation**
-- AC-2.0.1: Test asserts every `TOOL_SCHEMA.name` has a same-named public method on the vendored
-  LiquidHandler (or mapped receiver class), pinned to current `PLR_SOURCE_SHA`.
-- AC-2.0.2: Phantom entries removed or annotated `experimental: true` and EXCLUDED from generation.
-- AC-2.0.3: Required-param derivation per method matches `inspect.signature` output (table in recon §1.4).
+Changes from rev1 marked. Unlisted rev1 ACs carry over unchanged except where superseded:
 
-**P2.1 — Golden set + baseline**
-- AC-2.1.1: ≥50 hand-authored pairs covering every TOOL_SCHEMA verb at least twice, ≥8
-  clarify-expected examples spanning missing-slot, ambiguous-referent, out-of-surface classes.
-- AC-2.1.2: Harness reports {exact_match_accuracy, clarify_recall, clarify_precision} for any
-  checkpoint given any JSONL pair-set; runs in CPython CI (<2 min for 50 pairs via API-free local
-  inference OR recorded-artifact mode for CI).
-- AC-2.1.3: Baseline numbers recorded in-tree (doc + JSON) — this is the D2 gate artifact.
+- **AC-2.0.x (extended)**: subset assertion TOOL_SCHEMA ⊆ vendored API pinned to submodule HEAD;
+  phantom entries removed or `experimental:true`+excluded; required-param derivation matches
+  inspect.signature (recon §1.4 table); **NEW: canonical namespace + mapping table committed as
+  data (every fixture param name maps to a PLR kwarg or is declared symbolic); include/exclude list
+  recorded; receiver verification plan (LiquidHandler+PlateReader verifiable today; HeaterShaker
+  excluded); intent-record shape defined; D13 gate artifact (terms read, audience decided)**.
+- **AC-2.1.x**: count derives from reconciled verbs; ≥30 clarify examples (3 classes); harness
+  metrics + Wilson intervals; **local CPU lane run recorded; base revision pinned**.
+- **AC-2.2.x**: as rev1 + verifier keyed to P2.0's intent-record/effect tables.
+- **AC-2.3/2.4.x**: as rev1 + **teacher-output cache present; `teacher_model_version` +
+  `prompt_version` in provenance tags**.
+- **AC-2.5.x**: as rev1 + **scaffold template committed verbatim (dates omitted)**; thresholds
+  labeled provisional; **storage ledger initialized**.
+- **AC-2.6.x**: as rev1 + **Wilson intervals; at most one threshold revision w/ justification;
+  tripwire unchanged**.
+- **AC-2.7a.x (new)**: community-checkpoint ONNX→q4f16 smoke; vendored runtime passes G5 grep +
+  integrity; models array lands; footprint doc covers download bytes, peak memory beside live
+  Pyodide, prefill TTFT @ realistic preamble, decode tok/s, Cache retention, browser matrix;
+  dtype choice recorded; ledger updated.
+- **AC-2.7b.x (new)**: fine-tuned export; token-level greedy parity on 20 utterances vs Python-side.
+- **AC-2.8.x**: as rev1 + **disposition-vocabulary amendment landed with audit-writer tests; worker
+  transport/lifecycle per F4 exactly; transformers.js pinned exact; #1758 status re-checked and
+  recorded at dispatch; vendored-lib G5/integrity assertion**.
+- **AC-2.9.x**: as rev1, with **topology per D12 asserted (JS impl + dual-language parity);
+  kernel-side resource-arg validation MANDATORY pre-propose (advisory worker slots cannot satisfy
+  cue 2 alone); fixture corpus gains ≥3 hard-case fixtures (missing_required / unresolved_slots /
+  refusal paths through the full gate)**; demo stub deleted; E2E audit-trail check unchanged.
 
-**P2.2 — Execution-verify harness**
-- AC-2.2.1: Verifier accepts a call sequence + intent record; returns pass/fail + serialized
-  before/after state diff; raises on STRICT-mode anomalies.
-- AC-2.2.2: Post-condition checks: mounted-tips delta matches intent; source volume decreased /
-  target increased within tolerance for transfer/aspirate/dispense examples.
-- AC-2.2.3: Slot-agreement check: every grounded arg in the executed call matches the intent record
-  (catches executes-cleanly-but-wrong-reading).
-- AC-2.2.4: ≥100 verifications complete <5 min single-process.
+## 8. Risks (updated)
 
-**P2.3/P2.4 — Generators**
-- AC-2.3.1: Floor generator emits ≥1 example per (verb × ambiguity-class) cell of its matrix;
-  matrix itself committed as data.
-- AC-2.3.2: Every emitted pair carries intent record + provenance tag (`coverage|naturalness|golden`)
-  + generator/prompt version.
-- AC-2.4.1: Overlay pairs reference only calls that independently pass P2.2 verification.
-- AC-2.4.2: Dedup: no duplicate normalized utterances corpus-wide.
+| Risk | Counter | Prevent/Detect |
+|------|---------|----------------|
+| Silent eval rotation | D9 sha keying + **CI assertion manifest sha == submodule HEAD when eval-consuming files change (defender §4.1 hardening)** + teacher cache | prevent |
+| Clarify collapse | D7 distribution shaping + D8 dual gates w/ ≥30-example slices + intervals + AC-2.6.3 tripwire | prevent + promote-time detect |
+| Serving reality gap | P2.7a moved EARLY (parallel branch); TTFT/prefill + browser matrix + Cache retention measured; D4 single dtype; D3 retry UX pre-specified | early detect w/ redirect |
+| ONNX export friction | -GQA precedent transfers (arch unchanged by FT); P2.7a proves path pre-spend; P2.7b parity gates | early detect |
+| Gemma license/redistribution | D13 gate AT P2.0 (pre-spend); audience decision recorded as constraint | prevent |
+| Storage squeeze (~479 site + 426 model + runtime bundles) | D4 single dtype; ledger at every delivery-touching item; prune re-check | detect early |
+| Teacher nondeterminism breaks idempotency | R4 content-hash cache + versions in manifest | prevent |
+| Under-predicted slots reach confirm | C-M1 fix: kernel-side validation mandatory; worker slots advisory | prevent |
 
-**P2.5 — Assembly + slice gate**
-- AC-2.5.1: Corpus JSONL validates against the FunctionGemma dataset format (developer scaffold
-  byte-identical to formatting guide example).
-- AC-2.5.2: Split report: counts by provenance × ambiguity-class × verb; eval split disjoint from
-  train by construction.
-- AC-2.5.3: Manifest records `PLR_SOURCE_SHA` + generator versions; regeneration script is idempotent.
-- AC-2.5.4: GO/NO-GO doc comparing baseline failures (P2.1.3) to coverage plan; explicit sign-off.
+## 9. Open questions (resolved or deferred with owner)
 
-**P2.6 — Fine-tune**
-- AC-2.6.1: Training config committed (venue, deps pins `transformers==4.57.1 trl==0.25.1`, epochs, lr).
-- AC-2.6.2: Eval report shows D8 metrics on held-out split AND on golden-50; promotion requires
-  meeting T_acc/T_clr_recall/T_clr_prec set in P2.5.4, else iterate-or-stop decision recorded.
-- AC-2.6.3: Clarify-behavior check: model emits NO tool_call for every out-of-surface golden example.
-
-**P2.7 — Export/delivery spike**
-- AC-2.7.1: Fine-tuned checkpoint exports to ONNX q4f16; smoke inference matches Python-side outputs
-  on 20 utterances (token-level or semantic-equivalent).
-- AC-2.7.2: `fetch_models.py` lands artifact in gitignored vendor dir; manifest gains `models` array
-  (sha256, bytes, source_sha); zero new tracked binaries (repo-wide grep gate).
-- AC-2.7.3: Footprint measurement doc: download size, peak memory beside live Pyodide kernel, decode
-  tok/s on target hardware class; go/no-go on q4f16 vs fp16 recorded.
-
-**P2.8 — Serving worker**
-- AC-2.8.1: First chat interaction triggers lazy fetch with byte-progress system lines; second visit
-  uses Cache API without network (testable offline).
-- AC-2.8.2: Parser handles the full call grammar incl. `<escape>` round-trip; malformed output →
-  bounded retry (≤2) → structured `clarify:parse_failed` payload; never throws raw into UI.
-- AC-2.8.3: Worker posts envelopes valid under `assertValidEnvelope`; foreign-session messages dropped.
-- AC-2.8.4: Default build contains zero coxswain/model assets (AC-11 pattern holds); flagged build
-  stages worker but NOT the binary (binary is fetched, per F3).
-
-**P2.9 — Integration**
-- AC-2.9.1: `ParseSource.parse()` backed by worker round-trip; existing fixture corpus passes
-  unchanged through the new source (contract regression).
-- AC-2.9.2: FR-3 phrase parity tests extend to ≥20 model-output examples (phrase derived from parsed
-  fields, not from the utterance).
-- AC-2.9.3: End-to-end: typed utterance → propose card renders literal call; confirm re-runs cues 0/3;
-  audit trail records the turn. Demo stub deleted.
-- AC-2.9.4: Kernel-side grounding module ships as fetched Python module if cue-2/3 need it in-tab
-  (closes recon GAPS #6); otherwise documented why not needed yet.
-
-## 8. Risks (from pre-mortem + research, with counters)
-
-| Risk | Counter |
-|------|---------|
-| Silent eval-set rotation on PLR upgrades | D9: versioned regeneration keyed to `PLR_SOURCE_SHA` (AC-2.5.3) |
-| Clarify-class collapse (over-triggering) | D7 controlled negative ratio + D8 precision/recall dual gate (AC-2.6.2/2.6.3) |
-| Serving reality gap (latency/decoding) | P2.7.3 early footprint go/no-go; D3 bounded-retry UX specified up front |
-| ONNX export friction for gemma3_text post-v4 restructure | P2.7.1 smoke-parity test; -GQA community export proves arch converts |
-| Teacher-output licensing/provenance | Provenance tags mandatory (AC-2.3.2); Gemma terms reviewed at P2.6 (fine-tunes inherit license) |
-| Storage budget: ~479 MB site + 426 MB model ≈ 905 MB of 1 GB Pages limit | Single-dtype policy (D4); prune re-check at P2.7; CDN escape explicitly forbidden by G5 |
-
-## 9. Open questions (resolved at item time, not blocking DAG creation)
-
-- Exact T_acc/T_clr thresholds: set empirically at P2.5.4 from baseline spread (D8).
-- Training venue per run: Colab A100 default; Engaging SLURM via myxcel if Colab unavailable (D5).
-- Whether cue-2/3 in-tab grounding bridge is required for P2.9 or deferrable (AC-2.9.4 decides).
+- Thresholds T_acc/T_clr_recall/T_clr_prec: provisional at P2.5.4, final at P2.6 w/ ≤1 revision (D8).
+- Training venue: empirical at P2.6 run time (D5).
+- Cue-2/3 in-tab grounding bridge: SUPERSEDED by C-M1 mandate — kernel-side resource-arg validation
+  before propose is REQUIRED (was conditional in rev1); whether full grounding moves in-tab or the
+  validation uses serialized-state summaries is a P2.9 implementation choice within the mandate.
