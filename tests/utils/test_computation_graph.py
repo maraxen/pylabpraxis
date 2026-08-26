@@ -1,15 +1,10 @@
 """Tests for the Computation Graph Extractor."""
 
-import pytest
 
 from praxis.backend.utils.plr_static_analysis.models import (
-  GraphNodeType,
   PreconditionType,
-  ProtocolComputationGraph,
 )
-from praxis.backend.utils.plr_static_analysis.resource_hierarchy import DeckLayoutType
 from praxis.backend.utils.plr_static_analysis.visitors.computation_graph_extractor import (
-  ComputationGraphExtractor,
   VariableTypeTracker,
   extract_graph_from_source,
 )
