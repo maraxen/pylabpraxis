@@ -247,14 +247,16 @@ export async function initCoxswainRuntime({
 
   const tf = await import(TRANSFORMERS_BUNDLE_URL.href);
   tf.env.backends.onnx.wasm.wasmPaths = ORT_WASM_DIR_URL.href;
+  // Weights come from this origin only, under vendor/models/: local loading
+  // ON, remote Hub OFF (zero non-origin network; G5's spirit at runtime).
+  tf.env.allowLocalModels = true;
+  tf.env.allowRemoteModels = false;
   // Single-threaded first: cross-origin isolation (COOP/COEP) is NOT assumed
   // for GitHub Pages; threads would need SABs. Footprint doc measures this
   // configuration. Flip numThreads deliberately, with measurements, in P2.8.
   tf.env.backends.onnx.wasm.numThreads = 1;
   tf.env.useCustomCache = true;
   tf.env.customCache = createVerifyingCache(entries, { modelsBase, cacheName });
-  // Weights come from this origin only; never fall back to remote Hub fetches.
-  tf.env.allowRemoteModels = false;
 
   return { tf, entries };
 }
