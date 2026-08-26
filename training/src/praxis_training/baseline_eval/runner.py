@@ -44,7 +44,7 @@ __all__ = [
     "GenerateFn",
 ]
 
-GenerateFn = Callable[[str], str]
+GenerateFn = Callable[[Mapping[str, Any]], str]
 
 RECORDED_KIND = "praxis-recorded-model-outputs"
 _RECORDED_LABEL = (
@@ -198,7 +198,7 @@ def run_local(
     selected = pair_set.filter_split(split) if split else pair_set
     outputs: dict[str, str] = {}
     for row, intent in zip(selected.pairs, selected.intents):
-        outputs[intent["record_id"]] = gen(_prompt_of(row))
+        outputs[intent["record_id"]] = gen(row)
 
     scored: list[ScoredExample] = score_all(outputs, selected.intents)
     return build_report(
@@ -213,15 +213,6 @@ def run_local(
         },
         labeled_as=_LOCAL_LABEL,
     )
-
-
-def _prompt_of(native_row: Mapping[str, Any]) -> str:
-    """The exact developer+user prompt text served to the model. Kept as the
-    plain concatenation used by golden rendering; the local lane may instead
-    apply the tokenizer chat template inside make_generate's closure."""
-    dev = next(m["content"] for m in native_row["messages"] if m["role"] == "developer")
-    user = next(m["content"] for m in native_row["messages"] if m["role"] == "user")
-    return f"{dev}\n{user}"
 
 
 def _read_jsonl(path: Path) -> list[dict]:

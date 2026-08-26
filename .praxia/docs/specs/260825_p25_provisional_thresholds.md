@@ -70,3 +70,41 @@ sizes, Wilson intervals beside every point estimate, and a written reason.
 Suggested legitimate reasons: full-scale corpus regeneration materially grew
 a slice; live-model baseline (post-token) lands far outside the recorded
 mechanics-proof spread. Vague "model feels better" is not a reason.
+
+## 5. D2 unblocked (260827): real baseline landed
+
+HF_TOKEN exported (gated-repo terms already accepted on the account); real
+local CPU inference now runs. First attempt produced a degenerate, INVALID
+result (`exact_match_accuracy` 0.194, uniform "sequence length 0" failures
+across every non-abstention class) traced to a harness bug, not model
+capability: `_prompt_of()` concatenated raw developer+user text and never
+called `tokenizer.apply_chat_template(..., tools=...)`, so the model never
+saw the 13 tool declarations. Verified directly: the same prompt built
+properly (`apply_chat_template` with `tools=`) makes the untuned base model
+correctly emit `call:aspirate{source: reagent_reservoir_1,volume_ul:50}`
+zero-shot for a clean_parse utterance. Fixed in
+`training/src/praxis_training/baseline_eval/{runner,local_infer}.py`
+(`GenerateFn` now takes the native row so the local-inference lane can
+build the real chat-templated prompt with tools; 12/12 existing tests
+still pass with a corresponding test-fake update).
+
+**Real baseline** (`training/eval/reports/260827_baseline_real.json`,
+`google/functiongemma-270m-it@39eccb091651513a5dfb56892d3714c1b5b8276c`,
+n=62 live local inference, greedy decode, CPU):
+
+| Metric | Real baseline | Wilson 95% | vs. provisional anchor |
+|---|---|---|---|
+| `T_acc` | 0.210 (13/62) | [0.127, 0.326] | far below 0.80 |
+| `T_clr_recall` | 0.833 (20/24) | [0.642, 0.933] | already clears 0.70 |
+| `T_clr_prec` | 0.556 (20/36) | [0.396, 0.705] | below 0.90 |
+
+This is NOT a threshold revision (that stays a P2.6-only, one-shot action
+per §4) — the anchors above are unchanged. It replaces the mechanics-proof
+baseline point as the reference measurement per the P2.5 slice gate's §5
+GO condition 2. Per-class detail (clean_parse 0/26 exact match — mostly
+natural-language-reference-vs-canonical-ID slot mismatches, e.g. "tube rack
+position B3" vs `tube_rack_B3`, a grounding concern D11/D12 already assign
+to deterministic post-parse resolution, not the model; out_of_surface
+12/12; missing_slot 0/12 exact match but 8/12 correctly flagged for
+clarification; ambiguous_referent 1/12, not cleanly scoreable per §3's
+caveat) lives in the report JSON.

@@ -13,7 +13,7 @@ stop at ``<end_of_turn>`` and ``<start_function_response>``.
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import Any, Callable, Mapping
 
 __all__ = ["make_generate", "HF_REPO_ID", "GATED_REPO_HINT"]
 
@@ -34,7 +34,7 @@ def make_generate(
     device: str = "cpu",
     dtype: str | None = None,
     max_new_tokens: int = 128,
-) -> Callable[[str], str]:
+) -> Callable[[Mapping[str, Any]], str]:
     """Build a prompt->raw-output callable from transformers AutoModelForCausalLM.
 
     Heavy imports happen HERE, inside the function, so importing
@@ -63,17 +63,25 @@ def make_generate(
     ).to(device)
     model.eval()
 
-    def generate(prompt: str) -> str:
-        inputs = tokenizer(prompt, return_tensors="pt").to(device)
+    def generate(native_row: Mapping[str, Any]) -> str:
+        dev = next(m for m in native_row["messages"] if m["role"] == "developer")
+        user = next(m for m in native_row["messages"] if m["role"] == "user")
+        input_ids = tokenizer.apply_chat_template(
+            [dev, user],
+            tools=native_row["tools"],
+            tokenize=True,
+            add_generation_prompt=True,
+            return_tensors="pt",
+        ).to(device)
         with __import__("torch").no_grad():
             out = model.generate(
-                **inputs,
+                input_ids,
                 max_new_tokens=max_new_tokens,
                 do_sample=False,
                 num_beams=1,
             )
         # Slice off the prompt tokens so the parser sees ONLY generation.
-        completion = out[0][inputs["input_ids"].shape[1]:]
+        completion = out[0][input_ids.shape[1]:]
         text = tokenizer.decode(completion, skip_special_tokens=False)
         for stop in StopStrings:
             idx = text.find(stop)

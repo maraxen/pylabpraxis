@@ -126,9 +126,19 @@ even if T_acc improved.
 
 ### 4.3 Measurement caveats the jury should hold
 
-- Baseline numbers are mechanics-proof-only; D2's real-baseline gate remains
-  BLOCKED (license acceptance + HF_TOKEN). Anchors in
-  `260825_p25_provisional_thresholds.md` are policy margins, not interval-derived.
+- **UPDATE 260827: D2 unblocked.** Real local CPU inference now runs
+  (HF_TOKEN exported; gated-repo terms already accepted). A harness bug was
+  found and fixed in the same pass: the prompt builder never applied the
+  model's chat template or passed the 13 tool declarations, producing a
+  degenerate first result (0.194 acc, uniform empty completions) that was
+  NOT a real capability measurement — see
+  `260825_p25_provisional_thresholds.md` §5 for the fix and the corrected
+  real baseline (T_acc 0.210 [0.127,0.326], T_clr_recall 0.833
+  [0.642,0.933], T_clr_prec 0.556 [0.396,0.705], n=62,
+  `training/eval/reports/260827_baseline_real.json`). Anchors in the
+  thresholds doc remain provisional policy margins (unchanged, per D8's
+  one-revision-at-P2.6 rule) but are now checked against a real baseline
+  point instead of the n=8 mechanics-proof partial.
 - Static clarify scoring covers out-of-surface + missing-slot only (24 eval
   items); ambiguous_referent verifies at P2.9 with live grounding (F1-rev2/C-M1).
   The three-class corpus sizing (36) satisfies D8's letter; the statically
@@ -140,9 +150,10 @@ even if T_acc improved.
    --full`, teacher caches make the re-run incremental; re-assemble; target
    >= ~800 assembled rows with missing_slot train mass >= ~30 and each
    clarify class >= ~40 eval or better.
-2. Unblock the REAL baseline (accept Gemma terms, export HF_TOKEN), pin a
-   base revision, run `baseline_real` on the golden eval split — replaces the
-   mechanics-proof spread in the thresholds doc within its one-revision rule.
+2. ~~Unblock the REAL baseline~~ **DONE 260827** — see §4.3 update and
+   `260825_p25_provisional_thresholds.md` §5. Real T_acc (0.210) confirms
+   the base model needs the fine-tune; T_clr_recall (0.833) already clears
+   anchor zero-shot, a useful signal for D5's training recipe.
 3. Re-run THIS gate with fresh numbers (assembly idempotency makes step 1
    byte-comparable apart from intended growth).
 

@@ -136,10 +136,11 @@ def test_local_mode_with_injected_generate_fn():
     pairs, sidecar = _golden_paths()
     pair_set = load_pair_set(pairs, sidecar).filter_split("eval")
 
-    def generate(prompt: str) -> str:
-        if "heater shaker" in prompt:
+    def generate(native_row: dict) -> str:
+        user = next(m["content"] for m in native_row["messages"] if m["role"] == "user")
+        if "heater shaker" in user:
             return ""  # correct abstention
-        if "lysis buffer reservoir" in prompt:
+        if "lysis buffer reservoir" in user:
             return ("<start_function_call>call:aspirate{source:<escape>lysis_buffer_reservoir"
                     "<escape>,volume_ul:<escape>100<escape>}<end_function_call>")
         return "<start_function_call>call:aspirate{}<end_function_call>"
