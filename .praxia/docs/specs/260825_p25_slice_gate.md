@@ -146,10 +146,16 @@ even if T_acc improved.
 
 ## 5. What flips this to GO
 
-1. Full-scale generation pass: `floor_gen` over all cells + `overlay_gen
-   --full`, teacher caches make the re-run incremental; re-assemble; target
-   >= ~800 assembled rows with missing_slot train mass >= ~30 and each
-   clarify class >= ~40 eval or better.
+1. **BLOCKED 260827 (user-flagged): needs a different teacher backend than
+   F6's current pins (ox-alpha workers + titanix-vllm-primary).** Full-scale
+   generation pass: `floor_gen` over all cells + `overlay_gen --full`,
+   teacher caches make the re-run incremental; re-assemble; target >= ~800
+   assembled rows with missing_slot train mass >= ~30 and each clarify class
+   >= ~40 eval or better. User will specify which backend to use; do not
+   start this pass on the current F6 backends until that's given. Re-run
+   D13's teacher-derivative check (§1) if the replacement is a Gemma-family
+   model — F6 was written assuming a non-Gemma teacher keeps the training
+   corpus outside the Model-Derivative pathway.
 2. ~~Unblock the REAL baseline~~ **DONE 260827** — see §4.3 update and
    `260825_p25_provisional_thresholds.md` §5. Real T_acc (0.210) confirms
    the base model needs the fine-tune; T_clr_recall (0.833) already clears
