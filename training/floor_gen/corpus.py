@@ -139,6 +139,47 @@ def _record_id(cell: MatrixCell, index: int, ordinal: int) -> str:
     return f"cov-{ordinal:04d}-{cell.cell_id}-{index:02d}"
 
 
+def _prewarm_cache_batched(
+    cells: tuple[MatrixCell, ...],
+    backend: TeacherBackend,
+    cache: TeacherCache,
+    batch_size: int,
+) -> None:
+    """Fill every cache miss across ``cells`` via grouped ``complete_batch``
+    calls (260827 user-directed: group many items into one teacher call
+    instead of issuing one call per item). Pure cache pre-warm -- the
+    caller's normal per-item loop runs unchanged afterward and will find
+    everything already cached. Requires ``backend.complete_batch`` (duck
+    -typed, checked by the caller); silently a no-op for backends without it
+    (e.g. Titanix, Fake), which keep the original one-call-per-item path.
+    """
+    misses: dict[str, dict[str, str]] = {}  # key -> prompt dict, de-duplicated
+    for cell in cells:
+        for index in range(cell.examples_per_cell):
+            example = synthesize_example(cell, index)
+            prompt = build_prompt(example)
+            key = compute_cache_key(PROMPT_VERSION, prompt["input_hash"])
+            if key not in misses and cache.get(key) is None:
+                misses[key] = prompt
+    if not misses:
+        return
+    items = list(misses.items())
+    for start in range(0, len(items), batch_size):
+        chunk = items[start : start + batch_size]
+        ids = [key for key, _ in chunk]
+        users = [prompt["user"] for _, prompt in chunk]
+        system = chunk[0][1]["system"]  # constant across every floor_gen prompt
+        raw_by_id = backend.complete_batch(system, users, ids)  # type: ignore[attr-defined]
+        for key, raw in raw_by_id.items():
+            cache.put(
+                key,
+                prompt_version=PROMPT_VERSION,
+                input_hash=misses[key]["input_hash"],
+                teacher_model_version=backend.teacher_model_version,
+                raw_response=raw,
+            )
+
+
 def generate_corpus(
     matrix: AmbiguityMatrix,
     backend: TeacherBackend,
@@ -146,11 +187,18 @@ def generate_corpus(
     *,
     limit_cells: int | None = None,
     selected_cell_ids: list[str] | None = None,
+    batch_size: int = 1,
 ) -> tuple[list[dict[str, Any]], GenerationStats]:
     """Cache-first generation over round-robin cells (or explicit selection).
 
     ``limit_cells`` bounds the number of CELLS processed (smoke-batch knob);
     every selected cell contributes all of its examples_per_cell.
+
+    ``batch_size`` > 1 pre-warms the cache via grouped ``backend.complete_batch``
+    calls (see ``_prewarm_cache_batched``) before the per-item loop below runs
+    -- the per-item loop itself is UNCHANGED either way, since after pre-warm
+    every lookup is a cache hit. No-op (falls back to one call per item) for
+    backends that don't implement ``complete_batch``.
     """
     if selected_cell_ids is not None:
         # Accept both cell_id strings and MatrixCell objects; callers (CLI,
@@ -168,6 +216,9 @@ def generate_corpus(
         ordered = cells_round_robin(matrix.cells)
     if limit_cells is not None:
         ordered = ordered[:limit_cells]
+
+    if batch_size > 1 and hasattr(backend, "complete_batch"):
+        _prewarm_cache_batched(ordered, backend, cache, batch_size)
 
     prov = provenance_tags(backend.teacher_model_version)
     rows: list[dict[str, Any]] = []

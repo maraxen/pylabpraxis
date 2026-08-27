@@ -146,16 +146,27 @@ even if T_acc improved.
 
 ## 5. What flips this to GO
 
-1. **BLOCKED 260827 (user-flagged): needs a different teacher backend than
-   F6's current pins (ox-alpha workers + titanix-vllm-primary).** Full-scale
-   generation pass: `floor_gen` over all cells + `overlay_gen --full`,
-   teacher caches make the re-run incremental; re-assemble; target >= ~800
-   assembled rows with missing_slot train mass >= ~30 and each clarify class
-   >= ~40 eval or better. User will specify which backend to use; do not
-   start this pass on the current F6 backends until that's given. Re-run
-   D13's teacher-derivative check (§1) if the replacement is a Gemma-family
-   model — F6 was written assuming a non-Gemma teacher keeps the training
-   corpus outside the Model-Derivative pathway.
+1. **UNBLOCKED 260827: backend chosen + wired + real-verified (Gemini 3.7
+   Flash via `agy`), full-scale run still pending.** User named the
+   replacement backend for the pass titanix couldn't handle at full scale:
+   `gemini-3.7-flash-medium`, reached by shelling to the local `agy` CLI
+   (NOT a raw API key — `agy` owns its own auth, already installed +
+   authenticated on this machine). Non-Gemma — D13 re-check does not apply
+   (see the decision doc). Wired end-to-end and verified against real `agy`
+   calls (8 cells, 24 examples, pass_rate=1.000):
+   `floor_gen.teachers.GeminiTeacher` (`--backend gemini --batch-size N` in
+   `floor_gen/cli.py`, batched per user direction — group many items per
+   call rather than ~800 individual calls) and
+   `overlay_gen.pair_builder.GeminiTeacherClient` (`--backend gemini` in
+   `overlay_gen/run_smoke.py`, not yet batched — fast-follow), both
+   enforcing the response contract via `agy --json-schema` guided decoding.
+   Full design, empirical caveats (guided-decoding null-handling quirks,
+   agy schema requirements), and PLR coverage/brittleness analysis:
+   `.praxia/docs/decisions/260827_teacher-backend-gemini-3-7-flash-for-full-scale-floor_gen-overlay_gen-pass.md`.
+   **Still to do**: no external setup needed; run `floor_gen` over all cells
+   + `overlay_gen --full`, teacher caches make the re-run
+   incremental; re-assemble; target >= ~800 assembled rows with missing_slot
+   train mass >= ~30 and each clarify class >= ~40 eval or better.
 2. ~~Unblock the REAL baseline~~ **DONE 260827** — see §4.3 update and
    `260825_p25_provisional_thresholds.md` §5. Real T_acc (0.210) confirms
    the base model needs the fine-tune; T_clr_recall (0.833) already clears

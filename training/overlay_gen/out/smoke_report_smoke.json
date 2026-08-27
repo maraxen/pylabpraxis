@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-08-25T21:48:02Z",
- "generator_git_sha": "ecd1106e",
+ "generated_utc": "2026-08-27T15:15:39Z",
+ "generator_git_sha": "18818825",
  "mining_summary": {
   "by_source": {
    "external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb": {
@@ -171,23 +171,23 @@
  "pair_summary": {
   "cache_hits": 31,
   "mined_calls_in": 33,
-  "pairs_written": 92,
+  "pairs_written": 93,
   "rejected_invalid_shape": 0,
   "rejected_vs_floor": 0,
   "rejected_within_overlay": 6,
   "shape_error_samples": [],
   "teacher_calls_made": 0,
   "unique_canonicals": 31,
-  "variants_parsed": 92,
+  "variants_parsed": 93,
   "warnings": [
    "floor corpus absent (training/coverage_floor/out/*.jsonl): vs-floor dedup ran against golden fixtures only; re-run overlay generation once P2.3 lands"
   ]
  },
  "prompt_version": "p24-naturalness-v1",
  "sample_rows": [
-  "{'id': 'ovl-f5b3127a2f', 'instruction': 'Retrieve tips from tiprack A1:C1', 'call': {'name': 'pick_up_tips', 'receiver_type': 'liquid_handler', 'params': {'at': ['tiprack[\"A1:C1\"]']}}, 'provenance': {'provenance': 'naturalness', 'source_notebook_or_protocol': 'external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb', 'origin': 'external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb#cell22@2', 'generator': 'training/overlay_gen (P2.4, backlog item 479)', 'generator_version': 'ecd1106e', 'prompt_version': 'p24-naturalness-v1', 'teacher_model_version': 'Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ'}}",
-  "{'id': 'ovl-8e7ae8ea6c', 'instruction': 'Could you pick up tips from tiprack A1:C1?', 'call': {'name': 'pick_up_tips', 'receiver_type': 'liquid_handler', 'params': {'at': ['tiprack[\"A1:C1\"]']}}, 'provenance': {'provenance': 'naturalness', 'source_notebook_or_protocol': 'external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb', 'origin': 'external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb#cell22@2', 'generator': 'training/overlay_gen (P2.4, backlog item 479)', 'generator_version': 'ecd1106e', 'prompt_version': 'p24-naturalness-v1', 'teacher_model_version': 'Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ'}}",
-  "{'id': 'ovl-d7ebf7c7cc', 'instruction': 'Grasp the tips located in tiprack A1:C1', 'call': {'name': 'pick_up_tips', 'receiver_type': 'liquid_handler', 'params': {'at': ['tiprack[\"A1:C1\"]']}}, 'provenance': {'provenance': 'naturalness', 'source_notebook_or_protocol': 'external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb', 'origin': 'external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb#cell22@2', 'generator': 'training/overlay_gen (P2.4, backlog item 479)', 'generator_version': 'ecd1106e', 'prompt_version': 'p24-naturalness-v1', 'teacher_model_version': 'Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ'}}"
+  "{'id': 'ovl-51bf076ca3', 'instruction': 'Pick up tips from tiprack A1:C1.', 'call': {'name': 'pick_up_tips', 'receiver_type': 'liquid_handler', 'params': {'at': ['tiprack[\"A1:C1\"]']}}, 'provenance': {'provenance': 'naturalness', 'source_notebook_or_protocol': 'external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb', 'origin': 'external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb#cell22@2', 'generator': 'training/overlay_gen (P2.4, backlog item 479)', 'generator_version': '18818825', 'prompt_version': 'p24-naturalness-v1', 'teacher_model_version': 'gemini-3.7-flash-medium'}}",
+  "{'id': 'ovl-55752e50f9', 'instruction': 'Please take tips from tiprack A1:C1.', 'call': {'name': 'pick_up_tips', 'receiver_type': 'liquid_handler', 'params': {'at': ['tiprack[\"A1:C1\"]']}}, 'provenance': {'provenance': 'naturalness', 'source_notebook_or_protocol': 'external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb', 'origin': 'external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb#cell22@2', 'generator': 'training/overlay_gen (P2.4, backlog item 479)', 'generator_version': '18818825', 'prompt_version': 'p24-naturalness-v1', 'teacher_model_version': 'gemini-3.7-flash-medium'}}",
+  "{'id': 'ovl-eb7216381e', 'instruction': 'Get tips from tiprack A1:C1.', 'call': {'name': 'pick_up_tips', 'receiver_type': 'liquid_handler', 'params': {'at': ['tiprack[\"A1:C1\"]']}}, 'provenance': {'provenance': 'naturalness', 'source_notebook_or_protocol': 'external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb', 'origin': 'external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb#cell22@2', 'generator': 'training/overlay_gen (P2.4, backlog item 479)', 'generator_version': '18818825', 'prompt_version': 'p24-naturalness-v1', 'teacher_model_version': 'gemini-3.7-flash-medium'}}"
  ],
  "samples": [
   {
@@ -200,7 +200,7 @@
     },
     "receiver_type": "liquid_handler"
    },
-   "instruction": "Retrieve tips from tiprack A1:C1"
+   "instruction": "Pick up tips from tiprack A1:C1."
   },
   {
    "call": {
@@ -212,7 +212,7 @@
     },
     "receiver_type": "liquid_handler"
    },
-   "instruction": "Could you pick up tips from tiprack A1:C1?"
+   "instruction": "Please take tips from tiprack A1:C1."
   },
   {
    "call": {
@@ -224,7 +224,7 @@
     },
     "receiver_type": "liquid_handler"
    },
-   "instruction": "Grasp the tips located in tiprack A1:C1"
+   "instruction": "Get tips from tiprack A1:C1."
   },
   {
    "call": {
@@ -239,7 +239,7 @@
     },
     "receiver_type": "liquid_handler"
    },
-   "instruction": "Aspirate 100+50+200 uL from plate A1:C1."
+   "instruction": "Draw 100+50+200 uL from plate A1:C1."
   },
   {
    "call": {
@@ -254,9 +254,9 @@
     },
     "receiver_type": "liquid_handler"
    },
-   "instruction": "Please draw up 100+50+200 uL from plate A1:C1."
+   "instruction": "Please aspirate 100+50+200 uL from plate A1:C1."
   }
  ],
  "tag": "smoke",
- "teacher_requested_model": "titanix-vllm-primary"
+ "teacher_requested_model": "gemini-3.7-flash-medium"
 }

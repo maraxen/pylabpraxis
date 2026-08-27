@@ -1,6 +1,7 @@
 # praxis Internal Docs
 
 ## Daily
+- [260825_p22_verify_harness_landed](daily/260825_p22_verify_harness_landed.md)
 
 ## Handoffs
 - [260131_e2e-autonomous-handoff](handoffs/260131_e2e-autonomous-handoff.md)
@@ -14,6 +15,10 @@
 
 ## Plans
 - [260824_repl-autocomplete-scope](plans/260824_repl-autocomplete-scope.md) — Scope and outcome for as-you-type completion in the JupyterLite PLR REPL; the planned jedi preload proved unnecessary
+- [260824_w2_dispatch_draft](plans/260824_w2_dispatch_draft.md)
+- [260824_w3_dispatch_draft](plans/260824_w3_dispatch_draft.md)
+- [260824_w4_dispatch_draft](plans/260824_w4_dispatch_draft.md)
+- [260824_w5_dispatch_draft](plans/260824_w5_dispatch_draft.md)
 - [260817_praxis-repl-refocus-execution-plan](plans/260817_praxis-repl-refocus-execution-plan.md) — Dependency-ordered 8-phase execution plan composed from three adversarially-reviewed specs and five executed spikes, with per-phase gates, audit strategy, rollback, and an unproven-assumptions ledger.
 - [260210_final-protocol-execution-fix-plan](plans/260210_final-protocol-execution-fix-plan.md)
 - [260210_protocol-playground-fix-plan](plans/260210_protocol-playground-fix-plan.md)
@@ -27,6 +32,11 @@
 - [telemetry.jsonl](plans/.praxia/telemetry.jsonl.lock) ⚠️ non-standard extension
 
 ## Specs
+- [260825_copilot-pipeline-challenger](specs/260825_copilot-pipeline-challenger.md) — CHALLENGER-role findings against 260825_coxswain-phase-2-functiongemma-copilot-p.md. All file:line claims in the spec were re-verified against the tree on repl-fresh-boot; findings are ranked blocker/major/minor with cites and concrete fixes. No wholesale rewrite proposed.
+- [260825_copilot-pipeline-defender](specs/260825_copilot-pipeline-defender.md) — DEFENDER counter-role review of 260825_coxswain-phase-2-functiongemma-copilot-p.md: steelman of D1-D10, robustness audit of load-bearing-but-fragile claims, critical-path feasibility re-verified against the tree, and resilience judgment of §8 counters. All repo cites re-verified 260825 on branch repl-fresh-boot.
+- [260825_coxswain-phase-2-functiongemma-copilot-p](specs/260825_coxswain-phase-2-functiongemma-copilot-p.md) — Spec for the synthetic-data pipeline, functiongemma-270m-it fine-tune, browser serving via Transformers.js/WebGPU behind --with-coxswain, and ParseSource integration. REV 2: reconciled from challenger (2 blockers, 7 majors, 8 minors) and defender (11 robustness findings) reviews of 260825.
+- [260825_p25_provisional_thresholds](specs/260825_p25_provisional_thresholds.md) — Numeric anchor proposal for the P2.6 three-number promotion gate (D8), derived from the P2.1 recorded-artifact baseline spread and the assembled P2.5 eval slice sizes. PROVISIONAL PER D8: exactly ONE revision permitted at P2.6 fine-tune eval, with recorded justification.
+- [260825_p25_slice_gate](specs/260825_p25_slice_gate.md) — Blocking gate doc (backlog 480): baseline failure distribution (P2.1 reports incl. recorded-artifact mode) vs coverage-plan adequacy vs ambiguity-class balance, with provisional threshold anchors and an explicit RECOMMENDATION for the orchestrator jury before any P2.6 spend.
 - [260824_coxswain-mvp-ux-spec](specs/260824_coxswain-mvp-ux-spec.md) — Implementable specification for the Coxswain propose/confirm, clarification, FFT-gate-extension and audit-trail surfaces: formalizes the eight negotiable UX axes (N1-N8) resolved in brainstorm session 48789b43 against the locked architecture (F1-F10), with fixer-ready work-item decomposition, correlation-ID contract, structural safety constraints mandated by the pre-mortem, and a risk table. Revised 260824 to close the adversarial review cycle (audits 260824_coxswain_spec_challenge / _defense) — see the Revision Log.
 - [260824_coxswain-ux-open-design-axes-task-id-260](specs/260824_coxswain-ux-open-design-axes-task-id-260.md)
 - [260817_spec-visualizer-transport-shim](specs/260817_spec-visualizer-transport-shim.md) — Adversarially-reviewed spec for the praxis REPL refocus (visualizer); converged=True after 1 round(s), verdict REVISE.
@@ -77,6 +87,11 @@
 - [251222_pyodide-integration-audit](audits/251222_pyodide-integration-audit.md)
 
 ## Research
+- [260827_real-world-pylabrobot-dependent-repos-as-corpus-derivation-candidates](research/260827_real-world-pylabrobot-dependent-repos-as-corpus-derivation-candidates.md) — Survey of GitHub's dependency graph, plain code search, and filename-scoped dependency-file search (pyproject.toml/requirements.txt/lockfiles -- the highest-precision method found) for public repos using pylabrobot, to find real task/protocol corpora beyond the plr-cookbook for Coxswain out-of-surface and task-type coverage.
+- [260825_copilot-pipeline-recon](research/260825_copilot-pipeline-recon.md) — Verification of the 260824 scoping doc claims against current code, filling gaps for the next phase spec: tool-schema extraction seams, Chatterbox execution verification, protocol fixtures, PLR docs corpus, web-repl serving substrate, parse-source seam, and artifact-size constraints.
+- [260825_functiongemma-footprint](research/260825_functiongemma-footprint.md) — Measured delivery + serving footprint of onnx-community/functiongemma-270m-it-ONNX q4f16 beside a live Pyodide kernel: download bytes, peak RSS coexistence, prefill TTFT at realistic preamble length, decode tok/s, Cache-API retention across reloads and process restarts, WebGPU availability on the dev machine (WSL2 + AMD 890M iGPU), single-dtype recommendation (D4) and the running Pages storage ledger.
+- [260825_functiongemma-training-serving-research](research/260825_functiongemma-training-serving-research.md) — Fine-tuning and browser-serving google/functiongemma-270m-it for a PyLabRobot lab-automation copilot
+- [260825_gemma-license-deployment-gate](research/260825_gemma-license-deployment-gate.md) — Terms-of-use and prohibited-use-policy read-through (P2.0, backlog 4475); redistribution constraints for serving a functiongemma-270m-it fine-tune from a GitHub Pages origin; audience options + recommendation pending orchestrator/user sign-off.
 - [260824_gemma-finetuned-plr-voice-text-copilot-scoping](research/260824_gemma-finetuned-plr-voice-text-copilot-scoping.md) — Scoping assessment for a Gemma model fine-tuned to translate voice/text lab instructions into validated PyLabRobot calls inside the JupyterLite Playground rebase: training-data sourcing, browser deployment feasibility, clarification UX, and build-location recommendation.
 - [260817_g2-spike-battery-verdict](research/260817_g2-spike-battery-verdict.md) — Adjudication of the five G2 criteria from spikes S-A/S-B/S-C/S-D/S-E/S-F, with independent spot-check output; overall PARTIAL-GO.
 - [260817_spike-evidence-repl-refocus](research/260817_spike-evidence-repl-refocus.md) — Five executed browser/CPython spikes grounding the refocus specs; every finding tagged ran/read with verbatim commands and output.
@@ -110,6 +125,7 @@
 - [260122_research-infinite-consumables](research/260122_research-infinite-consumables.md)
 
 ## Decisions
+- [260827_teacher-backend-gemini-3-7-flash-for-full-scale-floor_gen-overlay_gen-pass](decisions/260827_teacher-backend-gemini-3-7-flash-for-full-scale-floor_gen-overlay_gen-pass.md) — Resolves the 260827 full-scale-generation backend blocker: Gemini 3.7 Flash chosen over titanix-vllm-primary, shelled via the local agy CLI (no API key) with batched, guided-decoding-enforced teacher calls. Covers PLR task-type/contract coverage strategy (incl. the chory-lab/plr-cookbook 91-recipe source), batching rationale (measured), version-brittleness mitigations, and empirical guided-decoding null-handling caveats.
 - [260817_repl-layout-and-delivery-mechanism](decisions/260817_repl-layout-and-delivery-mechanism.md) — ADR resolving the path collision between the three refocus specs by deciding what ships as a wheel and what ships as loose fetched files; includes the single-class-object invariant, the three-detector drift design, and the per-spec re-scope tables that Phase 3's gate checks.
 
 ## Preregistration
@@ -145,6 +161,7 @@
 ## Archive
 
 ## Misc
+- [260825_daily_jsonl_truncation_incident](misc/260825_daily_jsonl_truncation_incident.md)
 - [260210_final-mvp-implementation-strategy](misc/260210_final-mvp-implementation-strategy.md)
 - [260206_e2e-verification-feb03](misc/260206_e2e-verification-feb03.md)
 - [260131_01-data-models](misc/260131_01-data-models.md)

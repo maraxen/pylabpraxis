@@ -24,10 +24,11 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from overlay_gen.cache import TeacherCache
 from overlay_gen.miner import (
@@ -40,12 +41,24 @@ from overlay_gen.shapes import validate_row
 
 __all__ = [
     "PROMPT_VERSION",
+    "GeminiTeacherClient",
     "TeacherBackend",
     "VllmTeacherClient",
     "build_pairs",
     "canonical_sentence",
     "load_floor_normalized",
 ]
+
+#: agy-shelled Gemini constants for this module's teacher (F6 amendment (c),
+#: 260827; agy-corrected same day -- no API key, see floor_gen/teachers.py's
+#: module docstring for the full agy-vs-raw-HTTP correction narrative). Kept
+#: local to pair_builder.py, mirroring how this module already keeps its own
+#: VllmTeacherClient/TeacherBackend rather than importing floor_gen's -- see
+#: floor_gen/versions.py for the sibling pins used by floor_gen's own
+#: GeminiTeacher.
+_AGY_BIN = "agy"
+_GEMINI_MODEL = "gemini-3.7-flash-medium"
+_GEMINI_BATCH_SIZE = 20
 
 PROMPT_VERSION = "p24-naturalness-v1"
 
@@ -145,6 +158,155 @@ class VllmTeacherClient:
             )
         self.last_served_model = body.get("model") or self.model
         return content
+
+
+_VARIANT_COUNT_RE = re.compile(r"into (\d+) DISTINCT")
+
+
+class GeminiTeacherClient:
+    """Gemini 3.7 Flash paraphrase client via the local ``agy`` CLI, with
+    guided-decoding array-of-strings contract enforcement and optional
+    request batching (F6 amendment (c), 260827; agy-corrected + batched same
+    day -- see ``floor_gen/teachers.py``'s module docstring for the full
+    agy-vs-raw-HTTP correction narrative and empirical guided-decoding
+    caveats; the same transport/schema lessons apply here).
+
+    No API key: auth is entirely ``agy``'s own. ``paraphrase_prompt()``
+    already tells the model exactly how many variant lines to produce; this
+    client extracts that count from the prompt and constrains the schema's
+    inner array to exactly that many STRING items. ``complete()`` still
+    returns a plain newline-joined string so ``parse_paraphrases()`` keeps
+    working unchanged.
+    """
+
+    def __init__(
+        self,
+        model: str = _GEMINI_MODEL,
+        agy_bin: str = _AGY_BIN,
+        timeout_s: float = 180.0,
+    ) -> None:
+        self.model = model
+        self._agy_bin = agy_bin
+        self.timeout_s = timeout_s
+        self.last_served_model: str | None = None
+
+    @property
+    def model_version(self) -> str:
+        return self.model
+
+    def complete(self, prompt: str) -> str:
+        variants_schema = self._variants_schema(prompt)
+        schema = {
+            "type": "object",
+            "properties": {"variants": variants_schema},
+            "required": ["variants"],
+        }
+        payload = self._run_agy(prompt, schema)
+        structured = payload.get("structured_output") or {}
+        variants = structured.get("variants")
+        if not isinstance(variants, list) or not variants:
+            raise RuntimeError(f"teacher returned no usable variants: {json.dumps(structured)[:300]}")
+        self.last_served_model = self.model
+        return "\n".join(str(v) for v in variants)
+
+    def complete_batch(self, prompts: list[str], ids: list[str]) -> dict[str, str]:
+        """One ``agy`` call for MANY paraphrase requests (260827 user-directed
+        batching, extended here from ``floor_gen``'s identical pattern).
+        ``ids`` MUST be the caller's cache keys, one per ``prompts`` entry,
+        same order; results join back by id. Assumes every prompt in one
+        batch shares the same requested variant count (true for every
+        current caller: ``n_variants`` is a single ``build_pairs()``-level
+        param, not per-item) -- falls back to an unconstrained inner array
+        if the count can't be extracted from the first prompt, rather than
+        guessing per item."""
+        if len(prompts) != len(ids):
+            raise RuntimeError(f"prompts/ids length mismatch: {len(prompts)} != {len(ids)}")
+        variants_schema = self._variants_schema(prompts[0]) if prompts else {"type": "array", "items": {"type": "string"}}
+        schema = {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {"id": {"type": "string"}, "variants": variants_schema},
+                        "required": ["id", "variants"],
+                    },
+                }
+            },
+            "required": ["results"],
+        }
+        items_block = "\n\n".join(
+            f'--- ITEM id="{item_id}" ---\n{p}' for item_id, p in zip(ids, prompts)
+        )
+        prompt = (
+            f"You will process {len(ids)} INDEPENDENT paraphrase requests below, each with its "
+            "own instructions. For EACH item, follow ONLY that item's own instructions and "
+            "produce one entry in `results`, with `id` copied EXACTLY from that item's id and "
+            "`variants` holding that item's phrasing list as separate array elements. Every item "
+            "must appear exactly once; do not merge, skip, or reorder items.\n\n" + items_block
+        )
+        payload = self._run_agy(prompt, schema)
+        structured = payload.get("structured_output") or {}
+        results = structured.get("results")
+        if not isinstance(results, list):
+            raise RuntimeError(f"batch response missing 'results' array: {json.dumps(structured)[:400]}")
+        by_id: dict[str, str] = {}
+        for entry in results:
+            entry_id = entry.get("id")
+            variants = entry.get("variants")
+            if entry_id in by_id:
+                raise RuntimeError(f"batch response duplicated id {entry_id!r}")
+            if not isinstance(variants, list) or not variants:
+                raise RuntimeError(f"batch item {entry_id!r} returned no usable variants")
+            by_id[entry_id] = "\n".join(str(v) for v in variants)
+        requested = set(ids)
+        got = set(by_id)
+        if got != requested:
+            raise RuntimeError(
+                f"batch response id mismatch: missing {sorted(requested - got)}, "
+                f"unrequested {sorted(got - requested)}"
+            )
+        self.last_served_model = self.model
+        return by_id
+
+    @staticmethod
+    def _variants_schema(prompt: str) -> dict[str, Any]:
+        match = _VARIANT_COUNT_RE.search(prompt)
+        item_count = int(match.group(1)) if match else None
+        schema: dict[str, Any] = {"type": "array", "items": {"type": "string"}}
+        if item_count is not None:
+            schema["minItems"] = item_count
+            schema["maxItems"] = item_count
+        return schema
+
+    def _run_agy(self, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
+        cmd = [
+            self._agy_bin,
+            "--model",
+            self.model,
+            "--output-format",
+            "json",
+            "--json-schema",
+            json.dumps(schema),
+            f"--print={prompt}",
+        ]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout_s)
+        except FileNotFoundError as exc:
+            raise RuntimeError(f"{self._agy_bin!r} not found on PATH") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(f"agy timed out after {self.timeout_s}s") from exc
+        try:
+            payload = json.loads(proc.stdout)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                f"agy stdout is not JSON (exit={proc.returncode}): {proc.stdout[:300]!r} "
+                f"stderr={proc.stderr[:300]!r}"
+            ) from exc
+        if payload.get("status") != "SUCCESS" or "structured_output" not in payload:
+            raise RuntimeError(f"agy call failed (exit={proc.returncode}): {json.dumps(payload)[:400]}")
+        return payload
 
 
 # ---------------------------------------------------------------------------
@@ -288,6 +450,51 @@ def load_floor_normalized(
 # ---------------------------------------------------------------------------
 
 
+def _prewarm_cache_batched(
+    unique: dict[str, list[MinedCall]],
+    *,
+    cache: TeacherCache,
+    teacher: TeacherBackend,
+    teacher_model_version: str,
+    served_model_version: str | None,
+    n_variants: int,
+    batch_size: int,
+) -> None:
+    """Fill every cache miss across ``unique`` canonicals via grouped
+    ``complete_batch`` calls (260827 user-directed: group many items into
+    one teacher call instead of one call per canonical -- same pattern as
+    ``floor_gen/corpus.py::_prewarm_cache_batched``). Pure cache pre-warm --
+    ``build_pairs()``'s normal per-canonical loop runs unchanged afterward
+    and finds everything already cached. Requires ``teacher.complete_batch``
+    (duck-typed, checked by the caller); no-op for backends without it
+    (``VllmTeacherClient``), which keep the original one-call-per-canonical
+    path."""
+    misses: dict[str, str] = {}  # cache key (== prompt text) -> prompt text
+    for canonical, group in unique.items():
+        call_repr = f"{group[0].name}({', '.join(f'{k}={_fmt_value(v)}' for k, v in group[0].params.items())})"
+        prompt = paraphrase_prompt(canonical, call_repr, n_variants)
+        if prompt not in misses and cache.get(PROMPT_VERSION, teacher_model_version, prompt) is None:
+            misses[prompt] = prompt
+    if not misses:
+        return
+    prompts = list(misses.keys())
+    # The prompt text itself IS the id: build_pairs() re-derives the same
+    # prompt deterministically in its own loop and looks it up by that same
+    # text via cache.get(), so no separate id scheme is needed here.
+    for start in range(0, len(prompts), batch_size):
+        chunk = prompts[start : start + batch_size]
+        ids = [hashlib.sha256(p.encode("utf-8")).hexdigest()[:16] for p in chunk]
+        raw_by_id = teacher.complete_batch(chunk, ids)  # type: ignore[attr-defined]
+        for prompt, item_id in zip(chunk, ids):
+            cache.put(
+                PROMPT_VERSION,
+                teacher_model_version,
+                prompt,
+                raw_by_id[item_id],
+                served_model_version=served_model_version,
+            )
+
+
 def build_pairs(
     calls: list[MinedCall],
     *,
@@ -298,6 +505,7 @@ def build_pairs(
     generator: str = "training/overlay_gen (P2.4, backlog item 479)",
     generator_version: str = "unknown",
     floor_extra_paths: list[Path] | None = None,
+    batch_size: int = 1,
 ) -> tuple[list[dict], dict]:
     """Prove pairs for every mined call. Returns ``(rows, summary)``.
 
@@ -335,6 +543,17 @@ def build_pairs(
     for call in sorted(calls, key=lambda c: c.origin):
         unique.setdefault(canonical_sentence(call), []).append(call)
     summary["unique_canonicals"] = len(unique)
+
+    if cache is not None and batch_size > 1 and hasattr(teacher, "complete_batch"):
+        _prewarm_cache_batched(
+            unique,
+            cache=cache,
+            teacher=teacher,
+            teacher_model_version=teacher_model_version,
+            served_model_version=served_model_version,
+            n_variants=n_variants,
+            batch_size=batch_size,
+        )
 
     overlay_seen: set[str] = set()
 

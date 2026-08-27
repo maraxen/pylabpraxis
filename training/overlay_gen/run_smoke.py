@@ -13,6 +13,7 @@ Usage (from anywhere; paths are resolved off this file's location)::
 
     python -m overlay_gen.run_smoke            # smoke subset
     python -m overlay_gen.run_smoke --full     # later full-scale gate
+    python -m overlay_gen.run_smoke --full --backend gemini --batch-size 20  # full-scale, batched via agy
 """
 
 from __future__ import annotations
@@ -35,7 +36,12 @@ from overlay_gen.miner import (
     mine_notebooks,
     mine_protocols,
 )
-from overlay_gen.pair_builder import PROMPT_VERSION, VllmTeacherClient, build_pairs
+from overlay_gen.pair_builder import (
+    PROMPT_VERSION,
+    GeminiTeacherClient,
+    VllmTeacherClient,
+    build_pairs,
+)
 
 OUT_DIR = Path(__file__).resolve().parent / "out"
 CACHE_DIR = Path(__file__).resolve().parent / "cache"
@@ -120,6 +126,13 @@ def main(argv: list[str] | None = None) -> int:
         "--variants", type=int, default=3, help="teacher variants per unique canonical"
     )
     parser.add_argument("--offline", action="store_true", help="cache-only teacher access")
+    parser.add_argument("--backend", choices=["titanix", "gemini"], default="titanix")
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=20,
+        help="canonicals grouped per teacher call (batch-capable backends only, e.g. gemini); ignored otherwise",
+    )
     args = parser.parse_args(argv)
 
     tag = "full" if args.full else "smoke"
@@ -143,7 +156,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     calls = [c for stats in mined.values() for c in stats.kept_calls]
-    teacher = VllmTeacherClient()
+    teacher = GeminiTeacherClient() if args.backend == "gemini" else VllmTeacherClient()
     rows, summary = build_pairs(
         calls,
         teacher=teacher,
@@ -151,6 +164,7 @@ def main(argv: list[str] | None = None) -> int:
         out_path=OUT_DIR / f"overlay_{tag}.jsonl",
         n_variants=args.variants,
         generator_version=_git_sha(),
+        batch_size=args.batch_size,
     )
 
     report = {

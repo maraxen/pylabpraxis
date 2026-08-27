@@ -5,6 +5,10 @@ Run from training/ (or anywhere floor_gen is importable):
     # live titanix smoke batch over 12 round-robin cells:
     uv run --no-project python -m floor_gen.cli generate --backend titanix --limit 12
 
+    # full-scale pass via Gemini 3.7 Flash (agy CLI; no API key needed;
+    # --batch-size groups many items per teacher call, default GEMINI_BATCH_SIZE):
+    uv run --no-project python -m floor_gen.cli generate --backend gemini --batch-size 20
+
     # write ox-alpha worker batch files instead of calling any HTTP backend:
     uv run --no-project python -m floor_gen.cli batches --limit 12
 
@@ -31,8 +35,8 @@ from floor_gen.corpus import (
 from floor_gen.matrix import MatrixError, committed_matrix_path, load_matrix
 from floor_gen.prompts import build_prompt
 from floor_gen.synth import synthesize_example
-from floor_gen.teachers import FakeTeacher, OxAlphaBatchWriter, TitanixTeacher
-from floor_gen.versions import PROMPT_VERSION
+from floor_gen.teachers import FakeTeacher, GeminiTeacher, OxAlphaBatchWriter, TitanixTeacher
+from floor_gen.versions import GEMINI_BATCH_SIZE, PROMPT_VERSION
 
 _TRAINING_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CACHE_DIR = _TRAINING_ROOT / "cache"
@@ -60,15 +64,19 @@ def _selected_cells(args: argparse.Namespace):
 def cmd_generate(args: argparse.Namespace) -> int:
     matrix, cells = _selected_cells(args)
     cache = TeacherCache(Path(args.cache_dir))
-    backend: TitanixTeacher | FakeTeacher
+    backend: TitanixTeacher | GeminiTeacher | FakeTeacher
     if args.backend == "titanix":
         backend = TitanixTeacher()
+    elif args.backend == "gemini":
+        backend = GeminiTeacher()
     elif args.backend == "fake":
         backend = FakeTeacher()
     else:  # pragma: no cover - argparse choices guard this
         raise ValueError(f"unknown backend {args.backend}")
 
-    rows, stats = generate_corpus(matrix, backend, cache, selected_cell_ids=tuple(cells))
+    rows, stats = generate_corpus(
+        matrix, backend, cache, selected_cell_ids=tuple(cells), batch_size=args.batch_size
+    )
     manifest = build_manifest(
         matrix, stats, [cell.cell_id for cell in cells]
     )
@@ -161,7 +169,13 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     gen = sub.add_parser("generate", help="synthesize + NL-ify through the content-hash cache")
-    gen.add_argument("--backend", choices=["titanix", "fake"], default="titanix")
+    gen.add_argument("--backend", choices=["titanix", "gemini", "fake"], default="titanix")
+    gen.add_argument(
+        "--batch-size",
+        type=int,
+        default=GEMINI_BATCH_SIZE,
+        help="items grouped per teacher call (batch-capable backends only, e.g. gemini); ignored otherwise",
+    )
     gen.add_argument("--limit", type=int, default=None, help="max CELLS (round-robin order)")
     gen.add_argument("--cells", default=None, help="explicit comma-separated cell_id selection")
     gen.add_argument("--cache-dir", default=str(DEFAULT_CACHE_DIR))
