@@ -63,9 +63,15 @@ _GEMINI_BATCH_SIZE = 20
 
 PROMPT_VERSION = "p24-naturalness-v1"
 
-#: Floor corpus location owned by P2.3 (coverage-floor generator). Absent at
-#: 260825 -- see module docstring.
-FLOOR_OUT_GLOB = "training/coverage_floor/out/*.jsonl"
+#: Floor corpus location owned by P2.3 (floor_gen, coverage-floor generator).
+#: Matches floor_gen.cli.DEFAULT_OUT_DIR (`training/out/`) -- NOT
+#: `training/coverage_floor/`, a pre-P2.3-merge placeholder name (260825)
+#: that was never updated once floor_gen actually landed under its real
+#: name, silently disabling vs-floor dedup ever since (260828 finding: the
+#: glob's parent dir never existed, so `floor_files` was always empty and
+#: the "floor corpus absent" warning fired unconditionally, even after
+#: floor_gen's first full-scale run produced real output).
+FLOOR_OUT_GLOB = "training/out/*.jsonl"
 
 
 class TeacherBackend(Protocol):

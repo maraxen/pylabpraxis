@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import overlay_gen.pair_builder as pb
 from overlay_gen.cache import TeacherCache
 from overlay_gen.miner import GOLDEN_FIXTURE_DIR, MinedCall
 from overlay_gen.normalize import normalize_utterance
@@ -161,7 +162,11 @@ def test_cache_roundtrip_and_hit(tmp_path: Path):
     assert entry["response"] == "\n".join(VARIANTS)
 
 
-def test_floor_absent_produces_warning_not_crash(tmp_path: Path):
+def test_floor_absent_produces_warning_not_crash(tmp_path: Path, monkeypatch):
+    # Isolate the floor-corpus lookup from the real repo's training/out/,
+    # which now genuinely holds a floor_gen corpus (260828) -- this test
+    # verifies "floor absent" behavior, not real repo state.
+    monkeypatch.setattr(pb, "FLOOR_OUT_GLOB", str(tmp_path / "no_such_dir" / "*.jsonl"))
     _, summary = build_pairs(
         [], teacher=_variants(), cache_dir=tmp_path / "c"
     )
