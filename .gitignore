@@ -172,3 +172,11 @@ session-*.md
 # P1.5 repo hygiene (debt-1292)
 .benchmarks/
 tmp/
+
+# --- web-repl vendored theme assets (defensive) ------------------------------
+# The patterns above (dist/, build/, lib/, wheels/, ...) are BARE, so they match
+# at ANY depth -- ADR 260817 Sec 5.4 records this exact hazard class, where a
+# vendored subtree got silently un-tracked and shipped as a dead page. The
+# praxis theme ships committed bytes (fonts, mark, stylesheet) that MUST reach
+# dist/, so pin them explicitly against any future bare pattern.
+!web-repl/overlay/assets/theme/**
