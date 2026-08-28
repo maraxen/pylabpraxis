@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-08-28T18:12:31Z",
- "generator_git_sha": "e7163c0a",
+ "generated_utc": "2026-08-28T18:17:04Z",
+ "generator_git_sha": "fd295420",
  "mining_summary": {
   "by_source": {
    "external/pylabrobot/docs/user_guide/00_liquid-handling/container_no_go_zones.ipynb": {
@@ -351,7 +351,7 @@
      },
      "receiver_type": "liquid_handler"
     },
-    "error": "DispatchError: volume list len 3 != 2 targets",
+    "error": "NoTipError: Channel 1 does not have a tip.",
     "row_id": "ovl-a2b5a25721"
    },
    {
@@ -367,7 +367,7 @@
      },
      "receiver_type": "liquid_handler"
     },
-    "error": "DispatchError: volume list len 3 != 2 targets",
+    "error": "NoTipError: Channel 1 does not have a tip.",
     "row_id": "ovl-ab721fd97d"
    },
    {
@@ -383,7 +383,7 @@
      },
      "receiver_type": "liquid_handler"
     },
-    "error": "DispatchError: volume list len 3 != 2 targets",
+    "error": "NoTipError: Channel 1 does not have a tip.",
     "row_id": "ovl-7570c967ec"
    },
    {
@@ -399,7 +399,7 @@
      },
      "receiver_type": "liquid_handler"
     },
-    "error": "DispatchError: volume list len 3 != 2 targets",
+    "error": "NoTipError: Channel 1 does not have a tip.",
     "row_id": "ovl-226b047f39"
    },
    {
@@ -415,7 +415,7 @@
      },
      "receiver_type": "liquid_handler"
     },
-    "error": "DispatchError: volume list len 3 != 2 targets",
+    "error": "NoTipError: Channel 1 does not have a tip.",
     "row_id": "ovl-8d3ec9e802"
    },
    {
@@ -431,7 +431,7 @@
      },
      "receiver_type": "liquid_handler"
     },
-    "error": "DispatchError: volume list len 3 != 2 targets",
+    "error": "NoTipError: Channel 1 does not have a tip.",
     "row_id": "ovl-cc7083b0e0"
    },
    {
@@ -447,7 +447,7 @@
      },
      "receiver_type": "liquid_handler"
     },
-    "error": "DispatchError: volume list len 3 != 2 targets",
+    "error": "NoTipError: Channel 1 does not have a tip.",
     "row_id": "ovl-fc6ca91c0c"
    },
    {
@@ -463,7 +463,7 @@
      },
      "receiver_type": "liquid_handler"
     },
-    "error": "DispatchError: volume list len 3 != 2 targets",
+    "error": "NoTipError: Channel 1 does not have a tip.",
     "row_id": "ovl-1b4d6803ac"
    },
    {
@@ -479,7 +479,7 @@
      },
      "receiver_type": "liquid_handler"
     },
-    "error": "DispatchError: volume list len 3 != 2 targets",
+    "error": "NoTipError: Channel 1 does not have a tip.",
     "row_id": "ovl-5f990b60bf"
    },
    {
@@ -495,7 +495,7 @@
      },
      "receiver_type": "liquid_handler"
     },
-    "error": "DispatchError: volume list len 3 != 2 targets",
+    "error": "NoTipError: Channel 1 does not have a tip.",
     "row_id": "ovl-6666982de0"
    }
   ],
@@ -513,9 +513,9 @@
  },
  "prompt_version": "p24-naturalness-v1",
  "sample_rows": [
-  "{'id': 'ovl-78508a5747', 'instruction': 'Please load tips from tip_rack A1:D1.', 'call': {'name': 'pick_up_tips', 'receiver_type': 'liquid_handler', 'params': {'at': ['tip_rack[\"A1:D1\"]']}}, 'provenance': {'provenance': 'naturalness', 'source_notebook_or_protocol': 'external/pylabrobot/docs/user_guide/00_liquid-handling/container_no_go_zones.ipynb', 'origin': 'external/pylabrobot/docs/user_guide/00_liquid-handling/container_no_go_zones.ipynb#cell23@2', 'generator': 'training/overlay_gen (P2.4, backlog item 479)', 'generator_version': 'e7163c0a', 'prompt_version': 'p24-naturalness-v1', 'teacher_model_version': 'gemini-3.7-flash-medium'}, 'execution_verify': {'passed': True, 'backend': 'LiquidHandlerChatterboxBackend', 'error': None, 'checks': [{'name': 'execution_ok', 'passed': True, 'detail': 'execution completed without error'}, {'name': 'volume_delta', 'passed': True, 'detail': 'no liquid ops executed'}, {'name': 'tips_delta', 'passed': True, 'detail': 'call 0: pick_up_tips x3; mounted tips 3 == expected 3'}, {'name': 'effects_match', 'passed': True, 'detail': 'no expected_effects declared'}, {'name': 'slot_agreement', 'passed': True, 'detail': 'every grounded argument matches the intent-record binding'}, {'name': 'intent_agreement_parse_layer', 'passed': True, 'detail': 'names/params/gaps re-derived clean (D11)'}]}}",
-  "{'id': 'ovl-bbf2ffc36e', 'instruction': 'Grab tips from tip_rack A1:D1.', 'call': {'name': 'pick_up_tips', 'receiver_type': 'liquid_handler', 'params': {'at': ['tip_rack[\"A1:D1\"]']}}, 'provenance': {'provenance': 'naturalness', 'source_notebook_or_protocol': 'external/pylabrobot/docs/user_guide/00_liquid-handling/container_no_go_zones.ipynb', 'origin': 'external/pylabrobot/docs/user_guide/00_liquid-handling/container_no_go_zones.ipynb#cell23@2', 'generator': 'training/overlay_gen (P2.4, backlog item 479)', 'generator_version': 'e7163c0a', 'prompt_version': 'p24-naturalness-v1', 'teacher_model_version': 'gemini-3.7-flash-medium'}, 'execution_verify': {'passed': True, 'backend': 'LiquidHandlerChatterboxBackend', 'error': None, 'checks': [{'name': 'execution_ok', 'passed': True, 'detail': 'execution completed without error'}, {'name': 'volume_delta', 'passed': True, 'detail': 'no liquid ops executed'}, {'name': 'tips_delta', 'passed': True, 'detail': 'call 0: pick_up_tips x3; mounted tips 3 == expected 3'}, {'name': 'effects_match', 'passed': True, 'detail': 'no expected_effects declared'}, {'name': 'slot_agreement', 'passed': True, 'detail': 'every grounded argument matches the intent-record binding'}, {'name': 'intent_agreement_parse_layer', 'passed': True, 'detail': 'names/params/gaps re-derived clean (D11)'}]}}",
-  "{'id': 'ovl-fa4010f376', 'instruction': 'Pick up the tips located at tip_rack A1:D1.', 'call': {'name': 'pick_up_tips', 'receiver_type': 'liquid_handler', 'params': {'at': ['tip_rack[\"A1:D1\"]']}}, 'provenance': {'provenance': 'naturalness', 'source_notebook_or_protocol': 'external/pylabrobot/docs/user_guide/00_liquid-handling/container_no_go_zones.ipynb', 'origin': 'external/pylabrobot/docs/user_guide/00_liquid-handling/container_no_go_zones.ipynb#cell23@2', 'generator': 'training/overlay_gen (P2.4, backlog item 479)', 'generator_version': 'e7163c0a', 'prompt_version': 'p24-naturalness-v1', 'teacher_model_version': 'gemini-3.7-flash-medium'}, 'execution_verify': {'passed': True, 'backend': 'LiquidHandlerChatterboxBackend', 'error': None, 'checks': [{'name': 'execution_ok', 'passed': True, 'detail': 'execution completed without error'}, {'name': 'volume_delta', 'passed': True, 'detail': 'no liquid ops executed'}, {'name': 'tips_delta', 'passed': True, 'detail': 'call 0: pick_up_tips x3; mounted tips 3 == expected 3'}, {'name': 'effects_match', 'passed': True, 'detail': 'no expected_effects declared'}, {'name': 'slot_agreement', 'passed': True, 'detail': 'every grounded argument matches the intent-record binding'}, {'name': 'intent_agreement_parse_layer', 'passed': True, 'detail': 'names/params/gaps re-derived clean (D11)'}]}}"
+  "{'id': 'ovl-78508a5747', 'instruction': 'Please load tips from tip_rack A1:D1.', 'call': {'name': 'pick_up_tips', 'receiver_type': 'liquid_handler', 'params': {'at': ['tip_rack[\"A1:D1\"]']}}, 'provenance': {'provenance': 'naturalness', 'source_notebook_or_protocol': 'external/pylabrobot/docs/user_guide/00_liquid-handling/container_no_go_zones.ipynb', 'origin': 'external/pylabrobot/docs/user_guide/00_liquid-handling/container_no_go_zones.ipynb#cell23@2', 'generator': 'training/overlay_gen (P2.4, backlog item 479)', 'generator_version': 'fd295420', 'prompt_version': 'p24-naturalness-v1', 'teacher_model_version': 'gemini-3.7-flash-medium'}, 'execution_verify': {'passed': True, 'backend': 'LiquidHandlerChatterboxBackend', 'error': None, 'checks': [{'name': 'execution_ok', 'passed': True, 'detail': 'execution completed without error'}, {'name': 'volume_delta', 'passed': True, 'detail': 'no liquid ops executed'}, {'name': 'tips_delta', 'passed': True, 'detail': 'call 0: pick_up_tips x4; mounted tips 4 == expected 4'}, {'name': 'effects_match', 'passed': True, 'detail': 'no expected_effects declared'}, {'name': 'slot_agreement', 'passed': True, 'detail': 'every grounded argument matches the intent-record binding'}, {'name': 'intent_agreement_parse_layer', 'passed': True, 'detail': 'names/params/gaps re-derived clean (D11)'}]}}",
+  "{'id': 'ovl-bbf2ffc36e', 'instruction': 'Grab tips from tip_rack A1:D1.', 'call': {'name': 'pick_up_tips', 'receiver_type': 'liquid_handler', 'params': {'at': ['tip_rack[\"A1:D1\"]']}}, 'provenance': {'provenance': 'naturalness', 'source_notebook_or_protocol': 'external/pylabrobot/docs/user_guide/00_liquid-handling/container_no_go_zones.ipynb', 'origin': 'external/pylabrobot/docs/user_guide/00_liquid-handling/container_no_go_zones.ipynb#cell23@2', 'generator': 'training/overlay_gen (P2.4, backlog item 479)', 'generator_version': 'fd295420', 'prompt_version': 'p24-naturalness-v1', 'teacher_model_version': 'gemini-3.7-flash-medium'}, 'execution_verify': {'passed': True, 'backend': 'LiquidHandlerChatterboxBackend', 'error': None, 'checks': [{'name': 'execution_ok', 'passed': True, 'detail': 'execution completed without error'}, {'name': 'volume_delta', 'passed': True, 'detail': 'no liquid ops executed'}, {'name': 'tips_delta', 'passed': True, 'detail': 'call 0: pick_up_tips x4; mounted tips 4 == expected 4'}, {'name': 'effects_match', 'passed': True, 'detail': 'no expected_effects declared'}, {'name': 'slot_agreement', 'passed': True, 'detail': 'every grounded argument matches the intent-record binding'}, {'name': 'intent_agreement_parse_layer', 'passed': True, 'detail': 'names/params/gaps re-derived clean (D11)'}]}}",
+  "{'id': 'ovl-fa4010f376', 'instruction': 'Pick up the tips located at tip_rack A1:D1.', 'call': {'name': 'pick_up_tips', 'receiver_type': 'liquid_handler', 'params': {'at': ['tip_rack[\"A1:D1\"]']}}, 'provenance': {'provenance': 'naturalness', 'source_notebook_or_protocol': 'external/pylabrobot/docs/user_guide/00_liquid-handling/container_no_go_zones.ipynb', 'origin': 'external/pylabrobot/docs/user_guide/00_liquid-handling/container_no_go_zones.ipynb#cell23@2', 'generator': 'training/overlay_gen (P2.4, backlog item 479)', 'generator_version': 'fd295420', 'prompt_version': 'p24-naturalness-v1', 'teacher_model_version': 'gemini-3.7-flash-medium'}, 'execution_verify': {'passed': True, 'backend': 'LiquidHandlerChatterboxBackend', 'error': None, 'checks': [{'name': 'execution_ok', 'passed': True, 'detail': 'execution completed without error'}, {'name': 'volume_delta', 'passed': True, 'detail': 'no liquid ops executed'}, {'name': 'tips_delta', 'passed': True, 'detail': 'call 0: pick_up_tips x4; mounted tips 4 == expected 4'}, {'name': 'effects_match', 'passed': True, 'detail': 'no expected_effects declared'}, {'name': 'slot_agreement', 'passed': True, 'detail': 'every grounded argument matches the intent-record binding'}, {'name': 'intent_agreement_parse_layer', 'passed': True, 'detail': 'names/params/gaps re-derived clean (D11)'}]}}"
  ],
  "samples": [
   {

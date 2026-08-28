@@ -6,10 +6,29 @@ Grammar (the harness-side twin of cue-2 grounding; deterministic):
 * ``<name>.<id>``         one well / tip spot, ALWAYS returned as a 1-list
                           (vendored ItemizedResource.__getitem__ returns lists
                           even for single identifiers)
-* ``<name>.<id>:<id2>``   vendored slice semantics -- END-EXCLUSIVE, column
-                          major (verified against hamilton_96_tiprack:
-                          ``["A1":"H1"]`` yields A1..G1). Prefer explicit
-                          identifier lists in fixtures for readability.
+* ``<name>.<id>:<id2>``   vendored colon-range STRING semantics -- INCLUSIVE
+                          on both ends (verified against vendored
+                          ``pylabrobot.utils.positions.expand_string_range``
+                          and ``ItemizedResource.__getitem__``'s own
+                          docstring example: ``"A1:E1"`` yields A1..E1, 5
+                          items; cross-checked against the official PLR
+                          user-guide notebook `hamilton-star/basic.ipynb`,
+                          which pairs ``plate["A1:C1"]`` with a 3-element
+                          volume list across "channels 1, 2, and 3").
+                          260828 finding: a prior version of this module
+                          constructed a Python SLICE OBJECT (``obj[a:b]``)
+                          from the two endpoints, which is a genuinely
+                          DIFFERENT, END-EXCLUSIVE code path in vendored PLR
+                          (``__getitem__``'s ``isinstance(identifier, slice)``
+                          branch, using index-position ``range(start, stop)``)
+                          -- that path is for real Python slice syntax
+                          (``obj["A1":"H1"]``, two separate string args), not
+                          for the single colon-containing STRING every real
+                          mined call actually uses. Rejected 12/99 real
+                          mined overlay_gen calls with a fabricated
+                          "volume list len N != N-1 targets" error before
+                          this fix. Prefer explicit identifier lists in
+                          fixtures for readability regardless.
 * ``{"x":..,"y":..,"z":..}`` structured Coordinate payload -> grounded
                           literal (param_namespace note on move destinations).
 
@@ -54,10 +73,14 @@ def ground_ref(ref: str, setup) -> list[Any]:
     obj = setup.resources[base]
     if not tail:
         return [obj]
-    # Well/spot addressing: single id or end-exclusive slice (vendored rules).
-    first, sep, second = tail.partition(":")
+    # Well/spot addressing: pass the STRING through unchanged (bare id or
+    # colon-range) so vendored ItemizedResource.__getitem__ takes its
+    # string branch (get_items/expand_string_range, INCLUSIVE) -- do NOT
+    # split on ':' and re-index with obj[a:b], which builds a Python slice
+    # object and silently hits the END-EXCLUSIVE index-range branch instead
+    # (260828 finding, see module docstring).
     try:
-        items = obj[first.strip():second.strip()] if sep else obj[first.strip()]
+        items = obj[tail.strip()]
     except Exception as e:  # PLR raises ValueError/KeyError variants
         raise GroundingError(f"cannot address {ref!r} on {base!r}: {e}") from e
     return list(items)
