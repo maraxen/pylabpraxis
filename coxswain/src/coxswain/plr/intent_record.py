@@ -47,8 +47,19 @@ class _IntentCallBase(TypedDict):
 
 class IntentCallExpected(_IntentCallBase, total=False):
     """One intended call. ``missing_required``/``unresolved_slots`` carry the
-    INTENDED gap state: empty for clean-parse examples, populated for
-    clarify-class examples (D7) -- authored in table/as-given order."""
+    INTENDED gap state, authored in table/as-given order, and MUST equal
+    ``slot_derivation.derive_call_gaps``'s output exactly (``gaps_match`` in
+    ``check_intent_agreement`` below compares byte-for-byte) -- never
+    hand-authored to reflect perceived ambiguity. ``unresolved_slots`` is
+    D11's structural "needs runtime object-binding" classification (every
+    present ``SYMBOLIC_RESOURCE_REF`` param, "never from value heuristics"
+    per D11's own docstring), NOT a "clarify-worthy" flag: it is non-empty
+    for ANY class whose verb has such a param, including clean-parse `none`
+    rows referencing concrete resources like ``plate_1.C7`` (260828 finding
+    -- a prior version of this docstring claimed "empty for clean-parse",
+    which was never true given how derive_call_gaps and gaps_match work;
+    ``ambiguous-referent`` rows differ only in the STRING content of one
+    slot's ``reference``, not in whether the field is populated)."""
 
     missing_required: list[str]
     unresolved_slots: list[dict[str, str]]  # {arg_name, reference, resource_type}
