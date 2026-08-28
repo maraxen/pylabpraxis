@@ -1,0 +1,262 @@
+"""Execution-verify wiring: P2.2 harness (``verify/``) -> P2.4 overlay rows.
+
+Mirrors ``floor_gen.exec_verify``'s precondition-planning approach (same PLR
+call vocabulary, same chatterbox harness) but does NOT import it: this
+package's convention is to keep floor_gen/overlay_gen siblings independent
+(``pair_builder.py`` already duplicates ``floor_gen/corpus.py``'s
+``_prewarm_cache_batched`` pattern rather than cross-importing it -- see that
+function's docstring) rather than introduce a floor_gen<->overlay_gen coupling
+for a small amount of shared logic. A follow-up could factor this out into a
+shared module if a THIRD caller ever needs it.
+
+overlay_gen's calls come from MINING REAL notebook/protocol source code
+(``overlay_gen.miner``), not from a synthesized, schema-clean value pool.
+``MinedCall.params`` therefore carries the VERBATIM SOURCE EXPRESSION for
+each argument (miner.py's own docstring: "grounding happens downstream,
+never in this generator") -- e.g. ``"plate['A1']"``, ``"plate[dst_well]"``
+(a variable reference), or ``"sample_volume_ul * 0.8"`` (a computed
+expression), not a resolved deck reference or a numeric literal. Only the
+SIMPLE, literal-resolvable subset (bare name / ``name['A1']`` /
+``name['A1:C1']`` well-refs; actual numeric-literal volumes) can be
+translated into the P2.2 harness's ``<name>.<id>`` grounding grammar at all.
+
+A rejection here therefore means something DIFFERENT from floor_gen's: this
+is REAL code that was already running against some PLR version, so a
+genuine execution-verify failure most likely indicates version skew against
+the vendored PLR pinned here (``PLR_SUBMODULE_SHA``) or a mining-extraction
+gap -- NOT that a teacher model hallucinated. A skip (computed/variable
+value, non-liquid-handler receiver) is NEVER a rejection: the harness
+simply cannot judge that call, one way or the other, from its source text
+alone. (260828, execution-verify wiring task 260828_wire_execution_verify.)
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from typing import Any
+
+from coxswain.plr.param_namespace import ParamKind, params_of
+from verify import run_verify_sync
+from verify.deck import DeckLayout
+from verify.dispatcher import SUPPORTED_TOOLS
+
+from overlay_gen.miner import MinedCall
+
+__all__ = ["ExecutionVerifyResult", "execution_verify_call"]
+
+_DUMMY_TIP_SPOT = "tip_rack.A1"
+_PRIME_PLATE = "prime_plate"
+_PRIME_WELL = f"{_PRIME_PLATE}.A1"
+
+#: Well/slice token inside a source-text subscript, e.g. "A1" or "A1:H1".
+_WELL_TOKEN = r"[A-Ha-h]\d{1,2}(?::[A-Ha-h]\d{1,2})?"
+#: name['A1'] / name["A1:H1"] -- a literal, statically-groundable well ref.
+_BRACKET_REF = re.compile(rf"^(\w+)\[(['\"])({_WELL_TOKEN})\2\]$")
+#: bare whole-resource name (no subscript at all).
+_BARE_NAME = re.compile(r"^\w+$")
+_CANONICAL_TIP_RACK = "tip_rack"
+
+
+@dataclass(frozen=True)
+class ExecutionVerifyResult:
+    """Outcome of attempting execution-verify on one mined call."""
+
+    ran: bool
+    skipped: bool
+    skip_reason: str | None
+    passed: bool
+    summary: dict[str, Any] | None
+
+
+def _normalize_ref(value: Any, resource_type: str | None) -> str | None:
+    """A mined symbolic-ref VALUE -> the harness's dotted grammar, or None
+    if it's not a literal, statically-groundable reference (a variable name,
+    an index expression, a slice built from a loop variable, ...).
+
+    ``resource_type`` gates which BARE (no-subscript) names are trusted:
+    "plate"/"lid"/"resource" params legitimately address a WHOLE resource by
+    bare name (matches the schema). A bare name for "container"/"tip_spot"
+    is inherently ambiguous from source text alone -- real notebook code
+    routinely binds a variable to an ALREADY-INDEXED single well/tip-spot
+    object before calling the verb (e.g. ``tube = plate['A1']; dispense
+    (tube, ...)``), which reads identically to "the whole container" in the
+    mined text; treating it as "the whole Plate" would be a false-negative
+    execution-verify rejection, not a real defect, so it's left ungroundable
+    (skipped) instead of guessed at.
+    """
+    if not isinstance(value, str):
+        return None
+    m = _BRACKET_REF.match(value)
+    if m:
+        name, _quote, well = m.groups()
+        # verify/deck.py's DeckFactory always builds exactly ONE tip rack,
+        # named "tip_rack" -- a real notebook's own rack variable name
+        # (e.g. "tiprack", "tr0", "tip_rack_20") never matches that literal
+        # name, so ground it against the canonical rack regardless of what
+        # the source called it (same reasoning as floor_gen.synth's fix).
+        rack = _CANONICAL_TIP_RACK if resource_type == "tip_spot" else name
+        return f"{rack}.{well.upper()}"
+    if resource_type in ("container", "tip_spot"):
+        return None
+    if _BARE_NAME.match(value):
+        return value
+    return None
+
+
+def _normalize_volume(value: Any) -> float | None:
+    """A mined literal-float VALUE -> a real float, or None if it's source
+    text for a variable/computed expression (e.g. "sample_volume_ul * 0.8",
+    or a bare variable name like "volume_ul")."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
+
+
+def _normalize_params(name: str, params: dict[str, Any]) -> dict[str, Any] | None:
+    """The full param dict -> a harness-groundable form, or None if ANY
+    param is a variable/computed expression the harness cannot resolve."""
+    try:
+        rows = params_of(name)
+    except KeyError:
+        return None
+    known = {spec.name: spec for spec in rows}
+    normalized: dict[str, Any] = {}
+    for key, value in params.items():
+        spec = known.get(key)
+        if spec is None:
+            continue  # not a canonical param (shouldn't happen: miner.py's own namespace filter)
+        is_list = isinstance(value, list)
+        values = value if is_list else [value]
+
+        if spec.kind is ParamKind.SYMBOLIC_RESOURCE_REF:
+            refs = [_normalize_ref(v, spec.resource_type) for v in values]
+            if any(r is None for r in refs):
+                return None
+            normalized[key] = refs if is_list else refs[0]
+        elif spec.plr_type in ("float", "List[float]", "Optional[List[float]]"):
+            nums = [_normalize_volume(v) for v in values]
+            if any(n is None for n in nums):
+                return None
+            normalized[key] = nums if is_list else nums[0]
+        else:
+            # Literal str-ish params (what="tips", at=well positions for
+            # read_*): kept as-is if already plain strings; those verbs are
+            # unsupported by SUPPORTED_TOOLS anyway (see caller), so this
+            # branch is effectively only "what" for discard_tips today.
+            if all(isinstance(v, str) for v in values):
+                normalized[key] = value
+            else:
+                return None
+    return normalized
+
+
+def _resource_type_holders(name: str, params: dict[str, Any]) -> list[str]:
+    names: list[str] = []
+    for spec in params_of(name):
+        if spec.kind is ParamKind.SYMBOLIC_RESOURCE_REF and spec.resource_type == "resource":
+            value = params.get(spec.name)
+            if isinstance(value, str):
+                names.append(value)
+            elif isinstance(value, list):
+                names.extend(v for v in value if isinstance(v, str))
+    return list(dict.fromkeys(names))
+
+
+def _precondition_plan(
+    name: str, params: dict[str, Any]
+) -> tuple[str | None, list[dict[str, Any]], dict[str, str], dict[str, float]]:
+    """Same PLR-precondition scaffolding as floor_gen.exec_verify's helper
+    of the same name -- see that module's docstring for the full rationale
+    (tip-mount / seeded-liquid preconditions a single mined call can't carry
+    on its own)."""
+    if name not in SUPPORTED_TOOLS:
+        return (
+            f"{name!r} has no LiquidHandler-chatterbox execution path (non-liquid-handler "
+            "receiver; the P2.2 harness's LH_BACKENDS covers liquid handling only)",
+            [], {}, {},
+        )
+    if name == "transfer" and params.get("volume_ul") is None:
+        return (
+            "transfer without volume_ul cannot be deterministically post-conditioned by "
+            "the P2.2 harness (documented checks.py limitation)",
+            [], {}, {},
+        )
+
+    pickup = {"name": "pick_up_tips", "params": {"at": [_DUMMY_TIP_SPOT]}}
+
+    if name == "transfer":
+        total = sum(float(v) for v in params.get("volume_ul") or [])
+        seeds = {params["source"]: total} if total > 0 else {}
+        return None, [pickup], {}, seeds
+
+    if name == "aspirate":
+        vol = float(params["volume_ul"][0])
+        return None, [pickup], {}, {params["source"]: vol}
+
+    if name == "dispense":
+        vol = float(params["volume_ul"][0])
+        prime = {"name": "aspirate", "params": {"source": _PRIME_WELL, "volume_ul": [vol]}}
+        return None, [pickup, prime], {_PRIME_PLATE: "Plate"}, {_PRIME_WELL: vol}
+
+    if name == "drop_tips":
+        destination = params.get("destination")
+        spots = destination if isinstance(destination, list) else [destination]
+        return None, [{"name": "pick_up_tips", "params": {"at": list(spots)}}], {}, {}
+
+    if name == "discard_tips":
+        return None, [pickup], {}, {}
+
+    return None, [], {}, {}
+
+
+def execution_verify_call(call: MinedCall, *, record_id: str) -> ExecutionVerifyResult:
+    """Attempt real execution-verify on one mined call. Never raises."""
+    real_params = _normalize_params(call.name, call.params)
+    if real_params is None:
+        return ExecutionVerifyResult(
+            ran=False, skipped=True,
+            skip_reason=(
+                "mined call references a variable/computed value (not a literal deck ref "
+                "or numeric volume) that the P2.2 harness's static grounding can't resolve "
+                "from source text alone; execution-verify skipped, not rejected"
+            ),
+            passed=True, summary=None,
+        )
+
+    real_call = {"name": call.name, "params": real_params}
+    skip_reason, prefix, extra_resources, seed_volumes = _precondition_plan(call.name, real_params)
+    if skip_reason is not None:
+        return ExecutionVerifyResult(ran=False, skipped=True, skip_reason=skip_reason, passed=True, summary=None)
+
+    call_sequence = [*prefix, real_call]
+    verify_intent = {
+        "record_id": record_id,
+        "utterance": "",
+        "source": "notebook",
+        "calls": [{"name": c["name"], "params": c["params"]} for c in call_sequence],
+        "expected_effects": [],  # see floor_gen.exec_verify's docstring for why
+    }
+    layout = DeckLayout(
+        resources=dict(extra_resources),
+        seed_volumes=dict(seed_volumes),
+        holders=_resource_type_holders(call.name, real_params),
+    )
+
+    try:
+        result = run_verify_sync(call_sequence=call_sequence, intent_record=verify_intent, layout=layout)
+    except Exception as exc:  # noqa: BLE001 - harness-level failure; never crash the run
+        summary = {"passed": False, "backend": None, "error": f"{type(exc).__name__}: {exc}", "checks": []}
+        return ExecutionVerifyResult(ran=True, skipped=False, skip_reason=None, passed=False, summary=summary)
+
+    summary = {
+        "passed": result["passed"],
+        "backend": result["backend"],
+        "error": result["error"],
+        "checks": [{"name": c["name"], "passed": c["passed"], "detail": c["detail"]} for c in result["checks"]],
+    }
+    return ExecutionVerifyResult(
+        ran=True, skipped=False, skip_reason=None, passed=result["passed"], summary=summary
+    )

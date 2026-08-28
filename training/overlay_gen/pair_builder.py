@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from overlay_gen.cache import TeacherCache
+from overlay_gen.exec_verify import execution_verify_call
 from overlay_gen.miner import (
     GOLDEN_FIXTURE_DIR,
     REPO_ROOT,
@@ -524,6 +525,12 @@ def build_pairs(
         "rejected_within_overlay": 0,
         "rejected_invalid_shape": 0,
         "shape_error_samples": [],
+        #: Rows whose mined call failed REAL execution-verify (P2.2 harness)
+        #: -- means "this mined call doesn't actually execute against the
+        #: current PLR version/backend" (real code, possible version skew),
+        #: NOT "the teacher hallucinated" (see exec_verify.py's docstring).
+        "rejected_execution": 0,
+        "execution_error_samples": [],
         "warnings": [],
     }
 
@@ -581,6 +588,12 @@ def build_pairs(
         summary["variants_parsed"] += len(variants)
 
         for call in group:
+            # Verify ONCE per distinct call, not once per (call, variant)
+            # pair: execution correctness depends only on `call` (name +
+            # params), never on which paraphrase of the instruction text was
+            # generated -- reused for every variant sharing this call below.
+            exec_result = execution_verify_call(call, record_id=call.origin)
+
             for variant in variants:
                 key = normalize_utterance(variant)
                 if key in floor:
@@ -613,6 +626,20 @@ def build_pairs(
                             {"row_id": row_id, "errors": errors}
                         )
                     continue
+                # LAST gate (after both dedup checks + shape validation):
+                # presumably the most expensive check, so no point running
+                # it on rows that would be rejected anyway for cheaper
+                # reasons (260828 execution-verify wiring).
+                if exec_result.ran and not exec_result.passed:
+                    summary["rejected_execution"] += 1
+                    if len(summary["execution_error_samples"]) < 10:
+                        summary["execution_error_samples"].append(
+                            {"row_id": row_id, "call": call.call_dict(),
+                             "error": (exec_result.summary or {}).get("error")}
+                        )
+                    continue
+                if exec_result.summary is not None:
+                    row["execution_verify"] = exec_result.summary
                 overlay_seen.add(key)
                 rows.append(row)
                 summary["pairs_written"] += 1

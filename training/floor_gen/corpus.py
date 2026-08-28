@@ -33,6 +33,7 @@ from coxswain.plr.tool_schema import TOOL_SCHEMA
 
 from floor_gen.cache import TeacherCache, compute_cache_key
 from floor_gen.declarations import render_declarations
+from floor_gen.exec_verify import execution_verify_example
 from floor_gen.matrix import AmbiguityMatrix, MatrixCell, cells_round_robin
 from floor_gen.prompts import build_prompt, canonical_json
 from floor_gen.synth import SynthExample, synthesize_example
@@ -59,11 +60,24 @@ class CorpusError(RuntimeError):
 class GenerationStats:
     examples_total: int
     accepted: int
+    #: TOTAL rejections, any reason (shape-validation OR execution-verify;
+    #: ``execution_rejected`` below is a breakdown SUBSET of this, not an
+    #: addition to it -- ``rejected + accepted == examples_total`` keeps
+    #: holding exactly as before P2.2 wiring).
     rejected: int
     cache_hits: int
     cache_misses: int
     per_class: dict[str, int]
     teacher_model_version: str
+    #: Rows whose ground-truth call failed real execution-verify (P2.2
+    #: harness) and were dropped -- a breakdown subset of ``rejected``.
+    execution_rejected: int = 0
+    #: Rows KEPT (counted in ``accepted``) whose execution-verify was
+    #: intentionally not attempted: D7 classes with no executable ground
+    #: truth (missing-slot/ambiguous-referent/out-of-surface), or a
+    #: non-liquid-handler receiver (LH_BACKENDS-only limitation). NOT a
+    #: rejection -- see floor_gen.exec_verify's module docstring.
+    execution_skipped: int = 0
 
     @property
     def pass_rate(self) -> float:
@@ -188,6 +202,7 @@ def generate_corpus(
     limit_cells: int | None = None,
     selected_cell_ids: list[str] | None = None,
     batch_size: int = 1,
+    verify_execution: bool = True,
 ) -> tuple[list[dict[str, Any]], GenerationStats]:
     """Cache-first generation over round-robin cells (or explicit selection).
 
@@ -199,6 +214,13 @@ def generate_corpus(
     -- the per-item loop itself is UNCHANGED either way, since after pre-warm
     every lookup is a cache hit. No-op (falls back to one call per item) for
     backends that don't implement ``complete_batch``.
+
+    ``verify_execution`` (default ON, per D9/AC-2.2.x: teacher shape passing
+    is NOT proof a call actually executes) gates every accepted "none"-class
+    row through the P2.2 execution-verify harness (``floor_gen.exec_verify``)
+    before it's committed; ``False`` restores pre-P2.2-wiring behavior
+    (shape-validation only) for fast local iteration -- see cli.py's
+    ``--skip-execution-verify`` flag docstring for the tradeoff.
     """
     if selected_cell_ids is not None:
         # Accept both cell_id strings and MatrixCell objects; callers (CLI,
@@ -222,7 +244,7 @@ def generate_corpus(
 
     prov = provenance_tags(backend.teacher_model_version)
     rows: list[dict[str, Any]] = []
-    hits = misses = rejected = 0
+    hits = misses = rejected = execution_rejected = execution_skipped = 0
     ordinal = 0
 
     for cell in ordered:
@@ -275,8 +297,28 @@ def generate_corpus(
                     ]
                 intent_calls.append(entry)
 
+            record_id = _record_id(cell, index, ordinal)
+
+            if verify_execution:
+                exec_result = execution_verify_example(example, record_id=record_id)
+                if exec_result.skipped:
+                    execution_skipped += 1
+                elif not exec_result.passed:
+                    # Ground truth doesn't actually execute correctly against
+                    # the P2.2 chatterbox harness (real tip/volume/grounding
+                    # defect, not a teacher-shape issue): COUNT it, keep the
+                    # cached raw response, skip the row. Deterministic same
+                    # as the shape-rejection path above -- verification only
+                    # depends on row content, nothing random.
+                    rejected += 1
+                    execution_rejected += 1
+                    ordinal += 1
+                    continue
+            else:
+                exec_result = None
+
             row = {
-                "record_id": _record_id(cell, index, ordinal),
+                "record_id": record_id,
                 "source": "synthetic",
                 "provenance": prov,
                 "matrix_cell": {
@@ -294,6 +336,8 @@ def generate_corpus(
                 },
                 "supervision": {"kind": _supervision_kind(cell)},
             }
+            if exec_result is not None and exec_result.summary is not None:
+                row["execution_verify"] = exec_result.summary
             rows.append(row)
             ordinal += 1
 
@@ -310,6 +354,8 @@ def generate_corpus(
         cache_misses=misses,
         per_class=per_class,
         teacher_model_version=backend.teacher_model_version,
+        execution_rejected=execution_rejected,
+        execution_skipped=execution_skipped,
     )
 
 
@@ -324,6 +370,8 @@ def build_manifest(matrix: AmbiguityMatrix, stats: GenerationStats, selected_cel
         "examples_total": stats.examples_total,
         "accepted": stats.accepted,
         "rejected": stats.rejected,
+        "execution_rejected": stats.execution_rejected,
+        "execution_skipped": stats.execution_skipped,
         "format_validation_pass_rate": round(stats.pass_rate, 4),
         "cache_hits": stats.cache_hits,
         "cache_misses": stats.cache_misses,

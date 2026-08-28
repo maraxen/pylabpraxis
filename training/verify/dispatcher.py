@@ -173,10 +173,14 @@ def plan_call(call: Mapping[str, Any], index: int, setup, *, strict: bool) -> Pl
         require("source", "destination", "volume_ul")
         bind("source")
         bind("destination")
-        bind("volume_ul")
+        bind("volume_ul")  # plr_arg="volume" -> already lands in kwargs["volume"]
+        # source/destination are scalar-cardinality symbolic refs, but
+        # ground_param always returns a grounded LIST (one entry); vendored
+        # stamp() wants bare Plates for both, mirroring the transfer.source
+        # unwrap below.
+        kwargs["source"] = _single(kwargs["source"], "stamp.source")
         kwargs["target"] = _single(kwargs["target"], "stamp.destination")
         kwargs["volume"] = float(_wrap_vols(1, params["volume_ul"])[0])
-        del kwargs["volume_ul"]  # canonical name was volume_ul; vendored: volume
 
     elif tool in _MOVE_OBJ_ARG:
         obj_arg = _MOVE_OBJ_ARG[tool]

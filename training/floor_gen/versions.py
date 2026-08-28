@@ -28,7 +28,12 @@ __all__ = [
 
 #: Bump on ANY change to synthesis logic or value pools (part of the RNG
 #: seed, so bumps deliberately reshuffle the floor corpus).
-GENERATOR_VERSION: Final[str] = "0.1.0"
+#: 0.2.0 (260828): execution-verify wiring fixes in synth.py -- dotted
+#: <name>.<id> ref grammar (was flat <name>_<id>, ungroundable) and
+#: resource-list/volume-list cardinality coordination (was independently
+#: sampled, producing internally-inconsistent "clean" calls). See
+#: _grounded_symbolic/_literal_value docstrings.
+GENERATOR_VERSION: Final[str] = "0.2.0"
 
 #: Bump on ANY change to prompt text (changes every cache key by construction).
 PROMPT_VERSION: Final[str] = "p23_nlify_v1"

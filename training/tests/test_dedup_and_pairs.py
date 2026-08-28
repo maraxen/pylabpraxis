@@ -205,3 +205,80 @@ def test_canonical_unknown_tool_raises():
         assert "not_a_tool" in str(exc)
     else:
         raise AssertionError("expected KeyError")
+
+
+# --- P2.2 execution-verify wiring (260828_wire_execution_verify) ------------
+
+
+def test_execution_verify_passes_and_attaches_summary(tmp_path: Path):
+    """A mined call with a literal, groundable ref actually executes against
+    the REAL P2.2 harness -- kept, and carries an auditable summary."""
+    rows, summary = build_pairs(
+        [make_call()],  # aspirate(plate['A1'], volume_ul=[10.0]) -- groundable
+        teacher=_variants(*VARIANTS),
+        cache_dir=tmp_path / "cache",
+        n_variants=3,
+    )
+    assert summary["rejected_execution"] == 0
+    assert rows and all(r["execution_verify"]["passed"] is True for r in rows)
+
+
+def test_execution_verify_rejects_a_genuinely_broken_call(tmp_path: Path):
+    """A mined call that cannot physically execute (aspirating far more than
+    an empty well can hold) is rejected by REAL verify(), counted, and never
+    silently dropped or crashed on -- NOT via a mock of verify() itself."""
+    bad_call = make_call(params={"source": "plate['A1']", "volume_ul": [999999.0]})
+    rows, summary = build_pairs(
+        [bad_call],
+        teacher=_variants(*VARIANTS),
+        cache_dir=tmp_path / "cache",
+        n_variants=3,
+    )
+    assert rows == []
+    assert summary["rejected_execution"] == len(VARIANTS)
+    assert summary["execution_error_samples"]
+
+
+def test_execution_verify_skips_computed_or_variable_refs_not_rejects(tmp_path: Path):
+    """A mined call referencing a variable/computed expression (real,
+    common notebook code -- see exec_verify.py's docstring) is NOT
+    incorrectly rejected: execution-verify is skipped, the row is kept."""
+    call = make_call(params={"source": "plate[dst_well]", "volume_ul": ["sample_volume_ul * 0.8"]})
+    rows, summary = build_pairs(
+        [call], teacher=_variants(*VARIANTS), cache_dir=tmp_path / "cache", n_variants=3,
+    )
+    assert summary["rejected_execution"] == 0
+    assert len(rows) == len(VARIANTS)
+    for row in rows:
+        assert "execution_verify" not in row  # nothing ran, nothing to attach
+
+
+def test_execution_verify_runs_once_per_distinct_call_not_per_variant(tmp_path: Path, monkeypatch):
+    """n_variants=3 must NOT 3x the verify() calls for the SAME mined call --
+    proves the per-call caching (top-of-loop, before the variant loop)."""
+    import overlay_gen.pair_builder as pb
+
+    calls_seen: list[dict] = []
+    real_execution_verify_call = pb.execution_verify_call
+
+    def spy(call, *, record_id):
+        calls_seen.append({"name": call.name, "origin": call.origin})
+        return real_execution_verify_call(call, record_id=record_id)
+
+    monkeypatch.setattr(pb, "execution_verify_call", spy)
+
+    c1 = make_call(origin="n.ipynb#cell0")
+    c2 = make_call(origin="n.ipynb#cell1")  # same canonical -> same paraphrase group
+    rows, summary = build_pairs(
+        [c1, c2], teacher=_variants(*VARIANTS), cache_dir=tmp_path / "cache", n_variants=3,
+    )
+    assert summary["unique_canonicals"] == 1
+    # c1/c2 share a canonical -> identical variant text -> c2's variants all
+    # collide within-overlay with c1's (expected, pre-existing dedup
+    # behavior); what this test proves is the CALL COUNT below, not row count.
+    assert len(rows) == len(VARIANTS)
+    assert summary["rejected_within_overlay"] == len(VARIANTS)
+    # exactly one execution_verify_call per DISTINCT MinedCall (2), never per
+    # (call, variant) pair (which would be 2 * 3 = 6).
+    assert len(calls_seen) == 2
+    assert {c["origin"] for c in calls_seen} == {"n.ipynb#cell0", "n.ipynb#cell1"}

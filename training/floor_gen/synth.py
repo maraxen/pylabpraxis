@@ -62,7 +62,13 @@ class SynthExample:
 
 _PLATE_NAMES: Final[tuple[str, ...]] = ("plate_1", "plate_2")
 _LID_NAMES: Final[tuple[str, ...]] = ("lid_1", "lid_2")
-_RACK_NAMES: Final[tuple[str, ...]] = ("tip_rack_1", "tip_rack_2")
+#: verify/deck.py's DeckFactory always builds exactly ONE tip rack, named
+#: "tip_rack" (build_setup: ``handle.resources["tip_rack"] = setup["tip_rack"]``,
+#: and infer_layout collapses every "tip*"-prefixed name onto that same single
+#: key) -- so a synthesized ref must address THAT rack by name, not an
+#: imagined second rack the harness can never build (260828 execution-verify
+#: wiring finding).
+_TIP_RACK_NAME: Final[str] = "tip_rack"
 _RESOURCE_NAMES: Final[tuple[str, ...]] = ("reservoir_1", "hotel_stack_1", "scale_station_1")
 
 _WELL_REFS: Final[tuple[str, ...]] = tuple(
@@ -87,18 +93,41 @@ def _pick(rng: random.Random, pool: tuple[Any, ...]) -> Any:
     return pool[rng.randrange(len(pool))]
 
 
-def _grounded_symbolic(rng: random.Random, resource_type: str | None) -> str:
-    """A concrete grounding-resolvable name per PLR receiver-side type."""
+def _pick_excluding(rng: random.Random, pool: tuple[Any, ...], exclude: frozenset[Any]) -> Any:
+    """Like ``_pick`` but avoids ``exclude``d values when the pool allows it
+    (falls back to the full pool if every candidate is excluded)."""
+    candidates = [p for p in pool if p not in exclude] or list(pool)
+    return candidates[rng.randrange(len(candidates))]
+
+
+def _grounded_symbolic(
+    rng: random.Random, resource_type: str | None, exclude: frozenset[str] = frozenset()
+) -> str:
+    """A concrete grounding-resolvable name per PLR receiver-side type.
+
+    Refs use verify/grounding.py's ``<name>.<id>`` dotted well-addressing
+    grammar (matching the golden fixtures, e.g. ``"source_plate.A1"``) --
+    NOT a flat ``<name>_<id>`` string, which grounds as a whole top-level
+    resource literally named that way rather than as a well of a plate
+    (260828 execution-verify wiring finding: the underscore form silently
+    "grounded" to a synthetic whole-Plate/whole-TipRack object and every
+    liquid-handling call then failed with a Container/type mismatch).
+
+    ``exclude`` avoids picking a name already used elsewhere in the SAME
+    call for a same-typed param (move_resource.resource / .destination both
+    draw from ``_RESOURCE_NAMES``; an unexcluded repeat produces "move X
+    onto X", which PLR correctly rejects -- 260828 finding).
+    """
     if resource_type == "container":
-        return f"{_pick(rng, _PLATE_NAMES)}_{canonical_well(_pick(rng, _WELL_REFS))}"
+        return f"{_pick(rng, _PLATE_NAMES)}.{canonical_well(_pick(rng, _WELL_REFS))}"
     if resource_type == "plate":
-        return _pick(rng, _PLATE_NAMES)
+        return _pick_excluding(rng, _PLATE_NAMES, exclude)
     if resource_type == "lid":
-        return _pick(rng, _LID_NAMES)
+        return _pick_excluding(rng, _LID_NAMES, exclude)
     if resource_type == "tip_spot":
-        return f"{_pick(rng, _RACK_NAMES)}_{canonical_well(_pick(rng, _WELL_REFS))}"
+        return f"{_TIP_RACK_NAME}.{canonical_well(_pick(rng, _WELL_REFS))}"
     # resource (ResourceStack / ResourceHolder / Resource / Coordinate refs)
-    return _pick(rng, _RESOURCE_NAMES)
+    return _pick_excluding(rng, _RESOURCE_NAMES, exclude)
 
 
 def _vague_ref(rng: random.Random, resource_type: str | None) -> str:
@@ -110,7 +139,9 @@ def _grounded_wells(rng: random.Random, count: int) -> list[str]:
     return sorted(canonical_well(w) for w in chosen)
 
 
-def _literal_value(rng: random.Random, spec: ParamSpec) -> Any:
+def _literal_value(
+    rng: random.Random, spec: ParamSpec, resource_list_count: int | None = None
+) -> Any:
     name = spec.name
     if spec.plr_type == "float":
         if name in _WAVELENGTH_POOL:
@@ -119,7 +150,18 @@ def _literal_value(rng: random.Random, spec: ParamSpec) -> Any:
             return float(_pick(rng, _FOCAL_HEIGHT_POOL))
         return canonical_volume(_pick(rng, _VOLUME_POOL))
     if spec.plr_type in ("List[float]", "Optional[List[float]]"):
-        count = 1 if spec.plr_type.startswith("Optional") else int(rng.choice([1, 2, 3]))
+        # MUST match the cardinality of this call's symbolic resource-ref
+        # list (aspirate.volume_ul <-> source, dispense.volume_ul <->
+        # destination, transfer.volume_ul <-> destination): the dispatcher
+        # zips one volume per grounded well, so an independently-sampled
+        # count silently produced internally-inconsistent "clean" calls
+        # (260828 execution-verify wiring finding -- every such row failed
+        # verify() with a volume-list-length DispatchError). Falls back to
+        # independent sampling only for calls with no paired resource list.
+        if resource_list_count is not None:
+            count = resource_list_count
+        else:
+            count = 1 if spec.plr_type.startswith("Optional") else int(rng.choice([1, 2, 3]))
         return [canonical_volume(_pick(rng, _VOLUME_POOL)) for _ in range(count)]
     if spec.plr_type == "Optional[list[str]]":
         # read_*.at: well POSITIONS relative to the loaded plate (literal!).
@@ -138,6 +180,17 @@ def _build_kwargs(cell: MatrixCell, rng: random.Random) -> dict[str, Any]:
     ambiguous_param = cell.slot_param if cell.ambiguity_class == "ambiguous-referent" else None
 
     kwargs: dict[str, Any] = {}
+    #: length of the most recent symbolic list-cardinality ref built this
+    #: call (e.g. aspirate.source, transfer.destination); a paired literal
+    #: List[float] (e.g. volume_ul) reuses it instead of sampling its own
+    #: independent, possibly-mismatched count (260828 finding, see
+    #: _literal_value docstring note).
+    resource_list_count: int | None = None
+    #: same-typed symbolic refs already used elsewhere in THIS call, keyed by
+    #: resource_type (e.g. move_resource.resource + .destination both draw
+    #: from RESOURCE_TYPE_RESOURCE); threaded into _grounded_symbolic so a
+    #: "clean" call never moves/copies an object onto itself.
+    used_by_type: dict[str, set[str]] = {}
     for spec in params_of(cell.verb):
         if cell.ambiguity_class == "missing-slot" and spec.name == cell.missing_param:
             continue  # omitted entirely -> D11 derives missing_required
@@ -146,12 +199,25 @@ def _build_kwargs(cell: MatrixCell, rng: random.Random) -> dict[str, Any]:
         if spec.kind is ParamKind.SYMBOLIC_RESOURCE_REF and spec.name == ambiguous_param:
             value: Any = _vague_ref(rng, spec.resource_type)
         elif spec.kind is ParamKind.SYMBOLIC_RESOURCE_REF:
+            rtype = spec.resource_type or ""
+            exclude = frozenset(used_by_type.get(rtype, ()))
             if spec.cardinality == "list":
-                value = [_grounded_symbolic(rng, spec.resource_type) for _ in range(rng.choice([1, 1, 2]))]
+                count = rng.choice([1, 1, 2])
+                value = [_grounded_symbolic(rng, spec.resource_type, exclude) for _ in range(count)]
+                resource_list_count = count
+                used_by_type.setdefault(rtype, set()).update(value)
             else:
-                value = _grounded_symbolic(rng, spec.resource_type)
+                value = _grounded_symbolic(rng, spec.resource_type, exclude)
+                used_by_type.setdefault(rtype, set()).add(value)
+                # Scalar-cardinality refs still ground to a 1-item vendored
+                # list (aspirate.source -> resources=[well]); a paired
+                # List[float] literal (aspirate/dispense.volume_ul) must
+                # match that length of 1, not an independently sampled count
+                # (260828 finding: aspirate/dispense.source|destination are
+                # schema-scalar even though the vendored kwarg is list-typed).
+                resource_list_count = 1
         else:
-            value = _literal_value(rng, spec)
+            value = _literal_value(rng, spec, resource_list_count)
 
         # Optional literals ride along ~half the time to vary surface shape.
         if spec.plr_type.startswith("Optional") and rng.random() < 0.5:

@@ -180,3 +180,104 @@ def test_oxalpha_batch_writer_output_shape(tmp_path: Path):
     assert "input_hash=" in text
     assert f"prompt_version={PROMPT_VERSION}" in text
     assert '"utterance"' in text and "responses.jsonl" in text
+
+
+# --- P2.2 execution-verify wiring (260828_wire_execution_verify) ------------
+
+
+def test_execution_verify_passes_and_attaches_summary(tmp_path: Path):
+    """A genuinely clean "none"-class row's ground truth actually executes
+    against the REAL P2.2 harness -- kept, and carries a summary a human can
+    audit without re-running verify() themselves."""
+    matrix = load_matrix(committed_matrix_path())
+    cell = next(c for c in matrix.cells if c.cell_id == "aspirate__none")
+    rows, stats = generate_corpus(matrix, FakeTeacher(), TeacherCache(tmp_path), selected_cell_ids=(cell,))
+    assert rows and stats.execution_rejected == 0
+    for row in rows:
+        assert row["execution_verify"]["passed"] is True
+        assert row["execution_verify"]["backend"] == "LiquidHandlerChatterboxBackend"
+        names = {c["name"] for c in row["execution_verify"]["checks"]}
+        assert "execution_ok" in names and "tips_delta" in names
+        assert any(n.startswith("volume_delta") for n in names)
+
+
+def test_execution_verify_rejects_a_genuinely_broken_call(tmp_path: Path, monkeypatch):
+    """A call whose volume physically cannot be aspirated (impossible
+    tip/volume semantics) is rejected by REAL verify(), counted, and never
+    silently dropped or crashed on."""
+    from dataclasses import replace
+
+    import floor_gen.corpus as corpus_mod
+    from floor_gen.synth import synthesize_example as real_synthesize_example
+
+    matrix = load_matrix(committed_matrix_path())
+    cell = next(c for c in matrix.cells if c.cell_id == "aspirate__none")
+
+    def broken_synthesize_example(cell_arg, index):
+        example = real_synthesize_example(cell_arg, index)
+        if cell_arg.cell_id != cell.cell_id:
+            return example
+        call = dict(example.schema_calls[0])
+        call["params"] = {**call["params"], "volume_ul": [999999.0]}  # impossible: empty well
+        return replace(example, schema_calls=(call,))
+
+    monkeypatch.setattr(corpus_mod, "synthesize_example", broken_synthesize_example)
+    rows, stats = generate_corpus(matrix, FakeTeacher(), TeacherCache(tmp_path), selected_cell_ids=(cell,))
+    assert rows == []
+    assert stats.execution_rejected == cell.examples_per_cell
+    assert stats.rejected == cell.examples_per_cell
+    assert stats.accepted == 0
+
+
+def test_execution_verify_skips_not_rejects_non_executable_classes(tmp_path: Path):
+    """out-of-surface (no call), missing-slot (deliberately incomplete), and
+    ambiguous-referent (deliberately ungroundable) rows are NEVER real
+    execution-verify ground truth (D7) -- kept, counted as skipped, never
+    rejected, and never crash the run."""
+    matrix = load_matrix(committed_matrix_path())
+    ids = ["generic__out-of-surface", "dispense__missing-slot", "transfer__ambiguous-referent"]
+    cache = TeacherCache(tmp_path)
+    rows, stats = generate_corpus(
+        matrix,
+        FakeTeacher(responder=lambda s, u: _CLARIFY if "out-of-surface" in s + u else _OK),
+        cache,
+        selected_cell_ids=ids,
+    )
+    by_id = {c.cell_id: c for c in matrix.cells}
+    expected_kept = sum(by_id[i].examples_per_cell for i in ids)
+    assert len(rows) == expected_kept
+    assert stats.execution_rejected == 0
+    assert stats.execution_skipped == expected_kept
+    for row in rows:
+        assert "execution_verify" not in row
+
+
+def test_skip_execution_verify_flag_disables_the_gate(tmp_path: Path, monkeypatch):
+    """--skip-execution-verify (verify_execution=False) restores pre-P2.2
+    shape-validation-only behavior: the same broken call from
+    test_execution_verify_rejects_a_genuinely_broken_call is now KEPT."""
+    from dataclasses import replace
+
+    import floor_gen.corpus as corpus_mod
+    from floor_gen.synth import synthesize_example as real_synthesize_example
+
+    matrix = load_matrix(committed_matrix_path())
+    cell = next(c for c in matrix.cells if c.cell_id == "aspirate__none")
+
+    def broken_synthesize_example(cell_arg, index):
+        example = real_synthesize_example(cell_arg, index)
+        if cell_arg.cell_id != cell.cell_id:
+            return example
+        call = dict(example.schema_calls[0])
+        call["params"] = {**call["params"], "volume_ul": [999999.0]}
+        return replace(example, schema_calls=(call,))
+
+    monkeypatch.setattr(corpus_mod, "synthesize_example", broken_synthesize_example)
+    rows, stats = generate_corpus(
+        matrix, FakeTeacher(), TeacherCache(tmp_path), selected_cell_ids=(cell,), verify_execution=False
+    )
+    assert len(rows) == cell.examples_per_cell
+    assert stats.execution_rejected == 0
+    assert stats.rejected == 0
+    for row in rows:
+        assert "execution_verify" not in row

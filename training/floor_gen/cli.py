@@ -75,7 +75,8 @@ def cmd_generate(args: argparse.Namespace) -> int:
         raise ValueError(f"unknown backend {args.backend}")
 
     rows, stats = generate_corpus(
-        matrix, backend, cache, selected_cell_ids=tuple(cells), batch_size=args.batch_size
+        matrix, backend, cache, selected_cell_ids=tuple(cells), batch_size=args.batch_size,
+        verify_execution=not args.skip_execution_verify,
     )
     manifest = build_manifest(
         matrix, stats, [cell.cell_id for cell in cells]
@@ -85,7 +86,8 @@ def cmd_generate(args: argparse.Namespace) -> int:
     )
     print(
         f"cells={len(cells)} examples={stats.examples_total} accepted={stats.accepted} "
-        f"rejected={stats.rejected} pass_rate={stats.pass_rate:.3f} "
+        f"rejected={stats.rejected} (execution_rejected={stats.execution_rejected} "
+        f"execution_skipped={stats.execution_skipped}) pass_rate={stats.pass_rate:.3f} "
         f"cache_hits={stats.cache_hits} cache_misses={stats.cache_misses} "
         f"teacher={stats.teacher_model_version} per_class={json_compact(stats.per_class)}"
     )
@@ -141,11 +143,16 @@ def cmd_regenerate(args: argparse.Namespace) -> int:
             raise CorpusError("regenerate() must never call a teacher")
 
     # Selection order is recorded in the manifest (explicit, not re-derived).
+    # verify_execution must match whatever the ORIGINAL run used, or
+    # examples_total (below) will legitimately mismatch (a skip-vs-run
+    # execution-verify difference changes rejected, not teacher calls) --
+    # --skip-execution-verify lets the caller reproduce that choice exactly.
     rows, stats = generate_corpus(
         matrix,
         CacheOnlyBackend(),  # type: ignore[arg-type]
         cache,
         selected_cell_ids=list(manifest["selected_cell_ids"]),
+        verify_execution=not args.skip_execution_verify,
     )
 
     expected_total = manifest["examples_total"]
@@ -181,6 +188,15 @@ def main(argv: list[str] | None = None) -> int:
     gen.add_argument("--cache-dir", default=str(DEFAULT_CACHE_DIR))
     gen.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     gen.add_argument("--corpus-name", default="corpus_p23_floor.jsonl")
+    gen.add_argument(
+        "--skip-execution-verify",
+        action="store_true",
+        help=(
+            "skip the P2.2 execution-verify gate (shape validation only, pre-P2.2-wiring "
+            "behavior) for fast local iteration; execution-verify is ON by default because "
+            "teacher-shape validity is not proof a call actually executes correctly"
+        ),
+    )
     gen.set_defaults(func=cmd_generate)
 
     bat = sub.add_parser("batches", help="write ox-alpha spawned-worker batch files (offline)")
@@ -195,6 +211,11 @@ def main(argv: list[str] | None = None) -> int:
     regen.add_argument("--cache-dir", default=str(DEFAULT_CACHE_DIR))
     regen.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     regen.add_argument("--corpus-name", default="corpus_p23_floor.jsonl")
+    regen.add_argument(
+        "--skip-execution-verify",
+        action="store_true",
+        help="must match the ORIGINAL generate run's choice, or examples_total/rejected won't reproduce",
+    )
     regen.set_defaults(func=cmd_regenerate)
 
     args = parser.parse_args(argv)
