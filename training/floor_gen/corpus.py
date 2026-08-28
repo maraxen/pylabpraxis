@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -72,6 +72,11 @@ class GenerationStats:
     #: Rows whose ground-truth call failed real execution-verify (P2.2
     #: harness) and were dropped -- a breakdown subset of ``rejected``.
     execution_rejected: int = 0
+    #: execution_rejected, broken down by verify.failure_taxonomy category
+    #: (260828 finding: a flat count conflates our-own-bugs, precondition
+    #: gaps, and real physical-effect mismatches -- see that module's
+    #: docstring). Keys sum to execution_rejected exactly.
+    execution_rejected_by_category: dict[str, int] = field(default_factory=dict)
     #: Rows KEPT (counted in ``accepted``) whose execution-verify was
     #: intentionally not attempted: D7 classes with no executable ground
     #: truth (missing-slot/ambiguous-referent/out-of-surface), or a
@@ -245,6 +250,7 @@ def generate_corpus(
     prov = provenance_tags(backend.teacher_model_version)
     rows: list[dict[str, Any]] = []
     hits = misses = rejected = execution_rejected = execution_skipped = 0
+    execution_rejected_by_category: dict[str, int] = {}
     ordinal = 0
 
     for cell in ordered:
@@ -312,6 +318,10 @@ def generate_corpus(
                     # depends on row content, nothing random.
                     rejected += 1
                     execution_rejected += 1
+                    category = (exec_result.summary or {}).get("category") or "harness_internal"
+                    execution_rejected_by_category[category] = (
+                        execution_rejected_by_category.get(category, 0) + 1
+                    )
                     ordinal += 1
                     continue
             else:
@@ -355,6 +365,7 @@ def generate_corpus(
         per_class=per_class,
         teacher_model_version=backend.teacher_model_version,
         execution_rejected=execution_rejected,
+        execution_rejected_by_category=execution_rejected_by_category,
         execution_skipped=execution_skipped,
     )
 
@@ -371,6 +382,7 @@ def build_manifest(matrix: AmbiguityMatrix, stats: GenerationStats, selected_cel
         "accepted": stats.accepted,
         "rejected": stats.rejected,
         "execution_rejected": stats.execution_rejected,
+        "execution_rejected_by_category": stats.execution_rejected_by_category,
         "execution_skipped": stats.execution_skipped,
         "format_validation_pass_rate": round(stats.pass_rate, 4),
         "cache_hits": stats.cache_hits,

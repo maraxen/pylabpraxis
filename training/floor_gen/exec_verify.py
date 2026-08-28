@@ -37,6 +37,7 @@ from coxswain.plr.param_namespace import ParamKind, params_of
 from verify import run_verify_sync
 from verify.deck import DeckLayout
 from verify.dispatcher import SUPPORTED_TOOLS
+from verify.failure_taxonomy import classify_check_failure, classify_exception
 
 from floor_gen.synth import SynthExample
 
@@ -241,6 +242,9 @@ def execution_verify_example(
             "passed": False,
             "backend": None,
             "error": f"{type(exc).__name__}: {exc}",
+            # See verify.failure_taxonomy module docstring for the category
+            # set and why a flat rejection count isn't enough (260828).
+            "category": classify_exception(exc),
             "checks": [],
         }
         return ExecutionVerifyResult(ran=True, skipped=False, skip_reason=None, passed=False, summary=summary)
@@ -249,6 +253,14 @@ def execution_verify_example(
         "passed": result["passed"],
         "backend": result["backend"],
         "error": result["error"],
+        # None when passed=True. Otherwise: verifier.verify() absorbs any
+        # dispatch/execution exception INTERNALLY and reports it via the
+        # "execution_ok" named check rather than raising -- so a real
+        # NoTipError etc. never reaches the except block above; classify
+        # from the checks list, which distinguishes an absorbed-exception
+        # failure from a genuine post-execution effect mismatch (260828
+        # finding, see verify.failure_taxonomy module docstring shape #2).
+        "category": None if result["passed"] else classify_check_failure(result["checks"]),
         # Named checks only (pass/fail/detail) -- deliberately NOT the raw
         # state_before/state_after snapshots (full deck serialization),
         # which would bloat every committed row for no auditing benefit

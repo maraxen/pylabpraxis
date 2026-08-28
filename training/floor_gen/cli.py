@@ -87,6 +87,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
     print(
         f"cells={len(cells)} examples={stats.examples_total} accepted={stats.accepted} "
         f"rejected={stats.rejected} (execution_rejected={stats.execution_rejected} "
+        f"by_category={json_compact(stats.execution_rejected_by_category)} "
         f"execution_skipped={stats.execution_skipped}) pass_rate={stats.pass_rate:.3f} "
         f"cache_hits={stats.cache_hits} cache_misses={stats.cache_misses} "
         f"teacher={stats.teacher_model_version} per_class={json_compact(stats.per_class)}"

@@ -536,6 +536,11 @@ def build_pairs(
         #: current PLR version/backend" (real code, possible version skew),
         #: NOT "the teacher hallucinated" (see exec_verify.py's docstring).
         "rejected_execution": 0,
+        #: rejected_execution, broken down by verify.failure_taxonomy
+        #: category -- see that module's docstring for what each category
+        #: means and why a flat count conflates structurally different
+        #: signals (260828 finding). Keys sum to rejected_execution exactly.
+        "rejected_execution_by_category": {},
         "execution_error_samples": [],
         "warnings": [],
     }
@@ -638,10 +643,15 @@ def build_pairs(
                 # reasons (260828 execution-verify wiring).
                 if exec_result.ran and not exec_result.passed:
                     summary["rejected_execution"] += 1
+                    category = (exec_result.summary or {}).get("category") or "harness_internal"
+                    summary["rejected_execution_by_category"][category] = (
+                        summary["rejected_execution_by_category"].get(category, 0) + 1
+                    )
                     if len(summary["execution_error_samples"]) < 10:
                         summary["execution_error_samples"].append(
                             {"row_id": row_id, "call": call.call_dict(),
-                             "error": (exec_result.summary or {}).get("error")}
+                             "error": (exec_result.summary or {}).get("error"),
+                             "category": category}
                         )
                     continue
                 if exec_result.summary is not None:

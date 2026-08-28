@@ -4,6 +4,7 @@
  "cache_misses": 0,
  "examples_total": 129,
  "execution_rejected": 0,
+ "execution_rejected_by_category": {},
  "execution_skipped": 99,
  "format_validation_pass_rate": 1.0,
  "generator_version": "0.2.0",
