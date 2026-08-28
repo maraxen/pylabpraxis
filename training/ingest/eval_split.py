@@ -20,7 +20,7 @@ from decimal import Decimal, ROUND_HALF_EVEN
 from pathlib import Path
 from typing import Any, Final, Iterable, Mapping, Sequence, Tuple
 
-from . import cli, recipes, sources
+from . import cli, io, recipes, sources
 
 __all__ = [
     "EvalSplitLeak",
@@ -386,13 +386,7 @@ def _emit(args: Any) -> int:
         "retired_paths": {},
     }
 
-    # Write to output directory
-    out_dir = Path(args.out)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    out_file = out_dir / "eval_split.json"
-    with open(out_file, "w") as f:
-        json.dump(eval_split_data, f, indent=2)
+    io.write_artifact(Path(args.out), "eval_split.json", json.dumps(eval_split_data, indent=1, ensure_ascii=False))
 
     return 0
 
@@ -433,13 +427,7 @@ def _emit_lineage_contract(args: Any) -> int:
         },
     }
 
-    # Write to output directory
-    out_dir = Path(args.out)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    out_file = out_dir / "lineage_contract.json"
-    with open(out_file, "w") as f:
-        json.dump(contract_data, f, indent=2)
+    io.write_artifact(Path(args.out), "lineage_contract.json", json.dumps(contract_data, indent=1, ensure_ascii=False))
 
     return 0
 
