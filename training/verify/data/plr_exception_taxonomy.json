@@ -1,5 +1,10 @@
 {
   "plr_root": "external/pylabrobot/pylabrobot",
+  "version": {
+    "git_sha": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+    "git_dirty": true,
+    "pylabrobot_version": "0.2.2"
+  },
   "total_exception_classes": 132,
   "classes": [
     {

@@ -17,11 +17,13 @@ Python source, so ast.parse gives exact, dependency-free cross-file
 inheritance resolution and raise-site line numbers. Tree-sitter earns its
 keep on multi-language or incremental-parse targets; neither applies here.
 
-Two passes per the full file set (not one pass per file in isolation):
-inheritance closure needs every class definition visible before any file's
-raise sites can be reliably matched against "is this actually one of PLR's
-own exception classes" (a base class defined in a DIFFERENT file, processed
-out of order, must not cause a false negative).
+Shares scripts/plr_survey_common.py with survey_plr_preconditions.py and
+survey_plr_deprecations.py (file discovery, version stamping, the
+class-collection + exception-closure passes) -- see that module's
+docstring for why version-stamping specifically matters: it's what makes
+re-running these surveys across PLR upgrades ("does this taxonomy still
+hold after bumping the pin") a diff against a known baseline rather than a
+guess.
 
 Usage:
     uv run python scripts/survey_plr_exceptions.py
@@ -37,21 +39,24 @@ from __future__ import annotations
 import argparse
 import ast
 import json
-import logging
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-logging.basicConfig(level=logging.INFO, format="%(message)s")
-logger = logging.getLogger(__name__)
+from plr_survey_common import (
+    DEFAULT_PLR_ROOT,
+    PROJECT_ROOT,
+    ClassInfo,
+    collect_all_classes,
+    exception_name_closure,
+    iter_source_files,
+    parse_files,
+    plr_version_stamp,
+    resolved_call_name,
+)
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_PLR_ROOT = PROJECT_ROOT / "external" / "pylabrobot" / "pylabrobot"
 DEFAULT_OUT = PROJECT_ROOT / "training" / "verify" / "data" / "plr_exception_taxonomy.json"
-
-#: Sentinel base names that seed the exception-inheritance closure.
-_ROOT_EXCEPTION_NAMES = {"Exception", "BaseException"}
 
 #: (category, keyword) pairs checked in order, first match on the class NAME
 #: wins. This is a proposed taxonomy for human review, not a load-bearing
@@ -111,47 +116,16 @@ class TriggerSite:
     kind: str = "raise"
 
 
-class _ClassCollector(ast.NodeVisitor):
-    """Pass 1: every ClassDef, regardless of whether it's an exception --
-    inheritance closure needs the full graph before it can decide that."""
-
-    def __init__(self, module: str, file: str):
-        self.module = module
-        self.file = file
-        self.classes: dict[str, ExceptionClass] = {}
-
-    def visit_ClassDef(self, node: ast.ClassDef) -> None:
-        bases = [ast.unparse(b) for b in node.bases]
-        doc = ast.get_docstring(node)
-        self.classes[node.name] = ExceptionClass(
-            name=node.name,
-            module=self.module,
-            file=self.file,
-            lineno=node.lineno,
-            bases=bases,
-            docstring=(doc.strip().splitlines()[0] if doc else None),
-        )
-        self.generic_visit(node)
-
-
 class _RaiseCollector(ast.NodeVisitor):
-    """Pass 2: every `raise` call, matched against the exception-class
-    closure computed after pass 1 across ALL files."""
+    """Every `raise` call and dispatch-table reference, matched against the
+    exception-class closure computed across ALL files."""
 
-    def __init__(self, file: str, exception_names: set[str]):
+    def __init__(self, file: str, exception_names: frozenset[str]):
         self.file = file
         self.exception_names = exception_names
         self._func_stack: list[str] = []
         self._condition_stack: list[str] = []
         self.sites: list[tuple[str, TriggerSite]] = []
-
-    def _resolved_name(self, exc_node: ast.expr) -> str | None:
-        target = exc_node.func if isinstance(exc_node, ast.Call) else exc_node
-        if isinstance(target, ast.Name):
-            return target.id
-        if isinstance(target, ast.Attribute):
-            return target.attr
-        return None
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._func_stack.append(node.name)
@@ -175,7 +149,7 @@ class _RaiseCollector(ast.NodeVisitor):
     def visit_Raise(self, node: ast.Raise) -> None:
         if node.exc is None:
             return  # bare `raise` (re-raise) -- no new exception identity
-        name = self._resolved_name(node.exc)
+        name = resolved_call_name(node.exc)
         if name is None or name not in self.exception_names:
             return
         self.sites.append((
@@ -205,77 +179,36 @@ class _RaiseCollector(ast.NodeVisitor):
         self.generic_visit(node)
 
 
-def _module_name(file: Path, root: Path) -> str:
-    rel = file.relative_to(root.parent)
-    return ".".join(rel.with_suffix("").parts)
-
-
-def _categorize(exc: ExceptionClass) -> str:
+def _categorize(info: ClassInfo) -> str:
     for category, keyword in _NAME_KEYWORD_CATEGORIES:
-        if keyword in exc.name:
+        if keyword in info.name:
             return category
     for category, keyword in _MODULE_SUBSTRING_CATEGORIES:
-        if keyword in exc.module:
+        if keyword in info.module:
             return category
     return "uncategorized"
 
 
 def survey(plr_root: Path) -> list[ExceptionClass]:
-    py_files = sorted(
-        p for p in plr_root.rglob("*.py")
-        # PLR's own test-file naming is inconsistent (STARtests.py,
-        # backend_tests.py, test_foo.py) -- match on stem suffix, not a
-        # single fixed pattern, to actually exclude test-only mock classes
-        # (e.g. _MockError) that would otherwise pollute the real hierarchy.
-        if not (p.stem.endswith("test") or p.stem.endswith("tests") or p.stem.startswith("test_"))
-    )
-    logger.info("scanning %d files under %s", len(py_files), plr_root)
+    files = iter_source_files(plr_root)
+    print(f"scanning {len(files)} files under {plr_root}")
+    parsed = parse_files(files)
 
-    all_classes: dict[str, ExceptionClass] = {}
-    parsed: dict[str, ast.Module] = {}
-    for f in py_files:
-        try:
-            source = f.read_text(encoding="utf-8")
-            tree = ast.parse(source, filename=str(f))
-        except (SyntaxError, UnicodeDecodeError) as e:
-            logger.warning("skip %s: %s", f, e)
-            continue
-        parsed[str(f)] = tree
-        module = _module_name(f, plr_root)
-        collector = _ClassCollector(module, str(f.relative_to(PROJECT_ROOT)))
-        collector.visit(tree)
-        for name, info in collector.classes.items():
-            if name in all_classes:
-                logger.warning("duplicate class name %r in %s and %s -- keeping first",
-                                name, all_classes[name].file, info.file)
-                continue
-            all_classes[name] = info
+    all_classes = collect_all_classes(parsed, plr_root)
+    exception_names = exception_name_closure(all_classes)
+    print(f"found {len(exception_names & set(all_classes))} exception classes "
+          f"(of {len(all_classes)} total classes)")
 
-    # Fixpoint closure: a class is an exception if any base is a root
-    # sentinel or an already-known exception (handles cross-file chains
-    # regardless of file processing order).
-    exception_names = set(_ROOT_EXCEPTION_NAMES)
-    changed = True
-    while changed:
-        changed = False
-        for name, info in all_classes.items():
-            if name in exception_names:
-                continue
-            if any(base in exception_names for base in info.bases):
-                exception_names.add(name)
-                changed = True
-
-    exception_classes = {
-        name: info for name, info in all_classes.items() if name in exception_names
+    exception_classes: dict[str, ExceptionClass] = {
+        name: ExceptionClass(
+            name=info.name, module=info.module, file=info.file, lineno=info.lineno,
+            bases=info.bases, docstring=info.docstring, category=_categorize(info),
+        )
+        for name, info in all_classes.items() if name in exception_names
     }
-    logger.info("found %d exception classes (of %d total classes)",
-                len(exception_classes), len(all_classes))
 
-    for info in exception_classes.values():
-        info.category = _categorize(info)
-
-    for f, tree in parsed.items():
-        rel = str(Path(f).relative_to(PROJECT_ROOT))
+    for file, tree in parsed.items():
+        rel = str(Path(file).relative_to(PROJECT_ROOT))
         raiser = _RaiseCollector(rel, exception_names)
         raiser.visit(tree)
         for name, site in raiser.sites:
@@ -318,6 +251,7 @@ def main() -> int:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     payload: dict[str, Any] = {
         "plr_root": str(args.plr_root.relative_to(PROJECT_ROOT)),
+        "version": plr_version_stamp(),
         "total_exception_classes": len(classes),
         "classes": [asdict(exc) for exc in classes],
     }
