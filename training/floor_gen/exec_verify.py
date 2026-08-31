@@ -33,6 +33,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from pylabrobot.utils.positions import expand_string_range
+
 from coxswain.plr.param_namespace import ParamKind, params_of
 from verify import run_verify_sync
 from verify.deck import DeckLayout
@@ -44,9 +46,51 @@ from floor_gen.synth import SynthExample
 __all__ = ["ExecutionVerifyResult", "execution_verify_example"]
 
 #: Synthetic setup scaffolding -- never written into the committed row.
-_DUMMY_TIP_SPOT = "tip_rack.A1"
+_TIP_RACK = "tip_rack"
+_DUMMY_TIP_SPOT = f"{_TIP_RACK}.A1"
 _PRIME_PLATE = "prime_plate"
 _PRIME_WELL = f"{_PRIME_PLATE}.A1"
+#: Both the harness's tip_rack and generic "Plate" resources are real 96-well
+#: (8x12) footprints (chatterbox_runner.py's hamilton_96_tiprack_1000uL_filter
+#: / Cor_96_wellplate_360ul_Fb).
+_PLATE_ROWS = "ABCDEFGH"
+
+
+def _row_major_wells(resource: str, n: int) -> list[str]:
+    """N distinct row-major wells on ``resource`` (A1, B1, ..., H1, A2, ...) --
+    any realistic PLR channel count (<=96) has a distinct physical spot."""
+    wells = [f"{resource}.{row}{col}" for col in range(1, 13) for row in _PLATE_ROWS]
+    if n > len(wells):
+        raise ValueError(f"{resource} (96 wells) cannot supply {n} distinct wells")
+    return wells[:n]
+
+
+def _expand_ref(ref: str) -> list[str]:
+    """A single grounded dotted ref (``name.A1`` or ``name.A1:C1``) -> the
+    individual well refs it addresses. Mirrors ``verify/grounding.py``'s
+    ``ground_ref`` exactly (same ``expand_string_range`` PLR's own INCLUSIVE
+    colon-range ``__getitem__`` branch uses) -- a SINGLE ref string can
+    itself address multiple physical wells/channels. (260828 finding: a
+    scalar colon-range ref like ``"plate.D1:F1"`` was silently treated as
+    ONE channel, arming only 1 tip for a call that actually needs 3.)"""
+    base, _, tail = ref.partition(".")
+    if not tail or ":" not in tail:
+        return [ref]
+    return [f"{base}.{pos}" for pos in expand_string_range(tail)]
+
+
+def _expand_channel_wells(refs: Any) -> list[str]:
+    """The full flat list of individual wells ``refs`` (a single ref string
+    or a list of ref strings) addresses, expanding any colon-range ref
+    first. Matches position-for-position against the call's flat
+    ``volume_ul`` list, same as the real dispatcher's own
+    ``len(grounded) == len(vols)`` invariant (``verify/dispatcher.py``'s
+    ``_wrap_vols``)."""
+    ref_list = refs if isinstance(refs, list) else [refs]
+    wells: list[str] = []
+    for ref in ref_list:
+        wells.extend(_expand_ref(ref))
+    return wells
 
 #: Human-readable skip reasons, keyed by ambiguity class (D7 rationale above).
 _CLASS_SKIP_REASONS: dict[str, str] = {
@@ -141,6 +185,12 @@ def _precondition_plan(
             [], {}, {},
         )
 
+    # transfer/discard_tips always use exactly one PLR channel -- transfer
+    # internally does ONE aspirate(resources=[source]) then loops
+    # dispense(..., use_channels=[0]) serially over every target (PLR's real
+    # liquid_handler.py), so it never needs N-tip arming regardless of how
+    # many targets it has. Do not "fix" this branch by symmetry with
+    # aspirate/dispense below.
     pickup = {"name": "pick_up_tips", "params": {"at": [_DUMMY_TIP_SPOT]}}
 
     if name == "transfer":
@@ -149,15 +199,31 @@ def _precondition_plan(
         return None, [pickup], {}, seeds
 
     if name == "aspirate":
-        vol = float(params["volume_ul"][0])
-        return None, [pickup], {}, {params["source"]: vol}
+        # aspirate's own source/volume_ul are schema-declared list
+        # cardinality: a single call can name N parallel resources (as a
+        # Python list of refs, OR as ONE colon-range ref string spanning N
+        # wells), and PLR requires one distinct tip per resource
+        # (use_channels defaults to range(len(resources)); a second pickup
+        # on an occupied channel raises HasTipError). Arm N tips, not
+        # always 1.
+        sources = _expand_channel_wells(params["source"])
+        vols = params["volume_ul"] if isinstance(params["volume_ul"], list) else [params["volume_ul"]]
+        pickup_n = {"name": "pick_up_tips", "params": {"at": _row_major_wells(_TIP_RACK, len(sources))}}
+        return None, [pickup_n], {}, dict(zip(sources, vols))
 
     if name == "dispense":
-        # dispense pulls FROM the mounted tip's own tracked volume; prime it
-        # via a synthetic aspirate from a dedicated (never-in-corpus) plate.
-        vol = float(params["volume_ul"][0])
-        prime = {"name": "aspirate", "params": {"source": _PRIME_WELL, "volume_ul": [vol]}}
-        return None, [pickup, prime], {_PRIME_PLATE: "Plate"}, {_PRIME_WELL: vol}
+        # Same N-tip requirement as aspirate. dispense pulls FROM each
+        # mounted tip's own tracked volume; prime all N channels via ONE
+        # synthetic aspirate addressing N distinct prime wells (aspirate's
+        # own resources/vols are list-typed, so this is a single
+        # well-formed prefix call, not N separate ones).
+        destinations = _expand_channel_wells(params["destination"])
+        vols = params["volume_ul"] if isinstance(params["volume_ul"], list) else [params["volume_ul"]]
+        n = len(destinations)
+        pickup_n = {"name": "pick_up_tips", "params": {"at": _row_major_wells(_TIP_RACK, n)}}
+        prime_wells = _row_major_wells(_PRIME_PLATE, n)
+        prime = {"name": "aspirate", "params": {"source": prime_wells, "volume_ul": list(vols)}}
+        return None, [pickup_n, prime], {_PRIME_PLATE: "Plate"}, dict(zip(prime_wells, vols))
 
     if name == "drop_tips":
         destination = params.get("destination")
