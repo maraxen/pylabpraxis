@@ -6,7 +6,7 @@
 #   picked:          2026-09-01   license: MIT (same author)
 # Copied, not depended on: cisternal is requires-python >=3.13 (praxis/coxswain
 # are >=3.10) and cisternal/__init__.py imports cyclopts + fastmcp==4.0.0a2.
-# DO NOT EDIT. Drift is enforced by plr-jit/tests/test_provenance_drift.py.
+# DO NOT EDIT. Drift is enforced by plr-jit/tests/test_fork_drift.py.
 # ---------------------------------------------------------------------------
 """git_state: canonical local git provenance capture (spec 260827).
 
