@@ -1,0 +1,386 @@
+{
+  "by_category": {
+    "harness_internal": 0,
+    "postcondition_mismatch": 0,
+    "precondition_state": 0,
+    "shape_mismatch": 0,
+    "ungroundable_reference": 0,
+    "unsupported_tool": 0
+  },
+  "by_reason": {
+    "no_contract_derived": 0,
+    "unresolved_delegate": 610
+  },
+  "dropped_receiver_calls_by_method": {
+    "aspirate": 6,
+    "discard_tips": 2,
+    "dispense": 6,
+    "drop_tips": 10,
+    "move_lid": 0,
+    "move_plate": 0,
+    "move_resource": 2,
+    "pick_up_tips": 9,
+    "stamp": 0,
+    "transfer": 0
+  },
+  "schema_version": 1,
+  "stamp": {
+    "plr": {
+      "branch": "HEAD",
+      "dirty": true,
+      "dirty_content_id": "2ca7d1248dfd68c0312a93b490f3bd6211afc043",
+      "hash": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+      "provenance_source": "git",
+      "toplevel": "/home/marielle/projects/praxis/external/pylabrobot"
+    },
+    "praxis": {
+      "branch": "coxswain-p2-pipeline",
+      "dirty": true,
+      "dirty_content_id": "952c929ff24e44331365326afc9dac39200dad7beb09610dabdac9b46c2e1e65",
+      "hash": "e6eda0b16f850f2431f9c3cc3dd700e8986e384e",
+      "provenance_source": "git",
+      "toplevel": "/home/marielle/projects/praxis"
+    },
+    "pylabrobot_version": "0.2.2",
+    "schema_version": 1,
+    "stamped_at": "2026-09-01T20:41:29.978418+00:00"
+  },
+  "supported_tools": {
+    "by_reason": {
+      "no_contract_derived": 0,
+      "unresolved_delegate": 6
+    },
+    "methods_attempted": 10,
+    "methods_with_dropped_receiver_call": 6,
+    "methods_with_gaps": 3,
+    "methods_with_no_recorded_gap": 7
+  },
+  "top_unresolved": {
+    "supported_tools_closure": [
+      {
+        "blocks_methods": 2,
+        "call": "_state_updated"
+      }
+    ],
+    "whole_surface": [
+      {
+        "blocks_methods": 750,
+        "call": "send_command"
+      },
+      {
+        "blocks_methods": 12,
+        "call": "assign_child_resource"
+      },
+      {
+        "blocks_methods": 11,
+        "call": "_send_step_command"
+      },
+      {
+        "blocks_methods": 11,
+        "call": "batch"
+      },
+      {
+        "blocks_methods": 9,
+        "call": "get_all_items"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_read_now"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_calibrate"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_carriage_speed"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_clear"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_flashes_per_well"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_mode"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_order"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_pmt"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_shake"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_transfer_data"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_wait_for_idle"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "_callback"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "_set_filter"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "_set_readtype"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "_set_tag"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "get_resource"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_ops_to_fw_positions"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_wavelengths"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "get_item"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "get_or_assign_tip_type_index"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "report_x_param"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_get_cutoff_filter_index_from_wavelength"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_get_liquid_pipette"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_head96_y_drive_increment_to_mm"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_set_tip_state"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_state_updated"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "end_headers"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "get_child_identifier"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "register_did_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "register_did_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "send_header"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "send_response"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "stop_shaking"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "unassign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_assemble_command"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_compute_height_from_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_compute_volume_from_height"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_do"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_get_drop_pipette"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_get_pickup_pipette"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_head96_resolve_z_range"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_make_tip_func"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_pipette_id_for_channel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_purge_buffers"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_read_body"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_serialize_ctrl_transfer_request"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_test_communication"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "check_z_height"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cleanup_after_protocol"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "column"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deactivate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_absolute_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_container"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_overview_register"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "park_iswap"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "register_will_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reset"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "row"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "set_plate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "start_batch"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "validate_channel_selections"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "validate_intensity"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "validate_storage_location_number"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "wait_for_task_completion"
+      }
+    ]
+  },
+  "totals": {
+    "methods_attempted": 1314,
+    "methods_with_dropped_receiver_call": 1976,
+    "methods_with_gaps": 290,
+    "methods_with_no_recorded_gap": 1024
+  },
+  "validation_looking_dropped_receiver_calls_by_method": {
+    "aspirate": 0,
+    "discard_tips": 0,
+    "dispense": 0,
+    "drop_tips": 0,
+    "move_lid": 0,
+    "move_plate": 0,
+    "move_resource": 0,
+    "pick_up_tips": 0,
+    "stamp": 0,
+    "transfer": 0
+  }
+}
