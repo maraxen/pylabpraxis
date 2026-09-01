@@ -41,7 +41,7 @@ dependencies = [
 pylabrobot = { path = "external/pylabrobot", editable = true }
 
 [tool.uv.workspace]
-members = ["coxswain", "training"]
+members = ["coxswain", "training", "plr-jit"]
 
 [project.optional-dependencies]
 fw = [
