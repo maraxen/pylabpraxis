@@ -56,6 +56,8 @@ __all__ = [
     "SurveyRecord",
     "load_survey",
     "build_index",
+    "build_unique_index",
+    "count_index_key_collisions",
     "resolve",
     "resolve_supported_tool",
     "InlinedGuard",
@@ -140,6 +142,16 @@ class SurveyRecord:
     findings: tuple[SurveyFinding, ...]
     delegates_to: tuple[str, ...]
     unresolved_calls: tuple[str, ...]
+    #: (round-5 T0, F1) Receiver-qualified call expressions the survey's own
+    #: recording rule drops entirely for every non-`self.<name>` Attribute
+    #: receiver (e.g. `self.head[channel].get_tip`, `tip_spot.get_tip`).
+    #: Added additively (§7.1); ``()`` for records from a pre-T0 artifact
+    #: that omits the field, via `.get()` below. NOT deduplicated against
+    #: `unresolved_calls` -- the two populations are disjoint by
+    #: construction (`survey_plr_preconditions.py`'s `visit_Call` routes a
+    #: call into exactly one of `delegates`/`unresolved`/`dropped`, never
+    #: two).
+    dropped_calls: tuple[str, ...] = ()
 
 
 def _finding_from_dict(d: dict[str, Any]) -> SurveyFinding:
@@ -164,6 +176,7 @@ def _record_from_dict(d: dict[str, Any]) -> SurveyRecord:
         findings=tuple(_finding_from_dict(f) for f in d.get("findings", ())),
         delegates_to=tuple(d.get("delegates_to", ())),
         unresolved_calls=tuple(d.get("unresolved_calls", ())),
+        dropped_calls=tuple(d.get("dropped_calls", ())),
     )
 
 
@@ -176,8 +189,75 @@ def load_survey(path: str | Path) -> list[SurveyRecord]:
 
 
 def build_index(records: list[SurveyRecord]) -> dict[Qualkey, SurveyRecord]:
-    """Key every record on ``(module, qualname)`` (§7.2), once."""
+    """Key every record on ``(module, qualname)`` (§7.2), once.
+
+    F6 (round-5 T0 item 2): ``(module, qualname)`` is NOT unique in the
+    survey artifact -- 12 keys collide at the current pin, all
+    ``@property``/``@x.setter`` pairs (e.g. ``Serial.dtr``/``Serial.rts``).
+    A bare ``{key: rec for rec in records}`` comprehension makes the
+    LAST-visited record win, silently discarding the other -- since AST
+    traversal visits class members in source order and a property's setter
+    is conventionally defined after its getter, that is normally the
+    setter. This function keeps that behavior (documented, not changed:
+    ``resolve()``'s bare-NAME, class-first delegate resolution (§7.2) has no
+    ``lineno`` to disambiguate a getter from its setter, so the discard is
+    unavoidable for THIS index's purpose). What is new: the discard is no
+    longer silent -- ``count_index_key_collisions`` measures it, and
+    ``build_unique_index`` provides a companion index keyed on
+    ``(module, qualname, lineno)`` (unique by construction: two records in
+    one module cannot share a definition line) for any caller that needs
+    every record addressable, not just the name-resolvable ones. See the
+    gap ledger's ``index_key_collisions`` field.
+    """
     return {(rec.module, rec.qualname): rec for rec in records}
+
+
+#: (round-5 T0, F6) A record's fully-unique identity: (module, qualname,
+#: lineno). Two records in the same module cannot share a definition
+#: `lineno` (each AST FunctionDef/AsyncFunctionDef node has exactly one),
+#: so this key is collision-free by construction -- unlike ``Qualkey``.
+RecordKey = tuple[str, str, int]
+
+
+def build_unique_index(records: list[SurveyRecord]) -> dict[RecordKey, SurveyRecord]:
+    """Key every record on ``(module, qualname, lineno)`` (F6, round-5 T0):
+    a companion to ``build_index`` that loses NO record to collision --
+    ``len(build_unique_index(records)) == len(records)`` always. Not a
+    replacement for ``build_index``: ``resolve()``'s bare delegate-name
+    lookup (§7.2) only ever has a name, never a lineno, so closure-walking
+    machinery (``derive_contract``, the gap ledger's population runs) keeps
+    using the ``(module, qualname)``-keyed index. This index exists for
+    callers that need to address every record individually -- e.g. auditing
+    which specific record a collision discarded.
+    """
+    index = {(rec.module, rec.qualname, rec.lineno): rec for rec in records}
+    assert len(index) == len(records), (
+        f"build_unique_index lost records: {len(records)} in, {len(index)} out -- "
+        f"(module, qualname, lineno) is not unique, which should be structurally "
+        f"impossible (two records sharing one definition line in one module)"
+    )
+    return index
+
+
+def count_index_key_collisions(records: list[SurveyRecord]) -> dict[str, int]:
+    """F6 (round-5 T0): how many DISTINCT ``(module, qualname)`` keys among
+    ``records`` back more than one record -- i.e. how many keys
+    ``build_index`` collapses. Reported over two populations, since they
+    give different numbers (§7.4's population footnote): ALL survey records
+    (12 at the current pin, whole artifact) and finding-bearing records only
+    (8 -- the population ``methods_attempted`` counts, since a collision
+    with no findings on either twin cannot affect any closure result)."""
+    from collections import Counter
+
+    def _collisions(recs: list[SurveyRecord]) -> int:
+        counts = Counter((rec.module, rec.qualname) for rec in recs)
+        return sum(1 for c in counts.values() if c > 1)
+
+    finding_bearing = [rec for rec in records if rec.findings]
+    return {
+        "all_records": _collisions(records),
+        "finding_bearing_records": _collisions(finding_bearing),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -685,6 +765,100 @@ def _dropped_receiver_worklist(
     return [{"call": attr, "blocks_methods": count} for attr, count in ranked]
 
 
+#: (round-5 T0 item 4) Receiver PREFIXES -- the text before the first `.` in
+#: a `dropped_calls` entry -- that are never a receiver whose typestate this
+#: analysis cares about. An UNFILTERED ranking of `dropped_calls` saturates
+#: at (approximately) "every tool" by construction, because every
+#: `SUPPORTED_TOOLS` closure passes through `LiquidHandler._check_args`,
+#: which itself calls `inspect.signature`, `sig.parameters.items`,
+#: `args.keys`, `', '.join` and `warnings.warn`, and every closure member
+#: logs -- see round-5 defense F1. A metric pinned at 100% by `logger.debug`
+#: is exactly as uninterpretable as one pinned at 0% by an over-narrow
+#: filter; this list exists to make the ranking MOVE, not to hide anything
+#: (the unfiltered view is still computed -- see
+#: `_dropped_receiver_worklist_from_survey`'s `filtered=False` path).
+_INERT_RECEIVER_PREFIXES: frozenset[str] = frozenset({
+    "logger", "logging", "warnings", "inspect", "args", "kwargs", "sig",
+    "backend_kwargs", "default",
+})
+
+#: (round-5 T0 item 4) Trailing method names that mark a call as
+#: container/string plumbing regardless of receiver -- e.g. `', '.join`,
+#: `x.keys()`, `x.items()`, `x.union()`, `x.append()` -- which fire on
+#: whatever local variable happens to hold a dict/list/str in `_check_args`
+#: and carry no receiver-typestate signal.
+_INERT_CALL_SUFFIXES: frozenset[str] = frozenset({
+    "keys", "items", "values", "union", "join", "append", "get", "update",
+    "format", "strip", "split",
+})
+
+
+def _is_inert_dropped_receiver_call(call_expr: str) -> bool:
+    """F1/item 4's filter predicate. Applied to a single `dropped_calls`
+    entry (a full receiver-qualified call expression, e.g.
+    `self.head[channel].get_tip` or `warnings.warn`) -- NOT to a bare
+    attribute name, so it can distinguish `self.head[channel].get_tip`
+    (real signal) from `warnings.warn` (noise) even though both would
+    collapse to the same bare name under the pre-T0 `top_unresolved` views.
+    """
+    head = call_expr.split(".", 1)[0]
+    if head in _INERT_RECEIVER_PREFIXES:
+        return True
+    # A capitalized head (`Coordinate.zero`, `Coordinate.parse`, ...) is a
+    # call on a CLASS/type object -- a value-factory or classmethod, not a
+    # call on an instance whose typestate this analysis exists to read.
+    # Real tip/resource-typestate receivers in this population are always
+    # lowercase local variables (self, tip_spot, channel, resource,
+    # container, tracker, ...); this rule generalizes past any one PLR
+    # class name rather than hand-naming `Coordinate`.
+    if head[:1].isupper():
+        return True
+    tail = call_expr.rsplit(".", 1)[-1]
+    return tail in _INERT_CALL_SUFFIXES
+
+
+def _dropped_receiver_worklist_from_survey(
+    tool_keys: dict[str, Qualkey],
+    index: dict[Qualkey, SurveyRecord],
+    *,
+    filtered: bool,
+) -> list[dict[str, Any]]:
+    """(round-5 T0 item 4) The receiver-qualified `top_unresolved.
+    dropped_receiver` view, sourced from the survey's own new
+    `dropped_calls` field (F1) rather than the D3 pass's bare `by_attr`
+    breakdown -- the shipped view's top row was `{"call": "get_tip",
+    "blocks_methods": 6}`; this splits it into `self.head[channel].get_tip`,
+    `tip_spot.get_tip`, `channel.get_tip`, ... (round-5 defense, F1's "one
+    durable win"). Same `blocks_methods` semantics and same
+    `SUPPORTED_TOOLS`-closure population as `_dropped_receiver_worklist`
+    (walked via the SAME `_walk_closure` core, so the two views' populations
+    cannot silently drift), ranked by how many DISTINCT closure methods
+    contain >=1 call to that exact receiver-qualified expression.
+
+    `filtered=False` returns the raw ranking (saturates on inert receivers
+    -- `logger.debug`-class noise at the top, see `_INERT_RECEIVER_PREFIXES`'s
+    docstring); `filtered=True` (what the shipped ledger publishes) excludes
+    `_is_inert_dropped_receiver_call` matches so the real tip-state signal
+    (e.g. `self.head[channel].get_tip`) is not buried under it. Both are
+    exposed so a caller/report can show the before/after (round-5 T0 item 4's
+    own requirement: "show the ranked view before and after filtering").
+    """
+    blocks: dict[str, set[Qualkey]] = {}
+    for entry in tool_keys.values():
+        for rec, key, _depth in _walk_closure(entry, index):
+            if rec is None:
+                continue
+            for call_expr in rec.dropped_calls:
+                if filtered and _is_inert_dropped_receiver_call(call_expr):
+                    continue
+                blocks.setdefault(call_expr, set()).add(key)
+    ranked = sorted(
+        ((call_expr, len(methods)) for call_expr, methods in blocks.items()),
+        key=lambda item: (-item[1], item[0]),
+    )
+    return [{"call": call_expr, "blocks_methods": count} for call_expr, count in ranked]
+
+
 def _stamp_to_dict(stamp: SurveyStamp) -> dict[str, Any]:
     def _git_state_to_dict(state: Any) -> dict[str, Any]:
         return {
@@ -753,6 +927,33 @@ def build_gap_ledger(
     3/B3(e)): the D3 population ranked into an actual worklist, since it
     structurally never enters ``unresolved_calls`` and so was invisible to
     the other two views.
+
+    Round-5 T0 item 4: ``top_unresolved.dropped_receiver`` is now sourced
+    from the survey's own ``dropped_calls`` field (F1) instead of the D3
+    pass's bare ``by_attr`` breakdown, so its rows are receiver-qualified
+    (``self.head[channel].get_tip``, not bare ``get_tip``) and filtered
+    (``_is_inert_dropped_receiver_call``) to keep an unfiltered
+    ``LiquidHandler._check_args``-dominated saturation from burying the real
+    signal (round-5 defense, F1). The pre-filter ranking is published
+    alongside it as ``dropped_receiver_unfiltered`` rather than discarded,
+    so the filter's effect is auditable from the artifact itself. The D3
+    pass and its own two counters (``dropped_receiver_calls_by_method``,
+    ``validation_looking_dropped_receiver_calls_by_method``, and
+    ``totals``/``supported_tools``'s ``methods_with_dropped_receiver_call``)
+    are UNCHANGED -- round 5 declined deleting T6's second, independent AST
+    pass (it is the only one of the measured variants that sees guard sites
+    behind ``if``/``raise``/``assert`` tests, per F6).
+
+    Round-5 T0 item 2 (F6): ``index_key_collisions`` reports how many
+    ``(module, qualname)`` keys ``build_index`` collapses -- see
+    ``count_index_key_collisions``. ``methods_attempted`` still counts
+    RECORDS (1,314 at the current pin); any structure keyed on
+    ``(module, qualname)`` sees ``1,314 - index_key_collisions[
+    "finding_bearing_records"]`` distinct keys instead. This is the
+    671-vs-667 population footnote (§7.4): the whole-surface
+    ``methods_with_dropped_receiver_call`` (671) is computed over the SAME
+    record population as ``methods_attempted`` (M11), so it is NOT reduced
+    by the collision the way a keyed traversal would be.
     """
     if stamp is None:
         stamp = survey_stamp()
@@ -787,7 +988,16 @@ def build_gap_ledger(
     reachable = _reachable_keys(list(tool_keys.values()), index)
     top_whole = _top_unresolved_from_records(records)
     top_tools = _top_unresolved_from_records([index[key] for key in reachable])
-    top_dropped_receiver = _dropped_receiver_worklist(tool_keys, index, dropped_receiver_counts)
+    # (round-5 T0 item 4) Sourced from the survey's own dropped_calls field,
+    # not the D3 pass's by_attr counts -- see build_gap_ledger's docstring.
+    # Both the filtered (shipped) and unfiltered (audit trail) rankings are
+    # computed; do not delete the unfiltered one, it is what makes the
+    # filter's effect verifiable from the artifact.
+    top_dropped_receiver = _dropped_receiver_worklist_from_survey(tool_keys, index, filtered=True)
+    top_dropped_receiver_unfiltered = _dropped_receiver_worklist_from_survey(
+        tool_keys, index, filtered=False
+    )
+    index_key_collisions = count_index_key_collisions(records)
 
     # Round-4 remediation (M3): None, not 0 -- a gap ledger never classifies
     # any gap into a FAILURE_CATEGORY in round 1 (see docstring), so a
@@ -806,6 +1016,7 @@ def build_gap_ledger(
             "whole_surface": top_whole,
             "supported_tools_closure": top_tools,
             "dropped_receiver": top_dropped_receiver,
+            "dropped_receiver_unfiltered": top_dropped_receiver_unfiltered,
         },
         "supported_tools": {
             "methods_attempted": tools_totals["methods_attempted"],
@@ -816,4 +1027,5 @@ def build_gap_ledger(
         },
         "dropped_receiver_calls_by_method": dropped_by_method,
         "validation_looking_dropped_receiver_calls_by_method": validation_looking_by_method,
+        "index_key_collisions": index_key_collisions,
     }

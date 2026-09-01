@@ -24,6 +24,10 @@
     "stamp": 42,
     "transfer": 27
   },
+  "index_key_collisions": {
+    "all_records": 12,
+    "finding_bearing_records": 8
+  },
   "schema_version": 1,
   "stamp": {
     "plr": {
@@ -37,14 +41,14 @@
     "praxis": {
       "branch": "coxswain-p2-pipeline",
       "dirty": true,
-      "dirty_content_id": "9c7d2f4fbb01084460a7c15f99490e171202c6a235122361af412e9bb1cae1fc",
-      "hash": "28d6800fa5f56b5821d4462c5bbdd7777c080ebe",
+      "dirty_content_id": "553170fbd19aaaf21cc1c43c8e45752390a29efa0332849c24dfab288817c056",
+      "hash": "8be56345c7e03e2824ff9eb864d880317ae635a7",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-01T22:10:12.602282+00:00"
+    "stamped_at": "2026-09-01T23:23:19.135904+00:00"
   },
   "supported_tools": {
     "by_reason": {
@@ -59,196 +63,526 @@
   "top_unresolved": {
     "dropped_receiver": [
       {
-        "blocks_methods": 6,
-        "call": "get_tip"
+        "blocks_methods": 3,
+        "call": "self.head[channel].get_tip"
       },
       {
-        "blocks_methods": 4,
-        "call": "add_liquid"
+        "blocks_methods": 2,
+        "call": "channel.get_tip"
       },
       {
-        "blocks_methods": 4,
-        "call": "items"
+        "blocks_methods": 2,
+        "call": "container.tracker.commit"
       },
       {
-        "blocks_methods": 4,
-        "call": "remove_liquid"
+        "blocks_methods": 2,
+        "call": "container.tracker.rollback"
       },
       {
+        "blocks_methods": 2,
+        "call": "resource.get_all_items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_item"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.backend.request_tip_presence"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip.tracker.commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip.tracker.rollback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "container.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "container.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.compute_plate_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.compute_plate_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_default_child_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_default_child_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_lid_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_lid_location(lid.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_new_child_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_new_child_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lid.rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.tip.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.unassign"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.aspirate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.aspirate96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.can_pick_up_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.dispense"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.dispense96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.drop_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.drop_tips"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.get_channel_spacings"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.move_picked_up_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.pick_up_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.pick_up_tips"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.get_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.get_trash_area"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head[channel].add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head[channel].remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.get_used_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_spot.get_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.tracker.remove_liquid"
+      }
+    ],
+    "dropped_receiver_unfiltered": [
+      {
         "blocks_methods": 4,
-        "call": "zero"
+        "call": "Coordinate.zero"
       },
       {
         "blocks_methods": 3,
-        "call": "debug"
+        "call": "logger.debug"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.head[channel].get_tip"
       },
       {
         "blocks_methods": 2,
-        "call": "add_tip"
+        "call": "channel.get_tip"
       },
       {
         "blocks_methods": 2,
-        "call": "commit"
+        "call": "container.tracker.commit"
       },
       {
         "blocks_methods": 2,
-        "call": "get_all_items"
+        "call": "container.tracker.rollback"
       },
       {
         "blocks_methods": 2,
-        "call": "get_item"
+        "call": "logger.warning"
       },
       {
         "blocks_methods": 2,
-        "call": "get_used_volume"
+        "call": "resource.get_all_items"
       },
       {
         "blocks_methods": 2,
-        "call": "remove_tip"
+        "call": "resource.get_item"
       },
       {
         "blocks_methods": 2,
-        "call": "request_tip_presence"
+        "call": "self.backend.request_tip_presence"
       },
       {
         "blocks_methods": 2,
-        "call": "rollback"
+        "call": "self.head96.values"
       },
       {
         "blocks_methods": 2,
-        "call": "values"
+        "call": "tip.tracker.commit"
       },
       {
         "blocks_methods": 2,
-        "call": "warning"
+        "call": "tip.tracker.rollback"
       },
       {
         "blocks_methods": 1,
-        "call": "append"
+        "call": "', '.join"
       },
       {
         "blocks_methods": 1,
-        "call": "aspirate"
+        "call": "args.items"
       },
       {
         "blocks_methods": 1,
-        "call": "aspirate96"
+        "call": "args.keys"
       },
       {
         "blocks_methods": 1,
-        "call": "assign_child_resource"
+        "call": "backend_kwargs.items"
       },
       {
         "blocks_methods": 1,
-        "call": "can_pick_up_tip"
+        "call": "backend_kwargs.keys"
       },
       {
         "blocks_methods": 1,
-        "call": "check_can_drop_resource_here"
+        "call": "container.tracker.add_liquid"
       },
       {
         "blocks_methods": 1,
-        "call": "compute_plate_location"
+        "call": "container.tracker.remove_liquid"
       },
       {
         "blocks_methods": 1,
-        "call": "dispense"
+        "call": "default.union"
       },
       {
         "blocks_methods": 1,
-        "call": "dispense96"
+        "call": "destination.assign_child_resource"
       },
       {
         "blocks_methods": 1,
-        "call": "drop_resource"
+        "call": "destination.check_can_drop_resource_here"
       },
       {
         "blocks_methods": 1,
-        "call": "drop_tips"
+        "call": "destination.compute_plate_location"
       },
       {
         "blocks_methods": 1,
-        "call": "get_absolute_rotation"
+        "call": "destination.compute_plate_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
       },
       {
         "blocks_methods": 1,
-        "call": "get_channel_spacings"
+        "call": "destination.get_absolute_rotation"
       },
       {
         "blocks_methods": 1,
-        "call": "get_default_child_location"
+        "call": "destination.get_default_child_location"
       },
       {
         "blocks_methods": 1,
-        "call": "get_lid_location"
+        "call": "destination.get_default_child_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
       },
       {
         "blocks_methods": 1,
-        "call": "get_location_wrt"
+        "call": "destination.get_lid_location"
       },
       {
         "blocks_methods": 1,
-        "call": "get_new_child_location"
+        "call": "destination.get_lid_location(lid.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
       },
       {
         "blocks_methods": 1,
-        "call": "get_resource"
+        "call": "destination.get_location_wrt"
       },
       {
         "blocks_methods": 1,
-        "call": "get_size_z"
+        "call": "destination.get_new_child_location"
       },
       {
         "blocks_methods": 1,
-        "call": "get_trash_area"
+        "call": "destination.get_new_child_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
       },
       {
         "blocks_methods": 1,
-        "call": "has_lid"
+        "call": "inspect.signature"
       },
       {
         "blocks_methods": 1,
-        "call": "join"
+        "call": "kwargs.items"
       },
       {
         "blocks_methods": 1,
-        "call": "keys"
+        "call": "lid.rotated"
       },
       {
         "blocks_methods": 1,
-        "call": "move_picked_up_resource"
+        "call": "op.resource.tracker.add_liquid"
       },
       {
         "blocks_methods": 1,
-        "call": "pick_up_resource"
+        "call": "op.resource.tracker.add_tip"
       },
       {
         "blocks_methods": 1,
-        "call": "pick_up_tips"
+        "call": "op.resource.tracker.remove_liquid"
       },
       {
         "blocks_methods": 1,
-        "call": "rotate"
+        "call": "op.resource.tracker.remove_tip"
       },
       {
         "blocks_methods": 1,
-        "call": "rotated"
+        "call": "op.tip.tracker.add_liquid"
       },
       {
         "blocks_methods": 1,
-        "call": "signature"
+        "call": "op.tip.tracker.remove_liquid"
       },
       {
         "blocks_methods": 1,
-        "call": "unassign"
+        "call": "resource.get_absolute_rotation"
       },
       {
         "blocks_methods": 1,
-        "call": "union"
+        "call": "resource.get_size_z"
       },
       {
         "blocks_methods": 1,
-        "call": "warn"
+        "call": "resource.rotate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.unassign"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.aspirate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.aspirate96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.can_pick_up_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.dispense"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.dispense96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.drop_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.drop_tips"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.get_channel_spacings"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.move_picked_up_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.pick_up_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.pick_up_tips"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.get_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.get_trash_area"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head[channel].add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head[channel].remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "sig.parameters.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.get_used_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_spot.get_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tips.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "warnings.warn"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.tracker.remove_liquid"
       }
     ],
     "supported_tools_closure": [

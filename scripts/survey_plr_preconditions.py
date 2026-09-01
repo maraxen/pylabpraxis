@@ -32,9 +32,12 @@ Concretely NOT resolved:
   `get_tip` lives on a different class than the caller). Only SAME-CLASS
   (`self.<name>(...)`) and MODULE-LEVEL (`bare_name(...)`) delegate calls
   are resolved, since those don't need type inference to attribute
-  correctly. Cross-class calls are still recorded as an
-  UNRESOLVED_CALL note so a human knows to look, rather than silently
-  vanishing.
+  correctly. A cross-class call whose receiver is a bare `self.<name>`
+  Attribute or a bare Name is recorded as an UNRESOLVED_CALL note so a
+  human knows to look; every OTHER receiver shape (`self.head[channel].
+  get_tip()`, `tip_spot.get_tip()`, ...) used to vanish with no trace at
+  all (round-4/round-5 finding F1) and is now recorded, receiver-qualified,
+  in `dropped_calls` instead of silently disappearing.
 * which precondition applies under which caller-supplied argument VALUES
   (this is a static syntactic survey, not a symbolic executor) -- the
   `mentions_params` field says WHICH parameters a guard's condition
@@ -102,6 +105,17 @@ class FunctionPreconditions:
     #: module-level function (see module docstring's scope note) -- named
     #: so a human can decide whether to chase it by hand.
     unresolved_calls: list[str] = field(default_factory=list)
+    #: (round-5 T0, F1) Every call whose receiver is an ast.Attribute but is
+    #: NOT the literal `self.<name>(...)` shape (e.g. `self.head[channel].
+    #: get_tip()`, `tip_spot.get_tip()`) -- previously left NO trace at all,
+    #: not even an unresolved_calls entry, because `visit_Call` only ever
+    #: set `name` for a bare `self.<name>` Attribute or a bare Name. Recorded
+    #: as the full receiver-qualified call expression (`ast.unparse` of the
+    #: whole `Call.func` node), not a bare attribute name, so
+    #: `self.head[channel].get_tip` is distinguishable from `tip_spot.get_tip`.
+    #: Strictly additive: does not alter `name`/`delegates_to`/
+    #: `unresolved_calls` for any existing call shape.
+    dropped_calls: list[str] = field(default_factory=list)
 
 
 def _is_validation_looking(name: str) -> bool:
@@ -120,6 +134,10 @@ class _BodyScanner(ast.NodeVisitor):
         self.findings: list[PreconditionFinding] = []
         self.delegates: set[str] = set()
         self.unresolved: set[str] = set()
+        #: (round-5 T0, F1) receiver-qualified call expressions dropped by
+        #: the `name is None` fallthrough below -- see PreconditionFinding's
+        #: dropped_calls docstring.
+        self.dropped: set[str] = set()
 
     def _mentions(self, node: ast.expr) -> list[str]:
         names = {n.id for n in ast.walk(node) if isinstance(n, ast.Name)}
@@ -216,6 +234,20 @@ class _BodyScanner(ast.NodeVisitor):
             is_self_call = True
         elif isinstance(target, ast.Name):
             name = target.id
+        elif isinstance(target, ast.Attribute):
+            # (round-5 T0, F1) Every OTHER receiver shape -- a multi-level
+            # attribute chain (`self.head[channel].get_tip`), or a non-self
+            # bare-Name receiver (`tip_spot.get_tip`) -- previously left no
+            # trace at all: `name` stayed None and the recording block below
+            # never ran. Record the full receiver-qualified call expression
+            # (the whole `Call.func` node, not just `target.attr`) so it can
+            # be told apart from a same-named call on a different receiver.
+            # Purely additive: `name`/`is_self_call` are untouched, so the
+            # existing delegates/unresolved recording below is unaffected.
+            try:
+                self.dropped.add(ast.unparse(target))
+            except Exception:  # noqa: BLE001 - best-effort context only
+                self.dropped.add(f"<unparseable>.{target.attr}")
 
         if name is not None:
             if is_self_call and name in self.class_method_names:
@@ -268,6 +300,7 @@ def survey(plr_root: Path) -> list[FunctionPreconditions]:
                 qualname=qualname, class_name=class_name, module=module, file=rel_file,
                 lineno=node.lineno, params=params, findings=scanner.findings,
                 delegates_to=sorted(scanner.delegates), unresolved_calls=sorted(scanner.unresolved),
+                dropped_calls=sorted(scanner.dropped),
             ))
 
         for node in ast.iter_child_nodes(tree):

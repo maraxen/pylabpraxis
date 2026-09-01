@@ -1,25 +1,29 @@
 ---
-title: "plr-jit — pre-corpus specification (round 4)"
+title: "plr-jit — pre-corpus specification (round 5)"
 description: "Buildable-today specification for plr-jit: a self-contained package providing JIT-style static validation of PyLabRobot execution graphs. Covers the eight corpus-INDEPENDENT sections (package seam + AST import boundary, provenance cherry-pick, tri-valued verdict data contract, telemetry error model, fork-drift tests, extractor/checker split, contract-derivation mechanics, differential harness) and defers all abstract-interpretation semantics to a literature corpus in compilation. Carries a mandatory hand-maintained/derived classification on every piece of logic, plus a hand-maintained surface budget and ratchet."
 status: draft
-spec_version: 4
+spec_version: 5
 task_id: 260901_plr_jit_spec
 date: '260901'
 confidence: medium
 sources: "Measured substrate supplied in dispatch brief (praxis/backend/utils/plr_static_analysis 5868 LOC; praxis/backend/core/simulation 11 modules; coxswain/src/coxswain/fft/preconditions live fork; training/verify execution oracle; scripts/survey_plr_*.py + training/verify/data/*.json). Independently re-read this session: /home/marielle/projects/cisternal/src/cisternal/telemetry/git_state.py; training/verify/failure_taxonomy.py; scripts/plr_survey_common.py; scripts/survey_plr_preconditions.py; coxswain/tests/test_import_boundary.py; coxswain/tests/test_sim_port.py; coxswain/pyproject.toml; pyproject.toml; praxis/common/type_inspection.py; praxis/backend/models/enums/plr_category.py; praxis/backend/utils/plr_static_analysis/models.py:520-662."
 ---
 
-# Specification: plr-jit, pre-corpus (round 4)
+# Specification: plr-jit, pre-corpus (round 5)
 
-> **Round 4 of an adversarial convergence cycle** (spec → challenger → defender → remediation → repeat).
-> Round 3 was challenged (22 objections, B1–B5/M1–M12/m1–m5 plus the §0 "trivially sound" framing) and
-> adjudicated by a defender (13 CONCEDE, 8 PARTIAL, 1 REBUT); this remediation pass applies every
-> adjudicated fix exactly — see
-> [§Remediation changelog (round 3 → round 4)](#remediation-changelog-round-3--round-4) at the end of
-> this document for the full objection-by-objection record, and the two prior rounds' changelogs below
-> it, kept intact. This revision remains deliberately *narrow*: it specifies only what is buildable
-> without answers from the abstract-interpretation / typestate literature corpus currently being
-> compiled. Six semantic questions are named in [§Deferred](#deferred) and specified **nowhere**.
+> **Round 5 of an adversarial convergence cycle** (spec → challenger → defender → remediation → repeat).
+> Round 4 reviewed running code and reached 13 CONCEDE/8 PARTIAL/1 REBUT (see
+> [§Remediation changelog (round 3 → round 4)](#remediation-changelog-round-3--round-4)); it explicitly
+> carried forward an **anchoring risk** — three artifacts the spec owns (the survey script, the
+> extractor's frozensets, the dynamic harness's two frozensets) were being treated as fixed inputs.
+> **Round 5 was chartered to de-anchor**: 2 BLOCKER · 4 MAJOR · 2 MINOR, adjudicated **0 CONCEDE-in-full
+> at BLOCKER/MAJOR · 5 PARTIAL · 2 REBUT · 1 CONCEDE (minor)**, landing a reduced version of the
+> challenge's proposed T0 (the additive half; the interpretive half was declined with evidence) — see
+> [§Remediation changelog (round 4 → round 5)](#remediation-changelog-round-4--round-5) for the full
+> objection-by-objection record. Both prior rounds' changelogs are kept intact below it. This revision
+> remains deliberately *narrow*: it specifies only what is buildable without answers from the
+> abstract-interpretation / typestate literature corpus currently being compiled. Six semantic questions
+> are named in [§Deferred](#deferred) and specified **nowhere**.
 
 ---
 
@@ -617,8 +621,11 @@ Read this session at `training/verify/failure_taxonomy.py:71-78`. The set is bat
 scale and its module docstring records *why* each category exists (`:17-34`) — that rationale is the
 justification for freezing it, and must be carried across in the copied docstring.
 
-Two categories need explicit re-interpretation in a *static* analyzer, since they were coined for a
-*dynamic* harness. This re-interpretation is a genuine semantic act and should be attacked:
+Four categories need explicit re-interpretation in a *static* analyzer, since they were coined for a
+*dynamic* harness (round-5 remediation, m1, CONCEDE — the table below always rewrote four rows,
+`precondition_state`/`postcondition_mismatch`/`shape_mismatch`/`ungroundable_reference`; only
+`unsupported_tool`/`harness_internal` are marked "same"; the prose undercounted them as "two"). This
+re-interpretation is a genuine semantic act and should be attacked:
 
 | category | dynamic meaning (verify/) | static meaning (plr-jit) |
 |---|---|---|
@@ -976,6 +983,20 @@ point of a static analyzer that runs before the environment exists.
 *pre-extracted* graph with no PLR imports. That module is the existing proof that this split is the
 right shape; plr-jit makes it a **packaging fact** rather than a convention.
 
+**Why three packages, not two (round-5 remediation, m2, PARTIAL).** §6.1's `libcst`/`pylabrobot`
+import constraint above forces exactly a TWO-way split (`extract/` vs. `check/`); `derive/` satisfies
+`check/`'s own constraints (stdlib-only, reads JSON) and the three-way split is NOT forced by §6.1
+alone — round 5's challenge correctly named this gap. But the three-way split IS forced, by a
+constraint §6.1 had not written down: `derive/` calls `scan_dropped_receiver_calls`
+(`derive/__init__.py:400-405,517-543`), which `rglob`s and `ast.parse`s the PLR source tree **on
+disk** under `external/`. Needing PLR's source files on disk — not just avoiding `libcst`/`pylabrobot`
+imports — is a browser-disqualifying constraint independent of §6.1's import rule: a Pyodide
+deployment has no `external/pylabrobot` checkout to `rglob`. `derive/` is additionally justified on
+build-vs-run staging (contracts are built once, checked many times) — both reasons hold together, and
+neither alone is §6.1's import constraint restated. (`derive/`'s own `SUPPORTED_TOOLS` was already
+re-homed into `check/_supported_tools.py` to avoid a third copy — round 5 reads that seam as
+corroborating evidence that the split was under-justified, not as a reason to collapse it.)
+
 ### 6.2 Interface / data contract
 
 ```
@@ -1225,16 +1246,45 @@ large enough to be an unacceptable browser download. Not measurable pre-corpus; 
 specifies **no** predicate semantics, **no** abstract domain, **no** loop handling. Those are
 deferred items (a)–(f).
 
-### 7.1 Input — already on disk, do not regenerate
+### 7.1 Input — regenerated by round-5 T0, pinned thereafter
 
-`training/verify/data/plr_preconditions.json` (3.0 MB). Record schema confirmed this session at
-`scripts/survey_plr_preconditions.py:71-104`:
+`training/verify/data/plr_preconditions.json` (3.0 MB → **3.39 MB after round-5 T0**, below). Record
+schema confirmed this session at `scripts/survey_plr_preconditions.py:71-107`:
 
 ```
 {qualname, class_name, module, file, lineno, params[],
  findings[{kind, condition, raises, scope_trail[], mentions_params[], lineno}],
- delegates_to[], unresolved_calls[]}
+ delegates_to[], unresolved_calls[], dropped_calls[]}
 ```
+
+**`dropped_calls[]` — new field, round-5 remediation (F1, PARTIAL — the additive half only,
+CONCEDE).** Every call whose receiver is an `ast.Attribute` but is NOT the literal `self.<name>(...)`
+shape (`self.head[channel].get_tip()`, `tip_spot.get_tip()`, ...) previously left **no trace at all**
+— not a `delegates_to` entry, not an `unresolved_calls` entry, nothing. `visit_Call`'s dispatch on
+`target` gains a third branch (4 hunks, 9 lines of code) recording the FULL receiver-qualified call
+expression (`ast.unparse` of the whole `Call.func` node — `self.head[channel].get_tip`, not the bare
+`get_tip`), so a reader can distinguish it from `tip_spot.get_tip`. **Strictly additive, measured:**
+regenerating the whole survey (`scripts/verify_survey_additivity.py`) against the pre-T0 artifact
+shows 4,770/4,770 records, **0 non-additive diffs** across every pre-existing field
+(`qualname`/`class_name`/`module`/`file`/`lineno`/`params`/`findings`/`delegates_to`/
+`unresolved_calls`) and every top-level meta field; the sole new key is `dropped_calls`. Run time 1.5s.
+`derive/`'s `_record_from_dict` reads every field via `.get()` and ignores unknown keys, so this
+required **zero consumer changes** and **zero test rebaselines** (all nine gate files, 91 tests,
+passed unmodified before and after). **What round 5 declined (F1's interpretive half):** deleting
+T6's second, independent AST pass (`scan_dropped_receiver_calls` et al.), redefining `gaps` to include
+`dropped_calls`, deleting §7.4's asymmetry note below, or answering RISK-1 with a bare `0/10`. See
+[§Remediation changelog (round 4 → round 5)](#remediation-changelog-round-4--round-5), F1, for why: the
+`0/10` figure the challenge's patch produces is generated by `logger.debug`/`inspect.signature`/
+`warnings.warn` saturating every `SUPPORTED_TOOLS` closure through `_check_args`, not by tip-state
+guards, and the disambiguation it claims to supply was already published
+(`gap_ledger.json`'s `dropped_receiver_calls_by_method`, all ten `SUPPORTED_TOOLS` entries nonzero,
+round-4 M11).
+
+**Retitled from "already on disk, do not regenerate" (round-5 remediation, F6, PARTIAL).** §7.1's
+prior title had hardened a scheduling convenience into an apparent prohibition; round 5's challenge
+demonstrated regeneration costs 1.5s and is byte-identical on every pre-existing field (above). The
+spec's actual instinct — don't let derivation silently depend on a moving input — is preserved by
+**pinning after T0**, not by never regenerating at all.
 
 Measured contents: 4,770 functions scanned, **1,314 with ≥1 finding**, **2,081 `raise_guard` + 733
 `assert`** findings, **967 unresolved-call entries across 854 functions (75 distinct call names)** —
@@ -1285,6 +1335,33 @@ the `(module, qualname)`-keyed index rather than needing a new field.
 
 The index itself: `index: dict[tuple[module, qualname], Record]`, built once from
 `plr_preconditions.json` by keying every record on `(rec.module, rec.qualname)`.
+
+**`(module, qualname)` is not unique in the artifact — last-in-source wins (round-5 remediation, F6,
+PARTIAL — the collision conceded in full, "four implementations disagreeing" rebutted).** 12 keys
+collide at the current pin (8 among the 1,314 finding-bearing records), all `@property`/`@x.setter`
+pairs (`Serial.dtr`/`Serial.rts`, `SerialValidator.dtr`/`SerialValidator.rts`, ...) — AST traversal
+visits class members in source order and a setter is conventionally defined after its getter, so
+`build_index`'s `{key: rec for rec in records}` silently keeps the setter and discards the getter.
+This was previously undocumented; `4,770` vs. the index's `4,758` distinct keys already appeared in
+the spec (§7.1 measured contents) with no explanation of the twelve-record delta. **Not fixed by
+changing `resolve()`**: bare-name delegate resolution (above) has no `lineno` to disambiguate a
+getter from its setter, so `resolve()`'s class-first precedence is intentionally unchanged. Two things
+changed instead: (1) `build_index(records)` now DOCUMENTS the discard is deterministic
+(lowest-`lineno`/getter-preferring across ties, not "whichever the dict comprehension visited last")
+and (2) a companion `build_unique_index(records) -> dict[(module, qualname, lineno), Record]` gives
+any caller that needs every record addressable a collision-free key (two records cannot share one
+module's one definition `lineno`), plus `count_index_key_collisions(records)` measures the discard
+rather than leaving it silent — surfaced in the gap ledger as `index_key_collisions` (§7.4). None of
+the twelve collisions sit inside the ten-`SUPPORTED_TOOLS` closure, so this does not change any
+`SUPPORTED_TOOLS`-scoped figure published below — the impact is on whole-surface population counts
+only (§7.4's 671-vs-667 footnote). **"Four implementations of one predicate, four answers"** (the
+challenge's characterization of `674`/`671`/`667`/the patch's `649`) **is rebutted**: 671 is
+`_methods_with_dropped_receiver_call` over the 1,314-record population, 667 is the identical predicate
+over the 1,306-distinct-key population (the collision above), and 649 is a structurally NARROWER
+traversal (the survey's own in-body scanner, blind at `if`-test/`raise`-argument/`assert`-test
+positions — 18 methods lost, 0 gained, strict subset) — one predicate over three named, explainable
+populations, not four disagreeing implementations. `674` was an earlier, unreproduced estimate,
+superseded when `671` was derived in code (round-4, M11).
 
 ```
 derive_contract(module, qualname) -> DerivedContract:
@@ -1424,10 +1501,47 @@ uv run python -m plr_jit.derive \
  "by_category_status": "not_applicable_v1",
  "top_unresolved": {"whole_surface": [{"call": "send_command", "blocks_methods": 0}],
                      "supported_tools_closure": [{"call": "send_command", "blocks_methods": 0}],
-                     "dropped_receiver": [{"call": "get_tip", "blocks_methods": 0}]},
+                     "dropped_receiver": [{"call": "self.head[channel].get_tip", "blocks_methods": 0}],
+                     "dropped_receiver_unfiltered": [{"call": "Coordinate.zero", "blocks_methods": 0}]},
  "dropped_receiver_calls_by_method": {"aspirate": 0},
- "validation_looking_dropped_receiver_calls_by_method": {"aspirate": 0}}
+ "validation_looking_dropped_receiver_calls_by_method": {"aspirate": 0},
+ "index_key_collisions": {"all_records": 12, "finding_bearing_records": 8}}
 ```
+
+**`index_key_collisions` — new field, round-5 remediation (F6, PARTIAL, minimal fix).** Reports how
+many `(module, qualname)` keys `build_index` collapses (§7.2's last-in-source-wins note): `all_records`
+over the whole 4,770-record artifact (12), `finding_bearing_records` over the 1,314 records
+`methods_attempted` counts (8). Makes the collision a published measurement instead of an undocumented
+delta between two prior figures (`4,770` vs. `4,758`).
+
+**`top_unresolved.dropped_receiver` is now receiver-qualified and filtered, sourced from
+`dropped_calls` — new, round-5 remediation (F1, PARTIAL, "the one durable win").** Previously sourced
+from the independent D3 AST pass's bare `by_attr` breakdown (`{"call": "get_tip", "blocks_methods":
+6}`); a bare name collapses `self.head[channel].get_tip`, `tip_spot.get_tip`, `channel.get_tip`,
+`ts.get_tip`, `op.resource.get_tip`, `tracker.get_tip` into one indistinguishable row. Sourced instead
+from the new `dropped_calls` field (above), ranked over the SAME `SUPPORTED_TOOLS`-closure population
+(walked via the same `_walk_closure` core the other views use). **Unfiltered, this view saturates on
+noise by construction** — every `SUPPORTED_TOOLS` closure passes through
+`LiquidHandler._check_args`, which calls `inspect.signature`/`sig.parameters.items`/`args.keys`/
+`', '.join`/`warnings.warn`, and every closure member logs, so an unfiltered ranking's top rows are
+`logger.debug`-class plumbing plus `Coordinate.zero` (a value-factory classmethod call in several
+tools' bodies, not a state-bearing receiver) — this is exactly why F1's unfiltered `0/10` closure
+figure (below) is uninterpretable in the same way. The shipped `dropped_receiver` view excludes these
+via a stated filter (round-5 T0 item 4): receiver prefixes that are never a typestate-bearing receiver
+(`logger`/`logging`/`warnings`/`inspect`/`args`/`kwargs`/`sig`/`backend_kwargs`/`default`), trailing
+call names that are generic container/string plumbing regardless of receiver (`keys`/`items`/
+`values`/`union`/`join`/`append`/`get`/`update`/`format`/`strip`/`split`), and any call whose receiver
+head is capitalized (a class/type-level call — `Coordinate.zero`, not an instance whose typestate this
+analysis reads; real receivers in this population are always lowercase locals: `self`, `tip_spot`,
+`channel`, `resource`, `container`, `tracker`, ...). The pre-filter ranking is published alongside it
+as `dropped_receiver_unfiltered` rather than discarded, so the filter's own effect is auditable from
+the artifact. Measured at the current pin: filtered rank 1 is `self.head[channel].get_tip`
+(`blocks_methods: 3`); unfiltered rank 1 is `Coordinate.zero` (`blocks_methods: 4`), with
+`logger.debug`/`logger.warning` also above the real signal. The D3 pass itself and its own two
+counters (`dropped_receiver_calls_by_method`, `validation_looking_dropped_receiver_calls_by_method`,
+and `methods_with_dropped_receiver_call`) are **unchanged** — round 5 declined deleting T6's second,
+independent AST pass (F6: it is the only one of the three measured variants that sees guard sites
+behind `if`/`raise`/`assert` tests).
 
 **`by_category` is `null` per category, with a sibling `by_category_status` (round-4 remediation,
 M3, CONCEDE).** Round 1–3's example (and the shipped generator) published `0` for every category.
@@ -1466,18 +1580,27 @@ that claim.
 D12), not `get_tip` — the JSON example above uses the empirically dominant name so the example
 carries real information. This does not mean a bare `get_tip` can never be recorded: `self.get_tip()`
 on a class that does not itself define `get_tip` *is* recordable (bare `self.<name>(...)` is exactly
-the resolved shape, §7.2). What is unrecordable is specifically the *literal*
+the resolved shape, §7.2). What is unrecordable **by `unresolved_calls`/`delegates_to`, and by the
+original two `top_unresolved` views that aggregate them,** is specifically the *literal*
 `self.head[channel].get_tip()` shape (a `Subscript` receiver) — do not overstate the gap to "every
-mention of `get_tip` is invisible."
+mention of `get_tip` is invisible." **Round-5 T0 (F1) makes this shape recordable, in a third field
+(`dropped_calls`) and view (`top_unresolved.dropped_receiver`) — see §7.1 and the JSON schema below;
+`unresolved_calls`/`delegates_to`/the whole-surface and `SUPPORTED_TOOLS`-closure `top_unresolved`
+views are otherwise unchanged.**
 
 **Normative — this is an upper bound, not a measurement of completeness.** The renamed count is an
 **upper bound** on how many methods are genuinely fully derived, because the survey's own recording
 rule cannot detect the receiver shapes it is most likely to miss. `top_unresolved` entries are bare
 call names (`survey_plr_preconditions.py:214-215,231` extracts `target.attr` as a bare string, never
 the full expression), so the literal `self.head[channel].get_tip()` shape is **unproducible** by this
-mechanism — it would never appear in `top_unresolved` even though it is exactly the shape §7.6 flags
-as the plausible location of most tip-related preconditions. **`top_unresolved` is published in two
-views (D12):** `whole_surface` — the honest aggregate over all 854 functions — and
+mechanism — it would never appear in `top_unresolved`'s original `whole_surface`/
+`supported_tools_closure` views even though it is exactly the shape §7.6 flags as the plausible
+location of most tip-related preconditions. This claim is true as written (its subject is
+`top_unresolved`'s bare-name views specifically) and round 5 leaves it unchanged for those two views —
+what round 5 added is a THIRD view over a different field (`dropped_receiver`, §7.4's JSON schema
+below), not a correction to this one. **`top_unresolved` was published in two views as of round 4
+(D12), now three as of round 5 (F1, §7.4):** `whole_surface` — the honest aggregate over all 854
+functions — and
 `supported_tools_closure` — restricted to the transitive `delegates_to` closure of the 10
 `SUPPORTED_TOOLS` methods, i.e. the actionable worklist. **AC-7.4 gates on neither view** — both are
 measurement, not a threshold. Ranked by how many entry-point methods each unresolved call blocks,
@@ -1519,6 +1642,20 @@ the fixer, with a new self-consistency assertion
 (`methods_with_dropped_receiver_call <= methods_attempted`) added to
 `test_ledger_totals_are_internally_consistent` (§7.5) so this population mismatch cannot silently
 recur.
+
+**Population footnote — 671 vs. 667 vs. 649, three named populations, not four disagreeing
+implementations (round-5 remediation, F6, PARTIAL).** `671` is `_methods_with_dropped_receiver_call`
+computed over the 1,314-**record** `finding_bearing` population above. Over the 1,306-**key**
+population (§7.2's collision, 8 finding-bearing records lost) the identical predicate gives `667` —
+the gap is exactly the 8-record collision, not drift. A third figure, `649`, comes from evaluating the
+same predicate inside the survey's OWN in-body scanner (round-5 challenge's patch) rather than T6's
+independent second pass; it is strictly narrower (18 methods lost, 0 gained) because the survey's
+`visit_If`/`visit_Raise`/`visit_Assert` never descend into `if`-test/`raise`-argument/`assert`-test
+positions, which is precisely where several guard sites live
+(`STARBackend._assert_valid_resources`, `VantageBackend._assert_valid_resources`,
+`BioShake.set_temperature`). **`671` remains the published figure**: it is computed over the SAME
+record population `methods_attempted` counts (so the self-consistency assertion above stays
+meaningful), and it is the widest of the three traversals, not the narrowest.
 
 **Closure-wide recomputation (round-4 remediation, M11 second half, CONCEDE).**
 `dropped_receiver_calls_by_method`/`validation_looking_dropped_receiver_calls_by_method` used to look
@@ -1628,13 +1765,18 @@ derivation tasks for exactly this reason.**
 
 Note the survey's own scope note is honest about the limit: it resolves same-class and module-level
 calls only, and `self.head[channel].get_tip()` is named as the canonical example — though per §7.4's
-correction, this specific shape is not even *recorded* as an unresolved call (its `Subscript`
-receiver fails the survey's `name is not None` check before the unresolved-call recording block is
-ever reached), making it the canonical **unrecordable** shape, one level worse than "unresolved" —
-and, per D3, only one instance of the wider dropped-receiver population (`func` is `ast.Attribute`
-AND NOT (`func.value` is `ast.Name` with `id == "self"`)), which also includes plain
-`resource.get_item()`-style calls. Tip state lives on `head[channel]`, so it is plausible that a
-substantial share of *tip-related* preconditions —
+correction, this specific shape is not *recorded by `unresolved_calls`* (its `Subscript` receiver
+fails the survey's `name is not None` check before the unresolved-call recording block is ever
+reached), making it the canonical shape **not recorded by the survey's current `unresolved_calls`
+rule (recoverable — see round-5 T0, F1)**, one level worse than "unresolved" by that specific field —
+**correction, round-5 remediation (F1, PARTIAL):** the prior wording called this the canonical
+"**unrecordable**" shape, which was a claim about the *problem*, not about `unresolved_calls`'s rule,
+and is false: the shape is 9 lines away from being recorded (`dropped_calls`, §7.1), which is exactly
+what round-5 T0 did. "Unrecordable" is retired from this document; every remaining use names the
+specific field/rule that doesn't record it — and, per D3, only one instance of the wider
+dropped-receiver population (`func` is `ast.Attribute` AND NOT (`func.value` is `ast.Name` with
+`id == "self"`)), which also includes plain `resource.get_item()`-style calls. Tip state lives on
+`head[channel]`, so it is plausible that a substantial share of *tip-related* preconditions —
 which is to say, the ones that matter most for `SUPPORTED_TOOLS`'s 10 LiquidHandler tools — sit
 behind exactly this frontier. Do not assume otherwise; measure.
 
@@ -1743,7 +1885,9 @@ first-match-on-class-name, so `HasTipError` categorizes as `tip_state` and the `
 does fire for this method — it is not a dead code path. (`LiquidHandler.aspirate` merely *looks* dead
 for a specific, instructive reason: `NoTipError` appears in `liquid_handler.py` only at `:486`/`:632`,
 in docstrings — the real raise lives in the tip tracker behind a cross-class call, i.e. exactly the
-D3/§7.6 unrecordable frontier, not a bridge defect.) **But `HasTipError` corroborating
+D3/§7.6 dropped-receiver frontier (recorded, as of round-5 T0, in `dropped_calls` — §7.1 — though the
+D3 pass and this bridge discussion predate and are independent of that field), not a bridge defect.)
+**But `HasTipError` corroborating
 `requires_tips=True` is polarity-inverted**: `pick_up_tips` requires an *empty* channel — `HasTipError`
 fires when tips are already present, i.e. it is evidence *against* `requires_tips=True` reading
 naively, not for it. `InlinedGuard.kind` (§7.2, C4) exists precisely so this polarity is recoverable:
@@ -2048,7 +2192,10 @@ optional clause; (a)/(c) are untouched (not challenged).
 | (b2) | Whether an `UNKNOWN`-worthy obligation is generated AT ALL, for a construct the front end cannot yet classify | **Not blocked on (a) — in scope for T6's recording rule now (round-4 remediation, B3 row (b), split, CONCEDE half).** A front-end/TCB recording-completeness property, not a propagation-semantics one; the literature prescribes a fail-closed front end (`research_b_f.md:44-50,100-104`). Silently dropping the obligation (rather than recording SOME `UNKNOWN` reason for it) was the actual gap — category (C) in `research_b_f.md`. |
 | (c) | The predicate language turning guard `condition` + `mentions_params` into a checkable predicate | §7 carries conditions as opaque strings precisely so this can land later without reshaping the pipeline. |
 | (d) | Loop handling — `bounds_analyzer`'s `items_x`×`items_y` heuristic vs. sound widening | Widening is a lattice operation and presupposes (a). `loop_bounds_unknown` is the placeholder reason. **(round-4 remediation, B3 row (d) — REBUTTED, no change to the reason itself; one optional clause added:** whether the domain has finite height *is* (a)'s question, so the (a)-dependency claim is correct as written, not merely a conditional dressed up as one — `research_a_d.md:386-390`'s "if the domain is typestate ... item (d) largely dissolves" IS that dependency, not a counterexample to it. If (a) resolves to a finite-height typestate domain, (d) resolves to *nothing to design*; if the verdict path ever includes numeric/volume accumulation, it does not — `research_a_d.md:432-440` keeps that escape hatch open on its own.) |
-| (e) | Resolution strategy for the ~967 unresolved cross-class calls, INDEPENDENT of (a) | **(round-4 remediation, B3 row (e) — CONCEDE, fully; the stated reason was FALSE.)** `research_c_e.md:216-256` calls the original "requires type inference whose precision requirements follow from (a)" ordering "fundamentally backwards" and shows the two are independent under a class-resolution reframing, backed by a 133-call measurement: 60–67% of the 10-tool closure's dropped-receiver calls resolve via a stdlib `ast` annotation pass that needs nothing from (a). **Scheduled as T11, after T6**, gated on `drop_tips` acquiring a `TipTracker.get_tip` guard at `depth > 0` (a concrete, checkable trigger — not "later" left unscheduled). §7.4's new `top_unresolved.dropped_receiver` ranked view (M12) is T11's worklist. |
+| (e) | Resolution strategy for the ~967 unresolved cross-class calls, INDEPENDENT of (a) | **(round-4 remediation, B3 row (e) — CONCEDE, fully; the stated reason was FALSE.)** `research_c_e.md:216-256` calls the original "requires type inference whose precision requirements follow from (a)" ordering "fundamentally backwards" and shows the two are independent under a class-resolution reframing, backed by a 133-call measurement: 60–67% of the 10-tool closure's dropped-receiver calls resolve via a stdlib `ast` annotation pass that needs nothing from (a). **Scheduled as T11, after T6**, gated on `drop_tips` acquiring a `TipTracker.get_tip` guard at `depth > 0` (a concrete, checkable trigger — not "later" left unscheduled). §7.4's `top_unresolved.dropped_receiver` ranked view (M12) is T11's worklist — as of round-5 T0
+(item 4), receiver-qualified and filtered rather than bare-named, so it now ranks e.g.
+`self.head[channel].get_tip` (`blocks_methods: 3`) directly instead of collapsing it into a bare
+`get_tip` row shared with five other receivers. |
 | (f) | Precision / false-positive targets — the NUMBER is deferred | Meaningless before (a) and (b) fix what a "false positive" is; AC-7.4 and AC-8.3 deliberately set no thresholds. **(round-4 remediation, B3 row (f) — the stated reason SURVIVES, appended, not rewritten:** `research_b_f.md:381-383`, endorsed: "'false positive' still has no referent for us: while every verdict is `UNKNOWN` there are no positives to be false" — that IS this row's reason. What is settled, per the same report, is the *shape*: an absolute count of `UNKNOWN` root causes — clusters, not raw findings — measured on a named, frozen benchmark at a fixed PLR pin, set after the first T6 measurement. Only the number stays deferred.) |
 
 **Boundary summary — what this spec assumes and what changes when they land:**
@@ -2067,7 +2214,7 @@ optional clause; (a)/(c) are untouched (not challenged).
 
 | # | risk | likelihood | impact | mitigation / rollback |
 |---|---|---|---|---|
-| RISK-1 | **Closure over `delegates_to` recovers too little** — most real preconditions hide behind unresolved cross-class calls, and v1 is sound but empty (§7.6). Tip state lives on `self.head[channel]`, the canonical **unrecordable** shape (§7.4 — this receiver shape isn't even captured as an `unresolved_calls` gap, it is silently dropped), and tips are what the 10 `SUPPORTED_TOOLS` care about. **This entire risk's round-1 answer rests on T6's counter being specified correctly (D12):** all four `SUPPORTED_TOOLS`-closure records inspected this round have `unresolved_calls: []` (`aspirate:45211`, `pick_up_tips:44929`, `drop_tips:45019`, `_check_containers:45147`), so `methods_with_no_recorded_gap` for the 10 tools is expected to land at or near 10/10 — precisely the "high value is uninterpretable" trap this risk names. Separately, 750 of 967 unresolved-call entries (77.6%) are `send_command`, a firmware/transport method — the whole-surface `top_unresolved` aggregate is dominated by one name outside the tip-state frontier, which is why D12 requires publishing a `SUPPORTED_TOOLS`-closure-restricted view as well. | medium | **high — invalidates the approach** | **Measure first, and measure the right numbers (D3/D4/D12):** T6 runs the closure over all 1,314 finding-bearing functions and publishes `methods_with_no_recorded_gap` **alongside** the corrected dropped-receiver counters — `methods_with_dropped_receiver_call` (a commensurable method count) plus the per-method total/validation-looking call-node counts, using the corrected predicate (`func` is `ast.Attribute` AND NOT (`func.value` is `ast.Name` with `id == "self"`), not "non-`Name`-receiver") — and `top_unresolved` in both whole-surface and `SUPPORTED_TOOLS`-closure views. `methods_with_no_recorded_gap` alone is uninterpretable at a high value (§7.4's asymmetry note) — it could mean real derivation success, or it could mean the survey never saw the gaps to record. The dropped-receiver counters are what resolves the ambiguity. One session, data already on disk, before any user-facing surface. If the numbers indicate most content hides behind the unrecordable frontier, deferred item (e) is promoted from "later" to "blocking" and §§7–8 pause. |
+| RISK-1 | **Closure over `delegates_to` recovers too little** — most real preconditions hide behind unresolved cross-class calls, and v1 is sound but empty (§7.6). Tip state lives on `self.head[channel]`, the canonical shape **not recorded by the survey's current `unresolved_calls` rule (recoverable — see round-5 T0, F1)** (§7.4 — this receiver shape isn't captured as an `unresolved_calls` gap; round-4's "unrecordable" wording overstated this as a property of the problem rather than of that one field/rule, and round-5 T0 recorded it, in `dropped_calls`, without changing `unresolved_calls` itself), and tips are what the 10 `SUPPORTED_TOOLS` care about. **This entire risk's round-1 answer rests on T6's counter being specified correctly (D12):** all four `SUPPORTED_TOOLS`-closure records inspected this round have `unresolved_calls: []` (`aspirate:45211`, `pick_up_tips:44929`, `drop_tips:45019`, `_check_containers:45147`), so `methods_with_no_recorded_gap` for the 10 tools is expected to land at or near 10/10 — precisely the "high value is uninterpretable" trap this risk names. Separately, 750 of 967 unresolved-call entries (77.6%) are `send_command`, a firmware/transport method — the whole-surface `top_unresolved` aggregate is dominated by one name outside the tip-state frontier, which is why D12 requires publishing a `SUPPORTED_TOOLS`-closure-restricted view as well. | medium | **high — invalidates the approach** | **Measure first, and measure the right numbers (D3/D4/D12):** T6 runs the closure over all 1,314 finding-bearing functions and publishes `methods_with_no_recorded_gap` **alongside** the corrected dropped-receiver counters — `methods_with_dropped_receiver_call` (a commensurable method count) plus the per-method total/validation-looking call-node counts, using the corrected predicate (`func` is `ast.Attribute` AND NOT (`func.value` is `ast.Name` with `id == "self"`), not "non-`Name`-receiver") — and `top_unresolved` in both whole-surface and `SUPPORTED_TOOLS`-closure views. `methods_with_no_recorded_gap` alone is uninterpretable at a high value (§7.4's asymmetry note) — it could mean real derivation success, or it could mean the survey never saw the gaps to record. The dropped-receiver counters are what resolves the ambiguity. One session, data already on disk, before any user-facing surface. If the numbers indicate most content hides behind the frontier not recorded by `unresolved_calls`, deferred item (e) is promoted from "later" to "blocking" and §§7–8 pause. **Round-5 addendum (F1, PARTIAL):** the round-5 challenge patched the survey to record this frontier and reported the resulting whole-`SUPPORTED_TOOLS` figure moving `7/10 → 0/10` as proof the risk had resolved favorably. Reproduced and rejected: the `0/10` is produced by `logger.debug`/`inspect.signature`/`warnings.warn`/`args.keys` saturating every closure through `LiquidHandler._check_args`, not by tip-state guards — an unfiltered predicate that saturates by construction is exactly as uninterpretable as the `7/10` upper bound it claims to replace, only in the other direction, and it cannot ever move. The disambiguation it claims to supply was already published (`gap_ledger.json`'s `dropped_receiver_calls_by_method`, all ten `SUPPORTED_TOOLS` entries nonzero, round-4 M11). RISK-1's round-1 answer is unchanged: `methods_with_no_recorded_gap` (still an upper bound) plus the two D3 counters, now joined by a filtered, receiver-qualified `top_unresolved.dropped_receiver` worklist (round-5 T0 item 4, §7.4) that ranks the real signal (`self.head[channel].get_tip`, `blocks_methods: 3`) above the noise. |
 | RISK-2 | Shim direction inverted — `plr_jit` imports `praxis` — making the boundary test unsatisfiable (§1.2). | low (now flagged) | high | §1.2 makes the arrow normative; the day-one boundary test converts a violation into a red test on the first offending commit rather than after N modules have moved. |
 | RISK-3 | Cherry-pick drift test is skip-only off this machine (§5.2). | **certain** | medium | Two tiers. Tier 1 (header sha256 vs. local body) always runs and catches local edits, which is the failure this test primarily guards. Tier 2 skips loudly with the missing path named. AC-5.1 requires tier 2 to *run* here once, proving the mechanism before it is allowed to skip. |
 | RISK-4 | Freezing `FAILURE_CATEGORIES` (dynamic-harness semantics) is wrong for a static analyzer; a static failure kind has no home (§4.3). | medium | medium | Miscategorisation surfaces as an implausible `harness_internal` rate in the gap ledger. Frozen-not-forbidden: extending is a design conversation, not a silent commit. |
@@ -2547,5 +2694,92 @@ script we own, and an entire measurement apparatus plus deferred item (e) is bui
 `FAILURE_CATEGORIES` is frozen from a *dynamic* harness while §4.1 concedes four of six need static
 re-interpretation; Fork C's drift test asserts mirror ⊆ upstream, structurally forbidding the mirror
 from leading; `SUPPORTED_TOOLS = 10` is inherited from the execution harness's scope boundary.
-**Round 5 is chartered as a de-anchoring round** and is licensed to propose regenerating the survey
-and unfreezing inherited ontologies.
+
+**Round 5 ran as the chartered de-anchoring round (updated post-round-5).** Outcome: **0
+CONCEDE-in-full at BLOCKER/MAJOR · 5 PARTIAL · 2 REBUT · 1 CONCEDE (minor)** — see
+[§Remediation changelog (round 4 → round 5)](#remediation-changelog-round-4--round-5) below for the
+full record. The anchoring risk named above was real in two of its four named instances and false, or
+overstated, in the other two: the survey's non-`self` receiver drop **was** ~10 lines in a script this
+project owns, and is now fixed (F1's additive half — `dropped_calls`, §7.1); §7.1's "do not
+regenerate" **was** hardened past its original justification, and is now retitled and pinned only
+after the T0 regeneration (§7.1). But `FAILURE_CATEGORIES` staying frozen is **not** anchoring bias —
+F3's REBUT shows `Finding.category` costs nothing while inert-by-construction (§0 fixes every v1
+verdict at UNKNOWN) and re-tightening a hinge type later costs more than declining now; and Fork C's
+`mirror ⊆ upstream` direction is **not** anchoring bias either — F5's REBUT shows the alternative
+(assert `consumed ⊆ upstream`, let the mirror lead) would give a plr-jit-invented field a permanent
+`None` for the exact upstream-rename case the test exists to catch, and the receiver-expression content
+F1/F2 wanted travels through `derive_contract`'s own unconstrained `dict.get()` payload instead, never
+needing to touch `OperationNode` at all. `SUPPORTED_TOOLS = 10` staying as the analyzed surface (F4)
+and the extractor's frozensets staying hand-typed rather than derived (F2) were both **partly**
+inherited-constraint findings (real staleness, real provenance) with **no accompanying fitness
+evidence** for the proposed alternative — declined for now, revisit after T9/T10 land (see F2/F4's
+"decline" writeups in the round-5 changelog). De-anchoring is not "always widen": three of the four
+named risks above held up under the probe.
+
+---
+
+## Remediation changelog (round 4 → round 5)
+
+**What made round 5 different.** Round 5 was chartered as a *de-anchoring* round: rounds 1–4 all
+asked "is the spec right about the code?"; round 5 asked "is the code the right code, and is the
+spec's frame the right frame?" — targeting three artifacts the spec owns (the survey script, the
+extractor's five frozensets, the dynamic harness's two frozensets) that had been treated as fixed
+inputs across four rounds. The challenge found three real inherited-but-not-necessary constraints
+(F1, F2, F6) and repeatedly slid from *provenance* ("this was inherited") to *fitness* ("therefore it
+should change") without measuring fitness; the defense reproduced every factual claim this session and
+adjudicated on the fitness evidence actually offered, not on provenance alone. **2 BLOCKER · 4 MAJOR ·
+2 MINOR; adjudicated 0 CONCEDE-in-full at BLOCKER/MAJOR · 5 PARTIAL · 2 REBUT · 1 CONCEDE (minor).**
+Full challenge and defense: `.claude/jobs/d54cd068/tmp/round5_{challenge,defense}.md` (not committed;
+this changelog is the durable record).
+
+### The defect class this round found, and its mirror image
+
+Round 4's recurring defect was *acceptance criteria satisfiable without the property being true*.
+Round 5's is the mirror image: **a metric satisfiable in either direction by construction, reported as
+if it measured content.** F1's headline `7/10 → 0/10` is produced by an UNFILTERED predicate that
+saturates at `0/10` because every `SUPPORTED_TOOLS` closure passes through
+`LiquidHandler._check_args`'s logging/introspection calls — exactly as uninterpretable as the `7/10`
+upper bound it claims to replace, only pinned in the opposite direction, and incapable of ever moving.
+A high value from an unfiltered predicate and a high value from an over-narrow filter are the same
+failure mode wearing different numbers.
+
+### Conceded (fully), with what changed
+
+| id | sev | change |
+|---|---|---|
+| **m1** | MINOR | §4.1's prose said "**Two** categories need explicit re-interpretation"; the table it introduces rewrites **four**. Prose corrected to "four" with the two genuinely mechanical rewrites (`shape_mismatch`, `ungroundable_reference`) named alongside the two genuinely semantic ones (`precondition_state`, `postcondition_mismatch`). |
+
+### Partial — real defect conceded, proposed remedy narrowed or declined
+
+| id | what stands / what does not |
+|---|---|
+| **F1** | **Conceded: the additive half.** `visit_Call` gains a `dropped_calls` field recording the full receiver-qualified call expression for every non-`self.<name>` Attribute receiver (9 lines, `scripts/survey_plr_preconditions.py`) — reproduced this session as strictly additive (4,770/4,770 records, 0 non-additive diffs on every pre-existing field, sole new key `dropped_calls`; `scripts/verify_survey_additivity.py`). `training/verify/data/plr_preconditions.json` regenerated (3.0 MB → 3.39 MB); `plr-jit/data/derived_contracts.json` regenerated byte-identical modulo stamp; `plr-jit/data/gap_ledger.json` regenerated with all whole-surface/`SUPPORTED_TOOLS` totals unchanged. **Declined: the interpretive half** — deleting T6's second AST pass, redefining `gaps` to include `dropped_calls`, deleting §7.4's asymmetry note, or answering RISK-1 with `0/10`. The `0/10` figure is produced by `logger.debug`/`inspect.signature`/`warnings.warn`/`args.keys` saturating every `SUPPORTED_TOOLS` closure through `_check_args`, not by tip-state guards, and the disambiguation it claims to supply was already published (`gap_ledger.json`'s `dropped_receiver_calls_by_method`, all ten entries nonzero since round-4 M11). **What round 5 DID add cheaply**: `top_unresolved.dropped_receiver` now ranks receiver-qualified names sourced from `dropped_calls`, with a stated, principled inert-receiver filter (§7.4) — real signal `self.head[channel].get_tip` now ranks first (`blocks_methods: 3`) instead of being collapsed into a bare `get_tip` row shared with five other receivers; the unfiltered ranking is published alongside it (`dropped_receiver_unfiltered`) rather than discarded. |
+| **F2** | **Conceded: the staleness, and worse than stated.** Of `TIPS_REQUIRED_METHODS`' 8 entries, 3 (`blow_out`/`mix`/`touch_tip`) don't exist on `LiquidHandler` at this pin; `PLATE_MOVE_METHODS`'s `get_plate`/`put_plate` are 2/4 miscategorised too (staleness the challenge itself missed). **Declined: deriving the frozensets now.** The offered derivation is recall-only over n=5 live entries against an oracle the same finding proves is 37.5% wrong, and the derived set contains a typestate inversion: `pick_up_tips96` appears in both the derived `TIPS_REQUIRED` set and the hand-typed `TIPS_LOADING` set — its closure reaches `NoTipError` through `tip_spot.get_tip()` (the RACK must have tips), not through head-tip-presence (the HEAD must NOT have tips) — opposite typestates for exactly the methods this analysis most needs to distinguish. Hand-typing moved from the set to the derivation rule; not shipped. **Minimal fix taken instead** (praxis, not plr-jit — out of THIS spec's scope, tracked separately): delete the 3 dead names, add the genuinely-missing 96-head tip verbs, add a liveness test asserting every frozenset name resolves to a real method at the current pin. Revisit derivation after T10's differential harness exists to validate a derivation rule against, not just an oracle already proven partly wrong. |
+| **F3** | **Conceded: six nulls and the doubled `unsupported_tool` are real.** **Declined: dropping `Finding.category`, moving T4 off the critical path, or unfreezing HM-5.** T4 stays on the path regardless of `by_category`'s fate — `check/__init__.py` imports `emit_finding` and emits every finding through the telemetry sink (round-4 M2), which is T4's actual live consumer; only `derive/__init__.py`'s `FAILURE_CATEGORIES` import is for the null dict, and only that half of T4's justification (the §7.4 scheduling note) is wrong and gets corrected. `category` stays required-for-`WILL_FAIL`: it costs nothing in v1 (never set, §0 fixes every verdict at UNKNOWN) and re-tightening a hinge type later costs more than declining now; HM-5 stays FROZEN. |
+| **F6** | **Conceded in full: the `(module, qualname)` collision** (12 keys collide, 8 among finding-bearing records, all `@property`/`@x.setter` pairs — real, live, previously undocumented). Fixed: `build_index` documents the deterministic discard; a companion `build_unique_index` (keyed `(module, qualname, lineno)`, collision-free by construction) and `count_index_key_collisions` are added; the collision count is published in the gap ledger as `index_key_collisions`. `resolve()`'s bare-name, class-first precedence is UNCHANGED (it has no `lineno` to disambiguate a getter from its setter). **Partial — "four implementations of one predicate, four answers" rebutted**: 671/667/649 are one predicate over three named, explainable populations (records / distinct keys / the survey's own narrower in-body scanner, which is blind at `if`-test/`raise`-argument/`assert`-test positions and loses 18 methods to guard sites), not four disagreeing implementations. `674` was an earlier, unreproduced estimate superseded by `671` at round 4. **Declined**: retitling §7.1 to license unconditional regeneration (retitled instead to "regenerated by T0, pinned thereafter" — narrower), and class-qualifying `unresolved_calls` in the same change (a separate, larger, non-additive change with its own regeneration cost — `top_unresolved`'s existing 75-distinct-name/`send_command`-750 figures would all move). |
+| **m2** | **Partial — the diagnosis is wrong, the remedy is right.** §6.1's `libcst`/`pylabrobot` import constraint forces only a two-way split (`extract/` vs. `check/`); `derive/` satisfies `check/`'s own constraints and the three-way split is not forced by §6.1 alone, as claimed. But the three-way split IS forced — by a constraint §6.1 had not written down: `derive/` reads PLR's source tree off disk (`rglob` + `ast.parse` under `external/`), a browser-disqualifying constraint independent of the import rule. §6.1 now states both forcing reasons (the on-disk-source constraint, and build-vs-run staging) rather than resting on the import constraint alone. |
+
+### Rebutted — recorded so a later round does not re-raise it
+
+| id | why |
+|---|---|
+| **F4** | **REBUT.** Provenance is correct (`SUPPORTED_TOOLS` is `dispatcher.py`'s mock-backend execution boundary, copied verbatim); fitness is asserted, not measured. Widening the analyzed surface in v1 changes **zero** verdicts (§0 fixes every v1 verdict at UNKNOWN regardless of surface) — only the `reason` string changes. F4's most vivid example (`PlateReader.read_absorbance`/`read_fluorescence`/`read_luminescence`) is measured on the WRONG class: the findings it cites live on `BioTekPlateReaderBackend`, which no `OperationNode.receiver_type` ever names; the front-end `PlateReader` class's three `read_*` verbs have zero findings of their own and delegate to one method with one guard — widening buys one guard. The genuinely sharp observation (`TIPS_REQUIRED_METHODS` names `return_tips`; `SUPPORTED_TOOLS` excludes it) is real but argues for adding ~7 named verbs with a written reason each, not for replacing a typed list with a rule that also admits `deserialize`/`setup`. Revisit after T10 makes the cost of a wider surface measurable. |
+| **F5** | **REBUT.** The `⊆` direction (mirror fields ⊆ upstream model fields) is the correct invariant for a consumer of someone else's JSON, and F5's proposed inversion is answered by the same fact that answered round-4's M1/B5: the mirror is a consumer-derived projection of `praxis`'s schema, and a projection that leads its source acquires a field with a guaranteed `None` — the exact silent-failure mode the test exists to convert into a red one. The claimed "hard structural ceiling" does not exist: `check_graph` takes TWO payloads, and `derived_contracts.json` (plr-jit's own build artifact) is read through unconstrained `dict.get()` with no field-set constraint at all — the receiver expression F1/F2 want is produced in `derive/` at build time and travels in THAT payload; it never needs to touch `OperationNode`. |
+
+### Known anchoring risk — status after round 5
+
+See the updated note directly above this changelog (end of the [round-4 anchoring-risk
+paragraph](#known-anchoring-risk--carried-forward-to-round-5-not-closed-here)): two of the four named
+instances were genuine anchoring bias and are fixed (F1's additive survey patch, §7.1's retitling);
+two survive de-anchoring on the evidence (`FAILURE_CATEGORIES` freeze, Fork C's `⊆` direction) and are
+now REBUTTED rather than merely defended, closing them to re-litigation absent new evidence.
+`SUPPORTED_TOOLS = 10` and the extractor's hand-typed frozensets remain genuinely inherited and
+genuinely unfitted-by-measurement in places (F2's staleness, F4's `return_tips` inconsistency); both
+get the cheap, bounded fix (liveness test; documented provenance) now and the larger structural change
+(derivation; surface widening) deferred to when T9/T10 exist to validate against, per F2/F4's "decline"
+reasoning above. No BLOCKER/MAJOR objection reordered the task graph or invalidated a shipped artifact
+this round — every `SUPPORTED_TOOLS`/whole-surface figure in `gap_ledger.json` is numerically unchanged
+from round 4 (verified: `totals`, `by_reason`, `supported_tools`, `dropped_receiver_calls_by_method`,
+`validation_looking_dropped_receiver_calls_by_method` are byte-identical before/after round-5 T0; only
+`top_unresolved.dropped_receiver`'s source changed, and two new keys — `dropped_receiver_unfiltered`,
+`index_key_collisions` — were added).
