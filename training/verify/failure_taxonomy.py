@@ -56,15 +56,26 @@ silently misclassified every real PLR precondition failure as
 
 from __future__ import annotations
 
-import inspect
+import json
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 __all__ = [
     "FAILURE_CATEGORIES",
     "POSTCONDITION_MISMATCH",
+    "TaxonomyArtifactError",
     "classify_exception",
     "classify_check_failure",
+    "plr_exception_taxonomy_git_sha",
 ]
+
+#: AST-derived survey of every real PLR Exception subclass across all vendored
+#: PLR source files (scripts/survey_plr_exceptions.py or equivalent -- see
+#: `.praxia/docs/specs/260901_plr-jit-pre-corpus-spec.md` T7), located
+#: relative to this file (never cwd) so it resolves regardless of invocation
+#: directory.
+_TAXONOMY_PATH = Path(__file__).resolve().parent / "data" / "plr_exception_taxonomy.json"
 
 #: Closed set of failure categories. Anchor tests assert this stays in sync
 #: with the classifiers' actual return values.
@@ -81,19 +92,96 @@ FAILURE_CATEGORIES: frozenset[str] = frozenset({
 POSTCONDITION_MISMATCH = "postcondition_mismatch"
 
 
-def _plr_exception_class_names() -> frozenset[str]:
-    """Every real vendored-PLR Exception subclass's __name__, built from
-    actual introspection of PLR's own error-defining modules -- a TABLE, not
-    a hand-typed enumeration that drifts as PLR adds exception classes."""
-    import pylabrobot.liquid_handling.errors as _lh_errors
-    import pylabrobot.resources.errors as _resource_errors
+class TaxonomyArtifactError(RuntimeError):
+    """``training/verify/data/plr_exception_taxonomy.json`` is missing,
+    unreadable, not valid JSON, or missing a required field.
 
-    names: set[str] = set()
-    for module in (_resource_errors, _lh_errors):
-        for name, obj in inspect.getmembers(module, inspect.isclass):
-            if issubclass(obj, Exception):
-                names.add(name)
-    return frozenset(names)
+    Raised loudly rather than degrading silently: a malformed/truncated
+    artifact must not fall back to an empty exception-name set, which would
+    revert the exact ``classify_check_failure`` misclassification bug T7
+    fixes (name lookups against those two hand-typed modules -> 11 names)
+    but *worse* -- 0 names, so every absorbed PLR exception would misclassify
+    as ``harness_internal`` instead of just the 121 currently-missed ones.
+    """
+
+
+@lru_cache(maxsize=1)
+def _load_taxonomy_artifact() -> dict[str, Any]:
+    """Load and validate the AST-derived PLR exception-class survey.
+
+    Cached (module-level memo via ``lru_cache``) so a 132-entry JSON file is
+    parsed once per process, not on every :func:`classify_check_failure`
+    call. Loading is lazy -- nothing here runs at import time -- so a
+    missing/malformed artifact cannot make ``verify`` unimportable; it only
+    raises when a caller actually needs the exception-name table.
+
+    Validates against the artifact's *own* existing stamp shape
+    (``version.git_sha`` / ``version.git_dirty`` / ``version.pylabrobot_version``
+    plus a non-empty ``classes`` array) -- **not** ``plr_jit``'s ``SurveyStamp``
+    (spec §2.2). The spec's "stamped by §2.2" phrasing predates this artifact;
+    ``training/`` must not gain a ``plr_jit`` import to satisfy it (see T7
+    report). This is a deliberate, flagged deviation from the literal spec
+    text, validating the shape that actually exists on disk instead.
+    """
+    try:
+        raw = _TAXONOMY_PATH.read_text()
+    except OSError as exc:
+        raise TaxonomyArtifactError(
+            f"could not read PLR exception taxonomy artifact at {_TAXONOMY_PATH}: {exc}"
+        ) from exc
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise TaxonomyArtifactError(
+            f"PLR exception taxonomy artifact at {_TAXONOMY_PATH} is not valid JSON: {exc}"
+        ) from exc
+
+    version = data.get("version") if isinstance(data, dict) else None
+    git_sha = version.get("git_sha") if isinstance(version, dict) else None
+    if not git_sha:
+        raise TaxonomyArtifactError(
+            f"PLR exception taxonomy artifact at {_TAXONOMY_PATH} is missing a non-empty "
+            "version.git_sha stamp -- refusing to trust an unstamped artifact."
+        )
+
+    classes = data.get("classes") if isinstance(data, dict) else None
+    if not classes:
+        raise TaxonomyArtifactError(
+            f"PLR exception taxonomy artifact at {_TAXONOMY_PATH} has an empty or missing "
+            "'classes' array -- refusing to silently degrade to an empty exception-name set."
+        )
+
+    return data
+
+
+@lru_cache(maxsize=1)
+def _plr_exception_class_names() -> frozenset[str]:
+    """Every real vendored-PLR Exception subclass's __name__, keyed off the
+    AST-derived survey artifact (:func:`_load_taxonomy_artifact`) rather than
+    hand-typed ``inspect.getmembers`` over two hand-picked modules. That
+    two-module walk covered only 11 of the 132 real PLR exception classes
+    (92% invisible) -- see the T7 spec item / module docstring shape #2.
+    Cached: computed once per process from the cached artifact load."""
+    data = _load_taxonomy_artifact()
+    return frozenset(entry["name"] for entry in data["classes"])
+
+
+def plr_exception_taxonomy_git_sha() -> str:
+    """The ``external/pylabrobot`` git SHA the loaded exception taxonomy was
+    surveyed against (``version.git_sha`` in the artifact).
+
+    Queryable, not enforced: this module never compares the recorded SHA
+    against the live ``external/pylabrobot`` checkout itself, and loading
+    never hard-fails on a mismatch. ``verify`` is imported inside harness
+    runs, and a stale-but-usable taxonomy (classifying against yesterday's
+    PLR exception set) is better than an unimportable module. A caller who
+    cares whether the artifact is stale should compare this value against
+    their own ``git -C external/pylabrobot rev-parse HEAD`` and decide what
+    to do about a mismatch (e.g. log a warning, re-run the survey script) --
+    that policy belongs to the caller, not baked into this loader.
+    """
+    return _load_taxonomy_artifact()["version"]["git_sha"]
 
 
 def classify_exception(exc: BaseException) -> str:
