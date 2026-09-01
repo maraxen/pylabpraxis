@@ -39,7 +39,11 @@ GENERATOR_VERSION: Final[str] = "0.2.0"
 PROMPT_VERSION: Final[str] = "p23_nlify_v1"
 
 #: Matrix data revision (committed ambiguity_matrix.json).
-MATRIX_VERSION: Final[str] = "1"
+#: 2 (260901): examples_per_cell 3 -> 15 (out-of-surface cells 20) so the
+#: assembly split rule (k=floor(0.2n), n>=4) yields >=40 eval rows per
+#: clarify class; cell set unchanged. Cache keys ignore this value, so the
+#: first 3 rows per cell stay cache hits.
+MATRIX_VERSION: Final[str] = "2"
 
 #: Vendored PLR the namespace table is parity-pinned to (param_namespace.py).
 PLR_SUBMODULE_SHA: Final[str] = "dd79c4c89bc008629a1c598ea614be5e6067d1f9"
