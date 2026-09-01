@@ -45,6 +45,7 @@ from pathlib import Path
 from typing import Any
 
 from plr_jit._provenance import SurveyStamp, survey_stamp
+from plr_jit.check._supported_tools import SUPPORTED_TOOLS
 from plr_jit.telemetry import FAILURE_CATEGORIES
 from plr_jit.verdict import PlrSite
 
@@ -69,25 +70,18 @@ __all__ = [
 
 SCHEMA_VERSION = 1
 
-#: Mirrors training/verify/dispatcher.py:37-41's SUPPORTED_TOOLS verbatim.
-#: src/plr_jit cannot import verify.dispatcher (the import-boundary test
-#: forbids it), so this is a maintained mirror -- kept honest by a live
-#: cross-package drift test in tests/test_derive.py (same pattern as
-#: telemetry.FAILURE_CATEGORIES's test_categories_match_upstream, §4.2).
-SUPPORTED_TOOLS: frozenset[str] = frozenset(
-    {
-        "pick_up_tips",
-        "drop_tips",
-        "discard_tips",
-        "aspirate",
-        "dispense",
-        "transfer",
-        "stamp",
-        "move_resource",
-        "move_plate",
-        "move_lid",
-    }
-)
+#: Re-exported from plr_jit.check._supported_tools (T8 consolidation, spec
+#: 260901 §6.2's D1 note): check/ independently needs this same 10-tool
+#: frozenset for the unsupported_tool reason, and check/'s own
+#: import-boundary constraints (§1.3: no praxis/verify/training) mean it
+#: cannot reach training.verify.dispatcher.SUPPORTED_TOOLS directly either.
+#: Rather than a THIRD hand-typed copy (upstream + derive + check), this
+#: module now imports the single in-package definition from
+#: plr_jit.check._supported_tools, so `from plr_jit.derive import
+#: SUPPORTED_TOOLS` keeps resolving to the exact same frozenset object. The
+#: one live cross-package drift test against training.verify.dispatcher lives
+#: at tests/test_check_graph.py::test_supported_tools_match_upstream --
+#: not duplicated here.
 
 #: Mirrors scripts/survey_plr_preconditions.py:107-109's
 #: _is_validation_looking prefix list verbatim (lowercased prefix match).

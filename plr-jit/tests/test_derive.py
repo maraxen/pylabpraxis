@@ -1,10 +1,15 @@
 """Spec 260901 §7.5 / T6 (backlog #4829): the seven `plr_jit.derive` tests
-named in §7.5, plus one extra live cross-package drift test for
-`SUPPORTED_TOOLS` (mirroring `test_telemetry.py`'s
-`test_categories_match_upstream` pattern, per this task's own instructions --
-`SUPPORTED_TOOLS` is a maintained mirror of
-`training/verify/dispatcher.py:37`, not an import, so it needs the same kind
-of drift guard `FAILURE_CATEGORIES` already has).
+named in §7.5.
+
+T8 consolidation note: this file previously carried an extra
+`test_supported_tools_matches_upstream_dispatcher` live cross-package drift
+test. `SUPPORTED_TOOLS` now has a single in-package definition at
+`plr_jit.check._supported_tools` (T8, spec §6.2's D1 note); `plr_jit.derive`
+imports and re-exports the exact same frozenset object rather than defining
+its own copy. The one live drift test against `training.verify.dispatcher`
+moved to `tests/test_check_graph.py::test_supported_tools_match_upstream`
+(spec AC-6.5's named test) so there is exactly ONE such test, not two testing
+the same fact from two module paths.
 
 AC-7.1: all seven §7.5 tests pass. Uses the real survey JSON already on disk
 (`training/verify/data/plr_preconditions.json`, §7.1) and the real vendored
@@ -16,14 +21,12 @@ in-memory indexes for the tests that are about the closure MECHANIC itself
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pytest
 
 from plr_jit._provenance import SurveyStamp, survey_stamp
 from plr_jit.derive import (
-    SUPPORTED_TOOLS,
     SurveyFinding,
     SurveyRecord,
     build_gap_ledger,
@@ -314,35 +317,3 @@ def clean(self):
 
     for counts in (subscript_counts, bare_name_counts, clean_counts):
         assert counts.validation_looking <= counts.total
-
-
-# ---------------------------------------------------------------------------
-# Extra, task-mandated: SUPPORTED_TOOLS live cross-package drift test
-# (mirrors test_telemetry.py's test_categories_match_upstream, §4.2 pattern).
-# ---------------------------------------------------------------------------
-
-
-def test_supported_tools_matches_upstream_dispatcher() -> None:
-    """`plr_jit.derive.SUPPORTED_TOOLS` must be the SAME set as
-    `verify.dispatcher.SUPPORTED_TOOLS` today -- a live drift test, not a
-    copied constant re-asserted against itself. `src/plr_jit` cannot import
-    `verify` (import-boundary test forbids it); this test file can, with
-    both `<repo_root>/training` and `<repo_root>/coxswain/src` on sys.path
-    first (verify/__init__.py eagerly imports verify.checks, which imports
-    coxswain.plr.intent_record)."""
-    training_path = str(REPO_ROOT / "training")
-    coxswain_src_path = str(REPO_ROOT / "coxswain" / "src")
-    for path in (coxswain_src_path, training_path):
-        if path not in sys.path:
-            sys.path.insert(0, path)
-
-    try:
-        import verify.dispatcher as upstream_dispatcher
-    except ImportError as exc:
-        pytest.skip(f"training/verify not importable: {exc}")
-        return
-
-    assert SUPPORTED_TOOLS == upstream_dispatcher.SUPPORTED_TOOLS, (
-        f"plr_jit.derive.SUPPORTED_TOOLS {sorted(SUPPORTED_TOOLS)} != "
-        f"verify.dispatcher.SUPPORTED_TOOLS {sorted(upstream_dispatcher.SUPPORTED_TOOLS)}"
-    )
