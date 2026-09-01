@@ -69,7 +69,9 @@ def test_versions_and_provenance_counts():
     assert sum(counts["by_provenance"].values()) == n
     assert sum(counts["by_class"].values()) == n
     assert set(counts["by_provenance"]) == {"golden", "coverage", "naturalness"}
-    assert counts["by_split"]["eval"] >= counts["by_split"]["train"], "golden-all-eval keeps eval heavy"
+    # Every golden row is eval by rule; at full scale synthetic train mass
+    # legitimately outweighs eval, so the bound is on golden, not on train.
+    assert counts["by_split"]["eval"] >= counts["by_provenance"]["golden"], "golden-all-eval lower bound"
     strata_total = sum(s["n"] for s in counts["strata"])
     assert strata_total == n
     for s in counts["strata"]:
@@ -102,7 +104,7 @@ def test_shortfall_recorded_not_padded():
     target = m["target"]
     assert target["examples_requested"] == 1000
     assert target["examples_assembled"] < target["examples_requested"], (
-        "smoke-scale inputs cannot reach the 1000 target; shortfall must be honest"
+        "inputs do not reach the 1000 target (bounded by matrix x examples_per_cell + mined canonicals); shortfall must be honest"
     )
     assert target["shortfall"] == target["examples_requested"] - target["examples_assembled"]
     assert len(target["shortfall_reason"]) > 40

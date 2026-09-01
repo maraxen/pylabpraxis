@@ -1,35 +1,35 @@
 {
  "artifact": "praxis-copilot-p25-assembled-corpus",
- "assembly_version": "0.1.0",
+ "assembly_version": "0.1.1",
  "backlog_item": 480,
  "counts": {
   "by_class": {
-   "ambiguous_referent": 17,
-   "clean_parse": 137,
-   "missing_slot": 13,
-   "out_of_surface": 21
+   "ambiguous_referent": 123,
+   "clean_parse": 342,
+   "missing_slot": 175,
+   "out_of_surface": 172
   },
   "by_provenance": {
-   "coverage": 20,
+   "coverage": 625,
    "golden": 88,
-   "naturalness": 80
+   "naturalness": 99
   },
   "by_split": {
-   "eval": 102,
-   "train": 86
+   "eval": 228,
+   "train": 584
   },
   "by_split_and_class": {
    "eval": {
-    "ambiguous_referent": 12,
-    "clean_parse": 66,
-    "missing_slot": 12,
-    "out_of_surface": 12
+    "ambiguous_referent": 33,
+    "clean_parse": 107,
+    "missing_slot": 44,
+    "out_of_surface": 44
    },
    "train": {
-    "ambiguous_referent": 5,
-    "clean_parse": 71,
-    "missing_slot": 1,
-    "out_of_surface": 9
+    "ambiguous_referent": 90,
+    "clean_parse": 235,
+    "missing_slot": 131,
+    "out_of_surface": 128
    }
   },
   "distinct_verbs": [
@@ -37,6 +37,7 @@
    "blow_out",
    "discard_tips",
    "dispense",
+   "dispense_to_waste",
    "drop_tips",
    "mix",
    "move_lid",
@@ -46,18 +47,29 @@
    "read_absorbance",
    "read_fluorescence",
    "read_luminescence",
+   "set_temperature",
+   "shake",
    "stamp",
+   "stop_shaking",
    "touch_tip",
    "transfer"
   ],
-  "eval_clarify_total": 36,
+  "duplicate_utterances_normalized": 86,
+  "eval_clarify_total": 121,
   "strata": [
    {
     "ambiguity_class": "ambiguous_referent",
-    "n": 1,
+    "n": 3,
     "n_eval": 0,
     "provenance": "coverage",
     "verb": "aspirate"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "discard_tips"
    },
    {
     "ambiguity_class": "ambiguous_referent",
@@ -68,57 +80,274 @@
    },
    {
     "ambiguity_class": "ambiguous_referent",
-    "n": 1,
-    "n_eval": 0,
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "drop_tips"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_lid"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_plate"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_resource"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "stamp"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 3,
     "provenance": "coverage",
     "verb": "transfer"
    },
    {
     "ambiguity_class": "clean_parse",
-    "n": 2,
-    "n_eval": 0,
+    "n": 15,
+    "n_eval": 3,
     "provenance": "coverage",
     "verb": "aspirate"
    },
    {
     "ambiguity_class": "clean_parse",
-    "n": 2,
-    "n_eval": 0,
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "discard_tips"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
     "provenance": "coverage",
     "verb": "dispense"
    },
    {
     "ambiguity_class": "clean_parse",
-    "n": 1,
-    "n_eval": 0,
+    "n": 14,
+    "n_eval": 2,
+    "provenance": "coverage",
+    "verb": "drop_tips"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_lid"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_plate"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_resource"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "pick_up_tips"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "read_absorbance"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "read_fluorescence"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "read_luminescence"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "stamp"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 12,
+    "n_eval": 2,
     "provenance": "coverage",
     "verb": "transfer"
    },
    {
     "ambiguity_class": "missing_slot",
-    "n": 1,
-    "n_eval": 0,
+    "n": 5,
+    "n_eval": 1,
+    "provenance": "coverage",
+    "verb": "aspirate"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "dispense"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "drop_tips"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_lid"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_plate"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_resource"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "pick_up_tips"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "read_absorbance"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "read_fluorescence"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "read_luminescence"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "stamp"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 8,
+    "n_eval": 1,
     "provenance": "coverage",
     "verb": "transfer"
    },
    {
     "ambiguity_class": "out_of_surface",
-    "n": 3,
-    "n_eval": 0,
+    "n": 20,
+    "n_eval": 4,
+    "provenance": "coverage",
+    "verb": "None"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 20,
+    "n_eval": 4,
     "provenance": "coverage",
     "verb": "blow_out"
    },
    {
     "ambiguity_class": "out_of_surface",
-    "n": 3,
-    "n_eval": 0,
+    "n": 20,
+    "n_eval": 4,
+    "provenance": "coverage",
+    "verb": "dispense_to_waste"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 20,
+    "n_eval": 4,
     "provenance": "coverage",
     "verb": "mix"
    },
    {
     "ambiguity_class": "out_of_surface",
-    "n": 3,
-    "n_eval": 0,
+    "n": 20,
+    "n_eval": 4,
+    "provenance": "coverage",
+    "verb": "set_temperature"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 20,
+    "n_eval": 4,
+    "provenance": "coverage",
+    "verb": "shake"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 20,
+    "n_eval": 4,
+    "provenance": "coverage",
+    "verb": "stop_shaking"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 20,
+    "n_eval": 4,
     "provenance": "coverage",
     "verb": "touch_tip"
    },
@@ -362,8 +591,8 @@
    },
    {
     "ambiguity_class": "clean_parse",
-    "n": 21,
-    "n_eval": 4,
+    "n": 27,
+    "n_eval": 5,
     "provenance": "naturalness",
     "verb": "aspirate"
    },
@@ -376,8 +605,8 @@
    },
    {
     "ambiguity_class": "clean_parse",
-    "n": 23,
-    "n_eval": 4,
+    "n": 27,
+    "n_eval": 5,
     "provenance": "naturalness",
     "verb": "dispense"
    },
@@ -390,101 +619,267 @@
    },
    {
     "ambiguity_class": "clean_parse",
-    "n": 27,
-    "n_eval": 5,
+    "n": 36,
+    "n_eval": 7,
     "provenance": "naturalness",
     "verb": "pick_up_tips"
    }
   ],
-  "total_rows": 188
+  "total_rows": 812
  },
  "dataset_format": "FunctionGemma-native JSONL {metadata, tools[], messages[]} (research \u00a72a / mobile-actions)",
  "exclusions": {
+  "reason_entries": 77,
   "reasons": {
-   "cov-0002-aspirate__none-02: aspirate.volume_ul multi-value [50.0, 75.0, 20.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "cov-0002-aspirate__none-02"
+   "cov-0015-aspirate__missing-slot-00: aspirate.volume_ul multi-value [10.0, 75.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0015-aspirate__missing-slot-00"
    ],
-   "cov-0003-aspirate__missing-slot-00: aspirate.volume_ul multi-value [10.0, 10.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "cov-0003-aspirate__missing-slot-00"
+   "cov-0016-aspirate__missing-slot-01: aspirate.volume_ul multi-value [75.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0016-aspirate__missing-slot-01"
    ],
-   "cov-0005-aspirate__missing-slot-02: aspirate.volume_ul multi-value [25.0, 10.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "cov-0005-aspirate__missing-slot-02"
+   "cov-0017-aspirate__missing-slot-02: aspirate.volume_ul multi-value [20.0, 20.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0017-aspirate__missing-slot-02"
    ],
-   "cov-0006-aspirate__ambiguous-referent-00: aspirate.volume_ul multi-value [15.0, 20.0, 100.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "cov-0006-aspirate__ambiguous-referent-00"
+   "cov-0018-aspirate__missing-slot-03: aspirate.volume_ul multi-value [150.0, 25.0, 10.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0018-aspirate__missing-slot-03"
    ],
-   "cov-0007-aspirate__ambiguous-referent-01: aspirate.volume_ul multi-value [15.0, 100.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "cov-0007-aspirate__ambiguous-referent-01"
+   "cov-0022-aspirate__missing-slot-07: aspirate.volume_ul multi-value [20.0, 50.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0022-aspirate__missing-slot-07"
    ],
-   "cov-0013-dispense__none-01: dispense.volume_ul multi-value [200.0, 200.0, 15.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "cov-0013-dispense__none-01"
+   "cov-0023-aspirate__missing-slot-08: aspirate.volume_ul multi-value [100.0, 50.0, 25.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0023-aspirate__missing-slot-08"
    ],
-   "cov-0024-transfer__none-00: transfer.destination multi-value ['plate_2_E3', 'plate_1_H9'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "cov-0024-transfer__none-00"
+   "cov-0024-aspirate__missing-slot-09: aspirate.volume_ul multi-value [20.0, 25.0, 15.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0024-aspirate__missing-slot-09"
    ],
-   "cov-0026-transfer__none-02: transfer.destination multi-value ['plate_1_F1', 'plate_2_G4'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "cov-0026-transfer__none-02"
+   "cov-0025-aspirate__missing-slot-10: aspirate.volume_ul multi-value [25.0, 15.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0025-aspirate__missing-slot-10"
    ],
-   "cov-0027-transfer__missing-slot-00: transfer.destination multi-value ['plate_1_D11', 'plate_2_A1'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "cov-0027-transfer__missing-slot-00"
+   "cov-0027-aspirate__missing-slot-12: aspirate.volume_ul multi-value [100.0, 150.0, 150.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0027-aspirate__missing-slot-12"
    ],
-   "cov-0028-transfer__missing-slot-01: transfer.destination multi-value ['plate_1_B7', 'plate_2_D11'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "cov-0028-transfer__missing-slot-01"
+   "cov-0029-aspirate__missing-slot-14: aspirate.volume_ul multi-value [100.0, 15.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0029-aspirate__missing-slot-14"
    ],
-   "ovl-1adaad2c89: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "ovl-1adaad2c89"
+   "cov-0031-aspirate__ambiguous-referent-01: aspirate.volume_ul multi-value [20.0, 15.0, 10.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0031-aspirate__ambiguous-referent-01"
    ],
-   "ovl-1fe1ddd6f4: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "ovl-1fe1ddd6f4"
+   "cov-0032-aspirate__ambiguous-referent-02: aspirate.volume_ul multi-value [50.0, 150.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0032-aspirate__ambiguous-referent-02"
+   ],
+   "cov-0034-aspirate__ambiguous-referent-04: aspirate.volume_ul multi-value [150.0, 75.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0034-aspirate__ambiguous-referent-04"
+   ],
+   "cov-0035-aspirate__ambiguous-referent-05: aspirate.volume_ul multi-value [15.0, 20.0, 10.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0035-aspirate__ambiguous-referent-05"
+   ],
+   "cov-0036-aspirate__ambiguous-referent-06: aspirate.volume_ul multi-value [50.0, 200.0, 10.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0036-aspirate__ambiguous-referent-06"
+   ],
+   "cov-0037-aspirate__ambiguous-referent-07: aspirate.volume_ul multi-value [20.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0037-aspirate__ambiguous-referent-07"
+   ],
+   "cov-0038-aspirate__ambiguous-referent-08: aspirate.volume_ul multi-value [50.0, 10.0, 150.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0038-aspirate__ambiguous-referent-08"
+   ],
+   "cov-0040-aspirate__ambiguous-referent-10: aspirate.volume_ul multi-value [15.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0040-aspirate__ambiguous-referent-10"
+   ],
+   "cov-0041-aspirate__ambiguous-referent-11: aspirate.volume_ul multi-value [200.0, 150.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0041-aspirate__ambiguous-referent-11"
+   ],
+   "cov-0042-aspirate__ambiguous-referent-12: aspirate.volume_ul multi-value [25.0, 100.0, 15.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0042-aspirate__ambiguous-referent-12"
+   ],
+   "cov-0043-aspirate__ambiguous-referent-13: aspirate.volume_ul multi-value [50.0, 75.0, 10.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0043-aspirate__ambiguous-referent-13"
+   ],
+   "cov-0044-aspirate__ambiguous-referent-14: aspirate.volume_ul multi-value [20.0, 50.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0044-aspirate__ambiguous-referent-14"
+   ],
+   "cov-0096-dispense__ambiguous-referent-01: dispense.volume_ul multi-value [15.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0096-dispense__ambiguous-referent-01"
+   ],
+   "cov-0097-dispense__ambiguous-referent-02: dispense.volume_ul multi-value [100.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0097-dispense__ambiguous-referent-02"
+   ],
+   "cov-0098-dispense__ambiguous-referent-03: dispense.volume_ul multi-value [50.0, 10.0, 20.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0098-dispense__ambiguous-referent-03"
+   ],
+   "cov-0099-dispense__ambiguous-referent-04: dispense.volume_ul multi-value [10.0, 15.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0099-dispense__ambiguous-referent-04"
+   ],
+   "cov-0100-dispense__ambiguous-referent-05: dispense.volume_ul multi-value [100.0, 20.0, 20.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0100-dispense__ambiguous-referent-05"
+   ],
+   "cov-0102-dispense__ambiguous-referent-07: dispense.volume_ul multi-value [100.0, 150.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0102-dispense__ambiguous-referent-07"
+   ],
+   "cov-0103-dispense__ambiguous-referent-08: dispense.volume_ul multi-value [25.0, 200.0, 20.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0103-dispense__ambiguous-referent-08"
+   ],
+   "cov-0104-dispense__ambiguous-referent-09: dispense.volume_ul multi-value [25.0, 20.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0104-dispense__ambiguous-referent-09"
+   ],
+   "cov-0105-dispense__ambiguous-referent-10: dispense.volume_ul multi-value [25.0, 50.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0105-dispense__ambiguous-referent-10"
+   ],
+   "cov-0106-dispense__ambiguous-referent-11: dispense.volume_ul multi-value [75.0, 15.0, 150.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0106-dispense__ambiguous-referent-11"
+   ],
+   "cov-0108-dispense__ambiguous-referent-13: dispense.volume_ul multi-value [200.0, 200.0, 50.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0108-dispense__ambiguous-referent-13"
+   ],
+   "cov-0109-dispense__ambiguous-referent-14: dispense.volume_ul multi-value [25.0, 200.0, 150.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0109-dispense__ambiguous-referent-14"
+   ],
+   "cov-0130-transfer__none-00: transfer.destination multi-value ['plate_2.G6', 'plate_1.B12'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0130-transfer__none-00"
+   ],
+   "cov-0130-transfer__none-00: transfer.volume_ul multi-value [50.0, 75.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0130-transfer__none-00"
+   ],
+   "cov-0133-transfer__none-03: transfer.destination multi-value ['plate_2.G2', 'plate_2.G10'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0133-transfer__none-03"
+   ],
+   "cov-0139-transfer__none-09: transfer.destination multi-value ['plate_2.B6', 'plate_2.E8'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0139-transfer__none-09"
+   ],
+   "cov-0146-transfer__missing-slot-01: transfer.destination multi-value ['plate_1.A1', 'plate_1.B1'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0146-transfer__missing-slot-01"
+   ],
+   "cov-0147-transfer__missing-slot-02: transfer.destination multi-value ['plate_2.D5', 'plate_2.C2'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0147-transfer__missing-slot-02"
+   ],
+   "cov-0147-transfer__missing-slot-02: transfer.volume_ul multi-value [10.0, 25.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0147-transfer__missing-slot-02"
+   ],
+   "cov-0148-transfer__missing-slot-03: transfer.destination multi-value ['plate_1.B9', 'plate_1.F7'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0148-transfer__missing-slot-03"
+   ],
+   "cov-0148-transfer__missing-slot-03: transfer.volume_ul multi-value [10.0, 20.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0148-transfer__missing-slot-03"
+   ],
+   "cov-0152-transfer__missing-slot-07: transfer.destination multi-value ['plate_1.C5', 'plate_1.F5'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0152-transfer__missing-slot-07"
+   ],
+   "cov-0152-transfer__missing-slot-07: transfer.volume_ul multi-value [20.0, 150.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0152-transfer__missing-slot-07"
+   ],
+   "cov-0155-transfer__missing-slot-10: transfer.destination multi-value ['plate_2.G12', 'plate_2.E5'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0155-transfer__missing-slot-10"
+   ],
+   "cov-0155-transfer__missing-slot-10: transfer.volume_ul multi-value [20.0, 15.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0155-transfer__missing-slot-10"
+   ],
+   "cov-0156-transfer__missing-slot-11: transfer.destination multi-value ['plate_1.F8', 'plate_1.G7'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0156-transfer__missing-slot-11"
+   ],
+   "cov-0159-transfer__missing-slot-14: transfer.destination multi-value ['plate_2.A8', 'plate_1.H7'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0159-transfer__missing-slot-14"
+   ],
+   "cov-0290-pick_up_tips__ambiguous-referent-00: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0290-pick_up_tips__ambiguous-referent-00"
+   ],
+   "cov-0291-pick_up_tips__ambiguous-referent-01: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0291-pick_up_tips__ambiguous-referent-01"
+   ],
+   "cov-0292-pick_up_tips__ambiguous-referent-02: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0292-pick_up_tips__ambiguous-referent-02"
+   ],
+   "cov-0293-pick_up_tips__ambiguous-referent-03: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0293-pick_up_tips__ambiguous-referent-03"
+   ],
+   "cov-0294-pick_up_tips__ambiguous-referent-04: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0294-pick_up_tips__ambiguous-referent-04"
+   ],
+   "cov-0295-pick_up_tips__ambiguous-referent-05: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0295-pick_up_tips__ambiguous-referent-05"
+   ],
+   "cov-0296-pick_up_tips__ambiguous-referent-06: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0296-pick_up_tips__ambiguous-referent-06"
+   ],
+   "cov-0297-pick_up_tips__ambiguous-referent-07: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0297-pick_up_tips__ambiguous-referent-07"
+   ],
+   "cov-0298-pick_up_tips__ambiguous-referent-08: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0298-pick_up_tips__ambiguous-referent-08"
+   ],
+   "cov-0299-pick_up_tips__ambiguous-referent-09: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0299-pick_up_tips__ambiguous-referent-09"
+   ],
+   "cov-0300-pick_up_tips__ambiguous-referent-10: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0300-pick_up_tips__ambiguous-referent-10"
+   ],
+   "cov-0301-pick_up_tips__ambiguous-referent-11: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0301-pick_up_tips__ambiguous-referent-11"
+   ],
+   "cov-0302-pick_up_tips__ambiguous-referent-12: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0302-pick_up_tips__ambiguous-referent-12"
+   ],
+   "cov-0303-pick_up_tips__ambiguous-referent-13: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0303-pick_up_tips__ambiguous-referent-13"
+   ],
+   "cov-0304-pick_up_tips__ambiguous-referent-14: pick_up_tips.at declared ARRAY got non-list/empty": [
+    "cov-0304-pick_up_tips__ambiguous-referent-14"
+   ],
+   "cov-0331-drop_tips__none-06: drop_tips.destination multi-value ['tip_rack.C6', 'tip_rack.H12'] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "cov-0331-drop_tips__none-06"
+   ],
+   "ovl-1b4d6803ac: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-1b4d6803ac"
    ],
    "ovl-226b047f39: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
     "ovl-226b047f39"
    ],
-   "ovl-2da6e67be5: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "ovl-2da6e67be5"
+   "ovl-39b342e503: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-39b342e503"
    ],
-   "ovl-2e1319f8d1: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "ovl-2e1319f8d1"
+   "ovl-5f990b60bf: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-5f990b60bf"
    ],
-   "ovl-47b2fa30b3: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "ovl-47b2fa30b3"
+   "ovl-6666982de0: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-6666982de0"
    ],
-   "ovl-5375973d10: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "ovl-5375973d10"
+   "ovl-7570c967ec: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-7570c967ec"
    ],
-   "ovl-5ef76de6cf: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "ovl-5ef76de6cf"
+   "ovl-8d3ec9e802: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-8d3ec9e802"
    ],
-   "ovl-72607b2c64: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "ovl-72607b2c64"
+   "ovl-a2b5a25721: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-a2b5a25721"
    ],
-   "ovl-80dee6969f: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "ovl-80dee6969f"
+   "ovl-a91cd2ce98: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-a91cd2ce98"
    ],
-   "ovl-875bc31a32: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "ovl-875bc31a32"
+   "ovl-ab721fd97d: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-ab721fd97d"
    ],
-   "ovl-b1df4fb7e6: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
-    "ovl-b1df4fb7e6"
+   "ovl-cc7083b0e0: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-cc7083b0e0"
+   ],
+   "ovl-fc6ca91c0c: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-fc6ca91c0c"
    ]
   },
-  "total": 22
+  "total": 72
  },
  "generator_versions": {
-  "assemble": "0.1.0",
+  "assemble": "0.1.1",
   "floor_gen": [
-   "0.1.0"
+   "0.2.0"
   ],
   "overlay_gen": [
-   "ecd1106e"
+   "d42c53f2"
   ]
  },
  "inputs": {
   "floor_corpus": {
-   "bytes": 33847,
-   "path": "training/out/corpus_p23_smoke.jsonl",
-   "rows": 30,
-   "sha256": "8beab6d56ec89059fd8bfcd486ae6bcf6e8387507f34e2a888978e82188e447a"
+   "bytes": 811839,
+   "path": "training/out/corpus_p23_floor.jsonl",
+   "rows": 685,
+   "sha256": "4fbbc0b2ab4bf39423b4c33983866a941bf0b1f8205d7068d2ff1adcbab4ffff"
   },
   "golden_pairs": {
    "bytes": 508941,
@@ -499,10 +894,10 @@
    "sha256": "ab1833ee5017722517947829a2bfa1291d64aa3a4f3c84118f486a96c5495e04"
   },
   "overlay_corpus": {
-   "bytes": 61324,
-   "path": "training/overlay_gen/out/overlay_smoke.jsonl",
-   "rows": 92,
-   "sha256": "6569935835526a2b8ae0b17bcc35c603553ffae7239b453116f50aeb457f9865"
+   "bytes": 124624,
+   "path": "training/overlay_gen/out/overlay_full.jsonl",
+   "rows": 111,
+   "sha256": "9031e7de07ffd8261334bb00b6a5c17d0b8722c234ed829d4052c0870866c6d8"
   }
  },
  "plr_source_sha": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
@@ -520,15 +915,14 @@
  "spec_ref": ".praxia/docs/specs/260825_coxswain-phase-2-functiongemma-copilot-p.md rev2 \u00a75 P2.5 / \u00a77 AC-2.5.x",
  "split_rule": "golden-provenance -> eval unconditionally; synthetic strata (provenance x ambiguity-class x verb) sorted by record_id, LAST k -> eval, k = min(n-1, floor(n*0.2)) bumped to >=1 when n>=4; train/eval disjoint by construction (single membership pass)",
  "target": {
-  "examples_assembled": 188,
+  "examples_assembled": 812,
   "examples_requested": 1000,
-  "shortfall": 812,
-  "shortfall_reason": "P2.3/P2.4 branches landed at smoke scale (committed outputs: 30 coverage rows + 92 naturalness rows); full-scale generation is a recorded follow-up. Assembly merges what exists verbatim and pads nothing."
+  "shortfall": 188,
+  "shortfall_reason": "Inputs are the full-scale P2.3 floor sweep (43-cell matrix v2) and the full P2.4 overlay pass over every mined source; the remaining gap to 1000 is bounded by matrix size x examples_per_cell and by the 37 unique mined canonicals, not by a pending run. Assembly merges what exists verbatim and pads nothing."
  },
  "task_id": "260825_copilot_pipeline_spec",
  "teacher_model_versions": [
-  "Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ",
-  "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+  "gemini-3.7-flash-medium"
  ],
  "thresholds_doc": ".praxia/docs/specs/260825_p25_provisional_thresholds.md"
 }

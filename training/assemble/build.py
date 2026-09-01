@@ -36,6 +36,7 @@ from praxis_training.golden_build.corpus import (
     DECLARED_ARRAY_PARAMS,
     DEVELOPER_SCAFFOLD,
 )
+from overlay_gen.normalize import normalize_utterance
 
 from .scaffold import (
     SCAFFOLD_TEMPLATE_NAME,
@@ -58,15 +59,15 @@ __all__ = [
 ]
 
 #: Bump on ANY change to assembly logic / split rule / validation policy.
-ASSEMBLY_VERSION = "0.1.0"
+ASSEMBLY_VERSION = "0.1.1"
 
 TRAINING_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = TRAINING_DIR.parent
 
 GOLDEN_PAIRS_REL = "training/golden/golden_pairs.jsonl"
 GOLDEN_SIDECAR_REL = "training/golden/golden_intent_sidecar.jsonl"
-FLOOR_CORPUS_REL = "training/out/corpus_p23_smoke.jsonl"
-OVERLAY_CORPUS_REL = "training/overlay_gen/out/overlay_smoke.jsonl"
+FLOOR_CORPUS_REL = "training/out/corpus_p23_floor.jsonl"
+OVERLAY_CORPUS_REL = "training/overlay_gen/out/overlay_full.jsonl"
 
 CORPUS_NAME = "corpus_p25.jsonl"
 SIDECAR_NAME = "corpus_p25_sidecar.jsonl"
@@ -95,9 +96,11 @@ MIN_STRATUM_FOR_EVAL = 4
 #: P2.5 target from the task line; shortfall is RECORDED, never padded.
 TARGET_EXAMPLES = 1000
 SHORTFALL_REASON = (
-    "P2.3/P2.4 branches landed at smoke scale (committed outputs: 30 coverage "
-    "rows + 92 naturalness rows); full-scale generation is a recorded "
-    "follow-up. Assembly merges what exists verbatim and pads nothing."
+    "Inputs are the full-scale P2.3 floor sweep (43-cell matrix v2) and the "
+    "full P2.4 overlay pass over every mined source; the remaining gap to "
+    "1000 is bounded by matrix size x examples_per_cell and by the 37 unique "
+    "mined canonicals, not by a pending run. Assembly merges what exists "
+    "verbatim and pads nothing."
 )
 
 #: Literal params that MUST arrive numeric when present (golden-builder rule).
@@ -435,6 +438,12 @@ def build_manifest(
         for split, ids in by_split.items()
     }
     eval_clarify = sum(per_split_class["eval"].get(c, 0) for c in CLARIFY_CLASSES)
+    # Measured, never dropped: floor_gen has no utterance-level dedup (only
+    # cache-key dedup) and overlay_gen dedups only against floor + itself, so
+    # cross-provenance paraphrase collapse is only visible here. Same
+    # normalization rule as P2.4's dedup (trim/collapse/casefold).
+    normalized = [normalize_utterance(r["utterance"]) for r in records]
+    duplicate_utterances = len(normalized) - len(set(normalized))
 
     def _lineage_versions(field: str) -> list[str]:
         return sorted({r["lineage"][field] for r in records if field in r["lineage"]})
@@ -482,6 +491,7 @@ def build_manifest(
             "by_class": dict(sorted(Counter(r["ambiguity_class"] for r in records).items())),
             "by_split_and_class": {s: dict(sorted(m.items())) for s, m in sorted(per_split_class.items())},
             "eval_clarify_total": eval_clarify,
+            "duplicate_utterances_normalized": duplicate_utterances,
             "distinct_verbs": sorted({str(r["verb"]) for r in records if r["verb"]}),
             "strata": _count_strata(records, by_split),
         },
@@ -492,7 +502,10 @@ def build_manifest(
             "shortfall_reason": SHORTFALL_REASON,
         },
         "exclusions": {
-            "total": sum(len(v) for v in exclusion_map.values()),
+            # RECORDS excluded (a record with two bad calls is one exclusion);
+            # reason_entries counts (reason, record) pairs and can exceed it.
+            "total": len({rid for rids in exclusion_map.values() for rid in rids}),
+            "reason_entries": sum(len(v) for v in exclusion_map.values()),
             "reasons": dict(sorted(exclusion_map.items())),
         },
         "thresholds_doc": THRESHOLDS_DOC_REL,
