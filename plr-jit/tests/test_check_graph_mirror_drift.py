@@ -76,3 +76,62 @@ def test_mirror_fields_match_operation_node(mirror_cls, mirror_name, upstream_re
         f"({sorted(upstream_fields)}) -- the mirror has drifted from upstream "
         f"(spec §5.3 Fork C)"
     )
+
+
+# ---------------------------------------------------------------------------
+# test_mirror_field_set_matches_spec_table -- round-4 remediation (M1).
+#
+# The test above only checked mirror_fields ⊆ upstream_fields -- it cannot
+# see OVER-inclusion relative to the §6.2 table itself (a field the mirror
+# carries that IS a real upstream field but has no §3.3/§7.3 consumer, e.g.
+# the pre-round-4 `line_number`/`node_type`/`arguments`). This test checks
+# the OTHER direction: mirror_fields == the literal field list §6.2's table
+# enumerates, in both directions -- so adding an unlisted field (even one
+# that is a genuine upstream field) or removing a listed one both fail.
+# ---------------------------------------------------------------------------
+
+#: Verbatim from spec §6.2's derived-from-consumers table, post-round-4
+#: remediation (M1 deleted line_number/node_type/arguments; depends_on_params
+#: is kept as a forward-looking field per B4's reinstatement note -- see
+#: check/graph.py's module docstring for the full per-field consumer table).
+SPEC_TABLE_OPERATION_NODE_FIELDS = frozenset(
+    {
+        "id",
+        "method_name",
+        "receiver_variable",
+        "receiver_type",
+        "depends_on_params",
+        "foreach_source",
+        "foreach_body",
+    }
+)
+
+#: ResourceNode's sole mirrored field (see check/graph.py's SPEC GAP note --
+#: the real upstream model has no `id` field, so `variable_name` is what
+#: identifies a resource for the `is_grounded` membership test).
+SPEC_TABLE_RESOURCE_NODE_FIELDS = frozenset({"variable_name"})
+
+
+@pytest.mark.parametrize(
+    "mirror_cls, mirror_name, spec_fields",
+    [
+        (OperationNode, "OperationNode", SPEC_TABLE_OPERATION_NODE_FIELDS),
+        (ResourceNode, "ResourceNode", SPEC_TABLE_RESOURCE_NODE_FIELDS),
+    ],
+    ids=["OperationNode", "ResourceNode"],
+)
+def test_mirror_field_set_matches_spec_table(mirror_cls, mirror_name, spec_fields) -> None:
+    """Round-4 remediation (M1): `mirror_fields == SPEC_TABLE_FIELDS`, an IFF
+    against a literal list transcribed from spec §6.2's table -- not merely
+    `mirror_fields ⊆ upstream_fields` (which `test_mirror_fields_match_
+    operation_node` above already checks, and which a real-but-unconsumed
+    upstream field would satisfy). Does NOT require `praxis` to be
+    importable -- this is a pure comparison against a literal list, not
+    against the live upstream model."""
+    mirror_fields = {f.name for f in dataclasses.fields(mirror_cls)}
+    assert mirror_fields == spec_fields, (
+        f"plr_jit.check.graph.{mirror_name}'s field set {sorted(mirror_fields)} != "
+        f"spec §6.2's table {sorted(spec_fields)} -- extra: "
+        f"{sorted(mirror_fields - spec_fields)}, missing: "
+        f"{sorted(spec_fields - mirror_fields)}"
+    )

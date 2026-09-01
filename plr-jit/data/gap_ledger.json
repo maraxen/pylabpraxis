@@ -1,27 +1,28 @@
 {
   "by_category": {
-    "harness_internal": 0,
-    "postcondition_mismatch": 0,
-    "precondition_state": 0,
-    "shape_mismatch": 0,
-    "ungroundable_reference": 0,
-    "unsupported_tool": 0
+    "harness_internal": null,
+    "postcondition_mismatch": null,
+    "precondition_state": null,
+    "shape_mismatch": null,
+    "ungroundable_reference": null,
+    "unsupported_tool": null
   },
+  "by_category_status": "not_applicable_v1",
   "by_reason": {
     "no_contract_derived": 0,
     "unresolved_delegate": 610
   },
   "dropped_receiver_calls_by_method": {
-    "aspirate": 6,
-    "discard_tips": 2,
-    "dispense": 6,
-    "drop_tips": 10,
-    "move_lid": 0,
-    "move_plate": 0,
-    "move_resource": 2,
-    "pick_up_tips": 9,
-    "stamp": 0,
-    "transfer": 0
+    "aspirate": 21,
+    "discard_tips": 26,
+    "dispense": 21,
+    "drop_tips": 24,
+    "move_lid": 58,
+    "move_plate": 58,
+    "move_resource": 58,
+    "pick_up_tips": 23,
+    "stamp": 42,
+    "transfer": 27
   },
   "schema_version": 1,
   "stamp": {
@@ -36,14 +37,14 @@
     "praxis": {
       "branch": "coxswain-p2-pipeline",
       "dirty": true,
-      "dirty_content_id": "952c929ff24e44331365326afc9dac39200dad7beb09610dabdac9b46c2e1e65",
-      "hash": "e6eda0b16f850f2431f9c3cc3dd700e8986e384e",
+      "dirty_content_id": "9c7d2f4fbb01084460a7c15f99490e171202c6a235122361af412e9bb1cae1fc",
+      "hash": "28d6800fa5f56b5821d4462c5bbdd7777c080ebe",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-01T20:41:29.978418+00:00"
+    "stamped_at": "2026-09-01T22:10:12.602282+00:00"
   },
   "supported_tools": {
     "by_reason": {
@@ -56,6 +57,200 @@
     "methods_with_no_recorded_gap": 7
   },
   "top_unresolved": {
+    "dropped_receiver": [
+      {
+        "blocks_methods": 6,
+        "call": "get_tip"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "add_liquid"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "items"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "remove_liquid"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "zero"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "debug"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "add_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "get_all_items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "get_item"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "get_used_volume"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "remove_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "request_tip_presence"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "rollback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "values"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "warning"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "aspirate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "aspirate96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "can_pick_up_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "compute_plate_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dispense"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dispense96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drop_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drop_tips"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_channel_spacings"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_default_child_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_lid_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_new_child_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_trash_area"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "has_lid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "join"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "move_picked_up_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pick_up_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pick_up_tips"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rotate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "signature"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "unassign"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "union"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "warn"
+      }
+    ],
     "supported_tools_closure": [
       {
         "blocks_methods": 2,
@@ -367,7 +562,7 @@
   },
   "totals": {
     "methods_attempted": 1314,
-    "methods_with_dropped_receiver_call": 1976,
+    "methods_with_dropped_receiver_call": 671,
     "methods_with_gaps": 290,
     "methods_with_no_recorded_gap": 1024
   },
@@ -376,9 +571,9 @@
     "discard_tips": 0,
     "dispense": 0,
     "drop_tips": 0,
-    "move_lid": 0,
-    "move_plate": 0,
-    "move_resource": 0,
+    "move_lid": 1,
+    "move_plate": 1,
+    "move_resource": 1,
     "pick_up_tips": 0,
     "stamp": 0,
     "transfer": 0

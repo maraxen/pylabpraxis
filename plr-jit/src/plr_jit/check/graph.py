@@ -17,18 +17,35 @@ stdlib mirrors is the only model hierarchy ``check/`` ever sees.
 A field is mirrored iff a §3.3 reason or the §7.3 contract-table lookup key
 consumes it. This is the enumeration, verbatim from spec §6.2 -- do not add
 to it, do not trim it, and a new consumer that needs a field not listed here
-requires a visible edit to the spec table, not a silent addition below:
+requires a visible edit to the spec table, not a silent addition below.
+
+**Round-4 remediation (M1 + B4, spec §6.2's Cluster 2 fix).** The pre-round-4
+mirror was over-inclusive in two independent ways, both closed here:
+``line_number``/``node_type``/``arguments`` were mirrored but never read by
+anything except this module's own declaration/parse (M1, confirmed by grep);
+``arguments`` additionally fed the now-withdrawn ``argument_not_static``
+reason (B4 -- see ``plr_jit.verdict.REASON_VOCABULARY``'s docstring: the
+guard-free-var namespace and the protocol-parameter namespace it intersected
+are disjoint in every shipped fixture, so it never fired, and a same-named
+collision would have fired it for no semantic cause). All three fields and
+their extraction are deleted below. ``depends_on_params`` is KEPT despite
+``argument_not_static``'s withdrawal leaving it with no *current* consumer
+-- unlike the three deleted fields, it is the one piece B4's own reinstatement
+note names as still needed (guard free var -> PLR parameter position ->
+``arguments[param]`` -> protocol expression -> ``depends_on_params``), so it
+stays mirrored as a forward-looking field, the same treatment ``receiver_variable``
+already got from D1/m1 below -- flagged here rather than silently pruned to
+match the letter of "derived-from-consumers" while breaking its spirit.
 
 | ``OperationNode`` field                     | consumer                                                          |
 |-----------------------------------------------|---------------------------------------------------------------------|
 | ``receiver_type`` + ``method_name``           | contract-table lookup key ``f"{receiver_type}.{method_name}"``      |
 | ``receiver_type``, checked for ``None``       | reason ``receiver_type_unknown``                                    |
 | ``method_name``, checked against SUPPORTED_TOOLS | reason ``unsupported_tool``                                      |
-| ``arguments``, ``depends_on_params``          | reason ``argument_not_static``                                      |
 | ``foreach_source``, ``foreach_body``          | reason ``loop_bounds_unknown`` (identifies the loop, not its bounds)|
 | ``id``                                        | ``Finding.operation_id`` provenance (AC-6.4)                        |
-| ``line_number``, ``node_type``                | ``PlrSite`` / node-kind discriminant                                 |
-| ``receiver_variable``                         | matching against the mirrored ``ResourceNode`` set                  |
+| ``receiver_variable``                         | matching against the mirrored ``ResourceNode`` set (forward-looking -- see below) |
+| ``depends_on_params``                         | no current consumer -- forward-looking; reinstating ``argument_not_static`` needs it (B4) |
 
 **D1's own flag, restated:** before this fix, ``receiver_type_unknown`` alone
 could satisfy AC-6.3's ">=1 finding" with the contract table entirely
@@ -63,14 +80,16 @@ any ``Finding``.** ``ungroundable_reference`` is a member of
 ``FAILURE_CATEGORIES`` (§4.1), and ``Finding.category`` is validated as
 REQUIRED only for ``verdict is WILL_FAIL`` (§3.1) -- round 1 never emits
 ``WILL_FAIL`` (§0, §11 of this task's brief). Wiring the membership test to
-an UNKNOWN finding would require inventing a ninth REASON_VOCABULARY member
-(the closed 8-member set, §3.3, has none that means "resource reference is
-ungroundable") -- out of round-1 scope. The mirror and the membership-test
-helper below exist so Fork C's field-set drift test has a real comparison
-target and so the mechanism is ready, tested, and correct the moment a
-future round wires it to a WILL_FAIL-producing category assignment; they are
-not dead code, just not yet a ``Finding`` source. Flagged, not silently
-worked around.
+an UNKNOWN finding would require adding an 8th REASON_VOCABULARY member
+(the closed 7-member set, §3.3 -- round-4 remediation withdrew
+``argument_not_static``, B4 -- has none that means "resource reference is
+ungroundable") -- out of round-1 scope. **Restated forward-looking, not as a
+live consumer (round-4 remediation, m1):** the mirror and the
+membership-test helper below exist so the membership test is *ready* the
+moment a future round adds that reason -- five slots of headroom remain
+under §3.3's hard cap of 12 (7 today) -- and so Fork C's field-set drift
+test has a real comparison target in the meantime; they are not dead code,
+just not yet a ``Finding`` source. Flagged, not silently worked around.
 """
 
 from __future__ import annotations
@@ -94,12 +113,9 @@ class OperationNode:
     (:524-662). See module docstring for the per-field consumer table."""
 
     id: str
-    line_number: int
     method_name: str
     receiver_variable: str
     receiver_type: str | None
-    arguments: dict[str, str]
-    node_type: str
     depends_on_params: tuple[str, ...]
     foreach_source: str | None
     foreach_body: tuple[str, ...]
@@ -132,12 +148,9 @@ class ProtocolComputationGraph:
 def _operation_from_dict(d: dict[str, Any]) -> OperationNode:
     return OperationNode(
         id=d["id"],
-        line_number=d["line_number"],
         method_name=d["method_name"],
         receiver_variable=d["receiver_variable"],
         receiver_type=d.get("receiver_type"),
-        arguments=dict(d.get("arguments", {})),
-        node_type=d["node_type"],
         depends_on_params=tuple(d.get("depends_on_params", ())),
         foreach_source=d.get("foreach_source"),
         foreach_body=tuple(d.get("foreach_body", ())),

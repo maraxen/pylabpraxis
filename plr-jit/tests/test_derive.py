@@ -270,6 +270,21 @@ def test_ledger_totals_are_internally_consistent(
     assert sum(gap_ledger["by_reason"].values()) == recomputed_gap_count
     assert totals["methods_attempted"] == len(finding_bearing)
 
+    # Round-4 remediation (M11): a subset count must never exceed its own
+    # population's denominator. Before this fix,
+    # `methods_with_dropped_receiver_call` was computed over ALL 4,758
+    # indexed records while `methods_attempted` counted only the 1,314
+    # finding-bearing ones -- 1976 > 1314, a structurally impossible
+    # "subset". Both figures are now computed over the same population
+    # (`finding_bearing`), so this assertion is a real, not vacuous, check.
+    assert totals["methods_with_dropped_receiver_call"] <= totals["methods_attempted"]
+
+    supported_tools_totals = gap_ledger["supported_tools"]
+    assert (
+        supported_tools_totals["methods_with_dropped_receiver_call"]
+        <= supported_tools_totals["methods_attempted"]
+    )
+
 
 # ---------------------------------------------------------------------------
 # test_ledger_is_stamped
@@ -280,6 +295,45 @@ def test_ledger_is_stamped(gap_ledger: dict) -> None:
     plr_hash = gap_ledger["stamp"]["plr"]["hash"]
     assert len(plr_hash) == 40
     assert all(c in "0123456789abcdef" for c in plr_hash)
+
+
+# ---------------------------------------------------------------------------
+# test_ledger_regenerates_deterministically -- round-4 remediation (m2).
+# AC-7.3 claims byte-identical regeneration modulo `stamped_at`; nothing
+# mechanized that claim before this test.
+# ---------------------------------------------------------------------------
+
+
+def test_ledger_regenerates_deterministically(
+    survey_index: dict[tuple[str, str], SurveyRecord],
+    survey_records: list[SurveyRecord],
+    dropped_receiver_counts,
+    real_stamp: SurveyStamp,
+) -> None:
+    """AC-7.3 (round-4 remediation, m2): two consecutive `build_gap_ledger`
+    runs against the SAME fixed stamp and unchanged survey data must
+    serialize to byte-identical JSON. Uses a shared, fixed `real_stamp`
+    (rather than letting each call recompute its own) so this test isolates
+    determinism of the LEDGER-BUILDING logic itself from `stamped_at`'s
+    inherent per-call variation, which AC-7.3's own "modulo `stamped_at`"
+    clause already carves out."""
+    import json
+
+    first = build_gap_ledger(
+        survey_index,
+        survey_records,
+        dropped_receiver_counts=dropped_receiver_counts,
+        stamp=real_stamp,
+    )
+    second = build_gap_ledger(
+        survey_index,
+        survey_records,
+        dropped_receiver_counts=dropped_receiver_counts,
+        stamp=real_stamp,
+    )
+    first_json = json.dumps(first, sort_keys=True)
+    second_json = json.dumps(second, sort_keys=True)
+    assert first_json == second_json
 
 
 # ---------------------------------------------------------------------------

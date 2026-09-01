@@ -8,13 +8,25 @@ browser-side and must run under Pyodide, where neither native extension nor
 a PLR install is available). `test_no_pylabrobot_import_under_check` walks
 that one subtree with the same `ast.walk` machinery `_iter_imports` already
 provides.
+
+Round-4 remediation (M6): AC-1.1 used to be satisfied by "`import plr_jit`
+exits 0" alone -- true even when `plr_jit/__init__.py` exported nothing
+(`__all__ = []`), which was the actual pre-round-4 state:
+`plr_jit.check_graph` was unreachable from the top-level package despite
+being the package's round-1 entry point. `test_plain_cpython_import_of_public_surface`
+(named in spec §1.3, previously absent from this file -- a spec/test drift
+this fix also closes) strengthens AC-1.1 to assert the three names the
+package now re-exports are actually importable, in a fresh subprocess.
 """
 
 import ast
+import subprocess
+import sys
 from pathlib import Path
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src" / "plr_jit"
 CHECK_ROOT = SRC_ROOT / "check"
+PLR_JIT_ROOT = SRC_ROOT.parent.parent
 
 
 def _iter_imports(tree: ast.AST):
@@ -67,3 +79,31 @@ def test_no_pylabrobot_import_under_check() -> None:
                 if top in ("pylabrobot", "libcst"):
                     offenders.append(f"{path}: {ast.unparse(import_node)}")
     assert offenders == [], f"Spec violation: {offenders}"
+
+
+def test_plain_cpython_import_of_public_surface() -> None:
+    """Spec §1.3/AC-1.1 (round-4 remediation, M6): a fresh subprocess
+    `import plr_jit` must expose `check_graph`, `AnalysisReport`, and
+    `Verdict` as top-level attributes, not merely exit 0. A bare "exits 0"
+    assertion is satisfiable by an empty `__all__` -- exactly the pre-round-4
+    state, in which `plr_jit.check_graph` was unreachable despite being the
+    package's round-1 entry point (spec §6.2)."""
+    src_path = str(PLR_JIT_ROOT / "src")
+    preamble = (
+        "import plr_jit; "
+        "assert callable(plr_jit.check_graph); "
+        "assert plr_jit.AnalysisReport is not None; "
+        "assert plr_jit.Verdict is not None"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", preamble],
+        cwd=str(PLR_JIT_ROOT),
+        env={"PYTHONPATH": src_path, "PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, (
+        f"import plr_jit (public surface) failed:\n"
+        f"stdout={result.stdout}\nstderr={result.stderr}"
+    )

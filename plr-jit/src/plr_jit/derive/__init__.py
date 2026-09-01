@@ -345,13 +345,32 @@ def derive_contract(
 
 
 def _module_of_liquid_handler(index: dict[Qualkey, SurveyRecord]) -> str:
+    """AC-7.2 says "any indexed record" -- collect ALL matching modules,
+    not just the first found (round-4 remediation, m3). At the current pin
+    all 54 ``class_name == "LiquidHandler"`` records sit in one module, so
+    dict-iteration-order-dependent first-match happens to be deterministic
+    today, but `plr_survey_common.py:127-129` proves duplicate class names
+    across modules exist *in general* -- the ambiguity is latent, not live,
+    and this is cheap defense in depth against it becoming live. Fails
+    LOUDLY, naming every distinct module found, rather than silently
+    picking one."""
+    modules: set[str] = set()
     for (module, _qualname), rec in index.items():
         if rec.class_name == "LiquidHandler":
-            return module
-    raise LookupError(
-        "no indexed survey record has class_name == 'LiquidHandler' -- cannot "
-        "derive SUPPORTED_TOOLS' (module, qualname) mapping (D22)"
-    )
+            modules.add(module)
+    if not modules:
+        raise LookupError(
+            "no indexed survey record has class_name == 'LiquidHandler' -- cannot "
+            "derive SUPPORTED_TOOLS' (module, qualname) mapping (D22)"
+        )
+    if len(modules) > 1:
+        raise LookupError(
+            f"multiple distinct modules have a class_name == 'LiquidHandler' "
+            f"record: {sorted(modules)} -- SUPPORTED_TOOLS' (module, qualname) "
+            f"mapping (D22) is ambiguous; resolve_supported_tool refuses to "
+            f"silently pick one"
+        )
+    return next(iter(modules))
 
 
 def resolve_supported_tool(name: str, index: dict[Qualkey, SurveyRecord]) -> Qualkey:
@@ -435,11 +454,13 @@ class _DroppedReceiverScanner(ast.NodeVisitor):
     def __init__(self) -> None:
         self.total = 0
         self.validation_looking = 0
+        self.by_attr: dict[str, int] = {}
 
     def visit_Call(self, node: ast.Call) -> None:
         attr = _is_dropped_receiver_call(node)
         if attr is not None:
             self.total += 1
+            self.by_attr[attr] = self.by_attr.get(attr, 0) + 1
             if _is_validation_looking(attr):
                 self.validation_looking += 1
         self.generic_visit(node)
@@ -455,10 +476,17 @@ class DroppedReceiverCounts:
     it to this counter would be gating on a predicate never evaluated for
     this population. ``validation_looking`` is the tighter secondary
     figure and is always <= ``total``.
+
+    ``by_attr`` (round-4 remediation, M12): the same total, broken down per
+    attribute name (e.g. ``"get_tip"``), as a sorted tuple of pairs (frozen
+    dataclass -- no mutable dict field). Feeds
+    ``_dropped_receiver_worklist``'s ranked view; ``sum(n for _, n in
+    by_attr) == total`` always.
     """
 
     total: int
     validation_looking: int
+    by_attr: tuple[tuple[str, int], ...] = ()
 
 
 def _count_dropped_receiver_calls(
@@ -467,7 +495,11 @@ def _count_dropped_receiver_calls(
     scanner = _DroppedReceiverScanner()
     for stmt in node.body:
         scanner.visit(stmt)
-    return DroppedReceiverCounts(total=scanner.total, validation_looking=scanner.validation_looking)
+    return DroppedReceiverCounts(
+        total=scanner.total,
+        validation_looking=scanner.validation_looking,
+        by_attr=tuple(sorted(scanner.by_attr.items())),
+    )
 
 
 def scan_dropped_receiver_calls_in_source(source: str) -> DroppedReceiverCounts:
@@ -589,6 +621,70 @@ def _reachable_keys(entry_keys: list[Qualkey], index: dict[Qualkey, SurveyRecord
     return reached
 
 
+def _closure_wide_dropped_receiver_counts(
+    entry: Qualkey,
+    index: dict[Qualkey, SurveyRecord],
+    dropped_receiver_counts: dict[Qualkey, DroppedReceiverCounts],
+) -> DroppedReceiverCounts:
+    """Sum the independent D3 AST pass's per-method counts over an entry
+    point's WHOLE transitive ``delegates_to`` closure (round-4 remediation,
+    M11 second half) -- not just the entry point's own body.
+
+    Before this fix, ``dropped_receiver_calls_by_method`` looked up
+    ``dropped_receiver_counts`` by the entry key alone (own-body-only),
+    which silently under-reports every ``SUPPORTED_TOOLS`` method whose real
+    dropped-receiver calls live behind a delegate rather than in its own
+    body -- exactly the same own-body-only failure mode §7.2's guard-inlining
+    closure exists to prevent for guards (see ``test_aspirate_closure_
+    reaches_check_containers``), now also fixed for this counter. Reuses
+    ``_walk_closure`` -- the same cycle-safe traversal core ``derive_contract``
+    uses -- so the two can never silently drift on traversal semantics.
+    """
+    total = 0
+    validation_looking = 0
+    for rec, key, _depth in _walk_closure(entry, index):
+        if rec is None:
+            continue
+        counts = dropped_receiver_counts.get(key, _EMPTY_DROPPED)
+        total += counts.total
+        validation_looking += counts.validation_looking
+    return DroppedReceiverCounts(total=total, validation_looking=validation_looking)
+
+
+def _dropped_receiver_worklist(
+    tool_keys: dict[str, Qualkey],
+    index: dict[Qualkey, SurveyRecord],
+    dropped_receiver_counts: dict[Qualkey, DroppedReceiverCounts],
+) -> list[dict[str, Any]]:
+    """The third ``top_unresolved`` view (round-4 remediation, M12/Cluster 3/
+    B3(e)): the D3 dropped-receiver AST pass is computed correctly but was
+    never ranked into a worklist -- this is that worklist. Built from the
+    SAME transitive-closure population the D3 pass covers (the
+    ``SUPPORTED_TOOLS`` closure), ranked by how many DISTINCT closure
+    methods contain at least one call to that attribute name -- the direct
+    analogue of ``_top_unresolved_from_records``'s ``blocks_methods``
+    semantics, but over the dropped-receiver population (which structurally
+    never enters ``unresolved_calls``, so the other two views can never see
+    it) rather than over the survey's own recorded gaps. Reuses each
+    record's already-computed ``DroppedReceiverCounts.by_attr`` breakdown --
+    no second AST pass over PLR source.
+    """
+    blocks: dict[str, set[Qualkey]] = {}
+    for entry in tool_keys.values():
+        for rec, key, _depth in _walk_closure(entry, index):
+            if rec is None:
+                continue
+            counts = dropped_receiver_counts.get(key, _EMPTY_DROPPED)
+            for attr, n in counts.by_attr:
+                if n > 0:
+                    blocks.setdefault(attr, set()).add(key)
+    ranked = sorted(
+        ((attr, len(methods)) for attr, methods in blocks.items()),
+        key=lambda item: (-item[1], item[0]),
+    )
+    return [{"call": attr, "blocks_methods": count} for attr, count in ranked]
+
+
 def _stamp_to_dict(stamp: SurveyStamp) -> dict[str, Any]:
     def _git_state_to_dict(state: Any) -> dict[str, Any]:
         return {
@@ -628,16 +724,35 @@ def build_gap_ledger(
     ``methods_with_dropped_receiver_call`` -- plus the two per-method
     call-node counts as secondary diagnostics, never a denominator, trap 8).
 
-    ``by_category`` is keyed on ``FAILURE_CATEGORIES`` (§7 task-table note)
-    but every value is 0 in v1: a gap here only ever produces an UNKNOWN
-    finding downstream (reason, not category -- category is required only
-    for WILL_FAIL per ``Finding.__post_init__``), and §0 fixes every v1
-    verdict at UNKNOWN, so no gap this module records is ever classified
-    into a FAILURE_CATEGORY in round 1. The block is published (schema
-    completeness, forward-compatible with a future round that does
-    classify) rather than omitted. This is a judgment call where the spec's
-    JSON example doesn't state the populating rule explicitly; flagged here
-    rather than silently invented.
+    ``by_category`` is keyed on ``FAILURE_CATEGORIES`` (§7 task-table note),
+    with every value ``None`` in v1 (round-4 remediation, M3 -- previously
+    ``0`` for every category, which reads as a MEASUREMENT of zero, not as
+    "not applicable"). A gap here only ever produces an UNKNOWN finding
+    downstream (reason, not category -- category is required only for
+    WILL_FAIL per ``Finding.__post_init__``), and §0 fixes every v1 verdict
+    at UNKNOWN, so no gap this module records is EVER classified into a
+    FAILURE_CATEGORY in round 1 -- there is no detection mechanism for
+    RISK-4's tripwire yet (that only becomes live once ``WILL_FAIL`` is
+    first emitted, a future round). The sibling ``by_category_status`` field
+    makes that explicit rather than leaving a reader to infer it from six
+    identical zeros. The block is still published (schema completeness,
+    forward-compatible with a future round that does classify) rather than
+    omitted.
+
+    Round-4 remediation (M11): ``totals["methods_with_dropped_receiver_call"]``
+    used to be computed over ALL 4,758 indexed records while
+    ``methods_attempted`` counted only the 1,314 finding-bearing ones -- a
+    population mismatch that let the subset figure exceed its own
+    denominator (1976 > 1314). Both are now computed over the SAME
+    ``finding_bearing`` population. Separately (M11 second half),
+    ``dropped_receiver_calls_by_method``/``validation_looking_dropped_
+    receiver_calls_by_method`` are now summed over each ``SUPPORTED_TOOLS``
+    method's WHOLE transitive closure (``_closure_wide_dropped_receiver_
+    counts``), not just its own body -- see that function's docstring.
+    ``top_unresolved`` gains a third view, ``dropped_receiver`` (M12/Cluster
+    3/B3(e)): the D3 population ranked into an actual worklist, since it
+    structurally never enters ``unresolved_calls`` and so was invisible to
+    the other two views.
     """
     if stamp is None:
         stamp = survey_stamp()
@@ -645,9 +760,8 @@ def build_gap_ledger(
     finding_bearing = [rec for rec in records if rec.findings]  # §7.6: 1,314
 
     whole_totals, whole_by_reason = _run_population(finding_bearing, index, stamp)
-    all_records = list(index.values())
     whole_totals["methods_with_dropped_receiver_call"] = _methods_with_dropped_receiver_call(
-        all_records, dropped_receiver_counts
+        finding_bearing, dropped_receiver_counts
     )
 
     tool_keys: dict[str, Qualkey] = {
@@ -660,19 +774,26 @@ def build_gap_ledger(
     )
 
     dropped_by_method = {
-        name: dropped_receiver_counts.get(key, _EMPTY_DROPPED).total
+        name: _closure_wide_dropped_receiver_counts(key, index, dropped_receiver_counts).total
         for name, key in sorted(tool_keys.items())
     }
     validation_looking_by_method = {
-        name: dropped_receiver_counts.get(key, _EMPTY_DROPPED).validation_looking
+        name: _closure_wide_dropped_receiver_counts(
+            key, index, dropped_receiver_counts
+        ).validation_looking
         for name, key in sorted(tool_keys.items())
     }
 
     reachable = _reachable_keys(list(tool_keys.values()), index)
     top_whole = _top_unresolved_from_records(records)
     top_tools = _top_unresolved_from_records([index[key] for key in reachable])
+    top_dropped_receiver = _dropped_receiver_worklist(tool_keys, index, dropped_receiver_counts)
 
-    by_category = {category: 0 for category in sorted(FAILURE_CATEGORIES)}
+    # Round-4 remediation (M3): None, not 0 -- a gap ledger never classifies
+    # any gap into a FAILURE_CATEGORY in round 1 (see docstring), so a
+    # numeric 0 would read as a measurement rather than as "not applicable
+    # yet". by_category_status names that explicitly.
+    by_category = {category: None for category in sorted(FAILURE_CATEGORIES)}
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -680,9 +801,11 @@ def build_gap_ledger(
         "totals": whole_totals,
         "by_reason": dict(sorted(whole_by_reason.items())),
         "by_category": by_category,
+        "by_category_status": "not_applicable_v1",
         "top_unresolved": {
             "whole_surface": top_whole,
             "supported_tools_closure": top_tools,
+            "dropped_receiver": top_dropped_receiver,
         },
         "supported_tools": {
             "methods_attempted": tools_totals["methods_attempted"],

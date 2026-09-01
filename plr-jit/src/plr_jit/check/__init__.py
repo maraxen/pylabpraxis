@@ -41,24 +41,36 @@ returned nothing for this operation, never a semantic claim about why.
    * every recorded gap (``unresolved_delegate`` / ``no_contract_derived``,
      the only two ``plr_jit.derive`` ever emits, §7.2) becomes one Finding
      with that same reason;
-   * every guard becomes one Finding. ``condition``/``scope_trail`` are raw,
-     unparsed strings in v1 (deferred item (c)) -- so a guard whose
-     ``free_vars`` intersects ``op.depends_on_params`` (an argument the
-     extractor already classified dynamic) gets the more specific
-     ``argument_not_static``; every other guard gets
-     ``guard_predicate_unparsed`` (§3.3: "a guard condition string could not
-     be turned into a predicate"), which is unconditionally true in v1 since
-     no predicate parser exists yet;
+   * every guard becomes one ``guard_predicate_unparsed`` Finding (§3.3: "a
+     guard condition string could not be turned into a predicate"), which is
+     unconditionally true in v1 since no predicate parser exists yet.
+     (Round-4 remediation, B4: this used to branch to the more specific
+     ``argument_not_static`` when a guard's ``free_vars`` intersected
+     ``op.depends_on_params``, but that reason has been withdrawn from
+     ``REASON_VOCABULARY`` -- the guard-free-var namespace and the
+     protocol-parameter namespace it was meant to intersect are disjoint in
+     every shipped fixture, so the branch never fired, and a same-named
+     collision would have fired it for no semantic cause. See
+     ``plr_jit.verdict.REASON_VOCABULARY``'s docstring for the reinstatement
+     path.)
    * an operation whose ``foreach_source``/``foreach_body`` is populated
      additionally gets one ``loop_bounds_unknown`` Finding (§3.3: these
      fields identify the loop construct, never its bounds -- bounds are
      deferred item (d)).
 
-No fallback finding is synthesized for a resolved contract with zero guards,
-zero gaps, and no loop -- that combination does not occur for any of the 10
-``SUPPORTED_TOOLS`` entries in the current ``derived_contracts.json`` (all
-ten carry >=1 guard), so round 1 does not invent a reason for a case its own
-data never exercises. See this task's report for the note.
+**A resolved contract with zero guards, zero gaps, and no loop now
+synthesizes one fallback ``no_contract_derived`` Finding (round-4
+remediation, B1/B2/§0(ii)).** Before this fix, that combination fell
+through to an empty finding list for the operation, and -- if it happened
+for *every* operation in a graph -- ``join(())`` would return the pre-fix
+``SAFE`` default, a live soundness bug on a reachable public path (a graph
+with zero operations reaches it trivially; a resolved-but-empty contract
+also reaches it). This never fired against the current
+``derived_contracts.json`` (all ten ``SUPPORTED_TOOLS`` entries carry >=1
+guard), which is exactly why it went unnoticed -- the data never exercised
+the gap. ``join`` (spec §3.2) now independently treats the empty multiset as
+UNKNOWN regardless, so this fallback is defense in depth, not the sole
+fix -- see ``plr_jit.verdict.join``'s docstring.
 """
 
 from __future__ import annotations
@@ -70,6 +82,7 @@ from plr_jit._provenance import SurveyStamp
 from plr_jit._provenance.git_state import GitState
 from plr_jit.check._supported_tools import SUPPORTED_TOOLS
 from plr_jit.check.graph import OperationNode, ProtocolComputationGraph, parse_graph
+from plr_jit.telemetry import emit_finding
 from plr_jit.verdict import AnalysisReport, Finding, PlrSite, Verdict, join
 
 __all__ = ["SUPPORTED_TOOLS", "check_graph"]
@@ -161,17 +174,6 @@ def _unresolved_delegate(op: OperationNode, *, detail: str = "") -> Finding:
     )
 
 
-def _argument_not_static(op: OperationNode, *, plr_site: PlrSite | None, detail: str = "") -> Finding:
-    return Finding(
-        verdict=Verdict.UNKNOWN,
-        operation_id=op.id,
-        category="",
-        plr_site=plr_site,
-        reason="argument_not_static",
-        detail=detail,
-    )
-
-
 def _guard_predicate_unparsed(
     op: OperationNode, *, plr_site: PlrSite | None, detail: str = ""
 ) -> Finding:
@@ -214,12 +216,26 @@ def _internal_error(op: OperationNode, *, detail: str = "") -> Finding:
 
 
 def _finding_from_guard(op: OperationNode, guard: dict[str, Any]) -> Finding:
-    free_vars = set(guard.get("free_vars", ()))
-    dynamic_vars = free_vars & set(op.depends_on_params)
+    """Every guard becomes a ``guard_predicate_unparsed`` Finding in v1
+    (round-4 remediation, B4: the former ``argument_not_static`` branch --
+    which fired when a guard's ``free_vars`` intersected
+    ``op.depends_on_params`` -- has been withdrawn from ``REASON_VOCABULARY``
+    and is no longer constructed anywhere; see the module docstring).
+
+    ``detail`` (round-4 remediation, m5): ``guard["condition"]`` being
+    ``None`` means the guard fires UNCONDITIONALLY -- the predicate is
+    ``TRUE``, not "no constraint" (§7.2's ``InlinedGuard.condition``: raw,
+    unparsed strings, and ``None`` is a real value the survey emits, not a
+    missing-field sentinel). The prior ``guard.get("condition") or ""``
+    mapped BOTH ``None`` and an empty-string condition to ``detail = ""``,
+    making the two indistinguishable in the emitted Finding -- unsound in
+    the ``SAFE`` direction, and not merely cosmetic: 379 of 2,814 (13.5%) of
+    survey findings, and 9 of the 119 guards in the shipped contract table,
+    carry ``condition: null``. ``None`` now maps to the explicit sentinel
+    string ``"<unconditional>"`` instead of being collapsed into ``""``."""
     plr_site = _plr_site_from_dict(guard.get("site"))
-    detail = guard.get("condition") or ""
-    if dynamic_vars:
-        return _argument_not_static(op, plr_site=plr_site, detail=detail)
+    condition = guard.get("condition")
+    detail = condition if condition is not None else "<unconditional>"
     return _guard_predicate_unparsed(op, plr_site=plr_site, detail=detail)
 
 
@@ -247,6 +263,16 @@ def _findings_for_operation(op: OperationNode, contracts: dict[str, Any]) -> lis
     findings.extend(_finding_from_guard(op, guard) for guard in contract.get("guards", ()))
     if op.foreach_source is not None or op.foreach_body:
         findings.append(_loop_bounds_unknown(op))
+    if not findings:
+        # Round-4 remediation (B1/B2/§0(ii)): a resolved contract with zero
+        # guards, zero gaps, and no loop must not silently produce an empty
+        # finding list -- see the module docstring's note on why this was a
+        # live soundness gap, not a deferred one.
+        findings.append(
+            _no_contract_derived(
+                op, detail="contract resolved with zero guards, zero gaps and no loop"
+            )
+        )
     return findings
 
 
@@ -258,19 +284,30 @@ def _check(graph: ProtocolComputationGraph, contracts_payload: dict[str, Any]) -
     for op in graph.operations:
         findings.extend(_findings_for_operation(op, contracts))
 
-    return AnalysisReport(
+    report = AnalysisReport(
         protocol_fqn=graph.protocol_fqn,
         verdict=join(tuple(findings)),
         findings=tuple(findings),
         stamp=stamp,
     )
+    # Round-4 remediation (M2): check_graph now actually emits telemetry --
+    # previously nothing under check/ ever called plr_jit.telemetry.emit*,
+    # despite §3.3:444's "internal_error ... always paired with a telemetry
+    # emit" claim. Emitting every finding here (not just internal_error's)
+    # makes that claim true for every reason, not just one -- emit() is a
+    # process-global no-op by default (spec §4.1's AC-4.4), so this costs
+    # nothing when no sink is attached.
+    for finding in report.findings:
+        emit_finding(finding, protocol_fqn=report.protocol_fqn, stamp=report.stamp)
+    return report
 
 
 def check_graph(graph_json: str, contracts_json: str) -> AnalysisReport:
     """Round-1 entry point (spec §6.2). ``graph_json``/``contracts_json`` are
     JSON strings, not pre-parsed objects -- both are ``json.loads``'d here
     and nowhere else. Never imports ``libcst``/``pylabrobot``/``pydantic``;
-    never shells out."""
+    never shells out. Emits every finding via ``plr_jit.telemetry`` (M2,
+    round-4 remediation) -- a no-op unless a sink is attached (§4.1)."""
     graph = parse_graph(json.loads(graph_json))
     contracts_payload = json.loads(contracts_json)
     return _check(graph, contracts_payload)

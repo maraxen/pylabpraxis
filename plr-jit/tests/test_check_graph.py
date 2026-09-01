@@ -101,22 +101,27 @@ def test_fixture_graph_yields_unknown_report_with_findings(report: AnalysisRepor
 
 
 def test_operation_ids_are_a_subset_of_real_graph_ids(report: AnalysisReport) -> None:
-    """AC-6.4, the anti-fabrication anchor: `{f.operation_id for f in
-    report.findings}` is a subset of the fixture graph's REAL
-    `OperationNode.id` values -- a `check_graph` that invents findings
-    against nonexistent operation ids fails this even while passing a
-    count-only check (AC-7.2)."""
+    """AC-6.4 (round-4 remediation, B2/fix 6: strengthened from subset to
+    surjectivity). `{f.operation_id for f in report.findings}` must equal
+    -- not just be a subset of -- the fixture graph's REAL `OperationNode.id`
+    values. The subset-only form was the anti-fabrication anchor but said
+    nothing about COVERAGE: `len(findings) >= len(operations)` (AC-6.3)
+    does not imply every operation actually received >=1 finding, and
+    nothing in the pre-round-4 suite asserted the surjective direction.
+    `research_a_d.md:339-345`'s finding, independently confirmed: a
+    `check_graph` that only ever emits findings for op_1 would still pass a
+    subset-only check and a count-only check simultaneously, while silently
+    never reporting anything about op_2/op_3/op_4."""
     graph_payload = json.loads(FIXTURE_GRAPH_JSON.read_text(encoding="utf-8"))
     real_ids = {op["id"] for op in graph_payload["operations"]}
 
     finding_ids = {f.operation_id for f in report.findings}
-    assert finding_ids <= real_ids, (
-        f"report.findings reference operation_id(s) {finding_ids - real_ids} "
-        f"absent from the fixture graph's real operations {sorted(real_ids)}"
+    assert finding_ids == real_ids, (
+        f"report.findings' operation_id set {sorted(finding_ids)} != the "
+        f"fixture graph's real operation id set {sorted(real_ids)} -- either "
+        f"a fabricated id ({finding_ids - real_ids}) or an uncovered "
+        f"operation ({real_ids - finding_ids})"
     )
-    # Not vacuous: the fixture graph has 4 real operations and the report
-    # must actually reference at least one of them.
-    assert finding_ids, "report.findings is empty -- the subset check above is vacuous"
 
 
 def test_fixture_exercises_contract_table_lookup(report: AnalysisReport) -> None:
@@ -242,24 +247,44 @@ def test_full_pipeline_report_round_trips_json(report: AnalysisReport) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_full_pipeline_emits_stamped_jsonl(report: AnalysisReport, tmp_path: Path) -> None:
-    """AC-6.7 (D15, moved from AC-4.3): with `JsonlSink` attached, the same
-    full T8 pipeline run over the fixture protocol emits >=1 line, every
-    line parses, and every line's `stamp.plr.hash` equals the current pin's
-    full SHA."""
-    from plr_jit.telemetry import JsonlSink, emit_finding, set_sink
+def test_full_pipeline_emits_stamped_jsonl(
+    graph_json: str, contracts_json: str, tmp_path: Path
+) -> None:
+    """AC-6.7 (D15, moved from AC-4.3; round-4 remediation, M2/fix 17): with
+    `JsonlSink` attached BEFORE the run, `check_graph` itself now emits
+    every finding (§3.3:444's "internal_error ... always paired with a
+    telemetry emit" used to be false of the code -- nothing under check/
+    ever called plr_jit.telemetry.emit*; check_graph now does, for every
+    reason, not just internal_error). This test therefore attaches the sink
+    and calls `check_graph` directly -- it does NOT call `emit_finding`
+    itself, unlike the pre-round-4 version, which emitted from the test and
+    proved nothing about the pipeline's own emission behavior. Uses the
+    `graph_json`/`contracts_json` fixtures rather than the module-scoped
+    `report` fixture, since `report` may have already been built (and
+    already emitted, against whatever sink was active then) by an earlier
+    test in this module."""
+    from plr_jit.telemetry import JsonlSink, set_sink
 
     sink_path = tmp_path / "events.jsonl"
-    sink = JsonlSink(sink_path)
-    set_sink(sink)
+    set_sink(JsonlSink(sink_path))
     try:
-        for finding in report.findings:
-            emit_finding(finding, protocol_fqn=report.protocol_fqn, stamp=report.stamp)
+        check_graph(graph_json, contracts_json)
     finally:
         set_sink(None)
 
     lines = sink_path.read_text(encoding="utf-8").splitlines()
     assert len(lines) >= 1
+    # Round-4 remediation (M8/fix 23): asserted against a FALSIFIABLE
+    # identity -- the emitted stamp must equal the stamp
+    # `derived_contracts.json` itself carries -- rather than a hardcoded
+    # pin string that silently passes against an arbitrarily stale
+    # artifact (the checker's own code version is unrecorded; `stamp` is
+    # build-time-only provenance, reconstructed verbatim from the
+    # contracts payload -- see AnalysisReport's docstring).
+    expected_hash = json.loads(contracts_json)["stamp"]["plr"]["hash"]
     for line in lines:
         event = json.loads(line)
-        assert event["stamp"]["plr"]["hash"] == _PLR_PIN_SHA
+        assert event["stamp"]["plr"]["hash"] == expected_hash
+    # The pin is still confirmed live for THIS checkout, as a secondary,
+    # self-scoping sanity check (not the primary assertion above).
+    assert expected_hash == _PLR_PIN_SHA

@@ -1,13 +1,17 @@
 """Spec 260901 §3.4 / AC-3.1-3.4: verdict/finding/report record shape.
 
-Exactly the six test functions named in §3.4's bullet list
+The six test functions named in §3.4's bullet list
 (test_join_truth_table, test_no_bool_protocol,
 test_will_fail_requires_category, test_unknown_requires_reason,
 test_reason_vocabulary_closed, test_report_round_trips_json).
 test_join_truth_table and test_reason_vocabulary_closed's real behavior
 inflate the *collected* count above six via parametrization / internal
-sub-checks -- the function count stays six, matching AC-3.1's "all six
-test_verdict.py tests pass."
+sub-checks -- the *named* function count stays six, matching AC-3.1's "all
+six test_verdict.py tests pass." **Round-4 remediation (M7) adds one more,
+un-named-in-§3.4 function, `test_join_absorbs_across_shared_operation_id`**,
+covering a case none of the six named tests' parametrization ever reaches
+(two findings sharing one `operation_id`) -- AC-3.1 is unaffected (it is
+still satisfied by the six named functions all passing), this is additive.
 """
 
 from __future__ import annotations
@@ -58,13 +62,32 @@ def _all_multisets_up_to_2() -> list[tuple[Verdict, ...]]:
 _MULTISETS = _all_multisets_up_to_2()
 
 
+# Round-4 remediation (M7, fix 2): a literal, hand-written
+# (input_verdicts -> expected_verdict) table, replacing the prior
+# `_expected_verdict` re-implementation of join()'s own absorption logic --
+# a wrong `join` body used to be able to turn this test red only by
+# accident of both implementations agreeing; a literal table asserts the
+# spec's table directly. Keys are exactly the 10 tuples `_MULTISETS`
+# produces (itertools.combinations_with_replacement over
+# (SAFE, WILL_FAIL, UNKNOWN), sizes 0/1/2), so a plain dict lookup covers
+# every parametrized case with no ordering ambiguity. The empty key mapping
+# to UNKNOWN is B1/B2's fix, not SAFE (spec §3.2, round-4 remediation).
+_EXPECTED_JOIN_TABLE: dict[tuple[Verdict, ...], Verdict] = {
+    (): Verdict.UNKNOWN,
+    (Verdict.SAFE,): Verdict.SAFE,
+    (Verdict.WILL_FAIL,): Verdict.WILL_FAIL,
+    (Verdict.UNKNOWN,): Verdict.UNKNOWN,
+    (Verdict.SAFE, Verdict.SAFE): Verdict.SAFE,
+    (Verdict.SAFE, Verdict.WILL_FAIL): Verdict.WILL_FAIL,
+    (Verdict.SAFE, Verdict.UNKNOWN): Verdict.UNKNOWN,
+    (Verdict.WILL_FAIL, Verdict.WILL_FAIL): Verdict.WILL_FAIL,
+    (Verdict.WILL_FAIL, Verdict.UNKNOWN): Verdict.WILL_FAIL,
+    (Verdict.UNKNOWN, Verdict.UNKNOWN): Verdict.UNKNOWN,
+}
+
+
 def _expected_verdict(verdicts: tuple[Verdict, ...]) -> Verdict:
-    verdict_set = set(verdicts)
-    if Verdict.WILL_FAIL in verdict_set:
-        return Verdict.WILL_FAIL
-    if Verdict.UNKNOWN in verdict_set:
-        return Verdict.UNKNOWN
-    return Verdict.SAFE
+    return _EXPECTED_JOIN_TABLE[verdicts]
 
 
 def _finding_for(verdict: Verdict, index: int) -> Finding:
@@ -102,6 +125,35 @@ def test_join_truth_table(verdicts: tuple[Verdict, ...]) -> None:
     <=2 (see module-level note above on the 7-vs-10 discrepancy)."""
     findings = tuple(_finding_for(v, i) for i, v in enumerate(verdicts))
     assert join(findings) == _expected_verdict(verdicts)
+
+
+def test_join_absorbs_across_shared_operation_id() -> None:
+    """Round-4 remediation (M7): none of the parametrized
+    `test_join_truth_table` cases ever share an `operation_id` --
+    `_finding_for` sets `operation_id=f"op{index}"`, so every multiset of
+    size 2 carries two DISTINCT operation ids. This is the case
+    `research_a_d.md` flags as the one `join`'s current absorption logic
+    treats as sound but the (a) abstract-domain literature would not: a
+    SAFE finding and a WILL_FAIL finding on the SAME operation currently
+    absorb to WILL_FAIL, exactly like two findings on different operations
+    would. That is today's specified behavior (§3.2's table is defined over
+    the flat finding multiset, with no per-operation grouping in v1) -- this
+    test pins it explicitly rather than leaving it to accidentally hold via
+    the parametrized cases above. When deferred item (a) lands, a Kleene
+    information join over per-operation abstract state (rather than flat
+    absorption) may need to replace this -- see §3.4."""
+    same_op_findings = (
+        _finding_for(Verdict.SAFE, index=1),
+        Finding(
+            verdict=Verdict.WILL_FAIL,
+            operation_id="op1",
+            category="precondition_state",
+            plr_site=None,
+            reason="",
+        ),
+    )
+    assert {f.operation_id for f in same_op_findings} == {"op1"}
+    assert join(same_op_findings) == Verdict.WILL_FAIL
 
 
 # ---------------------------------------------------------------------------
