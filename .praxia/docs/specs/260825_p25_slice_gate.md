@@ -1,6 +1,6 @@
 ---
 title: 'Coxswain P2.5 slice gate: GO/NO-GO for P2.6 fine-tune spend'
-description: 'Blocking gate doc (backlog 480): baseline failure distribution (P2.1 reports incl. recorded-artifact mode) vs coverage-plan adequacy vs ambiguity-class balance, with provisional threshold anchors and an explicit RECOMMENDATION for the orchestrator jury before any P2.6 spend.'
+description: "Blocking gate doc (backlog 480), rev 260901: full-scale corpus (812 rows) + live baseline on the whole 228-row eval split; verdict CONDITIONAL GO for P2.6 spend under three recipe/measurement conditions."
 task_id: 260825_copilot_pipeline_spec
 date: '260825'
 status: ready-for-jury
@@ -13,166 +13,231 @@ Spec: `.praxia/docs/specs/260825_coxswain-phase-2-functiongemma-copilot-p.md`
 rev2 §5 P2.5 / §7 AC-2.5.x. This doc gates P2.6 (fine-tune) spend; the
 orchestrator runs a blocking jury on it.
 
-## RECOMMENDATION: **NO-GO — iterate data**
+## RECOMMENDATION (rev 260901): **CONDITIONAL GO — spend P2.6 on this corpus, under three conditions**
 
-Do not spend P2.6 yet. The assembled corpus is 188 examples against the
-~1000-example target (81% short), the D2 real-baseline run is still blocked
-on Gemma license/token (only a partial mechanics proof exists, n=8), and the
-train-side negative mixing is thin in two of three clarify classes. All three
-deficits are closable with work that already has landed tooling — see §5.
-A jury override toward conditional-GO would be spending a 270M full-parameter
-fine-tune on a fifth of the planned data with no live-model baseline point;
-nothing in the current evidence makes that the cheap path.
+Every deficit the 0826 revision cited is closed: the assembled corpus is 812
+rows (was 188), the reference baseline is live inference over the full
+228-row eval split (was a golden-only n=62 point, itself preceded by an n=8
+mechanics proof), and train-side negatives are 131/90/128 per clarify class
+(was 1/5/9). The real baseline says the fine-tune is needed (T_acc 0.162
+against a 0.80 anchor) and that clarify recall is already AT the 0.70 anchor
+(0.705, CI [0.60, 0.79]) while precision is not (0.564 vs 0.90) -- so the
+lift P2.6 must produce is on accuracy and on not over-abstaining, not on
+abstaining more.
+
+Conditions the jury should attach (all are P2.6 recipe/measurement choices,
+none needs more data):
+
+1. **Set the negative-mixing ratio explicitly.** Train is 60% clarify-class
+   negatives (§4.1). Subsample or down-weight to the ratio D5 names; do not
+   train on the raw split.
+2. **Measure every P2.6 delta against `260901_baseline_real_v2.json` on the
+   same 228-row eval split**, never against the 0827 golden-only point. Treat
+   T_clr_recall as must-not-regress and T_acc / T_clr_prec as the targets.
+3. **Decide train-side dedup** (86 exact duplicates, §2) in the recipe, and
+   accept `ambiguous_referent` eval at 33 as a known, tracked gap -- it is not
+   statically scored at P2.6 (§4.3), so it does not gate this spend.
+
+If the jury instead wants all three clarify classes at >= 40 eval AND the
+60 wasted floor rows recovered before any spend, the NO-GO path is one
+cheap sprint: make `floor_gen.synth` respect the scalar surface, bump
+GENERATOR_VERSION (~685 teacher rows re-fetched), regenerate, re-run this
+gate. That buys ~+60 rows and a clean ambiguous_referent slice; it does not
+change what the baseline says the model needs.
 
 ## 1. What landed as inputs (all jury-cleared at Gate 1)
 
 | Branch | Artifact | Rows |
 |---|---|---|
 | P2.1 golden | `training/golden/golden_pairs.jsonl` (+ sidecar) | 88 |
-| P2.3 coverage floor | `training/out/corpus_p23_smoke.jsonl` | 30 |
-| P2.4 naturalness overlay | `training/overlay_gen/out/overlay_smoke.jsonl` | 92 |
+| P2.3 coverage floor | `training/out/corpus_p23_floor.jsonl` (matrix v2, 43 cells x 15/20) | 685 |
+| P2.4 naturalness overlay | `training/overlay_gen/out/overlay_full.jsonl` (all sources, 37 canonicals x3) | 111 |
 | P2.2 verify harness | execution-verification substrate behind synthetic labels | (code, no rows) |
 
-Assembly (`training/assemble/`, assembly_version 0.1.0): ONE
-FunctionGemma-native JSONL, every row `{metadata, tools[], messages[]}`,
-developer turn byte-matching the committed scaffold template (no date
-injection, D6-rev2). PLR_SOURCE_SHA `dd79c4c89bc008629a1c598ea614be5e6067d1f9`
-(= submodule HEAD, = golden manifest pin).
+**Revision 260901 (task `260901_p25_gate_close`).** The 0826 revision of this
+doc was measured on the SMOKE outputs (30 + 92 rows): the assembler's input
+constants still pointed at `corpus_p23_smoke.jsonl` / `overlay_smoke.jsonl`,
+so the full-scale pass this doc's own §5 asked for was never assembled. Both
+generators have since run at full scale (floor 0 rejections; overlay 0
+execution rejections after the tip-arming fix), the matrix was raised from 3
+to 15 examples per cell (20 for the 8 out-of-surface cells) so the split rule
+yields eval support per clarify class, and the assembler now reads the
+full-scale files. Every number below is from the regenerated
+`training/assemble/out/manifest.json` (assembly_version 0.1.2).
+
+Assembly (`training/assemble/`): ONE FunctionGemma-native JSONL, every row
+`{metadata, tools[], messages[]}`, developer turn byte-matching the committed
+scaffold template (no date injection, D6-rev2). PLR_SOURCE_SHA
+`dd79c4c89bc008629a1c598ea614be5e6067d1f9` (= submodule HEAD, = golden
+manifest pin).
 
 ## 2. Assembled corpus (after the assembly validation gate)
 
-22 input rows were excluded whole, loudly counted in the manifest
-(`exclusions.total = 22`): every exclusion is a multi-value argument on a
-param the shipped surface declares SCALAR (`aspirate.volume_ul [50,75,20]`,
-`transfer.destination [p1,p2]`) — parallel/multi-channel calls the declared
-13-tool grammar cannot express and serving-side schema validation would
-reject. Keeping them would train schema violations; padding is forbidden by
-the task line.
+72 input records were excluded whole (77 reason entries; a record with two
+bad calls is one exclusion), loudly counted in the manifest:
+
+- 62 entries are a multi-value argument on a param the shipped surface
+  declares SCALAR (`aspirate.volume_ul [10,75]`, `transfer.destination
+  [p1,p2]`): 50 from the floor, 12 from the overlay. These are the
+  parallel/multi-channel calls the 13-tool grammar cannot express; the
+  scalar surface was re-affirmed as a deliberate P2.1 decision on 260901
+  (declaring arrays would teach the model to emit lists the utterances never
+  contain). Keeping them would train schema violations.
+- 15 entries are the ENTIRE `pick_up_tips__ambiguous-referent` floor cell:
+  `pick_up_tips.at` is declared ARRAY but the synthesizer emits it non-list
+  for the ambiguous-referent case. This is a floor_gen synth-vs-surface
+  mismatch, not a data defect; fixing it needs a GENERATOR_VERSION bump
+  (full cache invalidation) and is left for the jury (§5).
+
+Padding is forbidden by the task line.
 
 | Split | clean_parse | missing_slot | ambiguous_referent | out_of_surface | total |
 |---|---|---|---|---|---|
-| eval | 66 | 12 | 12 | 12 | 102 |
-| train | 71 | 1 | 5 | 9 | 86 |
-| total | 137 | 13 | 17 | 21 | **188** |
+| eval | 107 | 44 | 33 | 44 | 228 |
+| train | 235 | 131 | 90 | 128 | 584 |
+| total | 342 | 175 | 123 | 172 | **812** |
 
-Provenance: golden 88 (ALL eval, per task AC — human-authored instruments
-never train on), coverage 20 kept / 10 excluded, naturalness 80 kept / 12
-excluded. Eval clarify total = 36 >= D8's 30 floor, spanning all three
-classes. Splits are disjoint by construction; stratification is
-provenance x class x verb (rule recorded in the manifest).
+Provenance: golden 88 (ALL eval, per task AC -- human-authored instruments
+never train on), coverage 625 kept / 60 excluded, naturalness 99 kept / 12
+excluded. Eval clarify total = 121 >= D8's 30 floor, spanning all three
+classes. Splits are disjoint by construction; stratification is provenance x
+class x verb (rule recorded in the manifest): 42 coverage strata contribute
+122 eval rows, 5 naturalness strata contribute 18.
 
-**Shortfall: 812 examples below target.** Reason (also in manifest):
-P2.3/P2.4 branches landed at smoke scale — the committed outputs are the 30 +
-92 row smoke runs; full-scale generation (`floor_gen` over all 43 matrix
-cells x3 examples ≈ 129 raw; `overlay_gen --full` over all notebooks) is
-wired but was not this item's mandate. Assembly merges what exists and pads
-with nothing.
+**Duplicates (measured, not dropped):** `counts.duplicate_utterances_normalized
+= 86` exact normalized-utterance collisions across the whole corpus. On the
+eval side they are few (per class distinct/rows: clean_parse 106/107,
+missing_slot 41/44, ambiguous_referent 32/33, out_of_surface 44/44); on the
+train side they concentrate in cells whose slot space is tiny (train
+distinct/rows: 227/235, 102/131, 69/90, 121/128; worst cells
+`move_lid__missing-slot` 12, `discard_tips__ambiguous-referent` 10,
+`move_resource__missing-slot` 8). Whether P2.6 should dedup train is a jury
+question (§5); the eval numbers above are effectively distinct.
+
+**Shortfall: 188 examples below the 1000 target** (was 812 below at smoke
+scale). The remaining gap is bounded by matrix size x examples_per_cell and
+by the 37 unique mined overlay canonicals, not by a pending run.
 
 ## 3. Baseline failure distribution (what a fine-tune must fix)
 
-Source: `training/eval/reports/260825_recorded_fixture_report.json`
-(mode=recorded_artifacts; labeled NOT-live-inference, PARTIAL: 8 of 62
-in-scope scored; base revision unpinnable — gated repo, no token).
+Source: `training/eval/reports/260901_baseline_real_v2.json` -- mode
+local_inference, LIVE LOCAL INFERENCE, `google/functiongemma-270m-it@39eccb09`,
+greedy decode, CPU, **n=228 = the whole assembled eval split** (every class,
+every provenance). This REPLACES `260827_baseline_real.json` (n=62, golden
+rows only) as the reference point; the two are not comparable row-for-row
+and the anchors in the thresholds doc are unchanged (D8).
 
-| Metric | Value | Wilson 95% |
-|---|---|---|
-| exact-match accuracy | 0.75 (6/8) | [0.409, 0.929] |
-| clarify recall | 0.50 (2/4) | [0.150, 0.850] |
-| clarify precision | 1.00 (2/2) | [0.342, 1.000] |
+| Metric | v2 (n=228) | Wilson 95% | 0827 golden-only (n=62) | anchor |
+|---|---|---|---|---|
+| `T_acc` exact-match | 0.162 (37/228) | [0.120, 0.216] | 0.210 | 0.80 |
+| `T_clr_recall` | 0.705 (62/88) | [0.602, 0.790] | 0.833 | 0.70 |
+| `T_clr_prec` | 0.564 (62/110) | [0.470, 0.653] | 0.556 | 0.90 |
 
-Failure anatomy (the two exact-match misses):
+Clarify confusion (statically scoreable classes only, §4.3): TP 62, FN 26,
+FP 48, TN 92.
 
-1. `golden-clean-dispense-03` (clean_parse): volume transcription error —
-   predicted 50 where the utterance states 15. Numeric grounding slips on an
-   otherwise-correct selection. Class-relevant because clean positives are
-   what T_acc measures.
-2. `golden-missing-slot-03` (missing_slot): HALLUCINATED an unstated param
-   (`destination='waste_plate_A1'` from a "Dispense 100 microliters." prompt)
-   AND therefore derived the wrong gap fields. This is exactly the failure
-   D7/D11 clarify supervision exists to suppress, and it co-occurred with a
-   clarify FALSE NEGATIVE (no abstention). Clarify FN split: one
-   out-of-surface + one missing-slot miss; zero false-positive clarifies.
+Per class (exact-match successes / n; clarify predicted / expected), with
+the failure reasons the scorer recorded (`exact_match_failures[].reasons`):
 
-Read: base-model failures cluster on (a) numeric transcription and (b)
-missing-slot hallucination-without-abstention. Both are trainable behaviors,
-but (b) needs enough train-side negatives to learn from — which §4 shows we
-do not yet have at scale.
+| class | n | exact | clarify pred/exp | dominant failure reasons |
+|---|---|---|---|---|
+| clean_parse | 107 | 6 / 107 | 34 / 0 | 47 slot/reference derivation mismatch on an emitted call; 18 empty completion; 8 over-generation (2 calls for 1); 7 `drop_tips`/`discard_tips` name confusion; 7 missing wavelength params |
+| missing_slot | 44 | 0 / 44 | 28 / 44 | 24 empty completion (abstains by silence); 10 hallucinated the missing param (`missing_required` derived empty); 12 slot derivation mismatch; 3 params mismatch |
+| out_of_surface | 44 | 31 / 44 | 34 / 44 | 13 fabricated a call (1-3 calls where 0 intended); was 12/12 on golden -- synthetic off-surface asks are harder |
+| ambiguous_referent | 33 | 0 / 33 | 14 / 0 | 18 slot derivation mismatch; 14 empty completion; 4 name confusion; 6 params mismatch (not statically scored) |
+
+Read: the golden-only baseline overstated the base model on both clarify
+axes. At scale the failure anatomy is (a) reference/slot derivation on
+clean positives -- the model picks the verb and emits a call, but the
+referent it names does not derive to the intended slot (47/107), (b)
+missing-slot hallucination-without-abstention (10/44 fill in the param the
+utterance never stated), and (c) empty completions on clean positives
+(18/107) plus 13/44 fabricated calls on off-surface asks. (b) and (c) pull
+recall and precision in opposite directions, which is why the recipe must
+target precision without buying it by abstaining less. All three are
+trainable behaviors and the corpus now carries train-side support for each
+(§4.2).
 
 ## 4. Adequacy analysis
 
 ### 4.1 Coverage plan vs corpus
 
-- Train side holds 86 rows (71 positive / 15 negative ≈ 17% negative mixing —
-  inside D7's "controlled ratio" spirit, but from only 15 negative examples).
-  The research §2a precedent (40 synthetic examples moving tool-selection
-  2/20 -> 16/20) suggests small data CAN teach selection INTENT; our eval,
-  however, demands generalization across 13 tools plus calibrated abstention,
-  and D8's slices deserve more than ~12 support points per clarify class.
-- Verb coverage is complete on positives (every one of the 13 included verbs
-  appears in both splits via golden), but synthetic diversity per verb is
-  smoke-scale (largest naturalness stratum n=27).
-- The 43-cell committed ambiguity matrix supports ≈129 floor examples/cell-
-  sweep; today's corpus carries 20 kept. The generator to fix this is LANDED;
-  only teacher spend + a full run are missing.
+- Train side holds 584 rows: 235 positive (clean_parse) / 349 negative
+  (clarify classes) = **60% negative**, up from 17% at smoke scale. D7's
+  "controlled ratio" now cuts the other way: the negatives are no longer
+  thin, they dominate. P2.6's recipe (D5) must set the mixing ratio
+  explicitly (subsample negatives or upweight positives) rather than train
+  on the raw split; this is a training-recipe knob, not a data deficit.
+- Verb coverage: 20 distinct verbs across 812 rows; every one of the 13
+  included verbs appears in both splits via golden. Synthetic diversity per
+  verb is now full-scale (largest naturalness stratum n=36, `pick_up_tips`;
+  coverage strata n=15/20 per cell before exclusion), with the duplicate
+  caveat in §2.
+- The 43-cell matrix at v2 supports 685 floor rows per sweep; 625 survived
+  assembly. The 60 lost rows are all in three aspirate/dispense/transfer
+  multi-value cells and the one broken pick_up_tips cell (§2) -- i.e. the
+  generator spends teacher calls on calls the surface then rejects. Making
+  `floor_gen.synth` respect the scalar surface would recover them at the
+  cost of a GENERATOR_VERSION bump (every cached row re-fetched, ~685
+  teacher rows).
 
 ### 4.2 Ambiguity-class balance
 
-Eval side is balanced by construction (12/12/12 golden + synthetic support).
-Train side is NOT balanced: out_of_surface 9, ambiguous_referent 5,
-missing_slot **1**. A model trained now would see essentially no
-missing-slot-negative gradient — the single worst-supported behavior given
-§3's failure anatomy. This alone would predictably fail T_clr_recall's intent
-even if T_acc improved.
+Eval side: missing_slot 44 and out_of_surface 44 clear the ~40 target set
+in §5; **ambiguous_referent is 33** -- short by 7, entirely because 39 of
+its 150 floor rows were excluded (§2: the whole pick_up_tips cell plus 24
+multi-value aspirate/dispense rows), which also pushed those two strata
+below the n>=4 eval threshold. Note ambiguous_referent is NOT statically
+scoreable in this harness (§4.3); its eval support matters at P2.9, not for
+the T_clr metrics this gate reads.
+
+Train side is balanced across clarify classes: missing_slot 131,
+out_of_surface 128, ambiguous_referent 90 -- against 1 / 9 / 5 at smoke
+scale. A model trained now sees substantial missing-slot-negative gradient,
+which was the single worst-supported behavior in the 0826 revision.
 
 ### 4.3 Measurement caveats the jury should hold
 
-- **UPDATE 260827: D2 unblocked.** Real local CPU inference now runs
-  (HF_TOKEN exported; gated-repo terms already accepted). A harness bug was
-  found and fixed in the same pass: the prompt builder never applied the
-  model's chat template or passed the 13 tool declarations, producing a
-  degenerate first result (0.194 acc, uniform empty completions) that was
-  NOT a real capability measurement — see
-  `260825_p25_provisional_thresholds.md` §5 for the fix and the corrected
-  real baseline (T_acc 0.210 [0.127,0.326], T_clr_recall 0.833
-  [0.642,0.933], T_clr_prec 0.556 [0.396,0.705], n=62,
-  `training/eval/reports/260827_baseline_real.json`). Anchors in the
-  thresholds doc remain provisional policy margins (unchanged, per D8's
-  one-revision-at-P2.6 rule) but are now checked against a real baseline
-  point instead of the n=8 mechanics-proof partial.
-- Static clarify scoring covers out-of-surface + missing-slot only (24 eval
-  items); ambiguous_referent verifies at P2.9 with live grounding (F1-rev2/C-M1).
-  The three-class corpus sizing (36) satisfies D8's letter; the statically
-  scoreable slice is smaller than 30.
+- **Reference point moved (260901).** `260901_baseline_real_v2.json` (n=228,
+  the full assembled eval split) replaces the 0827 golden-only point
+  (n=62). Do not read the recall drop 0.833 -> 0.705 as regression: the
+  model did not change, the eval did. The anchors in
+  `260825_p25_provisional_thresholds.md` are provisional policy margins and
+  remain unchanged per D8's one-revision-at-P2.6 rule; they are now checked
+  against a split-representative baseline instead of the golden subset.
+- Static clarify scoring covers out_of_surface + missing_slot only (88 eval
+  items = the recall denominator); ambiguous_referent verifies at P2.9 with
+  live grounding (F1-rev2/C-M1). Its 33 eval rows therefore do not enter
+  T_clr_* at this gate.
+- Wall clock for the baseline lane: ~18 min on CPU for 228 rows (270M,
+  greedy, 128 new tokens). Re-running after P2.6 is cheap.
 
-## 5. What flips this to GO
+## 5. What flips this to GO — status at rev 260901
 
-1. **UNBLOCKED 260827: backend chosen + wired + real-verified (Gemini 3.7
-   Flash via `agy`), full-scale run still pending.** User named the
-   replacement backend for the pass titanix couldn't handle at full scale:
-   `gemini-3.7-flash-medium`, reached by shelling to the local `agy` CLI
-   (NOT a raw API key — `agy` owns its own auth, already installed +
-   authenticated on this machine). Non-Gemma — D13 re-check does not apply
-   (see the decision doc). Wired end-to-end and verified against real `agy`
-   calls (8 cells, 24 examples, pass_rate=1.000):
-   `floor_gen.teachers.GeminiTeacher` (`--backend gemini --batch-size N` in
-   `floor_gen/cli.py`, batched per user direction — group many items per
-   call rather than ~800 individual calls) and
-   `overlay_gen.pair_builder.GeminiTeacherClient` (`--backend gemini` in
-   `overlay_gen/run_smoke.py`, not yet batched — fast-follow), both
-   enforcing the response contract via `agy --json-schema` guided decoding.
-   Full design, empirical caveats (guided-decoding null-handling quirks,
-   agy schema requirements), and PLR coverage/brittleness analysis:
-   `.praxia/docs/decisions/260827_teacher-backend-gemini-3-7-flash-for-full-scale-floor_gen-overlay_gen-pass.md`.
-   **Still to do**: no external setup needed; run `floor_gen` over all cells
-   + `overlay_gen --full`, teacher caches make the re-run
-   incremental; re-assemble; target >= ~800 assembled rows with missing_slot
-   train mass >= ~30 and each clarify class >= ~40 eval or better.
-2. ~~Unblock the REAL baseline~~ **DONE 260827** — see §4.3 update and
-   `260825_p25_provisional_thresholds.md` §5. Real T_acc (0.210) confirms
-   the base model needs the fine-tune; T_clr_recall (0.833) already clears
-   anchor zero-shot, a useful signal for D5's training recipe.
-3. Re-run THIS gate with fresh numbers (assembly idempotency makes step 1
-   byte-comparable apart from intended growth).
+1. **DONE 260901.** Full-scale generation assembled: `floor_gen` at matrix
+   v2 (43 cells x 15/20 = 685 rows, 0 rejections, Gemini 3.7 Flash via
+   `agy`, batched) + `overlay_gen --full` (111 rows, 0 execution
+   rejections). Re-assembled: **812 rows** against the ">= ~800" line;
+   missing_slot train mass **131** against ">= ~30"; eval clarify
+   **44 / 33 / 44** against ">= ~40 each" -- two of three clear, the third
+   (ambiguous_referent, not statically scored) is short by 7 for the reason
+   in §2. The assembler had been reading the smoke files until this
+   revision; that is fixed and pinned by the drift-alarm test.
+2. **DONE 260901.** Real baseline re-measured on the assembled eval split
+   (§3). Supersedes the 0827 golden-only point as the P2.6 reference.
+3. **DONE -- this revision.** Gate re-run with fresh numbers; verdict at the
+   top.
+
+**Open for the jury (not blockers, recorded so they are decided rather than
+defaulted):**
+
+- Negative-mixing ratio for P2.6 (train is 60% negatives).
+- Train-side exact-duplicate handling (86 rows).
+- Whether to spend one more sprint on `floor_gen.synth` scalar-surface
+  compliance (recovers ~60 rows incl. the whole
+  `pick_up_tips__ambiguous-referent` cell; needs GENERATOR_VERSION bump).
+- Increments 2-4 of the corpus-ingestion strategy remain declined under G1's
+  STOP (user decision 260901); this gate does not depend on them.
 
 ## 6. Deliverable cross-links
 
