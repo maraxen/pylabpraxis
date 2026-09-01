@@ -1,6 +1,6 @@
 {
  "artifact": "praxis-copilot-p25-assembled-corpus",
- "assembly_version": "0.1.1",
+ "assembly_version": "0.1.2",
  "backlog_item": 480,
  "counts": {
   "by_class": {
@@ -866,7 +866,7 @@
   "total": 72
  },
  "generator_versions": {
-  "assemble": "0.1.1",
+  "assemble": "0.1.2",
   "floor_gen": [
    "0.2.0"
   ],

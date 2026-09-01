@@ -59,7 +59,7 @@ __all__ = [
 ]
 
 #: Bump on ANY change to assembly logic / split rule / validation policy.
-ASSEMBLY_VERSION = "0.1.1"
+ASSEMBLY_VERSION = "0.1.2"
 
 TRAINING_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = TRAINING_DIR.parent
@@ -387,6 +387,10 @@ def render_native_row(record: dict[str, Any], split: str, tools: list[dict]) -> 
 def render_sidecar_row(record: dict[str, Any], split: str) -> dict:
     return {
         "record_id": record["record_id"],
+        # Line-alignment contract shared with the golden sidecar: consumers
+        # (praxis_training.baseline_eval.runner.load_pair_set) verify the
+        # sidecar utterance equals the pair's user turn on every line.
+        "utterance": record["utterance"],
         "split": split,
         "provenance": record["provenance"],
         "ambiguity_class": record["ambiguity_class"],
