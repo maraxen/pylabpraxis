@@ -1836,7 +1836,7 @@ class HandMaintainedSurface:
     what: str
     metric: str                 # what is counted
     declared: int               # the ceiling
-    status: Literal["FROZEN", "CAPPED", "DERIVABLE_NOT_YET", "TARGET_ZERO"]
+    status: Literal["FROZEN", "CAPPED", "DERIVABLE_NOT_YET", "TARGET_ZERO", "RETIRED"]
     why_not_derived: str        # REQUIRED, non-empty
     breaks_when: str            # REQUIRED, non-empty
     trigger: str = ""           # REQUIRED and non-empty iff status == DERIVABLE_NOT_YET
@@ -1896,7 +1896,7 @@ structured data.
 | HM-5 | `FAILURE_CATEGORIES` (`failure_taxonomy.py:71-78`) | categories | **6** | FROZEN | None — these are our semantics, not PLR's. |
 | HM-6 | `classify_exception` module-prefix dispatch (`:109,121`) | prefixes | **2** | CAPPED (3) | None. |
 | HM-7 | `our_names` harness-exception map (`:153-154`) | entries | **3** | DERIVABLE_NOT_YET | Duplicates the `isinstance` dispatch six lines above; derive from the three classes' `__name__`. |
-| HM-8 | `_plr_exception_class_names` module allowlist (`:88-89`) | modules | **2** | DERIVABLE_NOT_YET | Replace the 2-module `inspect.getmembers` walk with a load of `plr_exception_taxonomy.json` (132 classes). See §4.2. **Scheduled as T7.** |
+| HM-8 | ~~`_plr_exception_class_names` module allowlist~~ **RETIRED (round 4, M5)** | modules | **0** (was 2) | **RETIRED** | Trigger FIRED: T7 (`3a3a9f00`) replaced the 2-module `inspect.getmembers` walk with a validated load of `plr_exception_taxonomy.json`. 11 → 132 names, 121 newly visible, none lost. The surface no longer exists. |
 | HM-9 | `SUPPORTED_TOOLS` (`dispatcher.py`) | tools | **10** | CAPPED (10) | None — a scope boundary, not a claim about PLR. Growth is a deliberate scope decision. |
 | HM-10 | `EffectType` enum (`method_contracts.py:18-29`) | members | **9** | CAPPED (9) | None in v1 (effects are not simulated). |
 | HM-11 | `PreconditionType` enum (`models.py:~500-521`) | members | **MEASURE** | CAPPED | Candidate for derivation from guard `raises` classes once (c) lands. |
@@ -1967,6 +1967,33 @@ distinguishes:
   cap; it is always a visible diff against whatever cap is currently in force, exactly as
   `test_no_surface_exceeds_its_declared_size` already enforces per-row.
 
+**`RETIRED` semantics and the cap (round-4 remediation, M5 — CONCEDE).** §9 previously specified how
+rows are *added* but never how a row whose conversion trigger has FIRED leaves the registry. T7
+eliminated HM-8's surface outright, leaving it in an undefined state: none of the four original
+status values fit, `test_no_surface_exceeds_its_declared_size` passed vacuously (`0 <= 2`) so the
+ratchet could not distinguish "converted" from "still there", and `test_every_row_justifies_itself`
+requires a non-empty `trigger` iff `DERIVABLE_NOT_YET`, which a fired trigger no longer is.
+
+A `RETIRED` row is **kept, not deleted** — the historical record of what was hand-maintained and how
+it was discharged is the registry's whole point. Normative rules:
+
+- `RETIRED` requires `declared == 0` and a `why_not_derived` that names the commit which discharged it.
+- `test_frozen_surfaces_are_exact` extends to `RETIRED`: `measure() == 0` exactly, so a retired
+  surface silently reappearing turns the ratchet red instead of passing vacuously.
+- **`RETIRED` rows do not count toward `live_rows`.** This is the load-bearing consequence: retiring
+  HM-8 drops `live_rows` 21 → 20 while the cap stays 24, so headroom silently grows 3 → 4 — exactly
+  the drift §9.4's strict-monotonicity clause exists to prevent. **The cap therefore moves with the
+  count: retiring a row lowers the cap by one.** Growth still never raises it.
+
+**T7 introduced unregistered hand-maintained surface (round-4 remediation, M5).** `_TAXONOMY_PATH`
+plus the hand-typed 2-key artifact-validation schema (`version.git_sha`, `classes`) at
+`training/verify/failure_taxonomy.py:140-153` is, under §9.4's own discovery-vs-growth rule,
+**growth** — newly hand-typed surface that did not exist before — and it has no row. It gets one at
+T9 as **HM-22** (metric: validated artifact keys, baseline 2, CAPPED(4)). Net effect on the count:
+HM-8 retires (−1), HM-22 registers (+1), so `live_rows` returns to 21 and the cap of 24 stands as
+specified. The two changes must land in the *same* T9 commit; applying either alone leaves the
+arithmetic inconsistent.
+
 **Re-baseline mechanism.** At T9, the cap is re-baselined once to `live_rows + 3` (21 + 3 = 24 at this
 round's count). After T9 ships, the cap is fixed and `test_total_declared_within_budget` (§9.3)
 enforces it with strict monotonicity — no further re-baselining without a new adversarial round
@@ -1978,7 +2005,7 @@ finding new discovery, which is exactly the process that produced this one.
 |---|---|
 | HM-13 → 0 (derived contracts replace hand-written) | **45** |
 | HM-1 → DERIVED (resource-type closure) | **34** |
-| HM-8 → DERIVED (exception taxonomy load) | **2 modules → 132 derived classes** |
+| ~~HM-8 → DERIVED (exception taxonomy load)~~ **DONE, T7 `3a3a9f00`** | **2 modules → 132 derived classes** (11 → 132 names visible; row now `RETIRED`, M5) |
 | HM-7 → DERIVED | **3** |
 
 **Target: ≥82 hand-typed facts eliminated, and the count of `TARGET_ZERO` + `DERIVABLE_NOT_YET` rows
@@ -2008,14 +2035,21 @@ formally closing it. A real anti-gaming metric (e.g. summing `declared` across r
 Blocked on a literature corpus (abstract interpretation + typestate) currently being compiled.
 **Nothing about these is specified anywhere in this document.**
 
+**Round-4 remediation (B3, PARTIAL, and materially overstated by the round-4 challenge) — of the six
+rows in this table's dependency structure, exactly ONE ((e)) is genuinely falsified; (d) is not
+falsified at all; (b) and (f) have their stated reasons CONFIRMED by the very evidence cited against
+them and are merely under-scoped, not wrong.** Rows (b)/(e)/(f) below are edited; (d) gets one
+optional clause; (a)/(c) are untouched (not challenged).
+
 | # | deferred | one-line reason |
 |---|---|---|
 | (a) | The abstract domain — lattice, ⊑, join at branch merges, widening | Choosing a domain before reading the literature would hard-code a precision/soundness tradeoff we cannot yet evaluate; §3.2 names the exact attachment point. |
-| (b) | The formal meaning of `UNKNOWN` — sound over-approximation vs. bail-out | These are different guarantees with different obligations; §3.3's reasons are deliberately *mechanical* so the vocabulary survives either answer. |
+| (b1) | The formal meaning of `UNKNOWN` — sound over-approximation vs. bail-out, i.e. how `UNKNOWN` should PROPAGATE (⊤-propagation semantics) | Genuinely presupposes (a): propagation needs an abstract state to propagate, which does not exist pre-(a). **(round-4 remediation, B3 row (b), split — the stated reason survives:** `research_b_f.md:26` opens "it is real, but the spec has named the wrong axis" about the UNDIVIDED row, not about this half.) |
+| (b2) | Whether an `UNKNOWN`-worthy obligation is generated AT ALL, for a construct the front end cannot yet classify | **Not blocked on (a) — in scope for T6's recording rule now (round-4 remediation, B3 row (b), split, CONCEDE half).** A front-end/TCB recording-completeness property, not a propagation-semantics one; the literature prescribes a fail-closed front end (`research_b_f.md:44-50,100-104`). Silently dropping the obligation (rather than recording SOME `UNKNOWN` reason for it) was the actual gap — category (C) in `research_b_f.md`. |
 | (c) | The predicate language turning guard `condition` + `mentions_params` into a checkable predicate | §7 carries conditions as opaque strings precisely so this can land later without reshaping the pipeline. |
-| (d) | Loop handling — `bounds_analyzer`'s `items_x`×`items_y` heuristic vs. sound widening | Widening is a lattice operation and presupposes (a). `loop_bounds_unknown` is the placeholder reason. |
-| (e) | Resolution strategy for the 967 unresolved cross-class calls | Requires type inference whose precision requirements follow from (a); §7.4's `top_unresolved` ranking is built now to prioritise it later. |
-| (f) | Precision / false-positive targets | Meaningless before (a) and (b) fix what a "false positive" is; AC-7.4 and AC-8.3 deliberately set no thresholds. |
+| (d) | Loop handling — `bounds_analyzer`'s `items_x`×`items_y` heuristic vs. sound widening | Widening is a lattice operation and presupposes (a). `loop_bounds_unknown` is the placeholder reason. **(round-4 remediation, B3 row (d) — REBUTTED, no change to the reason itself; one optional clause added:** whether the domain has finite height *is* (a)'s question, so the (a)-dependency claim is correct as written, not merely a conditional dressed up as one — `research_a_d.md:386-390`'s "if the domain is typestate ... item (d) largely dissolves" IS that dependency, not a counterexample to it. If (a) resolves to a finite-height typestate domain, (d) resolves to *nothing to design*; if the verdict path ever includes numeric/volume accumulation, it does not — `research_a_d.md:432-440` keeps that escape hatch open on its own.) |
+| (e) | Resolution strategy for the ~967 unresolved cross-class calls, INDEPENDENT of (a) | **(round-4 remediation, B3 row (e) — CONCEDE, fully; the stated reason was FALSE.)** `research_c_e.md:216-256` calls the original "requires type inference whose precision requirements follow from (a)" ordering "fundamentally backwards" and shows the two are independent under a class-resolution reframing, backed by a 133-call measurement: 60–67% of the 10-tool closure's dropped-receiver calls resolve via a stdlib `ast` annotation pass that needs nothing from (a). **Scheduled as T11, after T6**, gated on `drop_tips` acquiring a `TipTracker.get_tip` guard at `depth > 0` (a concrete, checkable trigger — not "later" left unscheduled). §7.4's new `top_unresolved.dropped_receiver` ranked view (M12) is T11's worklist. |
+| (f) | Precision / false-positive targets — the NUMBER is deferred | Meaningless before (a) and (b) fix what a "false positive" is; AC-7.4 and AC-8.3 deliberately set no thresholds. **(round-4 remediation, B3 row (f) — the stated reason SURVIVES, appended, not rewritten:** `research_b_f.md:381-383`, endorsed: "'false positive' still has no referent for us: while every verdict is `UNKNOWN` there are no positives to be false" — that IS this row's reason. What is settled, per the same report, is the *shape*: an absolute count of `UNKNOWN` root causes — clusters, not raw findings — measured on a named, frozen benchmark at a fixed PLR pin, set after the first T6 measurement. Only the number stays deferred.) |
 
 **Boundary summary — what this spec assumes and what changes when they land:**
 
@@ -2450,3 +2484,68 @@ headroom 1 → **3**.
 deferrals remain exactly as scoped in round 1, untouched. The spec remains gated on the literature
 corpus for the six deferred semantic questions; this round closes out the mechanical/structural gaps
 the round-2 challenger found in the corpus-independent plumbing.
+
+---
+
+## Remediation changelog (round 3 → round 4)
+
+**What made round 4 different.** Rounds 1–3 reviewed a *document*. Round 4 reviewed *running code*:
+T1–T8 shipped between round 3 and round 4, and eight tasks of building falsified claims the spec had
+made from reading. 22 objections (5 BLOCKER, 12 MAJOR, 5 MINOR); adjudicated **13 CONCEDE, 8 PARTIAL,
+1 REBUT**.
+
+**The defect class this round found — worth stating once, because it recurred four times.**
+*Acceptance criteria satisfiable without the property being true.* AC-1.1 passed against a package
+exporting nothing (M6). AC-6.7 passed because the test did the emitting the pipeline never does (M2).
+`test_join_truth_table` passed by comparing `join` against a copy of itself (M7). And AC-6.3's
+`len(findings) >= 1` never established the per-operation covering its own justification rested on
+(B2). These survived three prior rounds because a document review cannot see them.
+
+### Conceded, with what changed
+
+| id | sev | change |
+|---|---|---|
+| **B1** | BLOCKER | `check_graph` returned `SAFE` for a zero-operation graph — §0's organizing claim was **false about the shipped artifact**. `join(())` met a `_findings_for_operation` returning `[]`, emitting `SAFE` with zero obligation discharged, before the fence §7.4 defers even exists. Fixed in code; §0:39 and §6.2:962 corrected. |
+| **B2** | BLOCKER | §3.2's "unreachable in v1" claim deleted. AC-7.2 asserts only never-raises, per-method, *not* against a graph — so "every operation therefore receives at least one `Finding`" was a non-sequitur, and the coupling was asserted nowhere across T3→T8. |
+| **B4** | BLOCKER | `argument_not_static` **withdrawn**, `REASON_VOCABULARY` 8 → 7. It intersected `free_vars` (PyLabRobot's *callee* parameter namespace) with `depends_on_params` (the *user protocol's*) — disjoint scopes, so it fired only on name coincidence, generating false positives and false negatives simultaneously. Shipping a reason that cannot work is worse than not shipping it. |
+| **M2** | MAJOR | Telemetry: no `src/` path ever called `emit`. §4/§0's "first-class" claim and AC-6.7 rewritten to describe what is actually tested. |
+| **M3** | MAJOR | RISK-4's `harness_internal` tripwire is structurally inert in v1 (`category` is required only for `WILL_FAIL`, which v1 never emits). Marked "no detection in round 1" rather than describing a mechanism that cannot fire. |
+| **M4** | MAJOR | T7's `SurveyStamp` wording dropped; the artifact carries `{git_sha, git_dirty, pylabrobot_version}` and staleness is **queryable, not enforced**. Recorded honestly rather than claiming a detectability the code does not deliver. |
+| **M5** | MAJOR | §9 gained a **`RETIRED`** status, kept-not-deleted, `declared == 0`, exactness enforced. HM-8's trigger FIRED at T7 so the row retires; T7's own unregistered surface (`_TAXONOMY_PATH` + the 2-key validation schema) registers as **HM-22**. Net `live_rows` 21 → 20 → 21; cap 24 stands. **Retiring a row now lowers the cap by one**, closing the headroom drift (3 → 4) that strict monotonicity exists to prevent. |
+| **M6** | MAJOR | `check_graph`, `Verdict`, `AnalysisReport` exported; AC-1.1 strengthened from "`import plr_jit` exits 0" to asserting importability of the declared surface. |
+| **M8** | MAJOR | `AnalysisReport.stamp` is the *contract-build* stamp, not the analysis stamp — `check/` never computes one, so a browser deployment leaves the checker's own version unrecorded. Recorded as build-time-only; AC-6.7 rewritten to a falsifiable claim. |
+| **m2** | MINOR | AC-7.3's byte-identity determinism claim was unmechanized; now tested. |
+| **m4** | MINOR | Field name reconciled: the non-ASCII `methods_with_≥1_dropped_receiver_call` is not a wire-format key. Artifact name `methods_with_dropped_receiver_call` is normative. |
+| **m5** | MINOR | 379 of 2,814 findings (13.5%) carry `condition: null` — a `raise` with no enclosing `if`. Specified as predicate **TRUE**, not "no constraint"; the latter reading is unsound in the `SAFE` direction. §7.2's polarity note extended. |
+| **§0(i)** | — | §0 now states that trivial soundness carries **zero mathematical obligation** and gives no evidence about the post-corpus analyzer — `def analyze(op): return UNKNOWN` satisfies the definition. Independent of B1; §0(ii) *is* B1 and was not remediated twice. |
+
+### Partial — where the challenge overreached
+
+| id | what stands / what does not |
+|---|---|
+| **B3** | **Shrank from "4 of 6 Deferred rows falsified" to 1.** Only **(e)** is genuinely falsified — its stated dependency on (a) is backwards, and 60–67% of the 10-tool frontier resolves by a stdlib `ast` annotation pass. **(d) is not falsified at all**: whether the domain is finite-height *is* (a)'s question, so "widening presupposes (a)" holds as written. **(b) and (f) have their stated reasons *confirmed*** by the very reports cited against them — under-scoped, not wrong. §0's narrowness justification and RISK-1's trigger **survive**. |
+| **B5** | The mirror's omissions are real (branch structure, and four unconsumed fields — see M1). But the sharpest sub-claim is **factually wrong**: `computation_graph_extractor.py:523` gates the tips precondition on `"tips_loaded" not in self._active_states`, and op_1 adds it — so `aspirate` omitting it is correct flow-sensitive satisfaction, not a hidden disagreement. Decisively, that typestate content comes from **five hand-typed frozensets** (`TIPS_REQUIRED_METHODS` et al., `:41-77`): mirroring it would **launder a hand-written method contract into the analyzer**, which decision 2 bans and §8 exists to measure against. The "third source of truth" is real and must *not* be trusted. |
+| **M1** | The four unconsumed mirror fields are real; the mirror is over- *and* under-inclusive against its own normative *iff*. Fixed. |
+| **M7** | "Establishes nothing" is overstated — `_expected_verdict` lives in a different file, so a wrong `join` body *does* turn it red. What genuinely matters: no case ever shared an `operation_id`, so the unsound Kleene case was never exercised. Literal table + same-operation case added. |
+| **M9** | The parenthetical reason *is* loose and was replaced. But the alleged contradiction with "exactly one function aggregates" **is not in the report** — `research_a_d` states it as an open preference ("nothing forces two functions") and explicitly prefers a narrow `reachability_map` that keeps the rule intact. |
+| **M11** | Population mismatch real: the counter ran over 4,758 indexed records while `methods_attempted` counted 1,314. **Three independent attempts produced 674 / 671 / 667**, so the value was *derived in code* from the same population rather than copied: **671**. Assertion `dropped <= attempted` added. Bullet 3 is **not** a defect — `validation_looking = 0` is a true fact about PLR at this pin (no dropped attribute name matches HM-3's prefixes). |
+| **M12** | The 1-row worklist is real and a third `dropped_receiver` view was added. But "stop describing it as the (e) worklist" over-corrects: §7.4 **already** says `top_unresolved` covers "the *recordable* frontier only" and that AC-7.4 gates on neither view. |
+| **m1** | `ungroundable_reference` genuinely cannot fire in v1 — real. But "a cost §3.3 never books" is **false**: the budget is 8-of-12 with four slots explicitly reserved for deliberate additions. |
+| **m3** | Under-specified, but the ambiguity is **latent, not live** — all 54 `LiquidHandler` records sit in one module, so first-match is deterministic at this pin. Uniqueness assertion taken as cheap defense in depth. |
+
+### Rebutted — recorded so a later round does not re-raise it
+
+| **M10** | **The research reports do not conflict.** `research_a_d`'s R6 concerns *termination*; `research_c_e`'s caveat concerns *precision*, and c_e explicitly places aliasing behind item (b) and the `SAFE` fence, **not** behind (e). The challenger's synthesis — "the product over an unbounded, symbolically-indexed location set is not finite-height" — **conflates the concrete and abstract location sets**: summarization exists precisely to bound the abstract count, so canonical abstraction over a fixed predicate set yields finitely many structures and Kleene iteration terminates. A summary node forces *weak updates*, costing precision, not termination. Operationally the objection also asks for nothing: the spec nowhere records "(d) dissolves". **No change.** |
+
+### Known anchoring risk — carried forward to round 5, not closed here
+
+Rounds 1–4 all adjudicated *"is the spec right about the code?"* rather than *"is the code the right
+code?"* Named instances, none remediated in this round: the survey's non-`self` receiver drop
+(`survey_plr_preconditions.py:214-219`) is treated as a fact of nature though it is ~10 lines in a
+script we own, and an entire measurement apparatus plus deferred item (e) is built around it; §7.1's
+"do not regenerate" hardened from scheduling convenience into architectural constraint;
+`FAILURE_CATEGORIES` is frozen from a *dynamic* harness while §4.1 concedes four of six need static
+re-interpretation; Fork C's drift test asserts mirror ⊆ upstream, structurally forbidding the mirror
+from leading; `SUPPORTED_TOOLS = 10` is inherited from the execution harness's scope boundary.
+**Round 5 is chartered as a de-anchoring round** and is licensed to propose regenerating the survey
+and unfreezing inherited ontologies.
