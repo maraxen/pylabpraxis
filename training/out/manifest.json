@@ -1,19 +1,19 @@
 {
- "accepted": 129,
- "cache_hits": 129,
+ "accepted": 685,
+ "cache_hits": 685,
  "cache_misses": 0,
- "examples_total": 129,
+ "examples_total": 685,
  "execution_rejected": 0,
  "execution_rejected_by_category": {},
- "execution_skipped": 99,
+ "execution_skipped": 542,
  "format_validation_pass_rate": 1.0,
  "generator_version": "0.2.0",
- "matrix_version": "1",
+ "matrix_version": "2",
  "per_class": {
-  "ambiguous-referent": 30,
-  "missing-slot": 36,
-  "none": 39,
-  "out-of-surface": 24
+  "ambiguous-referent": 150,
+  "missing-slot": 180,
+  "none": 195,
+  "out-of-surface": 160
  },
  "pipeline": "p23_coverage_floor",
  "plr_submodule_sha": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
