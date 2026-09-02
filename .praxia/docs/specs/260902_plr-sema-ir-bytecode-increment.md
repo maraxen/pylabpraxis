@@ -1,13 +1,13 @@
 ---
 title: "plr-sema increment 2 — SEMA-IR, a versioned linear bytecode as the analyzer's middle"
 description: "Second post-corpus increment to the plr-sema pre-corpus specification, and a blocking prerequisite of increment 1 (#4888, tip typestate). Defines SEMA-IR: a versioned, linear, JSON-serializable bytecode with six opcodes (RESOURCE, CALL, LOOP, BRANCH/ELSE/END, WIDEN) and a four-form value grammar (literal, reference, sequence, top). Two lowerings target it -- one from ProtocolComputationGraph, one from the P2.5 corpus's tool-call form via the verifier's own bound kwargs -- so the static checker and training/verify's simulator consume the same bindings and the checker never sees a tool parameter name again. Replaces check/graph.py's derived-from-consumers mirror with a total, exhaustively-dispositioned lowering input (no upstream field silently dropped), makes check_graph a compatibility entry that lowers then calls the new check_ir core, and defines a canonical form plus content hash and the (bytecode hash, contracts sha, surface identity, ir_version) cache key that #4922 will store against. Zero new registry rows, zero new REASON_VOCABULARY members, zero wire-format change, no schema_version bump; one metric redefinition on HM-21, argued and costed. Names but does not specify the hooks for #4922 (cache), #4923 (incremental re-check) and #4924 (error-recovery interpreter)."
-status: draft
+status: reviewed-round-1
 spec_version: 10
 amends: 260901_plr-sema-pre-corpus-spec.md
 task_id: 260902_sema-oracle-tipstate
 date: '260902'
 confidence: medium
-sources: "Read this session, in full or in the cited ranges: .praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md (§Open decisions 1-3, §0, §2.1-2.2, §3.1-3.3, §6.1-6.5, §7.3-7.4, §9.1-9.4, §Deferred, boundary summary); .praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md (all of §10, incl. §10.1.3, §10.5, §10.7's task row, §10.8, §10.10 Q3/Q7); .praxia/docs/plans/260902_plr-sema-oracle-harness.md; praxis/backend/utils/plr_static_analysis/models.py:504-661; praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py:430-591; plr-sema/src/plr_sema/check/graph.py (whole file); plr-sema/src/plr_sema/check/__init__.py:120-358; plr-sema/src/plr_sema/_provenance/stamp.py (whole file); plr-sema/src/plr_sema/derive/__init__.py:124-192 and the symbol index of the whole module; plr-sema/eval/oracle_common.py (whole file); training/verify/dispatcher.py:1-198; training/verify/verifier.py:20-99; coxswain/src/coxswain/plr/param_namespace.py:78-187,270-273; scripts/survey_plr_preconditions.py:267-274; plr_sema/verdict.py symbol index; one row of training/assemble/out/corpus_p25.jsonl. PLR source at submodule pin dd79c4c89: external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:438,501,535."
+sources: "Read this session, in full or in the cited ranges: .praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md (§Open decisions 1-3, §0, §2.1-2.2, §3.1-3.3, §6.1-6.5, §7.3-7.4, §9.1-9.4, §Deferred, boundary summary); .praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md (all of §10, incl. §10.1.3, §10.5, §10.7's task row, §10.8, §10.10 Q3/Q7); .praxia/docs/plans/260902_plr-sema-oracle-harness.md; praxis/backend/utils/plr_static_analysis/models.py:504-661; praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py:430-591; plr-sema/src/plr_sema/check/graph.py (whole file); plr-sema/src/plr_sema/check/__init__.py:120-358; plr-sema/src/plr_sema/_provenance/stamp.py (whole file); plr-sema/src/plr_sema/derive/__init__.py:124-192 and the symbol index of the whole module; plr-sema/eval/oracle_common.py (whole file); training/verify/dispatcher.py:1-198; training/verify/verifier.py:20-99; coxswain/src/coxswain/plr/param_namespace.py:78-187,270-273; scripts/survey_plr_preconditions.py:267-274; plr_sema/verdict.py symbol index; one row of training/assemble/out/corpus_p25.jsonl. PLR source at submodule pin dd79c4c89: external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:438,501,535. Read additionally during round-1 remediation: praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py:376-389,391-419,476-493,495-517,537-570; coxswain/src/coxswain/plr/param_namespace.py:138-172,245-276; training/verify/dispatcher.py:140-164; training/verify/grounding.py:100; .praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md:1378-1385 (RISK-5); .praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md:648-684 (§10.5); the round-1 challenger and defender reports."
 ---
 
 # Increment 2: SEMA-IR, the analyzer's middle
@@ -150,6 +150,15 @@ yield `UNKNOWN` — which asserts nothing and therefore cannot be wrong. Increme
 payload carrying a non-null `condition_expr` yields zero `SAFE`/`WILL_FAIL` findings for that
 receiver) is satisfied *by this rule* rather than by a special case in the tip evaluator.
 
+**The same entry rule applies to a `LOOP` region, and this is the general form of the rule §11.4.1's
+stopgap invokes.** On `LOOP`, widen every receiver mentioned anywhere in the region — at region
+entry, i.e. **before the first `CALL` inside it** — and visit the body once, left to right. This is
+increment 1 §10.5 rule 2 relocated from the operation to the region: the trigger is region entry
+rather than a per-operation `foreach_source`, and the scope is every receiver in the region rather
+than the receiver of the one operation that carried the field. There is still no trip-count
+reasoning, no body re-entry and no fixpoint; the single visit is sound only because every receiver
+the region touches was already widened at entry.
+
 ### 11.1.4 The invariant: nothing is dropped, and the disposition table proves it
 
 > **Normative invariant (the no-drop invariant).** For every field of every upstream model, the
@@ -189,6 +198,17 @@ under the no-drop invariant fails AC-11.1 mechanically, because the table must b
 | `true_branch` (`:558`) | I | the first arm |
 | `false_branch` (`:559`) | I | the `ELSE` arm |
 
+> **Live-data caveat on the last five rows (round-1 O1).** `foreach_source`, `foreach_body`,
+> `condition_expr`, `true_branch` and `false_branch` are declared on `OperationNode` but are
+> **never written by the extractor**: the `OperationNode` constructor in `visit_Call`
+> (`computation_graph_extractor.py:501-512`) passes none of them, and `visit_For`/`visit_While`/
+> `visit_If` (`:376-389`) only flip the graph-level `_has_loops`/`_has_conditionals` booleans and
+> return `True`, so a call inside a loop or an `if` body is visited exactly like a top-level call.
+> Their dispositions above are therefore **correct but currently unreachable from real graph
+> payloads**: they are exercised by fixtures only. §11.4.1's synthetic-region stopgap is what stands
+> in for them on real data until `extract/` populates them, and that population is the named blocking
+> follow-up recorded in §11.11.
+
 **`ResourceNode`** (`models.py:562-589`, 9 fields): `variable_name` → the `RESOURCE` slot (I,
 canonicalised away by §11.3.1); `declared_type`, `element_type`, `is_container`, `is_parameter`,
 `parental_chain` → the like-named `RESOURCE` operands (I); `source_expression` (`:580-582`) →
@@ -204,7 +224,9 @@ container level, for the same reason as `OperationNode.preconditions` (so `State
 fields never need dispositions and it is not a fourth mirrored model); `execution_order` (`:632-634`)
 → emission order (I), with disagreement handled below; `machine_types`, `resource_types` → sideband,
 recomputable from the stream (S); `has_loops`, `has_conditionals` (`:643-646`) → cross-checked
-against the stream, disagreement emits `WIDEN has_loops` / `WIDEN has_conditionals` (W).
+against the stream; disagreement emits `WIDEN has_loops` / `WIDEN has_conditionals` **and** the
+synthetic region of §11.4.1 (I+W). The `WIDEN` record is retained as the hashed, disassemblable trace
+of *which field* forced the region; it is the region, not the record, that carries the semantics.
 
 **The one rule behind all four cross-checks.** `execution_order` vs. `operations`, `node_type` vs.
 its recomputation, `has_loops`/`has_conditionals` vs. the stream: in each case the payload carries
@@ -264,6 +286,18 @@ The argument values are lowered by `ast.parse`-ing each `arguments` value as an 
   string index (`source["A1"]`) → `Ref(slot, "A1")`
 - anything else, or an unparseable string → `Top`
 
+**Disclosed precision loss: attribute-style resource references resolve to `Top` (round-1 O4).** An
+`ast.Attribute` (`plate_1.C7`) and a `Subscript` whose value is an `Attribute` (`self.plate_1["A1"]`)
+match none of the four rules above and therefore lower to `Top`, with the `WIDEN arguments` that
+§11.2.4's trust rule already forces on an untrusted key. This is an acknowledged `Top`, not an
+oversight, and extending the grammar alone would not fix it: `visit_Assign`
+(`computation_graph_extractor.py:395`) registers a `ResourceNode` only when the assignment target is
+a bare `cst.Name`, so `self.foo = ...` produces **no resource slot for a `Ref` to point at**. The
+grammar gap and the extractor gap have to close together, in `extract/` round 2. The cell-access half
+of the case is additionally unlikely to materialise from a valid renderer: PLR's `ItemizedResource`
+exposes `__getitem__` and no attribute-based cell access, so a renderer that emits a well itemises it
+as `plate_1["C7"]`, which the `Subscript`-of-`Name` rule already resolves to `Ref(slot, "C7")`.
+
 ### 11.2.2 `lower_calls` — from a corpus row or a verifier run
 
 ```python
@@ -301,23 +335,42 @@ sideband.
 > **Normative: no tool parameter name may appear as a `CALL.kwargs` key in any bytecode reaching
 > `check_ir`.**
 
-The pinning test derives the forbidden set rather than typing it (`test_no_tool_names_in_ir`):
+The pinning test derives the forbidden set rather than typing it (`test_no_tool_names_in_ir`), and
+the set is **scoped to the method being lowered**, never global:
 
 ```
-forbidden = { s.name for t in PARAM_NAMESPACE for s in params_of(t) if s.plr_arg != s.name }
+forbidden(method) = { s.name for s in params_of(method) if s.plr_arg != s.name }
+forbidden(method) = ∅                       # when method ∉ PARAM_NAMESPACE
 ```
 
-— i.e. every schema-side name that differs from its vendored kwarg (`params_of`,
-`param_namespace.py:270-273`). At the current table that is `{at, destination, source, volume_ul,
-what}` for the rows where `plr_arg` differs, computed live. The assertion is that
-`forbidden ∩ set(kwargs)` is empty for every `CALL` of every lowered corpus row. It is stated as an
-intersection with a *derived* set rather than a hardcoded list precisely so that a future
-`PARAM_NAMESPACE` row is covered without an edit here.
+— i.e. every schema-side name of *that method* that differs from its vendored kwarg (`params_of`,
+`param_namespace.py:270-273`). The assertion is that `forbidden(CALL.method) ∩ set(CALL.kwargs)` is
+empty for every `CALL` of every lowered corpus row. It is stated as an intersection with a *derived*
+set rather than a hardcoded list precisely so that a future `PARAM_NAMESPACE` row is covered without
+an edit here.
+
+**Why per-method and not global (round-1 O3).** A single global set unioned across every tool is
+wrong in a way that produces false positives, and `"source"` is the live instance: `aspirate`'s row
+is `_sym("source", "resources", …)` (`param_namespace.py:144-146`), which puts `"source"` into a
+global set as a schema-side alias, while `transfer`'s row is `_sym("source", "source", …)`
+(`:155-156`) — `plr_arg == name` — and the dispatcher accordingly binds a real PLR kwarg named
+`source` for that tool (`bind("source")` then `kwargs["source"] = _single(...)`,
+`training/verify/dispatcher.py:151-153`). Under a global set, every correctly-lowered `transfer`
+`CALL` fails the test. Under `forbidden(method)`, `"source"` is forbidden for `aspirate` and
+permitted for `transfer`, which is the intended reading of caveat (i) below.
+
+**The `∅` fallback is required, not defensive.** `params_of` raises `KeyError` for a tool that is not
+in the table — "loud by design" (`param_namespace.py:270-273`) — and the IR is lowered over PLR
+method names, which include methods that were deliberately never given a schema entry (the
+96-channel family, `pick_up_tips96` and siblings, `param_namespace.py:252-267`). For any method with
+no `PARAM_NAMESPACE` entry there is no alias relation to violate, so `forbidden = ∅` and the test
+passes silently rather than erroring on a method it has nothing to say about.
 
 Two honest caveats, stated rather than hidden. (i) `source` and `destination` are *also* PLR
 parameter names for some methods — `transfer`'s three `_sym`/`_lit` rows
-(`param_namespace.py:155-161`) map `source → source` and `destination → targets` — so the intersection is scoped per method: a key is forbidden only if
-it is a schema-side alias **for the method being lowered**. (ii) The test proves the corpus path is
+(`param_namespace.py:155-161`) map `source → source` and `destination → targets` — which is exactly
+what the per-method scoping above implements: a key is forbidden only if it is a schema-side alias
+**for the method being lowered**. (ii) The test proves the corpus path is
 clean; it cannot prove the *graph* path is, because a protocol's author may legitimately write any
 keyword. §11.2.4 is what covers that side.
 
@@ -352,7 +405,12 @@ pre-increment table degrades to "trust nothing" — maximal widening, today's al
 rather than raising (the same fail-closed direction as increment 1's AC-10.7). **Payload cost is an
 estimate, not a measurement:** ~6 names × ~12 bytes × 4,770 entries ≈ 0.3 MB pretty-printed against
 the current 4.4 MB (§7.3's measured figures). The fixer publishes the measured number; if it exceeds
-10% the fixer says so rather than shipping quietly.
+10% the fixer says so rather than shipping quietly. **What the 10% figure is tied to (round-1 O5):**
+the main spec's RISK-5 (`260901_plr-sema-pre-corpus-spec.md:1385`) — *"the contract table could grow
+large enough to be an unacceptable browser download"*, recorded there as not measurable pre-corpus.
+No browser-side ceiling has been set, so 10% is an **observational** reporting threshold against
+that named risk, not a gate: exceeding it obliges disclosure and a RISK-5 re-read, and blocks
+nothing. It becomes a gate the day RISK-5 acquires a real number.
 
 **What this rule deliberately does not do.** It does not *recover* the correct name for a positional
 argument. Doing so needs the positional/keyword-only boundary, and `_function_params`
@@ -407,7 +465,7 @@ and different names hash identically, which is what makes the hash a *program* i
 useful across renames. Its consequence is that a cached artifact must not be an `AnalysisReport`,
 whose `protocol_fqn` field (`verdict.py:193-212`) would then be wrong for the second protocol.
 **Design position:** #4922 caches the `Finding` tuple, and the caller reassembles the report with its
-own `protocol_fqn` and its own `stamp`. This is recorded as open question Q3 (§11.11) because it
+own `protocol_fqn` and its own `stamp`. This is recorded as open question Q3 (§11.12) because it
 constrains #4922's interface, and a reviewer may prefer the opposite trade.
 
 ### 11.3.3 The cache key
@@ -458,6 +516,67 @@ then a *second* pass, or a state fold threaded through this one — that is #488
 increment's job is only to make it a pass over instructions rather than over pydantic-shaped
 operations.
 
+**The synthetic-region stopgap, and why it is needed (round-1 O1, conceded).** Because the extractor
+never populates `foreach_source`/`foreach_body`/`condition_expr`/`true_branch`/`false_branch`
+(§11.1.4's live-data caveat: constructor at `computation_graph_extractor.py:501-512`, the visitors at
+`:376-389`), a real graph payload for a looping protocol carries `has_loops=True` and yet lowers to a
+stream with **zero** `LOOP` regions — and a `WIDEN has_loops` record alone widens no receiver.
+Normative fix:
+
+> **When `has_loops=True` and the emitted stream contains zero real `LOOP` regions, `lower_graph`
+> wraps the whole instruction stream in a synthetic `LOOP ⊤` region** (a `LOOP null` at the front,
+> its `END` at the back). **Symmetrically, when `has_conditionals=True` and the stream contains zero
+> real `BRANCH` regions, the whole stream is wrapped in a synthetic `BRANCH ⊤` region** (`BRANCH
+> null` … `END`, single-armed: no `ELSE` is emitted, because there is no second arm to separate).
+> Both wraps nest outside every `RESOURCE` and `CALL`. The synthetic region is an ordinary region in
+> every other respect, so §11.1.3's region-entry rule applies to it unchanged: **every receiver
+> mentioned anywhere in the region — which, for a whole-stream wrap, is every receiver in the
+> program — is widened at region entry, before the first `CALL` executes.**
+
+Three properties of this rule are load-bearing.
+
+1. **It is a strict improvement over today, not a regression.** Today's walk has no loop
+   representation at all and evaluates a loop body straight-line, once, against the pre-loop state —
+   which is unsound in the direction that produces false `SAFE`. The stopgap replaces that with
+   all-`UNKNOWN` for the affected protocols. Widening can only destroy a verdict, never create a
+   wrong one (increment 1 §10.5's soundness argument), so the cost is precision on protocols the
+   analyzer was previously answering *wrongly*.
+2. **It is precision-negative and deliberately so.** Any protocol containing a `for`, a `while` or an
+   `if` anywhere gets its whole program widened. That is coarse — a real `LOOP` region would widen
+   only the receivers inside the loop — and it is the honest encoding of the fact that the lowering
+   cannot currently tell where the loop is. The precision is recovered, without a spec change, the
+   moment `extract/` populates the fields: real regions are emitted, the "zero real regions"
+   condition is false, and no synthetic wrap fires.
+3. **The synthetic region is hashed like any other region, and this has a consequence worth naming.**
+   It is part of the canonical stream (§11.3.1), so it contributes to `bytecode_hash`. **A later
+   extractor that emits real `LOOP`/`BRANCH` regions therefore changes the hash of every protocol
+   that currently gets a synthetic wrap** — a different program identity for the same source text.
+   That is correct (the analyzer now knows something it did not), and it is exactly the situation
+   `ir_version` exists for: the `extract/` round-2 change that populates these fields **must** bump
+   `IR_VERSION`, so that every cached result computed under the synthetic-wrap encoding is
+   invalidated rather than silently reused.
+
+**The worked case (the challenger's counterexample, turned from false-`SAFE` into `UNKNOWN`).**
+
+```python
+def protocol(lh, tip_racks, plate):
+    for rack in tip_racks:
+        lh.pick_up_tips(rack[0:1])   # same channel each iteration, never dropped
+        lh.aspirate(plate["A1"], 50)
+```
+
+The extractor produces **one** `OperationNode` per syntactic `Call`, so `pick_up_tips` appears once
+in `operations` and once in the stream, with `_has_loops` set at the graph level and nothing marking
+the operation as looping. At runtime iteration ≥ 2 raises `HasTipError`
+(`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:535`, PLR pin `dd79c4c89`).
+`rack[0:1]` is a slice, not a protocol parameter name, so `depends_on_params` stays empty and
+increment 1 §10.5 rule 3 does not fire either — nothing widens the call. Without the stopgap the tip
+walk evaluates the single `CALL` once against the pre-loop state and can report `SAFE` for a protocol
+that fails: a false `SAFE`, the one error class the whole soundness argument exists to exclude. With
+the stopgap, `has_loops=True` and zero real `LOOP` regions wrap the stream; `lh` is widened to `TOP`
+at region entry; both `CALL`s yield `UNKNOWN`. `UNKNOWN` asserts nothing, so the row is no longer
+wrong — it is merely uninformative, and it is uninformative for a reason the disassembly names.
+
 ### 11.4.2 What §6.2's mirror becomes
 
 **Reduced, not retired: `check/graph.py` becomes the lowering's input schema, and becomes total.**
@@ -486,7 +605,7 @@ instruction indices.
 **Resolution: `check_graph` relabels through `sideband.origin` before constructing the report.** The
 relabel is total in v1 because the graph lowering emits exactly one `CALL` per `OperationNode`, so
 `origin` is a bijection between `CALL` pcs and operation ids. AC-11.7 asserts the bijection rather
-than assuming it, and §11.11's Q1 records what happens the day it stops being one (a method that
+than assuming it, and §11.12's Q1 records what happens the day it stops being one (a method that
 lowers to more than one `CALL` would make two findings share an `operation_id`, which main spec
 §Open decisions 3 has already ruled must *conjoin*, not merge — so the behaviour is defined, but the
 `origin` map would need to become one-to-many and AC-6.4's equality would need re-reading).
@@ -648,6 +767,14 @@ by a stub, the stub-defeating half is named.
   (both arms present, `END` balanced) and yields zero `SAFE`/`WILL_FAIL` findings for every receiver
   mentioned in either arm — which is increment 1's AC-10.6, now discharged by §11.1.3's region rule
   rather than by a special case.
+  **Scope qualifier (round-1 O1): the `condition_expr`/two-armed half of this criterion is a
+  fixture-only guarantee and carries zero soundness claim over real corpus or graph data.** No real
+  payload can satisfy its antecedent, because `extract/` never writes `condition_expr`,
+  `true_branch`, `false_branch`, `foreach_source` or `foreach_body`
+  (`computation_graph_extractor.py:501-512`, `:376-389`). The criterion is met by the
+  `branchy_graph.json` fixture, which is hand-written for exactly this purpose. On real data the
+  guarantee that actually applies is §11.4.1's synthetic wrap. Until the extractor populates the
+  fields, this AC pins that the *machinery* is correct, not that it *fires*.
 - **AC-11.12 (stale contract table degrades, does not crash).** `check_graph` against a contract
   table with no `params` key on any entry returns a report identical to AC-11.6's, never raises, and
   the resulting bytecode carries `WIDEN arguments` on every `CALL` that has any kwarg.
@@ -656,6 +783,31 @@ by a stub, the stub-defeating half is named.
   balanced `LOOP`/`BRANCH`/`END` nesting with `ELSE` only inside an open `BRANCH`, and `check_ir`
   never raises on it. This is the criterion a lowering that silently straight-lines a malformed
   region cannot pass.
+  **Scope qualifier (round-1 O1), symmetric to AC-11.11's.** The *nesting* half is total — every
+  bytecode, fixture or real, has balanced regions, and the synthetic wrap of §11.4.1 is included in
+  that guarantee. But **the nesting cases that involve a real, extractor-emitted `LOOP` or `BRANCH`
+  are fixture-and-`hypothesis`-only and carry zero soundness claim over real corpus or graph data**,
+  for the same reason as AC-11.11: `extract/` never writes the fields that would produce one
+  (`computation_graph_extractor.py:501-512`, `:376-389`). Over the real corpus this AC currently
+  proves that streams are flat or synthetically wrapped, and nothing about nested-region handling.
+- **AC-11.14 (the three `X` dispositions are pinned by identity, independently of the table).** A
+  named test — `test_excluded_fields_are_excluded` — hardcodes exactly three field identities,
+  `OperationNode.preconditions`, `OperationNode.creates_state` and
+  `ProtocolComputationGraph.preconditions`, and asserts that `DISPOSITIONS` assigns each of them
+  disposition `X`. **This is the one legitimate hardcode in the increment, and the reason is
+  specific:** it is the fact the whole laundering argument depends on. Everything else about the
+  disposition table is checked *against* the table; if the table itself reclassified those three from
+  `X` to `I`, the hand-typed `TIPS_REQUIRED_METHODS`/`TIPS_LOADING_METHODS` frozensets
+  (`computation_graph_extractor.py:537-570`, `:479-491`) would be laundered through `CALL.kwargs`
+  into the checker, and §8's comparison would be comparing the analyzer against its own input. No
+  existing criterion catches that: AC-11.1 is key-set equality and passes unchanged; AC-11.2 read
+  live off `DISPOSITIONS` becomes vacuous by construction; AC-11.6 cannot see it because
+  `_findings_for_operation` (`check/__init__.py:293-321`) never reads `op.preconditions` or
+  `op.creates_state`, so the findings stay bit-identical. **HM-21's redefined metric cannot substitute
+  for this test either, and in fact points the wrong way:** it counts `X` dispositions, so moving a
+  field *out* of `X` **decreases** the count, which a ratchet that guards against growth reads as
+  safe. The test must therefore assert the three identities directly, and it must not derive them
+  from `DISPOSITIONS`.
 
 ---
 
@@ -668,7 +820,7 @@ means building them twice.
 
 | task | scope | files | gate | ~LOC | depends on |
 |---|---|---|---|---|---|
-| **#4921** (`#4888` step 0) | SEMA-IR: (1) `plr_sema/check/ir.py` — `IR_VERSION`, the value grammar, the six opcodes, `DISPOSITIONS`, `lower_graph`, `lower_calls`, canonical form, `bytecode_hash`, `cache_key`; (2) `check/graph.py` made total (all 34 fields) and its docstring rewritten from derived-from-consumers to the disposition table; (3) `check_ir` extracted from `_findings_for_operation`, `check_graph` rewired to lower-then-check with the `origin` relabel; (4) `derive/` emits the additive `params` key per contract entry from `SurveyRecord.params`, artifact regenerated, measured size published; (5) `eval/` gains `ir_value_of` and `run_runtime` harvests IR values instead of `repr`s; `adapt_graph` deleted; (6) Fork C's drift test strengthened to exhaustiveness; (7) HM-21 metric redefinition + `_measure_hm21` rewritten to count dispositions, both numbers in the commit message | create `plr-sema/src/plr_sema/check/ir.py`, `plr-sema/tests/test_ir.py`, `plr-sema/tests/fixtures/all_fields_graph.json`, `plr-sema/tests/fixtures/branchy_graph.json`; modify `plr-sema/src/plr_sema/check/{graph,__init__}.py`, `plr-sema/src/plr_sema/derive/__init__.py`, `plr-sema/src/plr_sema/_hand_maintained.py`, `plr-sema/eval/oracle_common.py`, `plr-sema/tests/test_{check_graph,check_graph_mirror_drift,derive,hand_maintained_ratchet}.py`, `plr-sema/data/derived_contracts.json` (regenerated) | `uv run pytest plr-sema/tests -q` satisfying AC-11.1 through AC-11.4 and AC-11.6 through AC-11.13; then `uv run python -m plr_sema.derive --survey-json training/verify/data/plr_preconditions.json --taxonomy-json training/verify/data/plr_exception_taxonomy.json --out plr-sema/data/derived_contracts.json`; then **AC-11.5** over the 812 + 88 corpus rows via `#4879`'s replay | ~600 | main spec T1–T14 (shipped) |
+| **#4921** (`#4888` step 0) | SEMA-IR: (1) `plr_sema/check/ir.py` — `IR_VERSION`, the value grammar, the six opcodes, `DISPOSITIONS`, `lower_graph` **including §11.4.1's synthetic `LOOP ⊤` / `BRANCH ⊤` whole-stream wrap and the per-method `forbidden(method)` scoping of §11.2.3**, `lower_calls`, canonical form, `bytecode_hash`, `cache_key`; (2) `check/graph.py` made total (all 34 fields) and its docstring rewritten from derived-from-consumers to the disposition table; (3) `check_ir` extracted from `_findings_for_operation`, `check_graph` rewired to lower-then-check with the `origin` relabel; (4) `derive/` emits the additive `params` key per contract entry from `SurveyRecord.params`, artifact regenerated, measured size published; (5) `eval/` gains `ir_value_of` and `run_runtime` harvests IR values instead of `repr`s; `adapt_graph` deleted; (6) Fork C's drift test strengthened to exhaustiveness; (7) HM-21 metric redefinition + `_measure_hm21` rewritten to count dispositions, both numbers in the commit message; (8) the AC-11.14 pin test `test_excluded_fields_are_excluded`, hardcoding the three `X` field identities | create `plr-sema/src/plr_sema/check/ir.py`, `plr-sema/tests/test_ir.py`, `plr-sema/tests/fixtures/all_fields_graph.json`, `plr-sema/tests/fixtures/branchy_graph.json`; modify `plr-sema/src/plr_sema/check/{graph,__init__}.py`, `plr-sema/src/plr_sema/derive/__init__.py`, `plr-sema/src/plr_sema/_hand_maintained.py`, `plr-sema/eval/oracle_common.py`, `plr-sema/tests/test_{check_graph,check_graph_mirror_drift,derive,hand_maintained_ratchet}.py`, `plr-sema/data/derived_contracts.json` (regenerated) | **Gate A (offline):** `uv run pytest plr-sema/tests -q` satisfying AC-11.1, AC-11.2, AC-11.3, AC-11.4, AC-11.6, AC-11.7, AC-11.8, AC-11.9, AC-11.10, AC-11.11, AC-11.12, AC-11.13 and AC-11.14 — every AC-11.x is named individually, not as a range, so a cross-reference lint can resolve each one; then `uv run python -m plr_sema.derive --survey-json training/verify/data/plr_preconditions.json --taxonomy-json training/verify/data/plr_exception_taxonomy.json --out plr-sema/data/derived_contracts.json`. **Gate B (corpus replay):** **AC-11.5** over the 812 + 88 corpus rows via `#4879`'s replay — the only AC-11.x that needs live corpus data, hence its own gate | ~640 | main spec T1–T14 (shipped) |
 
 **Then, and only then, `#4888` steps 1–8** as increment 1 §10.7's task row specifies, with three of
 its sub-steps changed by this increment (§11.9). Its own ~750 LOC estimate is unchanged; step (2)
@@ -732,12 +884,18 @@ rule, the E1–E5 transfer functions and every soundness argument stand exactly 
   adapter defect**", and its 260902 qualification block (added by increment 1 §10.10 Q3) explains why
   the adapter half was live: the two sides used different argument-name conventions. Once both sides
   lower through the same `lower_graph`/`lower_calls` pair into the same instruction set, **the
-  adapter no longer exists to be defective**, and a divergence is a defect in the extractor *or* in
-  tier 2's source renderer. That residual is real (a renderer that emits
-  `lh.aspirate(plate["A1"], 100)` positionally will diverge from a tier-1 row that binds
-  `resources=`, via §11.2.4's trust rule) and should be stated in the plan rather than dropped —
-  the honest replacement sentence is *"a divergence is a defect in the extractor or in the renderer;
-  it can no longer be an adapter artefact."*
+  adapter no longer exists to be defective**, and a divergence has **three** possible causes, not
+  two (round-1 O4): the extractor, tier 2's source renderer, or **`lower_graph`'s own value-grammar
+  gap**. The renderer residual is real (a renderer that emits `lh.aspirate(plate["A1"], 100)`
+  positionally will diverge from a tier-1 row that binds `resources=`, via §11.2.4's trust rule).
+  The grammar residual is the attribute-style reference disclosed in §11.2.1: `lower_graph` resolves
+  `self.plate_1["A1"]` to `Top` while `lower_calls`' `ir_value_of` resolves the same bound object to
+  a `Ref`, so the two sides can differ on a program neither the extractor nor the renderer got
+  wrong. It is **latent, not live**, because `visit_Assign` (`computation_graph_extractor.py:395`)
+  registers no `self.foo` resource for a `Ref` to name — it becomes reachable only when `extract/`
+  gains `self.`-assignment support, in round 2. All three should be stated in the plan rather than
+  dropped — the honest replacement sentence is *"a divergence is a defect in the extractor, in the
+  renderer, or in `lower_graph`'s value grammar; it can no longer be an adapter artefact."*
 - **Concretely, why `n_exact_channel_sets` should stop being 0.** `plan_call`'s `bind("at")` for
   `pick_up_tips` (`dispatcher.py:159-161`) writes `kwargs["tip_spots"]` via `spec.plr_arg`
   (`param_namespace.py:168-171`), so every planned `pick_up_tips` row lowers to a `CALL` carrying a
@@ -760,6 +918,19 @@ rule, the E1–E5 transfer functions and every soundness argument stand exactly 
   waits on the survey emitting a positional/keyword-only boundary.
 - **`extract/`** (round 2). The lowering consumes a graph payload produced out of process, exactly as
   §6.2 specifies today.
+  > **Named blocking follow-up — *"`extract/`: populate foreach/branch fields — round 2"*.** This is
+  > the root cause behind round-1 O1 and it is deliberately out of scope here, but it is **not**
+  > merely deferred work: **every LOOP/BRANCH-dependent soundness claim in this increment and in
+  > increment 1 is fixture-only until it lands** (AC-11.11, AC-11.13, increment 1's AC-10.6 and §10.5
+  > rule 2). What must change is that `visit_For`/`visit_While`/`visit_If`
+  > (`computation_graph_extractor.py:376-389`) stop being boolean flags and start emitting
+  > structure, and that the `OperationNode` constructor (`:501-512`) start passing
+  > `foreach_source`/`foreach_body`/`condition_expr`/`true_branch`/`false_branch`. Until then
+  > §11.4.1's synthetic wrap is the whole of the real-data guarantee, and it is coarse by
+  > construction. The follow-up carries two hard requirements: it **must** bump `IR_VERSION`
+  > (§11.4.1 property 3 — real regions change the hash of every synthetically-wrapped program), and
+  > it **must** re-run AC-11.11 and AC-11.13 against real corpus data, at which point their scope
+  > qualifiers are deleted rather than reworded.
 - **Wire format.** `Verdict`, `Finding`, `PlrSite`, `AnalysisReport`, `join`, `SCHEMA_VERSION = 1`
   (`verdict.py:74`), `Verdict.from_wire` (`verdict.py:97-113`) and `derived_contracts.json`'s
   `schema_version: 1` are all unchanged. SEMA-IR is an *internal* representation; it is not a
@@ -771,39 +942,88 @@ rule, the E1–E5 transfer functions and every soundness argument stand exactly 
 
 ## 11.12 Open questions for the adversarial round
 
+**Post-round-1 status.** Round 1 (challenger `260902_plr-sema-ir-round1-challenger.md`, defender
+`260902_plr-sema-ir-round1-defender.md`) adjudicated six of the seven. Q1, Q2 and Q5 are **non-issues
+by agreement of both sides** — they are kept below as the record of why, not as live questions.
+**Q4 is resolved by O2** (AC-11.14). **Q6 is resolved by O1** (the synthetic region of §11.4.1).
+**Q7 is deferred**, unchanged. **Q3 is the one question still genuinely open and it is for the
+reviewer**, because it constrains #4922's interface either way.
+
+| q | status after round 1 | where |
+|---|---|---|
+| Q1 | non-issue (both sides) | AC-11.7 already asserts the bijection rather than assuming it |
+| Q2 | non-issue (both sides) | no in-place instruction editing exists in this increment |
+| Q3 | **open — reviewer's call** | §11.3.2, constrains #4922 |
+| Q4 | resolved by O2 | AC-11.14, §11.7 |
+| Q5 | non-issue (both sides) | `lower_graph`'s signature already commits to the placement |
+| Q6 | resolved by O1 | §11.4.1's synthetic region |
+| Q7 | deferred, unchanged | named follow-up, not adopted |
+
 1. **`operation_id` = instruction index, relabelled at the boundary (§11.4.3).** The bijection holds
    today because one `OperationNode` lowers to one `CALL`. Is that a property worth *enforcing* (a
    lowering that would emit two `CALL`s for one operation raises), or worth *generalising* now
    (`origin` becomes one-to-many and AC-6.4's equality is re-read as "the image of `origin`")?
    Enforcing it forecloses a plausible future (`transfer` lowering to its constituent
    aspirate/dispense sequence); generalising it weakens an AC that was strengthened for a reason.
+   **Round-1: non-issue.** Both sides agreed the question is already answered where it matters —
+   AC-11.7 *asserts* the bijection rather than assuming it, so the day it stops holding the test
+   turns red and the choice is made deliberately rather than discovered. No change.
 2. **Should `WIDEN` be an instruction, or a flag on the following instruction?** As an instruction it
    is hashed, visible in a disassembly and countable; as a flag it cannot drift away from what it
    describes. The case against the instruction form: a `WIDEN` whose following instruction is later
    deleted becomes a widening with no subject, and nothing detects that.
+   **Round-1: non-issue.** Both sides agreed the drift the question fears requires in-place editing
+   of an instruction stream, and no pass in this increment edits one — `lower_graph` and
+   `lower_calls` emit, `check_ir` reads. The question becomes live only when #4923 or #4924
+   introduces stream mutation, and it should be re-asked there. No change.
 3. **Excluding `protocol_fqn` from the hash (§11.3.2).** The design position is that #4922 caches
    findings and the caller reassembles the report. A reviewer who thinks the cache should store
    reports should say so now, because the alternative is to include `protocol_fqn` in the hash and
    lose cross-rename reuse — the decision constrains #4922's interface either way.
+   **Round-1: still open, and it is the reviewer's call.** Both sides agreed the question is real and
+   non-blocking for #4921 — nothing in the lowering, the hash or `check_ir` changes under either
+   answer — but it must be settled before #4922 defines `CacheStore`. Carried forward unresolved,
+   deliberately.
 4. **HM-21's metric redefinition (§11.6).** 34-under-the-old-metric versus 3-under-the-new. The three
    conditions attached to the recommendation are what keep it from being a dilution; are they
    sufficient, or does this need the reviewer's own row?
+   **Round-1: resolved by O2 — the three conditions were not sufficient, and AC-11.14 is the fourth.**
+   The gap both sides found is that the redefined metric counts `X` dispositions, so reclassifying a
+   field *out* of `X` **lowers** the number and the ratchet reads that as safe — the metric protects
+   against growth, and the laundering risk is shrinkage. AC-11.14 pins the three identities directly
+   and independently of the table, which closes it. The three original conditions still stand; they
+   are now four.
 5. **Where the trust rule lives (§11.2.4).** Putting `param_names` into `lower_graph` makes the
    bytecode a function of the program *and* the contract table, so "the bytecode identifies the
    program" is not quite true. Putting it in `check_ir` keeps the bytecode program-pure but makes it
    non-self-describing (the same bytecode means different things under different tables). The cache
    key carries `contracts_sha` either way, so no result is mis-reused; the question is which is the
    more honest object.
+   **Round-1: non-issue.** Both sides agreed the document has already committed: `lower_graph`'s
+   signature takes `param_names` (§11.2.1), AC-11.10 tests it there, and AC-11.12's degrade-not-crash
+   behaviour is defined at that boundary. The cache key carries `contracts_sha` so the honesty
+   concern has no correctness consequence. Recorded as a resolved trade, not a live question.
 6. **`node_type` and the summary-field cross-checks (§11.1.4).** Four `WIDEN` triggers exist for
    fields that are *supposed* to be redundant. Is widening on a disagreement between two views of one
    fact the right response in all four cases, or does it create noise for `has_loops`/
    `has_conditionals`, whose disagreement is an upstream bug that should be reported rather than
    absorbed?
+   **Round-1: resolved by O1.** For `has_loops`/`has_conditionals` the answer was "neither" — the
+   `WIDEN` record was not noise, it was *inert*: it recorded the disagreement and widened no
+   receiver. §11.4.1's synthetic `LOOP ⊤` / `BRANCH ⊤` region replaces it as the **mechanism**; the
+   `WIDEN` instruction survives only as the hashed trace naming which field forced the region
+   (§11.1.4). The disagreement is no longer merely absorbed and no longer merely reported: it now
+   has a semantic effect. The other two cross-checks (`node_type`, `execution_order`) are unchanged
+   and neither side objected to them.
 7. **`Seq` arity when the sequence is a `Name`.** `lh.pick_up_tips(tip_spots=spots)` lowers to
    `Top`, not `Seq`, so the arity is lost even though the protocol may bind `spots` two lines up.
    A one-hop local binding pass in the *extractor* would recover it. Named as a follow-up, not
    adopted — but a reviewer may think it belongs here, since it is the most common real-protocol
    shape after the literal list.
+   **Round-1: deferred, unchanged.** Both sides agreed it is real and correctly deferred: the fix
+   lives in `extract/`, which §11.11 excludes from this increment, and losing arity to `Top` is a
+   precision loss in the sound direction. It is a natural companion to the named `extract/`
+   follow-up in §11.11, not a blocker for #4921.
 
 ---
 
@@ -829,6 +1049,61 @@ rule, the E1–E5 transfer functions and every soundness argument stand exactly 
   `{"function":{"arguments":{"source":"plate_1.C7","volume_ul":25.0},"name":"aspirate"}}`, i.e.
   tool-named (`source`, `volume_ul`) against PLR's `resources`/`vols`, which is the naming gap
   §11.2.3 closes.
+  **Which lowering this row is evidence about (round-1 O4).** It is `lower_calls`' input, **not**
+  `lower_graph`'s. This JSON is never `ast.parse`d: the ref string `"plate_1.C7"` is resolved to a
+  bound PLR object by `ground_param` (`training/verify/grounding.py:100`), and it is that object —
+  not the string — that `ir_value_of` maps to a `Value` for `lower_calls` (§11.2.2). So the row does
+  **not** demonstrate that `lower_graph`'s value grammar meets a dotted reference in practice; the
+  grammar's `ast.Attribute` gap is disclosed on its own terms in §11.2.1 and is latent until
+  `extract/` round 2.
 - PLR source at submodule pin `dd79c4c89`:
   `external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py` (`pick_up_tips` at `:438`, the
   `use_channels` channel-default idiom at `:501`, the `HasTipError` raise at `:535`).
+- Adversarial round 1: `.praxia/docs/audits/260902_plr-sema-ir-round1-challenger.md` (challenger,
+  O1–O5) and `.praxia/docs/audits/260902_plr-sema-ir-round1-defender.md` (defender adjudication —
+  O1/O2/O3 CONCEDE, O4/O5 PARTIAL). The defender's adjudication is the remediation contract; where it
+  rebutted, nothing was added.
+
+---
+
+## Remediation changelog (round 1)
+
+Applied against the defender's adjudication of the round-1 challenger. `status` moved
+`draft` → `reviewed-round-1`; `spec_version` stays **10** (no design change large enough to be a new
+version — every entry below is text, a snippet correction, one named test, or one lowering rule that
+strictly widens).
+
+| O-id | verdict | change | section(s) |
+|---|---|---|---|
+| **O1** | CONCEDE (blocking) | Synthetic whole-stream `LOOP ⊤` / `BRANCH ⊤` region when `has_loops`/`has_conditionals` is set and zero real regions are emitted; the region-entry rule widens every receiver before the first `CALL`; the region is hashed, so a later real-region extractor changes hashes and **must** bump `IR_VERSION` | §11.4.1 (new normative rule + three load-bearing properties) |
+| **O1** | CONCEDE | Region-entry widening generalised from `BRANCH` to `LOOP`, so the rule §11.4.1 invokes exists in general form | §11.1.3 (new paragraph) |
+| **O1** | CONCEDE | Live-data caveat on the five loop/branch `OperationNode` fields — declared, dispositioned, never written by the extractor; `has_loops`/`has_conditionals` disposition amended `W` → `I+W` (they now drive the synthetic region, not only a `WIDEN` record) | §11.1.4 |
+| **O1** | CONCEDE | Defender's correction recorded: today's walk evaluates loop bodies straight-line, so the stopgap is a **strict improvement**, not a precision regression against a working baseline | §11.4.1 property 1 |
+| **O1** | CONCEDE | Challenger's for-loop `pick_up_tips` counterexample added as the worked case the stopgap turns from false-`SAFE` into `UNKNOWN` | §11.4.1 (worked case) |
+| **O1** | CONCEDE | AC-11.11 and AC-11.13 qualified as **fixture-only, zero soundness claim over real corpus/graph data** until `extract/` populates the fields | §11.7 |
+| **O1** | CONCEDE | Root cause named as a blocking follow-up — *"`extract/`: populate foreach/branch fields — round 2"* — with its two hard requirements (`IR_VERSION` bump; re-run AC-11.11/AC-11.13 on real data and delete the qualifiers) | §11.11 |
+| **O2** | CONCEDE (blocking) | New **AC-11.14**: `test_excluded_fields_are_excluded` hardcodes the three `X` field identities and asserts their disposition; why this is the one legitimate hardcode; why AC-11.1/11.2/11.6 cannot catch it; why HM-21's redefined metric **decreases** under laundering and cannot substitute | §11.7 (new AC), §11.8 (sub-step 8) |
+| **O3** | CONCEDE | `forbidden` rewritten from a global set to `forbidden(method) = {s.name for s in params_of(method) if s.plr_arg != s.name}`, with `∅` for methods absent from `PARAM_NAMESPACE`; the `aspirate`/`transfer` `"source"` collision given as the reason | §11.2.3 |
+| **O4** | PARTIAL | References corpus row re-attributed: it is `lower_calls`' input via `ground_param`, **not** `lower_graph`'s, and is not evidence about the value grammar | References |
+| **O4** | PARTIAL | Disclosure: `ast.Attribute` and `Subscript`-of-`Attribute` resolve to `Top`; `visit_Assign` registers no `self.foo` resource, so no slot exists to widen; `ItemizedResource` exposes `__getitem__` only, so a valid renderer emits `plate_1["C7"]` | §11.2.1 |
+| **O4** | PARTIAL | §11.10's divergence-cause claim amended from two causes to **three** — extractor, renderer, `lower_graph` grammar gap (latent until `extract/` gains `self.`-assignment support) | §11.10 |
+| **O5** | PARTIAL | The 10% payload figure tied to the main spec's RISK-5 and stated as **observational, not gating**, until a browser-side ceiling is set | §11.2.4 |
+| — | lint | #4921's gate split into **Gate A** (offline pytest + derive regeneration, naming all thirteen offline AC-11.x individually rather than as a range) and **Gate B** (AC-11.5 over corpus replay); LOC estimate ~600 → ~640 | §11.8 |
+| — | lint | Q1/Q2/Q5 recorded as non-issues (both sides agree), Q3 open for the reviewer, Q4 resolved by O2, Q6 resolved by O1, Q7 deferred; status table added | §11.12 |
+| — | lint | Two stale section cross-references corrected: Q3 and Q1 live in §11.12, not §11.11 | §11.3.2, §11.4.3 |
+| — | housekeeping | `sources` extended with the ranges read during remediation | frontmatter |
+
+**Amendment to increment 1 made by this round:** `260902_plr-sema-tip-typestate-increment.md` §10.5
+gains one paragraph after rule 2, stating that on the IR the rule-2 widening is delivered by SEMA-IR
+region entry — including the synthetic `LOOP ⊤` region — so a looping protocol is all-`UNKNOWN`
+rather than straight-line evaluated. Its `status` line is unchanged.
+
+**Not applied, and why.** (i) The challenger's O1 option (b) — making `extract/` population a
+prerequisite of this increment — was rejected by the defender as contradicting §11.11's `extract/`
+round-2 exclusion; it is filed as the named blocking follow-up instead. (ii) The challenger's O3
+suggestion of a grammar extension for `Attribute` bases was only partially conceded: a grammar
+extension alone resolves nothing while `visit_Assign` registers no slot, so the disclosure form was
+taken. (iii) The `WIDEN has_loops`/`WIDEN has_conditionals` instructions are **retained** rather than
+deleted in favour of the synthetic region: deleting them would shrink §11.1.5's derived seven-string
+reason set and silently weaken AC-11.8, so the record is kept and only the *mechanism* moved to the
+region (§11.1.4, §11.12 Q6).

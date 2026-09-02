@@ -664,6 +664,22 @@ single left-to-right state fold. Three rules, and no fixpoint:
    and the receiver stays `TOP` for the remainder of the walk. There is no trip-count reasoning, no
    loop-body re-entry, and no fixpoint iteration. The existing `loop_bounds_unknown` finding
    (`check/__init__.py:309-310`) is unchanged and still emitted.
+
+   **On the IR, rule 2's widening is delivered by region entry, not by a per-operation field
+   (amendment, spec_version 10 / `260902_plr-sema-ir-bytecode-increment.md` §11.4.1).** Once this
+   walk is a pass over SEMA-IR, the trigger is no longer `foreach_source is not None or foreach_body`
+   on an individual operation — it is **entry to a `LOOP` region**, at which every receiver mentioned
+   anywhere in the region is widened to `TOP` before the region's first `CALL` is evaluated. This
+   matters because the extractor never populates `foreach_source`/`foreach_body`, so as literally
+   written rule 2 fires on no real payload: a looping protocol arrives with only the graph-level
+   `has_loops` flag set and one operation per syntactic call, and the walk evaluates the loop body
+   straight-line, once, against the pre-loop state — which is the direction that produces a false
+   `SAFE`. The IR increment closes that with a **synthetic `LOOP ⊤` region**: when `has_loops` is set
+   and the lowered stream contains zero real `LOOP` regions, the whole stream is wrapped in one, so
+   the region-entry rule widens **every** receiver in the program and a looping protocol is
+   all-`UNKNOWN` rather than straight-line evaluated. Coarser than a real region, and correct in the
+   only direction that matters; the precision returns without a spec change the moment `extract/`
+   emits real regions.
 3. **Dynamic arguments widen.** Any operation with non-empty `depends_on_params`
    (`check/graph.py:119`) widens its receiver to `TOP` before evaluation, same permanence. In the
    committed fixture that is `op_1` and `op_4` (`depends_on_params: ["tips"]`).
