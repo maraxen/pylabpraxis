@@ -1,5 +1,5 @@
 ---
-title: 'plr-preflight T14: upstream_nonlegacy gap-ledger reading'
+title: 'plr-sema T14: upstream_nonlegacy gap-ledger reading'
 description: 'Gap-ledger reading for the upstream_nonlegacy PLR surface (driver layer, no orchestration): guard-dense families, closure termination, unresolved frontier, dropped-receiver worklist, and the self-containment hypothesis measured directly.'
 status: final
 task_id: 260901_plr-jit-t14-nonlegacy-product
@@ -7,21 +7,21 @@ date: '260901'
 confidence: ''
 sources: ''
 ---
-# plr-preflight T14: upstream_nonlegacy gap-ledger reading
+# plr-sema T14: upstream_nonlegacy gap-ledger reading
 
-Reads `plr-preflight/data/gap_ledger.upstream_nonlegacy.json` and
-`plr-preflight/data/derived_contracts.upstream_nonlegacy.json` (T13,
+Reads `plr-sema/data/gap_ledger.upstream_nonlegacy.json` and
+`plr-sema/data/derived_contracts.upstream_nonlegacy.json` (T13,
 `upstream_nonlegacy` surface, pin `3a50a567f`) and the family/depth
 cross-tabulations computed by
-`plr-preflight/scripts/nonlegacy_gap_ledger_reading.py`. Companion to T6's legacy
+`plr-sema/scripts/nonlegacy_gap_ledger_reading.py`. Companion to T6's legacy
 gap-ledger reading -- same questions, different (driver-layer, no
 orchestration) surface. Regenerate the two source artifacts with:
 
 ```
-uv run python -m plr_preflight.derive \
+uv run python -m plr_sema.derive \
     --survey-json training/verify/data/plr_preconditions.upstream_nonlegacy.json \
-    --out plr-preflight/data/derived_contracts.upstream_nonlegacy.json \
-    --gap-ledger plr-preflight/data/gap_ledger.upstream_nonlegacy.json \
+    --out plr-sema/data/derived_contracts.upstream_nonlegacy.json \
+    --gap-ledger plr-sema/data/gap_ledger.upstream_nonlegacy.json \
     --plr-root <freshly re-extracted upstream_nonlegacy tree> \
     --surface-name upstream_nonlegacy \
     --surface-pin 3a50a567fe537d3a7b8ecdc84858191ee3c19637
@@ -163,7 +163,7 @@ regression test
 (`test_derive.py::test_closure_based_dropped_receiver_views_are_vacuous_on_nonlegacy`).
 
 **Fix shipped this task: `top_unresolved.dropped_receiver_whole_surface` /
-`_unfiltered`** (`plr_preflight.derive._dropped_receiver_worklist_whole_surface`,
+`_unfiltered`** (`plr_sema.derive._dropped_receiver_worklist_whole_surface`,
 wired into `build_gap_ledger`, both artifacts regenerated additively). Ranks
 `dropped_calls` directly over each finding-bearing record's OWN body --
 no closure walk, because a surface with no orchestration layer has no
@@ -320,16 +320,16 @@ its own body.
 
 ## Sources / regeneration
 
-- `plr-preflight/data/gap_ledger.upstream_nonlegacy.json`,
-  `plr-preflight/data/derived_contracts.upstream_nonlegacy.json` -- regenerated
+- `plr-sema/data/gap_ledger.upstream_nonlegacy.json`,
+  `plr-sema/data/derived_contracts.upstream_nonlegacy.json` -- regenerated
   260901 (T14), additive-only diff against the T13-shipped versions (new
   `top_unresolved.dropped_receiver_whole_surface`/`_unfiltered` keys; no
   other field changed except the `stamp.praxis` git-state fields, which
   always move with the committing checkout).
-- `plr-preflight/scripts/nonlegacy_gap_ledger_reading.py` -- the family-breakdown,
+- `plr-sema/scripts/nonlegacy_gap_ledger_reading.py` -- the family-breakdown,
   depth-histogram, and self-containment measurements above (not published
   in the shipped ledger's normative schema; run it directly to reproduce or
   extend).
-- `plr-preflight/tests/test_check_graph_nonlegacy.py`,
-  `plr-preflight/tests/test_derive.py` (T14 additions) -- the permanent
+- `plr-sema/tests/test_check_graph_nonlegacy.py`,
+  `plr-sema/tests/test_derive.py` (T14 additions) -- the permanent
   regression coverage backing every claim above about the ledger's shape.

@@ -353,7 +353,7 @@ def main() -> int:
              "actually scanned instead of silently reporting the default submodule's "
              "git state. A non-git tree (e.g. a `git archive | tar -x` extraction with "
              "no .git dir) degrades to {git_sha: None, git_dirty: None} here -- "
-             "record its real pin out of band (see plr_preflight._provenance.Surface).",
+             "record its real pin out of band (see plr_sema._provenance.Surface).",
     )
     args = parser.parse_args()
 
