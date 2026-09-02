@@ -148,3 +148,54 @@ def test_unresolved_slot_reference_mismatch_flagged() -> None:
     # params differ (A9 vs A1) so params axis fails too; the gap axis compares
     # derived slots vs intended slots including references.
     assert not report.overall
+
+
+# ---------------------------------------------------------------------------
+# 260902: slot order across args is a parse-layer accident (the FunctionGemma
+# template emits keys alphabetically); within one list-valued arg it is data.
+# ---------------------------------------------------------------------------
+
+def test_unresolved_slots_order_across_args_is_irrelevant() -> None:
+    intent: IntentRecord = {
+        **TRANSFER_INTENT,
+        "record_id": "s-004",
+        "calls": [
+            {
+                "name": "transfer",
+                "params": {"source": "A1", "destination": "B3", "volume_ul": 50},
+                "missing_required": [],
+                "unresolved_slots": [
+                    {"arg_name": "source", "reference": "A1", "resource_type": "container"},
+                    {"arg_name": "destination", "reference": "B3", "resource_type": "container"},
+                ],
+            }
+        ],
+    }
+    # predicted params in ALPHABETICAL key order (destination before source)
+    predicted = [PredictedCall(name="transfer", params={"destination": "B3", "source": "A1", "volume_ul": 50})]
+    report = check_intent_agreement(predicted, intent)
+    assert report.params_match and report.gaps_match and report.overall, report.reasons
+
+
+def test_unresolved_slots_within_arg_order_is_significant() -> None:
+    intent: IntentRecord = {
+        "record_id": "s-005",
+        "utterance": "pick up tips at A1 then B1",
+        "source": "synthetic",
+        "calls": [
+            {
+                "name": "pick_up_tips",
+                "params": {"at": ["tip_rack.A1", "tip_rack.B1"]},
+                "missing_required": [],
+                "unresolved_slots": [
+                    {"arg_name": "at", "reference": "tip_rack.B1", "resource_type": "tip_spot"},
+                    {"arg_name": "at", "reference": "tip_rack.A1", "resource_type": "tip_spot"},
+                ],
+            }
+        ],
+        "expected_effects": [],
+    }
+    predicted = [PredictedCall(name="pick_up_tips", params={"at": ["tip_rack.A1", "tip_rack.B1"]})]
+    report = check_intent_agreement(predicted, intent)
+    assert report.params_match
+    assert not report.gaps_match  # the annotation lists the tips in the wrong order

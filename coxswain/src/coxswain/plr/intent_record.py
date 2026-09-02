@@ -47,10 +47,14 @@ class _IntentCallBase(TypedDict):
 
 class IntentCallExpected(_IntentCallBase, total=False):
     """One intended call. ``missing_required``/``unresolved_slots`` carry the
-    INTENDED gap state, authored in table/as-given order, and MUST equal
-    ``slot_derivation.derive_call_gaps``'s output exactly (``gaps_match`` in
-    ``check_intent_agreement`` below compares byte-for-byte) -- never
-    hand-authored to reflect perceived ambiguity. ``unresolved_slots`` is
+    INTENDED gap state and MUST equal ``slot_derivation.derive_call_gaps``'s
+    output (``gaps_match`` in ``check_intent_agreement`` below compares
+    ``missing_required`` exactly and ``unresolved_slots`` as a multiset keyed
+    by ``arg_name``: order ACROSS args is irrelevant -- the derived order
+    follows whatever key order the parse layer produced, e.g. the chat
+    template's alphabetical ``dictsort`` -- while order WITHIN one
+    list-valued arg is preserved, FR-3 as-given) -- never hand-authored to
+    reflect perceived ambiguity. ``unresolved_slots`` is
     D11's structural "needs runtime object-binding" classification (every
     present ``SYMBOLIC_RESOURCE_REF`` param, "never from value heuristics"
     per D11's own docstring), NOT a "clarify-worthy" flag: it is non-empty
@@ -113,6 +117,13 @@ class IntentAgreement:
         return self.sequence_match and self.names_match and self.params_match and self.gaps_match
 
 
+def _slots_by_arg(slots: Sequence[DerivedSlot]) -> tuple[DerivedSlot, ...]:
+    """Canonical slot order for comparison: STABLE sort by ``arg_name`` so the
+    order across args (a parse-layer accident) drops out while the order of
+    elements within one list-valued arg (FR-3 as-given) survives."""
+    return tuple(sorted(slots, key=lambda s: s.arg_name))
+
+
 def check_intent_agreement(
     predicted_calls: Sequence[PredictedCall],
     intent: IntentRecord,
@@ -168,7 +179,7 @@ def check_intent_agreement(
                     f"{idx}: missing_required derived {derived.missing_required} "
                     f"!= intended {want_missing}"
                 )
-            if derived.unresolved_slots != want_slots:
+            if _slots_by_arg(derived.unresolved_slots) != _slots_by_arg(want_slots):
                 gaps_match = False
                 reasons.append(
                     f"{idx}: unresolved_slots derived {derived.unresolved_slots} "
