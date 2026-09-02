@@ -1,0 +1,10 @@
+[project]
+slug = "praxis"
+root = "/home/marielle/projects/praxis"
+
+[remotes.engaging]
+host = "engaging"
+remote_root = "/home/maarxaru/projects/praxis"
+
+[slurm]
+partition = "mit_normal_gpu"
