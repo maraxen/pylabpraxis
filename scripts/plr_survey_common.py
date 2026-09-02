@@ -35,7 +35,8 @@ _ROOT_EXCEPTION_NAMES = {"Exception", "BaseException"}
 def is_source_file(path: Path) -> bool:
     """False for PLR's own test files. Matched on filename STEM SUFFIX, not
     a single fixed pattern -- PLR mixes STARtests.py, backend_tests.py, and
-    test_foo.py with no one convention."""
+    test_foo.py with no one convention.
+    """
     stem = path.stem
     return not (stem.endswith("test") or stem.endswith("tests") or stem.startswith("test_"))
 
@@ -49,11 +50,33 @@ def module_name(file: Path, root: Path) -> str:
     return ".".join(rel.with_suffix("").parts)
 
 
+def relative_to_project_or_absolute(path: Path) -> str:
+    """``path`` relative to ``PROJECT_ROOT`` when possible, else absolute.
+
+    260901 T13 (backlog #4859): a survey can target a PLR tree materialized
+    OUTSIDE this repo -- e.g. an upstream snapshot extracted to a tmpdir via
+    ``git archive <sha> | tar -x`` for the surface-parameterization work --
+    and a caller can likewise point ``--out`` anywhere. ``Path.relative_to``
+    raises ``ValueError`` for any path that is not actually inside
+    ``PROJECT_ROOT``; every prior call site assumed both ``--plr-root`` and
+    ``--out`` were always repo-relative and called ``.relative_to(
+    PROJECT_ROOT)`` unconditionally, which crashed for either argument
+    (measured 260901: ``--out`` outside the repo raised this ValueError
+    *after* the file had already been written -- the write itself has no
+    such assumption, only the human-readable path formatting after it did).
+    """
+    try:
+        return str(path.relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path.resolve())
+
+
 def plr_version_stamp(submodule_root: Path = DEFAULT_PLR_SUBMODULE) -> dict[str, str | bool | None]:
     """Git SHA + dirty flag of the vendored submodule, and pylabrobot's own
     __version__ if the installed package is importable (may differ from the
     submodule checkout if the venv has a different pin -- both are recorded
-    rather than assumed to agree)."""
+    rather than assumed to agree).
+    """
     stamp: dict[str, str | bool | None] = {"git_sha": None, "git_dirty": None, "pylabrobot_version": None}
     try:
         sha = subprocess.run(
@@ -89,7 +112,8 @@ class ClassInfo:
 def parse_files(files: list[Path]) -> dict[str, ast.Module]:
     """Parse once; callers needing raw nodes for deeper per-method work
     (precondition guards, deprecation markers, ...) walk this same dict
-    themselves rather than re-parsing from disk a second time."""
+    themselves rather than re-parsing from disk a second time.
+    """
     parsed: dict[str, ast.Module] = {}
     for f in files:
         try:
@@ -134,7 +158,8 @@ def collect_all_classes(parsed: dict[str, ast.Module], plr_root: Path) -> dict[s
 def exception_name_closure(classes: dict[str, ClassInfo]) -> frozenset[str]:
     """Fixpoint over the bases graph: a class is an exception if any base is
     a root sentinel or an already-known exception -- handles cross-file
-    inheritance chains regardless of file processing order."""
+    inheritance chains regardless of file processing order.
+    """
     names = set(_ROOT_EXCEPTION_NAMES)
     changed = True
     while changed:
@@ -150,7 +175,8 @@ def exception_name_closure(classes: dict[str, ClassInfo]) -> frozenset[str]:
 
 def resolved_call_name(exc_node: ast.expr) -> str | None:
     """The class/function name a Call or bare Name expression resolves to,
-    stripped of any module/attribute prefix (last segment only)."""
+    stripped of any module/attribute prefix (last segment only).
+    """
     target = exc_node.func if isinstance(exc_node, ast.Call) else exc_node
     if isinstance(target, ast.Name):
         return target.id

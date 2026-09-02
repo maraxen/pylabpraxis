@@ -14,6 +14,23 @@ Regenerates the two build artifacts derived from the survey:
 hardcoded default would silently couple this workspace-member package to
 the caller's repo layout. At least one of ``--out``/``--gap-ledger`` must be
 given, or there is nothing to do.
+
+**260901 T13 (backlog #4859): the analyzed surface is a parameter.**
+``--plr-root``/``--surface-name``/``--surface-pin`` together name the
+``Surface`` (``plr_jit._provenance.Surface``) this run is against, recorded
+in the emitted stamp. A second, non-legacy upstream surface (extracted via
+``git archive <sha> | tar -x``, no ``.git`` to introspect) is derived the
+same way, into DIFFERENT output paths so both coexist on disk:
+
+.. code-block:: bash
+
+    uv run python -m plr_jit.derive \\
+        --survey-json training/verify/data/plr_preconditions.upstream_nonlegacy.json \\
+        --out plr-jit/data/derived_contracts.upstream_nonlegacy.json \\
+        --gap-ledger plr-jit/data/gap_ledger.upstream_nonlegacy.json \\
+        --plr-root /path/to/extracted/upstream/pylabrobot \\
+        --surface-name upstream_nonlegacy \\
+        --surface-pin <upstream commit sha>
 """
 
 from __future__ import annotations
@@ -24,7 +41,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from plr_jit._provenance import survey_stamp
+from plr_jit._provenance import DEFAULT_SURFACE, Surface, survey_stamp
 from plr_jit.derive import (
     SCHEMA_VERSION,
     InlinedGuard,
@@ -154,7 +171,32 @@ def main(argv: list[str] | None = None) -> int:
         help=(
             "Override the PLR package root scanned by the independent "
             "dropped-receiver AST pass (default: derived from this file's "
-            "own location, external/pylabrobot/pylabrobot)."
+            "own location, external/pylabrobot/pylabrobot). Also the "
+            "surface's tree_path (260901 T13) -- what --surface-name/"
+            "--surface-pin describe is THIS root."
+        ),
+    )
+    parser.add_argument(
+        "--surface-name",
+        default=DEFAULT_SURFACE.name,
+        help=(
+            "260901 T13 (backlog #4859): name of the analyzed PLR surface "
+            "(--plr-root's tree) recorded in the emitted stamp. Defaults to "
+            "plr_jit._provenance.DEFAULT_SURFACE's own name, not a second "
+            "hand-typed copy of it, so the two cannot drift apart -- this "
+            "is the pre-T13 behavior (our checked-out submodule)."
+        ),
+    )
+    parser.add_argument(
+        "--surface-pin",
+        default=None,
+        help=(
+            "260901 T13: explicit commit identity for --plr-root, for a "
+            "tree that cannot answer that itself (e.g. an out-of-repo "
+            "upstream extraction with no .git dir -- capture_git_state "
+            "degrades to the 'nogit' sentinel on those, by design; this is "
+            "how the real pin still ends up in the stamp). Leave unset for "
+            "a live git checkout, where GitState.hash already answers it."
         ),
     )
     args = parser.parse_args(argv)
@@ -164,7 +206,9 @@ def main(argv: list[str] | None = None) -> int:
 
     records = load_survey(args.survey_json)
     index = build_index(records)
-    stamp = survey_stamp()
+    surface_tree = args.plr_root if args.plr_root is not None else default_plr_pkg_root()
+    surface = Surface(name=args.surface_name, tree_path=surface_tree, pin=args.surface_pin)
+    stamp = survey_stamp(surface)
 
     if args.out is not None:
         payload = build_derived_contracts_payload(records, index, stamp)
@@ -173,8 +217,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {args.out}", file=sys.stderr)
 
     if args.gap_ledger is not None:
-        plr_root = args.plr_root if args.plr_root is not None else default_plr_pkg_root()
-        dropped_receiver_counts = scan_dropped_receiver_calls(plr_root)
+        dropped_receiver_counts = scan_dropped_receiver_calls(surface_tree)
         ledger = build_gap_ledger(
             index, records, dropped_receiver_counts=dropped_receiver_counts, stamp=stamp
         )

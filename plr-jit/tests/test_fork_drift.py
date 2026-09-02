@@ -33,6 +33,23 @@ is what actually enforces "DO NOT EDIT". Tier 2 (upstream comparison) skips
 with a named reason when `$PLR_JIT_CISTERNAL_ROOT` (default
 `/home/marielle/projects/cisternal`) is absent, and otherwise compares bytes
 and asserts the recorded upstream commit is an ancestor of upstream HEAD.
+
+Fork D (260901 T13, backlog #4859): `external/pylabrobot` itself -- a whole
+PINNED SUBMODULE, not a ported/cherry-picked file. Motivating incident: the
+submodule drifted 53 commits behind upstream `main` (upstream restructured
+669 files, relocating the entire function-organized layout wholesale into
+`pylabrobot/legacy/`) and NOTHING in this project noticed, six adversarial
+review rounds included -- Forks A/B/C all watch something copied INTO this
+repo against its source; none of them watch the checked-out dependency
+itself against its own origin. Same tier split as Fork B, one class up:
+tier 1 (`test_plr_submodule_pin_matches_expected`, always runs, no network)
+asserts the submodule's live HEAD equals a declared expected pin. Tier 2
+(`test_plr_submodule_distance_from_upstream_main`) fetches `origin/main` and
+reports the commit distance, skipping with a named reason
+(`"cannot reach origin for external/pylabrobot ..."`) when the fetch fails --
+the sandbox blocks the egress proxy, so offline is the COMMON case in CI,
+per this task's brief, and a bare fetch failure must never read as a silent
+pass.
 """
 
 from __future__ import annotations
@@ -468,4 +485,103 @@ def test_git_state_matches_cisternal() -> None:
     assert result.returncode == 0, (
         f"recorded upstream commit {header.upstream_commit} is not an "
         f"ancestor of cisternal HEAD (stderr: {result.stderr.strip()})"
+    )
+
+
+# --------------------------------------------------------------------------
+# Fork D: the checked-out `external/pylabrobot` submodule against its own
+# `origin` (260901 T13, §"the missing check"). See module docstring.
+# --------------------------------------------------------------------------
+
+PLR_SUBMODULE_ROOT = REPO_ROOT / "external" / "pylabrobot"
+
+#: The pin recorded 2026-09-01 (this task's recon): 53 commits behind
+#: upstream `main`'s `3a50a567f` at measurement time. A hand-typed
+#: expectation BY DESIGN -- the whole point of tier 1 is a fixed value to
+#: diff the LIVE submodule HEAD against; deriving it from the submodule
+#: itself would make the comparison vacuous. Registered as HM-23 in
+#: `plr_jit._hand_maintained.REGISTRY` (260901 T13) -- that row's `measure`
+#: reads this exact constant, so the two cannot silently drift apart from
+#: each other even though nothing imports one from the other (a test module
+#: is not importable by `_hand_maintained.py` without the same C7 sys.path
+#: shim every other AST-reading row already needs).
+EXPECTED_SUBMODULE_PIN = "dd79c4c89bc008629a1c598ea614be5e6067d1f9"
+
+#: Distance (commits behind origin/main) beyond which tier 2 treats the
+#: drift as "unexpectedly large" and fails loudly rather than just
+#: reporting a number. 53 is the measured distance at T13; growth between
+#: pin bumps is normal and expected, so this is not "drift == 0", but a
+#: sudden multi-hundred-commit jump (e.g. another silent multi-month gap)
+#: is exactly the failure mode this task exists to make visible. 3x the
+#: measured distance, rounded up, gives headroom for ordinary drift between
+#: intentional re-pins without masking a real regression back to silence.
+_UNEXPECTED_DRIFT_THRESHOLD = 200
+
+
+def test_plr_submodule_pin_matches_expected() -> None:
+    """Tier 1 (always runs, no network needed): `external/pylabrobot`'s own
+    HEAD must equal `EXPECTED_SUBMODULE_PIN`. This is the load-bearing half
+    -- it catches the submodule being re-pinned (intentionally or not)
+    without a corresponding update to this constant, the same
+    self-consistency contract `test_git_state_self_consistent` enforces for
+    the cherry-picked `git_state.py`, one dependency class up (a whole
+    pinned submodule, not a single file)."""
+    state = git_state.capture_git_state(PLR_SUBMODULE_ROOT)
+    assert state.provenance_source == "git", (
+        f"expected {PLR_SUBMODULE_ROOT} to be a real git submodule checkout, "
+        f"got provenance_source={state.provenance_source!r} -- is the "
+        f"submodule initialized?"
+    )
+    assert state.hash == EXPECTED_SUBMODULE_PIN, (
+        f"external/pylabrobot HEAD is {state.hash}, expected "
+        f"{EXPECTED_SUBMODULE_PIN} -- the submodule was re-pinned without "
+        f"updating EXPECTED_SUBMODULE_PIN in "
+        f"plr-jit/tests/test_fork_drift.py (and HM-23's declared value in "
+        f"plr_jit._hand_maintained.REGISTRY, which measures this same "
+        f"constant). Re-pinning the submodule is out of this task's scope "
+        f"(260901 T13) but is a real, expected future event -- when it "
+        f"happens, both places update together, in the same reviewable "
+        f"commit."
+    )
+
+
+def test_plr_submodule_distance_from_upstream_main() -> None:
+    """Tier 2: skips with a named reason when `origin` is unreachable (the
+    sandbox blocks the proxy, so offline is the COMMON case in CI -- design
+    for it, per this task's brief). When reachable, fetches `origin/main`
+    and reports the commit distance between the pinned HEAD and it, failing
+    loudly only if that distance clears `_UNEXPECTED_DRIFT_THRESHOLD` --
+    ordinary, expected drift between deliberate re-pins is not itself a
+    failure; an unexpectedly large jump is."""
+    fetch = subprocess.run(
+        ["git", "-C", str(PLR_SUBMODULE_ROOT), "fetch", "--quiet", "origin", "main"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if fetch.returncode != 0:
+        pytest.skip(
+            f"cannot reach origin for external/pylabrobot ('git fetch origin "
+            f"main' failed, rc={fetch.returncode}: {fetch.stderr.strip()!r}) "
+            f"-- upstream distance is the missing thing this tier would "
+            f"otherwise report"
+        )
+
+    count = subprocess.run(
+        ["git", "-C", str(PLR_SUBMODULE_ROOT), "rev-list", "--count", "HEAD..origin/main"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=True,
+    )
+    distance = int(count.stdout.strip())
+    print(f"\nexternal/pylabrobot is {distance} commit(s) behind origin/main")
+    assert distance < _UNEXPECTED_DRIFT_THRESHOLD, (
+        f"external/pylabrobot is {distance} commits behind origin/main -- "
+        f"beyond the {_UNEXPECTED_DRIFT_THRESHOLD}-commit unexpected-drift "
+        f"threshold. This does not by itself mean anything is broken, but it "
+        f"is exactly the silent-drift shape that let this submodule fall 53 "
+        f"commits behind unnoticed across six adversarial review rounds -- "
+        f"raising the threshold requires a reviewable argument, not just "
+        f"suppressing the assertion."
     )

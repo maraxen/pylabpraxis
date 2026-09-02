@@ -1,0 +1,411 @@
+{
+  "by_category": {
+    "harness_internal": null,
+    "postcondition_mismatch": null,
+    "precondition_state": null,
+    "shape_mismatch": null,
+    "ungroundable_reference": null,
+    "unsupported_tool": null
+  },
+  "by_category_status": "not_applicable_v1",
+  "by_reason": {
+    "no_contract_derived": 0,
+    "unresolved_delegate": 158
+  },
+  "contract_table": {
+    "disambiguated_keys": 53,
+    "distinct_bare_qualnames": 3650,
+    "total_entries": 3677
+  },
+  "dropped_receiver_calls_by_method": {},
+  "index_key_collisions": {
+    "all_records": 9,
+    "finding_bearing_records": 4
+  },
+  "schema_version": 1,
+  "stamp": {
+    "plr": {
+      "branch": "nogit",
+      "dirty": false,
+      "dirty_content_id": null,
+      "hash": "nogit",
+      "provenance_source": "nogit",
+      "toplevel": null
+    },
+    "praxis": {
+      "branch": "coxswain-p2-pipeline",
+      "dirty": true,
+      "dirty_content_id": "b6f1202d53dc5376e3365f62a98e91aa3ebaed9b175e3731772cd0f47606faa5",
+      "hash": "38d6bef0579343b90b4cfe000fdf3603938f848e",
+      "provenance_source": "git",
+      "toplevel": "/home/marielle/projects/praxis"
+    },
+    "pylabrobot_version": "0.2.2",
+    "schema_version": 1,
+    "stamped_at": "2026-09-02T02:07:58.456067+00:00",
+    "surface": "upstream_nonlegacy",
+    "surface_pin": "3a50a567fe537d3a7b8ecdc84858191ee3c19637"
+  },
+  "supported_tools": {
+    "by_reason": {
+      "no_contract_derived": 0,
+      "unresolved_delegate": 0
+    },
+    "liquid_handler_present": false,
+    "methods_attempted": 0,
+    "methods_with_dropped_receiver_call": 0,
+    "methods_with_gaps": 0,
+    "methods_with_no_recorded_gap": 0,
+    "note": "no class_name == 'LiquidHandler' record in this surface's survey index -- SUPPORTED_TOOLS' (module, qualname) mapping (D22) is structurally unresolvable here, not merely empty of gaps. Every count above is 0 because nothing was attempted, not because 0 gaps were measured."
+  },
+  "top_unresolved": {
+    "dropped_receiver": [],
+    "dropped_receiver_unfiltered": [],
+    "supported_tools_closure": [],
+    "whole_surface": [
+      {
+        "blocks_methods": 21,
+        "call": "send_command"
+      },
+      {
+        "blocks_methods": 16,
+        "call": "validate_payload_length"
+      },
+      {
+        "blocks_methods": 16,
+        "call": "wait_for_idle"
+      },
+      {
+        "blocks_methods": 12,
+        "call": "assign_child_resource"
+      },
+      {
+        "blocks_methods": 10,
+        "call": "set_temperature"
+      },
+      {
+        "blocks_methods": 9,
+        "call": "get_all_items"
+      },
+      {
+        "blocks_methods": 9,
+        "call": "get_resource"
+      },
+      {
+        "blocks_methods": 8,
+        "call": "dispensing_drive_increments_to_uL"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "update_location_by_reference_point"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_open"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "_callback"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "get_item"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_check"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_read_now"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_calibrate"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_carriage_speed"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_clear"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_mode"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_nvram"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_order"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_plate_position"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_pmt"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_read_stage"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_readtype"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_shake"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_strip"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_tag"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_wavelengths"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_transfer_data"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "request_encoder_ticks"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "set_sealing_time"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "squeezer_drive_increments_to_mm"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "wait_for_sealing_temperature"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "_set_filter"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "_set_flashes_per_well"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "unassign_child_resource"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "STATUS"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_home_to_encoder_index"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_measurement_in_flight"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_motor_mode"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_seal"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_wait_for_busy_cleared"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_warn_chunk_flags"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "end_headers"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "get_child_identifier"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "move_to_ticks"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "register_did_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "register_did_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "request_status"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "send_header"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "send_response"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "InstrumentSettings"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "SelfCheckResult"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "SyringeBoxInfo"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_check_reachable"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_compute_height_from_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_compute_volume_from_height"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_do"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_get_cutoff_filter_index_from_wavelength"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_make_tip_func"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_motion_profile"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_move_homing_relative_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_output"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_parse_id"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_raise_for_error"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_rate_to_encoder_tick_rate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_read_body"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_read_line"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_reported_drive_parameter"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_restore_homing_configuration"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_serialize_ctrl_transfer_request"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_set_integration_time"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "check_z_height"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "column"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "default_initialize_y_positions"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_container"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "require_drive_parameter"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "row"
+      }
+    ]
+  },
+  "totals": {
+    "methods_attempted": 1021,
+    "methods_with_dropped_receiver_call": 607,
+    "methods_with_gaps": 82,
+    "methods_with_no_recorded_gap": 939
+  },
+  "validation_looking_dropped_receiver_calls_by_method": {}
+}

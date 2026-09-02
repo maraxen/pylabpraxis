@@ -162,6 +162,10 @@ def _stamp_to_dict(stamp: SurveyStamp) -> dict[str, Any]:
         "pylabrobot_version": stamp.pylabrobot_version,
         "stamped_at": stamp.stamped_at,
         "schema_version": stamp.schema_version,
+        # T13 (260901, backlog #4859): which named Surface this stamp was
+        # computed against -- additive fields, see SurveyStamp's docstring.
+        "surface": stamp.surface,
+        "surface_pin": stamp.surface_pin,
     }
 
 

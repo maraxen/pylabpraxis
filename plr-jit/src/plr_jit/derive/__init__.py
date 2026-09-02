@@ -497,7 +497,7 @@ def derive_contract(
 # ---------------------------------------------------------------------------
 
 
-def _module_of_liquid_handler(index: dict[Qualkey, SurveyRecord]) -> str:
+def _module_of_liquid_handler(index: dict[Qualkey, SurveyRecord]) -> str | None:
     """AC-7.2 says "any indexed record" -- collect ALL matching modules,
     not just the first found (round-4 remediation, m3). At the current pin
     all 54 ``class_name == "LiquidHandler"`` records sit in one module, so
@@ -505,17 +505,23 @@ def _module_of_liquid_handler(index: dict[Qualkey, SurveyRecord]) -> str:
     today, but `plr_survey_common.py:127-129` proves duplicate class names
     across modules exist *in general* -- the ambiguity is latent, not live,
     and this is cheap defense in depth against it becoming live. Fails
-    LOUDLY, naming every distinct module found, rather than silently
-    picking one."""
+    LOUDLY, naming every distinct module found, for a genuine ambiguity
+    (>1 distinct module).
+
+    260901 T13 (backlog #4859, item 4): returns ``None``, does NOT raise,
+    when the surface has NO ``class_name == "LiquidHandler"`` record at
+    all. This is a real, expected case now that the analyzed surface is a
+    parameter -- e.g. upstream's non-legacy tree, where ``LiquidHandler``
+    exists only under ``legacy/`` (measured 260901: ``machines/`` is a bare
+    ``__init__.py`` there) -- and must be told apart from the ambiguous-module
+    case, which stays a loud failure because it signals a real bug in THIS
+    module's own assumptions, not an honest fact about the surface."""
     modules: set[str] = set()
     for (module, _qualname), rec in index.items():
         if rec.class_name == "LiquidHandler":
             modules.add(module)
     if not modules:
-        raise LookupError(
-            "no indexed survey record has class_name == 'LiquidHandler' -- cannot "
-            "derive SUPPORTED_TOOLS' (module, qualname) mapping (D22)"
-        )
+        return None
     if len(modules) > 1:
         raise LookupError(
             f"multiple distinct modules have a class_name == 'LiquidHandler' "
@@ -526,15 +532,24 @@ def _module_of_liquid_handler(index: dict[Qualkey, SurveyRecord]) -> str:
     return next(iter(modules))
 
 
-def resolve_supported_tool(name: str, index: dict[Qualkey, SurveyRecord]) -> Qualkey:
+def resolve_supported_tool(name: str, index: dict[Qualkey, SurveyRecord]) -> Qualkey | None:
     """Map one bare ``SUPPORTED_TOOLS`` name to its ``(module, qualname)``
     index key by a DERIVED rule, not a hand-written map (D22): look up
     ``(module_of(LiquidHandler_record), f"LiquidHandler.{name}")`` against
-    the index already built. Fails LOUDLY (``LookupError``), never silently
-    skips, if the name is absent -- this gives AC-7.2 a real failure mode if
-    PLR ever relocates ``LiquidHandler`` or renames a tool.
+    the index already built.
+
+    Returns ``None`` (260901 T13, item 4) when this surface has no
+    ``LiquidHandler`` record at all -- ``_module_of_liquid_handler`` already
+    tells that case apart from a real ambiguity, so this function only has
+    to propagate it. Still fails LOUDLY (``LookupError``), never silently
+    skips, when a ``LiquidHandler`` module WAS found but this specific tool
+    name does not resolve under it -- that is PLR renaming/removing a tool
+    on a surface that does have the class, a materially different, real
+    failure AC-7.2 must keep surfacing.
     """
     module = _module_of_liquid_handler(index)
+    if module is None:
+        return None
     key = (module, f"LiquidHandler.{name}")
     if key not in index:
         raise LookupError(
@@ -949,6 +964,10 @@ def _stamp_to_dict(stamp: SurveyStamp) -> dict[str, Any]:
         "pylabrobot_version": stamp.pylabrobot_version,
         "stamped_at": stamp.stamped_at,
         "schema_version": stamp.schema_version,
+        # T13 (260901, backlog #4859): which named Surface this stamp was
+        # computed against -- additive fields, see SurveyStamp's docstring.
+        "surface": stamp.surface,
+        "surface_pin": stamp.surface_pin,
     }
 
 
@@ -1051,9 +1070,22 @@ def build_gap_ledger(
         finding_bearing, dropped_receiver_counts
     )
 
-    tool_keys: dict[str, Qualkey] = {
+    # 260901 T13 (item 4): resolve_supported_tool returns None, does not
+    # raise, when this surface has no class_name == "LiquidHandler" record
+    # at all (see its own docstring). liquid_handler_present names that
+    # case explicitly in the published ledger -- see the "supported_tools"
+    # block below -- rather than letting an all-empty tool_keys read as
+    # "checked, found zero gaps" (a silently-empty artifact masquerading as
+    # a clean result).
+    resolved_tool_keys = {
         name: resolve_supported_tool(name, index) for name in sorted(SUPPORTED_TOOLS)
     }
+    liquid_handler_present = any(key is not None for key in resolved_tool_keys.values())
+    tool_keys: dict[str, Qualkey] = (
+        {name: key for name, key in resolved_tool_keys.items() if key is not None}
+        if liquid_handler_present
+        else {}
+    )
     tool_records = [index[key] for key in tool_keys.values()]
     tools_totals, tools_by_reason = _run_population(tool_records, index, stamp)
     tools_totals["methods_with_dropped_receiver_call"] = _methods_with_dropped_receiver_call(
@@ -1125,11 +1157,29 @@ def build_gap_ledger(
             "dropped_receiver_unfiltered": top_dropped_receiver_unfiltered,
         },
         "supported_tools": {
+            # 260901 T13 (item 4): explicit, named marker -- every count
+            # below is structurally 0 (nothing attempted, not "0 gaps
+            # measured") whenever this is False. Never infer "checked, all
+            # clean" from zeros alone; read this flag first.
+            "liquid_handler_present": liquid_handler_present,
             "methods_attempted": tools_totals["methods_attempted"],
             "methods_with_no_recorded_gap": tools_totals["methods_with_no_recorded_gap"],
             "methods_with_gaps": tools_totals["methods_with_gaps"],
             "methods_with_dropped_receiver_call": tools_totals["methods_with_dropped_receiver_call"],
             "by_reason": dict(sorted(tools_by_reason.items())),
+            **(
+                {}
+                if liquid_handler_present
+                else {
+                    "note": (
+                        "no class_name == 'LiquidHandler' record in this surface's "
+                        "survey index -- SUPPORTED_TOOLS' (module, qualname) mapping "
+                        "(D22) is structurally unresolvable here, not merely empty of "
+                        "gaps. Every count above is 0 because nothing was attempted, "
+                        "not because 0 gaps were measured."
+                    )
+                }
+            ),
         },
         "dropped_receiver_calls_by_method": dropped_by_method,
         "validation_looking_dropped_receiver_calls_by_method": validation_looking_by_method,

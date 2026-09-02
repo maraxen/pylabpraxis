@@ -219,6 +219,24 @@ def _measure_hm20() -> int:
     return len(survey_plr_exceptions._MODULE_SUBSTRING_CATEGORIES)
 
 
+def _measure_hm23() -> int:
+    """1 if Fork D's `EXPECTED_SUBMODULE_PIN` (test_fork_drift.py, 260901
+    T13) is present and well-formed (a 40-hex-char git sha) -- 0 if removed
+    or malformed. Imports through the tests-dir sys.path shim
+    `resolve_measure` already installs for this module-name form (see
+    `plr_jit._hand_maintained.resolve_measure`'s docstring); not a hardcoded
+    return, so an accidental deletion of the constant turns this measure
+    (and HM-23's FROZEN `measure() == declared` test) red instead of
+    passing vacuously."""
+    import test_fork_drift
+
+    pin = getattr(test_fork_drift, "EXPECTED_SUBMODULE_PIN", None)
+    if pin is None:
+        return 0
+    well_formed = len(pin) == 40 and all(c in "0123456789abcdef" for c in pin)
+    return 1 if well_formed else 0
+
+
 # ---------------------------------------------------------------------------
 # HM-13 content-pin (C18): a sha256 over the concatenated, normalized
 # field-values of all 45 MethodContract instances -- catches a hand-patched

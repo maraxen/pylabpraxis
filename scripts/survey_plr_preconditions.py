@@ -60,11 +60,13 @@ from typing import Any
 
 from plr_survey_common import (
     DEFAULT_PLR_ROOT,
+    DEFAULT_PLR_SUBMODULE,
     PROJECT_ROOT,
     iter_source_files,
     module_name,
     parse_files,
     plr_version_stamp,
+    relative_to_project_or_absolute,
     resolved_call_name,
 )
 
@@ -149,7 +151,7 @@ class _BodyScanner(ast.NodeVisitor):
         if condition is not None:
             try:
                 cond_src = ast.unparse(condition)
-            except Exception:  # noqa: BLE001 - best-effort context only
+            except Exception:
                 cond_src = None
             mentions = self._mentions(condition)
         self.findings.append(PreconditionFinding(
@@ -160,7 +162,7 @@ class _BodyScanner(ast.NodeVisitor):
     def visit_If(self, node: ast.If) -> None:
         try:
             test_src = ast.unparse(node.test)
-        except Exception:  # noqa: BLE001
+        except Exception:
             test_src = "<unparseable>"
         self._scope_trail.insert(0, f"if {test_src}")
         for child in node.body:
@@ -180,7 +182,7 @@ class _BodyScanner(ast.NodeVisitor):
     def visit_For(self, node: ast.For) -> None:
         try:
             trail_entry = f"for {ast.unparse(node.target)} in {ast.unparse(node.iter)}"
-        except Exception:  # noqa: BLE001
+        except Exception:
             trail_entry = "for <unparseable>"
         self._scope_trail.insert(0, trail_entry)
         self.generic_visit(node)
@@ -191,7 +193,7 @@ class _BodyScanner(ast.NodeVisitor):
     def visit_While(self, node: ast.While) -> None:
         try:
             trail_entry = f"while {ast.unparse(node.test)}"
-        except Exception:  # noqa: BLE001
+        except Exception:
             trail_entry = "while <unparseable>"
         self._scope_trail.insert(0, trail_entry)
         self.generic_visit(node)
@@ -246,13 +248,11 @@ class _BodyScanner(ast.NodeVisitor):
             # existing delegates/unresolved recording below is unaffected.
             try:
                 self.dropped.add(ast.unparse(target))
-            except Exception:  # noqa: BLE001 - best-effort context only
+            except Exception:
                 self.dropped.add(f"<unparseable>.{target.attr}")
 
         if name is not None:
-            if is_self_call and name in self.class_method_names:
-                self.delegates.add(name)
-            elif not is_self_call and name in self.module_func_names:
+            if (is_self_call and name in self.class_method_names) or (not is_self_call and name in self.module_func_names):
                 self.delegates.add(name)
             elif is_self_call or (not is_self_call and _is_validation_looking(name)):
                 # Looks like a validation call but isn't resolvable to a
@@ -283,7 +283,7 @@ def survey(plr_root: Path) -> list[FunctionPreconditions]:
 
     for file, tree in parsed.items():
         module = module_name(Path(file), plr_root)
-        rel_file = str(Path(file).relative_to(PROJECT_ROOT))
+        rel_file = relative_to_project_or_absolute(Path(file))
 
         module_func_names = {
             n.name for n in ast.iter_child_nodes(tree)
@@ -344,6 +344,17 @@ def main() -> int:
                          help="Filter the printed/written report to one class (e.g. LiquidHandler). "
                               "The scan itself always covers the whole surface.")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument(
+        "--submodule-root", type=Path, default=None,
+        help="Git root to stamp this survey's 'version' field against (260901 T13). "
+             "Defaults to the vendored external/pylabrobot submodule -- pass this "
+             "explicitly when --plr-root points at a DIFFERENT tree (e.g. an "
+             "out-of-repo upstream extraction) so 'version' describes what was "
+             "actually scanned instead of silently reporting the default submodule's "
+             "git state. A non-git tree (e.g. a `git archive | tar -x` extraction with "
+             "no .git dir) degrades to {git_sha: None, git_dirty: None} here -- "
+             "record its real pin out of band (see plr_jit._provenance.Surface).",
+    )
     args = parser.parse_args()
 
     results = survey(args.plr_root)
@@ -351,16 +362,17 @@ def main() -> int:
 
     scoped = [r for r in results if args.target_class is None or r.class_name == args.target_class]
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    submodule_root = args.submodule_root if args.submodule_root is not None else DEFAULT_PLR_SUBMODULE
     payload: dict[str, Any] = {
-        "plr_root": str(args.plr_root.relative_to(PROJECT_ROOT)),
-        "version": plr_version_stamp(),
+        "plr_root": relative_to_project_or_absolute(args.plr_root),
+        "version": plr_version_stamp(submodule_root),
         "target_class_filter": args.target_class,
         "total_functions_scanned": len(results),
         "total_functions_in_report": len(scoped),
         "functions": [asdict(r) for r in scoped],
     }
     args.out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    print(f"\nwrote {args.out.relative_to(PROJECT_ROOT)}")
+    print(f"\nwrote {relative_to_project_or_absolute(args.out)}")
     return 0
 
 

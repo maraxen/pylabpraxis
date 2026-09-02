@@ -147,6 +147,10 @@ def _stamp_from_dict(d: dict[str, Any]) -> SurveyStamp:
         pylabrobot_version=d.get("pylabrobot_version"),
         stamped_at=d["stamped_at"],
         schema_version=d.get("schema_version", 1),
+        # T13 (260901, backlog #4859): additive -- absent in any pre-T13
+        # payload, defaults to DEFAULT_SURFACE's own name/pin.
+        surface=d.get("surface", "legacy_pinned"),
+        surface_pin=d.get("surface_pin"),
     )
 
 

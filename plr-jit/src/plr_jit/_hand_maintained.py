@@ -35,7 +35,11 @@ _FAILURE_TAXONOMY_PATH = REPO_ROOT / "training" / "verify" / "failure_taxonomy.p
 
 #: Spec §9.4: re-baselined once at T9 to `live_rows + 3` (21 + 3 = 24).
 #: Fixed after T9 ships -- no further re-baselining without a new
-#: adversarial round finding new discovery (§9.4).
+#: adversarial round finding new discovery (§9.4). 260901 T13 added one new
+#: live row (HM-23, the Fork D expected-pin literal) -- live_rows moved
+#: 21 -> 22, still <= 24, so the cap itself is UNCHANGED: 22 live rows still
+#: fit inside the room T9 already reserved, and per §9.4 growth alone is
+#: never grounds to widen a cap without a new adversarial-round argument.
 BUDGET_CAP = 24
 
 
@@ -642,6 +646,33 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "both the loader and this row."
         ),
         measure="test_hand_maintained_ratchet:_measure_hm22",
+    ),
+    HandMaintainedSurface(
+        id="HM-23",
+        what=(
+            "EXPECTED_SUBMODULE_PIN, Fork D's expected-pin literal "
+            "(plr-jit/tests/test_fork_drift.py, 260901 T13, backlog #4835's "
+            "own ratchet applied to T13's new hand-typed surface)"
+        ),
+        metric="declared pin literals",
+        declared=1,
+        status="FROZEN",
+        why_not_derived=(
+            "The whole point of Fork D's tier-1 upstream-drift test is a "
+            "fixed value to diff the LIVE external/pylabrobot submodule "
+            "HEAD against -- deriving the expectation from the submodule "
+            "itself would make the self-consistency check vacuous, the "
+            "same reasoning HM-17/HM-18 already apply to the Fork B "
+            "cherry-pick header's recorded hashes."
+        ),
+        breaks_when=(
+            "The constant is removed or becomes malformed (not a 40-hex-"
+            "char sha) without a corresponding update to Fork D's tier-1 "
+            "test, or a second such pin constant is introduced elsewhere "
+            "(e.g. for a second surface, T13's own Surface parameter) "
+            "without its own registry row."
+        ),
+        measure="test_hand_maintained_ratchet:_measure_hm23",
     ),
 )
 
