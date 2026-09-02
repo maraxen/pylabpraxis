@@ -9,6 +9,13 @@ backlog_item: 480
 
 # Provisional thresholds for the P2.6 promotion gate
 
+> **Status 260901 (P2.6 applied):** the rule was applied mechanically to the
+> three-arm ablation -- verdict NOT PROMOTED (selected A: acc 0.386, recall
+> 0.864, prec 0.835, tripwire 1). **The single D8 revision is UNSPENT**; the
+> proposal on the table is to keep it that way until two scorer artifacts and
+> one gold-set defect are fixed. Decision doc:
+> `.praxia/docs/audits/260901_p26-promotion.md`.
+
 Spec: `.praxia/docs/specs/260825_coxswain-phase-2-functiongemma-copilot-p.md`
 rev2 D8 / §5 P2.5 deliverable 5 / §7 AC-2.5.x ("thresholds labeled
 provisional"). These are ANCHORS for the blocking jury, not final gates:

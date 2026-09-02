@@ -227,6 +227,12 @@ which was the single worst-supported behavior in the 0826 revision.
    (§3). Supersedes the 0827 golden-only point as the P2.6 reference.
 3. **DONE -- this revision.** Gate re-run with fresh numbers; verdict at the
    top.
+4. **P2.6 RUN 260901 (jury said GO).** Three-arm negative-mixing ablation
+   on Engaging, promotion rule applied mechanically: all arms eligible and
+   `marginal`, A selected, **NOT PROMOTED**; D8 revision unspent (proposal:
+   keep it so). Two scorer artifacts and one gold-set defect account for 54
+   of A's 140 misses. Decision doc:
+   `.praxia/docs/audits/260901_p26-promotion.md`.
 
 **Open for the jury (not blockers, recorded so they are decided rather than
 defaulted):**
