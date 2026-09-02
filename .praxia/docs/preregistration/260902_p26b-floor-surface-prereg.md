@@ -1,7 +1,7 @@
 ---
 title: 'P2.6b pre-registration: floor_gen surface-form data fix, arm-A retrain on the frozen eval split'
 description: 'Pre-registration (task 260902_p26b_surface_data) for the floor_gen data fix: repair the 60 cardinality-excluded floor rows without moving any accepted row (synth 0.2.1, frozen seed), add a natural-phrasing lane (locations and verbs) routed to train only, assemble 0.1.4 with the pinned 228-row eval split and a probe set, retrain the arm-A recipe once and score it against baseline v2 and the existing A checkpoint under the unchanged promotion rule; row-level predictions registered before generation.'
-status: registered
+status: registered-cc662026; run-21842239 evaluated
 task_id: 260902_p26b_surface_data
 date: '260902'
 ---
@@ -108,3 +108,10 @@ assembly 0.1.4 outputs incl. probe files; train manifest `training/out/p26b/A/tr
 reports `training/eval/reports/260902_p26b_A.json`, `260902_p26b_probe_{A,A2}.json` with
 generation dumps under `training/eval/outputs/`; checkpoint uncommitted at
 `outputs/p26b/A/checkpoint` (sha256 in the manifest). bathos run tagged `arm:A2`.
+
+## 6. Outcome (260902, mechanical)
+
+P1 **4/6** (holds), P2 **11/22** (holds), P2b 0/2, P3 **fails** (tripwire 3 > 1; 8 hit → miss > 5;
+accuracy 0.671 and recall 0.920 fine), P4 probe A 0.233 → A2 0.844 (holds). Sidecar `fail`
+(residual). Promotion: NOT PROMOTED (selected A2). Deviations: none (all frozen items held; one
+training run; no recipe change). Decision doc `.praxia/docs/audits/260902_p26b-floor-surface-decision.md`.

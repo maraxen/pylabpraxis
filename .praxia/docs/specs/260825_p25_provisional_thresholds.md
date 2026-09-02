@@ -22,6 +22,13 @@ backlog_item: 480
 > generations, prediction held. A: acc **0.636** [0.572, 0.696], recall 0.864,
 > prec 0.835, tripwire 1 -> still NOT PROMOTED; baseline v2 0.197. **Anchors
 > unchanged, D8 revision still UNSPENT.** Decision doc §8.
+>
+> **Status 260902 (P2.6b, task `260902_p26b_surface_data`):** floor_gen data fix
+> (repaired rows + natural-phrasing lane), arm A retrained once on the pinned
+> split: A2 acc **0.671** [0.608, 0.729], recall 0.920, prec 0.853, tripwire 3 ->
+> NOT PROMOTED; pre-registered P1/P2/P4 held, P3 failed (tripwire, flips).
+> **Anchors unchanged, D8 revision still UNSPENT.** Decision doc
+> `.praxia/docs/audits/260902_p26b-floor-surface-decision.md`.
 
 Spec: `.praxia/docs/specs/260825_coxswain-phase-2-functiongemma-copilot-p.md`
 rev2 D8 / §5 P2.5 deliverable 5 / §7 AC-2.5.x ("thresholds labeled

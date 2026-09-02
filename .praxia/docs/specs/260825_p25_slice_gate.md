@@ -240,15 +240,27 @@ which was the single worst-supported behavior in the 0826 revision.
    every model. A 0.636 / 0.864 / 0.835 / tripwire 1 -> still NOT PROMOTED,
    D8 unspent. Decision doc §8; the eval-split annotation defect this gate's
    condition 2 relied on is closed by `test_assembly_gap_fields.py`.
+6. **260902 -- P2.6b floor_gen data fix** (task `260902_p26b_surface_data`,
+   backlog 4890): the open item below ("floor_gen.synth scalar-surface
+   compliance") is CLOSED -- synth 0.2.1 repairs the 60 rows (incl. the whole
+   `pick_up_tips__ambiguous-referent` cell) with the RNG seed frozen, so the
+   228-row eval split is pinned and unchanged (assembly 0.1.4). A natural-
+   phrasing lane added 429 train rows + a 90-row probe set. Arm A retrained
+   once: 0.671 / 0.920 / 0.853 / tripwire 3, NOT PROMOTED; the natural
+   surface transfers (probe +0.61, 4/6 pre-registered rows) but the lane
+   needs an out-of-surface counterpart (tripwire 1 -> 3). Decision doc
+   `.praxia/docs/audits/260902_p26b-floor-surface-decision.md`.
 
 **Open for the jury (not blockers, recorded so they are decided rather than
 defaulted):**
 
 - Negative-mixing ratio for P2.6 (train is 60% negatives).
 - Train-side exact-duplicate handling (86 rows).
-- Whether to spend one more sprint on `floor_gen.synth` scalar-surface
+- ~~Whether to spend one more sprint on `floor_gen.synth` scalar-surface
   compliance (recovers ~60 rows incl. the whole
-  `pick_up_tips__ambiguous-referent` cell; needs GENERATOR_VERSION bump).
+  `pick_up_tips__ambiguous-referent` cell; needs GENERATOR_VERSION bump).~~
+  **Done 260902 (§5 item 6)** -- without a seed bump: the rows are train-only
+  until an eval revision re-cuts the split.
 - Increments 2-4 of the corpus-ingestion strategy remain declined under G1's
   STOP (user decision 260901); this gate does not depend on them.
 
