@@ -17,15 +17,20 @@ ROOT = Path(__file__).resolve().parents[2]
 CORPUS = ROOT / CORPUS_REL
 SIDECAR = ROOT / SIDECAR_REL
 
-# Pinned 260901 against assembly_version 0.1.2 (812 rows; train 584).
-EXPECT_TRAIN = 584
-EXPECT_DEDUP_KEPT = 515
-EXPECT_DEDUP_DROPPED = 69
-EXPECT_KEPT_BY_CLASS = {"clean_parse": 226, "missing_slot": 102, "ambiguous_referent": 66, "out_of_surface": 121}
+# Pinned 260902 against assembly_version 0.1.4 (1301 rows; eval 228 PINNED,
+# train 1073 = 584 + 60 repaired floor rows + 429 natural-lane variants).
+# History: 0.1.2/0.1.3 (812 rows; train 584; dedup 515/69; A 226/102/66/121,
+# B 226/80/51/95, C 226/40/26/47) -- the P2.6 arms were trained on that set.
+EXPECT_ROWS = 1301
+EXPECT_EVAL = 228
+EXPECT_TRAIN = 1073
+EXPECT_DEDUP_KEPT = 984
+EXPECT_DEDUP_DROPPED = 89
+EXPECT_KEPT_BY_CLASS = {"clean_parse": 382, "missing_slot": 265, "ambiguous_referent": 216, "out_of_surface": 121}
 EXPECT_ARMS = {
-    "A": {"clean_parse": 226, "missing_slot": 102, "ambiguous_referent": 66, "out_of_surface": 121},
-    "B": {"clean_parse": 226, "missing_slot": 80, "ambiguous_referent": 51, "out_of_surface": 95},
-    "C": {"clean_parse": 226, "missing_slot": 40, "ambiguous_referent": 26, "out_of_surface": 47},
+    "A": {"clean_parse": 382, "missing_slot": 265, "ambiguous_referent": 216, "out_of_surface": 121},
+    "B": {"clean_parse": 382, "missing_slot": 168, "ambiguous_referent": 137, "out_of_surface": 77},
+    "C": {"clean_parse": 382, "missing_slot": 84, "ambiguous_referent": 69, "out_of_surface": 38},
 }
 
 
@@ -42,9 +47,19 @@ def deduped(corpus):
 
 
 def test_corpus_loads_line_aligned(corpus):
-    assert len(corpus) == 812
+    assert len(corpus) == EXPECT_ROWS
     assert all(r.split in ("train", "eval") for r in corpus)
-    assert len({r.record_id for r in corpus}) == 812
+    assert len({r.record_id for r in corpus}) == EXPECT_ROWS
+
+
+def test_eval_split_is_the_pinned_228(corpus):
+    import json
+
+    from assemble.pin import PIN_REL
+
+    pin = json.loads((ROOT / PIN_REL).read_text(encoding="utf-8"))
+    eval_ids = {r.record_id for r in corpus if r.split == "eval"}
+    assert len(eval_ids) == EXPECT_EVAL and eval_ids == set(pin["rows"])
 
 
 def test_train_split_and_dedup_pins(deduped):

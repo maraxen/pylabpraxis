@@ -11,11 +11,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from assemble.build import CORPUS_NAME, MANIFEST_NAME, SIDECAR_NAME, build_artifacts, main
+from assemble.build import (
+    CORPUS_NAME, MANIFEST_NAME, PROBE_CORPUS_NAME, PROBE_SIDECAR_NAME, SIDECAR_NAME, build_artifacts, main,
+)
 
 TRAINING_DIR = Path(__file__).resolve().parents[1]
 OUT_DIR = TRAINING_DIR / "assemble" / "out"
-ARTIFACT_NAMES = (CORPUS_NAME, SIDECAR_NAME, MANIFEST_NAME)
+ARTIFACT_NAMES = (CORPUS_NAME, SIDECAR_NAME, MANIFEST_NAME, PROBE_CORPUS_NAME, PROBE_SIDECAR_NAME)
 
 
 def test_repeated_builds_are_byte_identical():
