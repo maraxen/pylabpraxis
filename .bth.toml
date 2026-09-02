@@ -7,4 +7,5 @@ host = "engaging"
 remote_root = "/home/maarxaru/projects/praxis"
 
 [slurm]
+remote = "engaging"
 partition = "mit_normal_gpu"
