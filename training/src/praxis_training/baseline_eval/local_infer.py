@@ -94,4 +94,7 @@ def make_generate(
                 text = text[:idx]
         return text
 
+    # Recorded beside any dump: the dtype the weights actually run in (a
+    # requested None resolves to whatever from_pretrained picked).
+    generate.resolved_dtype = str(model.dtype)  # type: ignore[attr-defined]
     return generate

@@ -49,7 +49,11 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--dtype", default=None, help="torch dtype name e.g. float32/bfloat16")
     p.add_argument("--out", type=Path, default=None, help="write JSON report here")
     p.add_argument("--label", default=None,
-                   help="model_label recorded in the report (e.g. 'p26 arm B sha256:...')")
+                   help="model_label recorded in the report (e.g. 'p26 arm B sha256:...'); "
+                        "in --recorded mode overrides the label stored in the artifact")
+    p.add_argument("--dump-outputs", type=Path, default=None,
+                   help="live mode: also write every raw generation as a recorded-outputs "
+                        "artifact (re-scorable later with --recorded, no inference)")
     return p
 
 
@@ -70,13 +74,17 @@ def main(argv: list[str] | None = None) -> int:
         if not recorded_path.is_absolute():
             recorded_path = repo_root / recorded_path
         report = run_recorded(pair_set, recorded_path, out_path=args.out,
-                              split=args.split, allow_partial=args.allow_partial)
+                              split=args.split, allow_partial=args.allow_partial,
+                              model_label=args.label)
     else:
         try:
+            dump = args.dump_outputs
+            if dump is not None and not dump.is_absolute():
+                dump = repo_root / dump
             report = run_local(
                 pair_set, args.model, revision=args.revision, device=args.device,
                 dtype=args.dtype, out_path=args.out, split=args.split,
-                model_label=args.label,
+                model_label=args.label, dump_outputs=dump,
             )
         except RuntimeError as exc:
             print(f"BLOCKED: {exc}", file=sys.stderr)
@@ -103,6 +111,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"clarify_precision    : {fmt(cp)}")
     if args.out is not None:
         print(f"report written: {args.out}")
+    if args.recorded is None and args.dump_outputs is not None:
+        print(f"generations dumped: {args.dump_outputs}")
     return 0
 
 

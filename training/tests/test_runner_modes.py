@@ -177,3 +177,56 @@ def tmp_sidecar_with_swapped_utterance(sidecar_path):
     tmp = Path(tempfile.mkdtemp()) / "bad_sidecar.jsonl"
     tmp.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
     return tmp
+
+
+# ---------------------------------------------------------------------------
+# generations dump: the live lane writes a recorded artifact that re-scores
+# to the identical report (260902 enabler for scorer-fix re-scores)
+# ---------------------------------------------------------------------------
+
+def _synthetic_generate(native_row: dict) -> str:
+    user = next(m["content"] for m in native_row["messages"] if m["role"] == "user")
+    if "heater shaker" in user:
+        return ""
+    if "lysis buffer reservoir" in user:
+        return ("<start_function_call>call:aspirate{source:<escape>lysis_buffer_reservoir"
+                "<escape>,volume_ul:<escape>100<escape>}<end_function_call>")
+    return "<start_function_call>call:aspirate{}<end_function_call>"
+
+
+def test_local_mode_dumps_recorded_artifact_that_rescores_identically(tmp_path):
+    from praxis_training.baseline_eval.runner import read_recorded_artifact
+
+    pairs, sidecar = _golden_paths()
+    pair_set = load_pair_set(pairs, sidecar).filter_split("eval")
+    dump = tmp_path / "dump.json"
+    live = run_local(pair_set, "fake/model", revision="deadbeef", generate_fn=_synthetic_generate,
+                     model_label="fake label sha256:abc", dump_outputs=dump)
+    assert live["inputs"]["dump_outputs"] == str(dump)
+
+    art = read_recorded_artifact(dump)
+    assert art.base_revision == "fake/model@deadbeef"
+    assert art.model_label == "fake label sha256:abc"
+    assert art.recorded_by.endswith("run_local")
+    assert set(art.outputs) == {i["record_id"] for i in pair_set.intents}
+    assert art.inputs["max_new_tokens"] == 128 and art.inputs["split"] == "all"
+
+    rescored = run_recorded(pair_set, dump)
+    assert rescored["mode"] == "recorded_artifacts"
+    for key in ("n_examples", "exact_match_accuracy", "clarify_recall", "clarify_precision",
+                "clarify_confusion", "tripwire_out_of_surface_tool_calls", "per_class",
+                "exact_match_failures"):
+        assert rescored[key] == live[key], key
+    assert rescored["inputs"]["coverage"] == {"in_scope": 62, "recorded": 62, "scored": 62}
+    assert rescored["inputs"]["recorded_inputs"]["max_new_tokens"] == 128
+
+
+def test_recorded_mode_carries_model_label_from_dump(tmp_path):
+    pairs, sidecar = _golden_paths()
+    pair_set = load_pair_set(pairs, sidecar).filter_split("eval")
+    dump = tmp_path / "dump.json"
+    run_local(pair_set, "fake/model", revision="deadbeef", generate_fn=_synthetic_generate,
+              model_label="from-dump", dump_outputs=dump)
+    assert run_recorded(pair_set, dump)["model_label"] == "from-dump"
+    assert run_recorded(pair_set, dump, model_label="override")["model_label"] == "override"
+    assert "pairs" not in run_recorded(pair_set, dump)["inputs"]

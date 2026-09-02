@@ -22,12 +22,18 @@ Recorded artifact JSON shape::
 
 `base_revision` is REQUIRED (R7: pin the base revision beside any recorded
 outputs). A missing or placeholder base_revision is a hard error.
+
+Since 260902 (`run_local(dump_outputs=...)`) the live lane WRITES this same
+artifact beside its report, carrying `model_label` and the inference
+`inputs` (device / dtype requested / dtype resolved / max_new_tokens /
+split). A scorer change is then a pure `--recorded` re-score of the SAME
+generations -- no inference, no numerics drift, every row auditable.
 """
 
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
@@ -37,8 +43,11 @@ from .metrics import ScoredExample, build_report, score_all
 
 __all__ = [
     "PairSet",
+    "RecordedArtifact",
     "load_pair_set",
     "load_recorded_outputs",
+    "read_recorded_artifact",
+    "write_recorded_artifact",
     "run_recorded",
     "run_local",
     "GenerateFn",
@@ -88,8 +97,19 @@ def load_pair_set(pairs_path: Path, sidecar_path: Path) -> PairSet:
     return PairSet(pairs=pairs, intents=intents)
 
 
-def load_recorded_outputs(path: Path) -> tuple[dict[str, str], str]:
-    """Parse + validate a recorded-outputs JSON. Returns ({id: raw}, base_rev)."""
+@dataclass(frozen=True)
+class RecordedArtifact:
+    """A validated recorded-outputs artifact (see module docstring)."""
+
+    outputs: dict[str, str]
+    base_revision: str
+    recorded_by: str | None = None
+    model_label: str | None = None
+    inputs: dict[str, Any] = field(default_factory=dict)
+
+
+def read_recorded_artifact(path: Path) -> RecordedArtifact:
+    """Parse + validate a recorded-outputs JSON, metadata included."""
     blob = json.loads(path.read_text(encoding="utf-8"))
     if blob.get("artifact_kind") != RECORDED_KIND:
         raise ValueError(
@@ -109,7 +129,43 @@ def load_recorded_outputs(path: Path) -> tuple[dict[str, str], str]:
         if rid in outputs:
             raise ValueError(f"{path}: duplicate record_id {rid!r}")
         outputs[rid] = entry.get("raw_output", "")
-    return outputs, base
+    inputs = blob.get("inputs") or {}
+    return RecordedArtifact(
+        outputs=outputs,
+        base_revision=base,
+        recorded_by=blob.get("recorded_by"),
+        model_label=blob.get("model_label"),
+        inputs=dict(inputs) if isinstance(inputs, Mapping) else {},
+    )
+
+
+def load_recorded_outputs(path: Path) -> tuple[dict[str, str], str]:
+    """Parse + validate a recorded-outputs JSON. Returns ({id: raw}, base_rev)."""
+    art = read_recorded_artifact(path)
+    return art.outputs, art.base_revision
+
+
+def write_recorded_artifact(
+    path: Path,
+    outputs: Mapping[str, str],
+    *,
+    base_revision: str,
+    recorded_by: str,
+    model_label: str | None,
+    inputs: Mapping[str, Any],
+) -> None:
+    """Write the recorded-outputs artifact in the shape `read_recorded_artifact`
+    accepts (round-trip guaranteed by test_runner_modes)."""
+    blob = {
+        "artifact_kind": RECORDED_KIND,
+        "base_revision": base_revision,
+        "recorded_by": recorded_by,
+        "model_label": model_label,
+        "inputs": dict(inputs),
+        "outputs": [{"record_id": rid, "raw_output": raw} for rid, raw in outputs.items()],
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(blob, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def run_recorded(
@@ -118,6 +174,7 @@ def run_recorded(
     out_path: Path | None = None,
     split: str | None = None,
     allow_partial: bool = False,
+    model_label: str | None = None,
 ) -> dict[str, Any]:
     """Score pre-recorded outputs; report clearly labeled as recorded.
 
@@ -125,9 +182,12 @@ def run_recorded(
     checkpoint re-score must see every example). ``allow_partial=True``
     scores the recorded/scope INTERSECTION instead -- for tiny hand-made
     mechanics-proof fixtures -- and the report is labeled PARTIAL.
+    ``model_label`` defaults to the label stored in the artifact (the dump
+    written by :func:`run_local`), so a re-score still names its weights.
     """
     selected = pair_set.filter_split(split) if split else pair_set
-    outputs, base = load_recorded_outputs(recorded_path)
+    art = read_recorded_artifact(recorded_path)
+    outputs, base = art.outputs, art.base_revision
 
     ids = [intent["record_id"] for intent in selected.intents]
     missing = [rid for rid in ids if rid not in outputs]
@@ -153,8 +213,8 @@ def run_recorded(
         mode="recorded_artifacts",
         base_revision=base,
         inputs={
-            "pairs": str(recorded_path),
             "recorded_outputs": str(recorded_path),
+            "recorded_inputs": art.inputs,
             "split": split or "all",
             "extra_record_ids_ignored": extra,
             "coverage": {
@@ -164,6 +224,7 @@ def run_recorded(
             },
         },
         labeled_as=label,
+        model_label=model_label if model_label is not None else art.model_label,
     )
     return report
 
@@ -180,11 +241,14 @@ def run_local(
     split: str | None = None,
     generate_fn: GenerateFn | None = None,
     model_label: str | None = None,
+    dump_outputs: Path | None = None,
 ) -> dict[str, Any]:
     """Live local inference over the selected split (AC-2.1.x CPU lane).
 
     ``generate_fn`` injectable for tests; when omitted, built from
     transformers via :mod:`.local_infer` (lazy heavy imports).
+    ``dump_outputs`` persists every raw generation as a recorded-outputs
+    artifact so the run can be re-scored without inference.
     """
     if generate_fn is None:
         from .local_infer import make_generate  # lazy: keeps torch off default path
@@ -201,17 +265,31 @@ def run_local(
     for row, intent in zip(selected.pairs, selected.intents):
         outputs[intent["record_id"]] = gen(row)
 
+    base_revision = f"{model_id}@{revision}"
+    inputs: dict[str, Any] = {
+        "device": device,
+        "dtype": dtype or "model-default",
+        "dtype_resolved": getattr(gen, "resolved_dtype", None),
+        "split": split or "all",
+        "max_new_tokens": max_new_tokens,
+    }
+    if dump_outputs is not None:
+        write_recorded_artifact(
+            dump_outputs,
+            outputs,
+            base_revision=base_revision,
+            recorded_by="praxis_training.baseline_eval.runner.run_local",
+            model_label=model_label,
+            inputs=inputs,
+        )
+        inputs["dump_outputs"] = str(dump_outputs)
+
     scored: list[ScoredExample] = score_all(outputs, selected.intents)
     return build_report(
         scored,
         mode="local_inference",
-        base_revision=f"{model_id}@{revision}",
-        inputs={
-            "device": device,
-            "dtype": dtype or "model-default",
-            "split": split or "all",
-            "max_new_tokens": max_new_tokens,
-        },
+        base_revision=base_revision,
+        inputs=inputs,
         labeled_as=_LOCAL_LABEL,
         model_label=model_label,
     )
