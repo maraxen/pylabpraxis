@@ -38,163 +38,27 @@ Usage::
 from __future__ import annotations
 
 import argparse
-import asyncio
-import contextlib
 import dataclasses
-import io
 import json
 import logging
 import sys
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "eval"))
+
+from oracle_common import (
+    DEFAULT_CONTRACTS,
+    RuntimeOutcome,
+    adapt_graph,
+    compare,
+    run_runtime,
+    run_static,
+)
+
 log = logging.getLogger("oracle_spike")
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_CONTRACTS = REPO_ROOT / "plr-sema" / "data" / "derived_contracts.json"
-
-
-def _import_verifier():
-    """``training/`` installs its subpackages top-level (``verify``), but be
-    tolerant of the namespace form too."""
-    try:
-        import verify.verifier as v  # type: ignore[import-not-found]
-    except ModuleNotFoundError:
-        import training.verify.verifier as v  # type: ignore[import-not-found,no-redef]
-    return v
-
-
-# --------------------------------------------------------------------------
-# runtime side
-# --------------------------------------------------------------------------
-
-
-@dataclasses.dataclass
-class RuntimeOutcome:
-    error: str | None
-    exc_class: str | None
-    failing_index: int | None  # index of the call being executed when it raised
-    planned_indices: list[int]
-    passed: bool
-
-
-def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
-    verifier = _import_verifier()
-    planned: list[int] = []
-    real_plan_call = verifier.plan_call
-
-    def recording_plan_call(call, index, setup, *, strict):
-        planned.append(index)
-        return real_plan_call(call, index, setup, strict=strict)
-
-    verifier.plan_call = recording_plan_call
-    sink = io.StringIO()
-    try:
-        with contextlib.redirect_stdout(sink):
-            result = asyncio.run(
-                verifier.verify(
-                    example["call_sequence"],
-                    example["intent_record"],
-                    layout=example.get("deck_layout"),
-                    backend=example.get("backend", "LiquidHandlerChatterboxBackend"),
-                )
-            )
-    finally:
-        verifier.plan_call = real_plan_call
-    error = result.get("error")
-    exc_class = error.split(":", 1)[0].strip() if error else None
-    failing = planned[-1] if (error and planned) else None
-    return RuntimeOutcome(error, exc_class, failing, planned, bool(result.get("passed")))
-
-
-# --------------------------------------------------------------------------
-# static side
-# --------------------------------------------------------------------------
-
-_LH_TYPE = "LiquidHandler"
-
-
-def adapt_graph(example: dict[str, Any], protocol_fqn: str) -> dict[str, Any]:
-    """Call sequence -> §6.2 graph payload. Field set mirrors the committed
-    fixture ``tests/fixtures/simple_transfer_graph.json`` exactly."""
-    layout = example.get("deck_layout") or {}
-    resources = {
-        "lh": {
-            "declared_type": _LH_TYPE, "element_type": None, "is_container": False,
-            "is_parameter": True, "items_x": None, "items_y": None,
-            "parental_chain": [], "source_expression": None, "variable_name": "lh",
-        }
-    }
-    for name, typ in (layout.get("resources") or {}).items():
-        resources[name] = {
-            "declared_type": typ, "element_type": None, "is_container": False,
-            "is_parameter": True, "items_x": None, "items_y": None,
-            "parental_chain": ["Deck"], "source_expression": None, "variable_name": name,
-        }
-    operations = []
-    for i, call in enumerate(example["call_sequence"]):
-        operations.append({
-            "arguments": {k: json.dumps(v) for k, v in (call.get("params") or {}).items()},
-            "condition_expr": None, "creates_state": [], "depends_on_params": [],
-            "false_branch": [], "foreach_body": [], "foreach_source": None,
-            "id": f"op_{i}", "line_number": i + 1, "method_name": call["name"],
-            "node_type": "static", "preconditions": [], "receiver_type": _LH_TYPE,
-            "receiver_variable": "lh", "true_branch": [],
-        })
-    return {
-        "protocol_fqn": protocol_fqn, "protocol_name": protocol_fqn.rsplit(".", 1)[-1],
-        "operations": operations, "resources": resources,
-        "execution_order": [o["id"] for o in operations], "has_conditionals": False,
-        "has_loops": False, "machine_types": [_LH_TYPE], "preconditions": [],
-        "resource_types": sorted({r["declared_type"] for r in resources.values()}),
-    }
-
-
-def run_static(graph: dict[str, Any], contracts_json: str) -> dict[str, dict[str, Any]]:
-    sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "src"))
-    from plr_sema import check_graph
-    from plr_sema.verdict import join
-
-    report = check_graph(json.dumps(graph), contracts_json)
-    per_op: dict[str, list] = {o["id"]: [] for o in graph["operations"]}
-    for f in report.findings:
-        per_op.setdefault(f.operation_id, []).append(f)
-    return {
-        oid: {
-            "verdict": join(fs).value,
-            "n_findings": len(fs),
-            "reasons": sorted({getattr(f, "reason", None) or "" for f in fs} - {""}),
-        }
-        for oid, fs in per_op.items()
-    }
-
-
-# --------------------------------------------------------------------------
-# comparison
-# --------------------------------------------------------------------------
-
-
-def compare(example: dict[str, Any], rt: RuntimeOutcome, st: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
-    rows = []
-    for i, call in enumerate(example["call_sequence"]):
-        oid = f"op_{i}"
-        if rt.failing_index is None:
-            outcome = "ran_ok" if rt.error is None else "not_reached(setup_error)"
-        elif i < rt.failing_index:
-            outcome = "ran_ok"
-        elif i == rt.failing_index:
-            outcome = f"raised:{rt.exc_class}"
-        else:
-            outcome = "not_reached"
-        verdict = st[oid]["verdict"]
-        unsound = (verdict == "SAFE" and outcome.startswith("raised")) or (
-            verdict == "WILL_FAIL" and outcome == "ran_ok"
-        )
-        rows.append({
-            "index": i, "method": call["name"], "static": verdict,
-            "static_findings": st[oid]["n_findings"], "runtime": outcome, "unsound": unsound,
-        })
-    return rows
 
 
 def main(argv: list[str] | None = None) -> int:
