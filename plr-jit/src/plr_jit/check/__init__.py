@@ -30,14 +30,14 @@ emitted, and this module does not attempt to build it. Findings are produced
 purely from *derivation-mechanical* facts (§0.2): which pipeline stage
 returned nothing for this operation, never a semantic claim about why.
 
-**Per-operation reason logic (mechanics only, no new classification):**
+**Per-operation reason logic (mechanics only, no new classification).
+Redefined 260901 T11 -- see "unsupported_tool, redefined" below:**
 
 1. ``op.receiver_type is None`` -> ``receiver_type_unknown`` (no contract
    lookup is even attempted -- there is no key to look up).
-2. ``op.method_name not in SUPPORTED_TOOLS`` -> ``unsupported_tool``.
-3. ``f"{op.receiver_type}.{op.method_name}"`` absent from the contract table
-   -> ``no_contract_derived``.
-4. Otherwise, the resolved ``DerivedContract`` (§7.2/§7.3) is walked:
+2. ``f"{op.receiver_type}.{op.method_name}"`` absent from the contract table
+   -> ``unsupported_tool``.
+3. Otherwise, the resolved ``DerivedContract`` (§7.2/§7.3) is walked:
    * every recorded gap (``unresolved_delegate`` / ``no_contract_derived``,
      the only two ``plr_jit.derive`` ever emits, §7.2) becomes one Finding
      with that same reason;
@@ -58,19 +58,57 @@ returned nothing for this operation, never a semantic claim about why.
      fields identify the loop construct, never its bounds -- bounds are
      deferred item (d)).
 
+**``unsupported_tool``, redefined (260901 T11).** Before T11, step 2 read
+``op.method_name not in SUPPORTED_TOOLS`` -- the analyzer's scope was
+identical to the dynamic execution harness's 10-tool capability boundary
+(``training.verify.dispatcher.SUPPORTED_TOOLS``), because the derived
+contract table only ever held entries for those 10 methods, so the two
+checks were redundant. T11 decouples derivation from ``SUPPORTED_TOOLS``
+(``plr_jit.derive`` now derives a contract for every one of the whole
+survey's 4,770 methods, not just the 10 -- see
+``plr_jit.derive.__main__.build_derived_contracts_payload``), so the two
+checks are no longer redundant, and keeping the ``SUPPORTED_TOOLS`` gate
+would have re-imposed the 10-method scope this whole task exists to remove.
+``unsupported_tool`` is therefore now defined purely in terms of the
+contract table this module actually has in hand: **"key absent from the
+contract table"**, i.e. "not resolvable to any method the whole-surface
+derivation analyzed" -- not "outside a hand-maintained 10-name allowlist".
+``SUPPORTED_TOOLS`` itself is UNCHANGED and still imported/re-exported here
+(``__all__``) for ``test_supported_tools_match_upstream`` (AC-6.5) -- it
+remains a real thing, just a DIFFERENT boundary now: the dynamic execution
+harness's own capability limit (``verify.dispatcher``), which this static
+analyzer no longer shares or gates on.
+
+Because the contract table now spans the whole survey rather than only
+finding-bearing methods (T11 item 4's zero-findings decision -- see
+``build_derived_contracts_payload``'s docstring), a method the survey
+scanned but recorded zero ``PreconditionFinding``s for ("known and
+unconstrained") gets a real, present, EMPTY contract entry (``guards: []``,
+``gaps: []``) rather than an absent key -- so it resolves via step 3 below,
+not ``unsupported_tool``, and falls through to the zero-guards/zero-gaps
+fallback described next. ``unsupported_tool`` now fires only for a method
+name the whole-survey derivation never saw at all: genuinely not part of
+the analyzed PLR surface (a typo, a non-PLR receiver, or PLR relocating/
+renaming something between the pin the contracts were derived against and
+the graph being checked).
+
 **A resolved contract with zero guards, zero gaps, and no loop now
 synthesizes one fallback ``no_contract_derived`` Finding (round-4
-remediation, B1/B2/§0(ii)).** Before this fix, that combination fell
-through to an empty finding list for the operation, and -- if it happened
-for *every* operation in a graph -- ``join(())`` would return the pre-fix
-``SAFE`` default, a live soundness bug on a reachable public path (a graph
-with zero operations reaches it trivially; a resolved-but-empty contract
-also reaches it). This never fired against the current
-``derived_contracts.json`` (all ten ``SUPPORTED_TOOLS`` entries carry >=1
-guard), which is exactly why it went unnoticed -- the data never exercised
-the gap. ``join`` (spec §3.2) now independently treats the empty multiset as
-UNKNOWN regardless, so this fallback is defense in depth, not the sole
-fix -- see ``plr_jit.verdict.join``'s docstring.
+remediation, B1/B2/§0(ii); this is also T11's answer for the "known,
+zero-own-findings, empty-closure" case above -- 2,178 of the 3,456
+zero-finding methods at the current pin).** Before round-4's fix, that
+combination fell through to an empty finding list for the operation, and --
+if it happened for *every* operation in a graph -- ``join(())`` would
+return the pre-fix ``SAFE`` default, a live soundness bug on a reachable
+public path (a graph with zero operations reaches it trivially; a
+resolved-but-empty contract also reaches it). This never fired against the
+pre-T11 ``derived_contracts.json`` (all ten ``SUPPORTED_TOOLS`` entries
+carried >=1 guard), which is exactly why it went unnoticed then -- the data
+never exercised the gap; it fires routinely now that the whole surface
+(including genuinely unconstrained methods) is derived. ``join`` (spec
+§3.2) now independently treats the empty multiset as UNKNOWN regardless, so
+this fallback is defense in depth, not the sole fix -- see
+``plr_jit.verdict.join``'s docstring.
 """
 
 from __future__ import annotations
@@ -249,15 +287,18 @@ def _findings_for_gap(op: OperationNode, gap: Any) -> Finding:
 
 
 def _findings_for_operation(op: OperationNode, contracts: dict[str, Any]) -> list[Finding]:
+    """T11: step 2 is now a single contract-table lookup, not a
+    ``SUPPORTED_TOOLS`` membership test followed by a second lookup -- see
+    the module docstring's "``unsupported_tool``, redefined" section. A key
+    absent from ``contracts`` now means "the whole-survey derivation never
+    saw this method at all", not "outside the old 10-name allowlist"."""
     if op.receiver_type is None:
         return [_receiver_type_unknown(op)]
-    if op.method_name not in SUPPORTED_TOOLS:
-        return [_unsupported_tool(op)]
 
     key = f"{op.receiver_type}.{op.method_name}"
     contract = contracts.get(key)
     if contract is None:
-        return [_no_contract_derived(op)]
+        return [_unsupported_tool(op)]
 
     findings: list[Finding] = [_findings_for_gap(op, gap) for gap in contract.get("gaps", ())]
     findings.extend(_finding_from_guard(op, guard) for guard in contract.get("guards", ()))

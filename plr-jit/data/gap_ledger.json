@@ -12,6 +12,11 @@
     "no_contract_derived": 0,
     "unresolved_delegate": 610
   },
+  "contract_table": {
+    "disambiguated_keys": 52,
+    "distinct_bare_qualnames": 4744,
+    "total_entries": 4770
+  },
   "dropped_receiver_calls_by_method": {
     "aspirate": 21,
     "discard_tips": 26,
@@ -41,14 +46,14 @@
     "praxis": {
       "branch": "coxswain-p2-pipeline",
       "dirty": true,
-      "dirty_content_id": "553170fbd19aaaf21cc1c43c8e45752390a29efa0332849c24dfab288817c056",
-      "hash": "8be56345c7e03e2824ff9eb864d880317ae635a7",
+      "dirty_content_id": "3255b139077c6795815866efda5a4bcd7043009ef334427cb86142e032c1db68",
+      "hash": "2664681b5485c61e1d562ab2482760c7c1960e6e",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-01T23:23:19.135904+00:00"
+    "stamped_at": "2026-09-02T00:42:24.284746+00:00"
   },
   "supported_tools": {
     "by_reason": {

@@ -1,8 +1,8 @@
 ---
-title: "plr-jit — pre-corpus specification (round 6)"
-description: "Buildable-today specification for plr-jit: a self-contained package providing JIT-style static validation of PyLabRobot execution graphs. Covers the eight corpus-INDEPENDENT sections (package seam + AST import boundary, provenance cherry-pick, tri-valued verdict data contract, telemetry error model, fork-drift tests, extractor/checker split, contract-derivation mechanics, differential harness) and defers all abstract-interpretation semantics to a literature corpus in compilation. Carries a mandatory hand-maintained/derived classification on every piece of logic, plus a hand-maintained surface budget and ratchet."
+title: "plr-jit — pre-corpus specification (round 6 + T11 whole-surface decoupling)"
+description: "Buildable-today specification for plr-jit: a self-contained package providing JIT-style static validation of PyLabRobot execution graphs. Covers the eight corpus-INDEPENDENT sections (package seam + AST import boundary, provenance cherry-pick, tri-valued verdict data contract, telemetry error model, fork-drift tests, extractor/checker split, contract-derivation mechanics, differential harness) and defers all abstract-interpretation semantics to a literature corpus in compilation. Carries a mandatory hand-maintained/derived classification on every piece of logic, plus a hand-maintained surface budget and ratchet. spec_version 7 (T11) decouples derivation coverage from SUPPORTED_TOOLS: plr-jit now analyzes the whole PyLabRobot surface (4,770 methods) rather than 10 LiquidHandler tools."
 status: draft
-spec_version: 6
+spec_version: 7
 task_id: 260901_plr_jit_spec
 date: '260901'
 confidence: medium
@@ -1121,7 +1121,7 @@ place rather than four separate, potentially-inconsistent edits:
 |---|---|
 | `receiver_type` (`:535`) + `method_name` (`:533`) | §7.3 contract-table lookup key, `f"{receiver_type}.{method_name}"` (e.g. `"LiquidHandler.aspirate"`) |
 | `receiver_type` (`:535`), checked for `None` | reason `receiver_type_unknown` |
-| `method_name` (`:533`), checked against the copied `SUPPORTED_TOOLS` set (below) | reason `unsupported_tool` |
+| `method_name` (`:533`), paired with `receiver_type` and checked against the whole-survey contract table (§7.3; **redefined 260901 T11** — no longer the copied `SUPPORTED_TOOLS` set, see the paragraph below) | reason `unsupported_tool` |
 | `foreach_source` (`:551`), `foreach_body` (`:554`) | reason `loop_bounds_unknown` (deferred item (d)'s placeholder — these fields identify the loop construct, not its bounds) |
 | `id` (`:531`) | `Finding.operation_id` provenance (AC-6.4) |
 | `receiver_variable` (`:534`) | matching a resource reference against the mirrored `ResourceNode` set, below (forward-looking — see m1 paragraph below) |
@@ -1185,20 +1185,32 @@ one holds, one does not, both are addressed here rather than by adding rows abov
 > `receiver_type_unknown`.
 
 **Adjacent fix, same location: `unsupported_tool` needs `SUPPORTED_TOOLS`, copied not imported
-(D1).** The reason `unsupported_tool` (§3.3) is checked against `SUPPORTED_TOOLS`
-(`training/verify/dispatcher.py:37-41`), a 10-tool frozenset. `check/` is stdlib-only and forbidden
-from importing `praxis`/`verify` (§1.3) — so `SUPPORTED_TOOLS` must be **copied verbatim** into
-`plr_jit/check/`, exactly as §4.1 copies `FAILURE_CATEGORIES` rather than importing
-`training.verify.failure_taxonomy`. **No new registry row is needed** — HM-9 (§9.2) already registers
-`SUPPORTED_TOOLS` as a fact; the copy is the same fact physically duplicated across a package
-boundary, not a new hand-typed fact. What the copy *does* need is the same drift protection §4.2 gives
-`FAILURE_CATEGORIES`: a `test_supported_tools_match_upstream` test (living in `tests/`, which may
-import both `plr_jit.check` and `training.verify.dispatcher`, since the import-boundary restriction is
-scoped to `src/plr_jit/` per §1.3) asserting set equality, skipped with an explicit reason if
-`training.verify` is not importable. Stating this explicitly here is necessary — without it, a fixer
-implementing `unsupported_tool` would reach for `from training.verify.dispatcher import
-SUPPORTED_TOOLS` inside `check/`, which §1.3's boundary test would then correctly reject, with no
-specified alternative.
+(D1).** The reason `unsupported_tool` (§3.3) was originally (round 1–6) checked against
+`SUPPORTED_TOOLS` (`training/verify/dispatcher.py:37-41`), a 10-tool frozenset. `check/` is
+stdlib-only and forbidden from importing `praxis`/`verify` (§1.3) — so `SUPPORTED_TOOLS` had to be
+**copied verbatim** into `plr_jit/check/`, exactly as §4.1 copies `FAILURE_CATEGORIES` rather than
+importing `training.verify.failure_taxonomy`. **No new registry row was needed** — HM-9 (§9.2)
+already registered `SUPPORTED_TOOLS` as a fact; the copy is the same fact physically duplicated across
+a package boundary, not a new hand-typed fact. The copy needed the same drift protection §4.2 gives
+`FAILURE_CATEGORIES`: `test_supported_tools_match_upstream` (living in `tests/`, which may import both
+`plr_jit.check` and `training.verify.dispatcher`, since the import-boundary restriction is scoped to
+`src/plr_jit/` per §1.3) asserts set equality, skipped with an explicit reason if `training.verify` is
+not importable.
+
+**Redefined, 260901 T11: `unsupported_tool` no longer checks `SUPPORTED_TOOLS` membership.** T11
+decouples §7's derivation pipeline from `SUPPORTED_TOOLS` entirely — `plr_jit.derive` now derives a
+contract for every method the survey indexed (4,770 at the current pin, not just the 10 tool names,
+§7.3/§7.6), so `SUPPORTED_TOOLS` membership and "has a contract table entry" are no longer the same
+question, and gating `unsupported_tool` on the former would have silently re-imposed the 10-method
+scope this task exists to remove. `_findings_for_operation`'s step 2 is now a single lookup:
+`f"{op.receiver_type}.{op.method_name}"` absent from the (now whole-surface) contract table ⇒
+`unsupported_tool`. `SUPPORTED_TOOLS` and its copy/drift-test (previous paragraph) are UNCHANGED and
+still shipped — `plr_jit.check.SUPPORTED_TOOLS` still exists, is still re-exported, and
+`test_supported_tools_match_upstream` still passes — but the set is now purely informational
+(`plr_jit.derive.build_gap_ledger`'s `supported_tools`-scoped reporting subset) plus the one drift
+test; it no longer gates which methods get a derived contract or which `Finding.reason` an operation
+receives. See HM-9 (§9.2) for the registry-row restatement and `plr_jit.check`'s module docstring
+("`unsupported_tool`, redefined") for the full mechanical account.
 
 **Round-1 entry point: `check_graph(graph_json, contracts_json) -> AnalysisReport`, browser-side,
 no libcst, no pylabrobot.** The `@jit` decorator and functional `check(fn)` form (source→graph,
@@ -1536,6 +1548,63 @@ Serialized to `plr-jit/data/derived_contracts.json`, a **build artifact, never h
  "contracts": {"LiquidHandler.aspirate": {"guards": [], "gaps": []}}}
 ```
 
+**Whole-surface, not `SUPPORTED_TOOLS`-only (260901 T11).** `contracts` now holds one entry per
+record the survey indexed — **4,770 at the current pin** (345 classes, 28 PLR subpackages), not just
+the 10 `SUPPORTED_TOOLS` names it held through spec_version 6. The key is `qualname`
+(`"LiquidHandler.aspirate"`, matching `check/`'s `f"{receiver_type}.{method_name}"` lookup, §6.2)
+**unless that name collides across >1 record in the whole survey**, in which case the key is
+`f"{qualname}@{module}:{lineno}"` — see "Contract-table key collisions" below. A record with zero own
+`PreconditionFinding`s still gets an entry (`guards: []`), possibly non-empty if its `delegates_to`
+closure reaches a finding-bearing method (measured: 580 of the 3,456 zero-own-finding records do);
+`gaps: []` only if the closure is also gap-free. Measured at the current pin: 4,770 total entries,
+2,592 non-empty (1,314 finding-bearing + 580 zero-own-finding-but-delegate-guarded + 698
+zero-own-finding-with-only-gaps), 2,178 fully empty (`guards: []`, `gaps: []`) — the "known and
+unconstrained" case, §0/RISK-1's zero-findings decision (below). Serialized size at the current pin:
+4.4 MB pretty-printed, 3.0 MB minified, 146 KB gzipped — payload growth from the pre-T11 68 KB
+(10-entry) artifact is real but not a blocker at this scale (measured, not estimated).
+
+**Contract-table key collisions (T11 item 2).** The bare-`qualname` key collides for 26 distinct
+names across the whole 4,770-record survey (52 records) — a strictly LARGER population than
+`build_index`'s `(module, qualname)` collision count (12 records, §7.2's F6), because a bare
+`qualname` also collides across DIFFERENT modules for same-named module-level functions (e.g.
+`_height_of_volume_in_spherical_cap`, defined independently in both
+`pylabrobot.resources.height_functions` and `pylabrobot.resources.height_volume_functions`) — a
+collision source `(module, qualname)` structurally cannot see, and one the task brief that scoped
+this work did not anticipate (it cited only the 8 finding-bearing property/setter pairs). The
+disambiguator (`build_contract_keys`, `plr_jit.derive`): if `qualname` is unique among the population
+being emitted, the key is the bare `qualname`; otherwise it is `f"{qualname}@{module}:{lineno}"` —
+`(module, qualname, lineno)` is collision-free by construction (`build_unique_index`'s own assertion:
+two records in one module cannot share a definition line), so this single rule resolves both
+collision sources without branching on which produced it. **Known, accepted limitation:** a
+disambiguated key is unreachable via `check/`'s lookup format (`receiver_type.method_name`, no module
+or line number) — every measured collision is either a property/setter pair (accessed via attribute
+syntax, never emitted as an `OperationNode` by an extractor that only records `ast.Call` sites) or a
+module-level function with no receiver at all (never reachable through `receiver_type.method_name` in
+the first place) — so no entry point any real graph could name is made unreachable by this choice.
+`test_contract_keys_are_collision_free` (`tests/test_derive.py`) pins both collision sources and
+asserts collision-freedom against real survey data.
+
+**The zero-findings decision (T11 item 4).** The survey scans 4,770 methods; 1,314 bear ≥1
+`PreconditionFinding`. A method the survey scanned but recorded zero findings for is **known and
+unconstrained as far as the survey sees** — a materially different fact from a method the survey
+never scanned at all (not PLR, a typo, or a receiver type outside the analyzed surface). This
+decision required choosing whether `contracts` carries entries for the 3,456 zero-finding methods,
+and the answer is **yes, derived exactly like any other entry point** (not a special-cased empty
+stub): `derive_contract` is run with every one of the 3,456 as its own entry point, exactly as for
+the 1,314 finding-bearing ones. This is load-bearing, not merely tidy — measured, 580 of the 3,456
+inherit ≥1 REAL guard through their `delegates_to` closure (e.g. `PlateReader.read_absorbance` has
+zero own findings but delegates to `get_plate`, which has one); treating zero-own-finding methods as
+out of scope for derivation, rather than merely for their OWN body's findings, would have silently
+dropped every one of those 580 inherited guards — the same own-body-only failure mode §7.2 exists to
+prevent, recurring one level up at entry-point selection instead of closure-walking. The remaining
+2,178 (zero own findings, empty closure) get a real but empty entry (`guards: []`, `gaps: []`), which
+`check/`'s existing zero-guards/zero-gaps/no-loop fallback (round-4 B1/B2, §6.2) already turns into
+one `no_contract_derived` `Finding` — "known and unconstrained" reuses an existing reason rather than
+needing a new `REASON_VOCABULARY` member (§3.3's closed 7-member set, cap 12, is unchanged by T11).
+**`unsupported_tool`** (§6.2, redefined) is reserved for the disjoint case: a method name the
+whole-survey derivation never saw at all — key absent from `contracts` entirely, not merely present
+with an empty body.
+
 This file is the payload the browser-side checker consumes (§6.2). It is regenerated by
 
 ```bash
@@ -1855,24 +1924,26 @@ behind exactly this frontier. Do not assume otherwise; measure.
 
 - **AC-7.1** All `test_derive.py` tests pass (eight, as of round-4 remediation's added
   `test_ledger_regenerates_deterministically`, m2 — was seven).
-- **AC-7.2 (totality, T6-only)** For every method in `SUPPORTED_TOOLS`, `derive_contract` returns a
-  `DerivedContract` — never raises, never returns `None`. Every operation therefore receives at
-  least one `Finding`. **`SUPPORTED_TOOLS`'s bare names are mapped to `derive_contract`'s
-  `(module, qualname)` input by a derived rule, not a hand-written map (D22):** for each bare name
-  `n` in `SUPPORTED_TOOLS`, look up `(module_of(LiquidHandler_record), f"LiquidHandler.{n}")` against
-  the `(module, qualname)`-keyed index already built in §7.2 — **`module_of(LiquidHandler_record)` is
-  the UNIQUE module among the indexed records whose `class_name == "LiquidHandler"` (round-4
-  remediation, m3, PARTIAL: was "any indexed record" — now collects all matching modules and fails
-  loudly, naming every distinct module found, if more than one exists)**. At the current pin all 54
-  `LiquidHandler` records sit in one module, so the ambiguity is latent, not live — this is cheap
-  defense in depth, not a fix to an observed failure — and, separately, failing loudly (not silently
-  skipping) if the name is absent from the resolved module. This needs no new registry row: it is a
-  lookup against data the index already holds, and it gives AC-7.2 a real failure mode if PLR ever
-  relocates `LiquidHandler`, splits it across modules, or renames a tool. **The full-pipeline coupling
-  check (`len(findings) >= len(operations)` over a real graph) is AC-6.3, gated in T8, not here** — T6
-  has no working `extract/` to run a full pipeline against (see §6.2/C5), so AC-7.2 in round 1 asserts
-  only the per-method never-raises property against the `SUPPORTED_TOOLS` list directly, not against
-  an extracted graph.
+- **AC-7.2 (totality, whole-surface as of 260901 T11 — was `SUPPORTED_TOOLS`-only, T6-only, through
+  spec_version 6)** For every record the survey indexed — **the whole 4,770-record survey, not just
+  the 10 `SUPPORTED_TOOLS` names** — `derive_contract` returns a `DerivedContract`: never raises,
+  never returns `None`. Every operation therefore receives at least one `Finding`, for ANY method the
+  whole-survey derivation covers, not only the former 10-method scope. **Totality itself is
+  unchanged** (still `derive_contract`'s own never-raises property, §7.2); what T11 changes is the
+  POPULATION this property is asserted over — `build_derived_contracts_payload`
+  (`plr_jit.derive.__main__`) now iterates `build_unique_index(records)` (every record individually,
+  including both twins of a getter/setter collision) rather than
+  `resolve_supported_tool`-mapped `SUPPORTED_TOOLS` names.
+  `resolve_supported_tool`/`module_of(LiquidHandler_record)` (D22, round-4 m3's fail-loud module
+  disambiguation) are **UNCHANGED and still used** — but only for `build_gap_ledger`'s
+  `supported_tools`-scoped reporting subset (§7.4), no longer for selecting which methods get a
+  contract. **The full-pipeline coupling check (`len(findings) >= len(operations)` over a real graph)
+  is AC-6.3, gated in T8, not here** — round 1 had no working `extract/` to run a full pipeline
+  against (see §6.2/C5), so AC-7.2 originally asserted only the per-method never-raises property
+  against the `SUPPORTED_TOOLS` list directly; T11's `test_whole_surface_contract_count`
+  (`tests/test_derive.py`) now asserts it against the full survey population instead, and
+  `test_non_liquid_handler_family_resolves_end_to_end` (`tests/test_check_graph.py`) exercises AC-6.3's
+  full-pipeline form for a non-`LiquidHandler` family (`PlateReader`) for the first time.
 - **AC-7.3** `gap_ledger.json` regenerates deterministically: two consecutive runs against an
   unchanged tree produce byte-identical output modulo `stamped_at`. **Mechanized this round
   (round-4 remediation, m2, CONCEDE) — `test_ledger_regenerates_deterministically`** (§7.5): before
@@ -1891,6 +1962,17 @@ behind exactly this frontier. Do not assume otherwise; measure.
   this round: **671**, derived in code, not copied from any prior estimate. No threshold is set on
   any of these figures in round 1 — they are the measurement that informs the deferred-corpus work,
   and setting a target before measuring would invite gaming.
+
+  **AC-7.4's `totals`/`supported_tools` structure is UNCHANGED by 260901 T11** — `totals` remains
+  computed over the same 1,314-record finding-bearing population (§7.6's whole-surface figures);
+  `supported_tools` remains the 10-method subset, now purely informational rather than derivation's
+  scope boundary (see AC-7.2 above). One field is added, not restructured: `contract_table`
+  (`{total_entries, distinct_bare_qualnames, disambiguated_keys}`) reports the SEPARATE collision
+  population the derived-contracts payload's OWN key (bare `qualname`, §7.3) sees — 26 colliding
+  names / 52 records over the whole 4,770-record survey, a strictly larger count than
+  `index_key_collisions`' 12 (§7.2's F6), because it also catches same-named module-level functions
+  in different modules, which `(module, qualname)` cannot see as colliding. No threshold is set on it
+  either.
 
 ---
 
@@ -2177,7 +2259,7 @@ structured data.
 | HM-6 | `classify_exception` module-prefix dispatch (`:197,209`) | prefixes | **2** | CAPPED (3) | None. |
 | HM-7 | `our_names` harness-exception map (`:241-242`) | entries | **3** | DERIVABLE_NOT_YET | Duplicates the `isinstance` dispatch in `classify_exception`, above; derive from the three classes' `__name__`. |
 | HM-8 | ~~`_plr_exception_class_names` module allowlist~~ **RETIRED (round 4, M5)** | modules | **0** (was 2) | **RETIRED** | Trigger FIRED: T7 (`3a3a9f00`) replaced the 2-module `inspect.getmembers` walk with a validated load of `plr_exception_taxonomy.json`. 11 → 132 names, 121 newly visible, none lost. The surface no longer exists. |
-| HM-9 | `SUPPORTED_TOOLS` (`dispatcher.py`) | tools | **10** | CAPPED (10) | None — a scope boundary, not a claim about PLR. Growth is a deliberate scope decision. |
+| HM-9 | `SUPPORTED_TOOLS` (`dispatcher.py`) | tools | **10** | CAPPED (10) | **Redefined 260901 T11**: through spec_version 6 this row doubled as both `training.verify.dispatcher`'s dynamic-execution capability limit AND `plr_jit`'s entire analyzed surface, because both derivation and `unsupported_tool` were hand-gated on it. T11 decouples the two: `plr_jit.derive` now derives a contract for every method the survey indexes (4,770 at the current pin, §7.3/§7.6), and `unsupported_tool` means "key absent from that whole-survey contract table" (§6.2), not "outside this 10-tool set". This row is UNCHANGED and still real — it remains `training.verify.dispatcher`'s own dynamic-execution-harness scope boundary (what it can actually dispatch at runtime), a fact about OUR harness, not PLR — but it no longer gates what `plr_jit` derives or checks. None known — growth of the *harness's* boundary is still a deliberate scope decision made in `verify/`, orthogonal to `plr_jit`. |
 | HM-10 | `EffectType` enum (`method_contracts.py:18-29`) | members | **9** | CAPPED (9) | None in v1 (effects are not simulated). |
 | HM-11 | `PreconditionType` enum (`models.py:~500-521`) | members | **MEASURE** | CAPPED | Candidate for derivation from guard `raises` classes once (c) lands. |
 | HM-12 | `MethodContract` field vocabulary | fields | **MEASURE** | TARGET_ZERO | Superseded entirely by `DerivedContract`. |
@@ -2361,11 +2443,34 @@ optional clause; (a)/(c) are untouched (not challenged).
 | RISK-2 | Shim direction inverted — `plr_jit` imports `praxis` — making the boundary test unsatisfiable (§1.2). | low (now flagged) | high | §1.2 makes the arrow normative; the day-one boundary test converts a violation into a red test on the first offending commit rather than after N modules have moved. |
 | RISK-3 | Cherry-pick drift test is skip-only off this machine (§5.2). | **certain** | medium | Two tiers. Tier 1 (header sha256 vs. local body) always runs and catches local edits, which is the failure this test primarily guards. Tier 2 skips loudly with the missing path named. AC-5.1 requires tier 2 to *run* here once, proving the mechanism before it is allowed to skip. |
 | RISK-4 | Freezing `FAILURE_CATEGORIES` (dynamic-harness semantics) is wrong for a static analyzer; a static failure kind has no home (§4.3). | medium | medium | Miscategorisation surfaces as an implausible `harness_internal` rate in the gap ledger. Frozen-not-forbidden: extending is a design conversation, not a silent commit. |
-| RISK-5 | The derived contract table is too large to ship to a browser (§6.4). | unknown pre-corpus | medium | Not measurable until T6 produces a real table. Mitigations available then: per-method lazy fetch, restrict shipped contracts to `SUPPORTED_TOOLS`. Decision 4 (Pyodide is a goal, not a gate) means this cannot block v1. |
+| RISK-5 | The derived contract table is too large to ship to a browser (§6.4). | **measured, not blocking (260901 T11)** | medium | T6 measured 68 KB (10-entry, pretty-printed) for the pre-T11 `SUPPORTED_TOOLS`-only table; T11 measured the WHOLE-surface table (4,770 entries) at 4.4 MB pretty-printed / 3.0 MB minified / **146 KB gzipped** — not a blocker at this scale (see RISK-1's whole-surface update, above). "Restrict shipped contracts to `SUPPORTED_TOOLS`" is no longer this risk's mitigation, since that would re-impose the scope T11 exists to remove; the live mitigation lever, if payload ever DOES become a blocker at a larger future scale, is per-family sharding (`liquid_handling` 408 / `resources` 183 / `storage` 128 / `plate_reading` 124 entries) — available, not implemented. Decision 4 (Pyodide is a goal, not a gate) still means this cannot block v1. |
 | RISK-6 | **RETIRED (remediation round 1, C11).** Formerly: `pydantic` in `plr_jit.check` unavailable/heavy under Pyodide. Resolved by removing the premise: §6.2 now specifies `check/` uses a stdlib-dataclass mirror of the node types it reads, and never imports `pydantic` at all — the Pyodide-availability question for `check/` no longer arises. (A server-side `extract/`, round 2, may still use pydantic; it never ships to a browser.) | — | — | Retired, not mitigated: the condition that would have triggered it cannot occur. |
 | RISK-7 | §8's string-mention bridge produces noise, and the noise is mistaken for signal (§8.4). | medium | low-medium | Non-gating by AC-8.3. A >50% conflict rate is defined in advance as "bridge mismatched", not "contracts wrong" — a pre-registered interpretation that prevents post-hoc rationalisation. |
 | RISK-8 | Hand-maintained ratchet is gamed by splitting rows (§9.4). | low | medium | **Partially mitigated, not closed (C13):** `test_every_row_justifies_itself` requires a written `why_not_derived`/`breaks_when` argument for any new row, raising the cost of splitting, and the 24-row cap (round 3; was 20) bounds proliferation. There is **no** cross-row sum check — splitting a 34-entry set into three ~11-entry rows would pass every per-row check and stay well under the row cap. Accepted as a known gap; see §9.4. The round-3 discovery of HM-20/HM-21 and the resulting cap raise (§9.4's discovery-vs-growth distinction) is itself an argument that the row-count cap is a coarse instrument — genuine discovery needs headroom, which cuts against a tight cap being the anti-gaming mechanism; the per-row justification requirement is doing the real work. |
 | RISK-9 | The 45 hand-written contracts get hand-patched to fix §8 disagreements, silently defeating decision 2. | **medium-high** | high | AC-8.3 makes §8 explicitly non-gating; HM-13 is `TARGET_ZERO` with a monotonic count ratchet, so *adding* a 46th contract requires editing the declared ceiling in a visible diff. **The count ratchet alone fences growth only, not body edits** — `test_hand_written_contracts_content_is_pinned` (§9.3, C18) adds a content-hash ratchet over the 45 contracts' field values specifically to fence silent in-place edits, which is the failure mode this risk actually names. |
+
+**RISK-1, whole-surface update (260901 T11).** RISK-1's round-1 answer above was scoped to the
+`SUPPORTED_TOOLS`-closure population (10 methods, `7/10 methods_with_no_recorded_gap`). T11 decouples
+derivation from that scope and re-runs the identical closure mechanic over the WHOLE 1,314
+finding-bearing survey population, measured this session: **1,314 derived, 0 errors, 0.1s** (the
+never-raises totality property, AC-7.2, held over 131x the prior population with zero exceptions);
+**5,180 guards total, 2,360 (46%) inlined from a delegate at `depth > 0`** — i.e. own-body-only
+derivation would have recovered fewer than half the guards this closure actually finds, the same
+own-body-only failure mode `test_aspirate_closure_reaches_check_containers` (§7.5) already regression-
+tests for one method, now confirmed at whole-surface scale; **610 gaps, 26 distinct method-name
+"families" (by receiver class) represented** across the closure. Hand-sampled across families
+(`VSpinBackend.spin`, `BioShake.start_shaking`, `CytomatBackend.send_command`,
+`CytationBackend.set_gain`, `PreciseFlexBackend.set_motion_profile_values`, `NimbusDeck.from_files`,
+`HID.setup`, `EL406ManifoldStepsMixin.manifold_prime`), all produced real, non-degenerate contracts.
+This reconfirms RISK-1's mitigation is not an artifact of `LiquidHandler`-specific closure structure:
+the same transitive-closure mechanic that resolved the risk for the 10-tool population resolves it
+equally for the other 335 classes. **Payload is not a blocker at whole-surface scale either**
+(measured, not estimated, §7.3): 4.4 MB pretty-printed / 3.0 MB minified / 146 KB gzipped for the full
+4,770-entry table (RISK-5's concern, below, restated with a real number rather than "unknown
+pre-corpus"). Per-family sharding (`liquid_handling`: 408 entries, `resources`: 183,
+`storage`: 128, `plate_reading`: 124) remains available if payload ever does become a blocker at a
+larger scale than measured here, but is explicitly NOT implemented by T11 — noted as a future lever,
+not a present need.
 
 **Rollback path (whole spec):** every round-1 change is additive **except T7** (C12) — T7 modifies
 `training/verify/failure_taxonomy.py`. `training/verify/` sits outside `praxis/`, so AC-1.4's "no
@@ -3024,3 +3129,77 @@ recommended next steps — build the two checkers named above, take a scoped rea
 specifically (the only genuinely new spec text this remediation added), and put the three open
 decisions in front of the user — are process, not further adversarial rounds, and are outside this
 remediation pass's scope.
+
+---
+
+## T11 — whole-surface decoupling from SUPPORTED_TOOLS (spec_version 6 → 7)
+
+**Not an adversarial round.** Unlike rounds 1–6 above, T11 is a user-directed, in-scope implementation
+task (task_id `260901_plr-jit-t11-decouple-surface`), not a challenge/defense cycle — recorded here as
+a changelog entry rather than a numbered "round" because there is no opposing challenge to adjudicate
+against. The trigger is explicit user intent, stated directly: "this should work generally across the
+PLR surface" — a fitness claim for the general-widening question that no prior round had in hand.
+
+**F4 (round 5) raised this exact question and was rebutted — the rebuttal was sound against the
+argument as made, and does not apply here.** Round 5's F4 argued for widening `plr_jit`'s analyzed
+surface past `SUPPORTED_TOOLS`'s 10 methods and was **REBUT** (see "Remediation changelog (round 4 →
+round 5)" above): "provenance is correct... fitness is asserted, not measured," and F4's own headline
+example (`PlateReader.read_absorbance`) was measured on the wrong class, buying "one guard" for one
+method. Both factual claims in that rebuttal are RECONFIRMED this session, not overturned:
+`PlateReader.read_absorbance` genuinely has zero own findings and delegates to exactly one method
+(`get_plate`) carrying exactly one guard — precisely what F4's rebuttal said, independently
+re-measured via `derive_contract`. **What changed is not the fact, but the argument the fact sits
+inside.** F4 argued from a single method's payoff ("widening buys one guard") with no stated fitness
+case for paying that cost across the whole surface — the rebuttal's "fitness is asserted, not
+measured" objection was correct against that argument as made. T11 does not re-litigate F4's factual
+premise; it supplies the fitness argument F4's challenge lacked: (1) an explicit statement of intent
+from the user, who is the one party who can actually make a fitness call for `plr_jit`'s intended
+scope, and (2) at whole-surface scale (not one method), the payoff is not "one guard" — it is 580 of
+3,456 zero-own-finding methods inheriting real guards through delegation, 46% of all 5,180
+whole-surface guards arriving only through closure inlining, and 26 non-`LiquidHandler` families
+producing real, non-degenerate contracts on inspection (RISK-1's whole-surface update, above). A
+future round must not re-raise F4 as though this were unconsidered — the rebuttal stands as correct
+against what was argued in round 5; T11 answers a different, better-supported argument the user
+supplied this round, not the one round 5 correctly rejected.
+
+**What changed, mechanically (see §6.2, §7.3, §9.2/HM-9, and the Risk table's RISK-1/RISK-5 updates
+above for the normative text; this entry is the durable summary):**
+
+1. `plr_jit.derive.__main__.build_derived_contracts_payload` now derives a contract for every record
+   the survey indexed (4,770 at the current pin) instead of only the 10 `SUPPORTED_TOOLS` names —
+   including the 3,456 zero-own-finding records, which may still inherit real guards through
+   `delegates_to` (measured: 580 do).
+2. A new contract-table key collision source was found and fixed: the bare-`qualname` key (what
+   `check/` actually looks up) collides 26 times at whole-survey scale — a strictly larger population
+   than `build_index`'s `(module, qualname)` collision count (12, §7.2's F6), because it also catches
+   same-named module-level functions in different modules, a source `(module, qualname)` cannot see.
+   `build_contract_keys` disambiguates via `f"{qualname}@{module}:{lineno}"` when a collision exists,
+   bare `qualname` otherwise.
+3. `unsupported_tool` (§3.3) is redefined: "key absent from the whole-survey contract table," not
+   "outside `SUPPORTED_TOOLS`." `SUPPORTED_TOOLS` itself is unchanged and still shipped
+   (`plr_jit.check.SUPPORTED_TOOLS`, `test_supported_tools_match_upstream`) — it is now purely
+   `training.verify.dispatcher`'s own dynamic-execution-harness capability boundary (HM-9, §9.2), no
+   longer `plr_jit`'s analyzed-surface boundary.
+4. The zero-findings case (a method the survey scanned with no `PreconditionFinding`s) is decided:
+   it gets a real, empty contract entry (`guards: []`, `gaps: []`), which `check/`'s existing
+   zero-guards/zero-gaps/no-loop fallback (round-4 B1/B2) already turns into one `no_contract_derived`
+   finding — "known and unconstrained," reusing an existing `REASON_VOCABULARY` member rather than
+   adding an 8th (the closed 7-member set, cap 12, is unchanged).
+5. B1's fix (§6.2: `join(())` is unconditionally `UNKNOWN`) was re-verified against the whole-surface
+   artifact: `check_graph` on a zero-operation graph still returns `Verdict.UNKNOWN`.
+6. `derived_contracts.json`/`gap_ledger.json` regenerated via the CLI (never hand-edited): 4,770
+   contract entries (was 10), 4.4 MB pretty-printed / 3.0 MB minified / 146 KB gzipped (was 68 KB);
+   `gap_ledger.json` gains one new field, `contract_table`
+   (`{total_entries, distinct_bare_qualnames, disambiguated_keys}`), reporting item 2's collision
+   population — every other ledger figure (`totals`, `by_reason`, `supported_tools`,
+   `index_key_collisions`) is numerically unchanged, since the whole-surface/`SUPPORTED_TOOLS`-closure
+   populations `build_gap_ledger` reports over were not themselves altered by T11.
+
+**Tests changed:** `plr-jit/tests/test_derive.py` gains
+`test_contract_keys_are_collision_free`/`test_whole_surface_contract_count`;
+`plr-jit/tests/test_check_graph.py` gains
+`test_non_liquid_handler_family_resolves_end_to_end`/`test_unsupported_tool_fires_only_for_genuinely_unknown_methods`.
+No existing test asserted the pre-T11 10-contract count or `SUPPORTED_TOOLS`-gated
+`unsupported_tool` behavior as a hard-coded expectation, so nothing needed to be deleted or
+inverted — the nine gate files listed in T11's dispatch brief pass unmodified in structure, only
+extended.

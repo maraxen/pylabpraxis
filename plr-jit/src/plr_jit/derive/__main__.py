@@ -27,14 +27,15 @@ from typing import Any
 from plr_jit._provenance import survey_stamp
 from plr_jit.derive import (
     SCHEMA_VERSION,
-    SUPPORTED_TOOLS,
     InlinedGuard,
+    SurveyRecord,
+    build_contract_keys,
     build_gap_ledger,
     build_index,
+    build_unique_index,
     default_plr_pkg_root,
     derive_contract,
     load_survey,
-    resolve_supported_tool,
     scan_dropped_receiver_calls,
 )
 from plr_jit.derive import _stamp_to_dict  # noqa: SLF001 - same-package reuse
@@ -57,18 +58,63 @@ def _guard_to_json(guard: InlinedGuard) -> dict[str, Any]:
 
 
 def build_derived_contracts_payload(
-    index: dict[tuple[str, str], Any], stamp: Any
+    records: list[SurveyRecord], index: dict[tuple[str, str], Any], stamp: Any
 ) -> dict[str, Any]:
-    """AC-7.2: derive a contract for every SUPPORTED_TOOLS method, via the
-    D22-derived name mapping (never a hand-written map). ``derive_contract``
-    itself never raises; ``resolve_supported_tool`` fails loudly if a tool
-    name is absent from the index (a real failure mode, not a silent skip).
+    """AC-7.2 (260901 T11): derive a contract for every record the survey
+    indexed -- the WHOLE analyzed PLR surface (4,770 methods across 345
+    classes / 28 subpackages at the current pin), not just the 10
+    ``SUPPORTED_TOOLS`` names. ``derive_contract`` itself never raises, so
+    this never skips a record.
+
+    **Population, not just the 1,314 finding-bearing methods (T11 item 4's
+    zero-findings decision).** Every record in ``records`` -- including the
+    3,456 that bear no ``PreconditionFinding`` of their own -- gets an entry
+    point run through ``derive_contract``. This is NOT free of consequence:
+    measured 260901, 580 of those 3,456 zero-own-finding methods inherit
+    >=1 REAL guard through their ``delegates_to`` closure (e.g.
+    ``PlateReader.read_absorbance`` has zero own findings but delegates to
+    ``get_plate``, which has one) -- restricting the payload to
+    finding-bearing entry points only, as an entry-point-selection choice,
+    would have silently dropped every one of those 580 inherited guards for
+    any operation naming one of those methods, which is exactly the
+    own-body-only failure mode §7.2 exists to prevent, now recurring one
+    level up (at entry-point selection rather than closure-walking). A
+    zero-finding method with an empty closure (2,178 measured) still gets
+    an entry -- guards=[], gaps=[] -- which ``check/``'s existing "resolved
+    contract, zero guards, zero gaps, no loop" fallback (round-4 B1/B2)
+    already turns into one ``no_contract_derived`` Finding: "known to the
+    survey, unconstrained as far as it sees" is a real, different fact from
+    "not resolvable to anything the survey analyzed at all"
+    (``unsupported_tool``, redefined by this same task -- see
+    ``plr_jit.check``'s module docstring).
+
+    **Keying (T11 item 2, the collision fix).** ``build_index``'s
+    ``(module, qualname)`` collapses 12 property/setter pairs at whole-survey
+    scale (8 finding-bearing) -- using it here would silently derive a
+    contract for only ONE twin per pair and never even attempt the other
+    (see ``build_index``'s own docstring). This function therefore iterates
+    ``build_unique_index(records)`` (every record individually addressable)
+    for entry-point selection, while ``derive_contract``'s own closure walk
+    keeps using ``index`` (the collapsing one) for ``resolve()``'s bare-name
+    delegate lookup, unchanged -- the two have different jobs and the fix
+    only touches the first. Output dict keys come from
+    ``build_contract_keys`` -- see its docstring for the two independent
+    collision sources (getter/setter pairs; same-named module-level
+    functions in different modules) and the ``@module:lineno`` disambiguator.
     """
+    unique_records = build_unique_index(records)
+    contract_keys = build_contract_keys(records)
     contracts: dict[str, Any] = {}
-    for name in sorted(SUPPORTED_TOOLS):
-        module, qualname = resolve_supported_tool(name, index)
-        contract = derive_contract(module, qualname, index, stamp=stamp)
-        contracts[qualname] = {
+    for record_key in sorted(unique_records):
+        rec = unique_records[record_key]
+        contract = derive_contract(rec.module, rec.qualname, index, stamp=stamp)
+        out_key = contract_keys[record_key]
+        assert out_key not in contracts, (
+            f"contract key collision building payload: {out_key!r} "
+            f"(record_key={record_key!r}) -- build_contract_keys should make "
+            f"this structurally impossible"
+        )
+        contracts[out_key] = {
             "guards": [_guard_to_json(g) for g in contract.guards],
             "gaps": [list(gap) for gap in contract.gaps],
         }
@@ -121,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
     stamp = survey_stamp()
 
     if args.out is not None:
-        payload = build_derived_contracts_payload(index, stamp)
+        payload = build_derived_contracts_payload(records, index, stamp)
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"wrote {args.out}", file=sys.stderr)

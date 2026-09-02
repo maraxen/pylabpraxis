@@ -1,15 +1,34 @@
-"""plr_jit.check._supported_tools: the analyzed-surface boundary (spec
-260901 §6.2's D1 note, "adjacent fix, same location").
+"""plr_jit.check._supported_tools: the DYNAMIC EXECUTION HARNESS's
+capability boundary (spec 260901 §6.2's D1 note, "adjacent fix, same
+location"; redefined 260901 T11 -- see below).
+
+**No longer the analyzed-surface boundary (260901 T11).** Through spec_version
+6, this set doubled as both (a) ``training.verify.dispatcher``'s own
+10-method dynamic-execution capability limit, and (b) ``plr_jit``'s entire
+analyzed surface -- because derivation and checking were both hand-gated on
+it, the two boundaries were accidentally identical and nothing distinguished
+them. T11 decouples derivation from this set: ``plr_jit.derive`` now derives
+a contract for every method the survey indexed (the whole PLR surface, 4,770
+methods at the current pin), and ``plr_jit.check``'s ``unsupported_tool``
+reason now means "key absent from that whole-survey contract table", not
+"not in this frozenset" (see ``plr_jit.check``'s module docstring). This set
+ITSELF is unchanged and still real: it is what
+``training.verify.dispatcher`` can actually DISPATCH at runtime (the dynamic
+execution harness's own scope boundary), which is a genuinely different fact
+from what this STATIC analyzer can derive a contract for. Kept for the one
+live drift test below and for ``plr_jit.derive.build_gap_ledger``'s
+``supported_tools``-scoped reporting subset (informational only -- it no
+longer gates which methods get a contract).
 
 **Single in-package definition (consolidated).** T6 originally placed a
 mirror of this set at ``plr_jit.derive`` (module-level, next to the
-transitive-closure machinery it feeds). T8 needs the SAME set inside
-``check/`` for the ``unsupported_tool`` reason (§3.3) -- and ``check/`` is
-stdlib-only, forbidden from importing ``praxis``/``verify`` (§1.3), so it
-cannot reach ``training.verify.dispatcher.SUPPORTED_TOOLS`` directly. Rather
-than typing a THIRD copy (upstream + derive + check), this module is now the
-single in-package source of truth: ``plr_jit.derive`` imports and re-exports
-it from here (``from plr_jit.check._supported_tools import SUPPORTED_TOOLS``)
+transitive-closure machinery it feeds). T8 needed the SAME set inside
+``check/`` too (§3.3) -- and ``check/`` is stdlib-only, forbidden from
+importing ``praxis``/``verify`` (§1.3), so it cannot reach
+``training.verify.dispatcher.SUPPORTED_TOOLS`` directly. Rather than typing
+a THIRD copy (upstream + derive + check), this module is the single
+in-package source of truth: ``plr_jit.derive`` imports and re-exports it
+from here (``from plr_jit.check._supported_tools import SUPPORTED_TOOLS``)
 so ``from plr_jit.derive import SUPPORTED_TOOLS`` keeps resolving to the
 exact same object, and exactly ONE live cross-package drift test
 (``tests/test_check_graph.py::test_supported_tools_match_upstream``) checks

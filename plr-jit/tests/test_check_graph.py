@@ -147,6 +147,78 @@ def test_fixture_exercises_contract_table_lookup(report: AnalysisReport) -> None
 
 
 # ---------------------------------------------------------------------------
+# 260901 T11 -- whole-surface decoupling from SUPPORTED_TOOLS.
+# ---------------------------------------------------------------------------
+
+
+def _single_op_graph(method_name: str, receiver_type: str) -> str:
+    return json.dumps(
+        {
+            "protocol_fqn": "test.t11_whole_surface",
+            "operations": [
+                {
+                    "id": "op_1",
+                    "method_name": method_name,
+                    "receiver_variable": "x",
+                    "receiver_type": receiver_type,
+                }
+            ],
+            "resources": {},
+        }
+    )
+
+
+def test_non_liquid_handler_family_resolves_end_to_end(contracts_json: str) -> None:
+    """T11 item 1: `check_graph` resolves an operation OUTSIDE
+    `LiquidHandler`/the old `SUPPORTED_TOOLS` 10 end-to-end through a real,
+    populated contract-table entry. `PlateReader.read_absorbance` has ZERO
+    own findings but delegates to `get_plate`, which has one -- so this also
+    directly confirms T11 item 4's zero-findings decision: a zero-own-finding
+    entry point still surfaces a real, grounded guard inherited through its
+    closure, rather than falling back to `unsupported_tool`."""
+    report = check_graph(_single_op_graph("read_absorbance", "PlateReader"), contracts_json)
+    assert report.verdict is Verdict.UNKNOWN
+    reasons = {f.reason for f in report.findings}
+    assert "unsupported_tool" not in reasons
+    grounded = [f for f in report.findings if f.plr_site is not None]
+    assert grounded, "PlateReader.read_absorbance surfaced no grounded finding via its delegate closure"
+    assert any(f.plr_site.qualname == "PlateReader.get_plate" for f in grounded), (
+        "expected a finding grounded at PlateReader.get_plate (the delegate "
+        "read_absorbance's own zero-finding body inlines a guard from)"
+    )
+
+
+def test_unsupported_tool_fires_only_for_genuinely_unknown_methods(contracts_json: str) -> None:
+    """T11 items 3/4: `unsupported_tool` now means "key absent from the
+    whole-survey contract table" -- verified against all three cases it must
+    distinguish:
+
+    * a method name the whole-survey derivation never saw at all -> fires.
+    * a real, finding-bearing method OUTSIDE the old 10-name
+      `SUPPORTED_TOOLS` allowlist (`pick_up_tips96`) -> must NOT fire (the
+      old gate would have fired here; this is the direct regression test
+      for decoupling derivation from `SUPPORTED_TOOLS`).
+    * a real method the survey scanned with zero own findings and an empty
+      closure (`Centrifuge.spin`) -- "known and unconstrained" -- must NOT
+      fire either; it resolves via the existing zero-guards/zero-gaps
+      `no_contract_derived` fallback instead (T11 item 4's zero-findings
+      decision).
+    """
+    unknown_report = check_graph(
+        _single_op_graph("definitely_fake_method_xyz", "LiquidHandler"), contracts_json
+    )
+    assert {f.reason for f in unknown_report.findings} == {"unsupported_tool"}
+
+    outside_old_allowlist_report = check_graph(
+        _single_op_graph("pick_up_tips96", "LiquidHandler"), contracts_json
+    )
+    assert "unsupported_tool" not in {f.reason for f in outside_old_allowlist_report.findings}
+
+    zero_finding_report = check_graph(_single_op_graph("spin", "Centrifuge"), contracts_json)
+    assert {f.reason for f in zero_finding_report.findings} == {"no_contract_derived"}
+
+
+# ---------------------------------------------------------------------------
 # AC-6.5 (D1) -- the ONE live SUPPORTED_TOOLS drift test post-consolidation.
 # ---------------------------------------------------------------------------
 

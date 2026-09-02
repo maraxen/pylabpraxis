@@ -38,7 +38,7 @@ unreachable:
 | ``postcondition_mismatch``| ran clean, but effect checks disagreed | **unreachable in v1** -- no effects are simulated. Reserved.     |
 | ``shape_mismatch``       | ``DispatchError`` -- bad call shape | arity/keyword mismatch against the derived signature                |
 | ``ungroundable_reference``| ``GroundingError`` -- no such deck object | a resource variable with no ``ResourceNode`` in the graph      |
-| ``unsupported_tool``     | method outside ``SUPPORTED_TOOLS``  | same; the analyzed-surface boundary                                  |
+| ``unsupported_tool``     | method outside ``SUPPORTED_TOOLS``  | method not resolvable to any entry in the whole-survey derived contract table (260901 T11 -- no longer ``SUPPORTED_TOOLS``, which is now the DYNAMIC harness's own boundary only; see ``plr_jit.check`` module docstring) |
 | ``harness_internal``     | analyzer/plumbing bug               | same; always paired with ``reason="internal_error"``                 |
 
 ``postcondition_mismatch`` being unreachable in v1 is recorded here so a

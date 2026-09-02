@@ -29,7 +29,12 @@ Contents:
   * ``InlinedGuard``/``DerivedContract``/``derive_contract`` -- the
     transitive closure mechanic itself (§7.2).
   * ``SUPPORTED_TOOLS``/``resolve_supported_tool`` -- the D22 derived
-    name-to-key mapping for the 10 analyzed LiquidHandler tools.
+    name-to-key mapping for the 10-tool dynamic execution harness capability
+    boundary (260901 T11: informational only now -- ``build_gap_ledger``'s
+    ``supported_tools``-scoped reporting subset; no longer gates which
+    methods get a contract, see ``build_derived_contracts_payload``).
+  * ``build_contract_keys`` -- the whole-survey contract-table key
+    disambiguator (260901 T11).
   * ``scan_dropped_receiver_calls`` and friends -- the independent D3 AST
     pass computing, per method, the honest and validation-looking
     dropped-receiver call-node counts.
@@ -57,6 +62,7 @@ __all__ = [
     "load_survey",
     "build_index",
     "build_unique_index",
+    "build_contract_keys",
     "count_index_key_collisions",
     "resolve",
     "resolve_supported_tool",
@@ -237,6 +243,73 @@ def build_unique_index(records: list[SurveyRecord]) -> dict[RecordKey, SurveyRec
         f"impossible (two records sharing one definition line in one module)"
     )
     return index
+
+
+#: (260901 T11) The derived-contracts payload's output key for one record.
+#: Bare ``qualname`` (e.g. ``"LiquidHandler.aspirate"``) whenever that name
+#: is unique among the population being emitted -- this is the format
+#: ``check/`` already looks up via ``f"{op.receiver_type}.{op.method_name}"``
+#: (§6.2), so the overwhelming majority of entries (4,718 of 4,770 at the
+#: current pin) keep the pre-T11 lookup shape unchanged.
+def build_contract_keys(records: list[SurveyRecord]) -> dict[RecordKey, str]:
+    """Assign every record a collision-free contract-table key (T11).
+
+    **Two independent collision sources, both real at whole-surface scale**
+    (measured 260901; the task brief's "8" figure only counted the first):
+
+    1. ``@property``/``@x.setter`` pairs -- SAME ``(module, qualname)``,
+       different ``lineno`` (8 finding-bearing pairs, 12 over the whole
+       4,770-record survey; ``count_index_key_collisions`` measures this
+       population). ``build_index``'s own docstring already documents this
+       source.
+    2. Distinct module-level functions in DIFFERENT modules that happen to
+       share a bare name -- e.g. ``_height_of_volume_in_spherical_cap`` is
+       defined once in ``pylabrobot.resources.height_functions`` and again,
+       unrelated, in ``pylabrobot.resources.height_volume_functions``. These
+       do NOT collide in ``build_index`` (module differs), but DO collide
+       under the contract table's bare-``qualname`` key -- 10 additional
+       pairs among finding-bearing records, 18 total finding-bearing
+       collisions, 26 over the whole 4,770-record survey. This source is
+       new to this task's own measurement; it was not in the brief.
+
+    **Disambiguator (single, uniform rule, chosen over a two-tier one for
+    testability):** if ``qualname`` is unique among ``records``, the key is
+    the bare ``qualname``. Otherwise the key is
+    ``f"{qualname}@{module}:{lineno}"`` -- ``(module, qualname, lineno)`` is
+    proven collision-free by construction (``build_unique_index``'s own
+    assertion: two records in one module cannot share a definition line),
+    so this is collision-free for BOTH sources above without needing to
+    branch on which source produced the collision.
+
+    **Known, accepted limitation, stated rather than silently worked
+    around:** a colliding method's DISAMBIGUATED key is unreachable via
+    ``check/``'s lookup format (bare ``f"{receiver_type}.{method_name}"``,
+    §6.2 -- ``OperationNode`` carries no module or line number). This is
+    honest, not a regression: every measured collision is either a
+    property/setter pair (accessed via attribute syntax, never emitted as
+    an ``OperationNode`` by the extractor, which only records ``ast.Call``
+    sites, per ``computation_graph_extractor.py``) or a module-level
+    function with no receiver at all (never reachable through
+    ``receiver_type.method_name`` in the first place, since it has no
+    receiver). No entry point any real graph could name is made
+    unreachable by this choice.
+    """
+    from collections import Counter
+
+    qual_counts = Counter(rec.qualname for rec in records)
+    keys: dict[RecordKey, str] = {}
+    for rec in records:
+        record_key: RecordKey = (rec.module, rec.qualname, rec.lineno)
+        if qual_counts[rec.qualname] > 1:
+            keys[record_key] = f"{rec.qualname}@{rec.module}:{rec.lineno}"
+        else:
+            keys[record_key] = rec.qualname
+    assert len(set(keys.values())) == len(records), (
+        f"build_contract_keys produced a colliding key set: {len(records)} records "
+        f"in, {len(set(keys.values()))} distinct keys out -- the disambiguator above "
+        f"should make this structurally impossible"
+    )
+    return keys
 
 
 def count_index_key_collisions(records: list[SurveyRecord]) -> dict[str, int]:
@@ -954,6 +1027,19 @@ def build_gap_ledger(
     ``methods_with_dropped_receiver_call`` (671) is computed over the SAME
     record population as ``methods_attempted`` (M11), so it is NOT reduced
     by the collision the way a keyed traversal would be.
+
+    260901 T11: ``contract_table`` reports the SEPARATE collision population
+    that ``build_derived_contracts_payload`` (``plr_jit.derive.__main__``)
+    actually keys on -- the whole 4,770-record survey's bare ``qualname``
+    (not ``index_key_collisions``' ``(module, qualname)``). This is a
+    strictly larger collision count (26 vs. 12 at the current pin) because
+    it also catches same-named module-level functions defined in DIFFERENT
+    modules, which ``(module, qualname)`` does not see as colliding at all
+    -- see ``build_contract_keys``' docstring for the two independent
+    sources and the disambiguator. ``total_entries`` always equals
+    ``len(records)`` (every record gets exactly one key, collision-free by
+    construction); ``disambiguated_keys`` is how many of those entries
+    needed the ``@module:lineno`` suffix rather than the bare qualname.
     """
     if stamp is None:
         stamp = survey_stamp()
@@ -999,6 +1085,26 @@ def build_gap_ledger(
     )
     index_key_collisions = count_index_key_collisions(records)
 
+    # (260901 T11) contract_table: the whole-surface derived-contracts
+    # payload's own key population -- distinct from index_key_collisions
+    # above, which counts (module, qualname) collisions in the SURVEY's own
+    # index. This counts collisions in the CONTRACT TABLE's bare-qualname
+    # key (build_contract_keys), a strictly larger population: it also
+    # catches same-named module-level functions in DIFFERENT modules (26 at
+    # the whole 4,770-record survey vs. index_key_collisions' 12 -- see
+    # build_contract_keys' docstring for why these are independent sources).
+    contract_keys = build_contract_keys(records)
+    # Python identifiers (qualname, from AST FunctionDef/ClassDef names)
+    # never contain "@" -- build_contract_keys's disambiguated form
+    # (f"{qualname}@{module}:{lineno}") is therefore unambiguously
+    # detectable by this substring check, no separate bookkeeping needed.
+    disambiguated = sum(1 for k in contract_keys.values() if "@" in k)
+    contract_table = {
+        "total_entries": len(contract_keys),
+        "distinct_bare_qualnames": len({rec.qualname for rec in records}),
+        "disambiguated_keys": disambiguated,
+    }
+
     # Round-4 remediation (M3): None, not 0 -- a gap ledger never classifies
     # any gap into a FAILURE_CATEGORY in round 1 (see docstring), so a
     # numeric 0 would read as a measurement rather than as "not applicable
@@ -1028,4 +1134,5 @@ def build_gap_ledger(
         "dropped_receiver_calls_by_method": dropped_by_method,
         "validation_looking_dropped_receiver_calls_by_method": validation_looking_by_method,
         "index_key_collisions": index_key_collisions,
+        "contract_table": contract_table,
     }

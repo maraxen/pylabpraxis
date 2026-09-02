@@ -29,6 +29,7 @@ from plr_jit._provenance import SurveyStamp, survey_stamp
 from plr_jit.derive import (
     SurveyFinding,
     SurveyRecord,
+    build_contract_keys,
     build_gap_ledger,
     build_index,
     default_plr_pkg_root,
@@ -38,6 +39,7 @@ from plr_jit.derive import (
     scan_dropped_receiver_calls,
     scan_dropped_receiver_calls_in_source,
 )
+from plr_jit.derive.__main__ import build_derived_contracts_payload
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SURVEY_JSON = REPO_ROOT / "training" / "verify" / "data" / "plr_preconditions.json"
@@ -371,3 +373,97 @@ def clean(self):
 
     for counts in (subscript_counts, bare_name_counts, clean_counts):
         assert counts.validation_looking <= counts.total
+
+
+# ---------------------------------------------------------------------------
+# 260901 T11 -- decoupling derivation from SUPPORTED_TOOLS: whole-surface
+# contract count, and the contract-table key disambiguator.
+# ---------------------------------------------------------------------------
+
+
+def test_contract_keys_are_collision_free(survey_records: list[SurveyRecord]) -> None:
+    """T11 item 2 (F6 resurfacing at whole-survey scale): every record gets
+    a DISTINCT contract-table key. `build_contract_keys` itself asserts this
+    internally on every call -- this test additionally pins the two known
+    collision populations against the real survey data, so a future survey
+    regeneration that silently changes the collision shape is caught here
+    rather than only inside the function's own defensive assert."""
+    keys = build_contract_keys(survey_records)
+    assert len(keys) == len(survey_records)
+    assert len(set(keys.values())) == len(survey_records)
+
+    # Source 1 (already known, F6): a property/setter pair -- same (module,
+    # qualname), different lineno -- gets two DISAMBIGUATED keys, neither
+    # bare.
+    serial_dtr = [
+        (rec.module, rec.qualname, rec.lineno)
+        for rec in survey_records
+        if rec.module == "pylabrobot.io.serial" and rec.qualname == "Serial.dtr"
+    ]
+    assert len(serial_dtr) == 2, "fixture assumption violated: expected Serial.dtr getter+setter pair"
+    disambiguated = {keys[k] for k in serial_dtr}
+    assert len(disambiguated) == 2
+    assert all("@" in k for k in disambiguated)
+    assert "Serial.dtr" not in disambiguated
+
+    # Source 2 (NEW, found this task -- not in the original brief's "8"
+    # figure): a module-level function name repeated in a DIFFERENT module.
+    # (module, qualname) does not collide (module differs), but the bare
+    # contract-table key would, absent disambiguation.
+    height_fn = [
+        (rec.module, rec.qualname, rec.lineno)
+        for rec in survey_records
+        if rec.qualname == "_height_of_volume_in_spherical_cap"
+    ]
+    assert len(height_fn) == 2, (
+        "fixture assumption violated: expected _height_of_volume_in_spherical_cap "
+        "defined in two distinct modules"
+    )
+    modules = {rec_key[0] for rec_key in height_fn}
+    assert len(modules) == 2, "fixture assumption violated: expected two DIFFERENT modules"
+    disambiguated_fn = {keys[k] for k in height_fn}
+    assert len(disambiguated_fn) == 2
+    assert all("@" in k for k in disambiguated_fn)
+
+    # A non-colliding record keeps its bare qualname (the overwhelming
+    # majority -- 4,744 of 4,770 at the current pin).
+    aspirate_key = [
+        (rec.module, rec.qualname, rec.lineno)
+        for rec in survey_records
+        if rec.module == "pylabrobot.liquid_handling.liquid_handler" and rec.qualname == "LiquidHandler.aspirate"
+    ][0]
+    assert keys[aspirate_key] == "LiquidHandler.aspirate"
+
+
+def test_whole_surface_contract_count(
+    survey_records: list[SurveyRecord],
+    survey_index: dict[tuple[str, str], SurveyRecord],
+    real_stamp: SurveyStamp,
+) -> None:
+    """T11 items 1+4: `build_derived_contracts_payload` derives a contract
+    for EVERY record the survey indexed -- the whole PLR surface, not just
+    the 10 `SUPPORTED_TOOLS` methods (spec pre-T11) and not just the 1,314
+    finding-bearing methods (T11 item 4's zero-findings decision: a
+    zero-own-finding method still gets a real entry, since it may inherit
+    guards through its own delegates -- see `PlateReader.read_absorbance`
+    covered end-to-end in `test_check_graph.py`)."""
+    payload = build_derived_contracts_payload(survey_records, survey_index, real_stamp)
+    contracts = payload["contracts"]
+
+    assert len(contracts) == len(survey_records)
+    assert len(contracts) > 10, "whole-surface derivation must exceed the old 10-tool scope"
+
+    # A finding-bearing SUPPORTED_TOOLS method still resolves with guards.
+    assert contracts["LiquidHandler.aspirate"]["guards"]
+
+    # A non-LiquidHandler, zero-own-finding method that inherits a guard
+    # through delegation is present with a non-empty contract.
+    assert contracts["PlateReader.read_absorbance"]["guards"]
+
+    # A zero-own-finding method with an empty closure is present with an
+    # EMPTY (not absent) contract -- "known and unconstrained", T11 item 4.
+    assert contracts["Centrifuge.spin"] == {"guards": [], "gaps": []}
+
+    # Every emitted key really is one of build_contract_keys' outputs (no
+    # ad hoc key construction inside build_derived_contracts_payload itself).
+    assert set(contracts.keys()) == set(build_contract_keys(survey_records).values())

@@ -41,7 +41,7 @@ match the letter of "derived-from-consumers" while breaking its spirit.
 |-----------------------------------------------|---------------------------------------------------------------------|
 | ``receiver_type`` + ``method_name``           | contract-table lookup key ``f"{receiver_type}.{method_name}"``      |
 | ``receiver_type``, checked for ``None``       | reason ``receiver_type_unknown``                                    |
-| ``method_name``, checked against SUPPORTED_TOOLS | reason ``unsupported_tool``                                      |
+| ``method_name`` (paired with ``receiver_type``), checked against the contract table | reason ``unsupported_tool`` (redefined 260901 T11: key absent from the whole-survey contract table, not ``SUPPORTED_TOOLS`` membership -- see ``plr_jit.check``'s module docstring) |
 | ``foreach_source``, ``foreach_body``          | reason ``loop_bounds_unknown`` (identifies the loop, not its bounds)|
 | ``id``                                        | ``Finding.operation_id`` provenance (AC-6.4)                        |
 | ``receiver_variable``                         | matching against the mirrored ``ResourceNode`` set (forward-looking -- see below) |
