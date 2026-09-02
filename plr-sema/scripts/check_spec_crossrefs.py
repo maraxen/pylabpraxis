@@ -53,7 +53,9 @@ log = logging.getLogger("check_spec_crossrefs")
 AC_DEF_RE = re.compile(r"^\s*[-*]\s*\*\*AC-(\d+)\.(\d+)\b")
 AC_RANGE_RE = re.compile(r"AC-(\d+)\.(\d+)\s*[–-]\s*(?:AC-)?(?:(\d+)\.)?(\d+)")
 AC_ONE_RE = re.compile(r"AC-(\d+)\.(\d+)")
-TASK_ROW_RE = re.compile(r"^\|\s*\*\*(T\d+)\*\*\s*\|")
+#: ``| **T1** |`` in the main spec; ``| **#4888** |`` in increment docs that key
+#: their single task row on the backlog id.
+TASK_ROW_RE = re.compile(r"^\|\s*\*\*(T\d+|#\d+)\*\*\s*\|")
 HM_RE = re.compile(r"\bHM-(\d+)\b")
 HM_ROW_RE = re.compile(r"^\|\s*HM-(\d+)\s*\|")
 BUDGET_RE = re.compile(r"Total budget:\s*(\d+)\s*registry rows")

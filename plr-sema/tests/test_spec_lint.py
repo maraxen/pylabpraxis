@@ -89,6 +89,15 @@ def test_symbol_not_in_range_fires(fake_repo: Path) -> None:
     assert list(kinds) == ["symbol_not_in_range"]
 
 
+def test_qualname_passes_when_def_encloses_cited_line(fake_repo: Path) -> None:
+    # line 6 is `return 1` inside foo(); citing it by the qualname must pass
+    kinds = _cit_kinds(fake_repo, "the raise in `Mod.foo` (`pkg/mod.py:6`) fires\n")
+    assert kinds == {}
+    # ...but a def that does NOT enclose the line still trips
+    kinds = _cit_kinds(fake_repo, "the raise in `Mod.foo` (`pkg/mod.py:9`) fires\n")
+    assert list(kinds) == ["symbol_not_in_range"]
+
+
 def test_symbol_from_following_clause_is_not_charged(fake_repo: Path) -> None:
     # `bar` appears AFTER the citation, in the next clause: not a co-name
     kinds = _cit_kinds(fake_repo, "`foo` lives at `pkg/mod.py:5`, and `bar` elsewhere.\n")

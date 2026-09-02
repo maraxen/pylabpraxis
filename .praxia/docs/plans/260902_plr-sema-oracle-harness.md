@@ -113,9 +113,21 @@ renders each call sequence to a minimal Python protocol
 (`await lh.transfer(source["A1"], dest["B1"], 50)` with resources as
 parameters), runs praxis's `computation_graph_extractor` out of process, and
 feeds *that* graph to `check_graph`. Tier-1 and tier-2 verdicts for the same
-row must agree; any divergence is an extractor defect by construction — the
-flow-sensitive tips gate at `computation_graph_extractor.py:547`, receiver
-typing, argument capture.
+row must agree; a divergence is an extractor defect **or a tier-1 adapter
+defect** — the flow-sensitive tips gate at `computation_graph_extractor.py:547`,
+receiver typing, argument capture on one side; argument naming on the other.
+
+> **Qualified 260902 (T18, spec increment §10.10 Q3).** The spike's adapter emits
+> the corpus's *tool* parameter names (`at`, `source`, `volume_ul` — see
+> `training/verify/dispatcher.py`) as `OperationNode.arguments`, while derived
+> guards are written over PLR's *method* parameter names (`tip_spots`,
+> `use_channels`, `offsets`). Any evaluator keyed on argument names therefore
+> sees no recognisable arguments and widens every tier-1 row to ⊤ — the tier-1
+> gate would pass vacuously for the tip-typestate increment. Fix for tier 1:
+> build `arguments` from `PlanResult.kwargs` (the bound `LiquidHandler` kwargs
+> the dispatcher already produces), not from the tool call's params. Until that
+> lands, the increment's real oracle gate is tier 3's PLR-named mutants
+> (AC-10.12), not tier 1.
 
 **Tier 3 — mutation / metamorphic (#4881).** Every clean corpus row spawns
 mutants PLR is known to reject: remove `pick_up_tips` → `NoTipError`; duplicate

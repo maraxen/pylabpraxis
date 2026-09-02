@@ -34,6 +34,7 @@ Exit status 1 iff at least one failing (non-informational) violation.
 from __future__ import annotations
 
 import argparse
+import ast
 import dataclasses
 import json
 import logging
@@ -133,6 +134,28 @@ class Resolver:
             self._lines[p] = p.read_text(encoding="utf-8", errors="replace").splitlines()
         return self._lines[p]
 
+    def enclosing_defs(self, p: Path, start: int, end: int) -> set[str]:
+        """Names of every class/def whose body span encloses [start, end] in a
+        Python file -- so `` `TipTracker.get_tip` (`tip_tracker.py:65`) `` passes
+        when line 65 is the ``raise`` inside ``get_tip``, not its ``def`` line.
+        Non-Python files return the empty set (textual match only)."""
+        if p.suffix != ".py":
+            return set()
+        if not hasattr(self, "_defs"):
+            self._defs: dict[Path, list[tuple[str, int, int]]] = {}
+        if p not in self._defs:
+            spans: list[tuple[str, int, int]] = []
+            try:
+                tree = ast.parse("\n".join(self.lines(p)))
+            except SyntaxError:
+                tree = None
+            if tree is not None:
+                for node in ast.walk(tree):
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                        spans.append((node.name, node.lineno, node.end_lineno or node.lineno))
+            self._defs[p] = spans
+        return {n for n, a, b in self._defs[p] if a <= start and end <= b}
+
 
 def _co_named_identifiers(line: str, cite_start: int) -> list[str]:
     """Backticked identifiers in the clause that leads up to the citation."""
@@ -178,7 +201,13 @@ def check(spec: Path, root: Path) -> list[Violation]:
             idents = _co_named_identifiers(line, m.start())
             if idents:
                 body = "\n".join("\n".join(flines[s - 1 : e]) for s, e in ranges)
-                hits = [i for i in idents if i in body or i.rsplit(".", 1)[-1] in body]
+                enclosing: set[str] = set()
+                for s, e in ranges:
+                    enclosing |= resolver.enclosing_defs(path, s, e)
+                hits = [
+                    i for i in idents
+                    if i in body or i.rsplit(".", 1)[-1] in body or i.rsplit(".", 1)[-1] in enclosing
+                ]
                 if not hits:
                     violations.append(Violation("symbol_not_in_range", lineno, text, f"none of {idents} in {rel}:{m.group('ranges')}"))
     return violations
