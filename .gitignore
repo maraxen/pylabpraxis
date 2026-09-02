@@ -184,5 +184,6 @@ tmp/
 # P2.6 fine-tune artifacts: checkpoints (~540 MB each) and cluster outputs stay out of git;
 # manifests + eval reports are committed under training/out/p26 and training/eval/reports.
 training/out/checkpoints/
-outputs/
+/outputs/
+# (root-anchored: training/eval/outputs/ holds the committed generation dumps)
 scripts/scratch/
