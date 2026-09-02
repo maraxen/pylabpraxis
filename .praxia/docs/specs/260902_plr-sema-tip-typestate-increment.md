@@ -161,7 +161,7 @@ more interesting reason — see AC-10.11's vacuity disclosure and §10.10's Q3 d
 AbstractState = dict[receiver_variable: str, ChannelState]
 ```
 
-State is **per `OperationNode.receiver_variable`** (`plr-sema/src/plr_sema/check/graph.py:117`), not
+State is **per `OperationNode.receiver_variable`** (`plr-sema/src/plr_sema/check/graph.py:88`), not
 per `receiver_type`: two `LiquidHandler`s in one protocol are two independent states. Any receiver
 variable whose `receiver_type` is not a class carrying a derived channel-tracker attribute (§10.2.1)
 never gets an entry, and every operation on it behaves exactly as it does today — `UNKNOWN`,
@@ -379,7 +379,7 @@ behaviour rather than raising (pinned by AC-10.7):
 ```
 
 `channel_guards` is kept **separate from `guards`** so that the existing per-guard
-`guard_predicate_unparsed` emission (`check/__init__.py:219-227`) and every existing count-based
+`guard_predicate_unparsed` emission (`plr-sema/src/plr_sema/check/__init__.py:236-246`) and every existing count-based
 acceptance criterion are untouched by construction.
 
 `tip_state_exceptions` is **not hand-typed**, and round 1 (O3) corrected the selection rule that
@@ -748,8 +748,8 @@ a reviewer can attack them; none of them is buried in code.
 
 | id | assumption | why it is needed | what breaks if it is false |
 |---|---|---|---|
-| **A-SINGLE** | one `receiver_variable` denotes one `LiquidHandler` instance for the whole graph, and no other name aliases it | state is keyed on the variable name (§10.1.4) | a second alias mutating the head trackers desynchronises `σ`; both a false `SAFE` and a false `WILL_FAIL` become possible. Mitigation: no `plr_static_analysis` graph today emits two names for one instance, and `is_grounded` (`check/graph.py:181-186`) exists to detect ungrounded references when a reason for it lands |
-| **A-COMPLETES** | each operation preceding the one being checked completed without raising | E1/E2's post-state is the state *after a successful* call | it is the same assumption the oracle's own comparison already makes: `oracle_common.compare` marks every operation after the failing index `not_reached` and imposes no constraint there (`plr-sema/eval/oracle_common.py:198-204`; the round-1 draft cited `:148-163`, which is `run_static`'s per-operation grouping, not the comparison). A `WILL_FAIL` at index `i` is a claim about the trace *reaching* `i` |
+| **A-SINGLE** | one `receiver_variable` denotes one `LiquidHandler` instance for the whole graph, and no other name aliases it | state is keyed on the variable name (§10.1.4) | a second alias mutating the head trackers desynchronises `σ`; both a false `SAFE` and a false `WILL_FAIL` become possible. Mitigation: no `plr_static_analysis` graph today emits two names for one instance, and `is_grounded` (`plr-sema/src/plr_sema/check/graph.py:204-212`) exists to detect ungrounded references when a reason for it lands |
+| **A-COMPLETES** | each operation preceding the one being checked completed without raising | E1/E2's post-state is the state *after a successful* call | it is the same assumption the oracle's own comparison already makes: `oracle_common.compare` marks every operation after the failing index `not_reached` and imposes no constraint there (`plr-sema/eval/oracle_common.py:325-345`; the round-1 draft cited `:148-163`, which is `run_static`'s per-operation grouping, not the comparison). A `WILL_FAIL` at index `i` is a claim about the trace *reaching* `i` |
 | **A-COMMIT** (narrowed, round 1 O1) | at operation boundaries **of `pick_up_tips` and `drop_tips` only**, `_tip` and `_pending_tip` agree | P2 merges two concrete fields into one abstract cell (§10.2.2) | verified for exactly those two: each ends in a commit-or-rollback fold over every touched channel (`liquid_handler.py:570-573`, `:716-723`). It is **known false** for `update_head_state` (`liquid_handler.py:262-282`, `remove_tip(commit=False)` with no later `commit()`) and `clear_head_state` (`:284-287`) — both of which widen to `TOP` before any later guard is evaluated, by §10.4's E4.2 and E4.3 respectively, so neither can read the merged cell. What breaks it is a *new* PLR method that mutates a head tracker at depth 0 with a single non-conflicting effect and no commit; Fork D's pin test is the tripwire, and §10.6.4 is the worked non-example |
 | **A-ENABLED** | the head trackers are not `disable()`d | `TipTracker.add_tip`/`remove_tip` raise `RuntimeError` when disabled (`tip_tracker.py:89-90`, `:102-103`) | **largely self-discharging**: under A-COMPLETES, if `op_0`'s `add_tip` had raised `RuntimeError`, `op_0` would not have completed, so a completed `pick_up_tips` implies its head tracker was enabled. The residual is a `disable()` call *between* two operations, which no graph emits |
 
@@ -892,7 +892,7 @@ operation, and the exact site, so a stubbed evaluator that returns a constant fa
      `"TipTracker"`, `"has_tip"`, `"_pending_tip"`, `"NoTipError"`, `"HasTipError"` or `"head"` as an
      `ast.Constant` string value. (Round 1, O8: `grep` cannot exclude docstrings and comments, and
      that exclusion is the whole point of the criterion. The mechanism already exists in this repo:
-     `test_reason_vocabulary_closed_forward` (`plr-sema/tests/test_verdict.py:358`) walks the parsed
+     `test_reason_vocabulary_closed_forward` (`plr-sema/tests/test_verdict.py:401-483`) walks the parsed
      tree via `_find_finding_reason_sites` / `_is_finding_call` / `_resolve_reason_kwarg`
      (`plr-sema/tests/test_verdict.py:318-355`) rather than scanning text; this criterion reuses that
      shape. A docstring is an `ast.Expr` whose value is a `Constant`, so the scan must skip docstring
@@ -916,7 +916,7 @@ operation, and the exact site, so a stubbed evaluator that returns a constant fa
   tip_dropping` — the three §10.2.6 expectations, so a rule that silently selects nothing fails.
 - **AC-10.11 (oracle gate — replay; vacuous under tier 1 as configured, and says so).** `#4879`'s
   tier-1 corpus replay over the 812 + 88 rows reports **0 unsound rows** under
-  `oracle_common.compare`'s own `unsound` predicate (`plr-sema/eval/oracle_common.py:206-211`): no
+  `oracle_common.compare`'s own `unsound` predicate (`plr-sema/eval/oracle_common.py:325-345`): no
   operation is `SAFE` where the simulator raised, and none is `WILL_FAIL` where the simulator ran
   clean. This is a hard gate. The `UNKNOWN` rate is **reported, not gated** — main spec Deferred (f)
   still defers the number.
@@ -1030,7 +1030,7 @@ by `ast.literal_eval` of the value**, never by intersecting it with `depends_on_
 same-named-collision false-positive path B4 withdrew stays closed.
 
 **The round-1 draft said "8 → 10" and that was wrong, because the measure cannot see the second
-field.** `_measure_hm21` (`plr-sema/src/plr_sema/_hand_maintained.py:212-215`) is
+field.** `_measure_hm21` (`plr-sema/src/plr_sema/_hand_maintained.py:216-241`) is
 
 ```python
 def _measure_hm21() -> int:
@@ -1159,7 +1159,7 @@ which is the same fail-closed-to-`UNKNOWN` direction §Open decisions 1 establis
 - **The non-legacy surface.** The verifier and the oracle run at submodule pin `dd79c4c89`, where
   `LiquidHandler` lives under `legacy/`. `upstream_nonlegacy` has contracts (T14) but no executable
   oracle, so this increment is specified, derived and gated **at the pin**. `SurveyStamp.surface` /
-  `surface_pin` (`check/__init__.py:150-153`) already record which surface a table came from; the
+  `surface_pin` (`plr-sema/src/plr_sema/check/__init__.py:156-171`) already record which surface a table came from; the
   fixer changes nothing there.
 - **Precision targets.** No threshold, no rate, no `UNKNOWN`-reduction goal. Deferred (f) stands.
 
@@ -1203,7 +1203,7 @@ therefore gates totality and non-regression only, and requires the replay to rep
 real directional gate and is `#4888`'s own gate, not a downstream one (see the task row). One thing
 the round-1 draft got wrong in the challenger's favour and against its own: option (a) does **not**
 require hand-typing a tool→PLR name map — `run_runtime` already harvests PLR-named kwargs from the
-verifier's `plan_call` (`plr-sema/eval/oracle_common.py:85-108`) and `adapt_graph` already
+verifier's `plan_call` (wrapped by `recording_plan_call`, `plr-sema/eval/oracle_common.py:144-151`) and `adapt_graph` already
 accepts them (`:94`, `:118-125`). Option (a) is therefore cheaper than the draft claimed and is the
 natural follow-up; (c) is chosen for *this* increment because it does not make `#4888` depend on a
 change to `#4879`'s harness. The corollary for the oracle plan — that a tier-1/tier-2 divergence is

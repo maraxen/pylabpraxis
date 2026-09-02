@@ -29,6 +29,8 @@ PKG_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = PKG_ROOT.parent
 SCRIPTS = PKG_ROOT / "scripts"
 SPEC = REPO_ROOT / ".praxia" / "docs" / "specs" / "260901_plr-sema-pre-corpus-spec.md"
+SPEC_INCREMENT_1 = REPO_ROOT / ".praxia" / "docs" / "specs" / "260902_plr-sema-tip-typestate-increment.md"
+SPEC_INCREMENT_2 = REPO_ROOT / ".praxia" / "docs" / "specs" / "260902_plr-sema-ir-bytecode-increment.md"
 REGISTRY = PKG_ROOT / "src" / "plr_sema" / "_hand_maintained.py"
 
 
@@ -204,9 +206,18 @@ def test_crossref_lint_reports_registry_row_missing_from_inventory(tmp_path: Pat
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(not SPEC.is_file(), reason="spec not present in this checkout")
-def test_live_spec_has_no_failing_citations() -> None:
-    failing = [v for v in citations.check(SPEC, REPO_ROOT) if not v.informational]
+@pytest.mark.parametrize(
+    "spec_path",
+    [
+        pytest.param(SPEC, id="main"),
+        pytest.param(SPEC_INCREMENT_1, id="increment-1-tip-typestate"),
+        pytest.param(SPEC_INCREMENT_2, id="increment-2-ir-bytecode"),
+    ],
+)
+def test_live_spec_has_no_failing_citations(spec_path: Path) -> None:
+    if not spec_path.is_file():
+        pytest.skip(f"spec not present: {spec_path}")
+    failing = [v for v in citations.check(spec_path, REPO_ROOT) if not v.informational]
     assert failing == [], "\n".join(f"{v.kind} L{v.spec_line} {v.citation} -- {v.detail}" for v in failing)
 
 
@@ -214,3 +225,22 @@ def test_live_spec_has_no_failing_citations() -> None:
 def test_live_spec_ac_hm_crossrefs_reconcile() -> None:
     vs = crossrefs.check(SPEC, REGISTRY)
     assert vs == [], "\n".join(f"{v.kind} L{v.spec_line} {v.subject} -- {v.detail}" for v in vs)
+
+
+@pytest.mark.parametrize(
+    "spec_path",
+    [
+        pytest.param(SPEC_INCREMENT_1, id="increment-1-tip-typestate"),
+        pytest.param(SPEC_INCREMENT_2, id="increment-2-ir-bytecode"),
+    ],
+)
+def test_increment_specs_ac_gating_violations(spec_path: Path) -> None:
+    """Increments have no §9.2 inventory table, but must not have AC gating violations."""
+    if not spec_path.is_file():
+        pytest.skip(f"spec not present: {spec_path}")
+    all_vs = crossrefs.check(spec_path, REGISTRY)
+    # Filter to only gating-related violations (not HM-related ones)
+    gating_violations = [v for v in all_vs if v.kind in {"ac_ungated", "ac_undefined", "ac_multiply_gated"}]
+    assert gating_violations == [], "\n".join(
+        f"{v.kind} L{v.spec_line} {v.subject} -- {v.detail}" for v in gating_violations
+    )

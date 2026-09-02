@@ -36,7 +36,7 @@ sources: "Read this session, in full or in the cited ranges: .praxia/docs/specs/
 reads the front end's pydantic-shaped output directly, through a hand-chosen field mirror
 (`check/graph.py:109-121`), and every other consumer of "a protocol" — the P2.5 corpus's tool-call
 form, the verifier's executed call sequence, the oracle harness's ad-hoc adapter
-(`adapt_graph`, `oracle_common.py:94-138`) — reaches the checker by a *different* path with
+(`adapt_graph` (deleted in b640f194)) — reaches the checker by a *different* path with
 *different* conventions. That is the structural cause of increment 1's §10.10 Q3 defect: the corpus
 path hands the checker tool parameter names (`at`, `volume_ul`) while the contract database is
 written over PLR parameter names (`tip_spots`, `use_channels`), so the tier-1 oracle gate passes
@@ -50,7 +50,7 @@ would otherwise each invent their own.
 | axis | today (spec_version 8 + 9) | this increment |
 |---|---|---|
 | checker input | `ProtocolComputationGraph` mirror, 7 mirrored fields chosen by judgement | SEMA-IR bytecode; **all 34** upstream fields carry a declared disposition |
-| corpus path | `adapt_graph`, tool-named `arguments` (`oracle_common.py:118-123`) | `lower_calls` over `PlanResult.kwargs` — PLR-named by construction |
+| corpus path | `adapt_graph` (deleted in b640f194), tool-named `arguments` | `lower_calls` over `PlanResult.kwargs` — PLR-named by construction |
 | argument arity | `ast.literal_eval` of a source string (increment 1 §10.1.3 rules 1/3) | `len(Seq)` on an IR value — static even when the elements are not |
 | checker core | `check_graph(graph_json, contracts_json)` | `check_ir(bytecode, contracts)`; `check_graph` lowers, then calls it |
 | identity of a protocol | none | canonical form + `sha256`; cache key defined (store deferred to #4922) |
@@ -253,7 +253,7 @@ hand-maintained closed set, and under §9.4's discovery-vs-growth rule that is *
 headroom.
 
 `WIDEN.reason` is **not** a `Finding.reason` and must never be passed as one:
-`REASON_VOCABULARY` (`verdict.py:127`) is closed and its forward scan
+`REASON_VOCABULARY` (`plr-sema/src/plr_sema/verdict.py:129-154`) is closed and its forward scan
 (`test_reason_vocabulary_closed_forward`) would reject a computed value at the `Finding(...)` call
 site anyway. A widened instruction that later yields a finding uses the existing members —
 `guard_predicate_unparsed`, or increment 1's `channel_state_unknown`.
@@ -313,8 +313,8 @@ a `Resource` with a parent → `Ref(slot_of(parent), obj.name)`; a top-level `Re
 `Ref(slot_of(obj), None)`; a `list` → `Seq`; a JSON scalar → `Lit`; anything else → `Top`.
 
 The kwargs come from `PlanResult.kwargs` (`dispatcher.py:54-64`), which `run_runtime` already
-harvests through its `recording_plan_call` wrapper (`oracle_common.py:87-93`) and carries out on
-`RuntimeOutcome.plr_kwargs` (`oracle_common.py:72-78`). **Those kwargs are PLR-named by
+harvests through its `recording_plan_call` wrapper (`plr-sema/eval/oracle_common.py:144-151`) and carries out on
+`RuntimeOutcome.plr_kwargs` (`plr-sema/eval/oracle_common.py:135`). **Those kwargs are PLR-named by
 construction**: `plan_call` (`dispatcher.py:92-101`) writes `kwargs[spec.plr_arg]` inside its `bind`
 closure (`dispatcher.py:117-135`), and `spec.plr_arg` is `ParamSpec`'s "vendored kwarg name" field
 (`param_namespace.py:81-99`, `:88`). For `pick_up_tips` the single row is
@@ -429,7 +429,7 @@ parameters. Recovering it is a named follow-up with a concrete trigger (the surv
 1. **Identifiers → positional slot ids.** Resource and receiver *names* are replaced by integer slots
    assigned in order of first appearance in the emission order. `variable_name`, `receiver_variable`
    and every `Ref.slot` are affected. A receiver with no `ResourceNode` still gets a slot, flagged
-   `grounded: false` (the fact `is_grounded`, `check/graph.py:181-186`, already computes).
+   `grounded: false` (the fact `is_grounded`, `plr-sema/src/plr_sema/check/graph.py:204-212`, already computes).
 2. **`Ref.cell` is kept verbatim.** `"A1"` is a position on a labware, not a program identifier;
    renaming it is a semantic change.
 3. **Kwarg key order.** `CALL.kwargs` is emitted with keys sorted lexicographically. Trusted and
@@ -463,7 +463,7 @@ sha1/sha256 buys nothing.
 **Excluding `protocol_fqn` is a deliberate, attackable choice.** Two protocols with identical bodies
 and different names hash identically, which is what makes the hash a *program* identity and the cache
 useful across renames. Its consequence is that a cached artifact must not be an `AnalysisReport`,
-whose `protocol_fqn` field (`verdict.py:193-212`) would then be wrong for the second protocol.
+whose `protocol_fqn` field (`plr-sema/src/plr_sema/verdict.py:220`) would then be wrong for the second protocol.
 **Design position:** #4922 caches the `Finding` tuple, and the caller reassembles the report with its
 own `protocol_fqn` and its own `stamp`. This is recorded as open question Q3 (§11.12) because it
 constrains #4922's interface, and a reviewer may prefer the opposite trade.
@@ -477,8 +477,8 @@ cache_key = (bytecode_hash, contracts_sha, surface_identity, ir_version)
 | component | where it already exists |
 |---|---|
 | `bytecode_hash` | defined here (§11.3.2) |
-| `contracts_sha` | `sha256` of the `contracts_json` **string `check_graph` is already handed** (`check/__init__.py:350-358`) — no artifact change, no new field, computable in-band today |
-| `surface_identity` | `(stamp.surface, stamp.surface_pin or stamp.plr.hash, stamp.plr.dirty_content_id)` — all four already on `SurveyStamp` (`_provenance/stamp.py:77-103`, `surface`/`surface_pin` at `:96-103`) and already reconstructed by `_stamp_from_dict` (`check/__init__.py:140-154`). `Surface.pin` exists precisely because a non-git extraction cannot answer "what commit is this" (`stamp.py:51-67`), which is why the key falls back to `plr.hash` rather than requiring one form |
+| `contracts_sha` | `sha256` of the `contracts_json` **string `check_graph` is already handed** (`plr-sema/src/plr_sema/check/__init__.py:536-556`) — no artifact change, no new field, computable in-band today |
+| `surface_identity` | `(stamp.surface, stamp.surface_pin or stamp.plr.hash, stamp.plr.dirty_content_id)` — all four already on `SurveyStamp` (`_provenance/stamp.py:77-103`, `surface`/`surface_pin` at `:96-103`) and already reconstructed by `_stamp_from_dict` (`plr-sema/src/plr_sema/check/__init__.py:156-171`). `Surface.pin` exists precisely because a non-git extraction cannot answer "what commit is this" (`stamp.py:51-67`), which is why the key falls back to `plr.hash` rather than requiring one form |
 | `ir_version` | `plr_sema.check.ir.IR_VERSION` (§11.1.1) |
 
 `contracts_sha` and `surface_identity` are both present because they answer different questions: the
@@ -501,14 +501,14 @@ def check_graph(graph_json: str, contracts_json: str) -> AnalysisReport      # u
 ```
 
 `check_graph` keeps its signature, its docstring's promises (no `libcst`, no `pylabrobot`, never
-shells out) and its telemetry emission (`_check`, `check/__init__.py:324-347`). Its body becomes:
+shells out) and its telemetry emission (`_check`, `plr-sema/src/plr_sema/check/__init__.py:509-533`). Its body becomes:
 `json.loads` both inputs → build `param_names` from the contract table → `lower_graph` →
 `check_ir` → relabel (§11.4.3) → `join` (`verdict.py:220-232`) → `AnalysisReport`. **Every existing
 acceptance criterion that names `check_graph` continues to name `check_graph`**; AC-6.1 through
 AC-6.7 are untouched, and AC-11.6 pins that the shipped fixture's report does not move.
 
 `check_ir` is a single left-to-right pass with a program counter. In *this* increment its per-`CALL`
-body is exactly today's `_findings_for_operation` (`check/__init__.py:293-321`), re-keyed from an
+body is exactly today's `_findings_for_call` (renamed from `_findings_for_operation` in b640f194, `plr-sema/src/plr_sema/check/__init__.py:325-388`), re-keyed from an
 `OperationNode` to a `CALL` instruction: `op.receiver_type`/`op.method_name` become
 `CALL.receiver_type`/`CALL.method`; the loop test `op.foreach_source is not None or op.foreach_body`
 becomes "this `pc` is inside an open `LOOP` region". No verdict changes. Increment 1's tip walk is
@@ -581,7 +581,7 @@ wrong — it is merely uninformative, and it is uninformative for a reason the d
 
 **Reduced, not retired: `check/graph.py` becomes the lowering's input schema, and becomes total.**
 It keeps its role (JSON in, stdlib dataclasses out, never a pydantic `model_validate`) and loses its
-selection rule. Concretely: `OperationNode` (`check/graph.py:109-121`) grows from 7 fields to all 15;
+selection rule. Concretely: `OperationNode` (`plr-sema/src/plr_sema/check/graph.py:78-99`) grows from 7 fields to all 15;
 `ResourceNode` (`:124-132`) from 1 to 9; `ProtocolComputationGraph` (`:135-145`) from 3 to 10;
 `_operation_from_dict` (`:148-157`) and `parse_graph` (`:164-178`) extract all of them. `is_grounded`
 (`:181-186`) survives unchanged and finally acquires a consumer: the `grounded` flag on a `RESOURCE`
@@ -671,7 +671,7 @@ make it worse, and fixing it is #4882's call, not a reason to spend a vocabulary
 
 **HM-21: one metric redefinition, no new row, and both numbers must appear in the diff.** HM-21 is
 *"field set mirrored by `check/graph.py`"*, metric "fields mirrored", `declared` 15 after increment
-1's fix to `_measure_hm21` (`_hand_maintained.py:212-215`, which increment 1 §10.8 extends to count
+1's fix to `_measure_hm21` (`plr-sema/src/plr_sema/_hand_maintained.py:216-241`, which increment 1 §10.8 extends to count
 `ProtocolComputationGraph` too). Under this increment the mirror becomes total: **34 fields**
 (15 + 9 + 10). Two options, and the recommendation is stated rather than assumed:
 
@@ -807,7 +807,7 @@ by a stub, the stub-defeating half is named.
   into the checker, and §8's comparison would be comparing the analyzer against its own input. No
   existing criterion catches that: AC-11.1 is key-set equality and passes unchanged; AC-11.2 read
   live off `DISPOSITIONS` becomes vacuous by construction; AC-11.6 cannot see it because
-  `_findings_for_operation` (`check/__init__.py:293-321`) never reads `op.preconditions` or
+  `_findings_for_call` (renamed from `_findings_for_operation`, `plr-sema/src/plr_sema/check/__init__.py:325-388`) never reads call-level `preconditions` or
   `op.creates_state`, so the findings stay bit-identical. **HM-21's redefined metric cannot substitute
   for this test either, and in fact points the wrong way:** it counts `X` dispositions, so moving a
   field *out* of `X` **decreases** the count, which a ratchet that guards against growth reads as
@@ -874,14 +874,14 @@ rule, the E1–E5 transfer functions and every soundness argument stand exactly 
 
 **Tier 1 and tier 2 both become "lower, then compare".**
 
-- **Tier 1** (`#4879`) stops adapting and starts lowering: `adapt_graph` (`oracle_common.py:94-138`)
+- **Tier 1** (`#4879`) stops adapting and starts lowering: `adapt_graph` (deleted in b640f194)
   is deleted, and the replay runs `lower_calls` over the IR values harvested from
   `PlanResult.kwargs`. The fallback branch that built `arguments` from `{k: json.dumps(v) for k, v in
-  (call.get("params") or {}).items()}` (`oracle_common.py:118-123`) — the tool-named path — has no
+  (call.get("params") or {}).items()}` — the tool-named path — has no
   successor: a row whose call was never planned produces no `CALL` at all rather than a
   tool-named one, and is counted as `not_planned` in the report. `run_static`
-  (`oracle_common.py:141-157`) and `compare` (`oracle_common.py:193-213`), including the `unsound`
-  predicate at `:178-180`, are unchanged — they read verdicts, not arguments.
+  and `compare` (`plr-sema/eval/oracle_common.py:325-345`), including the `unsound`
+  predicate, are unchanged — they read verdicts, not arguments.
 - **Tier 2** (`#4880`) renders each call sequence to Python source, extracts with
   `computation_graph_extractor` out of process, and lowers **the same way** with `lower_graph`. The
   comparison moves down a level: tier 1 and tier 2 are compared as **bytecode**, not as verdicts, so
