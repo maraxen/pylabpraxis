@@ -60,7 +60,7 @@ class TestRowToVerifierInputs:
             "metadata": "train",
         }
 
-        call_seq, intent, layout = row_to_verifier_inputs(
+        call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
             row, source_file="test", line=1
         )
 
@@ -75,6 +75,8 @@ class TestRowToVerifierInputs:
         assert layout is not None  # scaffold adds seed volumes
         assert "seed_volumes" in layout
         assert "resources" in layout
+        assert skip_reason is None  # transfer is executable
+        assert no_call_reason is None  # has a tool call
 
     def test_real_corpus_row(self):
         """Parse the actual first row from corpus_p25.jsonl."""
@@ -85,17 +87,18 @@ class TestRowToVerifierInputs:
         with open(corpus_file) as f:
             row = json.loads(f.readline())
 
-        call_seq, intent, layout = row_to_verifier_inputs(
+        call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
             row, source_file="corpus_p25", line=1
         )
 
-        # Should have extracted a call sequence
+        # Should have extracted a call sequence (or be marked as no_call/skipped)
         assert isinstance(call_seq, list)
-        assert len(call_seq) > 0
-        # Each call should have name and params
-        for call in call_seq:
-            assert "name" in call
-            assert "params" in call
+        if no_call_reason is None and skip_reason is None:
+            assert len(call_seq) > 0
+            # Each call should have name and params
+            for call in call_seq:
+                assert "name" in call
+                assert "params" in call
         # Intent record should match the structure
         assert intent["record_id"] == "corpus_p25:1"
         assert intent["source"] == "synthetic"
@@ -270,6 +273,92 @@ class TestCompare:
         rows = compare(example, rt, st)
         assert len(rows) == 1
         assert rows[0]["unsound"] is False
+
+
+class TestRowCategories:
+    """Tests for row categorization: no_call, skipped, executed."""
+
+    def test_no_call_row(self):
+        """Clarification turn with no tool_calls."""
+        row = {
+            "messages": [
+                {"role": "user", "content": "What's the tip height?"},
+                {"role": "assistant", "content": "The tip height is 10mm."},
+            ],
+            "tools": [],
+            "metadata": "train",
+        }
+
+        call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
+            row, source_file="test", line=1
+        )
+
+        assert no_call_reason == "no_tool_calls"
+        assert skip_reason is None
+        assert len(call_seq) == 0
+        assert intent["calls"] == []
+
+    def test_skipped_row(self):
+        """Call that _precondition_plan refuses (e.g., transfer without volume_ul)."""
+        row = {
+            "messages": [
+                {"role": "user", "content": "Transfer from A1 to B1"},
+                {
+                    "role": "assistant",
+                    "tool_calls": [
+                        {
+                            "function": {
+                                "name": "transfer",
+                                "arguments": {
+                                    "source": "src.A1",
+                                    "destination": "dst.B1",
+                                    # missing volume_ul
+                                },
+                            },
+                            "type": "function",
+                        },
+                    ],
+                },
+            ],
+            "tools": [],
+            "metadata": "train",
+        }
+
+        call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
+            row, source_file="test", line=1
+        )
+
+        assert no_call_reason is None
+        assert skip_reason is not None  # transfer without volume_ul is skipped
+        assert len(call_seq) == 0
+
+
+class TestPLRNamedArguments:
+    """Tests for PLR-named argument handling (planned fix)."""
+
+    def test_adapt_graph_with_plr_kwargs(self):
+        """adapt_graph uses PLR-named kwargs when available."""
+        example = {
+            "call_sequence": [
+                {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1"]}},
+            ],
+            "deck_layout": {"resources": {"tip_rack": "TipRack"}},
+        }
+
+        # Simulate PLR kwargs (tool "at" param maps to PLR "tip_spots" param)
+        plr_kwargs = {
+            0: {"tip_spots": "['tip_rack.A1']", "use_channels": "[0]"},
+        }
+
+        graph = adapt_graph(example, "test.protocol", plr_kwargs)
+
+        # Operation 0 should have PLR-named arguments
+        op0_args = graph["operations"][0]["arguments"]
+        # When plr_kwargs provided, those names are used instead of tool names
+        if 0 in plr_kwargs:
+            assert "tip_spots" in op0_args or "at" in op0_args  # depends on usage
+            # In this case, adapt_graph uses plr_kwargs[0] directly
+            assert set(op0_args.keys()) >= {"tip_spots", "use_channels"}
 
 
 class TestSmokeOnExamples:

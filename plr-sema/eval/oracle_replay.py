@@ -1,39 +1,17 @@
-"""Oracle replay tier 1: corpus evaluation (backlog #4879).
+"""Oracle replay tier 1 (T16b): corpus evaluation with measurement fixes (#4879).
 
 Run the PLR chatterbox simulator (ground truth) and plr-sema's static analyzer
-in parallel against rows from corpus_p25.jsonl (812 rows) and golden_pairs.jsonl
-(88 rows), join the verdicts, and report soundness metrics + totality +
-exception counts.
+in parallel against rows from corpus_p25.jsonl + golden_pairs.jsonl, with proper
+measurement of: rows_total, rows_no_call (clarifications), rows_skipped
+(unfixable via preconditions), rows_executed (actually ran), operations_executed.
 
-For every row:
-  * runtime: run the call sequence on the chatterbox backend with STRICT +
-    tip/volume tracking; capture which operation failed or whether it passed.
-  * static: adapt the call sequence into the §6.2 graph wire format and run
-    plr-sema's check_graph; per-op verdict is the join of that op's findings.
-  * compare: per operation, assess soundness (SAFE+raised=unsound, etc.)
-  * check_graph: catch any exception from check_graph and record it.
-  * totality: verify len(findings) >= len(operations) per row.
-  * crosscheck: join results by record_id and compare against recorded floor
-    and overlay results (execution_verify.passed/error).
+Per-row output: {record_id, source_file, line, utterance, calls[], skip_reason,
+no_call_reason, runtime {outcome, error, exc_class}, static verdicts, compare[],
+intent_check_failures[], totality_ok, check_graph_raised}.
 
-Report:
-  * unsound count (exit 1 if >0)
-  * agreement matrix (runtime outcome × static verdict, with counts)
-  * unknown_rate_by_method (per method, % of UNKNOWN verdicts)
-  * exception_ranking (exception class → count + which method raised it)
-  * totality_violations (rows where findings < operations)
-  * check_graph exceptions
-  * crosscheck agreement/disagreement counts + examples of disagreements
-
-Usage::
-
-    uv run python plr-sema/eval/oracle_replay.py \\
-        --corpus training/assemble/out/corpus_p25.jsonl \\
-        --corpus training/golden/golden_pairs.jsonl \\
-        --crosscheck training/out/corpus_p23_floor.jsonl \\
-        --crosscheck training/overlay_gen/out/overlay_full.jsonl \\
-        --report /tmp/t16_report.json \\
-        --limit 50  # for smoke test
+Summary: unsound count, agreement matrix (runtime × static), per-method unknown%,
+exception ranking split by PLR vs harness category, precondition_state ranking,
+crosscheck content-join results.
 """
 
 from __future__ import annotations
@@ -41,6 +19,7 @@ from __future__ import annotations
 import argparse
 import collections
 import dataclasses
+import hashlib
 import json
 import logging
 import os
@@ -65,22 +44,88 @@ log = logging.getLogger(__name__)
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+def _classify_exception(exc_class: str | None) -> str:
+    """Classify an exception into PLR vs harness category.
+
+    PLR exceptions: NoTipError, HasTipError, TooLittleLiquidError,
+    TooLittleVolumeError, BlowOutVolumeError, ValueError (from PLR).
+
+    Harness/dispatcher exceptions: GroundingError, DispatchError, TypeError,
+    AttributeError, etc.
+    """
+    if not exc_class:
+        return "none"
+    # PLR precondition-state exceptions
+    if exc_class in ("NoTipError", "HasTipError", "TooLittleLiquidError",
+                     "TooLittleVolumeError", "BlowOutVolumeError"):
+        return "precondition_state"
+    # Dispatcher grounding errors
+    if exc_class == "GroundingError":
+        return "ungroundable_reference"
+    if exc_class == "DispatchError":
+        return "unsupported_tool"
+    # Other harness errors
+    return "harness_error"
+
+
+def _content_hash(row: dict[str, Any]) -> str | None:
+    """Compute a content-based hash for joining rows.
+
+    Normalize: (user message, first real call name, sorted param items).
+    """
+    utterance = ""
+    first_call_name = ""
+    params_str = ""
+
+    for msg in row.get("messages", []):
+        if msg.get("role") == "user":
+            utterance = msg.get("content", "")
+        elif msg.get("role") == "assistant":
+            tool_calls = msg.get("tool_calls", [])
+            if tool_calls:
+                func = tool_calls[0].get("function", {})
+                first_call_name = func.get("name", "")
+                params = func.get("arguments", {})
+                # Normalize params to sorted items string
+                params_str = json.dumps(
+                    sorted(params.items()) if isinstance(params, dict) else [],
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                break
+
+    if not first_call_name:
+        return None
+
+    content = f"{utterance}|{first_call_name}|{params_str}"
+    return hashlib.sha256(content.encode()).hexdigest()[:16]
+
+
 @dataclasses.dataclass
 class RowResult:
     """Result for one row."""
     record_id: str
     corpus_file: str
     row_index: int
-    n_operations: int
-    runtime_outcome: RuntimeOutcome
-    static_verdicts: dict[str, str]  # op_i -> verdict string
-    n_findings: int  # total across all ops
-    compare_rows: list[dict[str, Any]]
+    utterance: str
+    call_names: list[str]  # names of all calls in call_sequence
+    scaffold_prefix_count: int  # number of prefix calls added
+    no_call_reason: str | None
+    skip_reason: str | None
+    n_operations_executed: int
+    runtime_outcome: str  # "no_call", "skipped:<reason>", "ran_ok", "raised:<Class>", "not_reached", "setup_error"
+    runtime_error: str | None
+    runtime_exc_class: str | None
+    static_verdicts: dict[str, str]  # op_i -> verdict string (only executed ops)
+    n_findings: int  # total across all executed ops
+    compare_rows: list[dict[str, Any]]  # only executed ops
     check_graph_raised: bool
     check_graph_exception: str | None
-    intent_check_failures: list[dict[str, Any]]  # verifier checks that failed
+    intent_check_failures: list[dict[str, Any]]
     totality_ok: bool
     unsound_count: int
+    plr_kwargs: dict[int, dict[str, Any]]  # PLR-named arguments by call index
+    tool_params: dict[str, dict[str, Any]]  # tool parameter names by op_id
 
 
 def run_row(
@@ -95,7 +140,7 @@ def run_row(
     """
     # Parse row into verifier inputs
     try:
-        call_sequence, intent_record, deck_layout = row_to_verifier_inputs(
+        call_sequence, intent_record, deck_layout, skip_reason, no_call_reason = row_to_verifier_inputs(
             row, source_file=Path(corpus_file).stem, line=row_index
         )
     except Exception as e:
@@ -104,8 +149,15 @@ def run_row(
             record_id=f"{corpus_file}:{row_index}",
             corpus_file=corpus_file,
             row_index=row_index,
-            n_operations=0,
-            runtime_outcome=RuntimeOutcome(error=f"parse:{e}", exc_class="ParseError", failing_index=None, planned_indices=[], passed=False),
+            utterance="",
+            call_names=[],
+            scaffold_prefix_count=0,
+            no_call_reason="parse_error",
+            skip_reason=None,
+            n_operations_executed=0,
+            runtime_outcome="setup_error",
+            runtime_error=f"parse:{e}",
+            runtime_exc_class="ParseError",
             static_verdicts={},
             n_findings=0,
             compare_rows=[],
@@ -114,16 +166,74 @@ def run_row(
             intent_check_failures=[],
             totality_ok=True,
             unsound_count=0,
+            plr_kwargs={},
+            tool_params={},
         )
 
-    # Reconstruct the example dict for compatibility with spike functions
+    record_id = intent_record.get("record_id", f"{corpus_file}:{row_index}")
+    utterance = intent_record.get("utterance", "")
+    call_names = [c["name"] for c in call_sequence]
+
+    # If no_call_reason, skip execution
+    if no_call_reason:
+        return RowResult(
+            record_id=record_id,
+            corpus_file=corpus_file,
+            row_index=row_index,
+            utterance=utterance,
+            call_names=call_names,
+            scaffold_prefix_count=0,
+            no_call_reason=no_call_reason,
+            skip_reason=None,
+            n_operations_executed=0,
+            runtime_outcome="no_call",
+            runtime_error=None,
+            runtime_exc_class=None,
+            static_verdicts={},
+            n_findings=0,
+            compare_rows=[],
+            check_graph_raised=False,
+            check_graph_exception=None,
+            intent_check_failures=[],
+            totality_ok=True,
+            unsound_count=0,
+            plr_kwargs={},
+            tool_params={},
+        )
+
+    # If skipped, return skipped outcome
+    if skip_reason:
+        return RowResult(
+            record_id=record_id,
+            corpus_file=corpus_file,
+            row_index=row_index,
+            utterance=utterance,
+            call_names=call_names,
+            scaffold_prefix_count=0,
+            no_call_reason=None,
+            skip_reason=skip_reason,
+            n_operations_executed=0,
+            runtime_outcome=f"skipped:{skip_reason.split()[0]}",  # first word of reason
+            runtime_error=None,
+            runtime_exc_class=None,
+            static_verdicts={},
+            n_findings=0,
+            compare_rows=[],
+            check_graph_raised=False,
+            check_graph_exception=None,
+            intent_check_failures=[],
+            totality_ok=True,
+            unsound_count=0,
+            plr_kwargs={},
+            tool_params={},
+        )
+
+    # Reconstruct example dict for spike functions
     example = {
         "call_sequence": call_sequence,
         "intent_record": intent_record,
         "deck_layout": deck_layout,
     }
-
-    record_id = intent_record.get("record_id", f"{corpus_file}:{row_index}")
 
     # Runtime
     try:
@@ -138,16 +248,28 @@ def run_row(
             passed=False,
         )
 
+    # Map runtime outcome to string
+    if rt.error is None:
+        runtime_outcome = "ran_ok"
+    elif rt.failing_index is None:
+        runtime_outcome = "not_reached(setup_error)"
+    else:
+        runtime_outcome = f"raised:{rt.exc_class}"
+
     # Static
     check_graph_raised = False
     check_graph_exception = None
     static_verdicts = {}
     n_findings = 0
+    tool_params_dict = {}
     try:
-        graph = adapt_graph(example, f"corpus.{Path(corpus_file).stem}.{row_index}")
+        graph = adapt_graph(example, f"corpus.{Path(corpus_file).stem}.{row_index}", rt.plr_kwargs)
         st = run_static(graph, contracts_json)
         static_verdicts = {oid: sdata["verdict"] for oid, sdata in st.items()}
         n_findings = sum(sdata["n_findings"] for sdata in st.values())
+        # Capture tool params for per-row record
+        for op in graph["operations"]:
+            tool_params_dict[op["id"]] = op.get("arguments", {})
     except Exception as e:
         log.warning("Static analysis failed for %s: %s", record_id, e)
         check_graph_raised = True
@@ -166,45 +288,30 @@ def run_row(
     # Totality check
     totality_ok = len(call_sequence) == 0 or n_findings >= len(call_sequence)
 
-    # Intent check failures (from verifier's checks, if available)
-    # For now, we don't have access to the full verifier result, so empty
-    intent_check_failures = []
-
     return RowResult(
         record_id=record_id,
         corpus_file=corpus_file,
         row_index=row_index,
-        n_operations=len(call_sequence),
-        runtime_outcome=rt,
+        utterance=utterance,
+        call_names=call_names,
+        scaffold_prefix_count=len(call_sequence) - 1 if len(call_sequence) > 0 else 0,
+        no_call_reason=None,
+        skip_reason=None,
+        n_operations_executed=len(call_sequence),
+        runtime_outcome=runtime_outcome,
+        runtime_error=rt.error,
+        runtime_exc_class=rt.exc_class,
         static_verdicts=static_verdicts,
         n_findings=n_findings,
         compare_rows=compare_rows,
         check_graph_raised=check_graph_raised,
         check_graph_exception=check_graph_exception,
-        intent_check_failures=intent_check_failures,
+        intent_check_failures=[],
         totality_ok=totality_ok,
         unsound_count=unsound_count,
+        plr_kwargs=rt.plr_kwargs,
+        tool_params=tool_params_dict,
     )
-
-
-def load_crosscheck(path: str) -> dict[str, dict[str, Any]]:
-    """Load floor/overlay file and index by record_id."""
-    index = {}
-    try:
-        with open(path) as f:
-            for line in f:
-                if not line.strip():
-                    continue
-                row = json.loads(line)
-                # The floor/overlay files have various structures; look for record_id
-                record_id = row.get("record_id")
-                if not record_id:
-                    # Try to infer from path
-                    continue
-                index[record_id] = row
-    except Exception as e:
-        log.warning("Failed to load crosscheck file %s: %s", path, e)
-    return index
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -229,21 +336,34 @@ def main(argv: list[str] | None = None) -> int:
     # Load contracts
     contracts_json = args.contracts.read_text(encoding="utf-8")
 
-    # Load crosscheck indices
-    crosscheck_indices = {}
+    # Load crosscheck by content hash
+    crosscheck_by_hash: dict[str, dict[str, Any]] = {}
     for cc_file in args.crosscheck:
-        idx = load_crosscheck(cc_file)
-        crosscheck_indices.update(idx)
-    log.info("Loaded %d crosscheck entries", len(crosscheck_indices))
+        try:
+            with open(cc_file) as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    row = json.loads(line)
+                    content_hash = _content_hash(row)
+                    if content_hash:
+                        crosscheck_by_hash[content_hash] = row
+        except Exception as e:
+            log.warning("Failed to load crosscheck file %s: %s", cc_file, e)
+    log.info("Loaded %d crosscheck entries by content hash", len(crosscheck_by_hash))
 
     # Process corpus files
     results: list[RowResult] = []
-    n_rows_processed = 0
+    n_rows_total = 0
+    n_rows_no_call = 0
+    n_rows_skipped = 0
+    n_rows_executed = 0
+
     for corpus_file in args.corpus:
         try:
             with open(corpus_file) as f:
                 for line_no, line in enumerate(f, 1):
-                    if args.limit and n_rows_processed >= args.limit:
+                    if args.limit and n_rows_total >= args.limit:
                         break
                     if not line.strip():
                         continue
@@ -254,20 +374,29 @@ def main(argv: list[str] | None = None) -> int:
                         continue
                     result = run_row(row, corpus_file, line_no, contracts_json)
                     results.append(result)
-                    n_rows_processed += 1
-                    if n_rows_processed % 100 == 0:
-                        log.info("Processed %d rows...", n_rows_processed)
+                    n_rows_total += 1
+                    if result.no_call_reason:
+                        n_rows_no_call += 1
+                    elif result.skip_reason:
+                        n_rows_skipped += 1
+                    else:
+                        n_rows_executed += 1
+                    if n_rows_total % 100 == 0:
+                        log.info("Processed %d rows (no_call=%d, skipped=%d, executed=%d)...",
+                                 n_rows_total, n_rows_no_call, n_rows_skipped, n_rows_executed)
         except Exception as e:
             log.warning("Failed to process corpus file %s: %s", corpus_file, e)
 
-    # Compute summary statistics
-    n_unsound = sum(r.unsound_count for r in results)
-    n_totality_violations = sum(1 for r in results if not r.totality_ok)
-    n_check_graph_exceptions = sum(1 for r in results if r.check_graph_raised)
+    # Compute summary statistics (only on executed rows)
+    executed_results = [r for r in results if not r.no_call_reason and not r.skip_reason]
+    n_unsound = sum(r.unsound_count for r in executed_results)
+    n_totality_violations = sum(1 for r in executed_results if not r.totality_ok)
+    n_check_graph_exceptions = sum(1 for r in executed_results if r.check_graph_raised)
+    n_operations_executed = sum(r.n_operations_executed for r in executed_results)
 
-    # Agreement matrix: runtime outcome × static verdict
+    # Agreement matrix: runtime outcome × static verdict (executed rows only)
     agreement_matrix = collections.defaultdict(lambda: collections.Counter())
-    for r in results:
+    for r in executed_results:
         if not r.compare_rows:
             continue
         for comp in r.compare_rows:
@@ -275,11 +404,11 @@ def main(argv: list[str] | None = None) -> int:
             verdict = comp["static"]
             agreement_matrix[outcome][verdict] += 1
 
-    # Unknown rate by method (verdicts are lowercase: "safe", "will_fail", "unknown")
+    # Unknown rate by method
     method_unknown_rate: dict[str, float] = {}
     method_counts: dict[str, int] = collections.defaultdict(int)
     method_unknown: dict[str, int] = collections.defaultdict(int)
-    for r in results:
+    for r in executed_results:
         for comp in r.compare_rows:
             method = comp["method"]
             method_counts[method] += 1
@@ -288,81 +417,147 @@ def main(argv: list[str] | None = None) -> int:
     for method in method_counts:
         method_unknown_rate[method] = method_unknown[method] / method_counts[method] if method_counts[method] > 0 else 0.0
 
-    # Exception ranking
+    # Exception ranking by category
     exc_counter: dict[str, int] = collections.Counter()
+    exc_category_counter: dict[str, int] = collections.Counter()
     exc_methods: dict[str, set[str]] = collections.defaultdict(set)
-    for r in results:
-        if r.runtime_outcome.exc_class and r.runtime_outcome.exc_class != "ParseError":
-            exc_counter[r.runtime_outcome.exc_class] += 1
-            for comp in r.compare_rows:
-                exc_methods[r.runtime_outcome.exc_class].add(comp["method"])
+    precondition_exceptions: dict[str, int] = collections.Counter()
+    for r in executed_results:
+        if r.runtime_exc_class:
+            exc_counter[r.runtime_exc_class] += 1
+            category = _classify_exception(r.runtime_exc_class)
+            exc_category_counter[category] += 1
+            for call_name in r.call_names:
+                exc_methods[r.runtime_exc_class].add(call_name)
+            if category == "precondition_state":
+                precondition_exceptions[r.runtime_exc_class] += 1
+
     exception_ranking = [
         {"class": exc, "count": count, "raised_on_methods": sorted(exc_methods[exc])}
         for exc, count in exc_counter.most_common()
     ]
+    precondition_ranking = [
+        {"class": exc, "count": count}
+        for exc, count in precondition_exceptions.most_common()
+    ]
 
-    # Crosscheck agreement
-    crosscheck_agreement = {"agree": 0, "disagree": 0, "missing": 0, "examples": []}
-    for r in results:
-        if r.record_id not in crosscheck_indices:
-            crosscheck_agreement["missing"] += 1
+    # Category breakdown
+    category_breakdown = dict(exc_category_counter)
+
+    # Crosscheck: content-based join
+    crosscheck_result = {"joined": 0, "agree": 0, "disagree": 0, "examples": []}
+    for r in executed_results:
+        content_hash = _content_hash({"messages": [
+            {"role": "user", "content": r.utterance},
+            {"role": "assistant", "tool_calls": [
+                {"function": {"name": r.call_names[0] if r.call_names else ""}}
+            ]}
+        ]})
+        if not content_hash:
             continue
-        cc_row = crosscheck_indices[r.record_id]
+        cc_row = crosscheck_by_hash.get(content_hash)
+        if not cc_row:
+            continue
+        crosscheck_result["joined"] += 1
         cc_passed = cc_row.get("execution_verify", {}).get("passed")
-        our_passed = r.runtime_outcome.passed
+        our_passed = r.runtime_outcome == "ran_ok"
         if cc_passed == our_passed:
-            crosscheck_agreement["agree"] += 1
+            crosscheck_result["agree"] += 1
         else:
-            crosscheck_agreement["disagree"] += 1
-            if len(crosscheck_agreement["examples"]) < 3:
-                crosscheck_agreement["examples"].append({
+            crosscheck_result["disagree"] += 1
+            if len(crosscheck_result["examples"]) < 10:
+                crosscheck_result["examples"].append({
                     "record_id": r.record_id,
-                    "our_outcome": "passed" if our_passed else f"raised:{r.runtime_outcome.exc_class}",
-                    "recorded_outcome": "passed" if cc_passed else cc_row.get("execution_verify", {}).get("error", "unknown"),
+                    "our_outcome": r.runtime_outcome,
+                    "our_error": r.runtime_error,
+                    "recorded_outcome": "passed" if cc_passed else "failed",
+                    "recorded_error": cc_row.get("execution_verify", {}).get("error"),
                 })
 
-    # Compute global unknown_rate and crosscheck_agreement fractions
-    total_ops = sum(r.n_operations for r in results)
+    # Compute global unknown_rate
     total_unknown_ops = sum(
         sum(1 for comp in r.compare_rows if comp["static"] == "unknown")
-        for r in results
+        for r in executed_results
     )
-    global_unknown_rate = total_unknown_ops / total_ops if total_ops > 0 else 0.0
+    global_unknown_rate = total_unknown_ops / n_operations_executed if n_operations_executed > 0 else 0.0
 
-    # Crosscheck agreement rate (fraction of joined rows)
-    cc_joined = crosscheck_agreement["agree"] + crosscheck_agreement["disagree"]
+    # Crosscheck agreement rate
+    cc_joined = crosscheck_result["joined"]
     cc_agreement_rate = (
-        crosscheck_agreement["agree"] / cc_joined if cc_joined > 0 else 0.0
+        crosscheck_result["agree"] / cc_joined if cc_joined > 0 else 0.0
     )
 
     # Flat summary for bathos/BTH_RESULTS_PATH
     summary_flat = {
-        "rows": len(results),
-        "operations": total_ops,
+        "rows_total": n_rows_total,
+        "rows_no_call": n_rows_no_call,
+        "rows_skipped": n_rows_skipped,
+        "rows_executed": n_rows_executed,
+        "operations_executed": n_operations_executed,
         "unsound": n_unsound,
         "check_graph_exceptions": n_check_graph_exceptions,
         "totality_violations": n_totality_violations,
         "unknown_rate": global_unknown_rate,
+        "crosscheck_joined": cc_joined,
         "crosscheck_agreement": cc_agreement_rate,
     }
 
     # Build report
     report = {
+        "summary_flat": summary_flat,
+        "denominators": {
+            "rows_total": n_rows_total,
+            "rows_no_call": n_rows_no_call,
+            "rows_skipped": n_rows_skipped,
+            "rows_executed": n_rows_executed,
+            "operations_executed": n_operations_executed,
+        },
         "summary": {
-            "rows_processed": len(results),
-            "total_operations": total_ops,
+            "rows_processed": n_rows_total,
+            "rows_no_call": n_rows_no_call,
+            "rows_skipped": n_rows_skipped,
+            "rows_executed": n_rows_executed,
+            "total_operations_executed": n_operations_executed,
             "unsound_count": n_unsound,
             "totality_violations": n_totality_violations,
             "check_graph_exceptions": n_check_graph_exceptions,
         },
-        "summary_flat": summary_flat,
         "agreement_matrix": {
             outcome: dict(verdicts)
             for outcome, verdicts in agreement_matrix.items()
         },
         "unknown_rate_by_method": method_unknown_rate,
+        "exception_category_breakdown": category_breakdown,
         "exception_ranking": exception_ranking,
-        "crosscheck": crosscheck_agreement,
+        "precondition_state_ranking": precondition_ranking,
+        "crosscheck": crosscheck_result,
+        "rows": [
+            {
+                "record_id": r.record_id,
+                "source_file": r.corpus_file,
+                "line": r.row_index,
+                "utterance": r.utterance,
+                "calls": r.call_names,
+                "scaffold_prefix_count": r.scaffold_prefix_count,
+                "no_call_reason": r.no_call_reason,
+                "skip_reason": r.skip_reason,
+                "runtime": {
+                    "outcome": r.runtime_outcome,
+                    "error": r.runtime_error,
+                    "exc_class": r.runtime_exc_class,
+                },
+                "static": r.static_verdicts,
+                "tool_params": r.tool_params,
+                "plr_kwargs": r.plr_kwargs,
+                "compare": r.compare_rows,
+                "intent_check_failures": r.intent_check_failures,
+                "totality_ok": r.totality_ok,
+                "check_graph_raised": r.check_graph_raised,
+                "check_graph_exception": r.check_graph_exception,
+                "unsound": r.unsound_count,
+            }
+            for r in results
+        ],
     }
 
     # Write report
@@ -377,13 +572,17 @@ def main(argv: list[str] | None = None) -> int:
 
     # Log summary
     log.info(
-        "summary: rows=%d ops=%d unsound=%d totality_violations=%d check_graph_exc=%d unknown_rate=%.3f crosscheck_agree=%.3f",
-        report["summary"]["rows_processed"],
-        report["summary"]["total_operations"],
-        report["summary"]["unsound_count"],
-        report["summary"]["totality_violations"],
-        report["summary"]["check_graph_exceptions"],
+        "summary: rows_total=%d no_call=%d skipped=%d executed=%d ops=%d unsound=%d check_graph_exc=%d totality_vio=%d unknown_rate=%.3f crosscheck_joined=%d agree=%.3f",
+        n_rows_total,
+        n_rows_no_call,
+        n_rows_skipped,
+        n_rows_executed,
+        n_operations_executed,
+        n_unsound,
+        n_check_graph_exceptions,
+        n_totality_violations,
         global_unknown_rate,
+        cc_joined,
         cc_agreement_rate,
     )
 

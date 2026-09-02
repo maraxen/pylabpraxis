@@ -47,16 +47,22 @@ class RuntimeOutcome:
     failing_index: int | None  # index of the call being executed when it raised
     planned_indices: list[int]
     passed: bool
+    plr_kwargs: dict[int, dict[str, Any]] = dataclasses.field(default_factory=dict)  # index -> {param: repr(value)}
 
 
 def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
     verifier = _import_verifier()
     planned: list[int] = []
+    plr_kwargs: dict[int, dict[str, Any]] = {}
     real_plan_call = verifier.plan_call
 
     def recording_plan_call(call, index, setup, *, strict):
         planned.append(index)
-        return real_plan_call(call, index, setup, strict=strict)
+        plan_result = real_plan_call(call, index, setup, strict=strict)
+        # Capture PLR-named kwargs from the plan_result
+        if hasattr(plan_result, 'kwargs'):
+            plr_kwargs[index] = {k: repr(v) for k, v in plan_result.kwargs.items()}
+        return plan_result
 
     verifier.plan_call = recording_plan_call
     sink = io.StringIO()
@@ -75,7 +81,7 @@ def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
     error = result.get("error")
     exc_class = error.split(":", 1)[0].strip() if error else None
     failing = planned[-1] if (error and planned) else None
-    return RuntimeOutcome(error, exc_class, failing, planned, bool(result.get("passed")))
+    return RuntimeOutcome(error, exc_class, failing, planned, bool(result.get("passed")), plr_kwargs)
 
 
 # --------------------------------------------------------------------------
@@ -85,9 +91,15 @@ def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
 _LH_TYPE = "LiquidHandler"
 
 
-def adapt_graph(example: dict[str, Any], protocol_fqn: str) -> dict[str, Any]:
+def adapt_graph(example: dict[str, Any], protocol_fqn: str, plr_kwargs: dict[int, dict[str, Any]] | None = None) -> dict[str, Any]:
     """Call sequence -> §6.2 graph payload. Field set mirrors the committed
-    fixture ``tests/fixtures/simple_transfer_graph.json`` exactly."""
+    fixture ``tests/fixtures/simple_transfer_graph.json`` exactly.
+
+    If plr_kwargs is provided, use PLR-named kwargs for OperationNode.arguments
+    (the planned fix for parameter name mismatch). Fall back to tool params
+    when a call was never planned.
+    """
+    plr_kwargs = plr_kwargs or {}
     layout = example.get("deck_layout") or {}
     resources = {
         "lh": {
@@ -104,8 +116,13 @@ def adapt_graph(example: dict[str, Any], protocol_fqn: str) -> dict[str, Any]:
         }
     operations = []
     for i, call in enumerate(example["call_sequence"]):
+        # Use PLR-named kwargs if available, otherwise fall back to tool params
+        if i in plr_kwargs:
+            arguments = plr_kwargs[i]
+        else:
+            arguments = {k: json.dumps(v) for k, v in (call.get("params") or {}).items()}
         operations.append({
-            "arguments": {k: json.dumps(v) for k, v in (call.get("params") or {}).items()},
+            "arguments": arguments,
             "condition_expr": None, "creates_state": [], "depends_on_params": [],
             "false_branch": [], "foreach_body": [], "foreach_source": None,
             "id": f"op_{i}", "line_number": i + 1, "method_name": call["name"],
@@ -284,7 +301,7 @@ def row_to_verifier_inputs(
     *,
     source_file: str,
     line: int,
-) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any] | None]:
+) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any] | None, str | None, str | None]:
     """Parse a chat-format corpus row into call_sequence, intent_record, layout.
 
     The row format (corpus_p25.jsonl) is:
@@ -306,37 +323,49 @@ def row_to_verifier_inputs(
         line: line number (1-indexed) for record_id
 
     Returns:
-        (call_sequence, intent_record, deck_layout)
+        (call_sequence, intent_record, deck_layout, skip_reason, no_call_reason)
+        - call_sequence: list of {name, params} dicts (may be empty)
+        - intent_record: dict with record_id, utterance, source, calls, expected_effects
+        - deck_layout: dict with resources and seed_volumes, or None
+        - skip_reason: None if executable; str reason if _precondition_plan rejected it
+        - no_call_reason: "no_tool_calls" if assistant had no tool_calls; else None
     """
     record_id = f"{source_file}:{line}"
 
-    # Find the assistant message with tool_calls (corpus has 1 call per row)
+    # Find the assistant message with tool_calls
     real_call: dict[str, Any] | None = None
     user_message_content = ""
+    no_call_reason = None
     for msg in row.get("messages", []):
         if msg.get("role") == "user":
             user_message_content = msg.get("content", "")
         elif msg.get("role") == "assistant":
             tool_calls = msg.get("tool_calls", [])
-            if tool_calls:
+            if not tool_calls:
+                no_call_reason = "no_tool_calls"
+            elif tool_calls:
+                # Take the first tool call (corpus has 1 call per row)
                 func = tool_calls[0].get("function", {})
                 real_call = {
                     "name": func.get("name", ""),
                     "params": func.get("arguments", {}),
                 }
 
-    if not real_call:
-        # Fallback for malformed rows
-        call_sequence = []
-        extra_resources = {}
-        seed_volumes = {}
+    skip_reason = None
+    call_sequence = []
+    extra_resources = {}
+    seed_volumes = {}
+
+    if no_call_reason:
+        # Row has no tool_calls; this is a clarification turn
+        pass
+    elif not real_call:
+        # Malformed row (should not happen if no_call_reason is set)
+        no_call_reason = "malformed_row"
     else:
         # Apply P2.5 scaffolding via _precondition_plan
         skip_reason, prefix, extra_resources, seed_volumes = _precondition_plan(real_call)
-        if skip_reason is not None:
-            # Row is not executable; return empty sequence
-            call_sequence = []
-        else:
+        if skip_reason is None:
             call_sequence = [*prefix, real_call]
 
     # Build deck_layout from scaffold resources and seed volumes
@@ -356,4 +385,4 @@ def row_to_verifier_inputs(
         "expected_effects": [],  # per P2.5 exec_verify
     }
 
-    return call_sequence, intent_record, deck_layout
+    return call_sequence, intent_record, deck_layout, skip_reason, no_call_reason
