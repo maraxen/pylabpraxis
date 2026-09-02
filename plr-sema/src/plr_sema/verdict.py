@@ -94,7 +94,7 @@ class Verdict(str, Enum):
     UNKNOWN = "unknown"  # analysis established nothing (DEFAULT)
 
     @classmethod
-    def from_wire(cls, value: str) -> "Verdict":
+    def from_wire(cls, value: str) -> Verdict:
         """Deserialize a wire string into a Verdict, per the §Open decisions
         1 consumer rule: an unrecognized string (including the reserved-but-
         unused "unreachable") maps to UNKNOWN rather than raising. This is
@@ -106,7 +106,8 @@ class Verdict(str, Enum):
         and still raises ValueError on an unrecognized value; use it only
         where an unrecognized string is genuinely a programming error, not a
         version skew, e.g. in this package's own tests reconstructing a
-        report it just serialized."""
+        report it just serialized.
+        """
         try:
             return cls(value)
         except ValueError:
@@ -116,14 +117,15 @@ class Verdict(str, Enum):
 # §3.3: closed, hand-maintained vocabulary of UNKNOWN reasons. Hand-maintained
 # because it describes *our own analyzer's* give-up points, which exist in
 # our source, not PLR's -- deriving it from our own AST would be circular,
-# and nothing about it breaks when PLR changes. Budget: 7 today (round-4
+# and nothing about it breaks when PLR changes. Budget: 8 today (round-4
 # remediation, B4: `argument_not_static` withdrawn -- the guard-free-var
 # namespace and the protocol-parameter namespace it was meant to intersect
 # are disjoint in the shipped fixtures, so it never fires and would produce
 # a false positive if it ever did; reinstating it requires specifying the
 # binding chain guard free var -> PLR parameter position ->
-# `op.arguments[param]` -> protocol expression -> `depends_on_params`), hard
-# cap 12 (registry row HM-14); adding an 8th is a deliberate, reviewable act.
+# `op.arguments[param]` -> protocol expression -> `depends_on_params`; 260902
+# added `channel_state_unknown`, §10.8), hard cap 12 (registry row HM-14);
+# adding a 9th is a deliberate, reviewable act.
 REASON_VOCABULARY: frozenset[str] = frozenset(
     {
         # the target method has no entry in the derived contract table at all
@@ -142,6 +144,12 @@ REASON_VOCABULARY: frozenset[str] = frozenset(
         "unsupported_tool",
         # analyzer bug; always paired with a telemetry emit
         "internal_error",
+        # 260902 (spec §10.3.3/§10.8, tip typestate increment): a guard's
+        # condition parsed as a tip-state atom (deferred item (c), narrowed),
+        # but the channel state it reads is Top -- the parse stage returned
+        # something; the EVALUATION stage did not, which is why this cannot
+        # fold into `guard_predicate_unparsed` (§10.8's own argument).
+        "channel_state_unknown",
     }
 )
 

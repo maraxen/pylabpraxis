@@ -56,6 +56,13 @@ from plr_sema.derive import (
     load_survey,
     scan_dropped_receiver_calls,
 )
+from plr_sema.derive.receiver_state import (
+    ReceiverState,
+    compute_channel_bridge,
+    compute_tip_families,
+    derive_receiver_states,
+    receiver_state_to_json,
+)
 
 
 def _guard_to_json(guard: InlinedGuard) -> dict[str, Any]:
@@ -75,7 +82,11 @@ def _guard_to_json(guard: InlinedGuard) -> dict[str, Any]:
 
 
 def build_derived_contracts_payload(
-    records: list[SurveyRecord], index: dict[tuple[str, str], Any], stamp: Any
+    records: list[SurveyRecord],
+    index: dict[tuple[str, str], Any],
+    stamp: Any,
+    *,
+    receiver_states: dict[str, ReceiverState] | None = None,
 ) -> dict[str, Any]:
     """AC-7.2 (260901 T11): derive a contract for every record the survey
     indexed -- the WHOLE analyzed PLR surface (4,770 methods across 345
@@ -121,6 +132,7 @@ def build_derived_contracts_payload(
     """
     unique_records = build_unique_index(records)
     contract_keys = build_contract_keys(records)
+    receiver_states = receiver_states or {}
     contracts: dict[str, Any] = {}
     for record_key in sorted(unique_records):
         rec = unique_records[record_key]
@@ -131,7 +143,7 @@ def build_derived_contracts_payload(
             f"(record_key={record_key!r}) -- build_contract_keys should make "
             f"this structurally impossible"
         )
-        contracts[out_key] = {
+        entry: dict[str, Any] = {
             "guards": [_guard_to_json(g) for g in contract.guards],
             "gaps": [list(gap) for gap in contract.gaps],
             # 260902 (spec §11.2.4, SEMA-IR): additive `params` key -- this
@@ -146,9 +158,29 @@ def build_derived_contracts_payload(
             # "trust nothing" rather than raising (AC-11.12).
             "params": list(rec.params),
         }
+        # 260902 (spec §10.2.5, tip typestate increment): additive
+        # `channel_guards`/`channel_effect` keys, present ONLY on entries
+        # whose receiver class (`rec.class_name`) has a derived
+        # `ReceiverState` (§10.2's P1-P4 passes). `schema_version` stays 1
+        # -- `plr_sema.check.tipstate` reads both via `.get()` with an
+        # empty/`None` default (AC-10.7).
+        if rec.class_name is not None and rec.class_name in receiver_states:
+            rs = receiver_states[rec.class_name]
+            channel_guards, channel_effect = compute_channel_bridge(
+                (rec.module, rec.qualname), index, receiver_state=rs, stamp=stamp
+            )
+            if channel_guards:
+                entry["channel_guards"] = channel_guards
+            if channel_effect is not None:
+                entry["channel_effect"] = channel_effect
+        contracts[out_key] = entry
     return {
         "schema_version": SCHEMA_VERSION,
         "stamp": _stamp_to_dict(stamp),
+        # 260902 (spec §10.2.5): P1-P4's output, one entry per anchored
+        # receiver class. `{}` when no `--taxonomy-json` was given (fail
+        # closed -- degrades to today's all-`channel_guards`-free table).
+        "receiver_state": {name: receiver_state_to_json(rs) for name, rs in sorted(receiver_states.items())},
         "contracts": contracts,
     }
 
@@ -210,6 +242,21 @@ def main(argv: list[str] | None = None) -> int:
             "a live git checkout, where GitState.hash already answers it."
         ),
     )
+    parser.add_argument(
+        "--taxonomy-json",
+        type=Path,
+        default=None,
+        help=(
+            "260902 (spec §10.2.5, tip typestate increment): path to "
+            "plr_exception_taxonomy.json. OPTIONAL -- when omitted, P1-P4's "
+            "receiver-state derivation is skipped entirely (fail closed: "
+            "the emitted table's `receiver_state` block is `{}` and no "
+            "entry gains `channel_guards`/`channel_effect`, degrading to "
+            "the pre-increment table exactly, AC-10.7). Required to "
+            "populate the tip-state derivation the gate command in the "
+            "task brief documents."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.out is None and args.gap_ledger is None:
@@ -221,17 +268,50 @@ def main(argv: list[str] | None = None) -> int:
     surface = Surface(name=args.surface_name, tree_path=surface_tree, pin=args.surface_pin)
     stamp = survey_stamp(surface)
 
+    receiver_states: dict[str, ReceiverState] = {}
+    if args.taxonomy_json is not None:
+        taxonomy_payload = json.loads(args.taxonomy_json.read_text(encoding="utf-8"))
+        receiver_states = derive_receiver_states(surface_tree, records, taxonomy_payload["classes"])
+
     if args.out is not None:
-        payload = build_derived_contracts_payload(records, index, stamp)
+        payload = build_derived_contracts_payload(records, index, stamp, receiver_states=receiver_states)
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"wrote {args.out}", file=sys.stderr)
+        if receiver_states:
+            for name, rs in sorted(receiver_states.items()):
+                print(
+                    f"receiver_state[{name!r}]: channel_attr={rs.channel_attr!r} "
+                    f"tracker_class={rs.tracker_class!r} state_fields={list(rs.state_fields)} "
+                    f"effects={rs.effects} channel_default_param={rs.channel_default_param} "
+                    f"channel_default_disablers={list(rs.channel_default_disablers)}",
+                    file=sys.stderr,
+                )
 
     if args.gap_ledger is not None:
         dropped_receiver_counts = scan_dropped_receiver_calls(surface_tree)
         ledger = build_gap_ledger(
             index, records, dropped_receiver_counts=dropped_receiver_counts, stamp=stamp
         )
+        if receiver_states:
+            # 260902 (spec §10.2/AC-10.10): the tip_state ledger block --
+            # per anchored receiver class, its derived method families and
+            # tipstate_anchor status. Built from the SAME contract table
+            # --out would emit (recomputed here rather than threaded
+            # through, so --gap-ledger alone still works without --out).
+            contract_entries = build_derived_contracts_payload(
+                records, index, stamp, receiver_states=receiver_states
+            )["contracts"]
+            tip_state_block: dict[str, Any] = {}
+            for name, rs in sorted(receiver_states.items()):
+                families = compute_tip_families(contract_entries, receiver_class=name, receiver_state=rs)
+                tip_state_block[name] = {
+                    "tipstate_anchor": rs.bool_view_field,
+                    "tip_loading": list(families.tip_loading),
+                    "tip_requiring": list(families.tip_requiring),
+                    "tip_dropping": list(families.tip_dropping),
+                }
+            ledger["tip_state"] = tip_state_block
         args.gap_ledger.parent.mkdir(parents=True, exist_ok=True)
         args.gap_ledger.write_text(
             json.dumps(ledger, indent=2, sort_keys=True) + "\n", encoding="utf-8"

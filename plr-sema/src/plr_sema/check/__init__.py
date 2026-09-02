@@ -134,7 +134,7 @@ from typing import Any
 
 from plr_sema._provenance import SurveyStamp
 from plr_sema._provenance.git_state import GitState
-from plr_sema.check import ir
+from plr_sema.check import ir, tipstate
 from plr_sema.check._supported_tools import SUPPORTED_TOOLS
 from plr_sema.telemetry import emit_finding
 from plr_sema.verdict import AnalysisReport, Finding, PlrSite, Verdict, join
@@ -256,6 +256,17 @@ def _loop_bounds_unknown(operation_id: str) -> Finding:
     )
 
 
+#: 260902 (spec §10.3.3/§10.8, tip typestate increment): the
+#: `channel_state_unknown`/`SAFE`/`WILL_FAIL` `Finding`s this increment adds
+#: are constructed by `plr_sema.check.tipstate._finding_for_atom` -- its own
+#: tiny, single-literal constructor, same §3.3/§3.4 AST-resolvable-reason
+#: discipline as every constructor above, just living in the module that
+#: owns the atom evaluator rather than here (§10.3.3's emission table has no
+#: natural home among this module's per-*operation*-shaped reasons above,
+#: all of which are UNKNOWN-only; tipstate's are the first SAFE/WILL_FAIL
+#: constructors in the package).
+
+
 def _internal_error(operation_id: str, *, detail: str = "") -> Finding:
     """Defensive fallback: a gap reason surfacing from
     ``derived_contracts.json`` that is neither of the two
@@ -311,7 +322,16 @@ def _findings_for_gap(operation_id: str, gap: Any) -> Finding:
     )
 
 
-def _findings_for_call(operation_id: str, call: ir.Call, contracts: dict[str, Any], *, inside_loop: bool) -> list[Finding]:
+def _findings_for_call(
+    operation_id: str,
+    call: ir.Call,
+    contracts: dict[str, Any],
+    *,
+    inside_loop: bool,
+    receiver_states: dict[str, Any],
+    walk: tipstate.TipWalk,
+    poisoned: bool,
+) -> list[Finding]:
     """The per-``CALL`` body: exactly today's (pre-IR) per-operation logic
     (§11.4.1), re-keyed from an ``OperationNode`` to a ``CALL`` instruction
     -- ``op.receiver_type``/``op.method_name`` become
@@ -321,6 +341,16 @@ def _findings_for_call(operation_id: str, call: ir.Call, contracts: dict[str, An
     region-stack walk). T11: step 2 is a single contract-table lookup, not a
     ``SUPPORTED_TOOLS`` membership test followed by a second lookup -- see
     the module docstring's "``unsupported_tool``, redefined" section.
+
+    260902 (spec §10, tip typestate increment): ``plr_sema.check.tipstate
+    .evaluate_call`` runs BEFORE the ``guard_predicate_unparsed`` loop below
+    and returns ``(tip_state_findings, consumed_own_guard_indices)`` --
+    every own guard at a consumed index is SKIPPED in the
+    ``guard_predicate_unparsed`` emission (§10.3.3: "the emission ...
+    REPLACES, one-for-one" the old finding for that same guard), and every
+    ``channel_guards`` entry that parsed is an ADDITIVE finding this
+    operation never had before (no old finding to replace, since
+    ``channel_guards`` did not exist pre-increment).
     """
     if call.receiver_type is None:
         return [_receiver_type_unknown(operation_id)]
@@ -330,12 +360,19 @@ def _findings_for_call(operation_id: str, call: ir.Call, contracts: dict[str, An
     if contract is None:
         return [_unsupported_tool(operation_id)]
 
+    tip_findings, consumed = tipstate.evaluate_call(
+        operation_id, call, contract, receiver_states.get(call.receiver_type), walk, poisoned=poisoned
+    )
+
     findings: list[Finding] = [
         _findings_for_gap(operation_id, gap) for gap in contract.get("gaps", ())
     ]
     findings.extend(
-        _finding_from_guard(operation_id, guard) for guard in contract.get("guards", ())
+        _finding_from_guard(operation_id, guard)
+        for idx, guard in enumerate(contract.get("guards", ()))
+        if idx not in consumed
     )
+    findings.extend(tip_findings)
     if inside_loop:
         findings.append(_loop_bounds_unknown(operation_id))
     if not findings:
@@ -351,7 +388,9 @@ def _findings_for_call(operation_id: str, call: ir.Call, contracts: dict[str, An
     return findings
 
 
-def check_ir(bytecode: ir.Bytecode, contracts: dict[str, Any]) -> tuple[Finding, ...]:
+def check_ir(
+    bytecode: ir.Bytecode, contracts: dict[str, Any], receiver_states: dict[str, Any] | None = None
+) -> tuple[Finding, ...]:
     """Spec §11.4.1: the new analysis core -- a single left-to-right pass
     over ``bytecode.instructions`` with a program counter. Every ``CALL``
     pc receives >=1 ``Finding`` (§11.4.4's totality, restated over
@@ -365,20 +404,89 @@ def check_ir(bytecode: ir.Bytecode, contracts: dict[str, Any]) -> tuple[Finding,
     bare counter) tracks LOOP/BRANCH/END nesting so an ``END`` closes
     whichever region is innermost, and ``ELSE`` never itself pops (it
     separates the two arms of the SAME open ``BRANCH``, §11.1.3).
+
+    260902 (spec §10.5/§11.1.3, tip typestate increment): ``receiver_states``
+    (the additive ``receiver_state`` top-level block, §10.2) threads a
+    :class:`plr_sema.check.tipstate.TipWalk` through this same pass.
+    ``None``/``{}`` (a pre-increment contract table, or a caller that never
+    passes it -- AC-10.7/AC-11.12's fail-closed degrade) disables tip-state
+    entirely: every receiver type is then simply absent from the mapping,
+    so :func:`tipstate.evaluate_call` returns ``E5``'s empty result for
+    every call, unchanged from pre-increment behavior. On ``LOOP``/
+    ``BRANCH`` open, every receiver slot mentioned anywhere in the region is
+    widened BEFORE the region's first ``CALL`` (§11.1.3's region-entry
+    rule, generalised from increment 1's own §10.5 rule 2); a ``BRANCH``
+    ADDITIONALLY widens the same set again at region exit (§11.1.3).
     """
+    receiver_states = receiver_states or {}
+    walk = tipstate.TipWalk()
+    poisoned_slots = tipstate.disabled_receivers(bytecode.instructions, receiver_states)
     findings: list[Finding] = []
-    region_stack: list[str] = []
+    region_stack: list[tuple[str, frozenset[int]]] = []
+    n_instr = len(bytecode.instructions)
     for pc, instr in enumerate(bytecode.instructions):
+        if isinstance(instr, ir.Widen) and instr.reason == "depends_on_params":
+            # Increment 1 §10.5 rule 3 ("dynamic arguments widen"): a
+            # `WIDEN(reason="depends_on_params")` instruction always
+            # precedes the `CALL` it was computed for, possibly with OTHER
+            # `WIDEN`s interleaved between them (`ir.lower_graph`'s
+            # `lower_one_call` can emit up to four, in a fixed order:
+            # receiver_type, depends_on_params, arguments, node_type, THEN
+            # the `Call`) -- scan forward past any further `Widen`s to find
+            # it, rather than assuming `pc + 1` is the `Call` directly.
+            # Widen that CALL's receiver BEFORE its own guards are
+            # evaluated, "same permanence" as every other E4 trigger.
+            lookahead = pc + 1
+            while lookahead < n_instr and isinstance(bytecode.instructions[lookahead], ir.Widen):
+                lookahead += 1
+            if lookahead < n_instr and isinstance(bytecode.instructions[lookahead], ir.Call):
+                walk.widen(bytecode.instructions[lookahead].receiver)
         if isinstance(instr, ir.Loop):
-            region_stack.append(ir.Loop.op)
+            receivers, _end_pc = tipstate.region_receivers(bytecode.instructions, pc)
+            for slot in receivers:
+                walk.widen(slot)
+            region_stack.append((ir.Loop.op, receivers))
         elif isinstance(instr, ir.Branch):
-            region_stack.append(ir.Branch.op)
+            receivers, _end_pc = tipstate.region_receivers(bytecode.instructions, pc)
+            for slot in receivers:
+                walk.widen(slot)
+            region_stack.append((ir.Branch.op, receivers))
         elif isinstance(instr, ir.End):
             if region_stack:
-                region_stack.pop()
+                kind, receivers = region_stack.pop()
+                if kind == ir.Branch.op:
+                    # §11.1.3: BRANCH widens AGAIN at region exit (LOOP only
+                    # widens at entry, per increment 1's own §10.5 rule 2).
+                    for slot in receivers:
+                        walk.widen(slot)
         elif isinstance(instr, ir.Call):
-            inside_loop = ir.Loop.op in region_stack
-            findings.extend(_findings_for_call(str(pc), instr, contracts, inside_loop=inside_loop))
+            inside_loop = any(kind == ir.Loop.op for kind, _receivers in region_stack)
+            # A CALL immediately followed by a LOOP/BRANCH open is (by
+            # `ir.lower_graph`'s own `lower_one_call`-then-region-open
+            # construction, its docstring's fixture/fuzz-only note) always
+            # the operation that CARRIES the `foreach_source`/`foreach_body`
+            # or `condition_expr` that opened it -- pre-IR increment 1 §10.5
+            # rule 2 widens THIS SAME operation's own receiver "before its
+            # own guards are evaluated", not only its region's children
+            # (region-entry widening above covers a LATER sibling reading a
+            # region opened by an EARLIER operation; this covers an
+            # operation widening on its OWN foreach/condition fields, which
+            # `lower_graph` always emits as a CALL immediately followed by
+            # the region it opens, wrapping zero or more subsequent
+            # children -- AC-10.5(a)/AC-10.6).
+            if pc + 1 < n_instr and isinstance(bytecode.instructions[pc + 1], (ir.Loop, ir.Branch)):
+                walk.widen(instr.receiver)
+            findings.extend(
+                _findings_for_call(
+                    str(pc),
+                    instr,
+                    contracts,
+                    inside_loop=inside_loop,
+                    receiver_states=receiver_states,
+                    walk=walk,
+                    poisoned=instr.receiver in poisoned_slots,
+                )
+            )
         # ir.Resource, ir.Else, ir.Widen: never a Finding source.
     return tuple(findings)
 
@@ -400,9 +508,10 @@ def _build_param_names(contracts: dict[str, Any]) -> dict[str, tuple[str, ...]]:
 
 def _check(bytecode: ir.Bytecode, protocol_fqn: str, contracts_payload: dict[str, Any]) -> AnalysisReport:
     contracts = contracts_payload.get("contracts", {})
+    receiver_states = contracts_payload.get("receiver_state", {})
     stamp = _stamp_from_dict(contracts_payload["stamp"])
 
-    raw_findings = check_ir(bytecode, contracts)
+    raw_findings = check_ir(bytecode, contracts, receiver_states)
     origin = bytecode.sideband.get("origin", {})
     findings = ir.relabel_findings(raw_findings, origin)
 

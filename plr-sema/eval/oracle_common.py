@@ -286,10 +286,17 @@ def run_static_calls(
 
     calls, not_planned = calls_from_plr_kwargs(example, plr_kwargs)
     resources = resources_from_example(example)
-    contracts = json.loads(contracts_json).get("contracts", {})
+    contracts_payload = json.loads(contracts_json)
+    contracts = contracts_payload.get("contracts", {})
+    # 260902 (spec §10, tip typestate increment): thread the additive
+    # `receiver_state` block through so the tier-1 replay actually
+    # exercises tip-state evaluation -- omitting this would silently keep
+    # AC-10.11's n_exact_channel_sets at 0 regardless of what lower_calls
+    # produces, for a reason that has nothing to do with argument naming.
+    receiver_states = contracts_payload.get("receiver_state", {})
 
     bc = _ir.lower_calls(calls, resources=resources, param_names=param_names)
-    raw_findings = check_ir(bc, contracts)
+    raw_findings = check_ir(bc, contracts, receiver_states)
 
     planned_indices = [i for i in range(len(example["call_sequence"])) if i not in set(not_planned)]
     origin = bc.sideband.get("origin", {})

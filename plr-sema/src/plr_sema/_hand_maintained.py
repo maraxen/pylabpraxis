@@ -241,6 +241,55 @@ def _measure_hm21() -> int:
     return len(EXCLUDED_FIELDS)
 
 
+def _measure_hm24() -> int:
+    """260902 (spec §10.8/§10.10 Q7, tip typestate increment, user decision
+    SPLIT): HM-24 is the channel-receiver bridge pattern ALONE (pattern 1
+    of the original 6 -- §10.2.5's `self.<attr>[<name>].<method>` shape,
+    the one whose failure mode is a SILENT family collapse rather than a
+    loud exact-count test failure). One module-level regex constant,
+    `plr_sema.derive.receiver_state._BRIDGE_SHAPE_RE`; importing it proves
+    it still exists (fails loudly, ImportError, if deleted), and the
+    3-group assertion catches a structural reshape (e.g. dropping the
+    `<name>` capture group) that a bare existence check would miss.
+    """
+    from plr_sema.derive.receiver_state import _BRIDGE_SHAPE_RE
+
+    assert _BRIDGE_SHAPE_RE.groups == 3, (
+        f"HM-24's bridge-shape pattern changed group count: {_BRIDGE_SHAPE_RE.groups} != 3 "
+        f"(attr, name, method) -- update this row's `what`/`breaks_when` before bumping the measure"
+    )
+    return 1
+
+
+def _measure_hm25() -> int:
+    """260902 (spec §10.8/§10.10 Q7, tip typestate increment, user decision
+    SPLIT): HM-25 is the OTHER five patterns from the original 6 -- the
+    typestate-anchor property shape (P2), the channel-default idiom (P3a),
+    and the three atom productions (BoolView, NullCheck-is-None,
+    NullCheck-is-not-None, §10.3.1) -- each of whose failures AC-10.1
+    through AC-10.3's exact-count assertions catch loudly, unlike HM-24's
+    bridge shape. Measured by importing the five symbols that implement
+    them (two in `derive/receiver_state.py`, three atom-kind branches
+    inside `check/tipstate.py`'s shared parser, proven live via
+    `TipState`'s two atom-bearing members plus the bool-view branch) --
+    fails loudly, ImportError/AttributeError, if any is deleted.
+    """
+    from plr_sema.check.tipstate import TipState, atom_truth
+    from plr_sema.derive.receiver_state import _channel_default_idiom, _typestate_anchor
+
+    shape_matchers = (_typestate_anchor, _channel_default_idiom)  # P2, P3a
+    # atom_truth's three productions: BoolView, NullCheck(is_none=True),
+    # NullCheck(is_none=False) -- proven live by actually exercising all
+    # three against TipState.HAS_TIP (any concrete, non-Top state suffices
+    # to exercise every branch of the truth table).
+    productions = (
+        atom_truth(("bool_view", None), TipState.HAS_TIP),
+        atom_truth(("null_check", True), TipState.HAS_TIP),
+        atom_truth(("null_check", False), TipState.HAS_TIP),
+    )
+    return len(shape_matchers) + len(productions)
+
+
 REGISTRY: tuple[HandMaintainedSurface, ...] = (
     HandMaintainedSurface(
         id="HM-1",
@@ -727,6 +776,74 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "without its own registry row."
         ),
         measure="test_hand_maintained_ratchet:_measure_hm23",
+    ),
+    HandMaintainedSurface(
+        id="HM-24",
+        what=(
+            "tip-typestate channel-receiver bridge shape (spec §10.2.5, "
+            "260902 tip typestate increment): the pattern "
+            "`self.<attr>[<name>].<method>` matched against every "
+            "SurveyRecord.dropped_calls entry, "
+            "`plr_sema.derive.receiver_state._BRIDGE_SHAPE_RE`. Split out "
+            "of the original single 6-pattern HM-24 per the user's 260902 "
+            "Q7 decision (option B): its failure mode differs materially "
+            "from the other five patterns (HM-25) -- a silent family "
+            "collapse, not a loud exact-count assertion failure."
+        ),
+        metric="patterns",
+        declared=1,
+        status="CAPPED",
+        why_not_derived=(
+            "A syntactic pattern over how PLR is WRITTEN (a specific "
+            "attribute-indexing-then-method-call shape), not a fact PLR "
+            "records anywhere about itself -- same argument HM-3 makes for "
+            "validator-name prefixes."
+        ),
+        breaks_when=(
+            "PLR renames `self.head[c]` to a method accessor "
+            "(`self.channel(c)`), or otherwise stops writing the channel "
+            "bridge in this subscript-then-attribute-call shape. Fails "
+            "CLOSED: the pattern stops matching, `channel_guards`/"
+            "`channel_effect` go empty for the affected receiver class, "
+            "the tip-requiring/tip-loading families silently empty (only "
+            "AC-10.10's own non-empty assertion catches this), and every "
+            "verdict for that class reverts to UNKNOWN -- it cannot "
+            "produce a wrong verdict, only fewer of them."
+        ),
+        measure="plr_sema._hand_maintained:_measure_hm24",
+    ),
+    HandMaintainedSurface(
+        id="HM-25",
+        what=(
+            "tip-typestate front-end syntactic patterns, the other five "
+            "(spec §10.2.2/§10.2.3/§10.3.1, 260902 tip typestate "
+            "increment): the typestate-anchor property shape (`return "
+            "self.<F> is/is not None`, P2), the channel-default idiom "
+            "(`<p> = <p> or self.<x> or list(range(len(<q>)))`, P3a), and "
+            "the three atom productions (`BoolView`, "
+            "`NullCheck(is_none=True)`, `NullCheck(is_none=False)`, "
+            "§10.3.1). Split out of the original single 6-pattern HM-24 "
+            "per the user's 260902 Q7 decision (option B)."
+        ),
+        metric="patterns",
+        declared=5,
+        status="CAPPED",
+        why_not_derived=(
+            "Syntactic patterns over how PLR/its own analyzer is written "
+            "(a property-body shape, an argument-default idiom, three "
+            "condition-string grammars), not facts PLR records anywhere "
+            "-- same argument HM-3/HM-24 make."
+        ),
+        breaks_when=(
+            "PLR stops writing the `has_tip`-style boolean-view property "
+            "in the single-return-Compare shape P2 matches, drops the "
+            "`or list(range(len(...)))` idiom P3a matches, or a guard "
+            "condition stops parsing under one of the three atom "
+            "productions. Fails LOUDLY here (unlike HM-24): "
+            "AC-10.1/AC-10.2/AC-10.3's exact-count assertions on the "
+            "shipped fixtures go red."
+        ),
+        measure="plr_sema._hand_maintained:_measure_hm25",
     ),
 )
 

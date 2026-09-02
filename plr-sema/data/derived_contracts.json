@@ -53509,6 +53509,26 @@
       ]
     },
     "LiquidHandler.aspirate": {
+      "channel_guards": [
+        {
+          "condition": "self._tip is None",
+          "depth": 0,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 65,
+            "qualname": "TipTracker.get_tip"
+          },
+          "via": "self.head[channel].get_tip"
+        }
+      ],
       "gaps": [],
       "guards": [
         {
@@ -53868,6 +53888,77 @@
       ]
     },
     "LiquidHandler.clear_head_state": {
+      "channel_effect": "widen",
+      "channel_guards": [
+        {
+          "condition": "self.is_disabled",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 90,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self._pending_tip is not None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "HasTipError",
+          "scope_trail": [
+            "if self._pending_tip is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 92,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self.is_disabled",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 103,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        },
+        {
+          "condition": "self._pending_tip is None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._pending_tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 105,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        }
+      ],
       "gaps": [],
       "guards": [
         {
@@ -53892,6 +53983,95 @@
       ]
     },
     "LiquidHandler.consolidate_tip_inventory": {
+      "channel_effect": "widen",
+      "channel_guards": [
+        {
+          "condition": "self.is_disabled",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 90,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self._pending_tip is not None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "HasTipError",
+          "scope_trail": [
+            "if self._pending_tip is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 92,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self._tip is None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 65,
+            "qualname": "TipTracker.get_tip"
+          },
+          "via": "self.head[channel].get_tip"
+        },
+        {
+          "condition": "self.is_disabled",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 103,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        },
+        {
+          "condition": "self._pending_tip is None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._pending_tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 105,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        }
+      ],
       "gaps": [],
       "guards": [
         {
@@ -54211,6 +54391,61 @@
       ]
     },
     "LiquidHandler.discard_tips": {
+      "channel_effect": "widen",
+      "channel_guards": [
+        {
+          "condition": "self._tip is None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 65,
+            "qualname": "TipTracker.get_tip"
+          },
+          "via": "self.head[channel].get_tip"
+        },
+        {
+          "condition": "self.is_disabled",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 103,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        },
+        {
+          "condition": "self._pending_tip is None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._pending_tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 105,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        }
+      ],
       "gaps": [],
       "guards": [
         {
@@ -54488,6 +54723,26 @@
       ]
     },
     "LiquidHandler.dispense": {
+      "channel_guards": [
+        {
+          "condition": "self._tip is None",
+          "depth": 0,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 65,
+            "qualname": "TipTracker.get_tip"
+          },
+          "via": "self.head[channel].get_tip"
+        }
+      ],
       "gaps": [],
       "guards": [
         {
@@ -54989,6 +55244,61 @@
       ]
     },
     "LiquidHandler.drop_tips": {
+      "channel_effect": "NO_TIP",
+      "channel_guards": [
+        {
+          "condition": "self._tip is None",
+          "depth": 0,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 65,
+            "qualname": "TipTracker.get_tip"
+          },
+          "via": "self.head[channel].get_tip"
+        },
+        {
+          "condition": "self.is_disabled",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 103,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        },
+        {
+          "condition": "self._pending_tip is None",
+          "depth": 0,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._pending_tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 105,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        }
+      ],
       "gaps": [],
       "guards": [
         {
@@ -55276,6 +55586,7 @@
       ]
     },
     "LiquidHandler.load_state": {
+      "channel_effect": "HAS_TIP",
       "gaps": [],
       "guards": [],
       "params": [
@@ -56139,6 +56450,95 @@
       ]
     },
     "LiquidHandler.move_tips": {
+      "channel_effect": "widen",
+      "channel_guards": [
+        {
+          "condition": "self.is_disabled",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 90,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self._pending_tip is not None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "HasTipError",
+          "scope_trail": [
+            "if self._pending_tip is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 92,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self._tip is None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 65,
+            "qualname": "TipTracker.get_tip"
+          },
+          "via": "self.head[channel].get_tip"
+        },
+        {
+          "condition": "self.is_disabled",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 103,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        },
+        {
+          "condition": "self._pending_tip is None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._pending_tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 105,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        }
+      ],
       "gaps": [],
       "guards": [
         {
@@ -56499,6 +56899,43 @@
       ]
     },
     "LiquidHandler.pick_up_tips": {
+      "channel_effect": "HAS_TIP",
+      "channel_guards": [
+        {
+          "condition": "self.is_disabled",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 90,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self._pending_tip is not None",
+          "depth": 0,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "HasTipError",
+          "scope_trail": [
+            "if self._pending_tip is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 92,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        }
+      ],
       "gaps": [],
       "guards": [
         {
@@ -56796,6 +57233,95 @@
       ]
     },
     "LiquidHandler.probe_tip_presence_via_pickup": {
+      "channel_effect": "widen",
+      "channel_guards": [
+        {
+          "condition": "self.is_disabled",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 90,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self._pending_tip is not None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "HasTipError",
+          "scope_trail": [
+            "if self._pending_tip is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 92,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self._tip is None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 65,
+            "qualname": "TipTracker.get_tip"
+          },
+          "via": "self.head[channel].get_tip"
+        },
+        {
+          "condition": "self.is_disabled",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 103,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        },
+        {
+          "condition": "self._pending_tip is None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._pending_tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 105,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        }
+      ],
       "gaps": [],
       "guards": [
         {
@@ -57110,6 +57636,61 @@
       ]
     },
     "LiquidHandler.return_tips": {
+      "channel_effect": "widen",
+      "channel_guards": [
+        {
+          "condition": "self._tip is None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 65,
+            "qualname": "TipTracker.get_tip"
+          },
+          "via": "self.head[channel].get_tip"
+        },
+        {
+          "condition": "self.is_disabled",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 103,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        },
+        {
+          "condition": "self._pending_tip is None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._pending_tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 105,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        }
+      ],
       "gaps": [],
       "guards": [
         {
@@ -57780,6 +58361,26 @@
       ]
     },
     "LiquidHandler.transfer": {
+      "channel_guards": [
+        {
+          "condition": "self._tip is None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 65,
+            "qualname": "TipTracker.get_tip"
+          },
+          "via": "self.head[channel].get_tip"
+        }
+      ],
       "gaps": [],
       "guards": [
         {
@@ -58074,6 +58675,77 @@
       ]
     },
     "LiquidHandler.update_head_state": {
+      "channel_effect": "widen",
+      "channel_guards": [
+        {
+          "condition": "self.is_disabled",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 90,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self._pending_tip is not None",
+          "depth": 0,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "HasTipError",
+          "scope_trail": [
+            "if self._pending_tip is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 92,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self.is_disabled",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 103,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        },
+        {
+          "condition": "self._pending_tip is None",
+          "depth": 0,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._pending_tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 105,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        }
+      ],
       "gaps": [],
       "guards": [
         {
@@ -58107,6 +58779,95 @@
       ]
     },
     "LiquidHandler.use_tips": {
+      "channel_effect": "widen",
+      "channel_guards": [
+        {
+          "condition": "self._tip is None",
+          "depth": 2,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 65,
+            "qualname": "TipTracker.get_tip"
+          },
+          "via": "self.head[channel].get_tip"
+        },
+        {
+          "condition": "self.is_disabled",
+          "depth": 2,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 103,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        },
+        {
+          "condition": "self._pending_tip is None",
+          "depth": 2,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._pending_tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 105,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        },
+        {
+          "condition": "self.is_disabled",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 90,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self._pending_tip is not None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "HasTipError",
+          "scope_trail": [
+            "if self._pending_tip is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 92,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        }
+      ],
       "gaps": [],
       "guards": [
         {
@@ -167305,6 +168066,65 @@
       ]
     }
   },
+  "receiver_state": {
+    "LiquidHandler": {
+      "bool_view": {
+        "attr": "has_tip",
+        "field": "_pending_tip",
+        "true_when": "not_none"
+      },
+      "channel_attr": "head",
+      "channel_default_disablers": [
+        "use_channels"
+      ],
+      "channel_default_param": {
+        "aspirate": "resources",
+        "dispense": "resources",
+        "drop_tips": "tip_spots",
+        "pick_up_tips": "tip_spots"
+      },
+      "effects": {
+        "add_tip": "HAS_TIP",
+        "clear": "NO_TIP",
+        "load_state": "HAS_TIP",
+        "remove_tip": "NO_TIP"
+      },
+      "state_fields": [
+        "_pending_tip",
+        "_tip"
+      ],
+      "tip_state_exceptions": [
+        "HasTipError",
+        "NoTipError"
+      ],
+      "tracker_class": "TipTracker"
+    },
+    "LiquidHandlerBackend": {
+      "bool_view": {
+        "attr": "has_tip",
+        "field": "_pending_tip",
+        "true_when": "not_none"
+      },
+      "channel_attr": "_head",
+      "channel_default_disablers": [],
+      "channel_default_param": {},
+      "effects": {
+        "add_tip": "HAS_TIP",
+        "clear": "NO_TIP",
+        "load_state": "HAS_TIP",
+        "remove_tip": "NO_TIP"
+      },
+      "state_fields": [
+        "_pending_tip",
+        "_tip"
+      ],
+      "tip_state_exceptions": [
+        "HasTipError",
+        "NoTipError"
+      ],
+      "tracker_class": "TipTracker"
+    }
+  },
   "schema_version": 1,
   "stamp": {
     "plr": {
@@ -167318,14 +168138,14 @@
     "praxis": {
       "branch": "coxswain-p2-pipeline",
       "dirty": true,
-      "dirty_content_id": "de4d9b3908389887ae72de57ef67603ca1a2d995",
-      "hash": "b81a93f87d6493d58cc7ca7864df8e4c61c1dc52",
+      "dirty_content_id": "6c937ba0608e986f525dbff40cb5681b0cf6aa66",
+      "hash": "bbe7da51665f8e1bcf898a0c174ff20379efecf5",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-02T18:24:33.122412+00:00",
+    "stamped_at": "2026-09-02T19:28:24.639346+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   }

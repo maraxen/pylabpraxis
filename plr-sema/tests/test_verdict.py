@@ -27,7 +27,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from plr_sema._provenance import SurveyStamp
 from plr_sema._provenance.git_state import GitState
 from plr_sema.verdict import (
@@ -97,7 +96,8 @@ def _expected_verdict(verdicts: tuple[Verdict, ...]) -> Verdict:
 def _finding_for(verdict: Verdict, index: int) -> Finding:
     """Build a minimally-valid Finding of the given verdict for join()
     exercising -- category/reason are populated only as required by
-    __post_init__ (AC-3.3), never both at once for a SAFE finding."""
+    __post_init__ (AC-3.3), never both at once for a SAFE finding.
+    """
     if verdict is Verdict.WILL_FAIL:
         return Finding(
             verdict=verdict,
@@ -126,7 +126,8 @@ def _finding_for(verdict: Verdict, index: int) -> Finding:
 )
 def test_join_truth_table(verdicts: tuple[Verdict, ...]) -> None:
     """Spec §3.2's join table, exhaustively, over all 10 multisets of size
-    <=2 (see module-level note above on the 7-vs-10 discrepancy)."""
+    <=2 (see module-level note above on the 7-vs-10 discrepancy).
+    """
     findings = tuple(_finding_for(v, i) for i, v in enumerate(verdicts))
     assert join(findings) == _expected_verdict(verdicts)
 
@@ -160,7 +161,8 @@ def test_join_absorbs_across_shared_operation_id() -> None:
     paths (the information order) upstream of emission, and evaluates each
     guard once against the merged state. See `join`'s own docstring and
     spec §3.2/§Open decisions 3 for the full obligation-vs-information-order
-    distinction this test's correctness rests on."""
+    distinction this test's correctness rests on.
+    """
     same_op_findings = (
         _finding_for(Verdict.SAFE, index=1),
         Finding(
@@ -191,7 +193,8 @@ def test_from_wire_maps_unrecognized_string_to_unknown() -> None:
     (the concrete near-term case this rule was written for), an arbitrary
     unrecognized string (the general case), and confirms recognized strings
     still round-trip to their own member (the rule only WIDENS, it never
-    changes behavior for known values)."""
+    changes behavior for known values).
+    """
     assert Verdict.from_wire("unreachable") is Verdict.UNKNOWN
     assert Verdict.from_wire("some_future_member_nobody_has_invented_yet") is Verdict.UNKNOWN
     assert Verdict.from_wire("") is Verdict.UNKNOWN
@@ -219,7 +222,8 @@ def test_no_bool_protocol() -> None:
     truthiness override, and no def with that dunder name may exist
     anywhere under src/plr_sema/. Deliberately not a runtime `assert not
     report` check -- a dataclass is truthy by default, so that would fail
-    for the wrong reason (spec §3.4)."""
+    for the wrong reason (spec §3.4).
+    """
     dunder = "__" + "bool__"
     for cls in (Verdict, Finding, AnalysisReport):
         assert dunder not in cls.__dict__, f"{cls.__name__} must not define {dunder}"
@@ -240,7 +244,8 @@ def test_no_bool_protocol() -> None:
 
 def test_will_fail_requires_category() -> None:
     """Spec AC-3.3 (WILL_FAIL side): empty category raises ValueError; a
-    real category is accepted."""
+    real category is accepted.
+    """
     with pytest.raises(ValueError):
         Finding(
             verdict=Verdict.WILL_FAIL,
@@ -262,7 +267,8 @@ def test_unknown_requires_reason() -> None:
     """Spec AC-3.3, exactly: `reason=""` and `reason="not_a_real_reason"`
     both raise ValueError. (Omitting reason entirely raises TypeError for a
     missing required argument before __post_init__ ever runs -- a dataclass
-    mechanic, not the case under test here, per AC-3.3's own note.)"""
+    mechanic, not the case under test here, per AC-3.3's own note.)
+    """
     with pytest.raises(ValueError):
         Finding(
             verdict=Verdict.UNKNOWN,
@@ -298,7 +304,8 @@ _UNRESOLVED = object()
 def _module_level_constants(tree: ast.Module) -> dict[str, object]:
     """Module-level `NAME = <literal>` / `NAME: T = <literal>` bindings,
     resolved to their literal value -- the only form of non-literal
-    `reason=` argument spec §3.3 recognizes as resolvable."""
+    `reason=` argument spec §3.3 recognizes as resolvable.
+    """
     consts: dict[str, object] = {}
     for node in tree.body:
         if isinstance(node, ast.Assign) and isinstance(node.value, ast.Constant):
@@ -328,7 +335,8 @@ def _resolve_reason_kwarg(call: ast.Call, module_consts: dict[str, object]) -> o
     """Return the resolved literal reason= value, _UNRESOLVED if a
     `reason=` argument is present but not a string literal or a
     module-level-constant reference, or None if there is no `reason=`
-    keyword argument on this call at all (not a site under test)."""
+    keyword argument on this call at all (not a site under test).
+    """
     for kw in call.keywords:
         if kw.arg != "reason":
             continue
@@ -343,15 +351,50 @@ def _resolve_reason_kwarg(call: ast.Call, module_consts: dict[str, object]) -> o
     return None
 
 
+def _resolve_verdict_kwarg(call: ast.Call) -> str | None:
+    """260902 (spec §10.8's amendment): resolve the SAME call site's
+    `verdict=` argument to the bare attribute name (`"SAFE"`, `"WILL_FAIL"`,
+    `"UNKNOWN"`, ...) when it is the literal form `Verdict.<MEMBER>` --
+    `None` for any other shape (no `verdict=` kwarg, or an unresolvable
+    one), which the caller treats as "not exempt" (the pre-260902 rule).
+    """
+    for kw in call.keywords:
+        if kw.arg != "verdict":
+            continue
+        value_node = kw.value
+        if (
+            isinstance(value_node, ast.Attribute)
+            and isinstance(value_node.value, ast.Name)
+            and value_node.value.id == "Verdict"
+        ):
+            return value_node.attr
+        return None
+    return None
+
+
 def _find_finding_reason_sites(source: str, filename: str) -> list[tuple[ast.Call, object]]:
+    """260902 (spec §10.8's amendment): a call site whose `verdict=`
+    resolves to `Verdict.SAFE`/`Verdict.WILL_FAIL` is EXEMPT from
+    membership -- but only when its `reason=` is exactly the empty-string
+    literal. A `SAFE`/`WILL_FAIL` site whose `reason=` is anything else
+    (unresolvable, or a non-empty string) is NOT exempt and is collected as
+    a normal site, so it still fails the membership check below -- the
+    exemption narrows what counts as compliant, it does not widen what the
+    scan can see. `Verdict.UNKNOWN`, or an unresolvable `verdict=`, keeps
+    the pre-260902 rule unchanged.
+    """
     tree = ast.parse(source, filename=filename)
     consts = _module_level_constants(tree)
     sites: list[tuple[ast.Call, object]] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Call) and _is_finding_call(node):
             resolved = _resolve_reason_kwarg(node, consts)
-            if resolved is not None:
-                sites.append((node, resolved))
+            if resolved is None:
+                continue
+            verdict_kind = _resolve_verdict_kwarg(node)
+            if verdict_kind in ("SAFE", "WILL_FAIL") and resolved == "":
+                continue  # exempt (§10.8): SAFE/WILL_FAIL with reason=""
+            sites.append((node, resolved))
     return sites
 
 
@@ -405,6 +448,34 @@ def test_reason_vocabulary_closed_forward() -> None:
     assert len(const_sites) == 1
     assert const_sites[0][1] == "no_contract_derived"
 
+    # -- 260902 (spec §10.8's amendment): a SAFE/WILL_FAIL site with
+    # reason="" is EXEMPT (zero sites collected) -- but the SAME shape with
+    # a non-empty reason is NOT exempt and is still collected as a site
+    # (which would fail the membership check below, since "some_reason" is
+    # not a REASON_VOCABULARY member). UNKNOWN keeps the pre-260902 rule
+    # unchanged (a bare reason="" would be collected and fail membership --
+    # not exercised here since Finding.__post_init__ itself already forbids
+    # an empty reason on UNKNOWN, so no real call site could reach it).
+    safe_exempt = (
+        "Finding(verdict=Verdict.SAFE, operation_id='op', category='',"
+        " plr_site=None, reason='')\n"
+    )
+    assert _find_finding_reason_sites(safe_exempt, "<synthetic:safe-exempt>") == []
+
+    will_fail_exempt = (
+        "Finding(verdict=Verdict.WILL_FAIL, operation_id='op', category='precondition_state',"
+        " plr_site=None, reason='')\n"
+    )
+    assert _find_finding_reason_sites(will_fail_exempt, "<synthetic:will-fail-exempt>") == []
+
+    safe_non_empty_reason = (
+        "Finding(verdict=Verdict.SAFE, operation_id='op', category='',"
+        " plr_site=None, reason='some_reason')\n"
+    )
+    non_exempt_sites = _find_finding_reason_sites(safe_non_empty_reason, "<synthetic:safe-non-empty>")
+    assert len(non_exempt_sites) == 1
+    assert non_exempt_sites[0][1] == "some_reason"
+
     # -- The real forward scan over src/plr_sema/. Unconditional: with zero
     # construction sites at T3 this is vacuously true, which is honest --
     # the rejection path above is what carries the evidence today.
@@ -414,7 +485,8 @@ def test_reason_vocabulary_closed_forward() -> None:
 
 def _scan_src_reason_sites() -> tuple[list[str], set[str], int]:
     """Shared scan over src/plr_sema/ backing both directions of §3.3's
-    closure check. Returns (offenders, reachable_reasons, total_sites)."""
+    closure check. Returns (offenders, reachable_reasons, total_sites).
+    """
     offenders: list[str] = []
     reachable: set[str] = set()
     total_sites = 0
