@@ -1,29 +1,69 @@
 ---
-title: "plr-jit — pre-corpus specification (round 5)"
+title: "plr-jit — pre-corpus specification (round 6)"
 description: "Buildable-today specification for plr-jit: a self-contained package providing JIT-style static validation of PyLabRobot execution graphs. Covers the eight corpus-INDEPENDENT sections (package seam + AST import boundary, provenance cherry-pick, tri-valued verdict data contract, telemetry error model, fork-drift tests, extractor/checker split, contract-derivation mechanics, differential harness) and defers all abstract-interpretation semantics to a literature corpus in compilation. Carries a mandatory hand-maintained/derived classification on every piece of logic, plus a hand-maintained surface budget and ratchet."
 status: draft
-spec_version: 5
+spec_version: 6
 task_id: 260901_plr_jit_spec
 date: '260901'
 confidence: medium
 sources: "Measured substrate supplied in dispatch brief (praxis/backend/utils/plr_static_analysis 5868 LOC; praxis/backend/core/simulation 11 modules; coxswain/src/coxswain/fft/preconditions live fork; training/verify execution oracle; scripts/survey_plr_*.py + training/verify/data/*.json). Independently re-read this session: /home/marielle/projects/cisternal/src/cisternal/telemetry/git_state.py; training/verify/failure_taxonomy.py; scripts/plr_survey_common.py; scripts/survey_plr_preconditions.py; coxswain/tests/test_import_boundary.py; coxswain/tests/test_sim_port.py; coxswain/pyproject.toml; pyproject.toml; praxis/common/type_inspection.py; praxis/backend/models/enums/plr_category.py; praxis/backend/utils/plr_static_analysis/models.py:520-662."
 ---
 
-# Specification: plr-jit, pre-corpus (round 5)
+# Specification: plr-jit, pre-corpus (round 6)
 
-> **Round 5 of an adversarial convergence cycle** (spec → challenger → defender → remediation → repeat).
-> Round 4 reviewed running code and reached 13 CONCEDE/8 PARTIAL/1 REBUT (see
-> [§Remediation changelog (round 3 → round 4)](#remediation-changelog-round-3--round-4)); it explicitly
-> carried forward an **anchoring risk** — three artifacts the spec owns (the survey script, the
-> extractor's frozensets, the dynamic harness's two frozensets) were being treated as fixed inputs.
-> **Round 5 was chartered to de-anchor**: 2 BLOCKER · 4 MAJOR · 2 MINOR, adjudicated **0 CONCEDE-in-full
-> at BLOCKER/MAJOR · 5 PARTIAL · 2 REBUT · 1 CONCEDE (minor)**, landing a reduced version of the
-> challenge's proposed T0 (the additive half; the interpretive half was declined with evidence) — see
-> [§Remediation changelog (round 4 → round 5)](#remediation-changelog-round-4--round-5) for the full
-> objection-by-objection record. Both prior rounds' changelogs are kept intact below it. This revision
-> remains deliberately *narrow*: it specifies only what is buildable without answers from the
+> **Round 6 of an adversarial convergence cycle** (spec → challenger → defender → remediation → repeat)
+> — the **convergence pass**. Round 5 was chartered to de-anchor and closed with 0 CONCEDE-in-full at
+> BLOCKER/MAJOR · 5 PARTIAL · 2 REBUT · 1 CONCEDE (minor) (see
+> [§Remediation changelog (round 4 → round 5)](#remediation-changelog-round-4--round-5)). **Round 6
+> reviewed the document itself for internal coherence and cold-start executability** rather than
+> hunting new design defects, and found **zero design errors and zero contradictions with prior
+> adjudications** — every one of its 20 findings was stale text, incomplete propagation of an already-
+> landed remediation, or a bookkeeping omission. 14 CONCEDE, 6 PARTIAL, 0 REBUT; post-defense severity
+> 1 BLOCKER · 9 MAJOR · 10 MINOR — see
+> [§Remediation changelog (round 5 → round 6)](#remediation-changelog-round-5--round-6) for the full
+> record. **Round 7 was deliberately not run**: the defender's convergence judgment (reproduced in that
+> changelog) is that the remaining defect class — stale line citations, off-by-one AC ranges, a
+> changelog claiming a body edit it only half made — is exactly the kind a ~30-line citation-anchor
+> checker and a cross-reference lint catch mechanically, not the kind a seventh adversarial round finds
+> reliably. All five prior rounds' changelogs are kept intact below this one. This revision remains
+> deliberately *narrow*: it specifies only what is buildable without answers from the
 > abstract-interpretation / typestate literature corpus currently being compiled. Six semantic questions
-> are named in [§Deferred](#deferred) and specified **nowhere**.
+> are named in [§Deferred](#deferred) and specified **nowhere**. **Three further decisions are open and
+> pending the user** — see [§Open decisions](#open-decisions) immediately below.
+
+---
+
+## Open decisions
+
+Three decisions are genuinely pending with the user and gate T10's dispatch. They are recorded here,
+prominently, because round 6 (R14) found they appeared **nowhere** in the document — not in
+[§Deferred](#deferred), not in [§Flags](#flags--locked-decisions-with-implementability-concerns), not
+in the risk table — so a cold reader would conclude nothing was awaiting a decision, which is false.
+None of the three is resolved by this remediation pass; resolving them is explicitly **not** this
+document's job.
+
+1. **Does `Verdict` gain a fourth, `UNREACHABLE` member now?** The sound domain specified today is the
+   4-element diamond `P({Safe, Fail})` (§3.2's boundary declaration) — there is no ⊥ (bottom/
+   unreachable) element, and [§3.2's boundary summary table](#32-the-report-level-join--specified-as-structure-deferred-as-semantics)
+   does not cover this route to a `schema_version` bump. **Blocks:** whether deferred item (a)'s
+   eventual abstract domain needs a fifth `Verdict` member wired in from round 1, or can add one later
+   behind a `schema_version` bump. **Evidence:** research corpus not yet compiled; no measurement bears
+   on this either way today. **User's call**, not this spec's.
+2. **Is volume tracking in the v1 verdict path?** This alone decides whether any numeric domain
+   (intervals — not octagons, per deferred item (a)'s framing) is ever needed, and hence whether any
+   widening (deferred item (d)) is needed at all. Currently mentioned exactly once in the whole
+   document, inside deferred row (d)'s parenthetical ("if the verdict path ever includes numeric/volume
+   accumulation") — i.e. as a hypothetical, not a decision. **Blocks:** whether (d) "largely dissolves"
+   (if the domain is a finite-height typestate one, per `research_a_d.md:386-390`) or requires real
+   widening work. **User's call**, not this spec's.
+3. **Does the `join` lattice ordering invert so `UNKNOWN` is genuinely top?** Round-4 remediation M9 /
+   `research_a_d.md` observe that [§3.2's table](#32-the-report-level-join--specified-as-structure-deferred-as-semantics)
+   is a valid join of `SAFE ⊏ UNKNOWN ⊏ WILL_FAIL` — i.e. **`WILL_FAIL` as top**, the opposite of
+   `verdict.py`'s stated intent (which reads `UNKNOWN` as the top/least-informative element, consistent
+   with `UNKNOWN`'s role as the safe default when nothing is known). Both orderings are internally
+   consistent with the *shipped* `join` table; they diverge only in how a future abstract-domain lattice
+   built on top of `Verdict` should be laid out. **Blocks:** the shape of deferred item (a)'s domain once
+   it is designed. **User's call**, not this spec's.
 
 ---
 
@@ -173,10 +213,15 @@ cross-package).
 uv run pytest plr-jit/tests/test_import_boundary.py -q
 ```
 
-Three tests, all failing-by-default on violation:
+Four tests, all failing-by-default on violation (round-6 remediation, R12 — was documented as three;
+`test_no_verify_or_training_imports_under_src` shipped alongside `test_no_praxis_imports_under_src`
+and was never added to this list):
 
 - `test_no_praxis_imports_under_src` — walks every node of every `.py` under `src/plr_jit/`, asserts
   no import whose top-level module is `praxis`.
+- `test_no_verify_or_training_imports_under_src` — same walk, asserting no import whose top-level
+  module is `verify` or `training` — the second half of §1.2's "no praxis, no training/verify"
+  boundary, on the same `ast.walk` as the row above.
 - `test_no_pylabrobot_import_under_check` — same walk restricted to `src/plr_jit/check/`, asserting
   no `pylabrobot` and no `libcst` top-level import (§6's packaging fact, mechanised).
 - `test_plain_cpython_import_of_public_surface` — subprocess `python -c "import plr_jit"`, asserting
@@ -423,9 +468,14 @@ deserialized verbatim from whatever `derived_contracts.json` already recorded wh
 last ran (`check/` never shells out to recompute one — §6.2's module docstring) — it answers "which
 PLR tree were the contracts derived against?", not "which analyzer commit is running right now?".
 Round 1–3's comment ("pins PLR SHA + analyzer SHA") overstated this: `stamp.praxis` is the *contracts
-build's* analyzer SHA, not the checker's own. Concretely stale today: `derived_contracts.json` carries
-`praxis.hash = e6eda0b1…`, while the checkout's live `git rev-parse HEAD` was `28d6800f` at the time
-this was measured — the checker's own code version was, and in round 1 remains, unrecorded. `analyzer_stamp`
+build's* analyzer SHA, not the checker's own. **Concretely illustrated, as a historical snapshot so
+this example cannot itself go stale (round-6 remediation, R18/R13):** at the round-4 measurement,
+`derived_contracts.json` carried `praxis.hash = e6eda0b1…` against a live `git rev-parse HEAD` of
+`28d6800f`; by round 6 the artifact had moved on to `praxis.hash = 8be56345c7e0…` against a live HEAD
+of `b3608eaaa` — two different snapshots of the same always-true fact: `stamp.praxis` is a
+build-time pin, not a live measurement, and will differ from `HEAD` again the next time either moves.
+The point (build-time ≠ run-time provenance) does not depend on which pair of hashes is current. The
+checker's own code version was, and in round 1 remains, unrecorded. `analyzer_stamp`
 is reserved for that fact and is `None` in round 1: `check/` cannot shell out (browser-side, no
 subprocess), and there is no build-time-baked constant wired in yet either. AC-6.7 (§6.5) is rewritten
 accordingly — see there.
@@ -584,7 +634,11 @@ message text), inverted: we *emit* free text but forbid *consuming* it.
 
 ### 3.6 Acceptance criteria
 
-- **AC-3.1** All six `test_verdict.py` tests pass.
+- **AC-3.1** All `test_verdict.py` tests pass (round-6 remediation, R15 — a hard-coded count is not a
+  gate: §3.4 names seven tests across six bullets, and the shipped file collects **eight** functions
+  because `test_reason_vocabulary_closed` ships as `_forward`/`_reverse`; asserting the count would
+  drift again the next time a bulleted test splits into more than one function, per the same reasoning
+  §8.3 already gives for asserting the 45 hand contracts dynamically rather than hard-coding).
 - **AC-3.2** `grep -rn "__bool__" plr-jit/src/` returns nothing.
 - **AC-3.3** `Finding(verdict=UNKNOWN, operation_id="op1", category="", plr_site=None, reason="")`
   raises `ValueError` (an empty `reason` is invalid for an `UNKNOWN` verdict); the same call with
@@ -617,7 +671,7 @@ FAILURE_CATEGORIES: frozenset[str] = frozenset({
 })
 ```
 
-Read this session at `training/verify/failure_taxonomy.py:71-78`. The set is battle-tested at corpus
+Read this session at `training/verify/failure_taxonomy.py:82-89`. The set is battle-tested at corpus
 scale and its module docstring records *why* each category exists (`:17-34`) — that rationale is the
 justification for freezing it, and must be carried across in the copied docstring.
 
@@ -714,32 +768,28 @@ semantics — a taxonomy of what kinds of thing can go wrong from our perspectiv
 recoverable from PLR source. No AST walk over PLR can tell you that "the harness's synthesized setup
 didn't establish the state the call assumes" is a distinct category worth naming. *What breaks when
 PLR changes:* nothing. PLR adding exception classes changes which classes *map into*
-`precondition_state`, not the category set — and that mapping is the DERIVABLE-NOT-YET item HM-8
-below. *Registry rows:* HM-5 (categories, 6, **frozen**), HM-6 (module-prefix dispatch, 2),
-HM-7 (`our_names` map, 3), HM-8 (exception-module allowlist, 2 → target DERIVED).
+`precondition_state`, not the category set — and that mapping is now RETIRED, not DERIVABLE-NOT-YET
+(below). *Registry rows:* HM-5 (categories, 6, **frozen**), HM-6 (module-prefix dispatch, 2),
+HM-7 (`our_names` map, 3), HM-8 (RETIRED, round 4 M5 — declared 0; see §9.2).
 
-> **Live inconsistency worth surfacing now — scoped to `classify_check_failure` only.**
-> `failure_taxonomy._plr_exception_class_names()` (`:84-96`) introspects exactly **two** modules —
-> `pylabrobot.liquid_handling.errors` and `pylabrobot.resources.errors` — while
-> `training/verify/data/plr_exception_taxonomy.json` records **132** exception classes AST-derived
-> across all 502 PLR source files. **This affects only `classify_check_failure` (`:127-159`),
-> which consumes `_plr_exception_class_names()` at `:157`.** `classify_exception` (`:99-124`)
-> dispatches by module-prefix match (`module.startswith("pylabrobot.")`, `:121`) and is **unaffected**
-> — it does not go through the two-module allowlist at all. Restricted to `classify_check_failure`:
-> any exception class outside those two modules is misclassified as `harness_internal` rather than
-> `precondition_state`. The module's own docstring calls its approach "a TABLE, not a hand-typed
-> enumeration" — which is true of the *classes*, but the *module list* is hand-typed and is where the
-> gap lives. **Concrete conversion trigger (HM-8 → DERIVED):** replace the two-module
-> `inspect.getmembers` walk with a load of `plr_exception_taxonomy.json`, keyed by class name. **The
-> loader must refuse an artifact lacking a non-empty `version.git_sha` or a non-empty `classes` array
-> (implemented, `TaxonomyArtifactError`) and must expose the recorded SHA for comparison
-> (`plr_exception_taxonomy_git_sha()`, implemented). Round 1 performs no staleness COMPARISON; that
-> policy belongs to the caller** (round-4 remediation, M4, PARTIAL — the round-1/2/3 text's "stamped
-> by §2.2 — T7's gate requires the loaded JSON carry a validated `SurveyStamp`" overclaimed: the
-> artifact is validated against its OWN shape, not `plr_jit`'s `SurveyStamp` — `training/` gains no
-> `plr_jit` import to satisfy the literal §2.2 phrasing, a deliberate, flagged deviation — and no
-> comparison against a live checkout is performed anywhere). This is a small task and is scheduled as
-> T7 below; T7's gate row is updated identically (see the task table).
+> **Resolved by T7 (`3a3a9f00`) — recorded for provenance, not live.** `failure_taxonomy._plr_exception_class_names()`
+> (`training/verify/failure_taxonomy.py:159`) used to introspect exactly **two** modules —
+> `pylabrobot.liquid_handling.errors` and `pylabrobot.resources.errors` — via `inspect.getmembers`,
+> while `training/verify/data/plr_exception_taxonomy.json` records **132** exception classes
+> AST-derived across all 502 PLR source files. That gap affected only `classify_check_failure`
+> (`:215`), which consumes `_plr_exception_class_names()` at `:245`. `classify_exception` (`:187`)
+> dispatches by module-prefix match (`module.startswith("pylabrobot.")`, `:209`) and was **never**
+> affected — it does not go through the two-module allowlist at all. **T7 (`3a3a9f00`) replaced the
+> two-module `inspect.getmembers` walk with `_load_taxonomy_artifact()`, a load of
+> `plr_exception_taxonomy.json` keyed by class name (`:109`)** — the loader refuses an artifact lacking
+> a non-empty `version.git_sha` or a non-empty `classes` array (`TaxonomyArtifactError`) and exposes the
+> recorded SHA for comparison (`plr_exception_taxonomy_git_sha()`). 11 → 132 names became visible, 121
+> newly, none lost. **Round 1 performs no staleness COMPARISON; that policy belongs to the caller**
+> (round-4 remediation, M4, PARTIAL — the round-1/2/3 text's "stamped by §2.2 — T7's gate requires the
+> loaded JSON carry a validated `SurveyStamp`" overclaimed: the artifact is validated against its OWN
+> shape, not `plr_jit`'s `SurveyStamp` — `training/` gains no `plr_jit` import to satisfy the literal
+> §2.2 phrasing, a deliberate, flagged deviation — and no comparison against a live checkout is
+> performed anywhere). The registry row this trigger fired is HM-8, now `RETIRED` — see §9.2.
 
 ### 4.3 Failure mode
 
@@ -921,10 +971,21 @@ uv run pytest plr-jit/tests/test_fork_drift.py -q -rs   # -rs surfaces skip reas
   failure.
 - `test_git_state_self_consistent` (tier 1).
 - `test_git_state_matches_cisternal` (tier 2, skip-with-reason).
+
+That is all five tests `test_fork_drift.py` itself carries (AC-5.1's "all five tests" refers to this
+file). Fork C's own drift test is a T8 deliverable, not a T5 one — it ships against `check/graph.py`,
+which does not exist until T8:
+
+```bash
+uv run pytest plr-jit/tests/test_check_graph_mirror_drift.py -q
+```
+
 - `test_mirror_fields_match_operation_node` — **new, D8, Fork C.** Parametrized over
   `OperationNode` and `ResourceNode`; asserts every field name in `check/graph.py`'s mirror (§6.2's
   D1 table) is a member of the live model's `model_fields`. Skips with an explicit reason if `praxis`
-  is not importable.
+  is not importable. Gated by T8 (AC-5.5, added to T8's row — round-3 changelog's "AC-5.1–5.4 →
+  AC-5.1–5.6" was wrong by one; D8 added exactly AC-5.5, and it is filed here because
+  `test_fork_drift.py` cannot satisfy it before `check/graph.py` exists.)
 
 ### 5.5 Failure mode
 
@@ -1182,9 +1243,17 @@ uv run python -c "import plr_jit.check"   # in an env where libcst is NOT instal
   `sys.modules['pylabrobot'] = None` installed via a `sitecustomize` shim (or a `-c` preamble that
   poisons both entries), then `import plr_jit.check`. Assert exit 0. Poisoning is stronger than
   simply not installing them, because it fails even if the import is merely *reachable*.
-- `test_graph_json_round_trips` — load the **committed fixture** graph JSON (produced out-of-process
-  by the existing praxis extractor, per §6.2; round 1 does not extract live), deserialize in a fresh
-  process with PLR poisoned, feed to `check_graph`. Assert an `AnalysisReport` is produced.
+- `test_fixture_graph_yields_unknown_report_with_findings` — load the **committed fixture** graph JSON
+  (produced out-of-process by the existing praxis extractor, per §6.2; round 1 does not extract live),
+  deserialize in a fresh process with PLR poisoned, feed to `check_graph`. Assert an `AnalysisReport`
+  is produced (round-6 remediation, R20 — shipped under this name; earlier round text named it
+  `test_graph_json_round_trips`, which does not exist in `tests/test_check_graph.py`).
+- `test_operation_ids_are_a_subset_of_real_graph_ids` (AC-6.4) — **naming note (round-6 remediation,
+  R20).** The shipped name says "subset"; the shipped body asserts *equality*
+  (`{f.operation_id for f in report.findings} == {op.id for op in graph.operations}`), per the
+  round-4 B2 strengthening below. The name should be renamed `test_operation_ids_equal_real_graph_ids`
+  to match; recorded here as a known discrepancy rather than corrected in this documentation-only
+  pass — the assertion itself, not the function name, is what AC-6.4 gates.
 - `test_supported_tools_match_upstream` — **new, D1.** Imports `SUPPORTED_TOOLS` from both
   `plr_jit.check` (the copy) and `training.verify.dispatcher` (upstream), asserts set equality. Same
   drift-test pattern as §4.2's `test_categories_match_upstream`; skipped with an explicit reason if
@@ -1249,7 +1318,7 @@ deferred items (a)–(f).
 ### 7.1 Input — regenerated by round-5 T0, pinned thereafter
 
 `training/verify/data/plr_preconditions.json` (3.0 MB → **3.39 MB after round-5 T0**, below). Record
-schema confirmed this session at `scripts/survey_plr_preconditions.py:71-107`:
+schema confirmed this session at `scripts/survey_plr_preconditions.py:74-120`:
 
 ```
 {qualname, class_name, module, file, lineno, params[],
@@ -1309,7 +1378,7 @@ delegates. A derivation that reads only a method's own `findings` would conclude
 unconstrained — dangerously wrong in the `SAFE` direction.
 
 **Normative resolution rule for `delegates_to` entries.** `delegates_to` holds **bare** method/function
-names (`survey_plr_preconditions.py:221` adds a same-class name; `:223` adds a bare module-level
+names (`survey_plr_preconditions.py:253` adds a same-class name; `:255` adds a bare module-level
 name) — it is not a qualname and not `(module, qualname)`. The survey index (below) is keyed by
 `(module, qualname)`, so a delegate must be **resolved** before lookup:
 
@@ -1329,7 +1398,7 @@ never reached for that name in that module. `plr_survey_common.py:127-129` alrea
 class names exist in the PLR surface, so this is not a hypothetical edge case; it is a known,
 accepted imprecision, not a bug. **No survey regeneration is required** — the discriminator needed to
 build `resolve` (same-class vs. module-level vs. unresolved) is exactly what
-`survey_plr_preconditions.py:221`/`:223` already computed at survey time; `delegates_to`'s bare-name
+`survey_plr_preconditions.py:253`/`:255` already computed at survey time; `delegates_to`'s bare-name
 records are a **projection** of that discriminator, and `resolve` reconstructs it via lookup against
 the `(module, qualname)`-keyed index rather than needing a new field.
 
@@ -1342,8 +1411,9 @@ collide at the current pin (8 among the 1,314 finding-bearing records), all `@pr
 pairs (`Serial.dtr`/`Serial.rts`, `SerialValidator.dtr`/`SerialValidator.rts`, ...) — AST traversal
 visits class members in source order and a setter is conventionally defined after its getter, so
 `build_index`'s `{key: rec for rec in records}` silently keeps the setter and discards the getter.
-This was previously undocumented; `4,770` vs. the index's `4,758` distinct keys already appeared in
-the spec (§7.1 measured contents) with no explanation of the twelve-record delta. **Not fixed by
+This was previously undocumented; `4,758` (`4,770` minus the twelve collisions) is first computed
+here, not previously appeared — §7.1 publishes only the `4,770` scan count, with no distinct-key
+figure and no explanation of a delta. **Not fixed by
 changing `resolve()`**: bare-name delegate resolution (above) has no `lineno` to disambiguate a
 getter from its setter, so `resolve()`'s class-first precedence is intentionally unchanged. Two things
 changed instead: (1) `build_index(records)` now DOCUMENTS the discard is deterministic
@@ -1424,8 +1494,8 @@ predicates is deferred item (c). This is what keeps §7 mechanical.
 
 **Guard polarity (normative, C4).** `InlinedGuard.kind` is `"raise_guard"` when the finding came from
 `raise_guard`'s recording rule (`condition` is the nearest enclosing `if` test; the guard **fires
-when `condition` evaluates true** — `survey_plr_preconditions.py:198-199`), and `"assert"` when it
-came from an `assert` statement (the guard **fires when `condition` evaluates false** — `:208`).
+when `condition` evaluates true** — `survey_plr_preconditions.py:212-222`), and `"assert"` when it
+came from an `assert` statement (the guard **fires when `condition` evaluates false** — `:226`).
 733 of 2,814 recorded findings (26%) are asserts. Dropping `kind` makes this polarity permanently
 unrecoverable from the shipped artifact, which is why `InlinedGuard` carries it as a first-class
 field rather than folding it into `condition`'s text.
@@ -1564,9 +1634,9 @@ row (e)'s corrected reason (below) schedules a future task (T11) against — lan
 without the ranked view would leave that task with nothing to prioritize from.
 
 **Field renamed: `methods_fully_derived` → `methods_with_no_recorded_gap`.** The old name claims more
-than the survey can support. `survey_plr_preconditions.py:214` requires a call's receiver be
+than the survey can support. `survey_plr_preconditions.py:232` requires a call's receiver be
 `ast.Name` with `id == "self"`; `self.head[channel].get_tip()` has a `Subscript` receiver, so `name`
-stays `None` and the recording block at `:220-231` is skipped **entirely** — the call leaves no trace
+stays `None` and the recording block at `:246-263` is skipped **entirely** — the call leaves no trace
 at all, not even an unresolved-call entry. **The corrected predicate for the dropped population is
 `func` is `ast.Attribute` AND NOT (`func.value` is `ast.Name` with `id == "self"`) (D3)** — this is
 strictly wider than "`self.<expr>.<method>()`": it also drops `resource.get_item()`-style calls whose
@@ -1591,7 +1661,7 @@ views are otherwise unchanged.**
 **Normative — this is an upper bound, not a measurement of completeness.** The renamed count is an
 **upper bound** on how many methods are genuinely fully derived, because the survey's own recording
 rule cannot detect the receiver shapes it is most likely to miss. `top_unresolved` entries are bare
-call names (`survey_plr_preconditions.py:214-215,231` extracts `target.attr` as a bare string, never
+call names (`survey_plr_preconditions.py:232-233,263` extracts `target.attr` as a bare string, never
 the full expression), so the literal `self.head[channel].get_tip()` shape is **unproducible** by this
 mechanism — it would never appear in `top_unresolved`'s original `whole_surface`/
 `supported_tools_closure` views even though it is exactly the shape §7.6 flags as the plausible
@@ -1669,10 +1739,11 @@ and `methods_with_dropped_receiver_call` (three commensurable method counts) for
 `SUPPORTED_TOOLS` methods, **plus** the two per-method call-node counts above (now closure-wide) as
 secondary diagnostics for the same 10 methods. Concretely: all four `SUPPORTED_TOOLS`-closure records
 inspected this round have `unresolved_calls: []` (`aspirate:45211`, `pick_up_tips:44929`,
-`drop_tips:45019`, `_check_containers:45147`), so `methods_with_no_recorded_gap` for the 10 tools will
-likely land at or near 10/10 — precisely the "high value is uninterpretable" case this asymmetry note
-describes, and the reason RISK-1's entire round-1 answer rests on this counter being specified
-correctly.
+`drop_tips:45019`, `_check_containers:45147`). **`methods_with_no_recorded_gap` landed at 7/10 (T6,
+`51f53866`)** — round-6 remediation, R11: prior text left this as an unmeasured forecast ("will likely
+land at or near 10/10") after T6 had already shipped and measured it — high enough to be
+uninterpretable in exactly the way this asymmetry note names, and the reason RISK-1's entire round-1
+answer rests on this counter being specified correctly, not on its value alone.
 
 **`validation_looking_dropped_receiver_calls_by_method` is mostly, but no longer entirely, zero —
 this is a measurement, not a defect (round-4 remediation, M11 bullet 3, un-changed by the closure-wide
@@ -1827,11 +1898,26 @@ behind exactly this frontier. Do not assume otherwise; measure.
 
 ### 8.1 Interface / data contract
 
-Compare **45 hand-written `MethodContract` instances** in
-`praxis/backend/core/simulation/method_contracts.py` against `DerivedContract`s for the same
-qualnames. Field shape confirmed this session (`method_contracts.py:47-60` in the coxswain fork,
-verbatim from praxis): `method_name`, `receiver_type`, `requires_tips: bool`,
+Compare **45 hand-written `MethodContract` instances**, loaded by **AST-reading** the file named by a
+required `--contracts-path PATH` (D19, round-6 remediation — same mechanism as `--survey-json` /
+`--taxonomy-json`; **never imported** — `src/plr_jit/` may not import `praxis`, §1.3/AC-1.2), against
+`DerivedContract`s for the same qualnames. In practice this points at
+`praxis/backend/core/simulation/method_contracts.py`, but the harness itself takes only the flag —
+`ast.parse` + a walk for `Call(func=Name("MethodContract"))` recovers all 45 instances and their
+keyword values with no import and no boundary violation, exactly as `derive/` already reads the 3.4 MB
+`plr_preconditions.json` from `training/verify/data/` via `--survey-json` today (§8.3's gate command
+and T10's row both carry `--contracts-path`). Field shape confirmed this session (`method_contracts.py:47-60`
+in the coxswain fork, verbatim from praxis): `method_name`, `receiver_type`, `requires_tips: bool`,
 `requires_tips_count: int | None`, and further precondition/effect fields.
+
+**On importing the coxswain fork instead (round-6 remediation, R1 sub-claim — rejected).** Importing
+`coxswain.fft.preconditions.method_contracts` would also cross no boundary (`coxswain` is a root
+workspace member per `pyproject.toml:44`, and `method_contracts.py` is one of the two
+whole-file-verbatim ported modules, byte-identical to the `praxis` original per §5.1's drift test,
+currently green). That path is *safe*, not a trap — it is simply not the one specified, because
+`plr-jit/pyproject.toml` declares `dependencies = []` and §1.2's arrow says the package does not reach
+sideways into repo packages. The AST-read-by-path form above is preferred for that reason, not because
+the fork is unsafe.
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -1857,17 +1943,66 @@ evidence the human did not encode).
 phrase undefined, and AC-8.2's headline deliverable depends on it. Defining it as a lexical set (a
 hand-typed word list) would need both a definition and a new HM registry row. Instead, define it
 **derived**, from data the spec already has: a guard's `condition` "mentions a tip-related
-identifier" iff `mentions_params ∩ tip_bearing_params(qualname) ≠ ∅`, where `tip_bearing_params` is
-the set of tip-spot parameter names read off the `MethodContract` under comparison (its
-`requires_tips_count`-governed parameter, per `method_contracts.py`) for the same `qualname`. This
-form needs **no registry row** — it is a set intersection over two things the pipeline already
-carries, not a new hand-typed fact. (A lexical identifier list remains an option if the derived form
-proves too narrow in practice, but it would then need both a written definition and a registry row;
-the derived form is preferred here.)
+identifier" iff `mentions_params ∩ tip_bearing_params(qualname) ≠ ∅`, where `tip_bearing_params(qualname)`
+is **the survey record's own `params` whose names contain, case-insensitively, an HM-19
+`_NAME_KEYWORD_CATEGORIES` keyword mapped to `tip_state` (today: `Tip`)** (round-6 remediation, R2 —
+see below for why the previous definition was unachievable). This adds **no registry row** — HM-19
+is already registered and already feeds this bridge's `raises`-clause (above); `tip_bearing_params`
+reuses it rather than adding a second surface. At the current pin this matches `tip_spots` and
+`tip_rack`, firing on 4 of `LiquidHandler`'s 81 findings (`pick_up_tips`, `drop_tips`,
+`probe_tip_presence_via_pickup` on `tip_spots`; `pick_up_tips96` on `tip_rack`): narrow, but live, not
+`∅` for all 45.
+
+**Why the previous definition (`MethodContract`'s own `requires_tips_count`-governed parameter) does
+not work (round-6 remediation, R2 — CONCEDE, and the round-6 challenge under-diagnosed it).**
+`MethodContract`'s 21 fields contain no parameter-name-bearing tip field: `requires_tips_count` is
+`int | None`, set on exactly 4 of 45 contracts, always the literal `96` — it governs no *parameter
+name* at all, so `tip_bearing_params` under the old definition is `∅` for all 45 contracts, not merely
+narrow. The obvious repair, `requires_on_deck`, also fails: `pick_up_tips` carries
+`requires_on_deck=('tips',)` while the PLR method's actual parameters are `['self', 'tip_spots',
+'use_channels', 'offsets', 'backend_kwargs']` — `'tips'` is not among them, so the intersection stays
+empty. **There is no purely-derived construction available from `MethodContract`'s own fields**; D13's
+premise (define it derived, from data the spec already has) is unachievable from that specific source,
+not merely mis-cited — which is why the definition above routes through the *survey record*'s
+`params` and HM-19 instead. Severity: MAJOR, not BLOCKER — AC-8.1 (every contract classified) stays
+satisfiable with the clause returning `∅` on a miss, and AC-8.2 carries an explicit written-note
+waiver for that case. (A lexical identifier list remains an option if the derived form proves too
+narrow in practice, but it would then need both a written definition and a registry row; the derived
+form above is preferred here.)
+
+**Resolving each hand contract's `(module, qualname)` (round-6 remediation, R5).** T10's population
+(all 45 hand contracts) is wider than `SUPPORTED_TOOLS`, which is the only population D22's lookup was
+previously exercised against. Resolve each contract's `(module, qualname)` by PascalCasing
+`receiver_type` (`heater_shaker` → `HeaterShaker`) and applying D22's existing "UNIQUE module among
+indexed survey records whose `class_name == X`" lookup, unchanged. Measured against
+`plr_preconditions.json` at the current pin: **29 of 45 resolve uniquely** by this two-line mechanical
+transform (`LiquidHandler` 55 recs/1 module, `Centrifuge` 15/1, `Thermocycler` 26/1, `PlateReader`
+9/1, `TemperatureController` 7/1, `HeaterShaker` 2/1, `Shaker` 6/1, `Sealer` 6/1, `Peeler` 3/1) — no
+hand-typed device→class table is required and no new registry row is needed.
+
+**Two dispositions D22 does not specify, because T10's population is wider than `SUPPORTED_TOOLS`
+(round-6 remediation, R5 — the genuine defect the round-6 challenge missed).** D22's rule as written
+fails loudly — naming every distinct module found — the moment more than one module matches, and
+fails loudly again if the resolved module lacks the named method. Applied verbatim to all 45
+contracts, that aborts the harness on **16 of 45** at the current pin, not the 3 D22 was written
+against:
+
+1. **A class resolving to >1 module.** `Pump` resolves to two (`pylabrobot.pumps.pump`,
+   `pylabrobot.liquid_handling.backends.hamilton.pump`) — 3 contracts (`run_for_duration`,
+   `run_for_volume`, `halt`).
+2. **A class with no such method in the index.** 13 contracts resolve to a class but not a method on
+   it (`LiquidHandler.transfer_96`/`mix`/`blow_out`/`touch_tip`, six `HeaterShaker.*`,
+   `Centrifuge.open_lid`/`close_lid`, `Thermocycler.run_profile`).
+
+Both dispositions are classified **`hand_only`**, with the reason recorded — a first-class §8.2 kind,
+not an error, and *not* the loud abort D22 specifies for its narrower, `SUPPORTED_TOOLS`-only origin
+population. Tally at this pin: **29 resolve, 13 method-absent, 3 module-ambiguous = 45.** AC-8.1
+(every contract classified) is satisfiable if and only if §8.1 states these two disposition rules,
+which is what this paragraph does.
 
 **Bridge behaviour when `raises` is not a plain class name (C4).** `raises` may be `None` (the
 finding came from an `assert`, which has no exception class at all — `kind == "assert"`) or the
-`"<dynamic:..."`-prefixed sentinel (`survey_plr_preconditions.py:185-191`; minted when the raised
+`"<dynamic:..."`-prefixed sentinel (`survey_plr_preconditions.py:203-210`; minted when the raised
 exception is constructed from a variable rather than a literal class name —
 `plr_preconditions.json:45195`'s third `aspirate` finding is a live instance; detect via
 `raises.startswith("<dynamic:")`, D18, never by equality against a glob string). Neither is matchable
@@ -1921,6 +2056,7 @@ methods in the whole differential surface.
 ```bash
 uv run python -m plr_jit.differential \
     --taxonomy-json training/verify/data/plr_exception_taxonomy.json \
+    --contracts-path praxis/backend/core/simulation/method_contracts.py \
     --report /tmp/diff.json
 uv run pytest plr-jit/tests/test_differential.py -q
 ```
@@ -1996,8 +2132,8 @@ class HandMaintainedSurface:
                                 # this field directly rather than inferring it from `declared`.
 ```
 
-**Why `measure` must permit both forms (C7).** At least six registry rows (HM-2, HM-3, HM-4, HM-6,
-HM-7, HM-8) measure facts embedded in *function bodies* — inline branches, inline string-prefix
+**Why `measure` must permit both forms (C7).** At least five registry rows (HM-2, HM-3, HM-4, HM-6,
+HM-7) measure facts embedded in *function bodies* — inline branches, inline string-prefix
 literals in a `return` expression, local dispatch tables — which are uncountable by any zero-arg
 import callable. **Correction (D6):** HM-15 is not the only `scripts/`-sourced row that is
 import-measurable as a module-level constant — `_NAME_KEYWORD_CATEGORIES` (HM-19,
@@ -2024,9 +2160,9 @@ shrinking, so headroom is not applicable to them either.
 **Table prose vs. field values (D16b, a clarification, not a violation).** Entries like "`CAPPED,
 must decrease after peak`" (HM-16) or "`CAPPED (8)`" in the table above combine the `status` field's
 actual `Literal` value with human-readable prose or a parenthetical ceiling number. The `status`
-field itself is always exactly one of the four `Literal` members (`FROZEN`, `CAPPED`,
-`DERIVABLE_NOT_YET`, `TARGET_ZERO`) — the parenthetical numbers and trailing clauses are inventory-
-table annotations for the reader, not additional enum members, and no code inspects them as
+field itself is always exactly one of the five `Literal` members (`FROZEN`, `CAPPED`,
+`DERIVABLE_NOT_YET`, `TARGET_ZERO`, `RETIRED`) — the parenthetical numbers and trailing clauses are
+inventory-table annotations for the reader, not additional enum members, and no code inspects them as
 structured data.
 
 ### 9.2 Inventory (baseline)
@@ -2035,11 +2171,11 @@ structured data.
 |---|---|---|---|---|---|
 | HM-1 | `PLR_RESOURCE_TYPES` class-name set (`type_inspection.py:14-56`) | entries | **34** | DERIVABLE_NOT_YET | Point `plr_survey_common.collect_all_classes` + the `exception_name_closure` fixpoint at `Resource`/`Machine` instead of `Exception`. The machinery already exists and is proven on 132 exception classes. |
 | HM-2 | `infer_category_from_name` substring rules (`plr_category.py:129+`, 186 LOC, self-documented "BRITTLE") | branches | **MEASURE** | DERIVABLE_NOT_YET | PLR classes carry a real `category` attribute; the function is documented as a fallback for when the class object is unavailable. Derive by AST-reading the attribute per class into a table. |
-| HM-3 | validator-name prefixes in `_is_validation_looking` (`survey_plr_preconditions.py:107-109`) | prefixes | **6** | CAPPED (8) | None known — a heuristic over PLR's naming. |
+| HM-3 | validator-name prefixes in `_is_validation_looking` (`survey_plr_preconditions.py:121-123`) | prefixes | **6** | CAPPED (8) | None known — a heuristic over PLR's naming. |
 | HM-4 | PLR test-file stem heuristic (`plr_survey_common.py:35-40`) | rules | **3** | CAPPED (4) | None known. |
-| HM-5 | `FAILURE_CATEGORIES` (`failure_taxonomy.py:71-78`) | categories | **6** | FROZEN | None — these are our semantics, not PLR's. |
-| HM-6 | `classify_exception` module-prefix dispatch (`:109,121`) | prefixes | **2** | CAPPED (3) | None. |
-| HM-7 | `our_names` harness-exception map (`:153-154`) | entries | **3** | DERIVABLE_NOT_YET | Duplicates the `isinstance` dispatch six lines above; derive from the three classes' `__name__`. |
+| HM-5 | `FAILURE_CATEGORIES` (`failure_taxonomy.py:82-89`) | categories | **6** | FROZEN | None — these are our semantics, not PLR's. |
+| HM-6 | `classify_exception` module-prefix dispatch (`:197,209`) | prefixes | **2** | CAPPED (3) | None. |
+| HM-7 | `our_names` harness-exception map (`:241-242`) | entries | **3** | DERIVABLE_NOT_YET | Duplicates the `isinstance` dispatch in `classify_exception`, above; derive from the three classes' `__name__`. |
 | HM-8 | ~~`_plr_exception_class_names` module allowlist~~ **RETIRED (round 4, M5)** | modules | **0** (was 2) | **RETIRED** | Trigger FIRED: T7 (`3a3a9f00`) replaced the 2-module `inspect.getmembers` walk with a validated load of `plr_exception_taxonomy.json`. 11 → 132 names, 121 newly visible, none lost. The surface no longer exists. |
 | HM-9 | `SUPPORTED_TOOLS` (`dispatcher.py`) | tools | **10** | CAPPED (10) | None — a scope boundary, not a claim about PLR. Growth is a deliberate scope decision. |
 | HM-10 | `EffectType` enum (`method_contracts.py:18-29`) | members | **9** | CAPPED (9) | None in v1 (effects are not simulated). |
@@ -2049,11 +2185,12 @@ structured data.
 | HM-14 | `REASON_VOCABULARY` (§3.3) | reasons | **7** (round-4 remediation, B4: was 8 — `argument_not_static` withdrawn) | CAPPED (12) | None — describes our own give-up points; deriving from our own AST would be circular. |
 | HM-15 | `_ROOT_EXCEPTION_NAMES` (`plr_survey_common.py:32`) | names | **2** | FROZEN | None — Python's, not PLR's. Zero drift risk. |
 | HM-16 | compatibility shim modules (§1.2) | modules | **0** | CAPPED, **must decrease after peak** | Each is deleted when its callers migrate. |
-| HM-17 | picked `git_state.py` (§2) | LOC | **241** | FROZEN | None — upstream source we now own. One-time cost; §5 tier 1 forbids edits. |
+| HM-17 | picked `git_state.py` (§2) | LOC **excluding the §2.1 provenance header** (round-6 remediation, R19 — the file is 251 lines on disk; the 10-line delta is the header §2.1 itself mandates, and `test_frozen_surfaces_are_exact` requires `measure() == declared` exactly, so `measure` must strip it the same way §5.2 tier 1 already does for its own sha256 check, reusing T5's `parse_cherry_pick_header` to derive the boundary rather than hardcoding it) | **241** | FROZEN | None — upstream source we now own. One-time cost; §5 tier 1 forbids edits. |
 | HM-18 | cherry-pick header recorded hashes (§5.2) | hashes | **2** | FROZEN | None. |
 | HM-19 | category-keyword pairs table, `_NAME_KEYWORD_CATEGORIES` (`scripts/survey_plr_exceptions.py:66-80`, first-match on class name; feeds §8.1's tip-related-category bridge) | pairs | **13** (D6 — confirmed by read this round; not MEASURE) | CAPPED (15) | None known — a heuristic over PLR's exception-class *names*, in the same spirit as HM-3. Import-measurable as a module-level `list[tuple[str,str]]`, exactly like HM-15 (D6); the AST-reading `measure` mechanism from C7 also works but is not required. |
 | HM-20 | module-substring category fallback table, `_MODULE_SUBSTRING_CATEGORIES` (`scripts/survey_plr_exceptions.py:83-90`, consulted only on an HM-19 miss) | pairs | **6** | CAPPED (8) | None known — a heuristic over PLR's module-path structure, same spirit as HM-3/HM-19 (D7). **Cannot perturb §8.1's bridge**: its six categories (`pump_state`, `centrifuge_state`, `plate_reader_state`, `storage_state`, `channel_state`, `resource_state`) do not include `tip_state`. The `category: str = "uncategorized"` default (`:101`) is the absence-case for a miss on *both* tables and is not itself enumerated as a row — it is noted here in `breaks_when`: a class whose category is genuinely ambiguous falls through to `"uncategorized"` rather than a miscategorization. |
 | HM-21 | field set mirrored by `check/graph.py` from `OperationNode`/`ResourceNode` (§6.2, D1) | fields mirrored | **MEASURE** | CAPPED | Which fields the mirror needs is a judgement about which §3.3 reasons and §7.3 lookups exist today, not a fact recoverable from PLR source — so the *decision of which fields to include* is hand-maintained even though each individual field's continued presence in the upstream pydantic model is drift-tested (Fork C, §5.3, D8). Breaks when a §3.3 reason is added needing a field not yet mirrored (a reviewable ratchet-visible diff), or when `OperationNode`/`ResourceNode` rename/remove a mirrored field (caught by Fork C's drift test, not by this ratchet). |
+| HM-22 | `_TAXONOMY_PATH` + the 2-key artifact-validation schema (`failure_taxonomy.py:140-153`) | validated artifact keys | **2** | CAPPED (4) | None — our own artifact contract. |
 
 **MEASURE** = a one-off helper (`uv run python -m plr_jit._hand_maintained --update-baselines`, run
 during T9) prints the live count for every row whose `declared` is not yet filled; a human copies
@@ -2153,11 +2290,14 @@ finding new discovery, which is exactly the process that produced this one.
 | HM-7 → DERIVED | **3** |
 
 **Target: ≥82 hand-typed facts eliminated, and the count of `TARGET_ZERO` + `DERIVABLE_NOT_YET` rows
-reduced from 6 to ≤2.** **Corrected survivor count (D17): 15, not 11.** Of the 21 baseline rows,
-converting/removing HM-1, HM-7, HM-8 (→ DERIVED) and HM-13 (→ 0) leaves 17; of those 17, HM-2 and
-HM-12 are the "≤2 `DERIVABLE_NOT_YET`/`TARGET_ZERO`" rows still pending resolution, leaving **15**
-rows as the stable FROZEN/heuristic-CAPPED core:
-HM-3/4/5/6/9/10/11/14/15/16/17/18/19/20/21
+reduced from 5 to ≤2.** (HM-8 is already `RETIRED`, not `DERIVABLE_NOT_YET`, so the current baseline
+count of this pair of statuses — HM-1, HM-2, HM-7, HM-12, HM-13 — is 5, not 6.) **Corrected survivor
+count (D17): 16, not 11.** Of the 21 live rows (post-HM-22), converting/removing HM-1, HM-7 (→
+DERIVED) and HM-13 (→ 0) leaves 18 (HM-8 is not in this list — it already converted, and as a
+`RETIRED` row it does not count toward `live_rows` at all, §9.4 above); of those 18, HM-2 and HM-12
+are the "≤2 `DERIVABLE_NOT_YET`/`TARGET_ZERO`" rows still pending resolution, leaving **16** rows as
+the stable FROZEN/heuristic-CAPPED core:
+HM-3/4/5/6/9/10/11/14/15/16/17/18/19/20/21/22
 — all either FROZEN or genuinely heuristic, and each with a written argument for why.
 
 **Anti-gaming clause, restated honestly (C13).** The round-1 mechanism is deliberately narrow: each
@@ -2177,7 +2317,10 @@ formally closing it. A real anti-gaming metric (e.g. summing `declared` across r
 ## Deferred
 
 Blocked on a literature corpus (abstract interpretation + typestate) currently being compiled.
-**Nothing about these is specified anywhere in this document.**
+**Nothing about these is specified anywhere in this document.** (For three related, but distinct,
+open questions that are pending a **user** decision rather than the literature corpus — the
+`UNREACHABLE` `Verdict` member, whether volume tracking is in v1, and the `join` lattice ordering —
+see [§Open decisions](#open-decisions) near the top of this document, added round 6, R14.)
 
 **Round-4 remediation (B3, PARTIAL, and materially overstated by the round-4 challenge) — of the six
 rows in this table's dependency structure, exactly ONE ((e)) is genuinely falsified; (d) is not
@@ -2214,7 +2357,7 @@ optional clause; (a)/(c) are untouched (not challenged).
 
 | # | risk | likelihood | impact | mitigation / rollback |
 |---|---|---|---|---|
-| RISK-1 | **Closure over `delegates_to` recovers too little** — most real preconditions hide behind unresolved cross-class calls, and v1 is sound but empty (§7.6). Tip state lives on `self.head[channel]`, the canonical shape **not recorded by the survey's current `unresolved_calls` rule (recoverable — see round-5 T0, F1)** (§7.4 — this receiver shape isn't captured as an `unresolved_calls` gap; round-4's "unrecordable" wording overstated this as a property of the problem rather than of that one field/rule, and round-5 T0 recorded it, in `dropped_calls`, without changing `unresolved_calls` itself), and tips are what the 10 `SUPPORTED_TOOLS` care about. **This entire risk's round-1 answer rests on T6's counter being specified correctly (D12):** all four `SUPPORTED_TOOLS`-closure records inspected this round have `unresolved_calls: []` (`aspirate:45211`, `pick_up_tips:44929`, `drop_tips:45019`, `_check_containers:45147`), so `methods_with_no_recorded_gap` for the 10 tools is expected to land at or near 10/10 — precisely the "high value is uninterpretable" trap this risk names. Separately, 750 of 967 unresolved-call entries (77.6%) are `send_command`, a firmware/transport method — the whole-surface `top_unresolved` aggregate is dominated by one name outside the tip-state frontier, which is why D12 requires publishing a `SUPPORTED_TOOLS`-closure-restricted view as well. | medium | **high — invalidates the approach** | **Measure first, and measure the right numbers (D3/D4/D12):** T6 runs the closure over all 1,314 finding-bearing functions and publishes `methods_with_no_recorded_gap` **alongside** the corrected dropped-receiver counters — `methods_with_dropped_receiver_call` (a commensurable method count) plus the per-method total/validation-looking call-node counts, using the corrected predicate (`func` is `ast.Attribute` AND NOT (`func.value` is `ast.Name` with `id == "self"`), not "non-`Name`-receiver") — and `top_unresolved` in both whole-surface and `SUPPORTED_TOOLS`-closure views. `methods_with_no_recorded_gap` alone is uninterpretable at a high value (§7.4's asymmetry note) — it could mean real derivation success, or it could mean the survey never saw the gaps to record. The dropped-receiver counters are what resolves the ambiguity. One session, data already on disk, before any user-facing surface. If the numbers indicate most content hides behind the frontier not recorded by `unresolved_calls`, deferred item (e) is promoted from "later" to "blocking" and §§7–8 pause. **Round-5 addendum (F1, PARTIAL):** the round-5 challenge patched the survey to record this frontier and reported the resulting whole-`SUPPORTED_TOOLS` figure moving `7/10 → 0/10` as proof the risk had resolved favorably. Reproduced and rejected: the `0/10` is produced by `logger.debug`/`inspect.signature`/`warnings.warn`/`args.keys` saturating every closure through `LiquidHandler._check_args`, not by tip-state guards — an unfiltered predicate that saturates by construction is exactly as uninterpretable as the `7/10` upper bound it claims to replace, only in the other direction, and it cannot ever move. The disambiguation it claims to supply was already published (`gap_ledger.json`'s `dropped_receiver_calls_by_method`, all ten `SUPPORTED_TOOLS` entries nonzero, round-4 M11). RISK-1's round-1 answer is unchanged: `methods_with_no_recorded_gap` (still an upper bound) plus the two D3 counters, now joined by a filtered, receiver-qualified `top_unresolved.dropped_receiver` worklist (round-5 T0 item 4, §7.4) that ranks the real signal (`self.head[channel].get_tip`, `blocks_methods: 3`) above the noise. |
+| RISK-1 | **Closure over `delegates_to` recovers too little** — most real preconditions hide behind unresolved cross-class calls, and v1 is sound but empty (§7.6). Tip state lives on `self.head[channel]`, the canonical shape **not recorded by the survey's current `unresolved_calls` rule (recoverable — see round-5 T0, F1)** (§7.4 — this receiver shape isn't captured as an `unresolved_calls` gap; round-4's "unrecordable" wording overstated this as a property of the problem rather than of that one field/rule, and round-5 T0 recorded it, in `dropped_calls`, without changing `unresolved_calls` itself), and tips are what the 10 `SUPPORTED_TOOLS` care about. **This entire risk's round-1 answer rests on T6's counter being specified correctly (D12):** all four `SUPPORTED_TOOLS`-closure records inspected this round have `unresolved_calls: []` (`aspirate:45211`, `pick_up_tips:44929`, `drop_tips:45019`, `_check_containers:45147`), so `methods_with_no_recorded_gap` for the 10 tools **landed at 7/10 (T6, `51f53866`)** — high enough to be uninterpretable in exactly the way this risk names (round-6 remediation, R11 — corrected from an unmeasured "expected to land at or near 10/10" forecast left in place after T6 had already measured it). Separately, 750 of 967 unresolved-call entries (77.6%) are `send_command`, a firmware/transport method — the whole-surface `top_unresolved` aggregate is dominated by one name outside the tip-state frontier, which is why D12 requires publishing a `SUPPORTED_TOOLS`-closure-restricted view as well. | medium | **high — invalidates the approach** | **Measure first, and measure the right numbers (D3/D4/D12):** T6 runs the closure over all 1,314 finding-bearing functions and publishes `methods_with_no_recorded_gap` **alongside** the corrected dropped-receiver counters — `methods_with_dropped_receiver_call` (a commensurable method count) plus the per-method total/validation-looking call-node counts, using the corrected predicate (`func` is `ast.Attribute` AND NOT (`func.value` is `ast.Name` with `id == "self"`), not "non-`Name`-receiver") — and `top_unresolved` in both whole-surface and `SUPPORTED_TOOLS`-closure views. `methods_with_no_recorded_gap` alone is uninterpretable at a high value (§7.4's asymmetry note) — it could mean real derivation success, or it could mean the survey never saw the gaps to record. The dropped-receiver counters are what resolves the ambiguity. One session, data already on disk, before any user-facing surface. If the numbers indicate most content hides behind the frontier not recorded by `unresolved_calls`, deferred item (e) is promoted from "later" to "blocking" and §§7–8 pause. **Round-5 addendum (F1, PARTIAL):** the round-5 challenge patched the survey to record this frontier and reported the resulting whole-`SUPPORTED_TOOLS` figure moving `7/10 → 0/10` as proof the risk had resolved favorably. Reproduced and rejected: the `0/10` is produced by `logger.debug`/`inspect.signature`/`warnings.warn`/`args.keys` saturating every closure through `LiquidHandler._check_args`, not by tip-state guards — an unfiltered predicate that saturates by construction is exactly as uninterpretable as the `7/10` upper bound it claims to replace, only in the other direction, and it cannot ever move. The disambiguation it claims to supply was already published (`gap_ledger.json`'s `dropped_receiver_calls_by_method`, all ten `SUPPORTED_TOOLS` entries nonzero, round-4 M11). RISK-1's round-1 answer is unchanged: `methods_with_no_recorded_gap` (still an upper bound) plus the two D3 counters, now joined by a filtered, receiver-qualified `top_unresolved.dropped_receiver` worklist (round-5 T0 item 4, §7.4) that ranks the real signal (`self.head[channel].get_tip`, `blocks_methods: 3`) above the noise. |
 | RISK-2 | Shim direction inverted — `plr_jit` imports `praxis` — making the boundary test unsatisfiable (§1.2). | low (now flagged) | high | §1.2 makes the arrow normative; the day-one boundary test converts a violation into a red test on the first offending commit rather than after N modules have moved. |
 | RISK-3 | Cherry-pick drift test is skip-only off this machine (§5.2). | **certain** | medium | Two tiers. Tier 1 (header sha256 vs. local body) always runs and catches local edits, which is the failure this test primarily guards. Tier 2 skips loudly with the missing path named. AC-5.1 requires tier 2 to *run* here once, proving the mechanism before it is allowed to skip. |
 | RISK-4 | Freezing `FAILURE_CATEGORIES` (dynamic-harness semantics) is wrong for a static analyzer; a static failure kind has no home (§4.3). | medium | medium | Miscategorisation surfaces as an implausible `harness_internal` rate in the gap ledger. Frozen-not-forbidden: extending is a design conversation, not a silent commit. |
@@ -2243,14 +2386,14 @@ Each task is ≤1 session, independently completable, with a runnable gate.
 |---|---|---|---|---|---|
 | **T1** | Package skeleton + workspace member + pytest config + AST import-boundary test | create `plr-jit/pyproject.toml`, `src/plr_jit/__init__.py`, `tests/test_import_boundary.py`; modify root `pyproject.toml:44` | `uv run pytest plr-jit/tests/test_import_boundary.py -q` + AC-1.1–1.4 | ~120 | — |
 | **T2** | Cherry-pick `git_state.py` verbatim + header + `SurveyStamp` + provenance tests **+ ruff exclusion for `plr-jit` (root `pyproject.toml`'s `exclude` list, or a `plr-jit/.ruff.toml`)** so pre-commit's unrestricted `ruff --fix`/`ruff-format` doesn't reindent the picked 4-space file (C10) | create `src/plr_jit/_provenance/{__init__,git_state,stamp}.py`, `tests/test_provenance.py`; modify root `pyproject.toml`'s ruff `exclude` (or create `plr-jit/.ruff.toml`) | `uv run pytest plr-jit/tests/test_provenance.py -q` + AC-2.1–2.5 | ~190 (241 copied) | T1 |
-| **T3** | Verdict types: `Verdict`, `Finding`, `PlrSite`, `AnalysisReport`, `join`, `REASON_VOCABULARY` + tests (incl. C15's literal-or-constant `reason=` resolution + reverse reachability check) | create `src/plr_jit/verdict.py`, `tests/test_verdict.py` | `uv run pytest plr-jit/tests/test_verdict.py -q` + AC-3.1–3.4 | ~220 | T2 |
+| **T3** | Verdict types: `Verdict`, `Finding`, `PlrSite`, `AnalysisReport`, `join`, `REASON_VOCABULARY` + tests (incl. C15's literal-or-constant `reason=` resolution + reverse reachability check) | create `src/plr_jit/verdict.py`, `tests/test_verdict.py` | `uv run pytest plr-jit/tests/test_verdict.py -q` + AC-3.1–3.5 | ~220 | T2 |
 | **T4** | Telemetry: `FAILURE_CATEGORIES` promotion, `TelemetrySink`, `JsonlSink`, event schema + tests | create `src/plr_jit/telemetry.py`, `tests/test_telemetry.py` | `uv run pytest plr-jit/tests/test_telemetry.py -q` + AC-4.1–4.4 | ~180 | T3 |
-| **T5** | Fork-drift tests, both forks, both tiers, **`test_every_ported_module_is_covered` across all six coxswain-ported modules** (C3) | create `tests/test_fork_drift.py` | `uv run pytest plr-jit/tests/test_fork_drift.py -q -rs` + AC-5.1–5.6 | ~200 | T2 |
+| **T5** | Fork-drift tests, both forks, both tiers, **`test_every_ported_module_is_covered` across all six coxswain-ported modules** (C3) | create `tests/test_fork_drift.py` | `uv run pytest plr-jit/tests/test_fork_drift.py -q -rs` + AC-5.1–5.4 | ~200 | T2 |
 | **T6** | **Derivation closure + gap ledger — MEASURE FIRST (RISK-1)**. Load `plr_preconditions.json` via required `--survey-json PATH` (D19), `(module, qualname)`-keyed index + bare-name `resolve()` (C1), transitive `delegates_to` closure with frontier-carried `depth`, guard inlining incl. `kind` (C4), gap recording, ledger emitter with `methods_with_no_recorded_gap`, **`methods_with_dropped_receiver_call`, and `top_unresolved` published in both whole-surface and `SUPPORTED_TOOLS`-closure views** (D4/D12) **+ second independent AST pass over `external/` counting dropped-receiver call nodes per method using the corrected predicate — `func` is `ast.Attribute` AND NOT (`func.value` is `ast.Name` with `id == "self"`) — split into a total count and a validation-looking subset** (D3), **+ the derived `SUPPORTED_TOOLS`-name-to-`(module,qualname)` lookup rule** (D22), **+ respecified `test_guard_sites_point_at_defining_file`** (D5) | create `src/plr_jit/derive/{__init__,closure,ledger,receiver_shapes}.py`, `tests/test_derive.py` | `uv run pytest plr-jit/tests/test_derive.py -q` + `python -m plr_jit.derive --survey-json ... --gap-ledger` + AC-7.1–7.4 | ~450 | T3, T4 |
-| **T7** | HM-8 → DERIVED: replace the 2-module exception walk with a `plr_exception_taxonomy.json` load, **stamped via §2.2** (C12c) | modify `training/verify/failure_taxonomy.py`; add regression test | existing `training/verify` tests pass + a new test asserting a class outside the 2 modules classifies as `precondition_state` **+ a test asserting the loaded taxonomy JSON carries a validated `SurveyStamp`, not a bare `json.load`** | ~60 | T4 |
-| **T8** | Extractor/checker split: package layout, stdlib-dataclass graph mirror (`check/graph.py`, no pydantic — C11) **with the derived-from-consumers field set for `OperationNode` and `ResourceNode`, plus a copied (not imported) `SUPPORTED_TOOLS` + its `test_supported_tools_match_upstream` drift test** (D1), `check_graph` round-1 entry point, **out-of-process fixture-graph generation** (subprocess call into the existing praxis extractor, committed under `tests/fixtures/`) (C5), poisoned-import tests, **Fork C's `test_mirror_fields_match_operation_node` field-set drift test against live `OperationNode`/`ResourceNode.model_fields`** (D8, ~+25 LOC), **the two moved-in end-to-end pipeline tests (AC-6.6/6.7) for `AnalysisReport` round-trip and telemetry emission over the full T8 pipeline** (D15) | create `src/plr_jit/{extract,check}/__init__.py`, `src/plr_jit/check/graph.py`, `src/plr_jit/check/_supported_tools.py`, `tests/fixtures/<protocol>_graph.json`, `tests/test_check_graph_mirror_drift.py`, extend `tests/test_import_boundary.py` | AC-6.1–6.7 | ~330 | T6 |
-| **T9** | Hand-maintained registry + ratchet tests (incl. **broadened `measure` supporting AST-reading callables + `scripts/` sys.path shim** (C7), **HM-19 category-keyword row, now baseline 13/CAPPED(15), plus new HM-20 and HM-21 rows** (D6/D7/D8), **`peak: int` field on `HandMaintainedSurface`** (D16a), **live+2 headroom rule for MEASURE+CAPPED rows** (D16c), **HM-13 content-hash ratchet** (C18), **one-time registry cap re-baseline to `live_rows + 3` (21 + 3 = 24), discovery-vs-growth distinction documented** (registry cap decision)); fill every **MEASURE** baseline via a one-off `--update-baselines` helper, committed in one reviewable commit — the ratchet test itself never writes (C14) | create `src/plr_jit/_hand_maintained.py`, `tests/test_hand_maintained_ratchet.py` | `uv run pytest plr-jit/tests/test_hand_maintained_ratchet.py -q` | ~380 | T3–T8 (needs all surfaces to exist) |
-| **T10** | Differential harness vs. the 45 hand-written contracts, **bridge handles `raises is None` / a `"<dynamic:"`-prefixed sentinel (detected via `.startswith`, D18) by falling through to the mechanical, derived condition-mention clause** (`mentions_params ∩ tip_bearing_params(qualname)`, D13), **consults `InlinedGuard.kind` to resolve the `HasTipError`/`pick_up_tips` polarity inversion before crediting a guard toward `requires_tips=True`** (D13), **loads `plr_exception_taxonomy.json` via a required `--taxonomy-json PATH`** (D19) | create `src/plr_jit/differential.py`, `tests/test_differential.py` | `python -m plr_jit.differential --taxonomy-json ... --report` + AC-8.1–8.3 | ~235 | T6, T9 |
+| **T7** | HM-8 → DERIVED: replace the 2-module exception walk with a `plr_exception_taxonomy.json` load, validated against the artifact's own `version.git_sha` / non-empty `classes` shape (`TaxonomyArtifactError`), **not** `plr_jit`'s `SurveyStamp` — M4, deliberate flagged deviation (C12c) | modify `training/verify/failure_taxonomy.py`; add regression test | existing `training/verify` tests pass + a new test asserting a class outside the 2 modules classifies as `precondition_state` **+ a test asserting the loaded taxonomy JSON is refused when it lacks a non-empty `version.git_sha` or `classes` array** | ~60 | T4 |
+| **T8** | Extractor/checker split: package layout, stdlib-dataclass graph mirror (`check/graph.py`, no pydantic — C11) **with the derived-from-consumers field set for `OperationNode` and `ResourceNode`, plus a copied (not imported) `SUPPORTED_TOOLS` + its `test_supported_tools_match_upstream` drift test** (D1), `check_graph` round-1 entry point, **out-of-process fixture-graph generation** (subprocess call into the existing praxis extractor, committed under `tests/fixtures/`) (C5), poisoned-import tests, **Fork C's `test_mirror_fields_match_operation_node` field-set drift test against live `OperationNode`/`ResourceNode.model_fields`** (D8, ~+25 LOC), **the two moved-in end-to-end pipeline tests (AC-6.6/6.7, shipped as `test_full_pipeline_report_round_trips_json` / `test_full_pipeline_emits_stamped_jsonl`) for `AnalysisReport` round-trip and telemetry emission over the full T8 pipeline** (D15) | create `src/plr_jit/{extract,check}/__init__.py`, `src/plr_jit/check/graph.py`, `src/plr_jit/check/_supported_tools.py`, `tests/fixtures/<protocol>_graph.json`, `tests/test_check_graph.py`, `tests/test_check_graph_mirror_drift.py`, extend `tests/test_import_boundary.py` | AC-5.5, AC-6.1–6.7 | ~330 | T6 |
+| **T9** | Hand-maintained registry + ratchet tests (incl. **broadened `measure` supporting AST-reading callables + `scripts/` sys.path shim** (C7), **HM-19 category-keyword row, now baseline 13/CAPPED(15), plus new HM-20 and HM-21 rows** (D6/D7/D8), **`peak: int` field on `HandMaintainedSurface`** (D16a), **live+2 headroom rule for MEASURE+CAPPED rows** (D16c), **HM-13 content-hash ratchet** (C18), **one-time registry cap re-baseline to `live_rows + 3` (21 + 3 = 24), discovery-vs-growth distinction documented** (registry cap decision); **+ HM-8 → `RETIRED` (declared 0) and the new HM-22 row, which must land in the same commit (§9.4, M5); + the `RETIRED` `Literal` member, `test_frozen_surfaces_are_exact` extended to `measure() == 0`, and the cap-lowers-with-retirement rule**); fill every **MEASURE** baseline via a one-off `--update-baselines` helper, committed in one reviewable commit — the ratchet test itself never writes (C14) | create `src/plr_jit/_hand_maintained.py`, `tests/test_hand_maintained_ratchet.py` | `uv run pytest plr-jit/tests/test_hand_maintained_ratchet.py -q` | ~380 | T3–T8 (needs all surfaces to exist) |
+| **T10** | Differential harness vs. the 45 hand-written contracts, **loaded via a required `--contracts-path PATH`, AST-read, never imported** (D19, round-6 remediation R1), **`tip_bearing_params(qualname)` derived from the survey record's own `params` matched against HM-19's `tip_state` keyword** (D13, round-6 remediation R2 — the `MethodContract`-field-based definition was unachievable and is replaced), **`(module, qualname)` resolved by PascalCasing `receiver_type` + D22's unique-module lookup, with module-ambiguous (`Pump`, 3 contracts) and method-absent (13 contracts) both classified `hand_only`, not aborted** (round-6 remediation R5), **bridge handles `raises is None` / a `"<dynamic:"`-prefixed sentinel (detected via `.startswith`, D18) by falling through to the mechanical, derived condition-mention clause** (`mentions_params ∩ tip_bearing_params(qualname)`, D13), **consults `InlinedGuard.kind` to resolve the `HasTipError`/`pick_up_tips` polarity inversion before crediting a guard toward `requires_tips=True`** (D13), **loads `plr_exception_taxonomy.json` via a required `--taxonomy-json PATH`** (D19) | create `src/plr_jit/differential.py`, `tests/test_differential.py` | `python -m plr_jit.differential --taxonomy-json ... --contracts-path ... --report` + AC-8.1–8.3 | ~235 | T6, T9 |
 
 **Dependency ordering.** `T1 → T2 → T3 → T4`; then `T5` and `T6` in parallel off T2/T4; `T7` off T4;
 `T8` off T6; `T9` after T3–T8; `T10` last.
@@ -2269,7 +2412,9 @@ pipeline that may need a different shape.
 
 ## Flags — locked decisions with implementability concerns
 
-Per the brief's instruction to surface rather than silently work around:
+Per the brief's instruction to surface rather than silently work around. (Three further decisions are
+open, not locked, and pending the user — see [§Open decisions](#open-decisions) near the top of this
+document, added round 6, R14 — rather than filed here as flags on an already-made call.)
 
 1. **Decision 1's shim is direction-ambiguous and only one direction is implementable.** "A
    compatibility shim so existing `praxis.*` import sites keep resolving" reads naturally as
@@ -2332,7 +2477,7 @@ resolution of unresolved cross-class calls; precision/FP targets) was specified.
 - **C1** — §7.2: added a normative `resolve()` rule for bare `delegates_to` names (class-first
   precedence, then module-level, then `no_contract_derived` gap); index rekeyed to
   `(module, qualname)`; noted no survey regeneration is needed (the discriminator is recoverable from
-  `survey_plr_preconditions.py:221/223`); residual same-name-different-class ambiguity accepted.
+  `survey_plr_preconditions.py:253/255`); residual same-name-different-class ambiguity accepted.
 - **C2** — §7.4/§7.1/§7.6/§7.7/T6: renamed `methods_fully_derived` → `methods_with_no_recorded_gap`
   everywhere; stated normatively that the survey never records `self.<expr>.<method>()` receivers, so
   the figure is an upper bound; added the low-refutes/high-uninterpretable asymmetry and updated
@@ -2617,7 +2762,7 @@ literature-corpus-deferred items remain exactly as scoped in round 1, untouched.
 | T2 | ~190 (241 copied) | ~190 (241 copied) | — | — |
 | T3 | ~220 | ~220 | — | — |
 | T4 | ~180 | ~180 | — | — |
-| T5 | ~200 | ~200 | — (AC range only: 5.1–5.4 → 5.1–5.6) | D8 (Fork C ACs, no T5 LOC) |
+| T5 | ~200 | ~200 | — (AC range only: 5.1–5.4 → 5.1–5.5, corrected round 6 — the original arithmetic was wrong by one; D8 added exactly one AC (AC-5.5), and it gates T8, not T5 — see T5's row) | D8 (Fork C ACs, no T5 LOC) |
 | T6 | ~420 | ~450 | +30 | D3 (dual dropped-receiver counters), D4 (method-count figure), D12 (two `top_unresolved` views), D22 (derived `SUPPORTED_TOOLS` lookup), D5 (respecified guard-site test) |
 | T7 | ~60 | ~60 | — | — |
 | T8 | ~260 | ~330 | +70 | D1 (mirror field-set + `SUPPORTED_TOOLS` copy + drift test), D8 (Fork C drift test, ~+25), D15 (two moved-in end-to-end ACs) |
@@ -2783,3 +2928,99 @@ from round 4 (verified: `totals`, `by_reason`, `supported_tools`, `dropped_recei
 `validation_looking_dropped_receiver_calls_by_method` are byte-identical before/after round-5 T0; only
 `top_unresolved.dropped_receiver`'s source changed, and two new keys — `dropped_receiver_unfiltered`,
 `index_key_collisions` — were added).
+
+---
+
+## Remediation changelog (round 5 → round 6)
+
+**What made round 6 different — the convergence pass.** Rounds 1–5 all hunted for defects in the
+spec's *design*. Round 6 was chartered to review the document for **internal coherence and cold-start
+executability** instead — "would a fixer who reads only this document, T9 or T10 in hand, produce
+what §9/§8 actually require?" It found **zero design errors and zero contradictions with prior
+adjudications.** Every one of its 20 findings is one of three shapes: (1) a remediation that landed in
+one place but not everywhere it needed to (R3+R4+R9+R10, R6, R8), (2) a stale line citation into code
+that moved (R13, plus four inside R3, plus R17/R18), or (3) a genuine gap in a not-yet-built task's
+spec text (R1, R2, R5, R14, R19). No shipped test went from green to red, no AC became unsatisfiable
+by the shipped code, and no prior round's adjudication was reopened. 20 objections (4 BLOCKER, 10
+MAJOR, 6 MINOR); adjudicated **14 CONCEDE, 6 PARTIAL, 0 REBUT**. Post-defense severity: **1 BLOCKER ·
+9 MAJOR · 10 MINOR** (downgraded: R1, R2, R4 BLOCKER → MAJOR; R12 MAJOR → MINOR; upgraded: R19 MINOR →
+MAJOR). Full challenge and defense: `.claude/jobs/d54cd068/tmp/round6_{challenge,defense}.md` (not
+committed; this changelog is the durable record).
+
+### The defect class this round found, and why it clusters
+
+**The single most important structural fact about round 6: its 4 filed BLOCKERs are 2 actual
+defects.** R3+R4+R9+R10 are one propagation failure — round-4 remediation M5 (retire HM-8, add HM-22)
+was applied in full in §9.4 and **nowhere else**: §4.2 kept the pre-M5 bug description in the present
+tense (R3, the round's best finding — a reader would report a fixed bug as live), §9.1 kept the
+pre-M5 four-member `Literal` enumeration and six-row C7 list (R10), §9.2 never gained HM-22's row
+(R4), and §9.4's own shrink-target arithmetic never re-ran (R9). One remediation, four reported
+defects, one edit set. Separately, R7+R16 are one off-by-one (the round-3 changelog's "AC-5.1–5.4 →
+AC-5.1–5.6" arithmetic, wrong by one — D8 added exactly one AC), and R6+R8 share the same *shape* as
+the M5 cluster (a changelog claiming a body edit that only half landed) from two different
+remediations. R1, R2, and R5 are the only three genuinely independent findings, and all three are
+T10-specific — T10 is unbuilt, so these are gaps in *specification*, not in shipped code.
+
+### Conceded (fully), with what changed
+
+| id | sev (filed → final) | change |
+|---|---|---|
+| **R3** | BLOCKER → BLOCKER | §4.2's "Live inconsistency worth surfacing now" passage described a bug T7 (`3a3a9f00`) already fixed, in the present tense, with four stale line citations, 1,300 lines above the table that already recorded it `RETIRED`. Retitled "Resolved by T7 — recorded for provenance", rewritten past tense, cites re-anchored. |
+| **R4** | BLOCKER → MAJOR | T9's task row named neither HM-22 nor the `RETIRED` machinery, though every normative fact both need is already in §9.4. Row appended; not a missing decision, a missing pointer. |
+| **R6** | MAJOR → MAJOR | T7's task row still said "stamped via §2.2 (C12c)" + a `SurveyStamp` test clause; the body (M4, round 4) and the shipped docstring both say the opposite. Row corrected to match the body. |
+| **R7** | MAJOR → MAJOR | AC-5.6 does not exist (§5.6 defines through AC-5.5); T5's row gated "AC-5.1–5.6". The round-3 changelog's arithmetic was wrong by one. T5's row corrected to AC-5.1–5.4; AC-5.5 (Fork C's mirror test, a T8 deliverable per the shipped `test_fork_drift.py` docstring) moved to T8's gate. |
+| **R8** | MAJOR → MAJOR | T3's row gated "AC-3.1–3.4"; AC-3.5 (closing the B2 T3→T8 window) exists and was never added. Row corrected to AC-3.1–3.5. |
+| **R9** | MAJOR → MAJOR | §9.4's survivor-count arithmetic (D17) never re-ran after M5: omitted HM-22, double-counted `RETIRED` HM-8 against live rows, and listed HM-8 twice (once "to convert", once already `DONE`). Recomputed: 16 survivors (was 15, wrongly), "reduced from 6 to ≤2" corrected to "5 to ≤2". |
+| **R10** | MAJOR → MAJOR | §9.1's dataclass `Literal` already has five members (including `RETIRED`, added by round-4 M5) but the prose still said "always exactly one of the four". Corrected to five. |
+| **R13** | MAJOR → MAJOR (split MAJOR/MINOR by the defense) | Eight spot-checked line citations into `survey_plr_preconditions.py`/`failure_taxonomy.py` were all stale, shifted by round-5's T0 and T7's rewrite respectively. Applied as one anchoring pass per file (14 citations total, plus the four inside R3); the actively-misleading ones (landing on unrelated live code) and the merely-shifted ones both fixed, since §9.1's `(source_path, target_symbol)` `measure` signature means implementation survives this regardless — only *review* was at risk. |
+| **R14** | MAJOR → MAJOR | Three decisions pending the user (an `UNREACHABLE` `Verdict` member; whether volume tracking is in v1; whether the `join` lattice ordering inverts) appeared in none of the document's three mechanisms for recording an open question. **Not resolved** — a new, prominent [§Open decisions](#open-decisions) section records what each blocks and that it is the user's call, per this round's instruction not to decide them. |
+| **R15** | MINOR → MINOR | AC-3.1 said "All six" `test_verdict.py` tests; §3.4 names seven across six bullets; the shipped file collects eight (one bullet ships as two functions). Reworded to drop the hard-coded count, matching §8.3's existing reasoning for the 45 hand contracts. |
+| **R16** | MINOR → MINOR | Same root cause as R7; fixed together (Group C). |
+| **R17** | MINOR → MINOR | §7.2 attributed the `4,758` distinct-key figure to "already appeared in the spec (§7.1 measured contents)"; §7.1 publishes only the `4,770` scan count. Corrected to "first computed here". |
+| **R18** | MINOR → MINOR | §3.1's illustrative `stamp.praxis.hash`/live-`HEAD` pair (`e6eda0b1…`/`28d6800f`) no longer exists on disk. Rewritten as an explicitly historical two-snapshot illustration (the round-4 pair alongside the round-6 pair, `8be56345c7e0…`/`b3608eaaa`) so the point — build-time provenance ≠ run-time provenance — cannot itself go stale again. |
+| **R20** | MINOR → MINOR | T8's files column omitted `tests/test_check_graph.py` (which carries 5 of T8's ACs, including the two D15 end-to-end tests); §6.3's `test_graph_json_round_trips` does not exist under that name (shipped as `test_fixture_graph_yields_unknown_report_with_findings`); AC-6.4's shipped test is named "...subset..." but asserts equality. Files column corrected; test names corrected in §6.3's list; the naming mismatch recorded as a known discrepancy (documentation-only pass — the shipped test's assertion, not its name, is what AC-6.4 gates). |
+
+### Partial — real defect conceded, severity or remedy narrowed
+
+| id | sev (filed → final) | what stands / what does not |
+|---|---|---|
+| **R1** | BLOCKER → MAJOR | T10's `differential.py` reading `praxis/backend/core/simulation/method_contracts.py` directly would redden AC-1.2's import-boundary test — real, and the spec named none of the four resolving mechanisms. But the resolving pattern (D19: a required path flag, AST-read, never imported) already appears twice in T10's own gate command line (`--taxonomy-json`, `--survey-json`), and `derive/` already consumes a 3.4 MB `training/verify/data/` artifact this way with the boundary test green today. One sentence + a new flag, not a redesign: §8.1 now specifies `--contracts-path PATH`, AST-read via `ast.parse` + a `Call(func=Name("MethodContract"))` walk. |
+| **R2** | BLOCKER → MAJOR | `tip_bearing_params(qualname)`, defined against `MethodContract`'s own `requires_tips_count`-governed parameter, has no referent — confirmed, and worse than filed: the obvious repair (`requires_on_deck`) also fails, because `pick_up_tips`'s `requires_on_deck=('tips',)` does not intersect PLR's actual `tip_spots` parameter. **No purely-derived construction exists from `MethodContract`'s own fields** — D13's premise was unachievable from that source, not merely mis-cited. A working construction that needs no new registry row does exist, routed through HM-19's already-registered `tip_state` keyword category (measured live: 4 of `LiquidHandler`'s 81 findings) — §8.1 redefines `tip_bearing_params` against the survey record's own `params` instead. |
+| **R5** | MAJOR → MAJOR | The filed framing ("fixer must invent a hand-typed device→class table") is false — a two-line PascalCase transform plus D22's existing unique-module lookup resolves 29 of 45 contracts with no new registry row. But R5 concealed a worse defect: D22's fail-loud rule, applied verbatim to all 45 contracts instead of the 10 `SUPPORTED_TOOLS` it was written against, aborts the harness on 16 of 45 at the current pin (3 module-ambiguous `Pump` contracts, 13 method-absent). §8.1 now specifies both cases as `hand_only` dispositions, not errors. |
+| **R11** | MAJOR → MAJOR | §7.4/RISK-1 forecast "~10/10" in the future tense where T6 had already measured and shipped 7/10 (`gap_ledger.json`'s `supported_tools.methods_with_no_recorded_gap`) — a cold reader cannot tell which is current. The forecast's *substance* is unchanged by 7 vs. 10 (both are high enough to be uninterpretable, which is the risk's whole point) — only the tense was wrong. Both mentions corrected to the measured value with its commit. |
+| **R12** | MAJOR → MINOR | §1.3 said "Three tests"; `test_import_boundary.py` collects four (`test_no_verify_or_training_imports_under_src` undocumented). The count is real, but the load-bearing claim — that an undocumented test could trip up a T9/T10 fixer — does not hold: T10 loads via path flags, never imports, so there is nothing to hit; T9's `measure` values are import-path *strings*, not `ast.Import`/`ast.ImportFrom` nodes, so `_iter_imports` cannot see them either. Doc/test drift with zero consequence for the unbuilt tasks it was filed against; count corrected to four with the fourth test named. |
+| **R19** | MINOR → MAJOR (escalated) | HM-17 declares `git_state.py` at 241 LOC `FROZEN`; the file is 251 lines on disk. The 10-line delta is §2.1's own mandated provenance header — the one finding in the round that turns a *correct* T9 run red, and silently: `test_frozen_surfaces_are_exact` requires exact equality, and a fixer who measures 251 will reasonably assume they counted wrong rather than that the baseline was mis-declared. §5.2 tier 1 already establishes the header-stripping convention for exactly this file's own sha256 check; HM-17's `measure` just never inherited it. Fixed by specifying the metric excludes the header, reusing `test_fork_drift.py`'s existing `parse_cherry_pick_header` to derive the boundary rather than hardcoding a second line count. |
+
+### Rebutted
+
+None. Every one of the 20 findings had a true factual core; the defense's disagreements were about
+severity and remedy, never about the underlying fact.
+
+### Defender's convergence judgment, and why round 7 was not run
+
+The defense (reproduced in full at `.claude/jobs/d54cd068/tmp/round6_defense.md`) closed with an
+explicit recommendation to stop, on three grounds, all adopted here:
+
+1. **The yield curve.** Round 6's 4 filed BLOCKERs collapse to 2 actual defects (R3's cluster and R2),
+   one of which is a single passage that should have been deleted and the other a single mis-cited
+   field. A seventh adversarial round against a freshly-remediated document would most likely find
+   stale citations introduced by round 6's own edits — precisely the failure mode this round
+   diagnosed, not a new one.
+2. **The defect class is mechanical, not the kind a human round finds reliably.** Fourteen stale line
+   citations, an AC range off by one in two places, a `Literal` enumerated with different arity in two
+   places, four task rows missing ACs their own sections define — the defense's own recommendation is
+   two checkers, not a round: a citation-anchor validator (parse every `` `file:start-end` ``, assert
+   the named symbol is in range) and a cross-reference lint (every `AC-N.M` appears in exactly one
+   task row's gate; every `HM-N` in §9.2 appears in §9.4's arithmetic and vice versa). Neither exists
+   yet; building them is future work, not this remediation.
+3. **R14 is a decision gate, not a defect.** The three open decisions this round surfaced are
+   correctly left unresolved — recording them is the fix; deciding them is the user's call and the
+   actual gate on T10's dispatch, independent of any further adversarial round.
+
+**Convergence, stated plainly: round 6 found zero design errors and zero contradictions with any
+prior round's adjudication.** Five rounds of design review (1–5) and one round of coherence review
+(6) is the full cycle this document is chartered for. Round 7 was deliberately not run. The
+recommended next steps — build the two checkers named above, take a scoped read of §8.1 and T10's row
+specifically (the only genuinely new spec text this remediation added), and put the three open
+decisions in front of the user — are process, not further adversarial rounds, and are outside this
+remediation pass's scope.
