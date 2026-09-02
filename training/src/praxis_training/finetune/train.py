@@ -291,7 +291,10 @@ def run_training(*, pairs: Sequence[RenderedPair], tokenizer, model_id: str, rev
 
 
 def run_eval(*, ckpt_dir: Path, corpus: Path, sidecar: Path, device: str, label: str,
-             max_rows: int | None, out_path: Path) -> dict[str, Any]:
+             max_rows: int | None, out_path: Path, dump_outputs: Path | None = None) -> dict[str, Any]:
+    """Score ``ckpt_dir`` on the eval split of (corpus, sidecar). ``dump_outputs``
+    (P2.6b) persists the raw generations as a recorded-outputs artifact so the
+    report can be re-scored without inference (260902 amendment practice)."""
     import torch
 
     from praxis_training.baseline_eval.runner import PairSet, load_pair_set, run_local
@@ -305,6 +308,7 @@ def run_eval(*, ckpt_dir: Path, corpus: Path, sidecar: Path, device: str, label:
         device="cuda" if use_cuda else "cpu",
         dtype="bfloat16" if (use_cuda and torch.cuda.is_bf16_supported()) else None,
         max_new_tokens=EVAL_MAX_NEW_TOKENS, split=None, model_label=label,
+        dump_outputs=dump_outputs,
     )
     _write_json(out_path, report)
     return report
@@ -342,6 +346,10 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--smoke", action="store_true",
                    help=f"L2/L3: {SMOKE_MAX_ROWS} rows, {SMOKE_MAX_STEPS} steps, real max_length, eval on {SMOKE_EVAL_ROWS}")
     p.add_argument("--eval-after", action="store_true", help="score the checkpoint on the eval split")
+    p.add_argument("--compare-report", type=Path, default=None,
+                   help="P2.6b: OLD report on the same split; fills the pre-registered prediction fields")
+    p.add_argument("--probe-pairs", type=Path, default=None, help="P2.6b: probe corpus (scored as a second report)")
+    p.add_argument("--probe-sidecar", type=Path, default=None)
     p.add_argument("--results-out", type=Path, default=None, help="flat results JSON (default out-dir/result.json)")
     p.add_argument("-v", "--verbose", action="store_true")
     return p
@@ -451,6 +459,7 @@ def main(argv: list[str] | None = None) -> int:
         report = run_eval(
             ckpt_dir=ckpt_dir, corpus=corpus, sidecar=sidecar, device=device, label=label,
             max_rows=SMOKE_EVAL_ROWS if args.smoke else None, out_path=out_dir / "eval_report.json",
+            dump_outputs=out_dir / "eval_dump.json",
         )
         head = _headline(report)
         manifest["eval"] = head | {"report": str(out_dir / "eval_report.json")}
@@ -466,6 +475,36 @@ def main(argv: list[str] | None = None) -> int:
                  head["n_examples"], head["exact_match_accuracy"]["value"] or 0.0,
                  head["clarify_recall"]["value"], head["clarify_precision"]["value"],
                  head["tripwire_out_of_surface_tool_calls"])
+        if args.compare_report is not None:
+            from praxis_training.finetune.p26b_predictions import evaluate_predictions
+
+            old_report = json.loads(Path(args.compare_report).read_text(encoding="utf-8"))
+            pred = evaluate_predictions(old_report, report)
+            _write_json(out_dir / "predictions.json", pred | {"compare_report": str(args.compare_report)})
+            manifest["predictions"] = {k: v for k, v in pred.items() if not k.endswith("_ids") and not k.endswith("categories")}
+            results.update({
+                "surface6_recovered": pred["surface6_recovered"],
+                "verb_category_migrated": pred["verb_category_migrated"],
+                "flips_hit_to_miss": pred["flips_hit_to_miss"],
+            })
+            log.info("predictions: surface6=%d/6 verb_migrated=%d/22 hit->miss=%d miss->hit=%d",
+                     pred["surface6_recovered"], pred["verb_category_migrated"],
+                     pred["flips_hit_to_miss"], pred["flips_miss_to_hit"])
+        if args.probe_pairs is not None:
+            probe_sidecar = args.probe_sidecar or args.probe_pairs.with_name(args.probe_pairs.stem + "_sidecar.jsonl")
+            probe = run_eval(
+                ckpt_dir=ckpt_dir, corpus=args.probe_pairs, sidecar=probe_sidecar, device=device,
+                label=label + " [probe]", max_rows=SMOKE_EVAL_ROWS if args.smoke else None,
+                out_path=out_dir / "probe_report.json", dump_outputs=out_dir / "probe_dump.json",
+            )
+            phead = _headline(probe)
+            manifest["probe_eval"] = phead | {"report": str(out_dir / "probe_report.json")}
+            results.update({
+                "probe_n": phead["n_examples"],
+                "probe_exact_match_accuracy": phead["exact_match_accuracy"]["value"],
+            })
+            log.info("probe n=%d acc=%.3f", phead["n_examples"], phead["exact_match_accuracy"]["value"] or 0.0)
+        _write_json(out_dir / "train_manifest.json", manifest)
 
     manifest["finished_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     _write_json(out_dir / "train_manifest.json", manifest)
