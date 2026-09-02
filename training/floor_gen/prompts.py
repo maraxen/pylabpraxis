@@ -20,9 +20,9 @@ from typing import Any, Final
 from floor_gen.declarations import render_declarations
 from floor_gen.synth import SynthExample
 from floor_gen.value_formats import VALUE_FORMAT_CONVENTIONS
-from floor_gen.versions import PROMPT_VERSION
+from floor_gen.versions import PROMPT_VERSION, PROMPT_VERSION_NATURAL, VERB_PARAPHRASE_LEXICON
 
-__all__ = ["build_prompt", "compute_input_hash", "response_shape_instructions"]
+__all__ = ["build_prompt", "build_prompt_natural", "compute_input_hash", "response_shape_instructions"]
 
 
 #: Shared contract for BOTH backends: the assistant-under-test must reply with
@@ -130,6 +130,108 @@ def build_prompt(example: SynthExample) -> dict[str, str]:
     )
     payload = {
         "prompt_version": PROMPT_VERSION,
+        "cell_id": cell.cell_id,
+        "example_index": example.index,
+        "ambiguity_class": cls,
+        "structured_calls": example.structured_calls,
+    }
+    return {"system": system, "user": user, "input_hash": compute_input_hash(payload)}
+
+
+# ---------------------------------------------------------------------------
+# Natural-phrasing lane (task 260902_p26b_surface_data) -- SEPARATE builder so
+# the base prompt text above (and every cached row keyed on PROMPT_VERSION)
+# never changes. Same declaration + structured-call blocks; different
+# instruction: natural location phrasing and everyday verbs, never the raw
+# identifiers or the tool name.
+# ---------------------------------------------------------------------------
+
+_NATURAL_LOCATION_RULE: Final[str] = (
+    "LOCATION PHRASING: never write a raw identifier (no underscores, no dotted "
+    "well ids, no brackets). Say locations the way a lab scientist speaks: "
+    "'well D1 of plate 1', 'plate 1, D1', 'the C5 spot on the tip rack', "
+    "'reservoir 1', 'the hotel stack', 'the scale station', 'lid 2'. Keep the "
+    "exact well letter+number and the exact plate/reservoir number so the "
+    "location is still unambiguous."
+)
+_NATURAL_VERB_RULE: Final[str] = (
+    "ACTION PHRASING: never write the tool name '{verb}' or its words. Describe "
+    "the action with an everyday phrasing such as: {lexicon}."
+)
+_NATURAL_CLASS: Final[dict[str, str]] = {
+    "none": (
+        "Write a natural, specific user utterance asking for EXACTLY this call. "
+        "Mention every parameter: quantities as '<n> microliters'."
+    ),
+    "missing-slot": (
+        "Write a natural user utterance that requests this call but OMITS the "
+        "parameter '{missing_param}' entirely -- never mention it, never hint at a "
+        "value for it. All other parameters MUST appear naturally."
+    ),
+    "ambiguous-referent": (
+        "Write a natural user utterance requesting this call, but refer to the "
+        "'{slot_param}' argument ONLY with the vague phrase '{vague_hint}' (use it "
+        "verbatim) -- NEVER a concrete id. All other parameters appear naturally."
+    ),
+}
+
+
+def _vague_hint_from_call(example: SynthExample) -> str:
+    cell = example.cell
+    if cell.slot_param and example.schema_calls:
+        value = example.schema_calls[0]["params"].get(cell.slot_param)
+        if isinstance(value, list) and value:
+            value = value[0]
+        if isinstance(value, str):
+            return value
+    return "the plate"
+
+
+def build_prompt_natural(example: SynthExample) -> dict[str, str]:
+    """Natural-phrasing prompt for an IN-SURFACE example (never out-of-surface)."""
+    cell = example.cell
+    cls = cell.ambiguity_class
+    if cls == "out-of-surface":
+        raise ValueError("natural lane has no out-of-surface variants")
+    assert cell.verb is not None
+    declarations = render_declarations([cell.verb])
+    instruction = _NATURAL_CLASS[cls]
+    if cls == "missing-slot":
+        assert cell.missing_param is not None
+        instruction = instruction.replace("{missing_param}", cell.missing_param)
+    if cls == "ambiguous-referent":
+        instruction = instruction.replace("{slot_param}", cell.slot_param or "?").replace(
+            "{vague_hint}", _vague_hint_from_call(example)
+        )
+    lexicon = ", ".join(f"'{p}'" for p in VERB_PARAPHRASE_LEXICON.get(cell.verb, ("do it",)))
+    verb_rule = _NATURAL_VERB_RULE.replace("{verb}", cell.verb).replace("{lexicon}", lexicon)
+    calls_block = canonical_json({"calls": example.structured_calls})
+    formats_block = json.dumps(VALUE_FORMAT_CONVENTIONS, sort_keys=True)
+    user = "\n".join(
+        [
+            f"Task context (prompt_version={PROMPT_VERSION_NATURAL}, cell={cell.cell_id}):",
+            "Tool declaration for this row (FunctionGemma shape):",
+            canonical_json(declarations[0]),
+            "Structured call(s) to NL-ify (corpus-B keyword style kwargs):",
+            calls_block,
+            "Value-format conventions (volumes uL floats; wells A1-style):",
+            formats_block,
+            "Instruction:",
+            instruction,
+            _NATURAL_LOCATION_RULE,
+            verb_rule,
+            _RESPONSE_SHAPE,
+        ]
+    )
+    system = (
+        "You are a data-generation teacher for a liquid-handling lab copilot "
+        "(FunctionGemma training corpus, natural-phrasing lane). You convert "
+        "structured tool calls into realistic single-turn user utterances that "
+        "sound like a scientist talking, under exact ambiguity-class constraints. "
+        "You follow the output contract literally."
+    )
+    payload = {
+        "prompt_version": PROMPT_VERSION_NATURAL,
         "cell_id": cell.cell_id,
         "example_index": example.index,
         "ambiguity_class": cls,

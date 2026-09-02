@@ -180,6 +180,19 @@ def _prewarm_cache_batched(
             key = compute_cache_key(PROMPT_VERSION, prompt["input_hash"])
             if key not in misses and cache.get(key) is None:
                 misses[key] = prompt
+    prewarm_prompts(misses, backend, cache, batch_size, prompt_version=PROMPT_VERSION)
+
+
+def prewarm_prompts(
+    misses: dict[str, dict[str, str]],
+    backend: TeacherBackend,
+    cache: TeacherCache,
+    batch_size: int,
+    *,
+    prompt_version: str,
+) -> None:
+    """Batched cache pre-warm over an explicit {cache_key: prompt} map (shared
+    by the base lane above and the natural lane, which builds its own map)."""
     if not misses:
         return
     items = list(misses.items())
@@ -192,7 +205,7 @@ def _prewarm_cache_batched(
         for key, raw in raw_by_id.items():
             cache.put(
                 key,
-                prompt_version=PROMPT_VERSION,
+                prompt_version=prompt_version,
                 input_hash=misses[key]["input_hash"],
                 teacher_model_version=backend.teacher_model_version,
                 raw_response=raw,
@@ -404,6 +417,7 @@ def write_outputs(
     manifest: dict[str, Any],
     *,
     corpus_name: str = "corpus_p23_floor.jsonl",
+    manifest_name: str = "manifest.json",
 ) -> tuple[Path, Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     corpus_path = out_dir / corpus_name
@@ -411,6 +425,6 @@ def write_outputs(
         "".join(canonical_json(row) + "\n" for row in rows),
         encoding="utf-8",
     )
-    manifest_path = out_dir / "manifest.json"
+    manifest_path = out_dir / manifest_name
     manifest_path.write_text(json.dumps(manifest, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     return corpus_path, manifest_path

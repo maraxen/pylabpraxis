@@ -17,6 +17,8 @@ __all__ = [
     "GEMINI_MODEL",
     "GENERATOR_VERSION",
     "SYNTH_SEED_VERSION",
+    "PROMPT_VERSION_NATURAL",
+    "VERB_PARAPHRASE_LEXICON",
     "MATRIX_VERSION",
     "PLR_SUBMODULE_SHA",
     "PROMPT_VERSION",
@@ -50,6 +52,39 @@ SYNTH_SEED_VERSION: Final[str] = "0.2.0"
 
 #: Bump on ANY change to prompt text (changes every cache key by construction).
 PROMPT_VERSION: Final[str] = "p23_nlify_v1"
+
+#: Natural-phrasing lane (task 260902_p26b_surface_data): a SECOND prompt
+#: version over the SAME structured calls. Its text lives in
+#: prompts.build_prompt_natural, separate from build_prompt so the base
+#: prompt (and its 685 cached rows) never changes. Bump on ANY change to the
+#: natural prompt text or to VERB_PARAPHRASE_LEXICON.
+PROMPT_VERSION_NATURAL: Final[str] = "p23_nlify_v2_natural"
+
+#: Everyday phrasings per verb, offered to the teacher instead of the tool
+#: name (P2.6 finding: golden eval says "pull / put / toss / copy", floor
+#: training rows say "aspirate / dispense / discard_tips / stamp").
+VERB_PARAPHRASE_LEXICON: Final[dict[str, tuple[str, ...]]] = {
+    "aspirate": ("pull", "draw up", "suck up", "take up"),
+    "dispense": ("put", "deliver", "drop", "add"),
+    "transfer": ("move", "shuttle", "carry", "bring over"),
+    "stamp": ("copy the plate", "replicate the plate", "stamp the layout"),
+    "mix": ("mix", "stir", "pipette up and down"),
+    "blow_out": ("blow out", "push out the last of the liquid"),
+    "touch_tip": ("touch the tip off", "tap the tip on the wall"),
+    "dispense_to_waste": ("dump into waste", "empty the tip into the waste", "throw the liquid away"),
+    "pick_up_tips": ("grab tips", "load tips", "pick up fresh tips", "get tips"),
+    "drop_tips": ("put the tips back", "return the tips", "drop the tips off"),
+    "discard_tips": ("toss the tips", "throw away the tips", "bin the tips", "get rid of the tips"),
+    "move_plate": ("place the plate", "put the plate", "shift the plate", "set the plate down"),
+    "move_resource": ("carry", "transport", "bring", "relocate"),
+    "move_lid": ("cover", "uncover", "put the lid", "take the lid"),
+    "read_absorbance": ("measure absorbance", "read the OD", "scan absorbance"),
+    "read_fluorescence": ("measure fluorescence", "read the signal", "scan fluorescence"),
+    "read_luminescence": ("measure luminescence", "read the glow", "scan luminescence"),
+    "set_temperature": ("warm", "heat", "bring to", "set the heater to"),
+    "shake": ("shake", "agitate", "start shaking"),
+    "stop_shaking": ("stop shaking", "stop the shaker", "halt the shaking"),
+}
 
 #: Matrix data revision (committed ambiguity_matrix.json).
 #: 2 (260901): examples_per_cell 3 -> 15 (out-of-surface cells 20) so the

@@ -61,18 +61,20 @@ def _selected_cells(args: argparse.Namespace):
     return matrix, ordered
 
 
+def _backend(args: argparse.Namespace) -> "TitanixTeacher | GeminiTeacher | FakeTeacher":
+    if args.backend == "titanix":
+        return TitanixTeacher()
+    if args.backend == "gemini":
+        return GeminiTeacher()
+    if args.backend == "fake":
+        return FakeTeacher()
+    raise ValueError(f"unknown backend {args.backend}")  # pragma: no cover - argparse guards
+
+
 def cmd_generate(args: argparse.Namespace) -> int:
     matrix, cells = _selected_cells(args)
     cache = TeacherCache(Path(args.cache_dir))
-    backend: TitanixTeacher | GeminiTeacher | FakeTeacher
-    if args.backend == "titanix":
-        backend = TitanixTeacher()
-    elif args.backend == "gemini":
-        backend = GeminiTeacher()
-    elif args.backend == "fake":
-        backend = FakeTeacher()
-    else:  # pragma: no cover - argparse choices guard this
-        raise ValueError(f"unknown backend {args.backend}")
+    backend = _backend(args)
 
     rows, stats = generate_corpus(
         matrix, backend, cache, selected_cell_ids=tuple(cells), batch_size=args.batch_size,
@@ -121,6 +123,42 @@ def cmd_batches(args: argparse.Namespace) -> int:
         items, Path(args.out_dir), prompt_version=PROMPT_VERSION, batch_size=args.batch_size
     )
     print(f"wrote {len(paths)} batch file(s) covering {len(items)} item(s) -> {Path(args.out_dir)}")
+    return 0
+
+
+def cmd_generate_natural(args: argparse.Namespace) -> int:
+    """Natural-phrasing variants of every accepted in-surface floor row."""
+    import json
+
+    from floor_gen.natural import (
+        build_natural_manifest,
+        eval_utterances_from_sidecar,
+        generate_natural_corpus,
+    )
+
+    base_corpus = Path(args.base_corpus)
+    base_rows = [json.loads(l) for l in base_corpus.read_text(encoding="utf-8").splitlines() if l.strip()]
+    if args.limit is not None:
+        base_rows = base_rows[: args.limit]  # first-batch acceptance check (prereg §4)
+    base_manifest = json.loads((base_corpus.parent / "manifest.json").read_text(encoding="utf-8"))
+    matrix = load_matrix(committed_matrix_path())
+    backend = _backend(args)
+    cache = TeacherCache(Path(args.cache_dir))
+    eval_utts = eval_utterances_from_sidecar(Path(args.eval_sidecar)) if args.eval_sidecar else frozenset()
+    rows, stats = generate_natural_corpus(
+        base_rows, matrix, backend, cache, batch_size=args.batch_size, eval_utterances=eval_utts
+    )
+    manifest = build_natural_manifest(stats, base_corpus=str(base_corpus), base_manifest=base_manifest)
+    corpus_path, manifest_path = write_outputs(
+        Path(args.out_dir), rows, manifest, corpus_name=args.corpus_name, manifest_name=args.manifest_name
+    )
+    print(
+        f"natural: base={stats.base_rows} skipped_oos={stats.skipped_out_of_surface} "
+        f"accepted={stats.accepted} rejected_shape={stats.rejected_shape} "
+        f"rejected_filter={stats.rejected_filter} by_reason={json_compact(stats.rejected_by_reason)} "
+        f"acceptance={stats.acceptance_rate:.3f} cache_hits={stats.cache_hits} cache_misses={stats.cache_misses}"
+    )
+    print(f"corpus={corpus_path}\nmanifest={manifest_path}")
     return 0
 
 
@@ -206,6 +244,19 @@ def main(argv: list[str] | None = None) -> int:
     bat.add_argument("--out-dir", default=str(DEFAULT_BATCH_DIR))
     bat.add_argument("--batch-size", type=int, default=8)
     bat.set_defaults(func=cmd_batches)
+
+    nat = sub.add_parser("generate-natural", help="natural-phrasing variants of the accepted floor rows (P2.6b lane)")
+    nat.add_argument("--backend", choices=["titanix", "gemini", "fake"], default="gemini")
+    nat.add_argument("--batch-size", type=int, default=GEMINI_BATCH_SIZE)
+    nat.add_argument("--base-corpus", default=str(DEFAULT_OUT_DIR / "corpus_p23_floor.jsonl"))
+    nat.add_argument("--eval-sidecar", default=str(_TRAINING_ROOT / "assemble" / "out" / "corpus_p25_sidecar.jsonl"),
+                     help="assembled sidecar whose split=eval utterances must not be duplicated ('' to disable)")
+    nat.add_argument("--cache-dir", default=str(DEFAULT_CACHE_DIR))
+    nat.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
+    nat.add_argument("--corpus-name", default="corpus_p23_floor_natural.jsonl")
+    nat.add_argument("--manifest-name", default="manifest_natural.json")
+    nat.add_argument("--limit", type=int, default=None, help="first N base rows only (acceptance check)")
+    nat.set_defaults(func=cmd_generate_natural)
 
     regen = sub.add_parser("regenerate", help="rebuild corpus from cache only (zero calls)")
     regen.add_argument("--manifest", required=True)
