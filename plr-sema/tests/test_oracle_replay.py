@@ -1,7 +1,16 @@
 """Unit tests for oracle_replay tier 1 (backlog #4879).
 
-Tests the common infrastructure (row_to_verifier_inputs, adapt_graph, compare)
-without running the full corpus. Smoke test on training/examples.
+Tests the common infrastructure (row_to_verifier_inputs, lower_calls-based
+static analysis, compare) without running the full corpus. Smoke test on
+training/examples.
+
+260902 (spec §11, SEMA-IR): ``adapt_graph`` is deleted. The corpus path now
+lowers PLR-named, already-grounded kwargs through
+``plr_sema.check.ir.lower_calls`` (``ir_value_of``, ``run_static_calls`` --
+see ``oracle_common.py``'s module docstring) instead of adapting a call
+sequence into a §6.2 graph payload. ``TestAdaptGraph``/
+``TestPLRNamedArguments`` below are rewritten accordingly (renamed to
+reflect what they now test).
 """
 
 from __future__ import annotations
@@ -16,11 +25,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "eval"))
 
 from oracle_common import (
     RuntimeOutcome,
-    adapt_graph,
+    calls_from_plr_kwargs,
     compare,
+    ir_value_of,
+    param_names_from_contracts,
+    resources_from_example,
     row_to_verifier_inputs,
     run_runtime,
-    run_static,
+    run_static_calls,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -105,71 +117,86 @@ class TestRowToVerifierInputs:
         assert len(intent["calls"]) == len(call_seq)
 
 
-class TestAdaptGraph:
-    """Tests for adapting a call sequence into a graph payload."""
+class TestIrValueOf:
+    """Tests for `ir_value_of` (§11.2.2) -- the harvest-time mapping from a
+    bound PLR object to IR value JSON, replacing `adapt_graph`'s old
+    `repr`-based harvest.
+    """
 
-    def test_field_set(self):
-        """Verify adapt_graph produces all required fields (mirrors
-        fixtures/simple_transfer_graph.json exactly).
-        """
+    def test_scalars_and_none(self):
+        assert ir_value_of(100) == {"k": "lit", "v": 100}
+        assert ir_value_of(100.0) == {"k": "lit", "v": 100.0}
+        assert ir_value_of("A1") == {"k": "lit", "v": "A1"}
+        assert ir_value_of(None) == {"k": "lit", "v": None}
+        assert ir_value_of(True) == {"k": "lit", "v": True}
+
+    def test_list_lowers_to_seq_of_lits(self):
+        assert ir_value_of([1, 2, 3]) == {
+            "k": "seq",
+            "items": [{"k": "lit", "v": 1}, {"k": "lit", "v": 2}, {"k": "lit", "v": 3}],
+        }
+
+    def test_unresolvable_object_is_top(self):
+        class _Opaque:
+            pass
+
+        assert ir_value_of(_Opaque()) == {"k": "top"}
+
+    def test_plr_resource_with_parent_is_name_keyed_ref(self):
+        from pylabrobot.resources import Coordinate, Plate, Well
+
+        plate = Plate(
+            "plate_1", size_x=10, size_y=10, size_z=10, ordered_items={},
+        )
+        well = Well("well_1", size_x=1, size_y=1, size_z=1)
+        plate.assign_child_resource(well, location=Coordinate.zero())
+        value = ir_value_of(well)
+        assert value == {"k": "ref", "name": "plate_1", "cell": "well_1"}
+
+    def test_plr_top_level_resource_is_ref_with_no_cell(self):
+        from pylabrobot.resources import Plate
+
+        plate = Plate("plate_2", size_x=10, size_y=10, size_z=10, ordered_items={})
+        value = ir_value_of(plate)
+        assert value == {"k": "ref", "name": "plate_2", "cell": None}
+
+
+class TestResourcesAndCallsFromExample:
+    """Tests for `resources_from_example`/`calls_from_plr_kwargs` -- the
+    `lower_calls`-path replacements for `adapt_graph`.
+    """
+
+    def test_resources_from_example_field_set(self):
+        example = {
+            "deck_layout": {
+                "resources": {"tip_rack": "TipRack", "src": "Plate", "dst": "Plate"},
+            },
+        }
+        resources = resources_from_example(example)
+        assert resources["lh"]["type"] == "LiquidHandler"
+        assert resources["tip_rack"]["type"] == "TipRack"
+        assert resources["src"]["type"] == "Plate"
+        assert resources["dst"]["type"] == "Plate"
+        for decl in resources.values():
+            assert "is_container" in decl
+            assert "is_parameter" in decl
+            assert "parents" in decl
+
+    def test_calls_from_plr_kwargs_skips_not_planned(self):
         example = {
             "call_sequence": [
                 {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1"]}},
-                {"name": "transfer", "params": {
-                    "source": "src.A1",
-                    "destination": "dst.B1",
-                    "volume_ul": 50,
-                }},
+                {"name": "transfer", "params": {"source": "src.A1", "destination": "dst.B1", "volume_ul": 50}},
             ],
-            "deck_layout": {
-                "resources": {"tip_rack": "TipRack", "src": "Plate", "dst": "Plate"},
-                "seed_volumes": {"src.A1": 100},
-            },
         }
-
-        graph = adapt_graph(example, "test.protocol")
-
-        # Check top-level structure
-        assert graph["protocol_fqn"] == "test.protocol"
-        assert graph["protocol_name"] == "protocol"
-        assert graph["has_conditionals"] is False
-        assert graph["has_loops"] is False
-        assert "operations" in graph
-        assert "resources" in graph
-        assert "execution_order" in graph
-        assert "machine_types" in graph
-        assert "resource_types" in graph
-        assert "preconditions" in graph
-
-        # Check resource fields match fixture exactly
-        for res in graph["resources"].values():
-            assert "declared_type" in res
-            assert "element_type" in res
-            assert "is_container" in res
-            assert "is_parameter" in res
-            assert "items_x" in res
-            assert "items_y" in res
-            assert "parental_chain" in res
-            assert "source_expression" in res
-            assert "variable_name" in res
-
-        # Check operation fields
-        for op in graph["operations"]:
-            assert "arguments" in op
-            assert "condition_expr" in op
-            assert "creates_state" in op
-            assert "depends_on_params" in op
-            assert "false_branch" in op
-            assert "foreach_body" in op
-            assert "foreach_source" in op
-            assert "id" in op
-            assert "line_number" in op
-            assert "method_name" in op
-            assert "node_type" in op
-            assert "preconditions" in op
-            assert "receiver_type" in op
-            assert "receiver_variable" in op
-            assert "true_branch" in op
+        plr_kwargs = {0: {"tip_spots": {"k": "seq", "items": [{"k": "ref", "name": "tip_rack", "cell": "A1"}]}}}
+        calls, not_planned = calls_from_plr_kwargs(example, plr_kwargs)
+        assert not_planned == [1]
+        assert len(calls) == 1
+        assert calls[0]["method"] == "pick_up_tips"
+        assert calls[0]["kwargs"] == plr_kwargs[0]
+        assert calls[0]["receiver"] == "lh"
+        assert calls[0]["receiver_type"] == "LiquidHandler"
 
 
 class TestCompare:
@@ -335,31 +362,60 @@ class TestRowCategories:
 
 
 class TestPLRNamedArguments:
-    """Tests for PLR-named argument handling (planned fix)."""
+    """Tests for PLR-named argument handling through the lower_calls path
+    (§11.2.2/§11.2.4) -- the direct successor to adapt_graph's old
+    plr_kwargs handling, now via run_static_calls + lower_calls's trust
+    rule rather than a graph payload's `arguments` dict.
+    """
 
-    def test_adapt_graph_with_plr_kwargs(self):
-        """adapt_graph uses PLR-named kwargs when available."""
+    def test_run_static_calls_uses_plr_named_kwargs(self):
+        """A planned call's IR-value-JSON kwargs (PLR-named by
+        construction, §11.2.2) reach `lower_calls`; a real PLR parameter
+        name is trusted and surfaces in the CALL's kwargs unmangled when
+        `param_names` covers it.
+        """
         example = {
             "call_sequence": [
                 {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1"]}},
             ],
             "deck_layout": {"resources": {"tip_rack": "TipRack"}},
         }
-
-        # Simulate PLR kwargs (tool "at" param maps to PLR "tip_spots" param)
         plr_kwargs = {
-            0: {"tip_spots": "['tip_rack.A1']", "use_channels": "[0]"},
+            0: {
+                "tip_spots": {"k": "seq", "items": [{"k": "ref", "name": "tip_rack", "cell": "A1"}]},
+                "use_channels": {"k": "seq", "items": [{"k": "lit", "v": 0}]},
+            },
         }
+        contracts_json = json.dumps(
+            {
+                "contracts": {
+                    "LiquidHandler.pick_up_tips": {
+                        "guards": [],
+                        "gaps": [],
+                        "params": ["tip_spots", "use_channels"],
+                    }
+                }
+            }
+        )
+        param_names = param_names_from_contracts(contracts_json)
+        st, not_planned = run_static_calls(example, plr_kwargs, contracts_json, param_names=param_names)
+        assert not_planned == []
+        assert st["op_0"]["verdict"] == "unknown"
+        # zero guards/zero gaps/no loop -> the totality fallback finding.
+        assert "no_contract_derived" in st["op_0"]["reasons"]
 
-        graph = adapt_graph(example, "test.protocol", plr_kwargs)
-
-        # Operation 0 should have PLR-named arguments
-        op0_args = graph["operations"][0]["arguments"]
-        # When plr_kwargs provided, those names are used instead of tool names
-        if 0 in plr_kwargs:
-            assert "tip_spots" in op0_args or "at" in op0_args  # depends on usage
-            # In this case, adapt_graph uses plr_kwargs[0] directly
-            assert set(op0_args.keys()) >= {"tip_spots", "use_channels"}
+    def test_run_static_calls_not_planned_index_gets_empty_entry(self):
+        example = {
+            "call_sequence": [
+                {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1"]}},
+                {"name": "transfer", "params": {"source": "src.A1", "destination": "dst.B1", "volume_ul": 50}},
+            ],
+        }
+        plr_kwargs = {0: {"tip_spots": {"k": "seq", "items": []}}}
+        contracts_json = json.dumps({"contracts": {}})
+        st, not_planned = run_static_calls(example, plr_kwargs, contracts_json)
+        assert not_planned == [1]
+        assert st["op_1"] == {"verdict": "unknown", "n_findings": 0, "reasons": []}
 
 
 class TestT16dSidecarGating:
@@ -519,8 +575,11 @@ class TestSmokeOnExamples:
 
     @pytest.mark.skipif(not EXAMPLES_DIR.exists(), reason="examples dir missing")
     def test_full_pipeline_on_examples(self):
-        """Run runtime + static + compare on all examples."""
+        """Run runtime + static (lower_calls + check_ir, §11.2.2) + compare
+        on all examples.
+        """
         contracts_json = CONTRACTS_PATH.read_text()
+        param_names = param_names_from_contracts(contracts_json)
 
         results = []
         for example_file in sorted(EXAMPLES_DIR.glob("*.json")):
@@ -529,8 +588,8 @@ class TestSmokeOnExamples:
                 continue
 
             rt = run_runtime(example)
-            graph = adapt_graph(example, f"training.examples.{example_file.stem}")
-            st = run_static(graph, contracts_json)
+            st, not_planned = run_static_calls(example, rt.plr_kwargs, contracts_json, param_names=param_names)
+            assert not_planned == [], f"{example_file.name}: unexpected not-planned indices {not_planned}"
             rows = compare(example, rt, st)
 
             results.append({

@@ -123,7 +123,8 @@ def _measure_hm8() -> int:
     this row named was deleted outright, not shrunk. Grep for its
     reintroduction rather than hardcoding 0, so the RETIRED extension of
     `test_frozen_surfaces_are_exact` (measure() == 0 exactly) actually
-    detects a reappearance instead of vacuously returning a constant."""
+    detects a reappearance instead of vacuously returning a constant.
+    """
     text = _FAILURE_TAXONOMY_PATH.read_text()
     return text.count("inspect.getmembers(")
 
@@ -162,7 +163,8 @@ def _measure_hm16() -> int:
     """Compatibility shim modules under `praxis/backend/utils/plr_static_analysis/`
     (spec §1.2): `from plr_sema.<mod> import *` re-export shims. Round 1 has
     nothing migrated yet, so this is 0 today -- the row exists so the FIRST
-    migration is forced through a reviewable ratchet bump."""
+    migration is forced through a reviewable ratchet bump.
+    """
     shim_dir = REPO_ROOT / "praxis" / "backend" / "utils" / "plr_static_analysis"
     count = 0
     for path in sorted(shim_dir.glob("*.py")):
@@ -188,7 +190,8 @@ def _measure_hm17() -> int:
     header (round-6 remediation, R19). Reuses T5's `parse_cherry_pick_header`
     to find the header boundary by scanning for its closing fence, never by
     a hardcoded line count -- a header that gains a line must not silently
-    break this row."""
+    break this row.
+    """
     import test_fork_drift  # noqa: PLC0415
 
     header = _git_state_cherry_pick_header()
@@ -204,15 +207,38 @@ def _measure_hm18() -> int:
     raises if either is absent, so a successful parse always yields 2 --
     this still calls through it rather than hardcoding 2, so a header
     reshaped to drop a field turns this row red via the raise, not via a
-    silently-wrong constant."""
+    silently-wrong constant.
+    """
     header = _git_state_cherry_pick_header()
     return sum(1 for v in (header.upstream_sha256, header.upstream_commit) if v)
 
 
 def _measure_hm21() -> int:
-    from plr_sema.check.graph import OperationNode, ResourceNode
+    """260902 (spec §11.6, SEMA-IR): metric REDEFINED. Pre-increment this
+    counted mirrored fields (a judgement about which §3.3 reasons/§7.3
+    lookups existed); under the no-drop invariant the mirror is now
+    REQUIRED to equal `model_fields`, so that count is a fact about
+    upstream, not a judgement, and a "ceiling" on it is meaningless. The
+    only remaining judgement is which fields the lowering refuses to
+    consume -- the `X` (excluded-with-reason) dispositions in
+    `plr_sema.check.ir.DISPOSITIONS`. Under the PRE-increment metric this
+    row read 34 (15 OperationNode + 9 ResourceNode + 10
+    ProtocolComputationGraph, the full no-drop mirror, spec §11.6); the
+    metric changed because the judgement it measured (which fields to
+    mirror) no longer exists -- every field now gets a disposition, and the
+    disposition table's own exhaustiveness is what `tests/test_ir.py`'s
+    AC-11.1 and `tests/test_check_graph_mirror_drift.py` protect, not this
+    ratchet. This is the anti-gaming-relevant direction NOTE (§11.6's
+    condition iv): counting `X` guards against GROWTH (someone typing a
+    new judgement call), but reclassifying a field OUT of `X` -- the
+    laundering move -- LOWERS this count, which a growth-guarding ratchet
+    reads as safe. `tests/test_ir.py::test_excluded_fields_are_excluded`
+    (AC-11.14) is what actually guards that direction, independently of
+    this measure.
+    """
+    from plr_sema.check.ir import EXCLUDED_FIELDS
 
-    return len(dataclasses.fields(OperationNode)) + len(dataclasses.fields(ResourceNode))
+    return len(EXCLUDED_FIELDS)
 
 
 REGISTRY: tuple[HandMaintainedSurface, ...] = (
@@ -606,23 +632,51 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
     ),
     HandMaintainedSurface(
         id="HM-21",
-        what="field set mirrored by check/graph.py from OperationNode/ResourceNode (section 6.2, D1)",
-        metric="fields mirrored",
-        declared=10,
+        what=(
+            "REDEFINED 260902 (spec section 11.6, SEMA-IR): which upstream "
+            "OperationNode/ResourceNode/ProtocolComputationGraph fields the "
+            "analyzer refuses to consume, and why -- the X "
+            "(excluded-with-reason) dispositions in "
+            "plr_sema.check.ir.DISPOSITIONS. Pre-increment this counted "
+            "fields mirrored by check/graph.py (34 under that metric, at "
+            "the same live model: 15 OperationNode + 9 ResourceNode + 10 "
+            "ProtocolComputationGraph); the judgement that metric measured "
+            "no longer exists now that the mirror is total (the no-drop "
+            "invariant, section 11.1.4), so the metric was redefined to "
+            "what remains hand-maintained rather than ratcheting a count "
+            "that is now a fact about upstream, not a judgement."
+        ),
+        metric="excluded (X-dispositioned) fields",
+        declared=5,
         status="CAPPED",
         why_not_derived=(
-            "Which fields the mirror needs is a judgement about which "
-            "section 3.3 reasons and section 7.3 lookups exist today, not "
-            "a fact recoverable from PLR source -- each field's continued "
-            "presence in the upstream pydantic model is separately "
-            "drift-tested (Fork C, section 5.3), but the DECISION of which "
-            "fields to mirror is hand-maintained."
+            "Which fields the analyzer refuses to consume is a judgement "
+            "about laundering risk (OperationNode.preconditions/"
+            "creates_state and ProtocolComputationGraph.preconditions are "
+            "populated by hand-typed TIPS_REQUIRED_METHODS/"
+            "TIPS_LOADING_METHODS frozensets that section 8's comparison "
+            "targets -- consuming them would launder the analyzer's own "
+            "comparison target through CALL.kwargs), not a fact recoverable "
+            "from PLR source. Each field's continued presence in the "
+            "upstream pydantic model is separately drift-tested (Fork C, "
+            "section 5.3, now an exhaustiveness check); the DECISION of "
+            "which fields to exclude is hand-maintained, and is "
+            "additionally pinned by identity (independent of this table) "
+            "by tests/test_ir.py::test_excluded_fields_are_excluded "
+            "(AC-11.14) -- because this metric counts X dispositions, "
+            "reclassifying a field OUT of X (the laundering move) LOWERS "
+            "the count, which a growth-guarding ratchet alone would read "
+            "as safe."
         ),
         breaks_when=(
-            "A section 3.3 reason is added needing a field not yet "
-            "mirrored (a reviewable ratchet-visible diff), or "
-            "OperationNode/ResourceNode rename or remove a mirrored field "
-            "(caught by Fork C's drift test, not by this ratchet)."
+            "A field is reclassified out of X in "
+            "plr_sema.check.ir.DISPOSITIONS (caught by "
+            "test_excluded_fields_are_excluded, AC-11.14, independently of "
+            "this ratchet, precisely because this count would DECREASE and "
+            "look safe), or a new field is judged excludable (a reviewable "
+            "ratchet-visible diff -- this row's declared ceiling is 5, "
+            "live is 3, so two slots of headroom exist before a cap "
+            "conversation is needed)."
         ),
         measure="plr_sema._hand_maintained:_measure_hm21",
     ),
@@ -692,7 +746,7 @@ def _update_baselines() -> None:
             continue
         try:
             live = resolve_measure(row.measure)
-        except Exception as exc:  # noqa: BLE001 -- report, don't crash the helper
+        except Exception as exc:
             print(f"{row.id:6} {row.declared:>8} {'ERROR':>8}  {exc}")
             continue
         flag = "" if live <= row.declared else "  <-- OVER DECLARED CEILING"

@@ -75,11 +75,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "eval"))
 from oracle_common import (
     DEFAULT_CONTRACTS,
     RuntimeOutcome,
-    adapt_graph,
     compare,
+    param_names_from_contracts,
     row_to_verifier_inputs,
     run_runtime,
-    run_static,
+    run_static_calls,
 )
 
 log = logging.getLogger(__name__)
@@ -175,6 +175,11 @@ class RowResult:
     unsound_count: int
     plr_kwargs: dict[int, dict[str, Any]]  # PLR-named arguments by call index
     tool_params: dict[str, dict[str, Any]]  # tool parameter names by op_id
+    #: 260902 (spec §11.10): call_sequence indices that were never planned
+    #: (no PlanResult, hence no CALL lowered) -- adapt_graph's old
+    #: tool-named fallback has no successor; these rows are counted here
+    #: rather than silently getting a tool-named CALL.
+    not_planned_indices: list[int] = dataclasses.field(default_factory=list)
 
 
 def run_row(
@@ -314,20 +319,24 @@ def run_row(
     else:
         runtime_outcome = f"raised:{rt.exc_class}"
 
-    # Static
+    # Static (260902, spec §11: lower_calls + check_ir, not adapt_graph +
+    # check_graph -- see oracle_common.py's module docstring).
     check_graph_raised = False
     check_graph_exception = None
     static_verdicts = {}
     n_findings = 0
     tool_params_dict = {}
+    not_planned_indices: list[int] = []
     try:
-        graph = adapt_graph(example, f"corpus.{Path(corpus_file).stem}.{row_index}", rt.plr_kwargs)
-        st = run_static(graph, contracts_json)
+        param_names = param_names_from_contracts(contracts_json)
+        st, not_planned_indices = run_static_calls(example, rt.plr_kwargs, contracts_json, param_names=param_names)
         static_verdicts = {oid: sdata["verdict"] for oid, sdata in st.items()}
         n_findings = sum(sdata["n_findings"] for sdata in st.values())
-        # Capture tool params for per-row record
-        for op in graph["operations"]:
-            tool_params_dict[op["id"]] = op.get("arguments", {})
+        # Capture PLR-named kwargs (IR value JSON) for per-row record --
+        # §11.10: a not-planned index has no successor to adapt_graph's old
+        # tool-named fallback, so it carries no entry here at all.
+        for i, kwargs in rt.plr_kwargs.items():
+            tool_params_dict[f"op_{i}"] = kwargs
     except Exception as e:
         log.warning("Static analysis failed for %s: %s", record_id, e)
         check_graph_raised = True
@@ -369,6 +378,7 @@ def run_row(
         unsound_count=unsound_count,
         plr_kwargs=rt.plr_kwargs,
         tool_params=tool_params_dict,
+        not_planned_indices=not_planned_indices,
     )
 
 
@@ -717,6 +727,7 @@ def main(argv: list[str] | None = None) -> int:
                 "static": r.static_verdicts,
                 "tool_params": r.tool_params,
                 "plr_kwargs": r.plr_kwargs,
+                "not_planned_indices": r.not_planned_indices,
                 "compare": r.compare_rows,
                 "intent_check_failures": r.intent_check_failures,
                 "totality_ok": r.totality_ok,

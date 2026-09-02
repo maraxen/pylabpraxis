@@ -46,6 +46,7 @@ from plr_sema.derive import (
     SCHEMA_VERSION,
     InlinedGuard,
     SurveyRecord,
+    _stamp_to_dict,
     build_contract_keys,
     build_gap_ledger,
     build_index,
@@ -55,7 +56,6 @@ from plr_sema.derive import (
     load_survey,
     scan_dropped_receiver_calls,
 )
-from plr_sema.derive import _stamp_to_dict  # noqa: SLF001 - same-package reuse
 
 
 def _guard_to_json(guard: InlinedGuard) -> dict[str, Any]:
@@ -134,6 +134,17 @@ def build_derived_contracts_payload(
         contracts[out_key] = {
             "guards": [_guard_to_json(g) for g in contract.guards],
             "gaps": [list(gap) for gap in contract.gaps],
+            # 260902 (spec §11.2.4, SEMA-IR): additive `params` key -- this
+            # method's PLR parameter names, straight off `SurveyRecord.params`
+            # (already surveyed by `_function_params`,
+            # `survey_plr_preconditions.py:267-274`). Consumed by
+            # `plr_sema.check.ir.lower_graph`'s parameter-name trust rule
+            # (§11.2.4): a `CALL.kwargs` key is trusted iff it is a member of
+            # this list for the method being lowered. `schema_version` stays
+            # 1 -- `check/` reads this via `.get("params", ())`, so a
+            # pre-increment table (no `params` key on any entry) degrades to
+            # "trust nothing" rather than raising (AC-11.12).
+            "params": list(rec.params),
         }
     return {
         "schema_version": SCHEMA_VERSION,

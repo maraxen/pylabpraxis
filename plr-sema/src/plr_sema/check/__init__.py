@@ -23,6 +23,22 @@ fixture generated out-of-process (§6.2, T8; see
 ``plr-sema/data/derived_contracts.json`` (§7.3), the build artifact
 ``plr_sema.derive`` regenerates from the survey.
 
+**260902 (spec §11, "SEMA-IR, the analyzer's middle"): lower-then-check.**
+``check_graph``'s SIGNATURE is unchanged, but its body is now: ``json.loads``
+both inputs -> build ``param_names`` from the contract table's additive
+``params`` key (§11.2.4) -> :func:`plr_sema.check.ir.lower_graph` -> the new
+core, :func:`check_ir` (this module) -> relabel through the bytecode's
+``sideband["origin"]`` map (§11.4.3, so ``AnalysisReport.findings``'
+``operation_id``s are still real graph operation ids, not instruction
+indices) -> ``join`` -> ``AnalysisReport``. ``check/graph.py``'s
+``OperationNode``/``ResourceNode``/``ProtocolComputationGraph`` mirror is no
+longer read by this runtime path at all (§11.4.2) -- it survives as the
+lowering's DOCUMENTED input schema, now total over all 34 upstream fields,
+and as the comparison target for Fork C's (now exhaustiveness) drift test.
+Every v1 verdict, reason, and the shipped fixture's report are UNCHANGED
+(AC-11.6) -- this is purely a middle-of-the-pipe substitution, not a
+semantics change.
+
 **Every v1 verdict is UNKNOWN (§0, §7.4's forward hazard).** This module
 never constructs a ``SAFE`` or ``WILL_FAIL`` ``Finding`` -- §7.4 names the
 soundness fence a future round must build before the first ``SAFE`` is ever
@@ -118,12 +134,12 @@ from typing import Any
 
 from plr_sema._provenance import SurveyStamp
 from plr_sema._provenance.git_state import GitState
+from plr_sema.check import ir
 from plr_sema.check._supported_tools import SUPPORTED_TOOLS
-from plr_sema.check.graph import OperationNode, ProtocolComputationGraph, parse_graph
 from plr_sema.telemetry import emit_finding
 from plr_sema.verdict import AnalysisReport, Finding, PlrSite, Verdict, join
 
-__all__ = ["SUPPORTED_TOOLS", "check_graph"]
+__all__ = ["SUPPORTED_TOOLS", "check_graph", "check_ir"]
 
 
 def _git_state_from_dict(d: dict[str, Any]) -> GitState:
@@ -140,7 +156,8 @@ def _git_state_from_dict(d: dict[str, Any]) -> GitState:
 def _stamp_from_dict(d: dict[str, Any]) -> SurveyStamp:
     """Reconstruct the ``SurveyStamp`` a derived-contracts payload already
     recorded at build time (§2.2/§7.3) -- ``check/`` never shells out to
-    compute a fresh one (module docstring)."""
+    compute a fresh one (module docstring).
+    """
     return SurveyStamp(
         plr=_git_state_from_dict(d["plr"]),
         praxis=_git_state_from_dict(d["praxis"]),
@@ -174,30 +191,30 @@ def _plr_site_from_dict(d: dict[str, Any] | None) -> PlrSite | None:
 # ---------------------------------------------------------------------------
 
 
-def _receiver_type_unknown(op: OperationNode) -> Finding:
+def _receiver_type_unknown(operation_id: str) -> Finding:
     return Finding(
         verdict=Verdict.UNKNOWN,
-        operation_id=op.id,
+        operation_id=operation_id,
         category="",
         plr_site=None,
         reason="receiver_type_unknown",
     )
 
 
-def _unsupported_tool(op: OperationNode) -> Finding:
+def _unsupported_tool(operation_id: str) -> Finding:
     return Finding(
         verdict=Verdict.UNKNOWN,
-        operation_id=op.id,
+        operation_id=operation_id,
         category="",
         plr_site=None,
         reason="unsupported_tool",
     )
 
 
-def _no_contract_derived(op: OperationNode, *, detail: str = "") -> Finding:
+def _no_contract_derived(operation_id: str, *, detail: str = "") -> Finding:
     return Finding(
         verdict=Verdict.UNKNOWN,
-        operation_id=op.id,
+        operation_id=operation_id,
         category="",
         plr_site=None,
         reason="no_contract_derived",
@@ -205,10 +222,10 @@ def _no_contract_derived(op: OperationNode, *, detail: str = "") -> Finding:
     )
 
 
-def _unresolved_delegate(op: OperationNode, *, detail: str = "") -> Finding:
+def _unresolved_delegate(operation_id: str, *, detail: str = "") -> Finding:
     return Finding(
         verdict=Verdict.UNKNOWN,
-        operation_id=op.id,
+        operation_id=operation_id,
         category="",
         plr_site=None,
         reason="unresolved_delegate",
@@ -217,11 +234,11 @@ def _unresolved_delegate(op: OperationNode, *, detail: str = "") -> Finding:
 
 
 def _guard_predicate_unparsed(
-    op: OperationNode, *, plr_site: PlrSite | None, detail: str = ""
+    operation_id: str, *, plr_site: PlrSite | None, detail: str = ""
 ) -> Finding:
     return Finding(
         verdict=Verdict.UNKNOWN,
-        operation_id=op.id,
+        operation_id=operation_id,
         category="",
         plr_site=plr_site,
         reason="guard_predicate_unparsed",
@@ -229,27 +246,28 @@ def _guard_predicate_unparsed(
     )
 
 
-def _loop_bounds_unknown(op: OperationNode) -> Finding:
+def _loop_bounds_unknown(operation_id: str) -> Finding:
     return Finding(
         verdict=Verdict.UNKNOWN,
-        operation_id=op.id,
+        operation_id=operation_id,
         category="",
         plr_site=None,
         reason="loop_bounds_unknown",
     )
 
 
-def _internal_error(op: OperationNode, *, detail: str = "") -> Finding:
+def _internal_error(operation_id: str, *, detail: str = "") -> Finding:
     """Defensive fallback: a gap reason surfacing from
     ``derived_contracts.json`` that is neither of the two
     ``plr_sema.derive`` ever emits (``no_contract_derived`` /
     ``unresolved_delegate``, §7.2) would itself be a drift between
     ``plr_sema.derive`` and ``plr_sema.check``, not a fact about PLR --
     exactly what ``internal_error`` (§3.3: "analyzer bug; always paired with
-    a telemetry emit") exists for."""
+    a telemetry emit") exists for.
+    """
     return Finding(
         verdict=Verdict.UNKNOWN,
-        operation_id=op.id,
+        operation_id=operation_id,
         category="",
         plr_site=None,
         reason="internal_error",
@@ -257,7 +275,7 @@ def _internal_error(op: OperationNode, *, detail: str = "") -> Finding:
     )
 
 
-def _finding_from_guard(op: OperationNode, guard: dict[str, Any]) -> Finding:
+def _finding_from_guard(operation_id: str, guard: dict[str, Any]) -> Finding:
     """Every guard becomes a ``guard_predicate_unparsed`` Finding in v1
     (round-4 remediation, B4: the former ``argument_not_static`` branch --
     which fired when a guard's ``free_vars`` intersected
@@ -274,40 +292,52 @@ def _finding_from_guard(op: OperationNode, guard: dict[str, Any]) -> Finding:
     the ``SAFE`` direction, and not merely cosmetic: 379 of 2,814 (13.5%) of
     survey findings, and 9 of the 119 guards in the shipped contract table,
     carry ``condition: null``. ``None`` now maps to the explicit sentinel
-    string ``"<unconditional>"`` instead of being collapsed into ``""``."""
+    string ``"<unconditional>"`` instead of being collapsed into ``""``.
+    """
     plr_site = _plr_site_from_dict(guard.get("site"))
     condition = guard.get("condition")
     detail = condition if condition is not None else "<unconditional>"
-    return _guard_predicate_unparsed(op, plr_site=plr_site, detail=detail)
+    return _guard_predicate_unparsed(operation_id, plr_site=plr_site, detail=detail)
 
 
-def _findings_for_gap(op: OperationNode, gap: Any) -> Finding:
+def _findings_for_gap(operation_id: str, gap: Any) -> Finding:
     gap_reason, gap_name = gap[0], gap[1]
     if gap_reason == "unresolved_delegate":
-        return _unresolved_delegate(op, detail=gap_name)
+        return _unresolved_delegate(operation_id, detail=gap_name)
     if gap_reason == "no_contract_derived":
-        return _no_contract_derived(op, detail=gap_name)
-    return _internal_error(op, detail=f"unrecognized gap reason {gap_reason!r} for {gap_name!r}")
+        return _no_contract_derived(operation_id, detail=gap_name)
+    return _internal_error(
+        operation_id, detail=f"unrecognized gap reason {gap_reason!r} for {gap_name!r}"
+    )
 
 
-def _findings_for_operation(op: OperationNode, contracts: dict[str, Any]) -> list[Finding]:
-    """T11: step 2 is now a single contract-table lookup, not a
+def _findings_for_call(operation_id: str, call: ir.Call, contracts: dict[str, Any], *, inside_loop: bool) -> list[Finding]:
+    """The per-``CALL`` body: exactly today's (pre-IR) per-operation logic
+    (§11.4.1), re-keyed from an ``OperationNode`` to a ``CALL`` instruction
+    -- ``op.receiver_type``/``op.method_name`` become
+    ``call.receiver_type``/``call.method``; the loop test
+    ``op.foreach_source is not None or op.foreach_body`` becomes "this pc is
+    inside an open LOOP region" (``inside_loop``, computed by ``check_ir``'s
+    region-stack walk). T11: step 2 is a single contract-table lookup, not a
     ``SUPPORTED_TOOLS`` membership test followed by a second lookup -- see
-    the module docstring's "``unsupported_tool``, redefined" section. A key
-    absent from ``contracts`` now means "the whole-survey derivation never
-    saw this method at all", not "outside the old 10-name allowlist"."""
-    if op.receiver_type is None:
-        return [_receiver_type_unknown(op)]
+    the module docstring's "``unsupported_tool``, redefined" section.
+    """
+    if call.receiver_type is None:
+        return [_receiver_type_unknown(operation_id)]
 
-    key = f"{op.receiver_type}.{op.method_name}"
+    key = f"{call.receiver_type}.{call.method}"
     contract = contracts.get(key)
     if contract is None:
-        return [_unsupported_tool(op)]
+        return [_unsupported_tool(operation_id)]
 
-    findings: list[Finding] = [_findings_for_gap(op, gap) for gap in contract.get("gaps", ())]
-    findings.extend(_finding_from_guard(op, guard) for guard in contract.get("guards", ()))
-    if op.foreach_source is not None or op.foreach_body:
-        findings.append(_loop_bounds_unknown(op))
+    findings: list[Finding] = [
+        _findings_for_gap(operation_id, gap) for gap in contract.get("gaps", ())
+    ]
+    findings.extend(
+        _finding_from_guard(operation_id, guard) for guard in contract.get("guards", ())
+    )
+    if inside_loop:
+        findings.append(_loop_bounds_unknown(operation_id))
     if not findings:
         # Round-4 remediation (B1/B2/§0(ii)): a resolved contract with zero
         # guards, zero gaps, and no loop must not silently produce an empty
@@ -315,24 +345,71 @@ def _findings_for_operation(op: OperationNode, contracts: dict[str, Any]) -> lis
         # live soundness gap, not a deferred one.
         findings.append(
             _no_contract_derived(
-                op, detail="contract resolved with zero guards, zero gaps and no loop"
+                operation_id, detail="contract resolved with zero guards, zero gaps and no loop"
             )
         )
     return findings
 
 
-def _check(graph: ProtocolComputationGraph, contracts_payload: dict[str, Any]) -> AnalysisReport:
+def check_ir(bytecode: ir.Bytecode, contracts: dict[str, Any]) -> tuple[Finding, ...]:
+    """Spec §11.4.1: the new analysis core -- a single left-to-right pass
+    over ``bytecode.instructions`` with a program counter. Every ``CALL``
+    pc receives >=1 ``Finding`` (§11.4.4's totality, restated over
+    instructions); ``RESOURCE``/``LOOP``/``BRANCH``/``ELSE``/``END``/
+    ``WIDEN`` receive none -- they are context, not obligations.
+
+    ``operation_id`` on every emitted ``Finding`` is ``str(pc)`` -- the only
+    identity the IR has (§11.4.3); ``check_graph`` relabels through
+    ``bytecode.sideband["origin"]`` before constructing an ``AnalysisReport``
+    so ``AC-6.4``'s graph-id equality still holds. A region stack (not a
+    bare counter) tracks LOOP/BRANCH/END nesting so an ``END`` closes
+    whichever region is innermost, and ``ELSE`` never itself pops (it
+    separates the two arms of the SAME open ``BRANCH``, §11.1.3).
+    """
+    findings: list[Finding] = []
+    region_stack: list[str] = []
+    for pc, instr in enumerate(bytecode.instructions):
+        if isinstance(instr, ir.Loop):
+            region_stack.append(ir.Loop.op)
+        elif isinstance(instr, ir.Branch):
+            region_stack.append(ir.Branch.op)
+        elif isinstance(instr, ir.End):
+            if region_stack:
+                region_stack.pop()
+        elif isinstance(instr, ir.Call):
+            inside_loop = ir.Loop.op in region_stack
+            findings.extend(_findings_for_call(str(pc), instr, contracts, inside_loop=inside_loop))
+        # ir.Resource, ir.Else, ir.Widen: never a Finding source.
+    return tuple(findings)
+
+
+def _build_param_names(contracts: dict[str, Any]) -> dict[str, tuple[str, ...]]:
+    """§11.2.4: the additive ``params`` key per contract entry
+    (``plr_sema.derive``'s ``SurveyRecord.params``), reduced to the shape
+    :func:`plr_sema.check.ir.lower_graph`'s ``param_names`` wants. Missing
+    or absent ``params`` on an entry (a stale, pre-increment table, §11.2.4)
+    degrades to "trust nothing" for that key -- ``.get()``, never a
+    KeyError -- rather than raising (AC-11.12).
+    """
+    return {
+        key: tuple(entry.get("params", ()))
+        for key, entry in contracts.items()
+        if entry.get("params")
+    }
+
+
+def _check(bytecode: ir.Bytecode, protocol_fqn: str, contracts_payload: dict[str, Any]) -> AnalysisReport:
     contracts = contracts_payload.get("contracts", {})
     stamp = _stamp_from_dict(contracts_payload["stamp"])
 
-    findings: list[Finding] = []
-    for op in graph.operations:
-        findings.extend(_findings_for_operation(op, contracts))
+    raw_findings = check_ir(bytecode, contracts)
+    origin = bytecode.sideband.get("origin", {})
+    findings = ir.relabel_findings(raw_findings, origin)
 
     report = AnalysisReport(
-        protocol_fqn=graph.protocol_fqn,
-        verdict=join(tuple(findings)),
-        findings=tuple(findings),
+        protocol_fqn=protocol_fqn,
+        verdict=join(findings),
+        findings=findings,
         stamp=stamp,
     )
     # Round-4 remediation (M2): check_graph now actually emits telemetry --
@@ -348,11 +425,23 @@ def _check(graph: ProtocolComputationGraph, contracts_payload: dict[str, Any]) -
 
 
 def check_graph(graph_json: str, contracts_json: str) -> AnalysisReport:
-    """Round-1 entry point (spec §6.2). ``graph_json``/``contracts_json`` are
-    JSON strings, not pre-parsed objects -- both are ``json.loads``'d here
-    and nowhere else. Never imports ``libcst``/``pylabrobot``/``pydantic``;
-    never shells out. Emits every finding via ``plr_sema.telemetry`` (M2,
-    round-4 remediation) -- a no-op unless a sink is attached (§4.1)."""
-    graph = parse_graph(json.loads(graph_json))
+    """Round-1 entry point (spec §6.2), unchanged signature (§11.4.1).
+    ``graph_json``/``contracts_json`` are JSON strings, not pre-parsed
+    objects -- both are ``json.loads``'d here and nowhere else. Never
+    imports ``libcst``/``pylabrobot``/``pydantic``; never shells out.
+    Emits every finding via ``plr_sema.telemetry`` (M2, round-4
+    remediation) -- a no-op unless a sink is attached (§4.1).
+
+    260902 (spec §11, SEMA-IR): the body is now lower-then-check --
+    ``json.loads`` both inputs, build ``param_names`` from the contract
+    table's additive ``params`` key, :func:`plr_sema.check.ir.lower_graph`,
+    :func:`check_ir`, relabel through the origin map, ``join``,
+    ``AnalysisReport``. AC-11.6 pins that the shipped fixture's report does
+    not move; AC-6.1 through AC-6.7 are untouched.
+    """
+    payload = json.loads(graph_json)
     contracts_payload = json.loads(contracts_json)
-    return _check(graph, contracts_payload)
+    contracts = contracts_payload.get("contracts", {})
+    param_names = _build_param_names(contracts)
+    bytecode = ir.lower_graph(payload, param_names=param_names)
+    return _check(bytecode, payload["protocol_fqn"], contracts_payload)

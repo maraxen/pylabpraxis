@@ -24,7 +24,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from plr_sema._provenance import SurveyStamp, survey_stamp
 from plr_sema.derive import (
     SurveyFinding,
@@ -35,7 +34,6 @@ from plr_sema.derive import (
     default_plr_pkg_root,
     derive_contract,
     load_survey,
-    resolve,
     scan_dropped_receiver_calls,
     scan_dropped_receiver_calls_in_source,
 )
@@ -148,7 +146,8 @@ def test_closure_terminates_on_cycle() -> None:
     """Synthetic A -> B -> A index (§7.5). Cycle-safety is checked via
     `seen` before expansion (trap 2); a naive recursion would hang. Run
     under pytest-timeout so a regression fails loudly instead of hanging
-    the suite."""
+    the suite.
+    """
     rec_a = _synthetic_record(
         "A", class_name=None, delegates_to=("B",), findings=(_synthetic_finding(10),)
     )
@@ -318,7 +317,8 @@ def test_ledger_regenerates_deterministically(
     (rather than letting each call recompute its own) so this test isolates
     determinism of the LEDGER-BUILDING logic itself from `stamped_at`'s
     inherent per-call variation, which AC-7.3's own "modulo `stamped_at`"
-    clause already carves out."""
+    clause already carves out.
+    """
     import json
 
     first = build_gap_ledger(
@@ -387,7 +387,8 @@ def test_contract_keys_are_collision_free(survey_records: list[SurveyRecord]) ->
     internally on every call -- this test additionally pins the two known
     collision populations against the real survey data, so a future survey
     regeneration that silently changes the collision shape is caught here
-    rather than only inside the function's own defensive assert."""
+    rather than only inside the function's own defensive assert.
+    """
     keys = build_contract_keys(survey_records)
     assert len(keys) == len(survey_records)
     assert len(set(keys.values())) == len(survey_records)
@@ -446,7 +447,8 @@ def test_whole_surface_contract_count(
     finding-bearing methods (T11 item 4's zero-findings decision: a
     zero-own-finding method still gets a real entry, since it may inherit
     guards through its own delegates -- see `PlateReader.read_absorbance`
-    covered end-to-end in `test_check_graph.py`)."""
+    covered end-to-end in `test_check_graph.py`).
+    """
     payload = build_derived_contracts_payload(survey_records, survey_index, real_stamp)
     contracts = payload["contracts"]
 
@@ -461,8 +463,20 @@ def test_whole_surface_contract_count(
     assert contracts["PlateReader.read_absorbance"]["guards"]
 
     # A zero-own-finding method with an empty closure is present with an
-    # EMPTY (not absent) contract -- "known and unconstrained", T11 item 4.
-    assert contracts["Centrifuge.spin"] == {"guards": [], "gaps": []}
+    # EMPTY (not absent) guards/gaps contract -- "known and unconstrained",
+    # T11 item 4. 260902 (spec §11.2.4): every entry additionally carries a
+    # `params` key (this method's PLR parameter names, straight off
+    # `SurveyRecord.params`) -- checked separately below rather than folded
+    # into this equality, since its content isn't this test's concern.
+    assert contracts["Centrifuge.spin"]["guards"] == []
+    assert contracts["Centrifuge.spin"]["gaps"] == []
+
+    # 260902 (spec §11.2.4, SEMA-IR): every contract entry carries an
+    # additive `params` key -- the method's PLR parameter names, verbatim
+    # off `SurveyRecord.params` (not re-derived here).
+    assert "params" in contracts["LiquidHandler.aspirate"]
+    assert "resources" in contracts["LiquidHandler.aspirate"]["params"]
+    assert "vols" in contracts["LiquidHandler.aspirate"]["params"]
 
     # Every emitted key really is one of build_contract_keys' outputs (no
     # ad hoc key construction inside build_derived_contracts_payload itself).
@@ -527,7 +541,8 @@ def test_closure_based_dropped_receiver_views_are_vacuous_on_nonlegacy(
     small, not "nothing interesting found", genuinely never populated. If
     this test ever starts failing because these lists are non-empty, either
     upstream reintroduced `LiquidHandler` outside `legacy/`, or a future
-    survey regeneration changed which surface this fixture reads."""
+    survey regeneration changed which surface this fixture reads.
+    """
     assert nonlegacy_gap_ledger["supported_tools"]["liquid_handler_present"] is False
     assert nonlegacy_gap_ledger["top_unresolved"]["dropped_receiver"] == []
     assert nonlegacy_gap_ledger["top_unresolved"]["dropped_receiver_unfiltered"] == []
@@ -540,7 +555,8 @@ def test_whole_surface_dropped_receiver_worklist_is_populated_on_nonlegacy(
     test pins: it is NOT gated on `tool_keys`, so it is non-empty even
     though the closure-based views above are structurally empty. Checked
     against the real, committed nonlegacy survey data -- not a synthetic
-    fixture -- so this is a real measurement, not just a shape check."""
+    fixture -- so this is a real measurement, not just a shape check.
+    """
     whole_surface = nonlegacy_gap_ledger["top_unresolved"]["dropped_receiver_whole_surface"]
     whole_surface_unfiltered = nonlegacy_gap_ledger["top_unresolved"][
         "dropped_receiver_whole_surface_unfiltered"
@@ -587,7 +603,8 @@ def test_whole_surface_dropped_receiver_worklist_matches_direct_recount(
     """Cross-check against an independent recomputation straight from
     `SurveyRecord.dropped_calls` -- not trusting the ledger's own output as
     its own proof, the same discipline `test_ledger_totals_are_internally_
-    consistent` already applies to `by_reason`."""
+    consistent` already applies to `by_reason`.
+    """
     finding_bearing = [rec for rec in nonlegacy_survey_records if rec.findings]
     expected: dict[str, int] = {}
     for rec in finding_bearing:
@@ -611,7 +628,8 @@ def test_whole_surface_dropped_receiver_worklist_populated_on_legacy(
     to, the closure-based `dropped_receiver` view (see the T14 docstring's
     "neither is a strict superset" note for why the reverse containment
     does not hold either) -- checked here only for non-emptiness and shape,
-    not byte-for-byte equality with the closure view."""
+    not byte-for-byte equality with the closure view.
+    """
     ledger = build_gap_ledger(survey_index, survey_records, dropped_receiver_counts={})
     whole_surface = ledger["top_unresolved"]["dropped_receiver_whole_surface"]
     assert whole_surface

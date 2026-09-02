@@ -2,9 +2,22 @@
 
 Factored from plr-sema/scripts/oracle_spike.py (260902 spike). This module is
 imported by both the oracle_spike.py worked example and the tier-1 corpus-replay
-harness (oracle_replay.py). It must NOT import plr_sema.src.* (the boundary test
-allows that for code under plr-sema/eval/, but importing the analyzer
-infrastructure from src would make this a circular dependency).
+harness (oracle_replay.py). Module-level imports avoid plr_sema.src.* (a
+circular-dependency hazard at IMPORT TIME, not a boundary the import-boundary
+test enforces here -- that test is scoped to src/plr_sema/, and eval/ is
+explicitly permitted to import pylabrobot/training.verify/plr_sema, spec
+§11.2.2's "Where it lives"); every plr_sema import below is therefore done
+LAZILY, inside a function body, after inserting plr-sema/src onto sys.path
+-- the same pattern this module already used for check_graph before 260902.
+
+260902 (spec §11, SEMA-IR): ``adapt_graph`` is DELETED. The corpus path now
+lowers through :func:`plr_sema.check.ir.lower_calls` over PLR-named,
+already-grounded kwargs (:func:`ir_value_of`, harvested by
+:func:`run_runtime`'s ``recording_plan_call`` wrapper) instead of adapting a
+call sequence into a §6.2 graph payload keyed by tool-named/guessed
+argument names. ``run_static`` (the graph-payload path, still used by a
+future tier-2 source-render harness) is UNCHANGED; :func:`run_static_calls`
+is its new sibling for the ``lower_calls`` path.
 """
 
 from __future__ import annotations
@@ -12,6 +25,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import dataclasses
+import functools
 import io
 import json
 import logging
@@ -68,6 +82,46 @@ def _import_verifier():
 # --------------------------------------------------------------------------
 
 
+def ir_value_of(obj: Any) -> dict[str, Any]:
+    """§11.2.2: maps a bound PLR object (a ``PlanResult.kwargs`` value) to
+    IR value JSON -- :func:`plr_sema.check.ir.lower_calls`'s pre-slot-
+    resolution wire shape. A ``Resource`` with a parent -> ``{"k": "ref",
+    "name": <parent's name>, "cell": <this object's own name>}``; a
+    top-level ``Resource`` -> ``{"k": "ref", "name": <this object's name>,
+    "cell": null}``; a ``list``/``tuple`` -> ``{"k": "seq", "items": [...]}``
+    recursively; a JSON scalar (``None``/``bool``/``int``/``float``/``str``)
+    -> ``{"k": "lit", "v": ...}``; anything else -> ``{"k": "top"}``.
+
+    ``Ref`` is NAME-keyed here, not slot-keyed: at harvest time (inside
+    :func:`run_runtime`, one call at a time) there is no cross-call slot
+    registry to assign integers against yet -- slot assignment is
+    ``lower_calls``'s own job (mirroring ``lower_graph``'s first-appearance
+    ordering), the same resolved ambiguity :func:`plr_sema.check.ir.
+    lower_calls`'s docstring records.
+
+    Replaces the pre-260902 harvest's ``repr(v)`` (`oracle_common.py:87-93`,
+    pre-increment): a ``repr`` of a list of ``TipSpot``s is a string like
+    ``"[<TipSpot ...>, <TipSpot ...>]"``, which carries no recoverable
+    arity without re-parsing angle-bracket reprs and which
+    ``ast.literal_eval`` rejects outright (spec §11.2.2's "one correction
+    to the existing harvest, and it is not cosmetic").
+    """
+    if isinstance(obj, (list, tuple)):
+        return {"k": "seq", "items": [ir_value_of(o) for o in obj]}
+    if obj is None or isinstance(obj, (bool, int, float, str)):
+        return {"k": "lit", "v": obj}
+    try:
+        from pylabrobot.resources import Resource as _PLRResource
+    except ImportError:  # pragma: no cover - pylabrobot always installed in eval/'s env
+        _PLRResource = ()
+    if _PLRResource and isinstance(obj, _PLRResource):
+        parent = getattr(obj, "parent", None)
+        if parent is not None:
+            return {"k": "ref", "name": getattr(parent, "name", str(parent)), "cell": getattr(obj, "name", None)}
+        return {"k": "ref", "name": getattr(obj, "name", str(obj)), "cell": None}
+    return {"k": "top"}
+
+
 @dataclasses.dataclass
 class RuntimeOutcome:
     error: str | None
@@ -75,7 +129,10 @@ class RuntimeOutcome:
     failing_index: int | None  # index of the call being executed when it raised
     planned_indices: list[int]
     passed: bool
-    plr_kwargs: dict[int, dict[str, Any]] = dataclasses.field(default_factory=dict)  # index -> {param: repr(value)}
+    #: index -> {plr_param: <IR value JSON>} (ir_value_of, §11.2.2) -- PLR-named
+    #: by construction (PlanResult.kwargs is written by plan_call's bind
+    #: closure under spec.plr_arg, training/verify/dispatcher.py:117-135).
+    plr_kwargs: dict[int, dict[str, Any]] = dataclasses.field(default_factory=dict)
 
 
 def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
@@ -87,9 +144,10 @@ def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
     def recording_plan_call(call, index, setup, *, strict):
         planned.append(index)
         plan_result = real_plan_call(call, index, setup, strict=strict)
-        # Capture PLR-named kwargs from the plan_result
+        # Capture PLR-named kwargs from the plan_result, reduced to IR
+        # value JSON (§11.2.2) rather than a repr string.
         if hasattr(plan_result, "kwargs"):
-            plr_kwargs[index] = {k: repr(v) for k, v in plan_result.kwargs.items()}
+            plr_kwargs[index] = {k: ir_value_of(v) for k, v in plan_result.kwargs.items()}
         return plan_result
 
     verifier.plan_call = recording_plan_call
@@ -119,54 +177,66 @@ def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
 _LH_TYPE = "LiquidHandler"
 
 
-def adapt_graph(example: dict[str, Any], protocol_fqn: str, plr_kwargs: dict[int, dict[str, Any]] | None = None) -> dict[str, Any]:
-    """Call sequence -> §6.2 graph payload. Field set mirrors the committed
-    fixture ``tests/fixtures/simple_transfer_graph.json`` exactly.
-
-    If plr_kwargs is provided, use PLR-named kwargs for OperationNode.arguments
-    (the planned fix for parameter name mismatch). Fall back to tool params
-    when a call was never planned.
+@functools.lru_cache(maxsize=4)
+def param_names_from_contracts(contracts_json: str) -> dict[str, tuple[str, ...]]:
+    """§11.2.4's ``param_names`` for :func:`plr_sema.check.ir.lower_calls`
+    (and, symmetrically, what ``check_graph`` builds internally for
+    ``lower_graph``): every contract-table entry's additive ``params`` key,
+    reduced to ``{contract_key: (plr_param, ...)}``. An entry with no
+    ``params`` (a stale, pre-260902 table) is simply absent -- callers that
+    ``.get()`` this dict degrade to "trust nothing" for that key, same as
+    AC-11.12's fail-closed default.
     """
-    plr_kwargs = plr_kwargs or {}
+    contracts = json.loads(contracts_json).get("contracts", {})
+    return {key: tuple(entry.get("params", ())) for key, entry in contracts.items() if entry.get("params")}
+
+
+def resources_from_example(example: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """§11.2.2's ``resources`` parameter for :func:`plr_sema.check.ir.
+    lower_calls`: a per-name RESOURCE declaration dict, built from
+    ``deck_layout`` the same way ``adapt_graph`` (pre-260902) built its
+    graph-payload ``resources`` -- the receiver (``lh``) plus every named
+    ``deck_layout.resources`` entry.
+    """
     layout = example.get("deck_layout") or {}
-    resources = {
-        "lh": {
-            "declared_type": _LH_TYPE, "element_type": None, "is_container": False,
-            "is_parameter": True, "items_x": None, "items_y": None,
-            "parental_chain": [], "source_expression": None, "variable_name": "lh",
-        }
+    resources: dict[str, dict[str, Any]] = {
+        "lh": {"type": _LH_TYPE, "is_container": False, "is_parameter": True, "parents": ()}
     }
     for name, typ in (layout.get("resources") or {}).items():
-        resources[name] = {
-            "declared_type": typ, "element_type": None, "is_container": False,
-            "is_parameter": True, "items_x": None, "items_y": None,
-            "parental_chain": ["Deck"], "source_expression": None, "variable_name": name,
-        }
-    operations = []
+        resources[name] = {"type": typ, "is_container": False, "is_parameter": True, "parents": ("Deck",)}
+    return resources
+
+
+def calls_from_plr_kwargs(
+    example: dict[str, Any], plr_kwargs: dict[int, dict[str, Any]]
+) -> tuple[list[dict[str, Any]], list[int]]:
+    """§11.10's tier-1 rule, restated: a row whose call was never planned
+    (``i not in plr_kwargs``) produces NO ``CALL`` at all -- there is no
+    tool-named fallback successor to ``adapt_graph``'s old ``json.dumps``
+    branch (§11.10, "the fallback branch ... has no successor"). Returns
+    ``(calls, not_planned_indices)`` -- ``calls`` is ``lower_calls``'s
+    input, in the SAME relative order as the planned subset of
+    ``example["call_sequence"]``; ``not_planned_indices`` is the original
+    ``call_sequence`` indices the caller should count/report separately.
+    """
+    calls: list[dict[str, Any]] = []
+    not_planned: list[int] = []
     for i, call in enumerate(example["call_sequence"]):
-        # Use PLR-named kwargs if available, otherwise fall back to tool params
-        if i in plr_kwargs:
-            arguments = plr_kwargs[i]
-        else:
-            arguments = {k: json.dumps(v) for k, v in (call.get("params") or {}).items()}
-        operations.append({
-            "arguments": arguments,
-            "condition_expr": None, "creates_state": [], "depends_on_params": [],
-            "false_branch": [], "foreach_body": [], "foreach_source": None,
-            "id": f"op_{i}", "line_number": i + 1, "method_name": call["name"],
-            "node_type": "static", "preconditions": [], "receiver_type": _LH_TYPE,
-            "receiver_variable": "lh", "true_branch": [],
-        })
-    return {
-        "protocol_fqn": protocol_fqn, "protocol_name": protocol_fqn.rsplit(".", 1)[-1],
-        "operations": operations, "resources": resources,
-        "execution_order": [o["id"] for o in operations], "has_conditionals": False,
-        "has_loops": False, "machine_types": [_LH_TYPE], "preconditions": [],
-        "resource_types": sorted({r["declared_type"] for r in resources.values()}),
-    }
+        kwargs = plr_kwargs.get(i)
+        if kwargs is None:
+            not_planned.append(i)
+            continue
+        calls.append({"method": call["name"], "kwargs": kwargs, "receiver": "lh", "receiver_type": _LH_TYPE})
+    return calls, not_planned
 
 
 def run_static(graph: dict[str, Any], contracts_json: str) -> dict[str, dict[str, Any]]:
+    """The GRAPH-payload path (§6.2 wire format in, per-op verdict summary
+    out) -- unchanged by 260902, kept for a future tier-2 source-render
+    harness (§11.10). ``check_graph`` internally lowers via
+    :func:`plr_sema.check.ir.lower_graph` and relabels; this function's own
+    signature and behavior are untouched.
+    """
     sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "src"))
     from plr_sema import check_graph
     from plr_sema.verdict import join
@@ -183,6 +253,61 @@ def run_static(graph: dict[str, Any], contracts_json: str) -> dict[str, dict[str
         }
         for oid, fs in per_op.items()
     }
+
+
+def run_static_calls(
+    example: dict[str, Any],
+    plr_kwargs: dict[int, dict[str, Any]],
+    contracts_json: str,
+    *,
+    param_names: dict[str, tuple[str, ...]] | None = None,
+) -> tuple[dict[str, dict[str, Any]], list[int]]:
+    """The ``lower_calls`` path (§11.2.2/§11.10 tier 1) -- ``adapt_graph``'s
+    replacement. Lowers ``example["call_sequence"]``'s PLANNED subset
+    (``i in plr_kwargs``) through :func:`plr_sema.check.ir.lower_calls`,
+    runs :func:`plr_sema.check.check_ir`, and relabels back to the
+    ``op_<i>`` convention :func:`compare` expects -- but keyed by the
+    REAL ``call_sequence`` index, not the position among only-planned
+    calls (``lower_calls``'s own ``origin`` map is 0-based over its
+    ``calls`` argument, which skips not-planned indices; this function
+    composes that with the planned-index list to restore the real index).
+
+    Returns ``(per_op, not_planned_indices)`` -- ``per_op`` additionally
+    carries a ``{"verdict": "unknown", "n_findings": 0, "reasons": []}``
+    entry for every not-planned index (so :func:`compare`, which indexes
+    ``st[f"op_{i}"]`` for every ``i`` in ``call_sequence``, never
+    KeyErrors), and the caller is expected to report ``not_planned_indices``
+    separately (§11.10: "counted as ``not_planned`` in the report").
+    """
+    sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "src"))
+    from plr_sema.check import check_ir
+    from plr_sema.check import ir as _ir
+    from plr_sema.verdict import join
+
+    calls, not_planned = calls_from_plr_kwargs(example, plr_kwargs)
+    resources = resources_from_example(example)
+    contracts = json.loads(contracts_json).get("contracts", {})
+
+    bc = _ir.lower_calls(calls, resources=resources, param_names=param_names)
+    raw_findings = check_ir(bc, contracts)
+
+    planned_indices = [i for i in range(len(example["call_sequence"])) if i not in set(not_planned)]
+    origin = bc.sideband.get("origin", {})
+    real_origin = {pc: f"op_{planned_indices[int(local_idx)]}" for pc, local_idx in origin.items()}
+    findings = _ir.relabel_findings(raw_findings, real_origin)
+
+    per_op: dict[str, list] = {f"op_{i}": [] for i in not_planned}
+    for f in findings:
+        per_op.setdefault(f.operation_id, []).append(f)
+    result = {
+        oid: {
+            "verdict": join(tuple(fs)).value,
+            "n_findings": len(fs),
+            "reasons": sorted({getattr(f, "reason", None) or "" for f in fs} - {""}),
+        }
+        for oid, fs in per_op.items()
+    }
+    return result, not_planned
 
 
 # --------------------------------------------------------------------------

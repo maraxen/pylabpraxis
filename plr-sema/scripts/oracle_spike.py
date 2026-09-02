@@ -12,11 +12,13 @@ of the same protocol and lines them up per operation:
   / ... at the offending step. ``verify()`` collapses that to one error
   string, so this script wraps ``plan_call`` to learn *which* operation
   index was being executed when it raised.
-* **static** -- the same call sequence adapted into the §6.2 graph wire
-  format (one ``OperationNode`` per call, one ``ResourceNode`` per deck
-  resource; no source, no extractor) and handed to
-  ``plr_sema.check_graph`` against the shipped derived-contract table.
-  Per-operation verdict = ``join`` of that operation's findings.
+* **static** -- 260902 (spec §11, SEMA-IR): the runtime's own PLR-named,
+  already-grounded kwargs (``run_runtime``'s ``recording_plan_call``
+  harvest, reduced to IR value JSON by ``ir_value_of``) are lowered
+  through ``plr_sema.check.ir.lower_calls`` and checked by
+  ``plr_sema.check.check_ir`` against the shipped derived-contract table
+  -- no adapted graph, no tool-named argument guessing. Per-operation
+  verdict = ``join`` of that operation's findings.
 
 The soundness contract this checks, per operation ``i``:
 
@@ -49,11 +51,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "eval"))
 
 from oracle_common import (
     DEFAULT_CONTRACTS,
-    RuntimeOutcome,
-    adapt_graph,
     compare,
+    param_names_from_contracts,
     run_runtime,
-    run_static,
+    run_static_calls,
 )
 
 log = logging.getLogger("oracle_spike")
@@ -71,6 +72,7 @@ def main(argv: list[str] | None = None) -> int:
 
     files = [args.examples] if args.examples.is_file() else sorted(args.examples.glob("*.json"))
     contracts_json = args.contracts.read_text(encoding="utf-8")
+    param_names = param_names_from_contracts(contracts_json)
     out: list[dict[str, Any]] = []
     n_unsound = 0
     for f in files:
@@ -79,7 +81,10 @@ def main(argv: list[str] | None = None) -> int:
             log.info("skip %s (no call_sequence/intent_record)", f.name)
             continue
         rt = run_runtime(ex)
-        st = run_static(adapt_graph(ex, f"training.examples.{f.stem}"), contracts_json)
+        st, not_planned = run_static_calls(ex, rt.plr_kwargs, contracts_json, param_names=param_names)
+        if not_planned:
+            log.warning("%s: %d call(s) never planned (no CALL emitted): indices=%s",
+                        f.name, len(not_planned), not_planned)
         rows = compare(ex, rt, st)
         n_unsound += sum(r["unsound"] for r in rows)
         log.info("%s  runtime=%s  planned=%s", f.name, rt.error or "clean", rt.planned_indices)
@@ -87,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
             log.info("  op_%d %-14s static=%-9s (%2d findings)  runtime=%s%s",
                      r["index"], r["method"], r["static"], r["static_findings"], r["runtime"],
                      "  <-- UNSOUND" if r["unsound"] else "")
-        out.append({"example": f.name, "runtime": dataclasses.asdict(rt), "rows": rows})
+        out.append({"example": f.name, "runtime": dataclasses.asdict(rt), "rows": rows, "not_planned": not_planned})
     log.info("examples=%d operations=%d unsound=%d", len(out), sum(len(o["rows"]) for o in out), n_unsound)
     if args.json_out:
         args.json_out.write_text(json.dumps(out, indent=2))
