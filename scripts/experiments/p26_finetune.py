@@ -17,10 +17,18 @@ train``), falling back to ``uv run --offline --no-sync --package training``.
 plumbing survives the hop. Provenance (exit code, outputs, sidecar outcome) is
 still recorded by the outer ``bth run``.
 
-Cluster invocation (one per arm; args after ``--`` are this script's args)::
+Cluster invocation (one per arm; args after ``--`` are this script's args).
+The FIRST word is ``scripts/slurm/bth_run.sh``: it sources
+``scripts/slurm/_bth_env.sh`` so bathos writes its fragments to the project
+mirror's catalog (``bth sync engaging --pull`` then finds them -- the P2.6
+jobs omitted this and their fragments landed in the cluster HOME catalog,
+lesson 469) and forwards ``PRAXIS_GIT_SHA``/``PRAXIS_GIT_BRANCH`` into the
+manifest's git block (the mirror has no ``.git``)::
 
     bth submit --remote engaging --preset gpu --name p26-arm-B --no-push-first -- \
+        scripts/slurm/bth_run.sh \
         env HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false \
+            PRAXIS_GIT_SHA=$(git rev-parse HEAD) PRAXIS_GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD) \
         bth run --script-path scripts/experiments/p26_finetune.py \
             --output-paths outputs/p26/B/result.json --tags arm:B -- \
             --arm B --seed 0 --eval-after --out-dir outputs/p26/B

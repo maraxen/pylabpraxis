@@ -78,18 +78,50 @@ def checkpoint_digest(ckpt_dir: Path) -> dict[str, Any]:
 
 
 def _git_state(root: Path) -> dict[str, Any]:
-    def run(*args: str) -> str:
+    """Code provenance for the manifest.
+
+    On the Engaging rsync mirror there is no ``.git``; the P2.6 manifests
+    therefore carried an EMPTY git block (promotion doc §2). The submitter
+    can pass the local HEAD through ``PRAXIS_GIT_SHA`` / ``PRAXIS_GIT_BRANCH``
+    (``scripts/slurm/bth_run.sh`` forwards them); when neither git nor the
+    override is available the block says so instead of looking like a
+    silently blank field.
+    """
+
+    def run(*args: str) -> str | None:
         try:
             return subprocess.run(
                 ["git", *args], cwd=root, capture_output=True, text=True, check=True
             ).stdout.strip()
         except Exception:  # noqa: BLE001 - provenance is best-effort off-repo
-            return ""
+            return None
 
+    sha = run("rev-parse", "HEAD")
+    if sha:
+        return {
+            "sha": sha,
+            "branch": run("rev-parse", "--abbrev-ref", "HEAD") or "",
+            "dirty": bool(run("status", "--porcelain", "--untracked-files=no")),
+            "available": True,
+            "source": "git",
+        }
+    env_sha = os.environ.get("PRAXIS_GIT_SHA", "").strip()
+    if env_sha:
+        return {
+            "sha": env_sha,
+            "branch": os.environ.get("PRAXIS_GIT_BRANCH", "").strip(),
+            "dirty": None,
+            "available": True,
+            "source": "env:PRAXIS_GIT_SHA",
+            "note": "no git checkout at root (rsync mirror); sha supplied by the submitter",
+        }
     return {
-        "sha": run("rev-parse", "HEAD"),
-        "branch": run("rev-parse", "--abbrev-ref", "HEAD"),
-        "dirty": bool(run("status", "--porcelain", "--untracked-files=no")),
+        "sha": "",
+        "branch": "",
+        "dirty": None,
+        "available": False,
+        "source": "none",
+        "note": "no git checkout at root and PRAXIS_GIT_SHA unset -- provenance unknown",
     }
 
 
