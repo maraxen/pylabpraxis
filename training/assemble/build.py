@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from coxswain.plr.param_namespace import params_of
+from coxswain.plr.slot_derivation import derive_call_gaps
 from coxswain.plr.tool_schema import PHASE2_TOOL_NAMES
 
 from praxis_training.golden_build.corpus import (
@@ -59,7 +60,17 @@ __all__ = [
 ]
 
 #: Bump on ANY change to assembly logic / split rule / validation policy.
-ASSEMBLY_VERSION = "0.1.2"
+#: 0.1.3 (260902): gap fields (missing_required / unresolved_slots) are DERIVED
+#: for every call from the params as written (sorted keys), never copied; a
+#: source annotation that disagrees is a loud AssertionError. Before, golden
+#: rows lost their annotation entirely and floor rows kept an authored slot
+#: order that disagreed with the sorted-key params (task 260902_p26_rescore).
+ASSEMBLY_VERSION = "0.1.3"
+GAP_FIELDS_RULE = (
+    "missing_required and unresolved_slots derived per call via "
+    "coxswain.plr.slot_derivation.derive_call_gaps(name, params with sorted keys); "
+    "source annotations checked as sets (missing_required) / multisets (unresolved_slots)"
+)
 
 TRAINING_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = TRAINING_DIR.parent
@@ -171,6 +182,15 @@ def load_golden() -> list[dict[str, Any]]:
             for m in tool_call_msgs
             for tc in m["tool_calls"]
         ]
+        # Carry the golden sidecar's own gap annotation onto the call so
+        # validate_and_normalize can CHECK it against the derivation (before
+        # 0.1.3 it was parked under lineage.gap_fields and the assembled
+        # sidecar shipped without it -- the gold_slot_annotation defect).
+        for k, sc_call in enumerate(sc.get("calls") or []):
+            if k < len(calls):
+                for key in ("missing_required", "unresolved_slots"):
+                    if key in sc_call:
+                        calls[k][key] = sc_call[key]
         assistant_text = next(
             (m["content"] for m in msgs if m["role"] == "assistant" and "tool_calls" not in m),
             None,
@@ -322,10 +342,28 @@ def validate_and_normalize(record: dict[str, Any]) -> tuple[list[dict[str, Any]]
                 params[pname] = value
         if not bad_call:
             entry: dict[str, Any] = {"name": name, "params": params}
-            if call.get("missing_required"):
-                entry["missing_required"] = list(call["missing_required"])
-            if call.get("unresolved_slots"):
-                entry["unresolved_slots"] = call["unresolved_slots"]
+            gaps = derive_call_gaps(name, dict(sorted(params.items())))
+            derived_missing = list(gaps.missing_required)
+            derived_slots = [
+                {"arg_name": s.arg_name, "reference": s.reference, "resource_type": s.resource_type}
+                for s in gaps.unresolved_slots
+            ]
+            # Loud gate: a source annotation may only differ from the
+            # derivation in order (slots) -- never in content.
+            if "missing_required" in call and set(call["missing_required"]) != set(derived_missing):
+                raise AssertionError(
+                    f"{rid}: {name} missing_required annotation {call['missing_required']!r} "
+                    f"!= derived {derived_missing!r}"
+                )
+            if "unresolved_slots" in call:
+                src = Counter(_canonical_json(x) for x in call["unresolved_slots"])
+                if src != Counter(_canonical_json(x) for x in derived_slots):
+                    raise AssertionError(
+                        f"{rid}: {name} unresolved_slots annotation {call['unresolved_slots']!r} "
+                        f"!= derived {derived_slots!r}"
+                    )
+            entry["missing_required"] = derived_missing
+            entry["unresolved_slots"] = derived_slots
             normalized.append(entry)
     return normalized, reasons
 
@@ -461,6 +499,7 @@ def build_manifest(
         "backlog_item": 480,
         "spec_ref": ".praxia/docs/specs/260825_coxswain-phase-2-functiongemma-copilot-p.md rev2 §5 P2.5 / §7 AC-2.5.x",
         "assembly_version": ASSEMBLY_VERSION,
+        "gap_fields_rule": GAP_FIELDS_RULE,
         "plr_source_sha": plr_source_sha(),
         "scaffold": {
             "template_file": f"training/assemble/{SCAFFOLD_TEMPLATE_NAME}",

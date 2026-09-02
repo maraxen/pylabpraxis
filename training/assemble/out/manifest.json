@@ -1,6 +1,6 @@
 {
  "artifact": "praxis-copilot-p25-assembled-corpus",
- "assembly_version": "0.1.2",
+ "assembly_version": "0.1.3",
  "backlog_item": 480,
  "counts": {
   "by_class": {
@@ -865,8 +865,9 @@
   },
   "total": 72
  },
+ "gap_fields_rule": "missing_required and unresolved_slots derived per call via coxswain.plr.slot_derivation.derive_call_gaps(name, params with sorted keys); source annotations checked as sets (missing_required) / multisets (unresolved_slots)",
  "generator_versions": {
-  "assemble": "0.1.2",
+  "assemble": "0.1.3",
   "floor_gen": [
    "0.2.0"
   ],
