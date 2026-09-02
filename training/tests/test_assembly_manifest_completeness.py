@@ -68,7 +68,7 @@ def test_versions_and_provenance_counts():
     assert sum(counts["by_split"].values()) == n
     assert sum(counts["by_provenance"].values()) == n
     assert sum(counts["by_class"].values()) == n
-    assert set(counts["by_provenance"]) == {"golden", "coverage", "naturalness"}
+    assert set(counts["by_provenance"]) == {"golden", "coverage", "naturalness", "coverage_natural"}
     # Every golden row is eval by rule; at full scale synthetic train mass
     # legitimately outweighs eval, so the bound is on golden, not on train.
     assert counts["by_split"]["eval"] >= counts["by_provenance"]["golden"], "golden-all-eval lower bound"
@@ -86,9 +86,10 @@ def test_inputs_are_hashed_and_account_for_all_rows():
     m = _manifest()
     kept = m["counts"]["total_rows"]
     excluded = m["exclusions"]["total"]
-    input_rows = sum(m["inputs"][k]["rows"] for k in ("golden_pairs", "floor_corpus", "overlay_corpus"))
-    assert kept + excluded == input_rows, (
-        f"kept({kept}) + excluded({excluded}) != input rows({input_rows})"
+    diverted = m["probe"]["rows"]
+    input_rows = sum(m["inputs"][k]["rows"] for k in ("golden_pairs", "floor_corpus", "overlay_corpus", "natural_corpus"))
+    assert kept + excluded + diverted == input_rows, (
+        f"kept({kept}) + excluded({excluded}) + probe({diverted}) != input rows({input_rows})"
     )
     for meta in m["inputs"].values():
         path = REPO_ROOT / meta["path"]
@@ -103,10 +104,9 @@ def test_shortfall_recorded_not_padded():
     m = _manifest()
     target = m["target"]
     assert target["examples_requested"] == 1000
-    assert target["examples_assembled"] < target["examples_requested"], (
-        "inputs do not reach the 1000 target (bounded by matrix x examples_per_cell + mined canonicals); shortfall must be honest"
-    )
-    assert target["shortfall"] == target["examples_requested"] - target["examples_assembled"]
+    # 0.1.4: the natural lane can carry assembly past the target; the
+    # shortfall is then 0 and stays honest (never padded, never negative).
+    assert target["shortfall"] == max(0, target["examples_requested"] - target["examples_assembled"])
     assert len(target["shortfall_reason"]) > 40
 
 

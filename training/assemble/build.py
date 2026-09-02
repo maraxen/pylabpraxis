@@ -39,6 +39,8 @@ from praxis_training.golden_build.corpus import (
 )
 from overlay_gen.normalize import normalize_utterance
 
+from assemble.pin import PIN_REL, load_pin, native_digest
+
 from .scaffold import (
     SCAFFOLD_TEMPLATE_NAME,
     SCAFFOLD_VERSION,
@@ -54,6 +56,9 @@ __all__ = [
     "EVAL_FRACTION",
     "MANIFEST_NAME",
     "SIDECAR_NAME",
+    "PROBE_CORPUS_NAME",
+    "PROBE_SIDECAR_NAME",
+    "NATURAL_CORPUS_REL",
     "TARGET_EXAMPLES",
     "build_artifacts",
     "main",
@@ -65,7 +70,13 @@ __all__ = [
 #: source annotation that disagrees is a loud AssertionError. Before, golden
 #: rows lost their annotation entirely and floor rows kept an authored slot
 #: order that disagreed with the sorted-key params (task 260902_p26_rescore).
-ASSEMBLY_VERSION = "0.1.3"
+#: 0.1.4 (260902, task 260902_p26b_surface_data): the eval split is PINNED
+#: (training/assemble/data/eval_split_pin.json, record_id + native-row digest)
+#: instead of re-cut by the stratum rule; new inputs can only add TRAIN rows.
+#: The natural-phrasing floor lane (provenance coverage_natural) joins train
+#: when its base row is train, and forms the separate PROBE set when its base
+#: row is eval (never the 228). Repaired floor rows (synth 0.2.1) are train-only.
+ASSEMBLY_VERSION = "0.1.4"
 GAP_FIELDS_RULE = (
     "missing_required and unresolved_slots derived per call via "
     "coxswain.plr.slot_derivation.derive_call_gaps(name, params with sorted keys); "
@@ -78,11 +89,18 @@ REPO_ROOT = TRAINING_DIR.parent
 GOLDEN_PAIRS_REL = "training/golden/golden_pairs.jsonl"
 GOLDEN_SIDECAR_REL = "training/golden/golden_intent_sidecar.jsonl"
 FLOOR_CORPUS_REL = "training/out/corpus_p23_floor.jsonl"
+NATURAL_CORPUS_REL = "training/out/corpus_p23_floor_natural.jsonl"
 OVERLAY_CORPUS_REL = "training/overlay_gen/out/overlay_full.jsonl"
 
 CORPUS_NAME = "corpus_p25.jsonl"
 SIDECAR_NAME = "corpus_p25_sidecar.jsonl"
 MANIFEST_NAME = "manifest.json"
+PROBE_CORPUS_NAME = "corpus_p25_probe.jsonl"
+PROBE_SIDECAR_NAME = "corpus_p25_probe_sidecar.jsonl"
+#: Train rows whose normalized utterance equals an eval row's, as measured at
+#: the pin (assembly 0.1.3). Pre-existing (missing-slot cells collapse to
+#: "Move to reservoir_1"); 0.1.4 must not grow it.
+CROSS_SPLIT_DUPLICATES_AT_PIN = 41
 
 #: Floor-generator class vocabulary -> canonical golden/AmbiguityClass names.
 CLASS_MAP: dict[str, str] = {
@@ -261,6 +279,47 @@ def load_floor() -> list[dict[str, Any]]:
     return records
 
 
+def load_natural() -> list[dict[str, Any]]:
+    """Natural-phrasing floor variants (floor_gen/natural.py). Same intent as
+    the base row; provenance coverage_natural; lineage carries base_record_id
+    so assign_splits can route the variant by its base's split."""
+    path = REPO_ROOT / NATURAL_CORPUS_REL
+    if not path.exists():
+        return []
+    records: list[dict[str, Any]] = []
+    for row in _read_jsonl(path):
+        cell = row["matrix_cell"]
+        prov = row["provenance"]
+        if prov.get("provenance") != "coverage_natural":
+            raise AssertionError(f"{row['record_id']}: natural corpus row with provenance {prov!r}")
+        kind = row["supervision"]["kind"]
+        calls = [{"name": c["name"], "params": dict(c.get("params", {}))} for c in row["intent"]["calls"]]
+        if cell["ambiguity_class"] == "out-of-surface" or kind != "tool_call":
+            raise AssertionError(f"{row['record_id']}: natural lane has no out-of-surface variants")
+        records.append({
+            "record_id": row["record_id"],
+            "provenance": "coverage_natural",
+            "ambiguity_class": CLASS_MAP[cell["ambiguity_class"]],
+            "verb": cell["verb"],
+            "utterance": row["utterance"],
+            "calls": calls,
+            "assistant_text": None,
+            "supervision_kind": kind,
+            "lineage": {
+                "source_file": NATURAL_CORPUS_REL,
+                "base_record_id": row["lineage"]["base_record_id"],
+                "surface": "natural",
+                "cell_id": cell["cell_id"],
+                "matrix_ambiguity_class": cell["ambiguity_class"],
+                "generator_version": prov["generator_version"],
+                "prompt_version": prov["prompt_version"],
+                "teacher_model_version": prov["teacher_model_version"],
+                "gap_fields": calls,
+            },
+        })
+    return records
+
+
 def load_overlay() -> list[dict[str, Any]]:
     path = REPO_ROOT / OVERLAY_CORPUS_REL
     records: list[dict[str, Any]] = []
@@ -372,10 +431,42 @@ def validate_and_normalize(record: dict[str, Any]) -> tuple[list[dict[str, Any]]
 # split assignment (disjoint BY CONSTRUCTION)
 # ---------------------------------------------------------------------------
 
+def assign_splits_pinned(records: list[dict[str, Any]], pin: dict[str, Any]) -> dict[str, set[str]]:
+    """0.1.4: eval == the pinned record_ids EXACTLY (loud if one is missing or
+    excluded); golden must all be pinned; natural variants follow their base
+    row (eval base -> probe, never eval); everything else -> train."""
+    pinned = set(pin["rows"])
+    present = {r["record_id"] for r in records}
+    missing = sorted(pinned - present)
+    if missing:
+        raise AssertionError(f"pinned eval rows missing/excluded from assembly: {missing[:5]} (+{max(0, len(missing) - 5)})")
+    by_split: dict[str, set[str]] = {"train": set(), "eval": set(), "probe": set()}
+    for r in records:
+        rid = r["record_id"]
+        if r["provenance"] == "golden":
+            if rid not in pinned:
+                raise AssertionError(f"golden row {rid} is not in the eval pin")
+            by_split["eval"].add(rid)
+        elif rid in pinned:
+            by_split["eval"].add(rid)
+        elif r["provenance"] == "coverage_natural":
+            base = r["lineage"]["base_record_id"]
+            by_split["probe" if base in pinned else "train"].add(rid)
+        else:
+            by_split["train"].add(rid)
+    if by_split["eval"] != pinned:
+        raise AssertionError("eval split != pin")
+    total = sum(len(v) for v in by_split.values())
+    if total != len(present):
+        raise AssertionError("split assignment lost/duplicated records")
+    return by_split
+
+
 def assign_splits(records: list[dict[str, Any]]) -> dict[str, set[str]]:
-    """Golden -> eval unconditionally. Synthetic strata keyed
-    (provenance, class, verb), sorted by record_id; LAST k go eval where
-    k = min(n-1, floor(n*EVAL_FRACTION)), bumped to >=1 once n >= MIN_STRATUM_FOR_EVAL."""
+    """PRE-0.1.4 rule (kept for reference / the pin's provenance): golden ->
+    eval unconditionally; synthetic strata keyed (provenance, class, verb),
+    sorted by record_id; LAST k go eval where k = min(n-1, floor(n*EVAL_FRACTION)),
+    bumped to >=1 once n >= MIN_STRATUM_FOR_EVAL."""
     by_split: dict[str, set[str]] = {"train": set(), "eval": set()}
     strata: dict[tuple[str, str, str], list[str]] = defaultdict(list)
     for r in records:
@@ -445,6 +536,10 @@ def render_sidecar_row(record: dict[str, Any], split: str) -> dict:
 
 def _input_meta(rel: str) -> dict:
     path = REPO_ROOT / rel
+    if not path.exists():
+        # only the natural corpus may be absent (lane not generated yet)
+        assert rel == NATURAL_CORPUS_REL, rel
+        return {"path": rel, "sha256": None, "bytes": 0, "rows": 0}
     return {
         "path": rel,
         "sha256": _sha256_file(path),
@@ -472,9 +567,27 @@ def build_manifest(
     by_split: dict[str, set[str]],
     exclusion_map: dict[str, list[str]],
     scaffold_sha256: str,
+    *,
+    probe_records: list[dict] | None = None,
+    pin: dict[str, Any] | None = None,
 ) -> dict:
+    probe_records = probe_records or []
     n_total = len(records)
     n_eval = len(by_split["eval"])
+    eval_norm = {normalize_utterance(r["utterance"]) for r in records if r["record_id"] in by_split["eval"]}
+    cross_split_dups = sum(
+        1 for r in records if r["record_id"] in by_split["train"] and normalize_utterance(r["utterance"]) in eval_norm
+    )
+    if cross_split_dups > CROSS_SPLIT_DUPLICATES_AT_PIN:
+        raise AssertionError(
+            f"cross-split duplicate utterances grew: {cross_split_dups} > {CROSS_SPLIT_DUPLICATES_AT_PIN} at the pin"
+        )
+    strata = _count_strata(records, by_split)
+    train_only = [
+        {"provenance": s["provenance"], "ambiguity_class": s["ambiguity_class"], "verb": s["verb"], "n": s["n"]}
+        for s in strata
+        if s["provenance"] != "golden" and s["n_eval"] == 0 and s["n"] >= MIN_STRATUM_FOR_EVAL
+    ]
     per_split_class = {
         split: dict(Counter(r["ambiguity_class"] for r in records if r["record_id"] in ids))
         for split, ids in by_split.items()
@@ -513,19 +626,37 @@ def build_manifest(
             "golden_sidecar": _input_meta(GOLDEN_SIDECAR_REL),
             "floor_corpus": _input_meta(FLOOR_CORPUS_REL),
             "overlay_corpus": _input_meta(OVERLAY_CORPUS_REL),
+            "natural_corpus": _input_meta(NATURAL_CORPUS_REL),
         },
         "generator_versions": {
             "assemble": ASSEMBLY_VERSION,
             "floor_gen": _provenance_versions("coverage"),
+            "floor_gen_natural": _provenance_versions("coverage_natural"),
             "overlay_gen": _provenance_versions("naturalness"),
+        },
+        "eval_split_pin": {
+            "path": PIN_REL,
+            "pinned_at_assembly_version": pin["pinned_at_assembly_version"] if pin else None,
+            "n": pin["n"] if pin else None,
+            "rows_sha256": pin["rows_sha256"] if pin else None,
+        },
+        "post_freeze_train_only_strata": train_only,
+        "probe": {
+            "corpus": PROBE_CORPUS_NAME,
+            "sidecar": PROBE_SIDECAR_NAME,
+            "rows": len(probe_records),
+            "by_class": dict(sorted(Counter(r["ambiguity_class"] for r in probe_records).items())),
+            "rule": "natural-phrasing variants whose base row is a pinned eval row; scored separately, never part of the 228",
         },
         "prompt_versions": _lineage_versions("prompt_version"),
         "teacher_model_versions": _lineage_versions("teacher_model_version"),
         "split_rule": (
-            "golden-provenance -> eval unconditionally; synthetic strata "
-            "(provenance x ambiguity-class x verb) sorted by record_id, LAST "
-            "k -> eval, k = min(n-1, floor(n*0.2)) bumped to >=1 when n>=4; "
-            "train/eval disjoint by construction (single membership pass)"
+            "0.1.4 PINNED: eval == the record_ids in the eval split pin (cut at "
+            "assembly 0.1.3 by: golden -> eval unconditionally; synthetic strata "
+            "(provenance x ambiguity-class x verb) sorted by record_id, LAST k -> "
+            "eval, k = min(n-1, floor(n*0.2)) bumped to >=1 when n>=4), content "
+            "digests asserted; coverage_natural rows follow their base row (eval "
+            "base -> probe set); every other row -> train"
         ),
         "counts": {
             "total_rows": n_total,
@@ -535,8 +666,10 @@ def build_manifest(
             "by_split_and_class": {s: dict(sorted(m.items())) for s, m in sorted(per_split_class.items())},
             "eval_clarify_total": eval_clarify,
             "duplicate_utterances_normalized": duplicate_utterances,
+            "cross_split_duplicate_utterances": cross_split_dups,
+            "cross_split_duplicate_utterances_at_pin": CROSS_SPLIT_DUPLICATES_AT_PIN,
             "distinct_verbs": sorted({str(r["verb"]) for r in records if r["verb"]}),
-            "strata": _count_strata(records, by_split),
+            "strata": strata,
         },
         "target": {
             "examples_requested": TARGET_EXAMPLES,
@@ -566,7 +699,8 @@ def build_artifacts() -> dict[str, bytes]:
     Deterministic: no clock, no RNG, no dict-order dependence (sorted JSON +
     record_id-sorted rows). Same committed inputs => same bytes, always.
     """
-    records = load_golden() + load_floor() + load_overlay()
+    records = load_golden() + load_floor() + load_overlay() + load_natural()
+    pin = load_pin(REPO_ROOT / PIN_REL)
 
     ids = [r["record_id"] for r in records]
     dupes = sorted({i for i in ids if ids.count(i) > 1})
@@ -589,18 +723,32 @@ def build_artifacts() -> dict[str, bytes]:
 
     kept.sort(key=lambda r: r["record_id"])  # global deterministic order
 
-    by_split = assign_splits(kept)
-    tools = None
+    by_split = assign_splits_pinned(kept, pin)
+    from praxis_training.golden_build.corpus import tool_declarations
+
+    tools = tool_declarations()
     corpus_lines: list[str] = []
     sidecar_lines: list[str] = []
+    probe_lines: list[str] = []
+    probe_sidecar_lines: list[str] = []
+    main_records: list[dict] = []
+    probe_records: list[dict] = []
     for r in kept:
-        if tools is None:
-            from praxis_training.golden_build.corpus import tool_declarations
-
-            tools = tool_declarations()
-        split = "eval" if r["record_id"] in by_split["eval"] else "train"
-        corpus_lines.append(_canonical_json(render_native_row(r, split, tools)))
+        rid = r["record_id"]
+        if rid in by_split["probe"]:
+            # probe rows carry metadata "eval" so baseline_eval --split eval
+            # scores them unchanged; they live in their own files.
+            probe_lines.append(_canonical_json(render_native_row(r, "eval", tools)))
+            probe_sidecar_lines.append(_canonical_json(render_sidecar_row(r, "probe")))
+            probe_records.append(r)
+            continue
+        split = "eval" if rid in by_split["eval"] else "train"
+        native = render_native_row(r, split, tools)
+        if split == "eval" and native_digest(native) != pin["rows"][rid]:
+            raise AssertionError(f"pinned eval row {rid} renders differently from the pin (content drift)")
+        corpus_lines.append(_canonical_json(native))
         sidecar_lines.append(_canonical_json(render_sidecar_row(r, split)))
+        main_records.append(r)
 
     scaffold_bytes = scaffold_template_bytes()
     if scaffold_bytes != DEVELOPER_SCAFFOLD.encode("utf-8"):
@@ -609,12 +757,17 @@ def build_artifacts() -> dict[str, bytes]:
             "(praxis_training.golden_build.corpus.DEVELOPER_SCAFFOLD)"
         )
 
-    manifest = build_manifest(kept, by_split, exclusion_map, hashlib.sha256(scaffold_bytes).hexdigest())
+    manifest = build_manifest(
+        main_records, {"train": by_split["train"], "eval": by_split["eval"]}, exclusion_map,
+        hashlib.sha256(scaffold_bytes).hexdigest(), probe_records=probe_records, pin=pin,
+    )
     manifest_bytes = (json.dumps(manifest, indent=1, sort_keys=True) + "\n").encode("utf-8")
     return {
         CORPUS_NAME: ("\n".join(corpus_lines) + "\n").encode("utf-8"),
         SIDECAR_NAME: ("\n".join(sidecar_lines) + "\n").encode("utf-8"),
         MANIFEST_NAME: manifest_bytes,
+        PROBE_CORPUS_NAME: ("\n".join(probe_lines) + "\n").encode("utf-8"),
+        PROBE_SIDECAR_NAME: ("\n".join(probe_sidecar_lines) + "\n").encode("utf-8"),
     }
 
 

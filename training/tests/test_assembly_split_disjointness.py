@@ -70,10 +70,17 @@ def test_synthetic_strata_keep_train_mass_and_hold_out_representation():
             continue
         key = (s["provenance"], s["ambiguity_class"], str(s["verb"]))
         strata.setdefault(key, []).append(s["split"])
+    # 0.1.4: the eval split is pinned, so strata that gained rows after the
+    # pin (repaired floor cells, the natural lane) legitimately have no
+    # held-out row -- but only the ones the manifest enumerates.
+    manifest = json.loads((Path(__file__).resolve().parents[1] / "assemble" / "out" / "manifest.json").read_text())
+    allowed = {(s["provenance"], s["ambiguity_class"], s["verb"]) for s in manifest["post_freeze_train_only_strata"]}
     for key, splits in strata.items():
         assert splits.count("train") >= 1, f"{key}: stratum lost all train mass"
         if len(splits) >= 4:
-            assert splits.count("eval") >= 1, f"{key}: large stratum has no held-out row"
+            assert splits.count("eval") >= 1 or key in allowed, f"{key}: large stratum has no held-out row and is not enumerated"
+    for key in allowed:
+        assert key[0] in ("coverage", "coverage_natural"), key
 
     from assemble.build import CLARIFY_CLASSES
 
