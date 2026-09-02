@@ -1,10 +1,10 @@
 ---
 title: Coxswain P2.6 promotion decision -- three-arm mixing ablation vs baseline v2 (pre-registered rule)
 description: 'Mechanical application of the pre-registered P2.6 promotion rule to arms A/B/C: all eligible, all marginal, A selected, NOT PROMOTED. Failure breakdown separates two scorer artifacts and one gold-set defect from genuine misses; the single D8 revision is proposed AGAINST spending now.'
-status: decided-260901
+status: decided-260901; re-scored-260902 (§8)
 task_id: 260901_p26_finetune
 date: '260901'
-verdict: 'NOT PROMOTED (selected A) -- all three arms marginal; D8 revision UNSPENT (user decision 260901)'
+verdict: 'NOT PROMOTED (selected A) -- all three arms marginal; D8 revision UNSPENT (user decision 260901); fixed-scorer re-score 260902 (§8): A 0.636, still NOT PROMOTED'
 base_sha: ebd6b76d
 ---
 # Coxswain P2.6 promotion decision -- three-arm mixing ablation vs baseline v2 (pre-registered rule)
@@ -213,3 +213,51 @@ B: 0.851 [0.761, 0.911]); it would not promote any arm.
   `260901_p26_promotion.json`, `260901_p26_failure_breakdown.json`.
 - Manifests: `training/out/p26/{A,B,C}/train_manifest.json`.
 - bathos: `bth find --slurm-job 21781446|21781448|21781449` (project `praxis`).
+
+## 8. Addendum 260902 -- fixed-scorer re-score (task `260902_p26_rescore`, backlog 4861)
+
+Executed §6 item 1 under the pre-registration amendment
+`.praxia/docs/preregistration/260902_p26-rescore-amendment.md` (commit `8fe1b111`,
+before any scorer change). Nothing was retrained; the generations of every model were
+frozen first (`training/eval/outputs/260902_p26_dump_*.json`, commit `d82d4404`) and the
+old scorer over those dumps reproduced this document's §1 numbers exactly (identical
+failed-row sets, clarify metrics and tripwire; baseline on local CPU fp32, arms on an
+Engaging L40S cuda/bf16, Slurm 21810821). The three defects of §4 were then fixed at
+their source -- `fgml_parser` nested-value decoding (`dd4498e7`), order-insensitive
+`unresolved_slots` comparison in `check_intent_agreement` (`1b9ed30f`), and an assembler
+that derives gap fields for every call (0.1.3, `cda6a770`; sidecar sha `fb18d8d0…` ->
+`d66f7185…`, pairs file byte-identical, eval record set unchanged) -- and the dumps were
+re-scored in recorded mode (four bathos runs of `scripts/experiments/p26_rescore.py`,
+sidecar `p26_rescore.bth.toml`, all `pass`).
+
+**The pre-registered row-level prediction held on all four models:** no row flipped
+hit -> miss, every miss -> hit flip was in the artifact set, every artifact row flipped,
+clarify recall / precision / confusion / tripwire identical (`*.check.json`).
+
+| model | exact 260901 (old scorer) | exact 260902 (fixed scorer) | recall | precision | tripwire | eligible | outcome |
+|---|---|---|---|---|---|---|---|
+| baseline v2 | 0.162 [0.120, 0.216] (37/228) | **0.197 [0.151, 0.254] (45/228)** | 0.705 (62/88) | 0.564 (62/110) | 13 | -- | -- |
+| A (raw, 56% neg) | 0.386 [0.325, 0.451] (88/228) | **0.636 [0.572, 0.696] (145/228)** | 0.864 (76/88) | 0.835 (76/91) | 1 | yes | marginal |
+| B (50% neg) | 0.373 [0.313, 0.437] (85/228) | **0.601 [0.536, 0.662] (137/228)** | 0.841 (74/88) | 0.851 (74/87) | 2 | yes | marginal |
+| C (33% neg) | 0.355 [0.296, 0.419] (81/228) | **0.575 [0.510, 0.637] (131/228)** | 0.784 (69/88) | 0.841 (69/82) | 3 | yes | marginal |
+
+Rule unchanged (§1). Eligible: A, B, C. Selected: **A**. **Verdict: NOT PROMOTED
+(selected A)** -- `training/eval/reports/260902_p26_rescore_promotion.json`. The D8
+revision remains unspent; the accuracy gap to T_acc 0.80 is now 0.164 on the point
+estimate (upper Wilson bound 0.696), all of it model behaviour.
+
+Per class, A (fixed scorer): clean_parse 59/107 (was 25), missing_slot 25/44 (was 16),
+ambiguous_referent 18/33 (was 4), out_of_surface 43/44 (unchanged). Baseline v2:
+13/107, 0/44, 1/33, 31/44.
+
+Residual misses on A (`260902_p26_rescore_failure_breakdown.json`, artifact categories
+now 0 everywhere): 60 `param_content`, 11 `name_mismatch`, 10 `no_call`, 1 spurious
+call, 1 unknown verb -- the surface-form / hallucinated-argument / `move_plate` vs
+`move_resource` patterns already named in §4. §6 items 2 (data) and 3 (recipe) are the
+next levers; each needs its own pre-registration and the user's call.
+
+Enablers that outlive this sprint: every `baseline_eval` run can persist its generations
+(`--dump-outputs`) so scorer changes are pure `--recorded` re-scores; cluster commands go
+through `scripts/slurm/bth_run.sh` (catalog env verified on the compute node);
+`test_assembly_gap_fields.py` and the stratified render round-trip test guard the three
+defects. Deferred (debt): parser booleans and escaped-numeric coercion.

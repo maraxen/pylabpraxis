@@ -15,6 +15,13 @@ backlog_item: 480
 > user decision (260901)**; anchors unchanged until two scorer artifacts and
 > one gold-set defect are fixed and the checkpoints are re-scored. Decision doc:
 > `.praxia/docs/audits/260901_p26-promotion.md`.
+>
+> **Status 260902 (re-scored, task `260902_p26_rescore`):** scorer + gold-sidecar
+> defects fixed under the pre-registration amendment
+> `260902_p26-rescore-amendment.md`; the same checkpoints re-scored from frozen
+> generations, prediction held. A: acc **0.636** [0.572, 0.696], recall 0.864,
+> prec 0.835, tripwire 1 -> still NOT PROMOTED; baseline v2 0.197. **Anchors
+> unchanged, D8 revision still UNSPENT.** Decision doc §8.
 
 Spec: `.praxia/docs/specs/260825_coxswain-phase-2-functiongemma-copilot-p.md`
 rev2 D8 / §5 P2.5 deliverable 5 / §7 AC-2.5.x ("thresholds labeled

@@ -1,7 +1,7 @@
 ---
 title: 'P2.6 re-score amendment: fixed scorer + re-derived gold gap fields on the same generations'
 description: 'Pre-registration amendment (backlog 4861) to the P2.6 prereg: three scoring defects are fixed (parser nested-list decoding, order-insensitive unresolved_slots comparison, assembler-derived gold gap fields) and the SAME three checkpoints plus baseline v2 are re-scored from saved generations with a row-level prediction registered before any scorer change; promotion rule and D8 anchors unchanged.'
-status: registered
+status: registered-8fe1b111; held-260902
 task_id: 260902_p26_rescore
 date: '260902'
 ---
@@ -126,3 +126,15 @@ re-score reports `training/eval/reports/260902_p26_rescore_<model>.json` + `.che
 bathos runs tagged `model:<model>` under project `praxis`. Checkpoints stay uncommitted
 (`outputs/p26/<arm>/checkpoint`, gitignored; the 260901 prereg's `training/out/checkpoints/`
 location was a documentation slip -- the manifests' `checkpoint.dir` is authoritative).
+
+## 7. Outcome (260902, after the fixes)
+
+Prediction held on all four models (`training/eval/reports/260902_p26_rescore_*.check.json`,
+bathos runs `81c30927` baseline / `563e5133` A / `d55ad860` B / `01e07b30` C, all `pass`):
+flips miss -> hit = artifact rows exactly (8 / 57 / 52 / 50), zero hit -> miss, zero
+unpredicted, clarify metrics and tripwire identical, n = 228. New exact match: baseline
+45/228 (0.197), A 145/228 (0.636), B 137/228 (0.601), C 131/228 (0.575). Corpus checks
+held (pairs byte-identical; sidecar diff limited to the two gap fields; manifest diff =
+version + rule + generator_versions.assemble; `test_assembly_idempotent` green). Verdict
+under the unchanged rule: NOT PROMOTED (selected A). Decision addendum:
+`.praxia/docs/audits/260901_p26-promotion.md` §8.

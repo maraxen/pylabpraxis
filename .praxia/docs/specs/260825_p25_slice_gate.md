@@ -233,6 +233,13 @@ which was the single worst-supported behavior in the 0826 revision.
    decision 260901); next: scorer fixes + re-score under a prereg amendment. Two scorer artifacts and one gold-set defect account for 54
    of A's 140 misses. Decision doc:
    `.praxia/docs/audits/260901_p26-promotion.md`.
+5. **260902 -- re-scored under a prereg amendment** (task `260902_p26_rescore`,
+   backlog 4861): parser list decoding, order-insensitive slot comparison and
+   assembler-derived gold gap fields (assembly 0.1.3; sidecar re-annotated,
+   pairs file and eval rows unchanged); generations frozen, prediction held on
+   every model. A 0.636 / 0.864 / 0.835 / tripwire 1 -> still NOT PROMOTED,
+   D8 unspent. Decision doc §8; the eval-split annotation defect this gate's
+   condition 2 relied on is closed by `test_assembly_gap_fields.py`.
 
 **Open for the jury (not blockers, recorded so they are decided rather than
 defaulted):**
