@@ -152,6 +152,19 @@ those out of the analyzer. `plr-sema/eval/` (tiers 1–3, bathos sidecar per
 run, `uv run --package plr-sema`) and `plr-sema/tests/test_wire_fuzz.py`
 (tier 4). The spike stays in `scripts/` as the worked example.
 
+## Status (260902, end of day)
+
+| tier | backlog | state | numbers |
+|---|---|---|---|
+| 1 corpus replay | #4879 | **done** (9a7eb0fc) | 900 rows: 184 no-call, 448 skipped by P2.5's own `ambiguity_class` gate, 268 executed / 426 ops; 0 unsound, 0 `check_graph` exceptions, 0 totality violations; exact `record_id` join to P2.5's recorded results **189 / 189 agree**; bathos run `0192da93` PASS. Residual: 40 golden rows unparseable (underscore refs `tip_rack_3_F7`) — decision needed. `precondition_state` ranking is empty: with P2.5's scaffolding every executed row runs clean, so tier 3 is the only source of PLR-exception ground truth. |
+| 2 through the extractor | #4880 | not started | superseded in shape by SEMA-IR (#4921): both sides now lower to the same bytecode; divergence has three possible causes (extractor, renderer, `lower_graph` grammar gap) |
+| 3 mutation / metamorphic | #4881 | tip-family slice in flight with #4888 step 1 | m1 remove `pick_up_tips` → `NoTipError`; m2 duplicate → `HasTipError`; gate: never SAFE where raised, never WILL_FAIL where clean, WILL_FAIL fires ≥1 |
+| 4 wire-format fuzz | #4882 | **done** (b81a93f8) | 8 properties × 150 examples; malformed-payload classes pinned; found a duplicate-operation-id totality bug in step 0 during development |
+
+The adapter this plan described (`adapt_graph`) is retired: tier 1 lowers call sequences with
+`lower_calls` over `PlanResult.kwargs` (SEMA-IR §11.2.2), so the tool-vs-PLR parameter-name defect
+noted above is closed structurally (Gate B: 104 CALLs, 0 violations).
+
 ## What this does not measure
 
 - Precision. Until an emitter constructs `SAFE` or `WILL_FAIL`, there are no
