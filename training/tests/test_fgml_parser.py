@@ -108,3 +108,49 @@ def test_value_stripping_matrix(value, expected):
     from praxis_training.baseline_eval.fgml_parser import _strip_escapes
 
     assert _strip_escapes(value) == expected
+
+
+# ---------------------------------------------------------------------------
+# 260902: nested values, mirroring the chat template's format_argument macro
+# ---------------------------------------------------------------------------
+
+def _one(raw: str):
+    res = parse_function_calls(f"<start_function_call>call:t{{{raw}}}<end_function_call>")
+    assert not res.errors, res.errors
+    assert len(res.calls) == 1
+    return res.calls[0].params
+
+
+def test_list_of_escaped_strings():
+    assert _one("at:[<escape>tip_rack.C5<escape>]") == {"at": ["tip_rack.C5"]}
+    assert _one("at:[<escape>a<escape>,<escape>b<escape>],v:5") == {"at": ["a", "b"], "v": 5}
+
+
+def test_empty_list():
+    assert _one("at:[]") == {"at": []}
+
+
+def test_list_with_comma_and_bracket_inside_escape():
+    assert _one("at:[<escape>a,b<escape>,<escape>c]d<escape>]") == {"at": ["a,b", "c]d"]}
+
+
+def test_list_of_bare_numbers_coerces_elements():
+    assert _one("xs:[1,2.5,<escape>3<escape>]") == {"xs": [1, 2.5, 3]}
+
+
+def test_nested_mapping_value_bare_and_escaped_keys():
+    assert _one("dst:{x:1,y:<escape>two<escape>}") == {"dst": {"x": 1, "y": "two"}}
+    assert _one("dst:{<escape>x<escape>:1}") == {"dst": {"x": 1}}
+    assert _one("dst:{a:[<escape>p<escape>],b:{c:2}}") == {"dst": {"a": ["p"], "b": {"c": 2}}}
+
+
+def test_escaped_scalar_starting_with_bracket_stays_string():
+    assert _one("s:<escape>[not a list]<escape>") == {"s": "[not a list]"}
+    assert _one("s:<escape>{k:v}<escape>") == {"s": "{k:v}"}
+
+
+def test_existing_scalar_behaviour_unchanged():
+    # bare numbers, escaped numbers, bare text: exactly as before the fix
+    assert _one("volume_ul:50") == {"volume_ul": 50}
+    assert _one("volume_ul:<escape>12.5<escape>") == {"volume_ul": 12.5}
+    assert _one("well:A1") == {"well": "A1"}

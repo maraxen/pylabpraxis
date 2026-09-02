@@ -31,14 +31,34 @@ def tokenizer():
         pytest.skip(f"FunctionGemma tokenizer not in local HF cache: {exc}")
 
 
+def _value_shape(row) -> str:
+    """Coarse shape of the call's argument values: the round-trip test must
+    cover every shape the template serialises differently (260902: the first
+    25 rows in corpus order had no list-valued argument, and the parser's
+    missing list decoding went unnoticed)."""
+    shapes = set()
+    for call in row.sidecar["calls"]:
+        for v in call["params"].values():
+            shapes.add("list" if isinstance(v, list) else "dict" if isinstance(v, dict)
+                       else "bool" if isinstance(v, bool) else "num" if isinstance(v, (int, float)) else "str")
+    return "+".join(sorted(shapes)) or "none"
+
+
 @pytest.fixture(scope="module")
 def sample_rows():
     rows = mixing.load_corpus(ROOT / CORPUS_REL, ROOT / SIDECAR_REL)
-    by_kind = {"tool_call": [], "nl_clarification": []}
+    per_shape: dict[str, list] = {}
+    nl = []
     for r in rows:
-        if len(by_kind[r.supervision_kind]) < 25:
-            by_kind[r.supervision_kind].append(r)
-    return by_kind["tool_call"] + by_kind["nl_clarification"]
+        if r.supervision_kind == "tool_call":
+            per_shape.setdefault(_value_shape(r), [])
+            if len(per_shape[_value_shape(r)]) < 12:
+                per_shape[_value_shape(r)].append(r)
+        elif len(nl) < 25:
+            nl.append(r)
+    picked = [r for rs in per_shape.values() for r in rs]
+    assert any("list" in _value_shape(r) for r in picked), "corpus has no list-valued argument rows?"
+    return picked + nl
 
 
 def _strip_stops(text: str) -> str:

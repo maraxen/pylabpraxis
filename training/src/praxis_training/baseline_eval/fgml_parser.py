@@ -153,8 +153,46 @@ def _strip_escapes(value: str) -> str:
     return text
 
 
+def _decode_value(raw: str) -> object:
+    """Decode one argument value the way the FunctionGemma chat template's
+    ``format_argument`` macro encodes it (checkpoint ``chat_template.jinja``):
+
+    - ``<escape>text<escape>``           -> scalar (existing path: strip, coerce)
+    - ``[v1,v2,...]``                     -> list, each element decoded recursively
+    - ``{k1:v1,k2:v2}``                   -> dict (tool-call arguments render nested
+                                            keys UNescaped; escaped keys tolerated)
+    - anything else                       -> scalar path (bare numbers, bare text)
+
+    Brackets inside ``<escape>`` spans are literal, so a whole-escaped value
+    is checked FIRST and never mistaken for a container (260902 fix; before
+    it a list came back as one string and failed every list-valued row).
+    """
+    text = raw.strip()
+    if text.startswith(ESC) and text.endswith(ESC) and len(text) >= 2 * len(ESC):
+        return _coerce(_strip_escapes(text))
+    if len(text) >= 2 and text[0] == "[" and text[-1] == "]":
+        inner = text[1:-1]
+        if not inner.strip():
+            return []
+        return [_decode_value(item) for item in _split_top_level(inner) if item.strip()]
+    if len(text) >= 2 and text[0] == "{" and text[-1] == "}":
+        inner = text[1:-1]
+        out: dict[str, object] = {}
+        for item in _split_top_level(inner):
+            if not item.strip():
+                continue
+            pair = _parse_pair(item)
+            if pair is None:
+                return _coerce(_strip_escapes(text))  # not a mapping after all: keep as text
+            out[pair[0]] = pair[1]
+        return out
+    return _coerce(_strip_escapes(text))
+
+
 def _parse_pair(part: str) -> tuple[str, object] | None:
-    """One ``key:value`` pair; colon split at top level (outside escapes)."""
+    """One ``key:value`` pair; colon split at top level (outside escapes).
+    Keys may be bare or ``<escape>``-wrapped; values go through
+    :func:`_decode_value`."""
     i = 0
     in_escape = False
     while i < len(part):
@@ -170,12 +208,11 @@ def _parse_pair(part: str) -> tuple[str, object] | None:
             i += len(ESC)
             continue
         if part[i] == ":":
-            key = part[:i].strip()
+            key = _strip_escapes(part[:i])
             raw_value = part[i + 1:]
             if not key:
                 return None
-            value = _coerce(_strip_escapes(raw_value))
-            return key, value
+            return key, _decode_value(raw_value)
         i += 1
     return None
 
