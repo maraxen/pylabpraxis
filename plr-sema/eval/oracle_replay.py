@@ -68,37 +68,42 @@ def _classify_exception(exc_class: str | None) -> str:
     return "harness_error"
 
 
-def _content_hash(row: dict[str, Any]) -> str | None:
-    """Compute a content-based hash for joining rows.
+def _extract_utterance_and_call(row: dict[str, Any]) -> tuple[str, str]:
+    """Extract utterance and first call name from a row.
 
-    Normalize: (user message, first real call name, sorted param items).
+    Handles corpus format (messages) and crosscheck formats (floor: utterance,
+    overlay: instruction).
     """
     utterance = ""
-    first_call_name = ""
-    params_str = ""
+    call_name = ""
 
+    # Corpus format (messages)
     for msg in row.get("messages", []):
         if msg.get("role") == "user":
             utterance = msg.get("content", "")
         elif msg.get("role") == "assistant":
             tool_calls = msg.get("tool_calls", [])
             if tool_calls:
-                func = tool_calls[0].get("function", {})
-                first_call_name = func.get("name", "")
-                params = func.get("arguments", {})
-                # Normalize params to sorted items string
-                params_str = json.dumps(
-                    sorted(params.items()) if isinstance(params, dict) else [],
-                    sort_keys=True,
-                    separators=(",", ":"),
-                )
+                call_name = tool_calls[0].get("function", {}).get("name", "")
                 break
 
-    if not first_call_name:
-        return None
+    # Floor format (utterance + structured_calls)
+    if not utterance and "structured_calls" in row:
+        utterance = row.get("utterance", "")
+        calls = row.get("structured_calls", [])
+        if calls:
+            call_name = calls[0].get("name", "")
 
-    content = f"{utterance}|{first_call_name}|{params_str}"
-    return hashlib.sha256(content.encode()).hexdigest()[:16]
+    # Overlay format (instruction + call)
+    if not utterance and "instruction" in row:
+        utterance = row.get("instruction", "")
+        call_info = row.get("call", {})
+        if isinstance(call_info, dict):
+            call_name = call_info.get("name", "")
+        elif isinstance(call_info, str):
+            call_name = call_info
+
+    return utterance, call_name
 
 
 @dataclasses.dataclass
@@ -336,8 +341,8 @@ def main(argv: list[str] | None = None) -> int:
     # Load contracts
     contracts_json = args.contracts.read_text(encoding="utf-8")
 
-    # Load crosscheck by content hash
-    crosscheck_by_hash: dict[str, dict[str, Any]] = {}
+    # Load crosscheck by (utterance, call_name)
+    crosscheck_by_content: dict[tuple[str, str], dict[str, Any]] = {}
     for cc_file in args.crosscheck:
         try:
             with open(cc_file) as f:
@@ -345,12 +350,15 @@ def main(argv: list[str] | None = None) -> int:
                     if not line.strip():
                         continue
                     row = json.loads(line)
-                    content_hash = _content_hash(row)
-                    if content_hash:
-                        crosscheck_by_hash[content_hash] = row
+                    utterance, call_name = _extract_utterance_and_call(row)
+                    if utterance and call_name:
+                        key = (utterance, call_name)
+                        # Prefer earlier rows if duplicates exist
+                        if key not in crosscheck_by_content:
+                            crosscheck_by_content[key] = row
         except Exception as e:
             log.warning("Failed to load crosscheck file %s: %s", cc_file, e)
-    log.info("Loaded %d crosscheck entries by content hash", len(crosscheck_by_hash))
+    log.info("Loaded %d crosscheck entries by (utterance, call_name)", len(crosscheck_by_content))
 
     # Process corpus files
     results: list[RowResult] = []
@@ -444,18 +452,14 @@ def main(argv: list[str] | None = None) -> int:
     # Category breakdown
     category_breakdown = dict(exc_category_counter)
 
-    # Crosscheck: content-based join
+    # Crosscheck: content-based join (utterance, first_call_name)
     crosscheck_result = {"joined": 0, "agree": 0, "disagree": 0, "examples": []}
     for r in executed_results:
-        content_hash = _content_hash({"messages": [
-            {"role": "user", "content": r.utterance},
-            {"role": "assistant", "tool_calls": [
-                {"function": {"name": r.call_names[0] if r.call_names else ""}}
-            ]}
-        ]})
-        if not content_hash:
+        first_call = r.call_names[0] if r.call_names else ""
+        if not first_call:
             continue
-        cc_row = crosscheck_by_hash.get(content_hash)
+        key = (r.utterance, first_call)
+        cc_row = crosscheck_by_content.get(key)
         if not cc_row:
             continue
         crosscheck_result["joined"] += 1
@@ -466,12 +470,15 @@ def main(argv: list[str] | None = None) -> int:
         else:
             crosscheck_result["disagree"] += 1
             if len(crosscheck_result["examples"]) < 10:
+                cc_error = cc_row.get("execution_verify", {}).get("error")
                 crosscheck_result["examples"].append({
-                    "record_id": r.record_id,
+                    "utterance": r.utterance[:60],
+                    "call": first_call,
                     "our_outcome": r.runtime_outcome,
                     "our_error": r.runtime_error,
                     "recorded_outcome": "passed" if cc_passed else "failed",
-                    "recorded_error": cc_row.get("execution_verify", {}).get("error"),
+                    "recorded_error": cc_error[:100] if cc_error else None,
+                    "is_plate_tracker_error": "'Plate' object has no attribute 'tracker'" in (r.runtime_error or ""),
                 })
 
     # Compute global unknown_rate
