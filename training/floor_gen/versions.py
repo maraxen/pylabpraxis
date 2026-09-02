@@ -16,6 +16,7 @@ __all__ = [
     "GEMINI_BATCH_SIZE",
     "GEMINI_MODEL",
     "GENERATOR_VERSION",
+    "SYNTH_SEED_VERSION",
     "MATRIX_VERSION",
     "PLR_SUBMODULE_SHA",
     "PROMPT_VERSION",
@@ -33,7 +34,19 @@ __all__ = [
 #: resource-list/volume-list cardinality coordination (was independently
 #: sampled, producing internally-inconsistent "clean" calls). See
 #: _grounded_symbolic/_literal_value docstrings.
-GENERATOR_VERSION: Final[str] = "0.2.0"
+#: 0.2.1 (260902, task 260902_p26b_surface_data): post-synthesis coercion to
+#: the declared scalar/ARRAY surface (DECLARED_ARRAY_PARAMS) so the 60 rows
+#: assembly 0.1.3 excluded become valid. DELIBERATE EXCEPTION to "bumps
+#: reshuffle": the RNG seed now uses SYNTH_SEED_VERSION (frozen at 0.2.0) so
+#: every previously accepted row stays byte-identical and the pinned
+#: 228-row eval split is untouched (training/floor_gen/data/
+#: floor_0.2.0_accepted_digests.json is the alarm).
+GENERATOR_VERSION: Final[str] = "0.2.1"
+
+#: RNG seed component (synth._rng). Frozen at 0.2.0 on purpose: bumping it
+#: reshuffles EVERY synthesized call and therefore the eval split; do that
+#: only under a new pre-registration that re-measures the baseline.
+SYNTH_SEED_VERSION: Final[str] = "0.2.0"
 
 #: Bump on ANY change to prompt text (changes every cache key by construction).
 PROMPT_VERSION: Final[str] = "p23_nlify_v1"

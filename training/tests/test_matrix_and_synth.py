@@ -54,7 +54,7 @@ def test_seed_depends_on_generator_version_and_cell(monkeypatch):
 
     cell = MatrixCell(cell_id="aspirate__none", verb="aspirate", ambiguity_class="none", examples_per_cell=1)
     ex_a = synth_mod.synthesize_example(cell, 0)
-    monkeypatch.setattr(synth_mod, "GENERATOR_VERSION", "9.9.9")
+    monkeypatch.setattr(synth_mod, "SYNTH_SEED_VERSION", "9.9.9")
     ex_b = synth_mod.synthesize_example(cell, 0)
     assert ex_a.structured_calls != ex_b.structured_calls
 
@@ -174,3 +174,60 @@ def test_plan_length_matches_design():
     matrix = load_matrix(committed_matrix_path())
     expected = sum(cell.examples_per_cell for cell in matrix.cells)
     assert len(synthesize_plan(matrix)) == expected
+
+
+# ---------------------------------------------------------------------------
+# 0.2.1 (task 260902_p26b_surface_data): surface coercion repairs exactly the
+# 60 rows assembly 0.1.3 rejected and moves nothing else.
+# ---------------------------------------------------------------------------
+
+def test_synth_output_matches_declared_array_surface():
+    import json
+    from collections import Counter
+    from pathlib import Path
+
+    from praxis_training.golden_build.corpus import DECLARED_ARRAY_PARAMS
+
+    matrix = load_matrix(Path(__file__).resolve().parents[1] / "floor_gen" / "data" / "ambiguity_matrix.json")
+    repaired: Counter[str] = Counter()
+    for ex in synthesize_plan(matrix):
+        for call in ex.schema_calls:
+            for pname, value in call["params"].items():
+                if (call["name"], pname) in DECLARED_ARRAY_PARAMS:
+                    assert isinstance(value, list) and value, (ex.cell.cell_id, ex.index, pname, value)
+                else:
+                    assert not isinstance(value, list) or len(value) == 1, (ex.cell.cell_id, ex.index, pname, value)
+        if ex.repairs:
+            repaired[ex.cell.cell_id] += 1
+    # the exclusion table of assembly 0.1.3 (manifest exclusions, 60 floor records)
+    assert dict(repaired) == {
+        "aspirate__missing-slot": 10, "aspirate__ambiguous-referent": 12,
+        "dispense__ambiguous-referent": 12, "transfer__none": 3, "transfer__missing-slot": 7,
+        "drop_tips__none": 1, "pick_up_tips__ambiguous-referent": 15,
+    }, dict(repaired)
+    assert sum(repaired.values()) == 60
+
+
+def test_repair_is_noop_on_previously_accepted_rows():
+    """The 625 rows accepted at 0.2.0 re-synthesize to the SAME structured
+    calls (frozen seed + coercion that never touches a valid value)."""
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    digests = json.loads((root / "floor_gen" / "data" / "floor_0.2.0_accepted_digests.json").read_text())
+    committed = {}
+    for line in (root / "out" / "corpus_p23_floor.jsonl").read_text().splitlines():
+        if line.strip():
+            row = json.loads(line)
+            committed[row["record_id"]] = row
+    matrix = load_matrix(root / "floor_gen" / "data" / "ambiguity_matrix.json")
+    by_cell_index = {(ex.cell.cell_id, ex.index): ex for ex in synthesize_plan(matrix)}
+    checked = 0
+    for rid in digests["rows"]:
+        row = committed[rid]
+        ex = by_cell_index[(row["matrix_cell"]["cell_id"], int(rid.rsplit("-", 1)[1]))]
+        assert not ex.repairs, rid
+        assert [dict(c) for c in ex.structured_calls] == row["structured_calls"], rid
+        checked += 1
+    assert checked == 625

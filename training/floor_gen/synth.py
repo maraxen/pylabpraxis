@@ -7,8 +7,17 @@ by the P2.2 harness): kwarg names are the table's ``plr_arg`` column, list
 vs scalar follows ``cardinality``, and values obey the pinned value formats.
 
 Determinism: every example's RNG is seeded from
-``sha256(GENERATOR_VERSION + "|" + cell_id + "#" + index)`` -- same generator
-version + same matrix => identical synthesis, byte for byte, forever.
+``sha256(SYNTH_SEED_VERSION + "|" + cell_id + "#" + index)`` -- same seed
+version + same matrix => identical draws, byte for byte, forever. Since
+0.2.1 the seed version is decoupled from GENERATOR_VERSION so a repair of
+the surface coercion (below) cannot move rows that were already accepted.
+
+Surface coercion (0.2.1): after ``_build_kwargs``, ``_coerce_to_declared_surface``
+truncates any multi-value list on a param the copilot surface declares
+SCALAR to its first element and wraps a bare string on a DECLARED_ARRAY_PARAMS
+param into a 1-element list. It consumes no RNG, so a row the assembler
+already accepted (every non-array value scalar or 1-element, every array
+value a list) is unchanged; only the 60 rows it used to reject change.
 
 Each example carries BOTH views:
 - ``structured_calls``: corpus-B kwargs (what execution-verify runs),
@@ -34,7 +43,8 @@ from coxswain.plr.slot_derivation import derive_call_gaps
 
 from floor_gen.matrix import AmbiguityMatrix, MatrixCell
 from floor_gen.value_formats import VAGUE_REF_POOLS, canonical_volume, canonical_well
-from floor_gen.versions import GENERATOR_VERSION
+from floor_gen.versions import SYNTH_SEED_VERSION
+from praxis_training.golden_build.corpus import DECLARED_ARRAY_PARAMS
 
 __all__ = ["SynthExample", "synthesize_cell", "synthesize_plan"]
 
@@ -52,6 +62,9 @@ class SynthExample:
     #: D11-derived gaps per schema call (missing_required, unresolved_slots).
     derived_missing: tuple[tuple[str, ...], ...]
     derived_slots: tuple[tuple[tuple[str, str, str], ...], ...]
+    #: surface repairs applied by _coerce_to_declared_surface ("param:truncated"
+    #: / "param:wrapped"); empty for every row accepted before 0.2.1.
+    repairs: tuple[str, ...] = ()
 
     @property
     def seed_key(self) -> str:
@@ -85,7 +98,7 @@ _FOCAL_HEIGHT_POOL: Final[tuple[float, ...]] = (4.5, 5.0, 7.5, 10.0, 12.5, 15.0)
 
 
 def _rng(seed_key: str) -> random.Random:
-    digest = hashlib.sha256(f"{GENERATOR_VERSION}|{seed_key}".encode("utf-8")).hexdigest()
+    digest = hashlib.sha256(f"{SYNTH_SEED_VERSION}|{seed_key}".encode("utf-8")).hexdigest()
     return random.Random(int(digest[:16], 16))
 
 
@@ -226,6 +239,33 @@ def _build_kwargs(cell: MatrixCell, rng: random.Random) -> dict[str, Any]:
     return kwargs
 
 
+def _coerce_to_declared_surface(tool_name: str, kwargs: dict[str, Any]) -> tuple[dict[str, Any], tuple[str, ...]]:
+    """Make one call's kwargs representable on the shipped copilot surface.
+
+    The FunctionGemma surface declares exactly ``DECLARED_ARRAY_PARAMS`` as
+    ARRAY (pick_up_tips.at, read_*.at); every other param is SCALAR and the
+    dispatcher wraps it to the vendored list. The assembler therefore
+    rejects a multi-value list on a scalar param and a bare string on an
+    array param (assembly 0.1.3: 60 floor rows, 9 cells). Pure, no RNG.
+    """
+    by_key: dict[str, str] = {}
+    for spec in params_of(tool_name):
+        by_key[spec.plr_arg if spec.plr_arg is not None else spec.name] = spec.name
+    out: dict[str, Any] = {}
+    repairs: list[str] = []
+    for key, value in kwargs.items():
+        schema_name = by_key.get(key, key)
+        if (tool_name, schema_name) in DECLARED_ARRAY_PARAMS:
+            if isinstance(value, str):
+                value = [value]
+                repairs.append(f"{schema_name}:wrapped")
+        elif isinstance(value, list) and len(value) > 1:
+            value = value[:1]
+            repairs.append(f"{schema_name}:truncated")
+        out[key] = value
+    return out, tuple(repairs)
+
+
 def _schema_view(tool_name: str, kwargs: dict[str, Any]) -> dict[str, Any]:
     """Invert corpus-B kwargs back to schema-side names via the table."""
     by_kwarg: dict[str, str] = {}
@@ -247,8 +287,8 @@ def synthesize_example(cell: MatrixCell, index: int) -> SynthExample:
         )
 
     rng = _rng(f"{cell.cell_id}#{index}")
-    kwargs = _build_kwargs(cell, rng)
     assert cell.verb is not None
+    kwargs, repairs = _coerce_to_declared_surface(cell.verb, _build_kwargs(cell, rng))
     structured = ({"name": cell.verb, "kwargs": kwargs},)
     schema_params = _schema_view(cell.verb, kwargs)
     gaps = derive_call_gaps(cell.verb, schema_params)
@@ -264,6 +304,7 @@ def synthesize_example(cell: MatrixCell, index: int) -> SynthExample:
         derived_slots=(
             tuple((s.arg_name, s.reference, s.resource_type) for s in gaps.unresolved_slots),
         ),
+        repairs=repairs,
     )
 
 

@@ -348,6 +348,10 @@ def generate_corpus(
             }
             if exec_result is not None and exec_result.summary is not None:
                 row["execution_verify"] = exec_result.summary
+            if example.repairs:
+                # 0.2.1: only on rows the surface coercion changed; absent
+                # otherwise so previously accepted rows stay byte-identical.
+                row["synth_repairs"] = list(example.repairs)
             rows.append(row)
             ordinal += 1
 
