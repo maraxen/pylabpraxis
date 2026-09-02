@@ -11,9 +11,9 @@ backlog_item: 480
 
 > **Status 260901 (P2.6 applied):** the rule was applied mechanically to the
 > three-arm ablation -- verdict NOT PROMOTED (selected A: acc 0.386, recall
-> 0.864, prec 0.835, tripwire 1). **The single D8 revision is UNSPENT**; the
-> proposal on the table is to keep it that way until two scorer artifacts and
-> one gold-set defect are fixed. Decision doc:
+> 0.864, prec 0.835, tripwire 1). **The single D8 revision is UNSPENT by
+> user decision (260901)**; anchors unchanged until two scorer artifacts and
+> one gold-set defect are fixed and the checkpoints are re-scored. Decision doc:
 > `.praxia/docs/audits/260901_p26-promotion.md`.
 
 Spec: `.praxia/docs/specs/260825_coxswain-phase-2-functiongemma-copilot-p.md`

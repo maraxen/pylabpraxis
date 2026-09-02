@@ -229,8 +229,8 @@ which was the single worst-supported behavior in the 0826 revision.
    top.
 4. **P2.6 RUN 260901 (jury said GO).** Three-arm negative-mixing ablation
    on Engaging, promotion rule applied mechanically: all arms eligible and
-   `marginal`, A selected, **NOT PROMOTED**; D8 revision unspent (proposal:
-   keep it so). Two scorer artifacts and one gold-set defect account for 54
+   `marginal`, A selected, **NOT PROMOTED**; D8 revision unspent (user
+   decision 260901); next: scorer fixes + re-score under a prereg amendment. Two scorer artifacts and one gold-set defect account for 54
    of A's 140 misses. Decision doc:
    `.praxia/docs/audits/260901_p26-promotion.md`.
 

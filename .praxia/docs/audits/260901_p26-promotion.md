@@ -1,10 +1,10 @@
 ---
 title: Coxswain P2.6 promotion decision -- three-arm mixing ablation vs baseline v2 (pre-registered rule)
 description: 'Mechanical application of the pre-registered P2.6 promotion rule to arms A/B/C: all eligible, all marginal, A selected, NOT PROMOTED. Failure breakdown separates two scorer artifacts and one gold-set defect from genuine misses; the single D8 revision is proposed AGAINST spending now.'
-status: awaiting-user-decision
+status: decided-260901
 task_id: 260901_p26_finetune
 date: '260901'
-verdict: 'NOT PROMOTED (selected A) -- all three arms marginal; D8 revision proposed NOT spent'
+verdict: 'NOT PROMOTED (selected A) -- all three arms marginal; D8 revision UNSPENT (user decision 260901)'
 base_sha: ebd6b76d
 ---
 # Coxswain P2.6 promotion decision -- three-arm mixing ablation vs baseline v2 (pre-registered rule)
@@ -15,6 +15,15 @@ before any job was submitted). Rule applied by
 `training/src/praxis_training/finetune/promotion.py`; machine output
 `training/eval/reports/260901_p26_promotion.json`. Nothing in this document
 re-scores a report or alters the rule; §5 is a *proposal* to the user, per D8.
+
+## 0. Decision (user, 260901)
+
+The user accepted all three items on 2026-09-01: (1) the mechanical
+verdict NOT PROMOTED stands; (2) the single D8 threshold revision stays
+**unspent** -- anchors remain 0.80 / 0.70 / 0.90 / tripwire 0; (3) the next
+sprint is §6 item 1: scorer fixes plus a re-score of the same three
+checkpoints under a pre-registration amendment (no retraining). P2.7b stays
+blocked on a promoted checkpoint.
 
 ## 1. Verdict (mechanical)
 
