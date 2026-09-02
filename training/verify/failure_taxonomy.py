@@ -72,7 +72,7 @@ __all__ = [
 
 #: AST-derived survey of every real PLR Exception subclass across all vendored
 #: PLR source files (scripts/survey_plr_exceptions.py or equivalent -- see
-#: `.praxia/docs/specs/260901_plr-jit-pre-corpus-spec.md` T7), located
+#: `.praxia/docs/specs/260901_plr-preflight-pre-corpus-spec.md` T7), located
 #: relative to this file (never cwd) so it resolves regardless of invocation
 #: directory.
 _TAXONOMY_PATH = Path(__file__).resolve().parent / "data" / "plr_exception_taxonomy.json"
@@ -117,9 +117,9 @@ def _load_taxonomy_artifact() -> dict[str, Any]:
 
     Validates against the artifact's *own* existing stamp shape
     (``version.git_sha`` / ``version.git_dirty`` / ``version.pylabrobot_version``
-    plus a non-empty ``classes`` array) -- **not** ``plr_jit``'s ``SurveyStamp``
+    plus a non-empty ``classes`` array) -- **not** ``plr_preflight``'s ``SurveyStamp``
     (spec §2.2). The spec's "stamped by §2.2" phrasing predates this artifact;
-    ``training/`` must not gain a ``plr_jit`` import to satisfy it (see T7
+    ``training/`` must not gain a ``plr_preflight`` import to satisfy it (see T7
     report). This is a deliberate, flagged deviation from the literal spec
     text, validating the shape that actually exists on disk instead.
     """
