@@ -55,6 +55,7 @@
 
 ## Audits
 - [260902_plr-sema-tip-typestate-round1-challenger](audits/260902_plr-sema-tip-typestate-round1-challenger.md) — Challenger report on .praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md (spec_version 9 draft): 3 BLOCKER (A-COMMIT false via clear_head_state/update_head_state commit=False; conflicting depth-0 bridges unruled; tip_state taxonomy category has 5 members not 2), 2 MAJOR, 4 MINOR; verdict not_ready.
+- [260902_plr-sema-tip-typestate-round1-defender](audits/260902_plr-sema-tip-typestate-round1-defender.md) — Defender adjudication of the round-1 challenger report on the spec_version 9 tip-typestate increment: O1 PARTIAL (counterexample does not reproduce under depth semantics; A-COMMIT text must narrow), O2 CONCEDE sharpened (conflicting depth-0 bridges must WIDEN — "no effect" is unsound), O3 CONCEDE (module filter on the taxonomy artifact), O4/O5 CONCEDE, O6–O9 trivial; 2 blockers survive, all text-only; verdict needs_revision, design intact.
 - [260901_p26-promotion](audits/260901_p26-promotion.md) — Mechanical application of the pre-registered P2.6 promotion rule to arms A/B/C: all eligible, all marginal, A selected, NOT PROMOTED. Failure breakdown separates two scorer artifacts and one gold-set defect from genuine misses; the single D8 revision is proposed AGAINST spending now.
 - [260206_hardware-discovery-audit](audits/260206_hardware-discovery-audit.md)
 - [260206_python-worker-audit](audits/260206_python-worker-audit.md)
