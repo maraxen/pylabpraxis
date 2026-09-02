@@ -40,3 +40,17 @@ def test_counts_recovered_migrated_and_flips():
     assert res["flips_hit_to_miss"] == 1 and res["flips_hit_to_miss_ids"] == ["fresh-miss"]
     assert res["flips_miss_to_hit"] == 4 + 5
     assert res["clarify_identical"] is True
+
+
+def test_decision_tables_render():
+    from praxis_training.finetune.p26b_report import decision_tables, render_markdown
+
+    old = _report({**{r: PARAMS for r in SURFACE6}, **{r: NAME for r in VERB22}})
+    new = _report({r: PARAMS for r in SURFACE6[5:]})
+    for rep in (old, new):
+        rep["per_class"] = {"clean_parse": {"exact_match": {"successes": 1, "n": 2}}}
+    t = decision_tables(old, new, probe_old=_report({"p1": PARAMS}, n=4), probe_new=_report({}, n=4))
+    assert t["checks"]["P1_surface6"]["holds"] and t["checks"]["P2_verb_migration"]["holds"]
+    assert t["checks"]["P3_no_regression"]["holds"] and t["checks"]["P4_probe"]["holds"]
+    md = render_markdown(t)
+    assert "P1_surface6 | 5/6" in md and "P4 probe" in md
