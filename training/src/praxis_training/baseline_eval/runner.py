@@ -179,6 +179,7 @@ def run_local(
     out_path: Path | None = None,
     split: str | None = None,
     generate_fn: GenerateFn | None = None,
+    model_label: str | None = None,
 ) -> dict[str, Any]:
     """Live local inference over the selected split (AC-2.1.x CPU lane).
 
@@ -212,6 +213,7 @@ def run_local(
             "max_new_tokens": max_new_tokens,
         },
         labeled_as=_LOCAL_LABEL,
+        model_label=model_label,
     )
 
 

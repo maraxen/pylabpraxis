@@ -100,6 +100,9 @@ class ScoredExample:
     clarify_expected: bool
     clarify_predicted: bool
     reasons: tuple[str, ...]
+    #: Number of function-call spans the parser found (valid OR unknown verb).
+    #: Feeds the AC-2.6.3 tripwire: an out-of-surface row must emit ZERO.
+    n_calls_emitted: int = 0
 
 
 def _normalize(value: Any):
@@ -188,6 +191,7 @@ def score_example(raw_output: str | None, intent: IntentRecord) -> ScoredExample
         clarify_expected=expected_clarify,
         clarify_predicted=predicted_clarify,
         reasons=tuple(reasons),
+        n_calls_emitted=len(parsed.calls),
     )
 
 
@@ -210,11 +214,23 @@ def build_report(
     base_revision: str,
     inputs: Mapping[str, str],
     labeled_as: str,
+    model_label: str | None = None,
 ) -> dict[str, Any]:
     """Assemble the metric report with Wilson intervals + confusion counts +
-    per-class breakdown. Point estimates WITHOUT their interval never ship."""
+    per-class breakdown. Point estimates WITHOUT their interval never ship.
+
+    ``model_label`` names the weights scored (P2.6: arm + checkpoint sha) so a
+    report is never mistaken for another checkpoint's.
+    """
     n = len(scored)
     exact_hits = sum(1 for s in scored if s.exact_match)
+
+    # AC-2.6.3 clarify tripwire: out-of-surface rows that emitted ANY call.
+    # Counted on the raw parse (unknown verbs included) -- a fabricated call
+    # to a non-existent tool is exactly the failure the tripwire exists for.
+    tripwire = sum(
+        1 for s in scored if s.ambiguity_class == "out_of_surface" and s.n_calls_emitted > 0
+    )
 
     tp = sum(1 for s in scored if s.clarify_expected and s.clarify_predicted)
     fn = sum(1 for s in scored if s.clarify_expected and not s.clarify_predicted)
@@ -248,6 +264,7 @@ def build_report(
         "mode": mode,
         "labeled_as": labeled_as,
         "base_revision": base_revision,
+        "model_label": model_label,
         "inputs": dict(inputs),
         "n_examples": n,
         "exact_match_accuracy": proportion_stat(exact_hits, n),
@@ -257,6 +274,7 @@ def build_report(
             "true_positive": tp, "false_negative": fn,
             "false_positive": fp, "true_negative": tn,
         },
+        "tripwire_out_of_surface_tool_calls": tripwire,
         "per_class": per_class,
         "exact_match_failures": failures,
     }

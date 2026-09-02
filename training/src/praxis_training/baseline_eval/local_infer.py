@@ -41,8 +41,12 @@ def make_generate(
     praxis_training.baseline_eval never drags torch in.
     """
     import os
+    from pathlib import Path
 
-    if not os.environ.get("HF_TOKEN") and not os.environ.get("HUGGING_FACE_HUB_TOKEN"):
+    # A LOCAL checkpoint directory (P2.6 fine-tuned weights) needs no hub
+    # access at all: load it offline and skip the gated-repo token guard.
+    local_dir = Path(model_id).is_dir()
+    if not local_dir and not os.environ.get("HF_TOKEN") and not os.environ.get("HUGGING_FACE_HUB_TOKEN"):
         # Fail BEFORE transformers tries the hub: the error must name the fix.
         raise RuntimeError(
             "HF_TOKEN/HUGGING_FACE_HUB_TOKEN not set. " + GATED_REPO_HINT
@@ -57,9 +61,10 @@ def make_generate(
         if torch_dtype is None:
             raise ValueError(f"unknown torch dtype {dtype!r}")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision)
+    load_kwargs: dict[str, Any] = {"local_files_only": True} if local_dir else {"revision": revision}
+    tokenizer = AutoTokenizer.from_pretrained(model_id, **load_kwargs)
     model = AutoModelForCausalLM.from_pretrained(
-        model_id, revision=revision, torch_dtype=torch_dtype
+        model_id, torch_dtype=torch_dtype, **load_kwargs
     ).to(device)
     model.eval()
 

@@ -32,6 +32,16 @@ local = [
     "torch>=2.5.0",
     "accelerate>=1.0.0",
 ]
+# P2.6 fine-tune lane (D5 recipe: TRL SFTTrainer, full-parameter). Superset of
+# `local`; pins follow research §2b (trl==0.25.1, datasets==4.4.1). Install with
+# `uv run --package training --extra train ...` -- plain `uv run` syncs torch away.
+train = [
+    "transformers==4.57.1",
+    "torch>=2.5.0",
+    "accelerate>=1.0.0",
+    "trl==0.25.1",
+    "datasets==4.4.1",
+]
 
 [tool.uv.sources]
 coxswain = { workspace = true }

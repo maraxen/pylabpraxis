@@ -180,3 +180,9 @@ tmp/
 # praxis theme ships committed bytes (fonts, mark, stylesheet) that MUST reach
 # dist/, so pin them explicitly against any future bare pattern.
 !web-repl/overlay/assets/theme/**
+
+# P2.6 fine-tune artifacts: checkpoints (~540 MB each) and cluster outputs stay out of git;
+# manifests + eval reports are committed under training/out/p26 and training/eval/reports.
+training/out/checkpoints/
+outputs/
+scripts/scratch/

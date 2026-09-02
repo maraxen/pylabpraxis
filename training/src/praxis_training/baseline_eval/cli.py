@@ -48,6 +48,8 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--device", default="cpu", help="torch device (default cpu; 270M is fine on CPU)")
     p.add_argument("--dtype", default=None, help="torch dtype name e.g. float32/bfloat16")
     p.add_argument("--out", type=Path, default=None, help="write JSON report here")
+    p.add_argument("--label", default=None,
+                   help="model_label recorded in the report (e.g. 'p26 arm B sha256:...')")
     return p
 
 
@@ -74,6 +76,7 @@ def main(argv: list[str] | None = None) -> int:
             report = run_local(
                 pair_set, args.model, revision=args.revision, device=args.device,
                 dtype=args.dtype, out_path=args.out, split=args.split,
+                model_label=args.label,
             )
         except RuntimeError as exc:
             print(f"BLOCKED: {exc}", file=sys.stderr)
