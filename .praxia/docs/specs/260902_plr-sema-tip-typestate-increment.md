@@ -1224,6 +1224,15 @@ AC-10.1/10.2/10.3's exact-count assertions fail loudly. That is a real asymmetry
 strongest argument available in either direction. It is left to the user because it spends the
 registry's last headroom, and headroom is the user's budget, not the spec's.
 
+> **Decided 260902 (user): SPLIT.** HM-24 = the channel-receiver bridge pattern alone (its failure
+> mode is a silent family collapse, invisible without an `UNKNOWN`-rate measurement); HM-25 = the other
+> five patterns (typestate-anchor property, channel-default idiom, three atom productions), each of
+> whose failures AC-10.1–10.3's exact-count assertions catch. Live rows 22 → 24, headroom **0**: the next
+> hand-typed fact requires a new adversarial-round argument to widen `BUDGET_CAP`, which is what §9.4
+> intends. #4888 files both rows. Also decided the same day: this increment is now BLOCKED on the
+> IR/bytecode increment (spec_version 10, #4921) — §10.8's `arguments`/`execution_order` re-mirroring
+> and §10.1.3's channel-set inference are implemented as the lowering, not as mirror fields.
+
 The arithmetic, stated so the decision is a choice between two numbers rather than a judgement call.
 Pre-increment: **22 live rows, cap 24, headroom 2.**
 
@@ -1309,7 +1318,7 @@ channel bridge, depth-0-only effect/widen split, execution-order walk, per-guard
 | **Q2** | open question | Resolved as option (b): `assert`-kind atom production **dropped** from §10.3.1's criterion 1 and its half of §10.3.3's polarity line removed; re-add condition stated as a test, not a preference. | §10.3.1, §10.3.3, §10.9, §10.10 |
 | **Q3** | open question | Resolved as option (c): AC-10.11's own text now states it is vacuous under tier 1's tool-named arguments and gates totality/non-regression only; AC-10.12 named as the real gate and moved into `#4888`'s own gate. Adds a required `n_exact_channel_sets` report so the vacuity is measured. Corrects the round-1 claim that option (a) needs a hand-typed name map — `run_runtime`/`adapt_graph` already carry PLR-named kwargs. | AC-10.11, AC-10.12, §10.10, task row |
 | **Q4–Q6** | open questions | Recorded as decided: one `channel_state_unknown` member (Q4); E4 over-widening accepted, and noted to be *larger* after O1/O2/O4 (Q5); `default` stays and stays `TOP` (Q6). | §10.10 |
-| **Q7** | open question | **Reserved as a decision for the user**, with full ratchet arithmetic for both options: A (one row) → 23 live / cap 24 / headroom **1**; B (split the bridge shape out) → 24 live / cap 24 / headroom **0**. Recommendation stated (B) and explicitly not applied. | §10.10, §10.8 |
+| **Q7** | open question | **Reserved for the user, then DECIDED 260902: split (HM-24 bridge shape, HM-25 the five others; headroom 0)** —, with full ratchet arithmetic for both options: A (one row) → 23 live / cap 24 / headroom **1**; B (split the bridge shape out) → 24 live / cap 24 / headroom **0**. Recommendation stated (B) and explicitly not applied. | §10.10, §10.8 |
 | *lint* | cross-reference | AC-10.12 was defined but gated by no task row; it is now named explicitly in `#4888`'s gate ("AC-10.12 is `#4888`'s gate, not a downstream nicety"), and every AC in that gate is spelled out individually rather than as a range. | task row `#4888` |
 
 **Corrections made in passing, disclosed because they were not raised in round 1.** Each was found
