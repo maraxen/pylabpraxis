@@ -30,8 +30,16 @@ Categories (one per failed row; first match wins, top to bottom):
                        ``unresolved_slots`` annotation disagrees with what
                        ``derive_call_gaps`` yields from those same params. No
                        model can ever pass such a row.  GOLD-SET DEFECT.
+``gold_missing_required`` params equal, yet the gold record's
+                       ``missing_required`` annotation disagrees with the
+                       derivation (the assembler dropped golden gap fields,
+                       260902 finding).  GOLD-SET DEFECT.
 ``param_content``      params genuinely differ in content
 ``other``              anything else (kept verbose in the JSON)
+
+``ARTIFACT_CATEGORIES`` are the categories a scorer/gold fix can flip to a
+hit without the model changing; ``breakdown_report`` lists their record_ids
+so a re-score prediction can be registered row-by-row (``rescore_check``).
 """
 
 from __future__ import annotations
@@ -48,11 +56,12 @@ from praxis_training.baseline_eval.metrics import _normalize
 
 __all__ = ["ARTIFACT_CATEGORIES", "classify_reasons", "breakdown_report", "render_markdown", "main"]
 
-ARTIFACT_CATEGORIES = ("list_escape_format", "slot_order_only", "gold_slot_annotation")
+ARTIFACT_CATEGORIES = ("list_escape_format", "slot_order_only", "gold_slot_annotation", "gold_missing_required")
 ESC = "<escape>"
 
 _PARAMS_RE = re.compile(r"^params mismatch: \d+: predicted (\{.*?\}) != intended (\{.*\})$")
 _SLOT_RE = re.compile(r"^\d+: unresolved_slots derived \((.*)\) != intended \((.*)\)$")
+_MISSING_RE = re.compile(r"^\d+: missing_required derived \((.*)\) != intended \((.*)\)$")
 _DERIVED_SLOT_RE = re.compile(r"DerivedSlot\([^)]*\)")
 _LIST_RE = re.compile(r"^\[(.*)\]$", re.DOTALL)
 
@@ -68,12 +77,36 @@ def _decode_escaped_list(value: Any) -> Any:
     if not inner.strip():
         return []
     items: list[Any] = []
-    for raw in inner.split(","):
+    for raw in _split_outside_escapes(inner):
         text = raw.strip()
         if text.startswith(ESC) and text.endswith(ESC) and len(text) >= 2 * len(ESC):
             text = text[len(ESC):-len(ESC)]
         items.append(text)
     return items
+
+
+def _split_outside_escapes(text: str) -> list[str]:
+    """Split on commas that are not inside an ``<escape>...<escape>`` span
+    (the template lets a string value contain a literal comma)."""
+    parts: list[str] = []
+    buf: list[str] = []
+    inside = False
+    i = 0
+    while i < len(text):
+        if text.startswith(ESC, i):
+            inside = not inside
+            buf.append(ESC)
+            i += len(ESC)
+            continue
+        ch = text[i]
+        if ch == "," and not inside:
+            parts.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+        i += 1
+    parts.append("".join(buf))
+    return parts
 
 
 def _params_from_reason(reason: str) -> tuple[dict[str, Any], dict[str, Any]] | None:
@@ -109,10 +142,13 @@ def classify_reasons(reasons: Sequence[str]) -> str:
                 break
         return "list_escape_format" if all_list_escape else "param_content"
     slot_lines = [m for m in (_SLOT_RE.match(r) for r in rs) if m is not None]
-    if slot_lines and len(slot_lines) == len(rs):
-        # No params-mismatch line => params equal => derived slots come from the
+    missing_lines = [m for m in (_MISSING_RE.match(r) for r in rs) if m is not None]
+    if rs and len(slot_lines) + len(missing_lines) == len(rs):
+        # No params-mismatch line => params equal => derived gaps come from the
         # SAME params the gold record carries. Any disagreement is therefore
         # positional (scorer) or an inconsistent gold annotation, never the model.
+        if missing_lines:
+            return "gold_missing_required"
         if all(
             Counter(_DERIVED_SLOT_RE.findall(m.group(1))) == Counter(_DERIVED_SLOT_RE.findall(m.group(2)))
             for m in slot_lines
@@ -136,6 +172,11 @@ def breakdown_report(report: Mapping[str, Any]) -> dict[str, Any]:
         if cat == "other":
             other_rows.append({"record_id": row.get("record_id"), "reasons": list(row.get("reasons", ()))})
     artifact_rows = sum(by_cat[c] for c in ARTIFACT_CATEGORIES)
+    artifact_ids: dict[str, list[str]] = {c: [] for c in ARTIFACT_CATEGORIES}
+    for row in failures:
+        cat = classify_reasons(row.get("reasons", ()))
+        if cat in artifact_ids:
+            artifact_ids[cat].append(str(row.get("record_id")))
     return {
         "n_examples": n,
         "exact_match_successes": successes,
@@ -146,13 +187,14 @@ def breakdown_report(report: Mapping[str, Any]) -> dict[str, Any]:
         # Diagnostic ceiling if the two scorer artifacts were absent: every
         # artifact row is counted as a hit. NOT a re-score -- an upper bound.
         "artifact_adjusted_accuracy_ceiling": (successes + artifact_rows) / n if n else None,
+        "artifact_record_ids": {c: sorted(v) for c, v in artifact_ids.items()},
         "other_rows": other_rows,
     }
 
 
 def render_markdown(results: Mapping[str, Mapping[str, Any]]) -> str:
     cats = ["no_call", "spurious_call", "unknown_verb", "name_mismatch", "list_escape_format",
-            "slot_order_only", "gold_slot_annotation", "param_content", "other"]
+            "slot_order_only", "gold_slot_annotation", "gold_missing_required", "param_content", "other"]
     lines = ["| report | exact | " + " | ".join(cats) + " | artifact rows | ceiling if fixed |",
              "|---|---|" + "---|" * len(cats) + "---|---|"]
     for name, r in results.items():

@@ -58,3 +58,38 @@ def test_breakdown_sums_and_ceiling():
     assert b["artifact_rows"] == 2
     assert abs(b["artifact_adjusted_accuracy_ceiling"] - 0.6) < 1e-9
     assert b["by_class_and_category"]["clean_parse"] == {"no_call": 1, "slot_order_only": 1}
+
+
+MISSING = "0: missing_required derived ('source',) != intended ()"
+
+
+def test_gold_missing_required_category():
+    # params equal (no params line), only gap lines, at least one missing_required line
+    assert classify_reasons([MISSING]) == "gold_missing_required"
+    assert classify_reasons([MISSING, f"0: unresolved_slots derived ({SLOT_A},) != intended ()"]) == "gold_missing_required"
+    # with a params line the row is a genuine miss, not a gold defect
+    assert classify_reasons(["params mismatch: 0: predicted {} != intended {'source': 'x'}", MISSING]) == "param_content"
+
+
+def test_decode_escaped_list_comma_inside_escape():
+    assert _decode_escaped_list("[<escape>a,b<escape>,<escape>c<escape>]") == ["a,b", "c"]
+    assert _decode_escaped_list("[]") == []
+
+
+def test_artifact_record_ids_listed():
+    rep = {
+        "n_examples": 10,
+        "exact_match_accuracy": {"successes": 4, "n": 10, "value": 0.4, "wilson95": [0, 1]},
+        "exact_match_failures": [
+            {"record_id": "r1", "class": "clean_parse", "reasons": ["sequence length 0 != intended 1"]},
+            {"record_id": "r2", "class": "clean_parse",
+             "reasons": [f"0: unresolved_slots derived ({SLOT_B}, {SLOT_A}) != intended ({SLOT_A}, {SLOT_B})"]},
+            {"record_id": "r3", "class": "missing_slot",
+             "reasons": ["params mismatch: 0: predicted {'at': '[<escape>A7<escape>]'} != intended {'at': ['A7']}"]},
+            {"record_id": "r4", "class": "missing_slot", "reasons": [MISSING]},
+        ],
+    }
+    b = breakdown_report(rep)
+    assert b["artifact_rows"] == 3
+    assert b["artifact_record_ids"] == {"list_escape_format": ["r3"], "slot_order_only": ["r2"],
+                                        "gold_slot_annotation": [], "gold_missing_required": ["r4"]}

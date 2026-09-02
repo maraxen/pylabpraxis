@@ -33,7 +33,7 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
-__all__ = ["compare_reports", "check_prediction", "main"]
+__all__ = ["compare_reports", "check_prediction", "prediction_from_breakdown", "main"]
 
 _CLARIFY_KEYS = ("clarify_recall", "clarify_precision")
 
@@ -123,6 +123,32 @@ def check_prediction(
     }
 
 
+def prediction_from_breakdown(report: Mapping[str, Any], breakdown: Mapping[str, Any]) -> dict[str, Any]:
+    """The pre-registered prediction for one model, from its OLD-scorer report
+    and that report's ``failure_breakdown`` result: the artifact rows are the
+    only rows allowed to flip miss->hit; the tripwire must stay (or, for a
+    legacy report without the field, appear as the per_class reconstruction
+    out_of_surface n - exact successes)."""
+    ids = sorted({rid for rids in breakdown["artifact_record_ids"].values() for rid in rids})
+    trip = report.get("tripwire_out_of_surface_tool_calls")
+    if trip is None:
+        oos = report.get("per_class", {}).get("out_of_surface")
+        if oos is not None:
+            trip = oos["exact_match"]["n"] - oos["exact_match"]["successes"]
+    successes = int(report["exact_match_accuracy"]["successes"])
+    n = int(report["n_examples"])
+    return {
+        "n_examples": n,
+        "successes_old": successes,
+        "artifact_record_ids": ids,
+        "artifact_rows": len(ids),
+        "expected_successes_max": successes + len(ids),
+        "expected_accuracy_ceiling": (successes + len(ids)) / n if n else None,
+        "expected_tripwire": trip,
+        "by_category": dict(breakdown["by_category"]),
+    }
+
+
 def _load(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -140,6 +166,9 @@ def _parser() -> argparse.ArgumentParser:
     k.add_argument("--prediction", type=Path, required=True, help="prediction JSON")
     k.add_argument("--model", required=True, help="key into the prediction JSON's 'models'")
     k.add_argument("--out-json", type=Path, default=None)
+    pr = sub.add_parser("predict", help="build the prediction JSON from old-scorer reports")
+    pr.add_argument("--report", action="append", required=True, metavar="NAME=REPORT.json")
+    pr.add_argument("--out-json", type=Path, required=True)
     return p
 
 
@@ -147,6 +176,17 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.cmd == "compare":
         result = compare_reports(_load(args.a), _load(args.b))
+    elif args.cmd == "predict":
+        from praxis_training.finetune.failure_breakdown import ARTIFACT_CATEGORIES, breakdown_report
+
+        models: dict[str, Any] = {}
+        for spec in args.report:
+            name, _, path = spec.partition("=")
+            if not path:
+                raise SystemExit(f"--report expects NAME=path, got {spec!r}")
+            rep = _load(Path(path))
+            models[name] = prediction_from_breakdown(rep, breakdown_report(rep)) | {"source": path}
+        result = {"artifact_categories": list(ARTIFACT_CATEGORIES), "models": models}
     else:
         pred = _load(args.prediction)["models"][args.model]
         result = check_prediction(_load(args.old), _load(args.new), pred)

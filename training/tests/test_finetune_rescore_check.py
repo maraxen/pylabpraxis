@@ -87,3 +87,17 @@ def test_legacy_report_without_tripwire_accepts_reconstructed_value():
     new = _report([], trip=13)
     assert check_prediction(old, new, {"artifact_record_ids": ["r01"], "expected_tripwire": 13})["prediction_holds"]
     assert not check_prediction(old, new, {"artifact_record_ids": ["r01"], "expected_tripwire": 12})["prediction_holds"]
+
+
+def test_prediction_from_breakdown_reconstructs_legacy_tripwire():
+    from praxis_training.finetune.rescore_check import prediction_from_breakdown
+
+    rep = _report(["r01", "r02", "r03"])
+    rep["tripwire_out_of_surface_tool_calls"] = None
+    rep["per_class"] = {"out_of_surface": {"exact_match": {"n": 4, "successes": 3}}}
+    bd = {"artifact_record_ids": {"list_escape_format": ["r02"], "slot_order_only": ["r01"]},
+          "by_category": {"list_escape_format": 1, "slot_order_only": 1, "no_call": 1}}
+    pred = prediction_from_breakdown(rep, bd)
+    assert pred["artifact_record_ids"] == ["r01", "r02"]
+    assert pred["expected_successes_max"] == 9 and abs(pred["expected_accuracy_ceiling"] - 0.9) < 1e-9
+    assert pred["expected_tripwire"] == 1
