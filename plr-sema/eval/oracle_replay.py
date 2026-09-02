@@ -16,15 +16,58 @@ crosscheck content-join results.
 
 from __future__ import annotations
 
+import importlib.util
+import os
+import shutil
+import sys
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_BOOTSTRAP_FLAG = "PLR_SEMA_ORACLE_BOOTSTRAPPED"
+
+
+def _bootstrap_into_training_env() -> None:
+    """Bathos 0.13.0a4's ``bth run`` executes ``[sys.executable, script, *args]``
+    with bathos's OWN interpreter, which lacks ``verify``/``training``/
+    ``coxswain``/``overlay_gen`` (row_to_verifier_inputs's lazy imports then
+    fail per-row as spurious "parse_error" outcomes, not a script crash --
+    see #4879 T16d run 260902, 393/900 rows misclassified this way under a
+    bare ``bth run --script-path`` invocation). Same fix as
+    scripts/experiments/p26_finetune.py (ebd6b76d): re-exec under the
+    workspace venv, falling back to ``uv run --offline --no-sync``.
+    ``os.execve`` preserves the environment so BTH_RESULTS_PATH/BTH_OUTPUT_DIR
+    plumbing survives the hop.
+    """
+    if os.environ.get(_BOOTSTRAP_FLAG):
+        sys.stderr.write(
+            "oracle_replay: 'verify' still not importable after re-exec; "
+            "run `uv sync` in the repo first\n"
+        )
+        raise SystemExit(3)
+    env = dict(os.environ, **{_BOOTSTRAP_FLAG: "1"})
+    venv_python = _REPO_ROOT / ".venv" / "bin" / "python"
+    script_args = sys.argv[1:]
+    if venv_python.is_file():
+        argv = [str(venv_python), str(Path(__file__).resolve()), *script_args]
+        os.execve(str(venv_python), argv, env)
+    uv = shutil.which("uv")
+    if uv is None:
+        sys.stderr.write("oracle_replay: neither .venv/bin/python nor uv found\n")
+        raise SystemExit(3)
+    argv = [uv, "run", "--offline", "--no-sync", "python",
+            str(Path(__file__).resolve()), *script_args]
+    os.chdir(_REPO_ROOT)
+    os.execve(uv, argv, env)
+
+
+if importlib.util.find_spec("verify") is None:
+    _bootstrap_into_training_env()
+
 import argparse
 import collections
 import dataclasses
-import hashlib
 import json
 import logging
-import os
-import sys
-from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "eval"))
@@ -41,7 +84,7 @@ from oracle_common import (
 
 log = logging.getLogger(__name__)
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = _REPO_ROOT
 
 
 def _classify_exception(exc_class: str | None) -> str:
@@ -109,6 +152,7 @@ def _extract_utterance_and_call(row: dict[str, Any]) -> tuple[str, str]:
 @dataclasses.dataclass
 class RowResult:
     """Result for one row."""
+
     record_id: str
     corpus_file: str
     row_index: int
@@ -138,6 +182,10 @@ def run_row(
     corpus_file: str,
     row_index: int,
     contracts_json: str,
+    *,
+    ambiguity_class: str | None = None,
+    sidecar_record_id: str | None = None,
+    provenance: str | None = None,
 ) -> RowResult:
     """Process one corpus row: runtime + static + compare.
 
@@ -146,12 +194,17 @@ def run_row(
     # Parse row into verifier inputs
     try:
         call_sequence, intent_record, deck_layout, skip_reason, no_call_reason = row_to_verifier_inputs(
-            row, source_file=Path(corpus_file).stem, line=row_index
+            row,
+            source_file=Path(corpus_file).stem,
+            line=row_index,
+            ambiguity_class=ambiguity_class,
+            sidecar_record_id=sidecar_record_id,
+            provenance=provenance,
         )
     except Exception as e:
         log.warning("Failed to parse row %s:%d: %s", corpus_file, row_index, e)
         return RowResult(
-            record_id=f"{corpus_file}:{row_index}",
+            record_id=sidecar_record_id or f"{corpus_file}:{row_index}",
             corpus_file=corpus_file,
             row_index=row_index,
             utterance="",
@@ -327,6 +380,11 @@ def main(argv: list[str] | None = None) -> int:
                     help="contract table JSON")
     ap.add_argument("--crosscheck", type=str, action="append", default=[],
                     help="floor/overlay file for comparison (repeatable)")
+    ap.add_argument("--sidecar", type=str, default=None,
+                    help="assemble sidecar JSONL (record_id, ambiguity_class, provenance, "
+                         "lineage); line-paired with the FIRST --corpus file whose line "
+                         "count matches it exactly, else joined by content (utterance) "
+                         "as a labelled fallback")
     ap.add_argument("--report", type=Path, required=True,
                     help="JSON report output")
     ap.add_argument("--limit", type=int, default=None,
@@ -341,7 +399,45 @@ def main(argv: list[str] | None = None) -> int:
     # Load contracts
     contracts_json = args.contracts.read_text(encoding="utf-8")
 
-    # Load crosscheck by (utterance, call_name)
+    # ------------------------------------------------------------------
+    # T16d (#4879): sidecar join. sidecar.record_id is the EXACT join key
+    # against both floor (record_id) and overlay (id) crosscheck files for
+    # coverage/naturalness rows respectively (verified 260902: corpus_p25.jsonl
+    # is perfectly line-paired with corpus_p25_sidecar.jsonl; golden_pairs.jsonl
+    # is a reordered near-duplicate of corpus_p25's own golden slice, so it is
+    # joined by (utterance) content instead -- labelled "content_fallback").
+    # ------------------------------------------------------------------
+    sidecar_rows: list[dict[str, Any]] = []
+    sidecar_by_utterance: dict[str, dict[str, Any]] = {}
+    if args.sidecar:
+        with open(args.sidecar) as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                srow = json.loads(line)
+                sidecar_rows.append(srow)
+                utt = srow.get("utterance")
+                if utt and utt not in sidecar_by_utterance:
+                    sidecar_by_utterance[utt] = srow
+        log.info("Loaded %d sidecar rows from %s", len(sidecar_rows), args.sidecar)
+
+    def _sidecar_for(corpus_file: str, line_no: int, row: dict[str, Any], exact_eligible: bool) -> tuple[dict[str, Any] | None, str]:
+        """(sidecar_row, join_method) for this corpus row, or (None, 'none')."""
+        if not sidecar_rows:
+            return None, "none"
+        if exact_eligible and 1 <= line_no <= len(sidecar_rows):
+            return sidecar_rows[line_no - 1], "line_exact"
+        utterance, _call = _extract_utterance_and_call(row)
+        srow = sidecar_by_utterance.get(utterance) if utterance else None
+        if srow is not None:
+            return srow, "content_fallback"
+        return None, "unmatched"
+
+    # Load crosscheck: exact join by record_id (floor.record_id / overlay.id)
+    # is primary; (utterance, call_name) content join is kept ONLY as a
+    # labelled fallback for rows with no sidecar join.
+    floor_by_record_id: dict[str, dict[str, Any]] = {}
+    overlay_by_id: dict[str, dict[str, Any]] = {}
     crosscheck_by_content: dict[tuple[str, str], dict[str, Any]] = {}
     for cc_file in args.crosscheck:
         try:
@@ -350,6 +446,12 @@ def main(argv: list[str] | None = None) -> int:
                     if not line.strip():
                         continue
                     row = json.loads(line)
+                    if "record_id" in row and "structured_calls" in row:
+                        # floor format
+                        floor_by_record_id.setdefault(row["record_id"], row)
+                    elif "id" in row and "call" in row:
+                        # overlay format
+                        overlay_by_id.setdefault(row["id"], row)
                     utterance, call_name = _extract_utterance_and_call(row)
                     if utterance and call_name:
                         key = (utterance, call_name)
@@ -358,19 +460,26 @@ def main(argv: list[str] | None = None) -> int:
                             crosscheck_by_content[key] = row
         except Exception as e:
             log.warning("Failed to load crosscheck file %s: %s", cc_file, e)
-    log.info("Loaded %d crosscheck entries by (utterance, call_name)", len(crosscheck_by_content))
+    log.info(
+        "Loaded crosscheck: %d floor (by record_id), %d overlay (by id), %d by (utterance, call_name) fallback",
+        len(floor_by_record_id), len(overlay_by_id), len(crosscheck_by_content),
+    )
 
     # Process corpus files
     results: list[RowResult] = []
     n_rows_total = 0
     n_rows_no_call = 0
+    n_rows_parse_error = 0
     n_rows_skipped = 0
     n_rows_executed = 0
+    sidecar_join_counts: dict[str, collections.Counter] = collections.defaultdict(collections.Counter)
 
     for corpus_file in args.corpus:
         try:
             with open(corpus_file) as f:
-                for line_no, line in enumerate(f, 1):
+                corpus_file_lines = f.readlines()
+            exact_eligible = len(sidecar_rows) > 0 and len(corpus_file_lines) == len(sidecar_rows)
+            for line_no, line in enumerate(corpus_file_lines, 1):
                     if args.limit and n_rows_total >= args.limit:
                         break
                     if not line.strip():
@@ -380,20 +489,42 @@ def main(argv: list[str] | None = None) -> int:
                     except Exception as e:
                         log.warning("Failed to parse JSON at %s:%d: %s", corpus_file, line_no, e)
                         continue
-                    result = run_row(row, corpus_file, line_no, contracts_json)
+                    srow, join_method = _sidecar_for(corpus_file, line_no, row, exact_eligible)
+                    ambiguity_class = srow.get("ambiguity_class") if srow else None
+                    sidecar_record_id = srow.get("record_id") if srow else None
+                    provenance = srow.get("provenance") if srow else None
+                    sidecar_join_counts[provenance or "no_sidecar"][join_method] += 1
+                    result = run_row(
+                        row, corpus_file, line_no, contracts_json,
+                        ambiguity_class=ambiguity_class,
+                        sidecar_record_id=sidecar_record_id,
+                        provenance=provenance,
+                    )
                     results.append(result)
                     n_rows_total += 1
-                    if result.no_call_reason:
+                    if result.no_call_reason == "parse_error":
+                        n_rows_parse_error += 1
+                    elif result.no_call_reason:
                         n_rows_no_call += 1
                     elif result.skip_reason:
                         n_rows_skipped += 1
                     else:
                         n_rows_executed += 1
                     if n_rows_total % 100 == 0:
-                        log.info("Processed %d rows (no_call=%d, skipped=%d, executed=%d)...",
-                                 n_rows_total, n_rows_no_call, n_rows_skipped, n_rows_executed)
+                        log.info("Processed %d rows (no_call=%d, parse_error=%d, skipped=%d, executed=%d)...",
+                                 n_rows_total, n_rows_no_call, n_rows_parse_error, n_rows_skipped, n_rows_executed)
         except Exception as e:
             log.warning("Failed to process corpus file %s: %s", corpus_file, e)
+
+    log.info("Sidecar join counts by provenance: %s", {k: dict(v) for k, v in sidecar_join_counts.items()})
+
+    # parse_error rows: report what failed to parse (T16d step 2)
+    parse_error_rows = [
+        {"record_id": r.record_id, "source_file": r.corpus_file, "line": r.row_index, "error": r.runtime_error}
+        for r in results if r.no_call_reason == "parse_error"
+    ]
+    if parse_error_rows:
+        log.info("parse_error rows (%d): %s", len(parse_error_rows), parse_error_rows[:5])
 
     # Compute summary statistics (only on executed rows)
     executed_results = [r for r in results if not r.no_call_reason and not r.skip_reason]
@@ -452,17 +583,35 @@ def main(argv: list[str] | None = None) -> int:
     # Category breakdown
     category_breakdown = dict(exc_category_counter)
 
-    # Crosscheck: content-based join (utterance, first_call_name)
-    crosscheck_result = {"joined": 0, "agree": 0, "disagree": 0, "examples": []}
+    # Crosscheck: exact join by record_id (floor.record_id / overlay.id) is
+    # primary; (utterance, first_call_name) content join is a LABELLED
+    # fallback for rows with no sidecar-derived record_id (T16d, #4879).
+    crosscheck_result = {
+        "joined": 0, "agree": 0, "disagree": 0,
+        "joined_exact": 0, "joined_content_fallback": 0,
+        "examples": [],
+    }
     for r in executed_results:
         first_call = r.call_names[0] if r.call_names else ""
         if not first_call:
             continue
-        key = (r.utterance, first_call)
-        cc_row = crosscheck_by_content.get(key)
-        if not cc_row:
+        cc_row = None
+        join_method = None
+        # record_id looks sidecar-derived (not the synthetic "file:line" form)
+        # when it doesn't contain the corpus stem verbatim with a colon.
+        if r.record_id and ":" not in r.record_id:
+            cc_row = floor_by_record_id.get(r.record_id) or overlay_by_id.get(r.record_id)
+            if cc_row is not None:
+                join_method = "exact"
+        if cc_row is None:
+            key = (r.utterance, first_call)
+            cc_row = crosscheck_by_content.get(key)
+            if cc_row is not None:
+                join_method = "content_fallback"
+        if cc_row is None:
             continue
         crosscheck_result["joined"] += 1
+        crosscheck_result["joined_exact" if join_method == "exact" else "joined_content_fallback"] += 1
         cc_passed = cc_row.get("execution_verify", {}).get("passed")
         our_passed = r.runtime_outcome == "ran_ok"
         if cc_passed == our_passed:
@@ -472,6 +621,8 @@ def main(argv: list[str] | None = None) -> int:
             if len(crosscheck_result["examples"]) < 10:
                 cc_error = cc_row.get("execution_verify", {}).get("error")
                 crosscheck_result["examples"].append({
+                    "record_id": r.record_id,
+                    "join_method": join_method,
                     "utterance": r.utterance[:60],
                     "call": first_call,
                     "our_outcome": r.runtime_outcome,
@@ -494,10 +645,14 @@ def main(argv: list[str] | None = None) -> int:
         crosscheck_result["agree"] / cc_joined if cc_joined > 0 else 0.0
     )
 
-    # Flat summary for bathos/BTH_RESULTS_PATH
+    # Flat summary for bathos/BTH_RESULTS_PATH (key names match the
+    # validated sidecar's result_schema; do not rename rows_total/
+    # operations_executed -- oracle_replay.bth.toml's summary_flat mapping
+    # is already validated against these exact names, see #4879 header).
     summary_flat = {
         "rows_total": n_rows_total,
         "rows_no_call": n_rows_no_call,
+        "rows_parse_error": n_rows_parse_error,
         "rows_skipped": n_rows_skipped,
         "rows_executed": n_rows_executed,
         "operations_executed": n_operations_executed,
@@ -506,6 +661,8 @@ def main(argv: list[str] | None = None) -> int:
         "totality_violations": n_totality_violations,
         "unknown_rate": global_unknown_rate,
         "crosscheck_joined": cc_joined,
+        "crosscheck_joined_exact": crosscheck_result["joined_exact"],
+        "crosscheck_joined_content_fallback": crosscheck_result["joined_content_fallback"],
         "crosscheck_agreement": cc_agreement_rate,
     }
 
@@ -515,6 +672,7 @@ def main(argv: list[str] | None = None) -> int:
         "denominators": {
             "rows_total": n_rows_total,
             "rows_no_call": n_rows_no_call,
+            "rows_parse_error": n_rows_parse_error,
             "rows_skipped": n_rows_skipped,
             "rows_executed": n_rows_executed,
             "operations_executed": n_operations_executed,
@@ -522,6 +680,7 @@ def main(argv: list[str] | None = None) -> int:
         "summary": {
             "rows_processed": n_rows_total,
             "rows_no_call": n_rows_no_call,
+            "rows_parse_error": n_rows_parse_error,
             "rows_skipped": n_rows_skipped,
             "rows_executed": n_rows_executed,
             "total_operations_executed": n_operations_executed,
@@ -529,6 +688,8 @@ def main(argv: list[str] | None = None) -> int:
             "totality_violations": n_totality_violations,
             "check_graph_exceptions": n_check_graph_exceptions,
         },
+        "sidecar_join_counts": {k: dict(v) for k, v in sidecar_join_counts.items()},
+        "parse_error_rows": parse_error_rows,
         "agreement_matrix": {
             outcome: dict(verdicts)
             for outcome, verdicts in agreement_matrix.items()
@@ -579,9 +740,10 @@ def main(argv: list[str] | None = None) -> int:
 
     # Log summary
     log.info(
-        "summary: rows_total=%d no_call=%d skipped=%d executed=%d ops=%d unsound=%d check_graph_exc=%d totality_vio=%d unknown_rate=%.3f crosscheck_joined=%d agree=%.3f",
+        "summary: rows_total=%d no_call=%d parse_error=%d skipped=%d executed=%d ops=%d unsound=%d check_graph_exc=%d totality_vio=%d unknown_rate=%.3f crosscheck_joined=%d (exact=%d fallback=%d) agree=%.3f",
         n_rows_total,
         n_rows_no_call,
+        n_rows_parse_error,
         n_rows_skipped,
         n_rows_executed,
         n_operations_executed,
@@ -590,6 +752,8 @@ def main(argv: list[str] | None = None) -> int:
         n_totality_violations,
         global_unknown_rate,
         cc_joined,
+        crosscheck_result["joined_exact"],
+        crosscheck_result["joined_content_fallback"],
         cc_agreement_rate,
     )
 

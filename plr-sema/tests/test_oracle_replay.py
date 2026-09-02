@@ -110,7 +110,8 @@ class TestAdaptGraph:
 
     def test_field_set(self):
         """Verify adapt_graph produces all required fields (mirrors
-        fixtures/simple_transfer_graph.json exactly)."""
+        fixtures/simple_transfer_graph.json exactly).
+        """
         example = {
             "call_sequence": [
                 {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1"]}},
@@ -175,7 +176,7 @@ class TestCompare:
     """Tests for soundness comparisons."""
 
     def test_unsound_safe_raised(self):
-        """safe + raised = UNSOUND."""
+        """Safe + raised = UNSOUND."""
         example = {
             "call_sequence": [{"name": "pick_up_tips", "params": {"at": ["tr.A1"]}}],
             "intent_record": {},
@@ -225,7 +226,7 @@ class TestCompare:
         assert rows[0]["unsound"] is True
 
     def test_sound_safe_ran_ok(self):
-        """safe + ran_ok = sound."""
+        """Safe + ran_ok = sound."""
         example = {
             "call_sequence": [{"name": "move_plate", "params": {"plate": "p1", "to": "l1"}}],
             "intent_record": {},
@@ -250,7 +251,7 @@ class TestCompare:
         assert rows[0]["unsound"] is False
 
     def test_unknown_no_constraint(self):
-        """unknown + anything = no constraint."""
+        """Unknown + anything = no constraint."""
         example = {
             "call_sequence": [{"name": "some_op", "params": {}}],
             "intent_record": {},
@@ -359,6 +360,158 @@ class TestPLRNamedArguments:
             assert "tip_spots" in op0_args or "at" in op0_args  # depends on usage
             # In this case, adapt_graph uses plr_kwargs[0] directly
             assert set(op0_args.keys()) >= {"tip_spots", "use_channels"}
+
+
+class TestT16dSidecarGating:
+    """Regression tests for the T16d (#4879) root-cause fixes: ambiguity_class
+    gating, move_*/holders wiring, and naturalness mined-call normalization.
+    Each test replays a REAL joined corpus row (by line number, verified
+    260902) and asserts our outcome now matches P2.5's recorded outcome.
+    """
+
+    CORPUS_FILE = REPO_ROOT / "training" / "assemble" / "out" / "corpus_p25.jsonl"
+    SIDECAR_FILE = REPO_ROOT / "training" / "assemble" / "out" / "corpus_p25_sidecar.jsonl"
+    FLOOR_FILE = REPO_ROOT / "training" / "out" / "corpus_p23_floor.jsonl"
+    OVERLAY_FILE = REPO_ROOT / "training" / "overlay_gen" / "out" / "overlay_full.jsonl"
+
+    @staticmethod
+    def _row_and_sidecar(line_no: int):
+        with open(TestT16dSidecarGating.CORPUS_FILE) as f:
+            corpus_line = f.readlines()[line_no - 1]
+        with open(TestT16dSidecarGating.SIDECAR_FILE) as f:
+            sidecar_line = f.readlines()[line_no - 1]
+        return json.loads(corpus_line), json.loads(sidecar_line)
+
+    def _require_files(self):
+        for p in (self.CORPUS_FILE, self.SIDECAR_FILE):
+            if not p.exists():
+                pytest.skip(f"{p} not found")
+
+    def test_missing_slot_dispense_is_skipped_not_keyerror(self):
+        """cov-0080-dispense__missing-slot-00 (line 59): dispense with
+        volume_ul deliberately omitted. Pre-fix, _precondition_plan indexed
+        params["volume_ul"] unconditionally and KeyError-crashed (17 rows,
+        all missing_slot). floor_gen never reaches _precondition_plan for
+        non-"none" ambiguity classes (exec_verify.py cls != "none" gate) --
+        floor's own record has execution_verify=None (never executed,
+        verified 260902). Post-fix: skipped before _precondition_plan runs,
+        no exception.
+        """
+        self._require_files()
+        row, srow = self._row_and_sidecar(59)
+        assert srow["record_id"] == "cov-0080-dispense__missing-slot-00"
+        call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
+            row, source_file="corpus_p25", line=59,
+            ambiguity_class=srow["ambiguity_class"], sidecar_record_id=srow["record_id"],
+            provenance=srow["provenance"],
+        )
+        assert no_call_reason is None
+        assert skip_reason is not None
+        assert "missing_slot" in skip_reason
+        assert call_seq == []
+
+    def test_ambiguous_referent_aspirate_is_skipped(self):
+        """cov-0030-aspirate__ambiguous-referent-00 (line 21): a
+        deliberately-vague ref. Pre-fix, this executed and usually raised
+        GroundingError (spurious -- floor_gen's own harness never runs
+        ambiguous-referent cells at all). Post-fix: skipped.
+        """
+        self._require_files()
+        row, srow = self._row_and_sidecar(21)
+        assert srow["record_id"] == "cov-0030-aspirate__ambiguous-referent-00"
+        call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
+            row, source_file="corpus_p25", line=21,
+            ambiguity_class=srow["ambiguity_class"], sidecar_record_id=srow["record_id"],
+            provenance=srow["provenance"],
+        )
+        assert no_call_reason is None
+        assert skip_reason is not None
+        assert "ambiguous_referent" in skip_reason
+        assert call_seq == []
+
+    def test_move_resource_holders_fix_matches_p25_passed(self):
+        """cov-0455-move_resource__none-00 (line 396): "Move hotel_stack_1
+        to reservoir_1." Pre-fix, oracle_common never computed
+        DeckLayout.holders, so infer_layout() defaulted both names to a bare
+        Plate and PLR raised "RuntimeError: Can only drop Lid resources onto
+        Plate 'reservoir_1'." on every move_resource/move_plate/move_lid row
+        (45/45 crosscheck disagreements against floor, all this one shape).
+        floor_gen.exec_verify computes holders via _resource_type_holders
+        (exec_verify.py:126-145); oracle_common now mirrors it. P2.5 recorded
+        passed=True for this record_id; assert we now agree.
+        """
+        self._require_files()
+        if not self.FLOOR_FILE.exists():
+            pytest.skip(f"{self.FLOOR_FILE} not found")
+        row, srow = self._row_and_sidecar(396)
+        assert srow["record_id"] == "cov-0455-move_resource__none-00"
+        call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
+            row, source_file="corpus_p25", line=396,
+            ambiguity_class=srow["ambiguity_class"], sidecar_record_id=srow["record_id"],
+            provenance=srow["provenance"],
+        )
+        assert skip_reason is None and no_call_reason is None
+        assert layout is not None and layout.get("holders") == ["hotel_stack_1", "reservoir_1"]
+        rt = run_runtime({"call_sequence": call_seq, "intent_record": intent, "deck_layout": layout})
+        with open(self.FLOOR_FILE) as f:
+            floor_by_id = {json.loads(l)["record_id"]: json.loads(l) for l in f}
+        p25_row = floor_by_id[srow["record_id"]]
+        p25_passed = p25_row["execution_verify"]["passed"]
+        assert p25_passed is True
+        assert rt.error is None, f"expected ran_ok (matches P2.5 passed={p25_passed}), got {rt.error!r}"
+
+    def test_naturalness_ungroundable_mined_expr_is_skipped(self):
+        """ovl-0740a87130 (line 716): pick_up_tips at a loop-variable slice
+        (source_tip_spots[i:i + batch_size]) -- not a literal, statically
+        groundable ref. overlay_gen's own harness never executes this
+        (execution_verify=None, confirmed 260902); pre-fix, oracle_common fed
+        the raw expression straight into the dispatcher. Post-fix: skipped
+        via overlay_gen._normalize_params, matching overlay_gen's own gate.
+        """
+        self._require_files()
+        row, srow = self._row_and_sidecar(716)
+        assert srow["record_id"] == "ovl-0740a87130"
+        assert srow["provenance"] == "naturalness"
+        call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
+            row, source_file="corpus_p25", line=716,
+            ambiguity_class=srow["ambiguity_class"], sidecar_record_id=srow["record_id"],
+            provenance=srow["provenance"],
+        )
+        assert no_call_reason is None
+        assert skip_reason is not None
+        assert "variable/computed value" in skip_reason
+        assert call_seq == []
+
+    def test_naturalness_bracket_ref_normalizes_and_matches_p25_passed(self):
+        """ovl-05a03ba41d (line 715): dispense(destination='plate["C1"]', ...)
+        -- a literal bracket-subscript mined ref. Pre-fix, this opaque
+        un-normalized name typed as a bare Plate via infer_layout, producing
+        "'Plate' object has no attribute 'tracker'" / TypeError (the
+        remaining naturalness disagreement classes). Post-fix: normalized to
+        'plate.C1' via overlay_gen._normalize_ref before _precondition_plan,
+        matching overlay_gen's own execution_verify_call. overlay recorded
+        passed=True for this id; assert we now agree.
+        """
+        self._require_files()
+        if not self.OVERLAY_FILE.exists():
+            pytest.skip(f"{self.OVERLAY_FILE} not found")
+        row, srow = self._row_and_sidecar(715)
+        assert srow["record_id"] == "ovl-05a03ba41d"
+        call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
+            row, source_file="corpus_p25", line=715,
+            ambiguity_class=srow["ambiguity_class"], sidecar_record_id=srow["record_id"],
+            provenance=srow["provenance"],
+        )
+        assert skip_reason is None and no_call_reason is None
+        dispense_call = [c for c in call_seq if c["name"] == "dispense"][0]
+        assert dispense_call["params"]["destination"] == "plate.C1"
+        rt = run_runtime({"call_sequence": call_seq, "intent_record": intent, "deck_layout": layout})
+        with open(self.OVERLAY_FILE) as f:
+            overlay_by_id = {json.loads(l)["id"]: json.loads(l) for l in f}
+        p25_row = overlay_by_id[srow["record_id"]]
+        p25_passed = p25_row["execution_verify"]["passed"]
+        assert p25_passed is True
+        assert rt.error is None, f"expected ran_ok (matches overlay passed={p25_passed}), got {rt.error!r}"
 
 
 class TestSmokeOnExamples:
