@@ -14,6 +14,7 @@
 - [260121_final-merge-handoff](handoffs/260121_final-merge-handoff.md)
 
 ## Plans
+- [260902_plr-preflight-oracle-harness](plans/260902_plr-preflight-oracle-harness.md) — Design for catching plr-preflight bugs by comparing static verdicts against PLR's chatterbox simulator (STRICT + tip/volume tracking) as ground-truth oracle: four input tiers (corpus replay, source-rendered corpus, mutation/metamorphic, wire-format fuzz), the soundness contract each verdict must satisfy, metrics, and phasing.
 - [260824_repl-autocomplete-scope](plans/260824_repl-autocomplete-scope.md) — Scope and outcome for as-you-type completion in the JupyterLite PLR REPL; the planned jedi preload proved unnecessary
 - [260824_w2_dispatch_draft](plans/260824_w2_dispatch_draft.md)
 - [260824_w3_dispatch_draft](plans/260824_w3_dispatch_draft.md)
