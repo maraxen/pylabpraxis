@@ -313,8 +313,8 @@ a `Resource` with a parent → `Ref(slot_of(parent), obj.name)`; a top-level `Re
 `Ref(slot_of(obj), None)`; a `list` → `Seq`; a JSON scalar → `Lit`; anything else → `Top`.
 
 The kwargs come from `PlanResult.kwargs` (`dispatcher.py:54-64`), which `run_runtime` already
-harvests through its `recording_plan_call` wrapper (`oracle_common.py:59-65`) and carries out on
-`RuntimeOutcome.plr_kwargs` (`oracle_common.py:43-50`). **Those kwargs are PLR-named by
+harvests through its `recording_plan_call` wrapper (`oracle_common.py:87-93`) and carries out on
+`RuntimeOutcome.plr_kwargs` (`oracle_common.py:72-78`). **Those kwargs are PLR-named by
 construction**: `plan_call` (`dispatcher.py:92-101`) writes `kwargs[spec.plr_arg]` inside its `bind`
 closure (`dispatcher.py:117-135`), and `spec.plr_arg` is `ParamSpec`'s "vendored kwarg name" field
 (`param_namespace.py:81-99`, `:88`). For `pick_up_tips` the single row is
@@ -324,7 +324,7 @@ to `Seq` of length *n*, which is exactly increment 1 §10.1.3 rule 3's input. **
 mechanism by which AC-10.11 stops being vacuous** (§11.10).
 
 **One correction to the existing harvest, and it is not cosmetic.** `recording_plan_call` currently
-stores `{k: repr(v) for k, v in plan_result.kwargs.items()}` (`oracle_common.py:59-65`). A `repr` of
+stores `{k: repr(v) for k, v in plan_result.kwargs.items()}` (`oracle_common.py:87-93`). A `repr` of
 a list of `TipSpot`s is a string like `"[<TipSpot ...>, <TipSpot ...>]"`, which `ast.literal_eval`
 rejects and which carries no recoverable arity without re-parsing angle-bracket reprs. `ir_value_of`
 replaces the `repr` at the point of harvest; the `repr` string, if wanted for debugging, goes to
@@ -685,14 +685,19 @@ make it worse, and fixing it is #4882's call, not a reason to spend a vocabulary
   rewritten to name what is actually hand-maintained now: *"which upstream fields the analyzer
   refuses to consume, and why"*.
 
-**Recommended: the second**, with three conditions that keep it from being a downward-gaming metric
+**Recommended: the second**, with four conditions that keep it from being a downward-gaming metric
 change: (i) the commit message states both numbers explicitly — *"under the pre-increment metric this
 row reads 34; the metric changed because the judgement it measured no longer exists"* — the same
 separation increment 1 §10.8 required for its +3/+2 split; (ii) the exhaustiveness test (AC-11.1) lands
 in the same commit, because it is what replaces the count as the protection against invisible growth;
 (iii) `_measure_hm21` is rewritten to count dispositions, not dataclass fields, so the measure and the
-metric agree. Without all three this is exactly the "split a surface to dilute it" move §9.4's
-anti-gaming clause names, and a reviewer should reject it.
+metric agree; and **(iv, added in round-1 remediation for O2) AC-11.14 lands in the same commit.**
+Condition (iv) exists because the redefined metric guards the wrong direction: it counts `X`
+dispositions, so reclassifying one of the three *out* of `X` — the laundering move — **lowers** the
+number, and a ratchet built to catch growth reads that as safe. AC-11.14 pins the three identities
+directly, so the metric measures the judgement while the test protects it. Without all four this is
+exactly the "split a surface to dilute it" move §9.4's anti-gaming clause names, and a reviewer
+should reject it.
 
 ---
 
@@ -830,7 +835,10 @@ there**.
 **Splitting.** Sub-steps (1)+(2)+(3) leave the tree green on their own (the IR exists, `check_graph`
 routes through it, no verdict moves — AC-11.6 is the proof) and are the minimum shippable split
 point. Do not split between (4) and (5): a `params` key with no consumer, or an `ir_value_of` with no
-table to validate against, is untested code on both sides of the seam.
+table to validate against, is untested code on both sides of the seam. Sub-step (8) — the AC-11.14
+pin test — rides with (1): it tests `DISPOSITIONS`, which (1) creates, and it must not be deferred
+past the split point, because the laundering it guards against is cheapest to commit exactly when
+the table is first written.
 
 ---
 
@@ -872,7 +880,7 @@ rule, the E1–E5 transfer functions and every soundness argument stand exactly 
   (call.get("params") or {}).items()}` (`oracle_common.py:118-123`) — the tool-named path — has no
   successor: a row whose call was never planned produces no `CALL` at all rather than a
   tool-named one, and is counted as `not_planned` in the report. `run_static`
-  (`oracle_common.py:141-157`) and `compare` (`oracle_common.py:165-185`), including the `unsound`
+  (`oracle_common.py:141-157`) and `compare` (`oracle_common.py:193-213`), including the `unsound`
   predicate at `:178-180`, are unchanged — they read verdicts, not arguments.
 - **Tier 2** (`#4880`) renders each call sequence to Python source, extracts with
   `computation_graph_extractor` out of process, and lowers **the same way** with `lower_graph`. The
@@ -1083,6 +1091,7 @@ strictly widens).
 | **O1** | CONCEDE | AC-11.11 and AC-11.13 qualified as **fixture-only, zero soundness claim over real corpus/graph data** until `extract/` populates the fields | §11.7 |
 | **O1** | CONCEDE | Root cause named as a blocking follow-up — *"`extract/`: populate foreach/branch fields — round 2"* — with its two hard requirements (`IR_VERSION` bump; re-run AC-11.11/AC-11.13 on real data and delete the qualifiers) | §11.11 |
 | **O2** | CONCEDE (blocking) | New **AC-11.14**: `test_excluded_fields_are_excluded` hardcodes the three `X` field identities and asserts their disposition; why this is the one legitimate hardcode; why AC-11.1/11.2/11.6 cannot catch it; why HM-21's redefined metric **decreases** under laundering and cannot substitute | §11.7 (new AC), §11.8 (sub-step 8) |
+| **O2** | CONCEDE | HM-21's metric-redefinition recommendation gains a fourth condition — AC-11.14 lands in the same commit — because the `X`-count metric guards growth while laundering is shrinkage | §11.6 |
 | **O3** | CONCEDE | `forbidden` rewritten from a global set to `forbidden(method) = {s.name for s in params_of(method) if s.plr_arg != s.name}`, with `∅` for methods absent from `PARAM_NAMESPACE`; the `aspirate`/`transfer` `"source"` collision given as the reason | §11.2.3 |
 | **O4** | PARTIAL | References corpus row re-attributed: it is `lower_calls`' input via `ground_param`, **not** `lower_graph`'s, and is not evidence about the value grammar | References |
 | **O4** | PARTIAL | Disclosure: `ast.Attribute` and `Subscript`-of-`Attribute` resolve to `Top`; `visit_Assign` registers no `self.foo` resource, so no slot exists to widen; `ItemizedResource` exposes `__getitem__` only, so a valid renderer emits `plate_1["C7"]` | §11.2.1 |

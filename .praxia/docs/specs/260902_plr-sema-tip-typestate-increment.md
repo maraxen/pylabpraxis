@@ -749,7 +749,7 @@ a reviewer can attack them; none of them is buried in code.
 | id | assumption | why it is needed | what breaks if it is false |
 |---|---|---|---|
 | **A-SINGLE** | one `receiver_variable` denotes one `LiquidHandler` instance for the whole graph, and no other name aliases it | state is keyed on the variable name (§10.1.4) | a second alias mutating the head trackers desynchronises `σ`; both a false `SAFE` and a false `WILL_FAIL` become possible. Mitigation: no `plr_static_analysis` graph today emits two names for one instance, and `is_grounded` (`check/graph.py:181-186`) exists to detect ungrounded references when a reason for it lands |
-| **A-COMPLETES** | each operation preceding the one being checked completed without raising | E1/E2's post-state is the state *after a successful* call | it is the same assumption the oracle's own comparison already makes: `oracle_common.compare` marks every operation after the failing index `not_reached` and imposes no constraint there (`plr-sema/eval/oracle_common.py:169-176`; the round-1 draft cited `:148-163`, which is `run_static`'s per-operation grouping, not the comparison). A `WILL_FAIL` at index `i` is a claim about the trace *reaching* `i` |
+| **A-COMPLETES** | each operation preceding the one being checked completed without raising | E1/E2's post-state is the state *after a successful* call | it is the same assumption the oracle's own comparison already makes: `oracle_common.compare` marks every operation after the failing index `not_reached` and imposes no constraint there (`plr-sema/eval/oracle_common.py:198-204`; the round-1 draft cited `:148-163`, which is `run_static`'s per-operation grouping, not the comparison). A `WILL_FAIL` at index `i` is a claim about the trace *reaching* `i` |
 | **A-COMMIT** (narrowed, round 1 O1) | at operation boundaries **of `pick_up_tips` and `drop_tips` only**, `_tip` and `_pending_tip` agree | P2 merges two concrete fields into one abstract cell (§10.2.2) | verified for exactly those two: each ends in a commit-or-rollback fold over every touched channel (`liquid_handler.py:570-573`, `:716-723`). It is **known false** for `update_head_state` (`liquid_handler.py:262-282`, `remove_tip(commit=False)` with no later `commit()`) and `clear_head_state` (`:284-287`) — both of which widen to `TOP` before any later guard is evaluated, by §10.4's E4.2 and E4.3 respectively, so neither can read the merged cell. What breaks it is a *new* PLR method that mutates a head tracker at depth 0 with a single non-conflicting effect and no commit; Fork D's pin test is the tripwire, and §10.6.4 is the worked non-example |
 | **A-ENABLED** | the head trackers are not `disable()`d | `TipTracker.add_tip`/`remove_tip` raise `RuntimeError` when disabled (`tip_tracker.py:89-90`, `:102-103`) | **largely self-discharging**: under A-COMPLETES, if `op_0`'s `add_tip` had raised `RuntimeError`, `op_0` would not have completed, so a completed `pick_up_tips` implies its head tracker was enabled. The residual is a `disable()` call *between* two operations, which no graph emits |
 
@@ -916,7 +916,7 @@ operation, and the exact site, so a stubbed evaluator that returns a constant fa
   tip_dropping` — the three §10.2.6 expectations, so a rule that silently selects nothing fails.
 - **AC-10.11 (oracle gate — replay; vacuous under tier 1 as configured, and says so).** `#4879`'s
   tier-1 corpus replay over the 812 + 88 rows reports **0 unsound rows** under
-  `oracle_common.compare`'s own `unsound` predicate (`plr-sema/eval/oracle_common.py:178-180`): no
+  `oracle_common.compare`'s own `unsound` predicate (`plr-sema/eval/oracle_common.py:206-211`): no
   operation is `SAFE` where the simulator raised, and none is `WILL_FAIL` where the simulator ran
   clean. This is a hard gate. The `UNKNOWN` rate is **reported, not gated** — main spec Deferred (f)
   still defers the number.
@@ -1203,7 +1203,7 @@ therefore gates totality and non-regression only, and requires the replay to rep
 real directional gate and is `#4888`'s own gate, not a downstream one (see the task row). One thing
 the round-1 draft got wrong in the challenger's favour and against its own: option (a) does **not**
 require hand-typing a tool→PLR name map — `run_runtime` already harvests PLR-named kwargs from the
-verifier's `plan_call` (`plr-sema/eval/oracle_common.py:57-67`) and `adapt_graph` already
+verifier's `plan_call` (`plr-sema/eval/oracle_common.py:85-108`) and `adapt_graph` already
 accepts them (`:94`, `:118-125`). Option (a) is therefore cheaper than the draft claimed and is the
 natural follow-up; (c) is chosen for *this* increment because it does not make `#4888` depend on a
 change to `#4879`'s harness. The corollary for the oracle plan — that a tier-1/tier-2 divergence is
@@ -1343,8 +1343,8 @@ draft:
 
 | what | was | now |
 |---|---|---|
-| A-COMPLETES's citation for the oracle's `not_reached` marking | `oracle_common.py:148-163` (that range is `run_static`'s per-operation grouping) | `plr-sema/eval/oracle_common.py:169-176`, inside `compare` |
-| AC-10.11's citation for `compare`'s unsoundness predicate | `oracle_common.py:161-163` (a comment banner) | `plr-sema/eval/oracle_common.py:178-180`, the `unsound` expression |
+| A-COMPLETES's citation for the oracle's `not_reached` marking | `oracle_common.py:148-163` (that range is `run_static`'s per-operation grouping) | `plr-sema/eval/oracle_common.py:198-204`, inside `compare` |
+| AC-10.11's citation for `compare`'s unsoundness predicate | `oracle_common.py:161-163` (a comment banner) | `plr-sema/eval/oracle_common.py:206-211`, the `unsound` expression |
 | §10.2.2's cross-reference to the assumptions table | "§10.7" | §10.6.3 |
 | §10.1.3's forward reference to the tier-1 vacuity discussion | "§10.12, Q3" (no §10.12 exists) | AC-10.11 and §10.10's Q3 |
 | §10.7's `#4888` scope step (5) cross-reference for the vocabulary amendment | "§10.10" | §10.8 |
