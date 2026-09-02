@@ -37,25 +37,46 @@ from praxis.common.type_inspection import (
 # Method Patterns and Preconditions
 # =============================================================================
 
+# =============================================================================
+# NOTE on provenance and derivation (backlog #4846, 260901)
+# =============================================================================
+# These five frozensets are hand-typed and audited against an AST-derived
+# survey of the real PLR method surface (`training/verify/data/plr_preconditions.json`,
+# PLR pin dd79c4c89 / 0.2.2) via `tests/utils/test_computation_graph.py::
+# TestFrozensetsMatchPlrSurface`. That test is the durable guard: it asserts
+# every member exists as a method on its declared receiver class(es) at the
+# current pin, so a future PLR bump that renames/removes a method fails loudly
+# here instead of silently dropping a precondition/creates_state edge.
+#
+# An adversarial round (260901) proposed *deriving* these sets automatically
+# from PLR annotations instead of hand-typing them. That was measured and
+# rejected: the derivation placed `pick_up_tips96` (a TIPS_LOADING_METHODS
+# member, i.e. it CREATES tip state) into the derived TIPS_REQUIRED set — a
+# typestate-inversion false positive that a naive "100% recall" metric does
+# not catch, because recall says nothing about false positives. Do not retry
+# derivation without first validating create/require *polarity*, not just
+# coverage. Hand-typing + the regression test above is the current design.
+# =============================================================================
+
 # Methods that require tips to be loaded
+# Receiver: LiquidHandler
 TIPS_REQUIRED_METHODS: frozenset[str] = frozenset({
   "aspirate",
   "dispense",
   "transfer",
-  "mix",
-  "blow_out",
-  "touch_tip",
   "drop_tips",
   "return_tips",
 })
 
 # Methods that create "tips loaded" state
+# Receiver: LiquidHandler
 TIPS_LOADING_METHODS: frozenset[str] = frozenset({
   "pick_up_tips",
   "pick_up_tips96",
 })
 
 # Methods that remove "tips loaded" state
+# Receiver: LiquidHandler
 TIPS_DROPPING_METHODS: frozenset[str] = frozenset({
   "drop_tips",
   "drop_tips96",
@@ -63,21 +84,24 @@ TIPS_DROPPING_METHODS: frozenset[str] = frozenset({
 })
 
 # Methods that require plate access (not covered by lid)
+# Receiver: LiquidHandler (aspirate/dispense/transfer) or PlateReader
+# (read_absorbance/read_fluorescence/read_luminescence) — this set is
+# intentionally receiver-polymorphic; see _determine_preconditions, which
+# keys the PLATE_ACCESSIBLE precondition off the resource argument, not the
+# receiver type.
 PLATE_ACCESS_METHODS: frozenset[str] = frozenset({
   "aspirate",
   "dispense",
   "transfer",
-  "mix",
   "read_absorbance",
   "read_fluorescence",
   "read_luminescence",
 })
 
 # Methods that move plates (require iSWAP or similar)
+# Receiver: LiquidHandler
 PLATE_MOVE_METHODS: frozenset[str] = frozenset({
   "move_plate",
-  "get_plate",
-  "put_plate",
   "move_lid",
 })
 

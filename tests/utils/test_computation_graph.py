@@ -1,13 +1,51 @@
 """Tests for the Computation Graph Extractor."""
 
+import json
+import pathlib
+
+import pytest
 
 from praxis.backend.utils.plr_static_analysis.models import (
   PreconditionType,
 )
 from praxis.backend.utils.plr_static_analysis.visitors.computation_graph_extractor import (
+  PLATE_ACCESS_METHODS,
+  PLATE_MOVE_METHODS,
+  TIPS_DROPPING_METHODS,
+  TIPS_LOADING_METHODS,
+  TIPS_REQUIRED_METHODS,
   VariableTypeTracker,
   extract_graph_from_source,
 )
+
+# Repo root, resolved from this file's location (tests/utils/test_computation_graph.py).
+_REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+_PLR_SURVEY_PATH = _REPO_ROOT / "training" / "verify" / "data" / "plr_preconditions.json"
+
+# Declared receiver class(es) for each frozenset in computation_graph_extractor.py.
+# A method name in a set must exist as a method on at least one of its declared
+# receiver classes in the AST-derived PLR survey, or it is stale (backlog #4846).
+_FROZENSET_RECEIVER_CLASSES: dict[str, tuple[frozenset[str], tuple[str, ...]]] = {
+  "TIPS_REQUIRED_METHODS": (TIPS_REQUIRED_METHODS, ("LiquidHandler",)),
+  "TIPS_LOADING_METHODS": (TIPS_LOADING_METHODS, ("LiquidHandler",)),
+  "TIPS_DROPPING_METHODS": (TIPS_DROPPING_METHODS, ("LiquidHandler",)),
+  "PLATE_ACCESS_METHODS": (PLATE_ACCESS_METHODS, ("LiquidHandler", "PlateReader")),
+  "PLATE_MOVE_METHODS": (PLATE_MOVE_METHODS, ("LiquidHandler",)),
+}
+
+
+def _load_plr_method_index() -> dict[str, set[str]]:
+  """Build a {class_name: {method_name, ...}} index from the PLR AST survey."""
+  data = json.loads(_PLR_SURVEY_PATH.read_text())
+  index: dict[str, set[str]] = {}
+  for fn in data["functions"]:
+    class_name = fn.get("class_name")
+    if not class_name:
+      continue
+    method_name = fn["qualname"].rsplit(".", 1)[-1]
+    index.setdefault(class_name, set()).add(method_name)
+  return index
+
 
 # Test protocol source code
 SIMPLE_TRANSFER_SOURCE = '''
@@ -411,3 +449,67 @@ async def empty_protocol(lh: LiquidHandler):
     graph = extract_graph_from_source(source, "empty_protocol", "test")
     assert graph is not None
     assert len(graph.operations) == 0
+
+
+class TestFrozensetsMatchPlrSurface:
+  """Regression guard for backlog #4846.
+
+  The five hand-typed frozensets in computation_graph_extractor.py
+  (TIPS_REQUIRED_METHODS, TIPS_LOADING_METHODS, TIPS_DROPPING_METHODS,
+  PLATE_ACCESS_METHODS, PLATE_MOVE_METHODS) are the sole source of the
+  preconditions / creates_state edges written onto every OperationNode. A
+  stale entry (a method that no longer exists on its declared receiver
+  class) means a precondition silently never fires. This test asserts every
+  member exists as a method on at least one of its declared receiver
+  classes, per the AST-derived survey of the real PLR surface at the
+  currently pinned PLR commit.
+
+  Before the 260901 fix, this test failed against the original sets:
+  TIPS_REQUIRED_METHODS contained "mix", "blow_out", "touch_tip" (none
+  exist on LiquidHandler at PLR pin dd79c4c89 / 0.2.2), PLATE_ACCESS_METHODS
+  contained "mix", and PLATE_MOVE_METHODS contained "get_plate" / "put_plate"
+  (they exist on PlateReader/Imager and a LiquidHandler *backend*
+  respectively, not on LiquidHandler itself, which is the declared receiver
+  for this set per its "require iSWAP or similar" docstring).
+  """
+
+  @pytest.fixture(scope="class")
+  def plr_method_index(self) -> dict[str, set[str]]:
+    """Load the {class_name: {method_name, ...}} index from the AST survey."""
+    return _load_plr_method_index()
+
+  @pytest.mark.parametrize("set_name", sorted(_FROZENSET_RECEIVER_CLASSES))
+  def test_frozenset_members_exist_on_declared_receiver(
+    self, set_name: str, plr_method_index: dict[str, set[str]]
+  ) -> None:
+    """Every member of each frozenset must exist on one of its receivers."""
+    members, receiver_classes = _FROZENSET_RECEIVER_CLASSES[set_name]
+
+    known_methods: set[str] = set()
+    for receiver_class in receiver_classes:
+      known_methods |= plr_method_index.get(receiver_class, set())
+
+    stale = sorted(members - known_methods)
+    assert not stale, (
+      f"{set_name} contains method(s) not found on receiver class(es) "
+      f"{receiver_classes} in the PLR AST survey: {stale}. "
+      "Either the method was renamed/removed upstream (prune the entry) "
+      "or the declared receiver class in this test is wrong (fix "
+      "_FROZENSET_RECEIVER_CLASSES)."
+    )
+
+  def test_declared_receiver_classes_are_known_to_the_survey(
+    self, plr_method_index: dict[str, set[str]]
+  ) -> None:
+    """Sanity check: the receiver classes we test against actually exist.
+
+    Guards against a silently-empty `known_methods` set (e.g. a class name
+    typo) making the main test above vacuously pass.
+    """
+    all_receiver_classes = {
+      receiver_class
+      for _, receivers in _FROZENSET_RECEIVER_CLASSES.values()
+      for receiver_class in receivers
+    }
+    missing = sorted(all_receiver_classes - set(plr_method_index))
+    assert not missing, f"Receiver class(es) not present in PLR survey: {missing}"
