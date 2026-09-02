@@ -1,8 +1,8 @@
 ---
-title: "plr-jit — pre-corpus specification (round 6 + T11 whole-surface decoupling)"
-description: "Buildable-today specification for plr-jit: a self-contained package providing JIT-style static validation of PyLabRobot execution graphs. Covers the eight corpus-INDEPENDENT sections (package seam + AST import boundary, provenance cherry-pick, tri-valued verdict data contract, telemetry error model, fork-drift tests, extractor/checker split, contract-derivation mechanics, differential harness) and defers all abstract-interpretation semantics to a literature corpus in compilation. Carries a mandatory hand-maintained/derived classification on every piece of logic, plus a hand-maintained surface budget and ratchet. spec_version 7 (T11) decouples derivation coverage from SUPPORTED_TOOLS: plr-jit now analyzes the whole PyLabRobot surface (4,770 methods) rather than 10 LiquidHandler tools."
+title: "plr-jit — pre-corpus specification (round 6 + T11 whole-surface decoupling + three open decisions resolved)"
+description: "Buildable-today specification for plr-jit: a self-contained package providing JIT-style static validation of PyLabRobot execution graphs. Covers the eight corpus-INDEPENDENT sections (package seam + AST import boundary, provenance cherry-pick, tri-valued verdict data contract, telemetry error model, fork-drift tests, extractor/checker split, contract-derivation mechanics, differential harness) and defers all abstract-interpretation semantics to a literature corpus in compilation. Carries a mandatory hand-maintained/derived classification on every piece of logic, plus a hand-maintained surface budget and ratchet. spec_version 7 (T11) decouples derivation coverage from SUPPORTED_TOOLS: plr-jit now analyzes the whole PyLabRobot surface (4,770 methods) rather than 10 LiquidHandler tools. spec_version 8 (260901, task 260901_plr-jit-resolve-three-decisions) resolves all three §Open decisions items via an independent outside analysis (Fable), spot-verified by the orchestrator: no `UNREACHABLE` member now (reserve the string, add an unrecognized-verdict-string consumer rule instead); volume tracking is already in the verdict path (PLR put it there), the real question — whether the predicate evaluator interprets numeric atoms — is deferred through v1 and the first increment; the shipped join table is NOT inverted, its ordering is the correct obligation-conjunction order, distinct from the (unrelated) information order that governs pre-emission state merging. No schema_version bump; no new machinery."
 status: draft
-spec_version: 7
+spec_version: 8
 task_id: 260901_plr_jit_spec
 date: '260901'
 confidence: medium
@@ -35,35 +35,98 @@ sources: "Measured substrate supplied in dispatch brief (praxis/backend/utils/pl
 
 ## Open decisions
 
-Three decisions are genuinely pending with the user and gate T10's dispatch. They are recorded here,
-prominently, because round 6 (R14) found they appeared **nowhere** in the document — not in
-[§Deferred](#deferred), not in [§Flags](#flags--locked-decisions-with-implementability-concerns), not
-in the risk table — so a cold reader would conclude nothing was awaiting a decision, which is false.
-None of the three is resolved by this remediation pass; resolving them is explicitly **not** this
-document's job.
+**RESOLVED 260901 (task `260901_plr-jit-resolve-three-decisions`).** All three decisions below were
+recorded by round 6 (R14) as genuinely pending with the user and gating T10's dispatch. They are kept
+in full, not deleted, so a reader can see they *were* open and how they closed — history, not a live
+gate. Resolution source: an independent outside analysis (Fable, no prior contact with the spec
+rounds — full text at `fable_three_decisions.md`), spot-verified against the codebase by the
+orchestrator before being accepted as authoritative (verification evidence is inline in each
+resolution below). **User-approved.** The unifying move that dissolves two of the three is recorded as
+a new paragraph in [§3](#3-the-verdict-type-and-record-shape--the-hinge), immediately before §3.1:
+`Verdict` is the *output* of evaluating one obligation against one abstract state, not the abstract
+domain itself. Once that is accepted as the organizing fact (rather than left implicit), decisions 1
+and 3 stop being open questions about `Verdict`'s design and become one clarifying docstring change
+each; decision 2 was never actually about `Verdict` at all.
 
-1. **Does `Verdict` gain a fourth, `UNREACHABLE` member now?** The sound domain specified today is the
-   4-element diamond `P({Safe, Fail})` (§3.2's boundary declaration) — there is no ⊥ (bottom/
-   unreachable) element, and [§3.2's boundary summary table](#32-the-report-level-join--specified-as-structure-deferred-as-semantics)
-   does not cover this route to a `schema_version` bump. **Blocks:** whether deferred item (a)'s
-   eventual abstract domain needs a fifth `Verdict` member wired in from round 1, or can add one later
-   behind a `schema_version` bump. **Evidence:** research corpus not yet compiled; no measurement bears
-   on this either way today. **User's call**, not this spec's.
-2. **Is volume tracking in the v1 verdict path?** This alone decides whether any numeric domain
-   (intervals — not octagons, per deferred item (a)'s framing) is ever needed, and hence whether any
-   widening (deferred item (d)) is needed at all. Currently mentioned exactly once in the whole
-   document, inside deferred row (d)'s parenthetical ("if the verdict path ever includes numeric/volume
-   accumulation") — i.e. as a hypothetical, not a decision. **Blocks:** whether (d) "largely dissolves"
-   (if the domain is a finite-height typestate one, per `research_a_d.md:386-390`) or requires real
-   widening work. **User's call**, not this spec's.
-3. **Does the `join` lattice ordering invert so `UNKNOWN` is genuinely top?** Round-4 remediation M9 /
-   `research_a_d.md` observe that [§3.2's table](#32-the-report-level-join--specified-as-structure-deferred-as-semantics)
-   is a valid join of `SAFE ⊏ UNKNOWN ⊏ WILL_FAIL` — i.e. **`WILL_FAIL` as top**, the opposite of
-   `verdict.py`'s stated intent (which reads `UNKNOWN` as the top/least-informative element, consistent
-   with `UNKNOWN`'s role as the safe default when nothing is known). Both orderings are internally
-   consistent with the *shipped* `join` table; they diverge only in how a future abstract-domain lattice
-   built on top of `Verdict` should be laid out. **Blocks:** the shape of deferred item (a)'s domain once
-   it is designed. **User's call**, not this spec's.
+1. **Does `Verdict` gain a fourth, `UNREACHABLE` member now? — No, not now.** ⊥ (bottom/unreachable) is
+   needed by the analyzer's internal per-operation abstract-state lattice that deferred item (a) will
+   build — it prunes dead paths (`⟦C⟧♯(⊥) = ⊥`) and is the unit of the branch-merge join. Neither of
+   those is a thing the wire type needs to say to a consumer: a provably-dead operation is either a
+   vacuous `SAFE` ("cannot fail because it never runs" — literally satisfied by `Verdict.SAFE`'s own
+   docstring) or a lint/annotation, not a fourth verdict. Adding the member now would also require
+   deciding its row in the §3.2 table — vacuous `SAFE` under the conjunction unit, or ⊥ strictly below
+   `SAFE` under the information order — with no domain yet built to check that decision against; that
+   is exactly the kind of call that is 50/50 in foresight and obvious only in hindsight. **Instead:**
+   the wire string `"unreachable"` is reserved (comment in `verdict.py`, not consumed anywhere), and one
+   new normative consumer rule is added: **an unrecognized `Verdict` string deserializes to `UNKNOWN`.**
+   Widening what a consumer knows is always sound (it can only lose precision, never gain a false
+   claim), so this makes `UNREACHABLE` — or any future member (a) needs — a non-breaking addition for
+   compliant consumers, without committing to `UNREACHABLE`'s semantics today. Implemented as
+   `Verdict.from_wire(value: str) -> Verdict` in `plr_jit/verdict.py`, tested in
+   `test_verdict.py::test_from_wire_maps_unrecognized_string_to_unknown`.
+   **Corrects §3.5's schema-bump direction, which had it backwards for an additive enum member:** for
+   an *additive* enum member, only *old* readers choke on *new* reports; new readers already accept old
+   reports as a strict subset. §3.5's
+   claim that a bump makes "every persisted report unreadable by the new checker" describes the
+   opposite direction. The migration cost is also not live today regardless of direction: zero
+   consumers outside `plr-jit/tests` import `plr_jit.verdict` or read a report `schema_version`
+   (re-verified this pass), and zero `AnalysisReport`s are persisted anywhere in the repo. See the
+   corrected §3.5 text below.
+2. **Is volume tracking in the v1 verdict path? — The question was mis-posed; restated below, and the
+   restated question resolves to "leave numeric atoms uninterpreted through v1 and the first
+   post-corpus increment."** Volume is not a hypothetical the analyzer might someday choose to model —
+   PLR's own preconditions are volume-shaped and the derivation pipeline already carries them as
+   guards: `LiquidHandler.drop_tips` (and 9 sibling `LiquidHandler.*` contracts, via delegation) carries
+   `tip.tracker.get_used_volume() > 0 and (not allow_nonzero_volume)` at depth 0 today — verified,
+   `plr-jit/data/derived_contracts.json`; the whole-surface table carries 257 volume/liquid-shaped
+   guards across 93 methods. So "is volume in the verdict path" is already true, and answerable by
+   `grep`, not judgment. **The actual open question was:** does deferred item (c)'s predicate evaluator
+   *interpret* numeric comparison atoms (`Cmp(Expr, op, Expr)`, e.g.
+   `volume - self.get_used_volume() > 1e-06`), or leave every such atom at Kleene ½ (`UNKNOWN`)?
+   **Resolution: leave numeric atoms at ½ through v1 and the first post-corpus increment.** This is
+   additive and fully reversible — it touches one grammar production in (c)'s evaluator and nothing on
+   the wire (no `Verdict`, `Finding`, or `join` change), so the option to add interval interpretation
+   later is nearly free to keep open. Two facts Fable's analysis established weaken the old
+   volume-⟹-widening link the deferred (d) row's framing relied on: (i) upstream `ResourceNode` carries
+   `items_x`/`items_y` (verified, `models.py:562-587`), so loops over plate wells have **proved**, not
+   heuristically-guessed, trip counts — bounded loops with proved counts need no widening even under an
+   interval domain, narrowing "widening is needed" to "the verdict path includes numeric accumulation
+   across a loop whose trip count cannot be proved from the graph," a strictly smaller and possibly
+   empty condition; (ii) PLR's volume guards are gated by a process-global `does_volume_tracking()` flag
+   (verified, `liquid_handler.py:1032-1235`) — an environment hypothesis, not a graph fact — so any
+   definite volume verdict needs a `SoundnessScope` record (cross-reference the soundness-fence
+   discussion in deferred row (b)/`research_b_f.md`) before it can be honest, which is itself
+   post-corpus machinery. The [§Deferred](#deferred) table's (d) row is updated accordingly, below.
+3. **Does the `join` lattice ordering invert so `UNKNOWN` is genuinely top? — No; keep the table.** The
+   shipped [§3.2 table](#32-the-report-level-join--specified-as-structure-deferred-as-semantics) is the
+   correct join of the **obligation order** (`SAFE ⊏ UNKNOWN ⊏ WILL_FAIL`, `WILL_FAIL` top): one
+   definite, reachable failure must dominate ninety-nine unknowns, because a protocol with one such
+   failure and ninety-nine unknowns *will fail*, and reporting `UNKNOWN` there would discard the one
+   thing a user most needs to know. `UNKNOWN`-as-top belongs to a genuinely different, and also real,
+   **information order** (Kleene / Sagiv-Reps-Wilhelm: `SAFE ⊔ WILL_FAIL = UNKNOWN`) — but that order
+   governs merging *abstract states* at a branch confluence, upstream of `Finding` emission, before any
+   guard is evaluated against the merged state. It has no call site in `verdict.py` today and never
+   will: `verdict.py`'s `join` conjoins independent per-guard obligations *after* they are already
+   `Finding`s. Both orders are real; they apply at different pipeline stages, and the prior framing of
+   this as one ordering choice was the actual defect. `verdict.py`'s module docstring and `join`'s own
+   docstring are corrected to name both orders explicitly and state which one `join` implements — see
+   the source; no table, body, or test assertion changes.
+   **A related, more serious correction, recorded prominently so a later round does not resurrect
+   it:** `research_a_d.md`'s R3 recommended grouping `join`'s input by `operation_id` and
+   Kleene-joining findings within each group. **This must NOT be implemented.** Verified,
+   `check/__init__.py`'s `_findings_for_operation`: v1 emits **one `Finding` per guard** in the resolved
+   contract (measured: `aspirate` yields 9 findings from 9 distinct guard sites, `transfer` yields 17).
+   Two findings sharing one `operation_id` are, today and by construction, two *independent*
+   obligations (guard A, guard B) that correctly *conjoin* — if guard B definitely fires the operation
+   definitely fails regardless of guard A being provably satisfied. Grouping by `operation_id` and
+   Kleene-joining within the group would **mask a definite guard failure whenever a sibling guard on
+   the same operation is satisfied** — unsound in the `SAFE` direction. R14/round-4's M9 and
+   `research_a_d.md` both had this backwards; do not implement R3 as written, and do not re-raise the
+   `operation_id`-grouping shape without first re-deriving why v1's per-guard emission makes it unsound.
+   `test_join_absorbs_across_shared_operation_id` (`test_verdict.py`) pins the *correct* per-guard
+   conjoining behavior — its docstring previously described itself as pinning a case research flags as
+   `join`'s absorption logic getting it wrong; that was backwards, and the docstring is corrected below
+   (assertions unchanged).
 
 ---
 
@@ -428,6 +491,22 @@ This section is the boundary between corpus-independent plumbing (§§1,2,4,5,6)
 semantics (deferred a–f). It must be specifiable **without presupposing an abstract domain**, and it
 must not have to change when the domain lands.
 
+**`Verdict` is the OUTPUT of evaluating an obligation against a state. It is not the abstract domain.**
+(Added 260901, resolving [§Open decisions](#open-decisions) 1 and 3 — independent outside analysis,
+spot-verified, user-approved.) The state deferred item (a) will build — per-channel tip typestate plus
+Kleene truth values for tracked predicates — is a separate, internal type owned by (a); it needs ⊤
+*and* ⊥ for its own reasons (strictness, the branch-merge join's unit). `Verdict` needs neither: for one
+obligation evaluated against one state, entailed ⇒ `SAFE`, contradicted ⇒ `WILL_FAIL`, neither ⇒
+`UNKNOWN`. It carries lattice structure only for **aggregation** — the report-level conjunction §3.2
+specifies — which is a different operation from the internal domain's branch-merge join, over a
+different carrier, at a different pipeline stage. Two decisions in [§Open decisions](#open-decisions)
+dissolve directly out of this: **decision 1** (⊥/`UNREACHABLE`) — ⊥ belongs to the deferred (a) *state*
+type, never to this wire enum, so the resolution is a docstring/reservation, not a new member; and
+**decision 3** (join ordering) — the shipped §3.2 table is the correct join of the *obligation* order
+(`WILL_FAIL` top), which is what `join` computes; `UNKNOWN`-as-top belongs to a different, real
+*information* order that governs merging abstract states before a guard is ever evaluated, upstream of
+`Finding` emission and outside this module entirely — the table stays exactly as shipped.
+
 ### 3.1 Interface / data contract
 
 ```python
@@ -623,14 +702,26 @@ uv run pytest plr-jit/tests/test_verdict.py -q
 
 **Assumption:** `Finding`'s field set survives the arrival of the abstract domain.
 
-**If wrong:** `schema_version` bumps to 2 and every persisted report becomes unreadable by the new
-checker. **Mitigation:** `schema_version` is present from day one and the JSON round-trip test pins
+**If wrong:** `schema_version` bumps, and old readers may reject new reports. **Corrected 260901
+(§Open decisions 1 — round 6/pre-260901 text had this backwards):** for a *structural* field-set change
+this is real and directional as stated. But for the specific, narrower case this section previously
+conflated it with — an *additive* `Verdict` enum member (e.g. a future `UNREACHABLE`) — the direction is
+the reverse: only *old* readers choke on *new* reports; a new reader already accepts an old report as a
+strict subset, because it recognizes a superset of verdict strings. §Open decisions 1 also adds a
+standing consumer rule that shrinks this failure mode further for that case: **a consumer that meets a
+`Verdict` string it does not recognize must map it to `UNKNOWN`** (implemented as
+`Verdict.from_wire`, `plr_jit/verdict.py`, tested in `test_verdict.py`) — mapping an unknown value to
+the fail-closed default is always sound (it can only widen, never fabricate a false claim), so a
+compliant consumer degrades gracefully on an unrecognized member instead of raising. **Mitigation
+(general case, unchanged):** `schema_version` is present from day one and the JSON round-trip test pins
 it; consumers must branch on it rather than duck-type. **This is the highest-consequence assumption
 in the document** and is the reason `Finding` carries `detail: str` as an explicitly
 never-parsed escape hatch — new information can land there without a schema bump, and the closed
 `category`/`reason` fields stay machine-readable. That mirrors the discipline
 `training/verify/failure_taxonomy.py` already enforces (classify by type/module, never by parsing
-message text), inverted: we *emit* free text but forbid *consuming* it.
+message text), inverted: we *emit* free text but forbid *consuming* it. **No `schema_version` bump was
+needed for the 260901 resolution pass itself** — no member was added, no field changed; only the string
+`"unreachable"` was reserved (comment, unused) and the `from_wire` consumer rule was added.
 
 ### 3.6 Acceptance criteria
 
@@ -2416,7 +2507,7 @@ optional clause; (a)/(c) are untouched (not challenged).
 | (b1) | The formal meaning of `UNKNOWN` — sound over-approximation vs. bail-out, i.e. how `UNKNOWN` should PROPAGATE (⊤-propagation semantics) | Genuinely presupposes (a): propagation needs an abstract state to propagate, which does not exist pre-(a). **(round-4 remediation, B3 row (b), split — the stated reason survives:** `research_b_f.md:26` opens "it is real, but the spec has named the wrong axis" about the UNDIVIDED row, not about this half.) |
 | (b2) | Whether an `UNKNOWN`-worthy obligation is generated AT ALL, for a construct the front end cannot yet classify | **Not blocked on (a) — in scope for T6's recording rule now (round-4 remediation, B3 row (b), split, CONCEDE half).** A front-end/TCB recording-completeness property, not a propagation-semantics one; the literature prescribes a fail-closed front end (`research_b_f.md:44-50,100-104`). Silently dropping the obligation (rather than recording SOME `UNKNOWN` reason for it) was the actual gap — category (C) in `research_b_f.md`. |
 | (c) | The predicate language turning guard `condition` + `mentions_params` into a checkable predicate | §7 carries conditions as opaque strings precisely so this can land later without reshaping the pipeline. |
-| (d) | Loop handling — `bounds_analyzer`'s `items_x`×`items_y` heuristic vs. sound widening | Widening is a lattice operation and presupposes (a). `loop_bounds_unknown` is the placeholder reason. **(round-4 remediation, B3 row (d) — REBUTTED, no change to the reason itself; one optional clause added:** whether the domain has finite height *is* (a)'s question, so the (a)-dependency claim is correct as written, not merely a conditional dressed up as one — `research_a_d.md:386-390`'s "if the domain is typestate ... item (d) largely dissolves" IS that dependency, not a counterexample to it. If (a) resolves to a finite-height typestate domain, (d) resolves to *nothing to design*; if the verdict path ever includes numeric/volume accumulation, it does not — `research_a_d.md:432-440` keeps that escape hatch open on its own.) |
+| (d) | Loop handling — `bounds_analyzer`'s `items_x`×`items_y` heuristic vs. sound widening | Widening is a lattice operation and presupposes (a). `loop_bounds_unknown` is the placeholder reason. **(round-4 remediation, B3 row (d) — REBUTTED, no change to the reason itself; one optional clause added:** whether the domain has finite height *is* (a)'s question, so the (a)-dependency claim is correct as written, not merely a conditional dressed up as one — `research_a_d.md:386-390`'s "if the domain is typestate ... item (d) largely dissolves" IS that dependency, not a counterexample to it. If (a) resolves to a finite-height typestate domain, (d) resolves to *nothing to design*; if the verdict path ever includes numeric/volume accumulation, it does not — `research_a_d.md:432-440` keeps that escape hatch open on its own.) **(260901, §Open decisions 2 — the volume/widening link this row's escape-hatch clause anticipated is narrower than that clause implied, on evidence, not merely narrowed by choice:** volume guards are already in the verdict path (`drop_tips` et al., depth 0, verified) — the actual open sub-question was never "is volume in scope" but "does (c)'s predicate evaluator interpret numeric `Cmp` atoms, or leave them at Kleene ½"; resolved to leave them at ½ through v1 and the first post-corpus increment, additive and reversible, touching one grammar production in (c), nothing in (a)/(d)/the wire. Two further facts narrow (d)'s live surface specifically: upstream `ResourceNode.items_x`×`items_y` (verified, `models.py:562-587`) gives **proved**, not heuristic, trip counts for plate-well loops, so bounded loops with a provable count need no widening even under an eventual interval domain — the condition under which (d) is live shrinks to "numeric accumulation across a loop whose trip count cannot be proved from the graph," which may be empty for the corpus this analyzer actually sees; and PLR's volume guards are gated by a process-global `does_volume_tracking()` runtime flag (verified, `liquid_handler.py:1032-1235`), so the first definite volume verdict needs a `SoundnessScope` environment-hypothesis record (deferred row (b)) before it is honest regardless of (d)'s resolution. See [§Open decisions](#open-decisions) 2 for the full resolution and evidence.) |
 | (e) | Resolution strategy for the ~967 unresolved cross-class calls, INDEPENDENT of (a) | **(round-4 remediation, B3 row (e) — CONCEDE, fully; the stated reason was FALSE.)** `research_c_e.md:216-256` calls the original "requires type inference whose precision requirements follow from (a)" ordering "fundamentally backwards" and shows the two are independent under a class-resolution reframing, backed by a 133-call measurement: 60–67% of the 10-tool closure's dropped-receiver calls resolve via a stdlib `ast` annotation pass that needs nothing from (a). **Scheduled as T11, after T6**, gated on `drop_tips` acquiring a `TipTracker.get_tip` guard at `depth > 0` (a concrete, checkable trigger — not "later" left unscheduled). §7.4's `top_unresolved.dropped_receiver` ranked view (M12) is T11's worklist — as of round-5 T0
 (item 4), receiver-qualified and filtered rather than bare-named, so it now ranks e.g.
 `self.head[channel].get_tip` (`blocks_methods: 3`) directly instead of collapsing it into a bare
@@ -3203,3 +3294,61 @@ No existing test asserted the pre-T11 10-contract count or `SUPPORTED_TOOLS`-gat
 `unsupported_tool` behavior as a hard-coded expectation, so nothing needed to be deleted or
 inverted — the nine gate files listed in T11's dispatch brief pass unmodified in structure, only
 extended.
+
+---
+
+## T12 — three open decisions resolved (spec_version 7 → 8)
+
+**Not an adversarial round.** Task `260901_plr-jit-resolve-three-decisions`, user-approved,
+bounded-scope pass. Resolves all three [§Open decisions](#open-decisions) items left pending since
+round 6 (R14). Resolution source: an independent outside analysis (Fable, `fable_three_decisions.md`,
+no prior contact with the spec rounds), spot-verified against the live codebase by the orchestrator
+before being accepted, then implemented by fixer.
+
+**The unifying move, recorded as a new paragraph opening §3 (immediately before §3.1):** `Verdict` is
+the *output* of evaluating one obligation against one abstract state, not the abstract domain itself.
+Decisions 1 and 3 dissolve directly out of accepting that as the organizing fact rather than leaving it
+implicit; decision 2 was never actually a `Verdict`-design question.
+
+1. **`UNREACHABLE`: not added.** Reserve the wire string `"unreachable"` (comment only, unused); add
+   the standing consumer rule "an unrecognized `Verdict` string deserializes to `UNKNOWN`," implemented
+   as `Verdict.from_wire(value: str) -> Verdict` in `plr_jit/verdict.py`. §3.5's schema-bump direction
+   corrected for the additive-enum-member case (only old readers break on new reports, not the
+   reverse — see corrected §3.5 text). No `schema_version` bump.
+2. **Volume: already in the verdict path; the real question (does the predicate evaluator interpret
+   numeric atoms) resolves to "no, not through v1 and the first increment."** Deferred table row (d)
+   updated with the evidence (proved trip counts from `items_x`×`items_y`; the `does_volume_tracking()`
+   process-global gating any definite volume verdict on a `SoundnessScope`).
+3. **`join` ordering: not inverted.** The shipped table is the correct join of the obligation order;
+   `UNKNOWN`-as-top belongs to a separate, real information order that governs pre-emission state
+   merging and has no call site in `verdict.py`. `verdict.py`'s module docstring and `join`'s own
+   docstring name both orders explicitly. **`research_a_d.md`'s R3 (group `join`'s input by
+   `operation_id`, Kleene-join within the group) is recorded as must-not-implement**: v1 emits one
+   `Finding` per guard (verified, `check/__init__.py::_findings_for_operation`, 9 findings for
+   `aspirate`), so two findings sharing an `operation_id` are independent obligations that correctly
+   conjoin; grouping and Kleene-joining would mask a definite guard failure behind a satisfied sibling
+   guard — unsound in the `SAFE` direction. `test_join_absorbs_across_shared_operation_id`
+   (`test_verdict.py`) pins the correct per-guard conjoining behavior; its docstring, which previously
+   described the pinned case backwards (as a known-unsound stopgap rather than correct behavior), is
+   corrected. Assertions unchanged.
+
+**No `schema_version` bump; no new machinery added.** This pass is spec text (§Open decisions rewrite,
+new §3 paragraph, corrected §3.5, updated Deferred row (d)) plus two `verdict.py` docstring/consumer-rule
+additions plus one test-docstring correction — no change to `join`'s body, the §3.2 table, or any
+`Finding`/`AnalysisReport` field.
+
+**Re-verified:** B1 (`join(())` / `check_graph` on an empty graph returns `Verdict.UNKNOWN`, not
+`SAFE`) — re-checked against this pass's `verdict.py` changes; unaffected, still holds.
+
+**Gates (all nine, verbatim, per-file, never a bare `pytest <dir>/`):**
+```
+uv run pytest plr-jit/tests/test_verdict.py -q
+uv run pytest plr-jit/tests/test_check_graph.py -q
+uv run pytest plr-jit/tests/test_derive.py -q
+uv run pytest plr-jit/tests/test_telemetry.py -q
+uv run pytest plr-jit/tests/test_provenance.py -q
+uv run pytest plr-jit/tests/test_fork_drift.py -q
+uv run pytest plr-jit/tests/test_import_boundary.py -q
+uv run pytest plr-jit/tests/test_check_graph_mirror_drift.py -q
+uv run pytest training/tests/test_failure_taxonomy.py -q
+```

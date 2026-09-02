@@ -12,6 +12,10 @@ un-named-in-§3.4 function, `test_join_absorbs_across_shared_operation_id`**,
 covering a case none of the six named tests' parametrization ever reaches
 (two findings sharing one `operation_id`) -- AC-3.1 is unaffected (it is
 still satisfied by the six named functions all passing), this is additive.
+**260901 (§Open decisions 1) adds one more, `test_from_wire_maps_
+unrecognized_string_to_unknown`**, covering the new consumer rule
+(`Verdict.from_wire`); also additive, per AC-3.1's note (§3.6, R15) that a
+hard-coded test count is not the gate -- "all tests pass" is.
 """
 
 from __future__ import annotations
@@ -128,20 +132,35 @@ def test_join_truth_table(verdicts: tuple[Verdict, ...]) -> None:
 
 
 def test_join_absorbs_across_shared_operation_id() -> None:
-    """Round-4 remediation (M7): none of the parametrized
-    `test_join_truth_table` cases ever share an `operation_id` --
-    `_finding_for` sets `operation_id=f"op{index}"`, so every multiset of
-    size 2 carries two DISTINCT operation ids. This is the case
-    `research_a_d.md` flags as the one `join`'s current absorption logic
-    treats as sound but the (a) abstract-domain literature would not: a
-    SAFE finding and a WILL_FAIL finding on the SAME operation currently
-    absorb to WILL_FAIL, exactly like two findings on different operations
-    would. That is today's specified behavior (§3.2's table is defined over
-    the flat finding multiset, with no per-operation grouping in v1) -- this
-    test pins it explicitly rather than leaving it to accidentally hold via
-    the parametrized cases above. When deferred item (a) lands, a Kleene
-    information join over per-operation abstract state (rather than flat
-    absorption) may need to replace this -- see §3.4."""
+    """Round-4 remediation (M7); docstring corrected 260901 (§Open decisions
+    3 -- an independent outside analysis, spot-verified, found this
+    docstring had the verdict on its own test backwards). None of the
+    parametrized `test_join_truth_table` cases ever share an `operation_id`
+    -- `_finding_for` sets `operation_id=f"op{index}"`, so every multiset of
+    size 2 carries two DISTINCT operation ids. This test pins the case where
+    they don't: a SAFE finding and a WILL_FAIL finding on the SAME
+    operation absorb to WILL_FAIL, exactly like two findings on different
+    operations would.
+
+    This is CORRECT behavior, not a known-unsound stopgap -- v1 emits
+    exactly one Finding per guard (verified,
+    `check._findings_for_operation`, e.g. 9 findings for `aspirate`), so two
+    findings sharing an `operation_id` are two INDEPENDENT obligations
+    (guard A, guard B) that correctly conjoin: if guard B definitely fires,
+    the operation definitely fails regardless of guard A being provably
+    satisfied. `research_a_d.md`'s R3 proposal -- group `join`'s input by
+    `operation_id` and Kleene-join within the group -- would turn this
+    correct WILL_FAIL into UNKNOWN, masking a definite guard failure behind
+    a satisfied sibling guard; that is unsound in the SAFE direction and
+    must NOT be implemented. The case R3's authors were actually worried
+    about -- the SAME guard evaluated under two mutually exclusive path
+    conditions -- is distinguished from this (two DIFFERENT guards, same
+    operation) by `plr_site`, not by `operation_id`, and should never reach
+    `join` at all: a forward analysis merges abstract states over incoming
+    paths (the information order) upstream of emission, and evaluates each
+    guard once against the merged state. See `join`'s own docstring and
+    spec §3.2/§Open decisions 3 for the full obligation-vs-information-order
+    distinction this test's correctness rests on."""
     same_op_findings = (
         _finding_for(Verdict.SAFE, index=1),
         Finding(
@@ -154,6 +173,40 @@ def test_join_absorbs_across_shared_operation_id() -> None:
     )
     assert {f.operation_id for f in same_op_findings} == {"op1"}
     assert join(same_op_findings) == Verdict.WILL_FAIL
+
+
+# ---------------------------------------------------------------------------
+# test_from_wire_maps_unrecognized_string_to_unknown
+# ---------------------------------------------------------------------------
+
+
+def test_from_wire_maps_unrecognized_string_to_unknown() -> None:
+    """260901, §Open decisions 1: a consumer that meets a Verdict string it
+    does not recognize must map it to UNKNOWN -- always sound, since
+    widening what a consumer knows can only lose precision, never fabricate
+    a false SAFE/WILL_FAIL claim. This is what makes a future Verdict
+    member (e.g. UNREACHABLE, whenever/wherever it lands) a non-breaking
+    addition for compliant consumers, without committing to its semantics
+    today. Covers: the reserved-but-unused "unreachable" string specifically
+    (the concrete near-term case this rule was written for), an arbitrary
+    unrecognized string (the general case), and confirms recognized strings
+    still round-trip to their own member (the rule only WIDENS, it never
+    changes behavior for known values)."""
+    assert Verdict.from_wire("unreachable") is Verdict.UNKNOWN
+    assert Verdict.from_wire("some_future_member_nobody_has_invented_yet") is Verdict.UNKNOWN
+    assert Verdict.from_wire("") is Verdict.UNKNOWN
+    assert Verdict.from_wire("safe") is Verdict.SAFE
+    assert Verdict.from_wire("will_fail") is Verdict.WILL_FAIL
+    assert Verdict.from_wire("unknown") is Verdict.UNKNOWN
+
+    # Contrast: the plain Enum constructor still raises -- `from_wire` is an
+    # opt-in widening, not a change to `Verdict(...)`'s own behavior. Both
+    # `plr_jit.verdict.join` and this package's own test round-trip helpers
+    # legitimately want the strict form (an unrecognized value there is a
+    # programming/serialization bug, not version skew from an external
+    # consumer), so `Verdict(...)` is deliberately left unchanged.
+    with pytest.raises(ValueError):
+        Verdict("unreachable")
 
 
 # ---------------------------------------------------------------------------

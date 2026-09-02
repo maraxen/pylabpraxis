@@ -30,6 +30,38 @@ parameter is the anticipated extension point, preserving "exactly one
 function aggregates" (a second named function is not required).
 ``Finding``, ``PlrSite``, and ``AnalysisReport``'s field sets are not
 expected to change with it.
+
+``Verdict`` is the OUTPUT of evaluating one obligation against one state --
+it is NOT the abstract domain (spec §3, added 260901 resolving §Open
+decisions 1 and 3). The state deferred item (a) builds is a separate,
+internal type that needs both a top and a bottom for its own reasons
+(strictness, the branch-merge join's unit); ``Verdict`` needs neither. This
+resolves two questions that used to look like open ``Verdict``-design
+decisions:
+
+* **No fourth, ``UNREACHABLE`` member.** Bottom (unreachable) belongs to
+  the deferred-(a) state type, not to this wire enum -- see ``Verdict``'s
+  own docstring below for the reserved string and the consumer rule that
+  makes adding it later, to the state type or elsewhere, non-breaking.
+* **``join``'s table is NOT inverted; ``UNKNOWN`` is not "top" here.**
+  ``join`` implements the OBLIGATION order (``SAFE`` ⊏ ``UNKNOWN`` ⊏
+  ``WILL_FAIL``, ``WILL_FAIL`` top): one definite reachable failure among
+  many unknowns must dominate, because the protocol *will* fail. A
+  genuinely different, and also real, INFORMATION order (Kleene /
+  Sagiv-Reps-Wilhelm: ``SAFE`` ⊔ ``WILL_FAIL`` = ``UNKNOWN``, ``UNKNOWN``
+  top) governs merging *abstract states* at a branch confluence -- upstream
+  of ``Finding`` emission, before any guard is evaluated against the merged
+  state. That order has no call site in this module and never will:
+  everything ``join`` sees is already a ``Finding``, i.e. already the
+  result of evaluating one guard against one (merged) state. Both orders
+  are real; they apply at different pipeline stages. See ``join``'s own
+  docstring for the precondition that makes flat conjunction correct
+  (independent per-guard obligations -- v1 emits exactly one ``Finding``
+  per guard, so this precondition holds today by construction), and see
+  ``research_a_d.md``'s R3 (group by ``operation_id``, Kleene-join within
+  the group) for a proposal that must NOT be implemented: it would mask a
+  definite guard failure behind a satisfied sibling guard on the same
+  operation, unsound in the ``SAFE`` direction.
 """
 
 from __future__ import annotations
@@ -44,11 +76,41 @@ SCHEMA_VERSION = 1
 
 class Verdict(str, Enum):
     """Three-valued analysis outcome. Never collapse to a bool (see module
-    docstring)."""
+    docstring).
+
+    Reserved (260901, §Open decisions 1): the wire string "unreachable" is
+    reserved for a possible future member (e.g. UNREACHABLE) but is NOT a
+    member today and nothing constructs it -- see the module docstring's
+    "Verdict is the OUTPUT, not the domain" paragraph for why bottom
+    (unreachable) belongs to deferred item (a)'s internal state type, not
+    here. A consumer that meets an unrecognized Verdict string -- including
+    "unreachable" -- MUST map it to UNKNOWN; see `from_wire` below. That
+    rule is what makes adding a real member later, whenever and wherever it
+    lands, non-breaking for compliant consumers.
+    """
 
     SAFE = "safe"  # analysis established the operation cannot fail
     WILL_FAIL = "will_fail"  # analysis established the operation must fail
     UNKNOWN = "unknown"  # analysis established nothing (DEFAULT)
+
+    @classmethod
+    def from_wire(cls, value: str) -> "Verdict":
+        """Deserialize a wire string into a Verdict, per the §Open decisions
+        1 consumer rule: an unrecognized string (including the reserved-but-
+        unused "unreachable") maps to UNKNOWN rather than raising. This is
+        always sound -- widening what a consumer knows can only lose
+        precision, never fabricate a false SAFE/WILL_FAIL claim -- so it
+        makes any future Verdict member a non-breaking addition for callers
+        that go through this constructor instead of `Verdict(value)`
+        directly. `Verdict(value)` (the plain Enum constructor) still exists
+        and still raises ValueError on an unrecognized value; use it only
+        where an unrecognized string is genuinely a programming error, not a
+        version skew, e.g. in this package's own tests reconstructing a
+        report it just serialized."""
+        try:
+            return cls(value)
+        except ValueError:
+            return cls.UNKNOWN
 
 
 # §3.3: closed, hand-maintained vocabulary of UNKNOWN reasons. Hand-maintained
@@ -166,6 +228,37 @@ def join(findings: tuple[Finding, ...]) -> Verdict:
     | any WILL_FAIL                      | WILL_FAIL      |
     | else any UNKNOWN                   | UNKNOWN        |
     | else (all SAFE, >=1 finding)       | SAFE           |
+
+    This table is the join of the OBLIGATION order: SAFE < UNKNOWN <
+    WILL_FAIL, i.e. WILL_FAIL is top (260901, §Open decisions 3 -- the
+    table is NOT inverted and stays exactly as shown). One definite,
+    reachable failure among ninety-nine unknowns must dominate, because a
+    protocol with one such failure and ninety-nine unknowns *will* fail --
+    reporting UNKNOWN there would discard the one thing a caller most needs
+    to know. This is deliberately NOT the INFORMATION order (Kleene /
+    Sagiv-Reps-Wilhelm: SAFE join WILL_FAIL = UNKNOWN, UNKNOWN top), which
+    is also real but governs a different operation at a different pipeline
+    stage: merging *abstract states* at a branch confluence, upstream of
+    Finding emission, before any guard is evaluated against the merged
+    state. That order has no call site in this function, or anywhere in
+    this module, and never will -- everything this function sees is already
+    a Finding, i.e. already the result of evaluating one guard against one
+    (already-merged) state.
+
+    Flat conjunction here is correct only under one precondition: findings
+    are independent per-guard obligations, not multiple claims about the
+    SAME obligation from different paths. v1 satisfies this by construction
+    -- `check._findings_for_operation` emits exactly one Finding per guard
+    in the resolved contract (e.g. 9 findings for `aspirate`, one per guard
+    site), so two findings sharing an `operation_id` are two distinct,
+    correctly-conjoining obligations today, not the same obligation seen
+    twice. Do NOT "fix" this by grouping input findings by `operation_id`
+    and Kleene-joining within the group (`research_a_d.md`'s R3) -- that
+    would mask a definite guard failure whenever a sibling guard on the
+    same operation happens to be satisfied, which is unsound in the SAFE
+    direction. See `test_join_absorbs_across_shared_operation_id` in
+    `test_verdict.py`, which pins the correct per-guard conjoining
+    behavior this precondition describes.
 
     Round-4 remediation (B1/B2/§0(ii)): zero findings now maps to UNKNOWN
     UNCONDITIONALLY, not deferred. Round 1/2/3 argued the empty case was
