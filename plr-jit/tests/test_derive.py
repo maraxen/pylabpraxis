@@ -467,3 +467,153 @@ def test_whole_surface_contract_count(
     # Every emitted key really is one of build_contract_keys' outputs (no
     # ad hoc key construction inside build_derived_contracts_payload itself).
     assert set(contracts.keys()) == set(build_contract_keys(survey_records).values())
+
+
+# ---------------------------------------------------------------------------
+# 260901 T14 (backlog #4862) -- the surface-agnostic dropped-receiver
+# worklist (top_unresolved.dropped_receiver_whole_surface), and its direct
+# motivation: the CLOSURE-based dropped_receiver views are structurally
+# empty on a surface with no LiquidHandler/SUPPORTED_TOOLS entry points.
+#
+# Deliberately does NOT depend on a live PLR source tree: unlike
+# scan_dropped_receiver_calls (the independent AST pass, D3), the function
+# under test here (_dropped_receiver_worklist_whole_surface) reads only
+# each SurveyRecord's own `dropped_calls` field -- already captured in the
+# COMMITTED training/verify/data/plr_preconditions.upstream_nonlegacy.json
+# -- so `dropped_receiver_counts={}` is passed to build_gap_ledger below on
+# purpose: it is irrelevant to the fields these tests inspect, and passing
+# an empty dict avoids re-extracting the upstream_nonlegacy pin (T13 used an
+# ephemeral git-archive tmpdir; see test_check_graph_nonlegacy.py's module
+# docstring) just to run this test.
+# ---------------------------------------------------------------------------
+
+NONLEGACY_SURVEY_JSON = (
+    REPO_ROOT / "training" / "verify" / "data" / "plr_preconditions.upstream_nonlegacy.json"
+)
+
+
+@pytest.fixture(scope="module")
+def nonlegacy_survey_records() -> list[SurveyRecord]:
+    return load_survey(NONLEGACY_SURVEY_JSON)
+
+
+@pytest.fixture(scope="module")
+def nonlegacy_survey_index(
+    nonlegacy_survey_records: list[SurveyRecord],
+) -> dict[tuple[str, str], SurveyRecord]:
+    return build_index(nonlegacy_survey_records)
+
+
+@pytest.fixture(scope="module")
+def nonlegacy_gap_ledger(
+    nonlegacy_survey_index: dict[tuple[str, str], SurveyRecord],
+    nonlegacy_survey_records: list[SurveyRecord],
+) -> dict:
+    return build_gap_ledger(
+        nonlegacy_survey_index,
+        nonlegacy_survey_records,
+        dropped_receiver_counts={},
+    )
+
+
+def test_closure_based_dropped_receiver_views_are_vacuous_on_nonlegacy(
+    nonlegacy_gap_ledger: dict,
+) -> None:
+    """Pins the T14 motivation directly: on `upstream_nonlegacy`,
+    `liquid_handler_present` is False (no orchestration layer, T13), so
+    `top_unresolved.dropped_receiver`/`dropped_receiver_unfiltered` (both
+    built by walking closures from a `SUPPORTED_TOOLS`/`LiquidHandler`
+    entry-point set that is empty here) are structurally EMPTY -- not
+    small, not "nothing interesting found", genuinely never populated. If
+    this test ever starts failing because these lists are non-empty, either
+    upstream reintroduced `LiquidHandler` outside `legacy/`, or a future
+    survey regeneration changed which surface this fixture reads."""
+    assert nonlegacy_gap_ledger["supported_tools"]["liquid_handler_present"] is False
+    assert nonlegacy_gap_ledger["top_unresolved"]["dropped_receiver"] == []
+    assert nonlegacy_gap_ledger["top_unresolved"]["dropped_receiver_unfiltered"] == []
+
+
+def test_whole_surface_dropped_receiver_worklist_is_populated_on_nonlegacy(
+    nonlegacy_gap_ledger: dict,
+) -> None:
+    """The new, surface-agnostic view fills exactly the gap the previous
+    test pins: it is NOT gated on `tool_keys`, so it is non-empty even
+    though the closure-based views above are structurally empty. Checked
+    against the real, committed nonlegacy survey data -- not a synthetic
+    fixture -- so this is a real measurement, not just a shape check."""
+    whole_surface = nonlegacy_gap_ledger["top_unresolved"]["dropped_receiver_whole_surface"]
+    whole_surface_unfiltered = nonlegacy_gap_ledger["top_unresolved"][
+        "dropped_receiver_whole_surface_unfiltered"
+    ]
+    assert whole_surface, "expected a non-empty ranked worklist on the driver-layer surface"
+    assert whole_surface_unfiltered
+    assert len(whole_surface) <= len(whole_surface_unfiltered), (
+        "filtering must never ADD rows relative to the unfiltered ranking"
+    )
+
+    # Every row is well-formed: {"call": str, "blocks_methods": int}, sorted
+    # descending by blocks_methods (same shape/order contract as the other
+    # three top_unresolved views).
+    for row in whole_surface:
+        assert set(row.keys()) == {"call", "blocks_methods"}
+        assert row["blocks_methods"] >= 1
+    counts = [row["blocks_methods"] for row in whole_surface]
+    assert counts == sorted(counts, reverse=True)
+
+    # blocks_methods can never exceed the population it was ranked over
+    # (methods_attempted, the finding-bearing count).
+    methods_attempted = nonlegacy_gap_ledger["totals"]["methods_attempted"]
+    assert whole_surface[0]["blocks_methods"] <= methods_attempted
+
+    # The existing filter (tuned against the SUPPORTED_TOOLS-closure
+    # population's logger/inspect/warnings noise, round-5 T0 item 4) still
+    # removes logger.* calls here -- reused, not reinvented, for this new
+    # population (see build_gap_ledger's T14 docstring note on why a THIRD
+    # hand-typed filter table was deliberately not introduced).
+    filtered_calls = {row["call"] for row in whole_surface}
+    assert not any(call.startswith("logger.") for call in filtered_calls)
+    unfiltered_calls = {row["call"] for row in whole_surface_unfiltered}
+    assert any(call.startswith("logger.") for call in unfiltered_calls), (
+        "fixture assumption violated: expected >=1 logger.* call in the "
+        "unfiltered ranking (proves the filter is actually doing something, "
+        "not vacuously passing because there was nothing to filter)"
+    )
+
+
+def test_whole_surface_dropped_receiver_worklist_matches_direct_recount(
+    nonlegacy_survey_records: list[SurveyRecord],
+    nonlegacy_gap_ledger: dict,
+) -> None:
+    """Cross-check against an independent recomputation straight from
+    `SurveyRecord.dropped_calls` -- not trusting the ledger's own output as
+    its own proof, the same discipline `test_ledger_totals_are_internally_
+    consistent` already applies to `by_reason`."""
+    finding_bearing = [rec for rec in nonlegacy_survey_records if rec.findings]
+    expected: dict[str, int] = {}
+    for rec in finding_bearing:
+        for call_expr in set(rec.dropped_calls):
+            expected[call_expr] = expected.get(call_expr, 0) + 1
+
+    whole_surface_unfiltered = nonlegacy_gap_ledger["top_unresolved"][
+        "dropped_receiver_whole_surface_unfiltered"
+    ]
+    actual = {row["call"]: row["blocks_methods"] for row in whole_surface_unfiltered}
+    assert actual == expected
+
+
+def test_whole_surface_dropped_receiver_worklist_populated_on_legacy(
+    survey_records: list[SurveyRecord],
+    survey_index: dict[tuple[str, str], SurveyRecord],
+) -> None:
+    """The new view is published for EVERY surface, not just the one that
+    motivated it -- on `legacy_pinned` (which DOES have a `LiquidHandler`
+    closure), it ranks a population that is a superset of, not identical
+    to, the closure-based `dropped_receiver` view (see the T14 docstring's
+    "neither is a strict superset" note for why the reverse containment
+    does not hold either) -- checked here only for non-emptiness and shape,
+    not byte-for-byte equality with the closure view."""
+    ledger = build_gap_ledger(survey_index, survey_records, dropped_receiver_counts={})
+    whole_surface = ledger["top_unresolved"]["dropped_receiver_whole_surface"]
+    assert whole_surface
+    for row in whole_surface:
+        assert set(row.keys()) == {"call", "blocks_methods"}

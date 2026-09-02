@@ -947,6 +947,74 @@ def _dropped_receiver_worklist_from_survey(
     return [{"call": call_expr, "blocks_methods": count} for call_expr, count in ranked]
 
 
+def _dropped_receiver_worklist_whole_surface(
+    records: list[SurveyRecord], *, filtered: bool
+) -> list[dict[str, Any]]:
+    """260901 T14 (backlog #4862): the receiver-qualified deferred-item-(e)
+    worklist for a surface with NO orchestration layer to walk a
+    `SUPPORTED_TOOLS`/`LiquidHandler` closure from (`upstream_nonlegacy`:
+    `machines/` is a bare `__init__.py`, `LiquidHandler` exists only under
+    `legacy/`, so `_dropped_receiver_worklist_from_survey`'s `tool_keys` is
+    structurally empty there -- see `resolve_supported_tool`'s
+    `liquid_handler_present is False` path -- which makes that view silently
+    vacuous, not merely small, on exactly the surface this ranks for).
+
+    Ranks `dropped_calls` directly over EACH record's OWN body only -- no
+    `delegates_to` closure walk -- because a surface with no orchestration
+    layer has no principled notion of "entry point" to walk a closure FROM
+    in the first place (every driver method is potentially its own caller).
+    This is the same population and blocks_methods semantics
+    `_top_unresolved_from_records` already uses for `unresolved_calls` (the
+    `top_unresolved.whole_surface` view) -- own-body, no closure -- applied
+    to the `dropped_calls` field instead, for symmetry with that existing,
+    already-surface-agnostic view rather than inventing a second entry-point
+    concept. On a surface that DOES have an orchestration layer (e.g.
+    `legacy_pinned`), this ranks a strictly larger population than
+    `_dropped_receiver_worklist_from_survey` (every finding-bearing record,
+    not just the ~10-tool closure) -- both views are published side by side
+    (see `build_gap_ledger`) rather than one replacing the other, since they
+    answer different questions ("what does the whole surface drop?" vs.
+    "what does the loadable-from-a-tool-entry-point closure drop?").
+
+    Same `_is_inert_dropped_receiver_call` filter, same unfiltered/filtered
+    pairing convention as `_dropped_receiver_worklist_from_survey` (round-5
+    T0 item 4) -- an unfiltered ranking over a driver-method population
+    saturates on its OWN inert population (logging/plumbing calls inside
+    driver bodies), not necessarily the same names `_check_args` saturated
+    on for the orchestration layer; see this task's report for whether the
+    existing filter table transfers as-is.
+
+    **Counts by straight per-record increment, NOT by accumulating a set of
+    `(module, qualname)` keys.** The two closure-based worklists
+    (`_dropped_receiver_worklist`/`_dropped_receiver_worklist_from_survey`)
+    dedupe against a `set[Qualkey]` because `_walk_closure` can genuinely
+    revisit the SAME key from more than one tool entry point's closure, and
+    `Qualkey` collisions never arise there since closure traversal is keyed
+    off the SAME `(module, qualname)`-collapsing `index` `derive_contract`
+    itself uses. This function has neither property: `records` is iterated
+    flatly, once, with no possibility of revisiting a record twice, so no
+    dedup step is needed at all -- and using `(module, qualname)` as a dedup
+    key here would have been actively WRONG, not merely unnecessary: it
+    silently collapses any two DISTINCT records that happen to share a
+    `(module, qualname)` (F6's property/setter-pair collision, still real at
+    whole-survey scale --
+    `count_index_key_collisions(records)["finding_bearing_records"]` is 4 on
+    `upstream_nonlegacy`) into a single contribution, undercounting
+    `blocks_methods` by exactly that many pairs. Caught by
+    `test_whole_surface_dropped_receiver_worklist_matches_direct_recount`
+    (`tests/test_derive.py`), which failed against a first, `Qualkey`-set-
+    deduped version of this function for precisely this reason.
+    """
+    blocks: dict[str, int] = {}
+    for rec in records:
+        for call_expr in set(rec.dropped_calls):
+            if filtered and _is_inert_dropped_receiver_call(call_expr):
+                continue
+            blocks[call_expr] = blocks.get(call_expr, 0) + 1
+    ranked = sorted(blocks.items(), key=lambda item: (-item[1], item[0]))
+    return [{"call": call_expr, "blocks_methods": count} for call_expr, count in ranked]
+
+
 def _stamp_to_dict(stamp: SurveyStamp) -> dict[str, Any]:
     def _git_state_to_dict(state: Any) -> dict[str, Any]:
         return {
@@ -1036,6 +1104,25 @@ def build_gap_ledger(
     pass (it is the only one of the measured variants that sees guard sites
     behind ``if``/``raise``/``assert`` tests, per F6).
 
+    260901 T14 (backlog #4862): two further ``top_unresolved`` views,
+    ``dropped_receiver_whole_surface``/``_unfiltered`` -- the deferred-item-
+    (e) worklist for a surface with no orchestration layer to derive
+    ``tool_keys`` from at all (``upstream_nonlegacy``: ``liquid_handler_
+    present`` is False there, so ``dropped_receiver``/``dropped_receiver_
+    unfiltered`` above are structurally empty, not just small -- see
+    ``_dropped_receiver_worklist_whole_surface``'s docstring). Ranked the
+    same way as ``top_whole`` (own-body, no closure walk, over the whole
+    ``finding_bearing`` population) rather than gated on ``tool_keys``, so
+    it is populated regardless of ``liquid_handler_present``. Published
+    alongside, not instead of, the closure-based pair -- they measure
+    different populations and neither is a strict superset of the other.
+    Dedupes on the collision-free ``(module, qualname, lineno)`` record
+    identity, NOT ``(module, qualname)`` -- see
+    ``_dropped_receiver_worklist_whole_surface``'s own docstring for why a
+    plain ``Qualkey`` dedup would silently undercount every
+    property/setter-pair collision (F6, the same population
+    ``index_key_collisions`` below measures).
+
     Round-5 T0 item 2 (F6): ``index_key_collisions`` reports how many
     ``(module, qualname)`` keys ``build_index`` collapses -- see
     ``count_index_key_collisions``. ``methods_attempted`` still counts
@@ -1115,6 +1202,18 @@ def build_gap_ledger(
     top_dropped_receiver_unfiltered = _dropped_receiver_worklist_from_survey(
         tool_keys, index, filtered=False
     )
+    # 260901 T14 (backlog #4862): the surface-agnostic analogue of the two
+    # views above -- own-body only, ranked over the WHOLE finding-bearing
+    # population rather than a SUPPORTED_TOOLS/LiquidHandler closure. Always
+    # populated, including on a surface where `liquid_handler_present` is
+    # False and the two views above are therefore structurally empty (see
+    # `_dropped_receiver_worklist_whole_surface`'s docstring).
+    top_dropped_receiver_whole_surface = _dropped_receiver_worklist_whole_surface(
+        finding_bearing, filtered=True
+    )
+    top_dropped_receiver_whole_surface_unfiltered = _dropped_receiver_worklist_whole_surface(
+        finding_bearing, filtered=False
+    )
     index_key_collisions = count_index_key_collisions(records)
 
     # (260901 T11) contract_table: the whole-surface derived-contracts
@@ -1155,6 +1254,13 @@ def build_gap_ledger(
             "supported_tools_closure": top_tools,
             "dropped_receiver": top_dropped_receiver,
             "dropped_receiver_unfiltered": top_dropped_receiver_unfiltered,
+            # 260901 T14: surface-agnostic own-body ranking -- see
+            # _dropped_receiver_worklist_whole_surface's docstring for why
+            # this exists alongside (not instead of) the two views above.
+            "dropped_receiver_whole_surface": top_dropped_receiver_whole_surface,
+            "dropped_receiver_whole_surface_unfiltered": (
+                top_dropped_receiver_whole_surface_unfiltered
+            ),
         },
         "supported_tools": {
             # 260901 T13 (item 4): explicit, named marker -- every count
