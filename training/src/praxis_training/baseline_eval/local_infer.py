@@ -46,10 +46,15 @@ def make_generate(
     # A LOCAL checkpoint directory (P2.6 fine-tuned weights) needs no hub
     # access at all: load it offline and skip the gated-repo token guard.
     local_dir = Path(model_id).is_dir()
-    if not local_dir and not os.environ.get("HF_TOKEN") and not os.environ.get("HUGGING_FACE_HUB_TOKEN"):
+    # HF_HUB_OFFLINE=1 means "serve from the local cache, never touch the hub":
+    # the gate is enforced by the hub, not by the cached files, so no token is
+    # needed (a cache miss then fails loudly inside transformers).
+    offline = os.environ.get("HF_HUB_OFFLINE", "").strip() in ("1", "true", "True", "yes")
+    if (not local_dir and not offline
+            and not os.environ.get("HF_TOKEN") and not os.environ.get("HUGGING_FACE_HUB_TOKEN")):
         # Fail BEFORE transformers tries the hub: the error must name the fix.
         raise RuntimeError(
-            "HF_TOKEN/HUGGING_FACE_HUB_TOKEN not set. " + GATED_REPO_HINT
+            "HF_TOKEN/HUGGING_FACE_HUB_TOKEN not set (and HF_HUB_OFFLINE not set). " + GATED_REPO_HINT
         )
 
     import torch  # noqa: F401 - required by transformers model load
