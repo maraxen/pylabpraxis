@@ -919,9 +919,14 @@ def _module_level_import_aliases(file: str) -> dict[str, str]:
                     aliases[alias.asname] = alias.name
                 else:
                     # `import a.b.c` binds the top-level package name `a` in
-                    # scope -- already resolvable directly against
-                    # `_STDLIB_MODULE_NAMES` without going through this
-                    # table, but recorded for uniformity.
+                    # scope. Recorded here too (not just the `asname` case)
+                    # -- `_head_resolves_to_stdlib` no longer has a bare
+                    # `head in _STDLIB_MODULE_NAMES` shortcut (backlog
+                    # #4883 follow-up: that shortcut is what let `resource`
+                    # -- an ordinary PLR local variable name that ALSO
+                    # happens to be a real stdlib module name -- match with
+                    # no evidence the file imported it), so this table is
+                    # now the ONLY path to a stdlib-import verdict.
                     top = alias.name.split(".", 1)[0]
                     aliases.setdefault(top, top)
         elif isinstance(node, ast.ImportFrom):
@@ -936,11 +941,25 @@ def _module_level_import_aliases(file: str) -> dict[str, str]:
 
 
 def _head_resolves_to_stdlib(head: str, *, file: str) -> bool:
-    """Clause 1's replacement (§13.4.2): ``head`` is itself a member of
-    ``sys.stdlib_module_names``, or is a module-level import alias -- in
-    ``file`` -- resolving to a member of one."""
-    if head in _STDLIB_MODULE_NAMES:
-        return True
+    """Clause 1's replacement (§13.4.2): ``head`` is a module-level import
+    alias -- bound BY THIS FILE's OWN imports -- resolving to a member of
+    ``sys.stdlib_module_names``.
+
+    Deliberately NOT a bare ``head in _STDLIB_MODULE_NAMES`` membership
+    check (that was the pre-tightening bug, backlog #4883 follow-up):
+    ``resource`` is coincidentally also the name of a real (Unix-only)
+    stdlib module, and PLR uses `resource` constantly as an ordinary local
+    variable name for a `pylabrobot.resources.Resource` instance -- a bare
+    string-membership test classified `resource.get_item`/`resource.rotate`/
+    etc. as inert with no evidence the file ever imported the stdlib
+    `resource` module at all (7 false positives in the SUPPORTED_TOOLS
+    closure, 280 whole-surface). Requiring an ACTUAL import binding --
+    ``import x`` / ``import x as y`` / ``from x import y`` whose resolved
+    target's top-level package is a stdlib module -- is the same "a fact
+    about this file's own source", not "a fact about what English words
+    happen to also be Python module names", discipline §13.4.2 already
+    applies to clause 3's dunder exclusion.
+    """
     resolved = _module_level_import_aliases(file).get(head)
     if resolved is None:
         return False

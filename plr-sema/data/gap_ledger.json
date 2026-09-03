@@ -47,14 +47,14 @@
     "praxis": {
       "branch": "coxswain-p2-pipeline",
       "dirty": true,
-      "dirty_content_id": "e7c55f1e41ac745dce3cd20982d4494231f5f1d649e40f68306d0a9c18713c45",
-      "hash": "684f86de8ab356a356868df3f57b7764ae861f9b",
+      "dirty_content_id": "e3b9890797f4d02e5f2afd03af1069feffa5a42c16ad67a662762eaa058a8ac6",
+      "hash": "1f0822380180bef392ce6645d32adaafc7e7ce35",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-03T20:30:46.008039+00:00",
+    "stamped_at": "2026-09-03T20:44:15.596980+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   },
@@ -137,6 +137,14 @@
       {
         "blocks_methods": 2,
         "call": "logger.warning"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_all_items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_item"
       },
       {
         "blocks_methods": 2,
@@ -233,6 +241,26 @@
       {
         "blocks_methods": 1,
         "call": "op.tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.unassign"
       },
       {
         "blocks_methods": 1,
@@ -752,6 +780,10 @@
       },
       {
         "blocks_methods": 4,
+        "call": "resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 4,
         "call": "self._sila_interface.send_command"
       },
       {
@@ -793,6 +825,10 @@
       {
         "blocks_methods": 3,
         "call": "r.get_location_wrt"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "resource.get_item"
       },
       {
         "blocks_methods": 3,
@@ -977,6 +1013,26 @@
       {
         "blocks_methods": 2,
         "call": "ref_well.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_all_items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.register_did_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.unassign"
       },
       {
         "blocks_methods": 2,
@@ -1233,6 +1289,14 @@
       {
         "blocks_methods": 1,
         "call": "child_cls.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cmd.fut.set_exception"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cmd.fut.set_result"
       },
       {
         "blocks_methods": 1,
@@ -1757,6 +1821,66 @@
       {
         "blocks_methods": 1,
         "call": "reg_msg.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.centers"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.children[0].get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.children[0].get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_did_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_did_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_will_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_will_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.register_did_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.register_state_update_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotated"
       },
       {
         "blocks_methods": 1,
@@ -2325,6 +2449,14 @@
       {
         "blocks_methods": 1,
         "call": "serial.Serial"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "site.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "site.get_size_z"
       },
       {
         "blocks_methods": 1,

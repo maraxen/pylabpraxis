@@ -22,6 +22,7 @@ in-memory indexes for the tests that are about the closure MECHANIC itself
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -663,22 +664,65 @@ def test_whole_surface_dropped_receiver_worklist_populated_on_legacy(
 # ---------------------------------------------------------------------------
 
 _LIQUID_HANDLER_FILE = "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py"
-_PLR_INIT_FILE = "external/pylabrobot/pylabrobot/__init__.py"
+
+
+@pytest.fixture
+def stdlib_importing_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
+    """A synthetic module-level source file that actually imports
+    `asyncio`/`time`/`struct`/`contextlib` -- used instead of a real PLR
+    file so this test's classification claims do not depend on which PLR
+    file happens to import which stdlib module at the current pin (a fact
+    that can drift independently of this filter). Patches
+    `plr_sema.derive._REPO_ROOT` for the duration of the test so a bare,
+    repo-root-relative `file=...` string resolves into `tmp_path`, and
+    clears `_module_level_import_aliases`'s cache so an earlier test's
+    entry for the same bare filename can never leak in."""
+    import plr_sema.derive as derive_mod
+
+    (tmp_path / "stdlib_caller.py").write_text(
+        "import asyncio\nimport time\nimport struct\nimport contextlib\n"
+    )
+    monkeypatch.setattr(derive_mod, "_REPO_ROOT", tmp_path)
+    derive_mod._module_level_import_aliases.cache_clear()
+    yield "stdlib_caller.py"
+    derive_mod._module_level_import_aliases.cache_clear()
 
 
 @pytest.mark.parametrize(
     "call_expr",
     ["asyncio.sleep", "time.time", "struct.pack", "contextlib.suppress"],
 )
-def test_derived_inert_filter_classifies_stdlib_calls_as_inert(call_expr: str) -> None:
+def test_derived_inert_filter_classifies_stdlib_calls_as_inert(
+    call_expr: str, stdlib_importing_file: str
+) -> None:
     """AC-13.1's positive half: none of these four heads were in the
     deleted `_INERT_RECEIVER_PREFIXES` (nine locals/logging/inspect names),
     so a pre-260903 run ranked them as real unresolved-receiver signal
-    (T14's finding, §13.4.1). The derived clause-1 replacement
-    (`sys.stdlib_module_names` membership) catches all four because they
-    are genuinely stdlib module names -- no import alias needed, since the
-    call expression's head IS the module name."""
-    assert _is_inert_dropped_receiver_call(call_expr, file=_PLR_INIT_FILE) is True
+    (T14's finding, §13.4.1). The derived clause-1 replacement catches all
+    four -- but only because `stdlib_importing_file` actually IMPORTS each
+    module at module level (backlog #4883 follow-up: bare
+    `sys.stdlib_module_names` string-membership on the head, with no
+    verification the file imported anything, was the bug this tightening
+    fixes -- see `test_derived_inert_filter_requires_actual_import`)."""
+    assert _is_inert_dropped_receiver_call(call_expr, file=stdlib_importing_file) is True
+
+
+def test_derived_inert_filter_requires_actual_import(
+    stdlib_importing_file: str,
+) -> None:
+    """Backlog #4883 follow-up (the `resource` false-positive fix): a head
+    that merely COINCIDES with a stdlib module name -- `resource` is a
+    real, Unix-only stdlib module, and PLR uses `resource` constantly as
+    an ordinary local variable name for a `Resource` instance -- must NOT
+    be classified inert unless the file's own module-level imports
+    actually bind that name to a stdlib module. `stdlib_importing_file`
+    imports `asyncio` (so `asyncio.sleep` IS inert) but never imports
+    `resource` (so `resource.get_item`, an ordinary PLR receiver call, is
+    NOT inert) -- the exact pairing the follow-up requires."""
+    assert _is_inert_dropped_receiver_call("asyncio.sleep", file=stdlib_importing_file) is True
+    assert (
+        _is_inert_dropped_receiver_call("resource.get_item", file=stdlib_importing_file) is False
+    )
 
 
 @pytest.mark.parametrize(
@@ -738,16 +782,35 @@ def test_dropped_receiver_worklist_ranking_movement_both_directions(
     gap_ledger: dict,
 ) -> None:
     """AC-13.1: publish the ranking movement in both directions over the
-    real, shipped `top_unresolved.dropped_receiver` view -- newly filtered
-    (was ranked under the old rule, now inert under the derived rule) and
-    newly admitted (was inert under the old rule, now ranked). The
-    newly-admitted count must be > 0 and must include `logger.debug` (the
-    stub-defeating half named in the spec)."""
-    unfiltered = gap_ledger["top_unresolved"]["dropped_receiver_unfiltered"]
-    calls = [row["call"] for row in unfiltered]
+    real, shipped `top_unresolved.dropped_receiver` view, relative to the
+    ORIGINAL pre-#4883 rule (`_INERT_RECEIVER_PREFIXES`/
+    `_INERT_CALL_SUFFIXES`, reconstructed as `_old_inert_predicate`) --
+    newly filtered (was ranked under the old rule, now inert under the
+    derived rule) and newly admitted (was inert under the old rule, now
+    ranked). The newly-admitted count must be > 0 and must include
+    `logger.debug` (the stub-defeating half named in the spec) -- `resource`
+    was never in the old rule's typed lists, so `resource.*` calls were
+    already visible under the OLD rule too and are not part of THIS
+    comparison's movement; the follow-up's own regression guard (a
+    NARROWER rule than #4883's first cut, not something the pre-#4883 rule
+    ever caught) is `test_dropped_receiver_worklist_admits_resource_calls`
+    below.
 
-    old_filtered = {c for c in calls if not _old_inert_predicate(c)}
-    new_filtered = {c for c in calls if not _is_inert_dropped_receiver_call(c, file=_LIQUID_HANDLER_FILE)}
+    Compares against the SHIPPED `dropped_receiver` view (not a local
+    recomputation) for the "new" side deliberately: the derived rule is
+    now per-file (`_is_inert_dropped_receiver_call` requires the
+    originating record's own `file`), and the unfiltered call-text list
+    alone does not carry which file(s) each call text came from, so
+    recomputing "new" with one hardcoded file would silently misclassify
+    any call text that appears in more than one file. The old rule had no
+    such dependency (`_old_inert_predicate` takes no `file` argument), so
+    reconstructing IT locally is safe.
+    """
+    unfiltered = gap_ledger["top_unresolved"]["dropped_receiver_unfiltered"]
+    all_calls = {row["call"] for row in unfiltered}
+    new_filtered = {row["call"] for row in gap_ledger["top_unresolved"]["dropped_receiver"]}
+
+    old_filtered = {c for c in all_calls if not _old_inert_predicate(c)}
 
     newly_filtered = old_filtered - new_filtered
     newly_admitted = new_filtered - old_filtered
@@ -755,15 +818,34 @@ def test_dropped_receiver_worklist_ranking_movement_both_directions(
     assert len(newly_admitted) > 0
     assert "logger.debug" in newly_admitted
     # Sanity: the derived rule strictly extends stdlib-noise coverage
-    # (asyncio/time/struct/contextlib were real unresolved-receiver noise
-    # under the old rule per T14, §13.4.1), so some entries move the other
-    # way too.
+    # (asyncio/time/struct were real unresolved-receiver noise under the
+    # old rule per T14, §13.4.1), so some entries move the other way too.
     assert len(newly_filtered) >= 0  # published even when zero
 
-    # The current, shipped ledger view reflects the DERIVED rule, not the
-    # deleted one -- cross-check against the fixture's own real output.
-    shipped_calls = {row["call"] for row in gap_ledger["top_unresolved"]["dropped_receiver"]}
-    assert shipped_calls == new_filtered
+
+def test_dropped_receiver_worklist_admits_resource_calls(gap_ledger: dict) -> None:
+    """Backlog #4883 follow-up: `resource` is a real, Unix-only stdlib
+    module name that also happens to be an extremely common PLR local
+    variable name (a `Resource` instance) -- a bare
+    `head in sys.stdlib_module_names` membership check (the first cut of
+    this item, before the follow-up tightened clause 1 to require an
+    ACTUAL per-file import binding) wrongly classified every
+    `resource.<attr>` dropped call as inert, with no evidence any file
+    ever imported the stdlib `resource` module. None of PLR's files that
+    contribute `resource.*` dropped-receiver calls in the SUPPORTED_TOOLS
+    closure import the stdlib `resource` module, so all of them must
+    survive the (tightened) filter -- this is the stub-defeating half for
+    the follow-up specifically: an implementation that reverted to bare
+    membership passes every other AC-13.1 assertion and fails only this
+    one."""
+    filtered_calls = {row["call"] for row in gap_ledger["top_unresolved"]["dropped_receiver"]}
+    resource_calls = {c for c in filtered_calls if c.startswith("resource.")}
+    assert resource_calls, (
+        "expected >=1 resource.* call to survive the derived filter -- if "
+        "this is empty, clause 1 has regressed to bare stdlib-name "
+        "membership and is wrongly treating `resource` as an import"
+    )
+    assert "resource.get_item" in filtered_calls
 
 
 def test_dropped_receiver_worklist_publishes_get_tip_rank(gap_ledger: dict) -> None:
@@ -807,10 +889,17 @@ def test_import_alias_resolution_is_per_file_not_global() -> None:
         original_root = derive_mod._REPO_ROOT
         try:
             derive_mod._REPO_ROOT = tmp_path
+            # `_module_level_import_aliases` is `lru_cache`d on the bare
+            # `file` string alone -- clear it so no other test's "a.py"/
+            # "b.py" entry (resolved against a DIFFERENT tmp_path) can leak
+            # in, and clear again on the way out so this test's entries
+            # don't leak to a later one either.
+            derive_mod._module_level_import_aliases.cache_clear()
             assert _is_inert_dropped_receiver_call("aio.sleep", file="a.py") is True
             assert _is_inert_dropped_receiver_call("aio.sleep", file="b.py") is False
         finally:
             derive_mod._REPO_ROOT = original_root
+            derive_mod._module_level_import_aliases.cache_clear()
 
 
 def test_ac_13_2_frozensets_are_deleted_from_source() -> None:
