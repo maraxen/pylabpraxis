@@ -15,6 +15,7 @@ reflect what they now test).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -25,6 +26,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "eval"))
 
 from oracle_common import (
     RuntimeOutcome,
+    _PRIME_PLATE,
+    _normalize_well_refs,
+    _underscore_ref_base_counts,
     calls_from_plr_kwargs,
     compare,
     ir_value_of,
@@ -603,3 +607,182 @@ class TestSmokeOnExamples:
         assert len(results) == 4
         assert sum(r["n_ops"] for r in results) == 10
         assert sum(r["unsound"] for r in results) == 0
+
+
+def _chat_row(name: str, arguments: dict, utterance: str = "test utterance") -> dict:
+    """Minimal chat-format corpus row with one tool call (corpus_p25.jsonl shape)."""
+    return {
+        "messages": [
+            {"role": "developer", "content": "sys"},
+            {"role": "user", "content": utterance},
+            {
+                "role": "assistant",
+                "tool_calls": [
+                    {"function": {"name": name, "arguments": arguments}, "type": "function"},
+                ],
+            },
+        ],
+        "tools": [],
+        "metadata": "train",
+    }
+
+
+class TestUnderscoreRefBaseCounts:
+    """Tests for _underscore_ref_base_counts (§12.4.3's self-consistency signal)."""
+
+    def test_repeated_base_counted(self):
+        counts = _underscore_ref_base_counts(
+            {"at": ["filter_tip_box_D1", "filter_tip_box_D2", "filter_tip_box_D3"]}
+        )
+        assert counts["filter_tip_box"] == 3
+
+    def test_distinct_bases_each_counted_once(self):
+        counts = _underscore_ref_base_counts(
+            {"source": "plate_A_H12", "destination": "plate_B_A1"}
+        )
+        assert counts == {"plate_A": 1, "plate_B": 1}
+
+    def test_non_matching_shape_not_counted(self):
+        # "col1"/"slot2" have no A-H row letter -- not a well-ref shape at all.
+        counts = _underscore_ref_base_counts(
+            {"destination": "assay_plate_col1", "other": "disposal_rack_slot2"}
+        )
+        assert counts == {}
+
+
+class TestNormalizeWellRefs:
+    """Tests for _normalize_well_refs (§12.4.3, AC-12.19)."""
+
+    def test_declared_via_precondition_plan_resources_normalizes(self):
+        """AC-12.19's worked example, using the ONE base _precondition_plan
+        actually declares (``_PRIME_PLATE``): a dispense whose destination
+        happens to share that base normalises and its skip_reason stays
+        None (dispense is executable either way -- the point is the REF
+        got rewritten before _precondition_plan/deck_layout ever saw it).
+        """
+        ref = f"{_PRIME_PLATE}_A1"
+        call = {"name": "dispense", "params": {"destination": ref, "volume_ul": 50}}
+        new_call, rewritten = _normalize_well_refs(call)
+        assert rewritten == [ref]
+        assert new_call["params"]["destination"] == f"{_PRIME_PLATE}.A1"
+        # Original call object is untouched (defensive copy, not a mutation).
+        assert call["params"]["destination"] == ref
+
+    def test_self_consistent_repeat_normalizes(self):
+        """4 tip-spot refs in one pick_up_tips.at list, all on the same
+        undeclared base -- internal repetition is its own declaration
+        (§12.4.3(b))."""
+        call = {
+            "name": "pick_up_tips",
+            "params": {"at": ["filter_tip_box_D1", "filter_tip_box_D2"]},
+        }
+        new_call, rewritten = _normalize_well_refs(call)
+        assert sorted(rewritten) == ["filter_tip_box_D1", "filter_tip_box_D2"]
+        assert new_call["params"]["at"] == ["filter_tip_box.D1", "filter_tip_box.D2"]
+
+    def test_undeclared_single_occurrence_left_verbatim(self):
+        """AC-12.19's contrast case: foo_A1 with no foo declared anywhere
+        (not in _precondition_plan's resources, not repeated) stays
+        exactly as it is."""
+        call = {"name": "aspirate", "params": {"source": "foo_A1", "volume_ul": 10}}
+        new_call, rewritten = _normalize_well_refs(call)
+        assert rewritten == []
+        assert new_call is call  # identical object, not even a copy
+        assert new_call["params"]["source"] == "foo_A1"
+
+    def test_non_well_shaped_ref_left_untouched(self):
+        call = {"name": "drop_tips", "params": {"destination": "trash"}}
+        new_call, rewritten = _normalize_well_refs(call)
+        assert rewritten == []
+        assert new_call["params"]["destination"] == "trash"
+
+
+class TestRowToVerifierInputsNormalization:
+    """Integration tests: §12.4.3's normalisation wired into
+    row_to_verifier_inputs (AC-12.19)."""
+
+    def test_declared_base_resolves_and_executes(self):
+        ref = f"{_PRIME_PLATE}_A1"
+        row = _chat_row("dispense", {"destination": ref, "volume_ul": 50})
+        call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
+            row, source_file="test", line=1
+        )
+        assert no_call_reason is None
+        assert skip_reason is None
+        assert intent["normalized_refs"] == [ref]
+        real_call = call_seq[-1]
+        assert real_call["name"] == "dispense"
+        assert real_call["params"]["destination"] == f"{_PRIME_PLATE}.A1"
+
+    def test_undeclared_base_left_verbatim_keeps_current_outcome(self):
+        row = _chat_row("aspirate", {"source": "foo_A1", "volume_ul": 10})
+        call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
+            row, source_file="test", line=1
+        )
+        assert no_call_reason is None
+        assert skip_reason is None  # aspirate has everything _precondition_plan needs
+        assert intent["normalized_refs"] == []
+        real_call = call_seq[-1]
+        assert real_call["params"]["source"] == "foo_A1"  # untouched
+
+    def test_no_call_row_has_no_normalized_refs(self):
+        row = {
+            "messages": [
+                {"role": "developer", "content": "sys"},
+                {"role": "user", "content": "what can you do?"},
+                {"role": "assistant", "content": "I can pipette."},
+            ],
+            "tools": [],
+            "metadata": "train",
+        }
+        call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
+            row, source_file="test", line=1
+        )
+        assert no_call_reason == "no_tool_calls"
+        assert intent["normalized_refs"] == []
+
+
+class TestByteIdentityInvariant:
+    """AC-12.19: grounding.py and every file under training/assemble/out/
+    are byte-identical before and after normalisation -- this is a LOADER
+    reading of an ambiguous ref, not a corpus/grounding-grammar rewrite.
+    """
+
+    def _tracked_files(self) -> list[Path]:
+        grounding = REPO_ROOT / "training" / "verify" / "grounding.py"
+        assemble_out = REPO_ROOT / "training" / "assemble" / "out"
+        files = [grounding]
+        if assemble_out.is_dir():
+            files.extend(sorted(p for p in assemble_out.rglob("*") if p.is_file()))
+        return files
+
+    def _hashes(self, files: list[Path]) -> dict[str, str]:
+        return {
+            str(f): hashlib.sha256(f.read_bytes()).hexdigest()
+            for f in files
+            if f.exists()
+        }
+
+    def test_normalization_does_not_touch_grounding_or_assemble_out(self):
+        files = self._tracked_files()
+        assert files, "expected grounding.py + training/assemble/out/* to exist"
+        before = self._hashes(files)
+
+        # Exercise every normalisation path: declared-via-resources,
+        # self-consistent repeat, and undeclared/verbatim -- plus a full
+        # row_to_verifier_inputs pass, so any accidental write during
+        # normalisation would be caught here.
+        _normalize_well_refs(
+            {"name": "dispense", "params": {"destination": f"{_PRIME_PLATE}_A1", "volume_ul": 50}}
+        )
+        _normalize_well_refs(
+            {"name": "pick_up_tips", "params": {"at": ["filter_tip_box_D1", "filter_tip_box_D2"]}}
+        )
+        _normalize_well_refs({"name": "aspirate", "params": {"source": "foo_A1", "volume_ul": 10}})
+        row_to_verifier_inputs(
+            _chat_row("dispense", {"destination": f"{_PRIME_PLATE}_A1", "volume_ul": 50}),
+            source_file="test", line=1,
+        )
+
+        after = self._hashes(self._tracked_files())
+        assert after == before

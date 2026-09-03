@@ -23,12 +23,14 @@ is its new sibling for the ``lower_calls`` path.
 from __future__ import annotations
 
 import asyncio
+import collections
 import contextlib
 import dataclasses
 import functools
 import io
 import json
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -517,6 +519,82 @@ def _precondition_plan(
     return None, [], {}, {}
 
 
+# §12.4.3 (#4939): loader-only well-ref normalisation. ``<Row>`` a single
+# A-H, ``<Col>`` 1-2 digits -- the same shape ``tip_mutants.py:124``'s
+# dotted-ref regex (``_WELL_REF_RE``) targets, mirrored here for the
+# underscore form a golden-provenance mined utterance actually produces
+# (e.g. "tip rack 3 position F7" -> ``tip_rack_3_F7``).
+_UNDERSCORE_WELL_REF_RE = re.compile(r"^(?P<base>.+)_(?P<row>[A-H])(?P<col>\d{1,2})$")
+
+
+def _underscore_ref_base_counts(params: dict[str, Any]) -> collections.Counter:
+    """How many times each ``<base>_<Row><Col>``-shaped ref's base occurs
+    across ONE call's own params -- a base repeated 2+ times (e.g. a
+    4-well ``pick_up_tips.at`` list all on ``filter_tip_box``) is
+    self-consistent evidence it names one shared resource, not a
+    name-pattern coincidence.
+    """
+    counts: collections.Counter = collections.Counter()
+    for value in params.values():
+        refs = value if isinstance(value, list) else [value]
+        for ref in refs:
+            if isinstance(ref, str):
+                m = _UNDERSCORE_WELL_REF_RE.match(ref)
+                if m:
+                    counts[m.group("base")] += 1
+    return counts
+
+
+def _normalize_well_refs(call: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """Rewrite ``<base>_<Row><Col>`` refs in ``call["params"]`` to
+    ``<base>.<Row><Col>`` iff ``<base>`` is a DECLARED resource of this
+    row's own layout -- the layout it has already computed, not a name
+    pattern (AC-12.19). "Declared" means either:
+
+    (a) a key of the scaffold resources ``_precondition_plan`` would add
+        for this call -- consulted via a side-effect-free dry run
+        (``_precondition_plan`` reads only ``call["name"]``/structural
+        param presence, never ref VALUE shape, so this dry run cannot
+        itself be influenced by the rewrite it is deciding); or
+    (b) a base repeated 2+ times across this SAME call's own params
+        (:func:`_underscore_ref_base_counts`).
+
+    A base satisfying neither is left exactly as it is and keeps
+    whatever skip/parse outcome it produces today (AC-12.19's ``foo_A1``
+    / no ``foo`` declared case) -- this is the whole safety argument:
+    without it, ``tip_rack_3_F7`` and a hypothetical resource genuinely
+    NAMED ``tip_rack_3_F7`` are indistinguishable.
+
+    Returns ``(call, [])`` unchanged when nothing normalises (including
+    the identical ``call`` object, not a copy) so callers can cheaply
+    check ``rewritten`` for the ``rows_normalised`` signal.
+    """
+    _, _, extra_resources, _ = _precondition_plan(call)
+    declared = set(extra_resources.keys())
+    declared |= {
+        base for base, n in _underscore_ref_base_counts(call["params"]).items() if n >= 2
+    }
+    if not declared:
+        return call, []
+
+    rewritten: list[str] = []
+
+    def _norm(value: Any) -> Any:
+        if isinstance(value, list):
+            return [_norm(v) for v in value]
+        if isinstance(value, str):
+            m = _UNDERSCORE_WELL_REF_RE.match(value)
+            if m and m.group("base") in declared:
+                rewritten.append(value)
+                return f"{m.group('base')}.{m.group('row')}{m.group('col')}"
+        return value
+
+    new_params = {k: _norm(v) for k, v in call["params"].items()}
+    if not rewritten:
+        return call, []
+    return {"name": call["name"], "params": new_params}, rewritten
+
+
 def row_to_verifier_inputs(
     row: dict[str, Any],
     *,
@@ -565,7 +643,10 @@ def row_to_verifier_inputs(
     Returns:
         (call_sequence, intent_record, deck_layout, skip_reason, no_call_reason)
         - call_sequence: list of {name, params} dicts (may be empty)
-        - intent_record: dict with record_id, utterance, source, calls, expected_effects
+        - intent_record: dict with record_id, utterance, source, calls,
+          expected_effects, normalized_refs (§12.4.3, #4939: original ref
+          strings the loader-only well-ref normalisation rewrote, e.g.
+          ["tip_rack_3_F7"]; empty when nothing normalised)
         - deck_layout: dict with resources and seed_volumes, or None
         - skip_reason: None if executable; str reason if _precondition_plan rejected it
         - no_call_reason: "no_tool_calls" if assistant had no tool_calls; else None
@@ -596,6 +677,7 @@ def row_to_verifier_inputs(
     call_sequence = []
     extra_resources = {}
     seed_volumes = {}
+    normalized_refs: list[str] = []
 
     if no_call_reason:
         # Row has no tool_calls; this is a clarification turn
@@ -625,10 +707,15 @@ def row_to_verifier_inputs(
             )
         else:
             real_call = {"name": real_call["name"], "params": normalized}
+            real_call, normalized_refs = _normalize_well_refs(real_call)
             skip_reason, prefix, extra_resources, seed_volumes = _precondition_plan(real_call)
             if skip_reason is None:
                 call_sequence = [*prefix, real_call]
     else:
+        # §12.4.3 (#4939): loader-only well-ref normalisation, before
+        # _precondition_plan so its derived prefix/seed_volumes see the
+        # already-dotted ref (consistency, not a second pass over them).
+        real_call, normalized_refs = _normalize_well_refs(real_call)
         # Apply P2.5 scaffolding via _precondition_plan
         skip_reason, prefix, extra_resources, seed_volumes = _precondition_plan(real_call)
         if skip_reason is None:
@@ -656,6 +743,12 @@ def row_to_verifier_inputs(
         "source": "synthetic",  # per P2.5 exec_verify
         "calls": [{"name": c["name"], "params": c["params"]} for c in call_sequence],
         "expected_effects": [],  # per P2.5 exec_verify
+        # §12.4.3 (#4939): original ref strings rewritten by
+        # _normalize_well_refs, e.g. ["tip_rack_3_F7"] -- empty when
+        # nothing normalised. Threaded through the dict (not a new
+        # positional return) so the function's 5-tuple arity, shared with
+        # tip_mutants.py (out of #4939's scope), does not change.
+        "normalized_refs": normalized_refs,
     }
 
     return call_sequence, intent_record, deck_layout, skip_reason, no_call_reason

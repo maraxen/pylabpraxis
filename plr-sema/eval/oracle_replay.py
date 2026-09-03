@@ -180,6 +180,13 @@ class RowResult:
     #: tool-named fallback has no successor; these rows are counted here
     #: rather than silently getting a tool-named CALL.
     not_planned_indices: list[int] = dataclasses.field(default_factory=list)
+    #: §12.4.3 (#4939): original ref strings row_to_verifier_inputs's
+    #: loader-only well-ref normalisation rewrote for this row (e.g.
+    #: ["tip_rack_3_F7"]); empty when nothing normalised. A row counts
+    #: toward rows_normalised regardless of its no_call/skip/executed
+    #: bucket -- the rewrite can happen before a LATER precondition-plan
+    #: skip.
+    normalized_refs: list[str] = dataclasses.field(default_factory=list)
 
 
 def run_row(
@@ -289,6 +296,7 @@ def run_row(
             unsound_count=0,
             plr_kwargs={},
             tool_params={},
+            normalized_refs=intent_record.get("normalized_refs", []),
         )
 
     # Reconstruct example dict for spike functions
@@ -379,6 +387,7 @@ def run_row(
         plr_kwargs=rt.plr_kwargs,
         tool_params=tool_params_dict,
         not_planned_indices=not_planned_indices,
+        normalized_refs=intent_record.get("normalized_refs", []),
     )
 
 
@@ -482,6 +491,11 @@ def main(argv: list[str] | None = None) -> int:
     n_rows_parse_error = 0
     n_rows_skipped = 0
     n_rows_executed = 0
+    #: §12.4.3 (#4939): rows with >=1 well-ref rewritten by
+    #: row_to_verifier_inputs's loader-only normalisation, counted
+    #: regardless of which no_call/skip/executed bucket the row lands in
+    #: (a rewritten row can still be skipped by a LATER precondition check).
+    n_rows_normalised = 0
     sidecar_join_counts: dict[str, collections.Counter] = collections.defaultdict(collections.Counter)
 
     for corpus_file in args.corpus:
@@ -512,6 +526,8 @@ def main(argv: list[str] | None = None) -> int:
                     )
                     results.append(result)
                     n_rows_total += 1
+                    if result.normalized_refs:
+                        n_rows_normalised += 1
                     if result.no_call_reason == "parse_error":
                         n_rows_parse_error += 1
                     elif result.no_call_reason:
@@ -663,6 +679,7 @@ def main(argv: list[str] | None = None) -> int:
         "rows_total": n_rows_total,
         "rows_no_call": n_rows_no_call,
         "rows_parse_error": n_rows_parse_error,
+        "rows_normalised": n_rows_normalised,
         "rows_skipped": n_rows_skipped,
         "rows_executed": n_rows_executed,
         "operations_executed": n_operations_executed,
@@ -683,6 +700,7 @@ def main(argv: list[str] | None = None) -> int:
             "rows_total": n_rows_total,
             "rows_no_call": n_rows_no_call,
             "rows_parse_error": n_rows_parse_error,
+            "rows_normalised": n_rows_normalised,
             "rows_skipped": n_rows_skipped,
             "rows_executed": n_rows_executed,
             "operations_executed": n_operations_executed,
@@ -719,6 +737,7 @@ def main(argv: list[str] | None = None) -> int:
                 "scaffold_prefix_count": r.scaffold_prefix_count,
                 "no_call_reason": r.no_call_reason,
                 "skip_reason": r.skip_reason,
+                "normalized_refs": r.normalized_refs,
                 "runtime": {
                     "outcome": r.runtime_outcome,
                     "error": r.runtime_error,
@@ -751,10 +770,11 @@ def main(argv: list[str] | None = None) -> int:
 
     # Log summary
     log.info(
-        "summary: rows_total=%d no_call=%d parse_error=%d skipped=%d executed=%d ops=%d unsound=%d check_graph_exc=%d totality_vio=%d unknown_rate=%.3f crosscheck_joined=%d (exact=%d fallback=%d) agree=%.3f",
+        "summary: rows_total=%d no_call=%d parse_error=%d normalised=%d skipped=%d executed=%d ops=%d unsound=%d check_graph_exc=%d totality_vio=%d unknown_rate=%.3f crosscheck_joined=%d (exact=%d fallback=%d) agree=%.3f",
         n_rows_total,
         n_rows_no_call,
         n_rows_parse_error,
+        n_rows_normalised,
         n_rows_skipped,
         n_rows_executed,
         n_operations_executed,
