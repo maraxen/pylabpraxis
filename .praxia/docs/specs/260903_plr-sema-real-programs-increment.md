@@ -1,24 +1,26 @@
 ---
 title: "plr-sema increment 3 — real programs: derived setup() entry state, extractor-emitted regions, loop semantics, and the tier-2 oracle"
-description: "Third post-corpus increment to the plr-sema pre-corpus specification. Closes the four gaps that keep increments 1 and 2 fixture-only on real data. (1) #4938 derives PLR's setup() head-reset as an effect, so a receiver whose setup() the analyzer OBSERVED enters NO_TIP on every channel and ChannelState.default finally has a producer; a receiver with no observed setup stays TOP. (2) #4932 makes praxis's libcst extractor emit real LOOP/BRANCH regions instead of two graph-level booleans, with proved trip counts from language semantics only, plus self.<attr> resource registration (round-1 O4). (3) The checker stops widening every receiver at region entry: a proved trip count of n is unrolled to min(n, K) iterations with a widened tail, an unproved one goes to a fixpoint over the height-2 lattice whose findings are emitted from the final pass only, and BRANCH becomes an arm-wise walk with a join at the merge. (4) #4880 lands tier 2 in two halves -- a bytecode-level extractor/renderer differential against tier 1, and an authored source-fixture set whose ground truth is EXECUTED against the verifier's chatterbox deck, which is the only thing that lifts the LOOP/BRANCH soundness claims off fixtures -- folding in #4939's loader-only well-ref normalisation. Zero new registry rows, zero new REASON_VOCABULARY members, zero wire-format change, no schema_version bump; one upstream enum member (GraphNodeType.REGION), one disposition change (node_type S+W -> I+S+W), and two amendments to increment 2's AC-11.7 and §11.4.1."
-status: draft
+description: "Third post-corpus increment to the plr-sema pre-corpus specification. Closes the four gaps that keep increments 1 and 2 fixture-only on real data. (1) #4938 derives PLR's setup() head-reset as an effect, so a receiver whose setup() the analyzer OBSERVED enters NO_TIP on every channel and ChannelState.default finally has a producer; a receiver with no observed setup stays TOP. (2) #4932 makes praxis's libcst extractor emit real LOOP/BRANCH regions instead of two graph-level booleans, with proved trip counts from language semantics only, plus self.<attr> resource registration (round-1 O4). (3) The checker stops widening every receiver at region entry: a proved trip count of n is unrolled to min(n, K) iterations with a widened tail, an unproved one goes to a fixpoint over the height-2 lattice whose findings are emitted from the final pass only, and BRANCH becomes an arm-wise walk with a join at the merge. (4) #4880 lands tier 2 in two halves -- a bytecode-level extractor/renderer differential against tier 1, and an authored source-fixture set whose ground truth is EXECUTED against the verifier's chatterbox deck, which is the only thing that lifts the LOOP/BRANCH soundness claims off fixtures -- folding in #4939's loader-only well-ref normalisation. Zero new registry rows, zero new REASON_VOCABULARY members, zero wire-format change, no schema_version bump; one upstream enum member (GraphNodeType.REGION), one disposition change (node_type S+W -> I+S+W), and seven amendments across increments 1 and 2. Revised after adversarial round 1: the tier-2b recorder is now instance-level method wrapping joined on OperationNode.line_number rather than plan_call, which cannot fire on that execution path (O1); AC-6.4/AC-7.2/AC-11.7 read over a single defined set OBLIGED(graph) that excludes proved-trip-0 region bodies (O2); L3 retires the stale increment-2 CALL-followed-by-region compensation (O3); a Continue anywhere in a loop body withdraws the trip proof and A-COMPLETES is generalised to early exit (O7); plus the visitor-restructuring estimate risk (O4), an _active_states follow-up, a REGION-versus-FOREACH/CONDITIONAL rationale (O5), and the A-NO-REINTRODUCTION assumption row (O6). One correction found while remediating and raised by neither report: LiquidHandler.load_state satisfies the draft's two-conjunct reset rule, which would have selected two methods and disabled the feature, so P5 gains an unconditional-statement-position conjunct. See the remediation changelog at the end."
+status: reviewed-round-1
 spec_version: 11
 amends: 260901_plr-sema-pre-corpus-spec.md
 task_id: 260903_sema-real-programs
 date: '260903'
 confidence: medium
-sources: "Read this session, in full or in the cited ranges. Specs and plans, in full: .praxia/docs/specs/260902_plr-sema-ir-bytecode-increment.md; .praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md; .praxia/docs/plans/260902_plr-sema-oracle-harness.md; .praxia/docs/audits/260902_plr-sema-ir-round1-challenger.md. Main spec .praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md, section header index plus 139-208 (section 0), 2499-2537 (Deferred + boundary summary), 2538-2543 (RISK-1). Analyzer source: plr-sema/src/plr_sema/check/tipstate.py:1-278,345-471; plr-sema/src/plr_sema/check/__init__.py:380-489; plr-sema/src/plr_sema/check/ir.py:500-620,653-742; plr-sema/src/plr_sema/derive/receiver_state.py:1-120,441-510 and the whole-module symbol index; plr-sema/src/plr_sema/derive/__main__.py:285-321; plr-sema/src/plr_sema/_hand_maintained.py:36-43,240-291,294-315,496-513,676-731,780-848; plr-sema/src/plr_sema/verdict.py:129-154. Harness and lint: plr-sema/eval/oracle_common.py:490-579 and the whole-module symbol index; plr-sema/eval/tip_mutants.py:1-60,90-134; plr-sema/eval/oracle_replay.bth.toml; plr-sema/tests/test_spec_lint.py; plr-sema/scripts/check_spec_citations.py; plr-sema/scripts/check_spec_crossrefs.py. Front end: praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py:260-535,667; praxis/backend/utils/plr_static_analysis/models.py:520-659; tests/utils/test_computation_graph.py:225-274. Verifier: training/verify/verifier.py:90-139; training/verify/deck.py symbol index. PLR at submodule pin dd79c4c89: external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:155-224,530-541; external/pylabrobot/pylabrobot/resources/tip_tracker.py:30-69. Data: outputs/plr-sema/oracle_replay_260902.json:1-60."
+sources: "Read this session, in full or in the cited ranges. Specs and plans, in full: .praxia/docs/specs/260902_plr-sema-ir-bytecode-increment.md; .praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md; .praxia/docs/plans/260902_plr-sema-oracle-harness.md; .praxia/docs/audits/260902_plr-sema-ir-round1-challenger.md. Main spec .praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md, section header index plus 139-208 (section 0), 2499-2537 (Deferred + boundary summary), 2538-2543 (RISK-1). Analyzer source: plr-sema/src/plr_sema/check/tipstate.py:1-278,345-471; plr-sema/src/plr_sema/check/__init__.py:380-489; plr-sema/src/plr_sema/check/ir.py:500-620,653-742; plr-sema/src/plr_sema/derive/receiver_state.py:1-120,441-510 and the whole-module symbol index; plr-sema/src/plr_sema/derive/__main__.py:285-321; plr-sema/src/plr_sema/_hand_maintained.py:36-43,240-291,294-315,496-513,676-731,780-848; plr-sema/src/plr_sema/verdict.py:129-154. Harness and lint: plr-sema/eval/oracle_common.py:490-579 and the whole-module symbol index; plr-sema/eval/tip_mutants.py:1-60,90-134; plr-sema/eval/oracle_replay.bth.toml; plr-sema/tests/test_spec_lint.py; plr-sema/scripts/check_spec_citations.py; plr-sema/scripts/check_spec_crossrefs.py. Front end: praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py:260-535,667; praxis/backend/utils/plr_static_analysis/models.py:520-659; tests/utils/test_computation_graph.py:225-274. Verifier: training/verify/verifier.py:90-139; training/verify/deck.py symbol index. PLR at submodule pin dd79c4c89: external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:155-224,530-541; external/pylabrobot/pylabrobot/resources/tip_tracker.py:30-69. Data: outputs/plr-sema/oracle_replay_260902.json:1-60. Read additionally during round-1 remediation, in full: .praxia/docs/audits/260903_plr-sema-real-programs-round1-challenger.md; .praxia/docs/audits/260903_plr-sema-real-programs-round1-defender.md. Ranges read to verify the remediation: praxis/backend/utils/plr_static_analysis/models.py:495-519; plr-sema/src/plr_sema/check/ir.py:272-291; plr-sema/eval/oracle_common.py:140-157,325-348; training/verify/dispatcher.py:90-103; training/verify/verifier.py:44-57; plr-sema/tests/fixtures/branchy_graph.json (node_type and method_name fields); external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:236-261; external/pylabrobot/pylabrobot/resources/tip_tracker.py:130-147."
 ---
 
 # Increment 3: real programs
 
 > **This document amends `260901_plr-sema-pre-corpus-spec.md` by reference.** It adds §12 to that
-> document's numbering and edits exactly two things in it: **AC-6.4**'s set equality (re-read over
-> *call-bearing* operations, §12.3.4) and §Deferred row **(d)**'s live surface (proved trip counts
-> from language semantics are now consumed; the `items_x`/`items_y`-from-`wells()` half stays
-> deferred, §12.11). **It also amends `260902_plr-sema-tip-typestate-increment.md`** (spec_version 9)
-> in two places and **`260902_plr-sema-ir-bytecode-increment.md`** (spec_version 10) in four — §12.9
-> lists all six. Everything else in spec_version 8, 9 and 10 — `Verdict`, `Finding`, `PlrSite`,
+> document's numbering and edits exactly three things in it: **AC-6.4**'s set equality and
+> **AC-7.2**'s totality (both re-read over `OBLIGED(graph)`, §12.3.4) and §Deferred row **(d)**'s live
+> surface (proved trip counts from language semantics are now consumed; the
+> `items_x`/`items_y`-from-`wells()` half stays deferred, §12.11). **It also amends
+> `260902_plr-sema-tip-typestate-increment.md`** (spec_version 9) in three places — including
+> **A-COMPLETES**, generalised from "did not raise" to "was reached" — and
+> **`260902_plr-sema-ir-bytecode-increment.md`** (spec_version 10) in four; §12.9
+> lists all seven. Everything else in spec_version 8, 9 and 10 — `Verdict`, `Finding`, `PlrSite`,
 > `AnalysisReport`, `join`, `REASON_VOCABULARY`, the telemetry schema, the fork-drift tests, the
 > derivation closure mechanic, the value grammar, the canonical form, the hash and the cache key — is
 > **unchanged**. No `schema_version` bump; no wire-format change; **zero new registry rows** (the
@@ -105,15 +107,20 @@ therefore not a hand-maintained surface. **This choice is disclosed, not hidden*
 > **Normative (P5, the reset effect).** Let `R` be a receiver class with a P1a channel attribute `a`
 > typing to a P2-anchored tracker class `C`. A method `m` of `R` **resets** `a` iff `m`'s own body
 > (depth 0) contains an `ast.Assign` whose single target is an `ast.Attribute` on `self` naming `a`
-> — **not** an `ast.Subscript` of it — and whose value expression `E` satisfies **both**:
+> — **not** an `ast.Subscript` of it — where the assignment satisfies **all three** of:
 >
-> 1. **fresh-only construction.** Every `ast.Call` in `E` whose `func` is an `ast.Name` that is a key
->    of the P1 class index constructs `C`, and at least one such call exists. (Calls to names the
->    class index does not know — `range`, `len`, `dict` — are ignored: they cannot produce a tracker.)
+> 1. **fresh-only construction.** Every `ast.Call` in the value expression `E` whose `func` is an
+>    `ast.Name` that is a key of the P1 class index constructs `C`, and at least one such call exists.
+>    (Calls to names the class index does not know — `range`, `len`, `dict` — are ignored: they cannot
+>    produce a tracker.)
 > 2. **no carry-over of the old map.** `E` contains no load of `self.<a>` anywhere. This is the
->    load-bearing conjunct: it is what rules out `self.head = {k: v for k, v in self.head.items() if
->    …}`, a reassignment that *preserves* existing trackers and whose post-state is the pre-state,
->    not `NO_TIP`.
+>    load-bearing conjunct for correctness: it is what rules out `self.head = {k: v for k, v in
+>    self.head.items() if …}`, a reassignment that *preserves* existing trackers and whose post-state
+>    is the pre-state, not `NO_TIP`.
+> 3. **unconditional.** The `ast.Assign` is a **direct statement of `m`'s body** — not nested inside
+>    an `If`, `For`, `While`, `Try`, `With` or `match` within `m`. An assignment that executes on only
+>    some paths through `m` does not establish a post-state on all of them, and E6 asserts a
+>    post-state unconditionally.
 >
 > The post-state is `constructor_state(C)` — P4's existing three-way classification
 > (`_classify_write`, `plr-sema/src/plr_sema/derive/receiver_state.py:396-409`) applied to `C`'s
@@ -132,11 +139,28 @@ Measured expectation over the current pin, which the fixer must **reproduce and 
 (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:187-214`); it is a *different*
 attribute and is scoped out by §10.9's 96-head exclusion, which this increment does not reopen.
 
+> **Conjunct 3 is not hypothetical, and it is the reason this rule selects one method rather than
+> none.** `LiquidHandler.load_state` also assigns `self.head` to a fresh-`TipTracker` dict
+> comprehension (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:239-257`, the
+> assignment at `:248`), and that expression satisfies conjuncts 1 and 2 exactly as `setup`'s does —
+> it constructs only `TipTracker`s and loads no `self.head`. **Under conjuncts 1–2 alone, P5 would
+> select `{setup, load_state}` at the current pin, hit its own more-than-one rule, emit nothing, and
+> disable the entire feature.** Conjunct 3 separates them on a real semantic difference rather than a
+> convenient one: `setup`'s assignment is a direct statement of its body, while `load_state`'s sits
+> inside `if head_state and self.head == {}:` and therefore does not run when a head map already
+> exists. A conditional reassignment cannot establish a post-state on every path, so withdrawing the
+> reset there is correct independently of the arithmetic. `load_state` is additionally *not* safe to
+> treat as a reset for a second reason — it immediately reintroduces state through
+> `self.head[channel].load_state(tracker_state)` at `:250` — and that second reason is what
+> §12.1.5's `A-NO-REINTRODUCTION` row records. **This correction was found while verifying round-1's
+> O6 and was not raised by either round-1 report; it is disclosed here rather than folded in
+> silently.**
+
 **Where P1 already does most of the work.** P1a's `_annotated_attributes`
 (`plr-sema/src/plr_sema/derive/receiver_state.py:169-182`) already gives `head → TipTracker`, and
 P1b's `_attribute_writers` (`plr-sema/src/plr_sema/derive/receiver_state.py:183-210`) already indexes
 every `self.<name> = …` write by the writing method's qualname — so P5's *candidate set* is
-`_attribute_writers[a]`, and P5 adds only the two-conjunct test above plus the constructor-state
+`_attribute_writers[a]`, and P5 adds only the three-conjunct test above plus the constructor-state
 read. It is a filter over an existing index, not a new scan.
 
 ### 12.1.3 Where it lands in the payload, and the provenance stamp
@@ -217,12 +241,16 @@ tips mounted. Assuming otherwise would construct `WILL_FAIL` from an unevaluated
 organizing claim forbids in both directions. **A-SETUP is therefore *not* an assumption this
 increment makes** — the absence of an observed reset is handled by not knowing, not by a hypothesis.
 
-Two real assumptions are added, and both are named so a reviewer can attack them:
+Four real assumptions are added, each named so a reviewer can attack it. The last two arrived in
+round 1 (O6 and O7) — both were live and unstated in the draft, and both discharge safely today, which
+is exactly why they had to be written down rather than relied upon:
 
 | id | assumption | why it is needed | what breaks if it is false | oracle |
 |---|---|---|---|---|
 | **A-CHANNELS** | the reset method populates at least every channel index a later operation names | `default = NO_TIP` answers for indices `exact` does not carry; if the map is *smaller* than the operation's channel set, PLR raises `KeyError` where the analyzer says `SAFE` | a `SAFE` against a run that raised — the first-severity class. Requires a backend whose `num_channels` (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:197`) is below the operation's arity; no corpus row and no chatterbox configuration produces one | tier 1's 0-unsound gate over 268 executed rows / 426 operations, and tier 2b's executed fixtures (§12.4.2) |
 | **A-RESET-ONCE** | a second reset call is a reset, not an error | E6 applies unconditionally; PLR in fact raises `RuntimeError` on a repeat `setup()` (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:190-191`) | nothing in the `SAFE` direction: the *analyzer* would report `NO_TIP` for a program that raises before reaching the next operation, which A-COMPLETES already scopes out — a `WILL_FAIL` claim is a claim about the trace *reaching* that index | the same two |
+| **A-NO-REINTRODUCTION** (round-1 O6) | no method other than the derived `entry_reset.method` reintroduces tip state between an observed reset and a later read, *unless* the ordinary P4 bridge machinery catches it | E6 fires only on the exact reset method; every other tracker-touching method is left to §10.2.4's effect classification and §10.4's E2/E4 split, so the reset's `default` survives across calls the bridge does not model | a channel silently reading `NO_TIP` after something put a tip on it. The live instance is `LiquidHandler.load_state` (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:239-257`), which calls `self.head[channel].load_state(...)` at `:250` — the HM-24 bridge shape exactly — and `TipTracker.load_state` assigns `self._tip = cast(...)` (`external/pylabrobot/pylabrobot/resources/tip_tracker.py:138-142`), which `_classify_write` (`plr-sema/src/plr_sema/derive/receiver_state.py:396-409`) classifies `HAS_TIP` since the RHS is neither a `None` literal nor a self-attr load. **It discharges safely today, but by machinery rather than by argument:** `channels_for_call` returns `None` for `load_state` (no `use_channels`, no channel-default idiom), so `_apply_transfer`'s channels-are-`Top` branch (`plr-sema/src/plr_sema/check/tipstate.py:391-395`) widens instead of asserting anything. What would break it is a future reintroducing method that *does* resolve an exact channel set | tier 1 + tier 2b; and, structurally, AC-12.1's requirement that P5 select exactly one reset method |
+| **A-EARLY-EXIT** (round-1 O7) | control did not exit a region early via `break`, `return` or `raise` before the pc being checked | L1 evaluates every listed body operation on every unrolled iteration; a terminated loop's later iterations do not happen | findings for iterations the execution never ran. Sound because the oracle declines to constrain unreached call sites, the same exemption `compare` already gives post-raise operations (`plr-sema/eval/oracle_common.py:325-345`); this row is the generalisation of increment 1's A-COMPLETES from "did not raise" to "was reached", stated at the width §12.2.3 actually uses it. `continue` is **not** covered here — it does not terminate anything — and is handled instead by withdrawing the trip proof (§12.2.3 condition 4) | tier 2b's `(operation, iteration)` comparison, in which an unvisited call site is not-reached by construction (AC-12.17) |
 
 ### 12.1.6 The corpus rows must carry the real `setup()` call
 
@@ -304,7 +332,28 @@ sit *before* the `LOOP` it opens, so under §12.3's unrolling it would execute o
 the body executed `n` times. Increment 2's own `check_ir` already compensates for that shape by
 widening a `CALL` immediately followed by a region open
 (`plr-sema/src/plr_sema/check/__init__.py:462-478`); that compensation is a *widen*, and a widen is
-exactly what §12.3 is trying to stop doing.
+exactly what §12.3 is trying to stop doing. (§12.3.3's L3 retires that compensation outright, for a
+second and independent reason.)
+
+**Why a third enum member rather than the two unused ones already there (round-1 O5).**
+`GraphNodeType` already declares `CONDITIONAL = "conditional"` and `FOREACH = "foreach"`
+(`praxis/backend/utils/plr_static_analysis/models.py:504-511`), neither of which `visit_Call` ever
+assigns — it only ever sets `STATIC` or `DYNAMIC`. They look purpose-built for this, and reusing them
+would avoid a new member and retire two dead ones, so the choice owes an argument rather than an
+omission. **They are not reused, because they are not dead vocabulary — they are *live* vocabulary
+with an incompatible meaning.** `plr-sema/tests/fixtures/branchy_graph.json` carries `"node_type":
+"conditional"` on `op_1`, a **call-bearing** node whose `method_name` is `"aspirate"` and which also
+carries its own `condition_expr`/`true_branch`/`false_branch` — the pre-§12.2.2 shape this section
+replaces. In that vocabulary `"conditional"` means *"this operation's own execution is conditional"*,
+an operation-level tag on a real call. A header node needs a tag meaning *"this is not an operation at
+all; it is a region boundary and emits no `CALL`"*. Collapsing the two makes `node_type`'s reading
+depend on whether `method_name` is empty — a field whose meaning is a function of another field, which
+no other entry in §11.1.4's disposition table is, and which `lower_graph` would have to branch on
+twice for one decision. `REGION` is therefore kept distinct, and the loop-versus-branch distinction a
+reused `FOREACH`/`CONDITIONAL` pair would have carried is recovered losslessly from **which** region
+field is populated (`foreach_body` versus `true_branch`/`false_branch`), which `lower_op_and_regions`
+already switches on. Retiring `FOREACH`/`CONDITIONAL` as genuinely dead is a separate question this
+increment does not answer: `branchy_graph.json` proves at least one of them is not.
 
 **Why a header op does not break totality.** §11.4.4 restates AC-7.2 over instructions: every `CALL`
 receives ≥1 `Finding`, every non-`CALL` receives none. A `REGION` header emits no `CALL`, so it
@@ -314,8 +363,8 @@ equality between finding `operation_id`s and `{op.id}`; §12.3.4 states the amen
 ### 12.2.3 Proved trip counts — language semantics only
 
 > **Normative.** `foreach_source` carries the iterated expression's source text, as today's field
-> description says. `LOOP.trip` is a **proved** integer in exactly three cases and `null` in every
-> other:
+> description says. `LOOP.trip` is a **proved** integer only when **one of conditions 1–3 identifies
+> the iterable AND condition 4 holds**, and is `null` in every other case:
 >
 > 1. `range(<int literal>)`, and `range(<a>, <b>[, <c>])` with all-integer literals, where the
 >    computed length is ≥ 0;
@@ -324,10 +373,51 @@ equality between finding `operation_id`s and `{op.id}`; §12.3.4 states the amen
 >    value form in §11.1.2: length is static when contents are not);
 > 3. `range(<name>.items_x)` or `range(<name>.items_y)` where `<name>` is a declared resource whose
 >    `ResourceNode` carries a non-null `items_x`/`items_y`
->    (`praxis/backend/utils/plr_static_analysis/models.py:583-589`).
+>    (`praxis/backend/utils/plr_static_analysis/models.py:583-589`);
+>
+> — one of 1–3 identifies the iterable, **and**
+>
+> 4. **the loop body contains no `Continue` at any nesting depth within it**, excluding nested
+>    function/lambda definitions (whose `continue` would be a syntax error against *this* loop anyway).
+>    A body containing a `continue` gets `trip = null` regardless of how well its iterable is known.
 >
 > **`while` is always `trip = null`.** There is no proof rule for a `while` condition and inventing
 > one would need the predicate language deferred item (c) withdrew.
+
+**Why condition 4 exists, and why it is `continue` specifically (round-1 O7).** L1 threads state
+through `min(trip, K)` iterations and evaluates **every** listed body operation on **every** iteration.
+A `continue` breaks that correspondence without raising: it skips the remainder of *this* iteration's
+body while the loop proceeds to a next iteration the program genuinely reaches. Concretely — a body
+that `continue`s past its `drop_tips` on iteration 1 and then picks up on iteration 2 is a program
+whose real state at the iteration-2 guard is `HAS_TIP`, while L1's threaded state, having applied the
+skipped `drop_tips`, says `NO_TIP`. That is a definite verdict about a point the execution *does*
+visit, computed from a state it never had — the one error class the whole soundness argument exists to
+exclude, and **not** covered by A-COMPLETES, whose text is about raising only. Proving the iterable
+does not prove the body, so the proof is withdrawn: `trip = null` routes the loop to L2's fixpoint,
+which joins across passes and is therefore correct under any intra-body control flow. The rule is
+syntactic and conservative — a `continue` on a path that never fires still withdraws the proof — which
+is the right direction, since the alternative is a path condition and that is deferred item (c).
+
+**`break`, `return` and `raise` are handled differently, and the difference is worth stating.** Unlike
+`continue`, these *terminate* the loop (or the protocol): the iterations after them do not happen at
+all, so an unrolled iteration-3 finding for a loop that broke at iteration 2 is a claim about a trace
+segment the execution never reached. That is the same shape as a finding after a raise, and it is
+discharged the same way — by the oracle declining to constrain unreached operations — provided the
+assumption is written down at the width it is actually used. **Amendment to increment 1's
+A-COMPLETES** (`260902_plr-sema-tip-typestate-increment.md`, §10.6.3), whose text reads *"each
+operation preceding the one being checked completed without raising"*: it is generalised to *"each
+operation preceding the pc being checked was **reached and completed** — i.e. control did not exit
+early via `break`, `return` or `raise` before that pc."* The `A-EARLY-EXIT` row in §12.1.5's table
+records it in this document's own assumption table so it is attackable here and not only by reference.
+
+**And the oracle must honour it.** Tier 2b's comparison marks a call site the execution never visited
+— because a `break`, `return` or `raise` skipped it — as **not-reached**, imposing no constraint on the
+static verdict there. This is not a new exemption: `compare` already assigns `not_reached` to every
+operation after the failing index and constrains nothing there
+(`plr-sema/eval/oracle_common.py:325-345`). What changes is only the *cause* — "not reached" stops
+meaning exclusively "a prior operation raised". AC-12.17's `(operation, iteration)` key makes this
+mechanical, because a call site with no recorded visit for iteration `k` is not-reached at `k` by
+construction.
 
 Case 3 is deliberately narrow. `for well in plate.wells()` is **not** proved, because the claim
 "`wells()` returns `items_x × items_y` items" is a fact about PLR's API that no artifact this
@@ -335,11 +425,14 @@ analyzer reads records — it would be a hand-typed fact and, against zero regis
 conversation. `range(plate.items_x)` needs no such fact: it is `range` of an integer the graph already
 carries. The gap between the two is named in §12.11 and is §12.12's Q2.
 
-`trip = 0` is a legal proved value and means the body never executes. This increment does **not**
-exploit it (a zero-trip region is still walked once under §12.3's unroll-`min(trip, K)` rule with
-`min(0, K) = 0` iterations, i.e. the body contributes no findings and no state change) — which is
-precise and sound, and is the one place a proved trip count *removes* obligations rather than adding
-them. AC-12.6 pins it.
+`trip = 0` is a legal proved value and means the body never executes. Under §12.3's L1 the region is
+visited `min(0, K) = 0` times, so its body contributes no findings and no state change — precise and
+sound, and the one place a proved trip count *removes* obligations rather than adding them. **That
+removal has a bookkeeping consequence, and round 1 (O2) was right that the draft left it implicit:**
+the body's operations are ordinary non-`REGION` nodes that receive no finding, so they must be
+excluded from the totality/equality target set or AC-6.4(amended) fails on this very case. §12.3.4's
+`OBLIGED(graph)` is that exclusion, stated once as a set definition; AC-12.6 and AC-12.13 pin it from
+both sides.
 
 ### 12.2.4 Nesting, `elif` chains, and the well-formedness contract
 
@@ -442,6 +535,25 @@ supplemented — it survives only for a *synthetic* region (§12.3.6).
 > **Normative (L3).** A region carries no other widening. The blanket entry-widen of
 > `plr-sema/src/plr_sema/check/__init__.py:444-461` applies **only** to a region `lower_graph`
 > synthesised (§11.4.1), where there is by construction no trip count and no known extent.
+>
+> **L3 additionally retires the stale increment-2 compensation at
+> `plr-sema/src/plr_sema/check/__init__.py:462-478`** — the rule *"a `CALL` immediately followed by a
+> `LOOP`/`BRANCH` open widens its own receiver"*. Its own docstring gives its justification: under
+> increment 2's shape the region-owning operation carried its own `foreach_source`/`condition_expr`
+> and was therefore *always* the instruction immediately preceding the region it opened. §12.2.2
+> deletes that shape: a region is opened by a `CALL`-less header, so the predicate no longer
+> identifies an owner — it now fires on **any** call that merely happens to be the statement before a
+> loop or a branch. It **must not fire** under real headers.
+
+**Why retiring it is a correctness fix and not a cleanup (round-1 O3).** Left in place, the
+compensation widens an unrelated call's receiver *before that call's own guards are evaluated*,
+turning a real `SAFE` or `WILL_FAIL` into `UNKNOWN` silently — precision loss with no diagnostic. The
+common shape that triggers it is ordinary: a straight-line preamble followed by a loop. Round 1
+observed that AC-12.10's own fixture escapes the bug only by coincidence — it puts `setup()`
+immediately before the region, and E6 (§12.1.4) overwrites the whole `ChannelState` afterwards, so the
+stray widen is masked. Nothing generalises that masking, and no criterion in the round-1 draft
+exercised the unmasked configuration. AC-12.14 now names the fixture that does: an ordinary
+tip-relevant call directly preceding a region it does not own.
 
 **Why "final pass only" is not an optimisation.** A finding emitted on pass 1 of L2 is computed
 against a state that is not yet a valid over-approximation of the loop head — it is the *first
@@ -483,17 +595,48 @@ minimise the amendment surface.
    bijection with the finding multiset. §11.12's Q1 named exactly this and recorded that AC-11.7
    *asserts* the bijection rather than assuming it, so the test goes red and the choice is made
    deliberately. **Amendment:** AC-11.7's bijection clause becomes *"`sideband.origin` restricted to
-   `CALL` pcs is a **function onto** `{op.id for op in graph.operations if op.node_type is not
-   REGION}`"*.
+   `CALL` pcs is a **function onto** `OBLIGED(graph)`"*, with `OBLIGED` as defined below.
 
-**Main spec AC-6.4** requires `{f.operation_id} == {op.id for op in graph.operations}`. Region headers
-produce no finding, so that equality now fails on a looping graph. **Amendment:** AC-6.4 is re-read as
-`{f.operation_id} == {op.id for op in graph.operations if op.node_type is not GraphNodeType.REGION}`
-— equality over *call-bearing* operations. **AC-7.2**'s totality (`len(findings) >= len(operations)`)
-is unaffected and becomes strictly looser: unrolling adds findings, headers add operations, and a
-region with at least one body call and `min(trip, K) ≥ 1` more than pays for its header. A region
-whose proved trip is `0` does not — its header adds one operation and its body adds no findings — so
-the totality inequality is asserted on the **call-bearing** count there too. AC-12.13 pins both halves.
+**The obligation set, defined once and used by all three criteria.** Main spec **AC-6.4** requires
+`{f.operation_id} == {op.id for op in graph.operations}`. Two constructs this increment introduces
+break that equality, and both are excluded by one definition rather than by two asides:
+
+```
+OBLIGED(graph) = { op.id  for op in graph.operations
+                   if op.node_type is not GraphNodeType.REGION          # (1) headers emit no CALL
+                   and not nested_in_dead_region(op, graph) }
+
+nested_in_dead_region(op, graph)  ⟺  op.id lies, at any nesting depth, within the
+                                     foreach_body / true_branch / false_branch of some
+                                     region header whose lowered LOOP carries a proved trip of 0
+```
+
+Exclusion (1) is the region header itself: it lowers to no `CALL`, so it carries no obligation
+(§12.2.2). **Exclusion (2) is round-1 O2, and it is a real design decision made here rather than left
+to be discovered.** A `LOOP` with a proved `trip == 0` is visited `min(0, K) = 0` times, so its body's
+`CALL` pcs — which exist in the stream at fixed indices — are never evaluated by the walk and can
+never contribute a `Finding`. Those body operations are ordinary non-`REGION` nodes, so under the
+first exclusion alone they would remain in the target set and AC-6.4's equality would fail on the very
+fixture AC-12.6 mandates. The alternative remedy — a "totality-only dry visit" that walks the body once
+purely to manufacture a finding — is **rejected**: it would need its own rule for which state to
+evaluate against and which finding to emit, and any finding it emitted would be an assertion about
+code the program provably does not run, which is exactly what §12.2.3 means by *"the one place a
+proved trip count removes obligations rather than adding them"*. Excluding is bookkeeping; dry-visiting
+is a new semantics.
+
+**Amendment:** AC-6.4 is re-read as `{f.operation_id} == OBLIGED(graph)`. **AC-7.2**'s totality
+becomes `len(findings) >= len(OBLIGED(graph))`, which is unaffected in the direction that matters and
+strictly looser everywhere else: unrolling adds findings, and a live region with at least one body
+call and `min(trip, K) ≥ 1` more than pays for its header. AC-12.13 pins both halves, and AC-12.6
+states the exclusion at the one fixture that exercises it.
+
+**Why the exclusion cannot be abused.** `nested_in_dead_region` keys on a *proved* `trip == 0`, which
+§12.2.3 grants only from a literal `range(0)`, an empty literal display, or a resource whose
+`items_x`/`items_y` is `0`. An unproved trip is `null`, which routes to L2's fixpoint and visits the
+body, so nothing is excused by not knowing. A lowering that emitted `trip = 0` where the real trip is
+non-zero would silence real obligations — which is why AC-12.6 asserts the proved value for every one
+of its seven loops rather than only for the interesting ones, and why tier 2b's executed iteration
+count must equal the proved `trip` (AC-12.17).
 
 ### 12.3.5 `K = 8`, and why the number is not load-bearing
 
@@ -615,10 +758,48 @@ reported, not gated. What is **added** is an iteration coordinate on both sides,
 ground truth is not "operation `i` raised" but "operation `i` raised on iteration `k`", and a static
 `WILL_FAIL` at the wrong iteration is a claim the execution contradicts.
 
-**Execution mechanics.** The fixture source is executed directly (it is a coroutine taking the deck's
-resources as parameters), not replayed as a call sequence — that is the entire point: a call sequence
-has no loop. The per-iteration record comes from the same `plan_call` wrapper tier 1 already uses,
-extended with a monotonically increasing visit counter per call site.
+**Execution mechanics (round-1 O1: the recorder is *not* `plan_call`).** The fixture source is executed
+directly (it is a coroutine taking the deck's resources as parameters), not replayed as a call
+sequence — that is the entire point: a call sequence has no loop. **That execution mode structurally
+excludes tier 1's recorder.** `plan_call` is a pure function of a JSON call dict and its *list index*
+(`training/verify/dispatcher.py:92-101`), reached only from `_execute`'s
+`for i, call in enumerate(call_sequence)` loop (`training/verify/verifier.py:47-55`), and
+`recording_plan_call` records by monkey-patching that module-level name
+(`plr-sema/eval/oracle_common.py:144-153`). A fixture coroutine that calls `lh.pick_up_tips(...)` from
+inside a real Python `for` never invokes it at all. The round-1 draft named it anyway; that was wrong
+and this is the replacement.
+
+> **Normative (the tier-2b recorder).** Before the fixture coroutine is awaited, the harness wraps
+> **each tool method on the `setup.machine` instance** `build_setup` returned — instance attributes,
+> not the class, so nothing global is patched and no other test can observe it — with an `async`
+> `functools.wraps` shim. On entry the shim reads its **caller's source line**,
+> `sys._getframe(1).f_lineno`, increments a monotonic counter in a
+> `dict[(method_name, lineno), int]`, and records `(method_name, lineno, visit_index)`; on an
+> exception it records the same triple plus the exception class before re-raising. The method set to
+> wrap is the receiver class's own methods that appear as contract keys — derived, not typed.
+>
+> **The join to the static side is `OperationNode.line_number`.** That field already exists
+> (`praxis/backend/utils/plr_static_analysis/models.py:532`), is already populated at every call site
+> (`praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py:503`), and is
+> already carried into the bytecode's sideband
+> (`plr-sema/src/plr_sema/check/ir.py:538`). Since §12.4.1's runner extracts **the same source file**
+> the harness just executed, the executed side's `lineno` and the static side's `line_number` are two
+> readings of one file and agree by construction. The executed key `(method_name, lineno,
+> visit_index)` therefore joins to the static key `(CALL.method, sideband["span"][pc], iteration)`,
+> and `sideband["origin"][pc]` converts the pc to the graph operation id.
+
+**The fixture-design constraint that makes the join unambiguous, stated as a requirement rather than
+left to luck.** `(method_name, lineno)` identifies a call site only if no two call sites in the
+fixture share both. **Each fixture body therefore contains at most one call site per PLR method**, and
+no fixture puts two calls on one physical line. This is cheap to honour in authored fixtures and it is
+what makes the recorder a *lookup* rather than a heuristic; a fixture that violates it is a fixture
+bug, and the harness must **fail loudly** on a duplicate `(method_name, lineno)` registration rather
+than silently picking one. A future fixture that needs two call sites for one method needs a
+column-level key, which `f_lineno` does not carry — named here so it is not discovered later.
+
+**What this mechanism does not need.** No change to `dispatcher.py`, no change to `verifier.py`, no
+new `PlanResult` field, and no `call_sequence` at all. It is smaller than extending `plan_call` would
+have been, which is why T21's estimate moves only slightly (§12.8).
 
 **This is what lets the qualifiers go.** AC-11.11's and AC-11.13's *"fixture-only, zero soundness
 claim over real corpus or graph data"* scope qualifiers, and increment 1's AC-10.6 and §10.5 rule 2,
@@ -671,8 +852,12 @@ oracle is a claim this document is not entitled to make.
 | an observed reset means `NO_TIP` on every channel | 12.1.4 | tier 3 mutants (m1 ≥ 50/55 with 0 unsound), tier 1 (0 unsound over 426 operations), AC-12.2's negative fixture |
 | an **unobserved** reset means nothing (state stays `TOP`) | 12.1.5 | AC-12.2's parameter-receiver fixture; tier 2b, where a fixture with no `setup()` in its source must produce no definite verdict |
 | A-CHANNELS, A-RESET-ONCE | 12.1.5 | tier 1 + tier 2b executed runs |
+| A-NO-REINTRODUCTION (round-1 O6) | 12.1.5 | tier 1 + tier 2b; and structurally, AC-12.1(iv), which asserts P5 selects exactly `{"setup"}` and not `{"setup", "load_state"}` |
+| A-EARLY-EXIT (round-1 O7) | 12.1.5 | tier 2b's `(operation, iteration)` comparison, in which an unvisited call site is not-reached by construction |
+| a `continue` in a body cannot corrupt a threaded state, because such a body is never unrolled | 12.2.3 cond. 4 | AC-12.6's seventh loop (`trip is None` despite a provable iterable); tier 2b's `continue` fixture, whose executed trace visits the loop but skips a listed operation |
 | a region's extent is what the extractor said it is | 12.2.2 | tier 2a's bytecode differential (an extractor-cause divergence fails the gate) |
 | a proved trip count is the real trip count | 12.2.3 | tier 2b: the executed iteration counter must equal the proved `trip` for every proved-trip fixture |
+| the executed side's `(method, lineno, visit)` really is the static side's `(method, span, iteration)` | 12.4.2 | AC-12.17(ii)'s totality-of-join assertion and (iii)'s loud duplicate-key failure — a mis-join shows up as an orphaned executed record, not as a silent agreement |
 | `min(trip, K)` unrolled iterations are real executions in order | 12.3.3 L1 | tier 2b's per-iteration ground truth |
 | the L2 fixpoint over-approximates the loop head | 12.3.3 L2 | tier 2b's `while` fixtures, plus AC-12.11's final-pass-only assertion |
 | a `BRANCH` join over-approximates both arms | 12.3.6 B1 | tier 2b's branch fixtures, both arms exercised by different deck seeds |
@@ -690,11 +875,13 @@ quietly routed around:
 
 | what could have been typed | what it is instead |
 |---|---|
-| a reset idiom template (`self.<a> = {k: C(…) for k in …}`) — a **sixth** HM-25 pattern against a `CAPPED (5)` ceiling | §12.1.2's two-conjunct whole-expression property over P1's existing class index and P4's existing `_classify_write`. Not a template; no `_measure_hm25` change |
+| a reset idiom template (`self.<a> = {k: C(…) for k in …}`) — a **sixth** HM-25 pattern against a `CAPPED (5)` ceiling | §12.1.2's three-conjunct whole-expression-plus-statement-position property over P1's existing class index and P4's existing `_classify_write`. Not a template; no `_measure_hm25` change |
 | "`wells()` returns `items_x × items_y` items" — a PLR API fact | **not adopted.** §12.2.3 proves trip counts from language semantics only; the `wells()` case is deferred (§12.11) precisely because adopting it needs a row |
 | `K` as a tuned per-method table | one module constant whose every value is sound (§12.3.5) |
 | a tool→PLR name map in the renderer | `PlanResult.kwargs`, the same dict `lower_calls` reads (§12.4.1) |
 | a well-ref name pattern for #4939 | the row's own **declared layout resource set** as the gate; the row/column shape reuses the regex already in `plr-sema/eval/tip_mutants.py:124` |
+| a list of "control-flow constructs that invalidate a trip proof" | §12.2.3 condition 4 tests for **one** node type, `Continue`, and it is a Python language construct, not a PLR idiom. `break`/`return`/`raise` need no entry on such a list either: they are handled by an *assumption* (`A-EARLY-EXIT`) plus an oracle exemption that already exists, not by a syntactic veto |
+| an instrumentation table mapping wrapped methods to graph operations | the executed side's own caller line, joined to `OperationNode.line_number`, which the extractor already populates (§12.4.2). No table, and the wrapped method set is the receiver class's contract keys — derived |
 
 **`REASON_VOCABULARY` (HM-14): unchanged at 8 of cap 12.** Nothing in this increment gives up at a new
 pipeline stage. A guard inside a region that the fixpoint left at `TOP` gives up at the *evaluation*
@@ -736,14 +923,19 @@ by a stub, the stub-defeating half is named.
 
 - **AC-12.1 (the reset rule is derived and published, not asserted).** Re-running `plr_sema.derive`
   emits `receiver_state["LiquidHandler"]["entry_reset"] == {"method": "setup", "post": "no_tip"}`, and
-  the gap ledger's `tip_state` block carries the same pair. Three sub-assertions, all mechanical: (i)
+  the gap ledger's `tip_state` block carries the same pair. Four sub-assertions, all mechanical: (i)
   the emitted value equals the above; (ii) an **AST literal scan** of `plr-sema/src/` — the mechanism
   AC-10.9 established, not a grep — finds no `ast.Constant` string equal to `"setup"`, `"head"` or
   `"TipTracker"`, so the method name is read from PLR and not typed; (iii) a synthetic class fixture
   with **two** qualifying reset methods produces **no** `entry_reset` and a ledger value of
   `"ambiguous"`, and one with a carry-over value expression (`{k: v for k, v in self.head.items()}`)
-  produces none either — the two fail-closed halves of §12.1.2, which a rule that matched only the
-  positive case would pass without.
+  produces none either — two of the three fail-closed halves of §12.1.2, which a rule that matched
+  only the positive case would pass without; (iv) **conjunct 3 is checked against real PLR, not a
+  synthetic fixture**: the set of `LiquidHandler` methods satisfying conjuncts 1 **and** 2 alone is
+  asserted to be exactly `{"setup", "load_state"}` — two members — and the set satisfying all three
+  exactly `{"setup"}`. Sub-assertion (iv) is the one that fails if conjunct 3 is dropped or weakened,
+  and it fails *loudly and in the right place*: without it the whole feature silently disables itself
+  at this pin (§12.1.2), which would look like a wiring bug rather than a rule defect.
 - **AC-12.2 (entry state fires only on an observed reset, both directions).** Three fixtures. (a)
   `setup_then_aspirate_graph.json` — `setup()` then `aspirate(use_channels=[0])` — yields exactly one
   `Finding` with `verdict is Verdict.WILL_FAIL` on the aspirate, `category == "precondition_state"`,
@@ -776,12 +968,17 @@ by a stub, the stub-defeating half is named.
   END`) and **zero** synthetic wraps, i.e. no `WIDEN has_loops` / `WIDEN has_conditionals` instruction.
   `has_loops`/`has_conditionals` remain `True`.
 - **AC-12.6 (proved trip counts are exhaustive over three sources and `null` everywhere else).** A
-  fixture protocol with six loops — `range(3)`, `range(2, 10, 2)`, `[a, b, c]` with unresolvable
-  elements, `range(plate.items_x)` on a resource whose `ResourceNode` carries `items_x == 12`,
-  `plate.wells()`, and a `while` — lowers to `trip` values `3, 4, 3, 12, None, None` in that order. A
-  seventh loop, `range(0)`, lowers to `trip == 0` and contributes **zero** findings and no state
-  change. The `wells()` and `while` entries are the stub-defeating half: a rule that guesses a count
-  fails them.
+  fixture protocol with seven loops — `range(3)`; `range(2, 10, 2)`; `[a, b, c]` with unresolvable
+  elements; `range(plate.items_x)` on a resource whose `ResourceNode` carries `items_x == 12`;
+  `plate.wells()`; a `while`; and `for i in range(4)` whose body contains a `continue` nested inside
+  an `if` — lowers to `trip` values `3, 4, 3, 12, None, None, None` in that order. The last three are
+  the stub-defeating half: a rule that guesses a count fails `wells()` and the `while`, and a rule
+  that reads only the iterable fails the `continue` loop, whose iterable alone proves `4`
+  (round-1 O7). An eighth loop, `range(0)`, containing a real `pick_up_tips(use_channels=[0])`, lowers
+  to `trip == 0` and contributes **zero** findings and no state change — **and its body operation is
+  excluded from `OBLIGED(graph)` by §12.3.4's `nested_in_dead_region` clause**, so AC-6.4(amended),
+  AC-7.2 and AC-12.13 are satisfied on this fixture rather than contradicted by it (round-1 O2). The
+  body must be non-empty or the "zero findings" assertion is vacuous.
 - **AC-12.7 (nesting and `elif` chains are structural and well-formed).** A fixture with a `for`
   containing an `if`/`elif`/`else`, itself containing a `while`, lowers to a balanced stream —
   `LOOP` → `BRANCH` → `ELSE` → nested `BRANCH` → `ELSE` → `LOOP` → matched `END`s — with `ELSE` only
@@ -818,19 +1015,32 @@ by a stub, the stub-defeating half is named.
   receiver in the region reads `TOP` immediately after the region's `END` — asserted through a
   following `aspirate` on the same receiver yielding `channel_state_unknown` rather than a definite
   verdict.
-- **AC-12.13 (totality and the relabel under unrolling).** For the AC-12.10 fixture and for every
-  region fixture: every `CALL` pc visited by `check_ir` receives ≥ 1 `Finding` and no non-`CALL` pc
-  receives any; `sideband.origin` restricted to `CALL` pcs is a **function onto** `{op.id for op in
-  graph.operations if op.node_type is not GraphNodeType.REGION}`; after relabelling,
-  `{f.operation_id}` equals that same set (main spec AC-6.4 as amended, §12.3.4); and `len(findings)
-  >= len([op for op in graph.operations if op.node_type is not GraphNodeType.REGION])`.
-- **AC-12.14 (regions widen-or-join, and never construct `SAFE` without an evaluated guard).** Three
-  assertions on one branch fixture whose true arm picks up and whose false arm does not: (i) a guard
-  inside the true arm evaluates against the true arm's own state and can be `SAFE`; (ii) an operation
-  **after** the region reads the join and yields `channel_state_unknown`, not `SAFE`; (iii) over all
-  region fixtures, every `Finding` whose `verdict is Verdict.SAFE` carries a non-empty `detail`
-  equal to a guard `condition` present in the contract table — the mechanical form of §0's "no `SAFE`
-  constructed without an evaluated guard".
+- **AC-12.13 (totality and the relabel under unrolling).** For the AC-12.10 fixture, for AC-12.6's
+  eighth (`range(0)`) loop, and for every region fixture: every `CALL` pc **visited** by `check_ir`
+  receives ≥ 1 `Finding` and no non-`CALL` pc receives any; `sideband.origin` restricted to `CALL` pcs
+  is a **function onto** `OBLIGED(graph)` as §12.3.4 defines it; after relabelling, `{f.operation_id}`
+  equals `OBLIGED(graph)` (main spec AC-6.4 as amended); and `len(findings) >= len(OBLIGED(graph))`.
+  A second assertion pins the carve-out from the other side, so that it cannot be widened silently:
+  `OBLIGED(graph)` differs from `{op.id for op in graph.operations if op.node_type is not
+  GraphNodeType.REGION}` on **exactly** the body operations of proved-`trip == 0` regions, and on the
+  AC-12.10 fixture — which has no dead region — the two sets are **equal**.
+- **AC-12.14 (regions widen-or-join, never construct `SAFE` without an evaluated guard, and never
+  widen a call that owns no region).** Four assertions. On one branch fixture whose true arm picks up
+  and whose false arm does not: (i) a guard inside the true arm evaluates against the true arm's own
+  state and can be `SAFE`; (ii) an operation **after** the region reads the join and yields
+  `channel_state_unknown`, not `SAFE`. Over all region fixtures: (iii) every `Finding` whose
+  `verdict is Verdict.SAFE` carries a non-empty `detail` equal to a guard `condition` present in the
+  contract table — the mechanical form of §0's "no `SAFE` constructed without an evaluated guard".
+  And, on a dedicated fixture `call_before_unowned_region_graph.json` (round-1 O3): (iv) in a graph
+  whose operations are `setup()`, then `pick_up_tips(use_channels=[0])`, then a region header the
+  `pick_up_tips` does not own and whose body touches a *different* receiver, the `pick_up_tips`
+  operation's own guard is evaluated against its **real pre-call state** — `default == NO_TIP` from
+  the reset — and yields exactly one `Verdict.SAFE` finding sited at
+  `PlrSite("external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py", 535,
+  "LiquidHandler.pick_up_tips")`, with **no** `channel_state_unknown` for that operation. The reset
+  sits at the top of the graph and **not** adjacent to the region, which is the whole point:
+  adjacency is what masked the defect in AC-12.10's fixture (§12.3.3), so a fixture that reproduces
+  that adjacency would pass with the stale compensation still in place.
 - **AC-12.15 (tier 2a — the two lowerings agree, and the reset agrees too).** Over every executed
   tier-1 row: **zero** extractor-cause bytecode divergences; the renderer-cause count published; and,
   directionally, for at least one row the tier-2 stream's first `CALL` has `method == "setup"` and its
@@ -840,11 +1050,22 @@ by a stub, the stub-defeating half is named.
   is invoked as a subprocess; `tests/test_import_boundary.py` passes unmodified; and an AST import
   scan of `plr-sema/src/` and `plr-sema/eval/` finds no `import praxis` outside the subprocess
   argument list.
-- **AC-12.17 (tier 2b — executed ground truth for regions).** Over the authored region fixtures:
-  **zero** unsound rows under the plan's own contract, with the comparison keyed on `(operation,
-  iteration)` rather than operation alone; and **at least one** fixture in each of the three shapes
-  (`for`, `while`, `if`) carries a static `WILL_FAIL` at the `(operation, iteration)` the execution
-  raised. For every proved-`trip` fixture, the executed iteration count equals the proved `trip`.
+- **AC-12.17 (tier 2b — executed ground truth for regions, produced by a named recorder).** Over the
+  authored region fixtures: **zero** unsound rows under the plan's own contract, with the comparison
+  keyed on `(operation, iteration)` rather than operation alone; and **at least one** fixture in each
+  of the three shapes (`for`, `while`, `if`) carries a static `WILL_FAIL` at the `(operation,
+  iteration)` the execution raised. For every proved-`trip` fixture, the executed iteration count
+  equals the proved `trip`. Four sub-assertions pin the producer, because round 1 (O1) found the draft
+  naming one that cannot run on this execution path: (i) the executed side's records come from the
+  **instance-level method wrapper** of §12.4.2, and `verifier.plan_call` is **never invoked** during a
+  region-fixture run — asserted by leaving `recording_plan_call`
+  (`plr-sema/eval/oracle_common.py:144-153`) installed and requiring its `planned` list to stay empty;
+  (ii) every executed record's `lineno` is a key of the static side's `sideband["span"]`, so the join
+  is total and no executed call site is orphaned; (iii) registering a duplicate `(method_name,
+  lineno)` raises rather than overwriting, tested with a deliberately malformed fixture; (iv) the
+  wrapper is removed on teardown and the class object is unmodified, tested by asserting the unbound
+  method is the original after the run. (i) is the stub-defeating half: it fails for any
+  implementation that quietly falls back to tier 1's recorder.
 - **AC-12.18 (the run is bathos-tracked and its schema is complete).**
   `plr-sema/eval/tier2_extractor.bth.toml` validates, its `[result_schema]` names every field §12.4.4
   lists, and the harness writes a result carrying all of them — including `region_will_fail_fired`,
@@ -873,28 +1094,35 @@ can land first.
 
 | task | scope | files | gate | ~LOC | depends on | model |
 |---|---|---|---|---|---|---|
-| **#4939** | Loader-only well-ref normalisation (§12.4.3): `<base>_<Row><Col>` → `<base>.<Row><Col>` iff `<base>` is a declared layout resource of that row; `rows_normalised` added to the replay report next to `rows_parse_error`. Corpus files and `training/verify/grounding.py` untouched, asserted by a byte-identity test | modify `plr-sema/eval/oracle_common.py`, `plr-sema/eval/oracle_replay.py`, `plr-sema/tests/test_oracle_replay.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_oracle_replay.py -q`; then `uv run python plr-sema/eval/oracle_replay.py --corpus training/assemble/out/corpus_p25.jsonl --contracts plr-sema/data/derived_contracts.json --report /tmp/replay_4939.json` and publish `rows_normalised` — satisfying **AC-12.19** | ~90 | — | Haiku |
-| **#4938** | The derived reset effect, in this order: (1) P5 in `derive/receiver_state.py` — the two-conjunct whole-expression rule + `constructor_state(C)` via the existing `_classify_write`, both fail-closed cases; (2) `ReceiverState.entry_reset` + `receiver_state_to_json` key + the ledger's `entry_reset` value in `derive/__main__.py`; (3) E6 in `check/tipstate.py` and its wiring in `check/__init__.py`; (4) `plr-sema/eval/` prepends the scaffolding reset call to `lower_calls`' input with `origin == "setup"`; (5) two new graph fixtures + the two fail-closed derivation fixtures + the AST literal scan; (6) artifact regenerated | create `plr-sema/tests/fixtures/{setup_then_aspirate,aspirate_no_setup}_graph.json`; modify `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/src/plr_sema/derive/__main__.py`, `plr-sema/src/plr_sema/check/tipstate.py`, `plr-sema/src/plr_sema/check/__init__.py`, `plr-sema/eval/oracle_common.py`, `plr-sema/eval/tip_mutants.py`, `plr-sema/tests/test_{derive,tip_typestate,check_graph}.py`, `plr-sema/data/derived_contracts.json` (regenerated) | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_derive.py -q`; `uv run pytest plr-sema/tests/test_tip_typestate.py -q`; `uv run pytest plr-sema/tests/test_check_graph.py -q`; then `uv run python -m plr_sema.derive --survey-json training/verify/data/plr_preconditions.json --taxonomy-json training/verify/data/plr_exception_taxonomy.json --out plr-sema/data/derived_contracts.json --gap-ledger plr-sema/data/gap_ledger.json`; then `uv run python plr-sema/eval/tip_mutants.py --corpus training/assemble/out/corpus_p25.jsonl --examples-dir training/examples --contracts plr-sema/data/derived_contracts.json --report /tmp/tip_mutants_4938.json` and `uv run python plr-sema/eval/oracle_replay.py --corpus training/assemble/out/corpus_p25.jsonl --contracts plr-sema/data/derived_contracts.json --report /tmp/replay_4938.json` — satisfying **AC-12.1**, **AC-12.2**, **AC-12.3**, **AC-12.4** | ~420 | #4939 (so the replay baseline is the post-normalisation one) | Sonnet — the derivation is diagnostic and the m1 number is a measurement, not a mechanical edit |
-| **#4932** | Praxis-side region emission (§12.2): `GraphNodeType.REGION`; region-header `OperationNode`s from `visit_For`/`visit_While`/`visit_If` with body ids collected and not re-emitted at top level; proved trip counts from the three language-semantics sources only; `elif` as a nested header; `self.<attr>` `ResourceNode` registration; consumer side — `lower_graph` emits no `CALL` for a `REGION` header, skips the `node_type` cross-check for one, resolves `self.<attr>` bases in the value grammar, and bumps `IR_VERSION` 1 → 2 | modify `praxis/backend/utils/plr_static_analysis/models.py`, `praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py`, `plr-sema/src/plr_sema/check/ir.py`, `tests/utils/test_computation_graph.py`, `plr-sema/tests/test_ir.py` | `uv sync --all-packages`; `uv run pytest tests/utils/test_computation_graph.py -q`; `uv run pytest plr-sema/tests/test_ir.py -q` — satisfying **AC-12.5**, **AC-12.6**, **AC-12.7**, **AC-12.8**, **AC-12.9** | ~520 | — | Sonnet — the region/execution-order restructure is diagnostic, and AC-12.9 is a non-regression judgement over a 515-line existing test file |
-| **T20** | Region semantics in the checker (§12.3): L1 bounded unroll with the tail widen at `K = 8`; L2 fixpoint with final-pass-only emission and a `K`-pass hard cap; L3 restricting the blanket entry-widen to synthetic regions; B1 arm-wise branch walk with `⊔` at the merge, B3 keeping today's behaviour for a synthetic branch; iteration index into `Finding.detail`; AC-11.7's bijection clause and main spec AC-6.4 amended in the same commit | modify `plr-sema/src/plr_sema/check/__init__.py`, `plr-sema/src/plr_sema/check/tipstate.py`; create `plr-sema/tests/fixtures/{loop_double_pickup,while_alternating,branch_join,trip_20}_graph.json`; modify `plr-sema/tests/test_{ir,tip_typestate,check_graph}.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_tip_typestate.py -q`; `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_wire_fuzz.py -q` — satisfying **AC-12.10**, **AC-12.11**, **AC-12.12**, **AC-12.13**, **AC-12.14** | ~380 | #4932, #4938 | Sonnet — the fixpoint's final-pass-only rule is the one place a plausible implementation is unsound |
-| **#4880** | Tier 2a (§12.4.1): the source renderer over `PlanResult.kwargs` with resources as typed parameters; `plr-sema/eval/extract_runner.py` as an out-of-process runner keyed by source digest; the bytecode differential against tier 1 with divergences classified into extractor / renderer / grammar / reset causes and counted | create `plr-sema/eval/extract_runner.py`, `plr-sema/eval/tier2_extractor.py`, `plr-sema/eval/render_protocol.py`; modify `plr-sema/eval/oracle_common.py`, `plr-sema/tests/test_oracle_replay.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_oracle_replay.py -q`; `uv run pytest plr-sema/tests/test_import_boundary.py -q`; then `uv run python plr-sema/eval/tier2_extractor.py --corpus training/assemble/out/corpus_p25.jsonl --contracts plr-sema/data/derived_contracts.json --report /tmp/tier2a.json` — satisfying **AC-12.15**, **AC-12.16** | ~430 | #4932, #4938 | Sonnet — divergence classification is diagnostic |
-| **T21** | Tier 2b (§12.4.2): authored region source fixtures with both tip outcomes across `for`/`while`/`if`/nesting; execution against `build_setup`'s chatterbox deck under the verifier's STRICT + tracker configuration, recording `(operation, iteration)` per raise; static side through the same runner; `(operation, iteration)`-keyed comparison; the bathos sidecar and its result schema | create `plr-sema/eval/fixtures/regions/*.py`, `plr-sema/eval/region_oracle.py`, `plr-sema/eval/tier2_extractor.bth.toml`; modify `plr-sema/eval/oracle_common.py`, `plr-sema/tests/test_oracle_replay.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_oracle_replay.py -q`; then `uv run python plr-sema/eval/region_oracle.py --fixtures plr-sema/eval/fixtures/regions --contracts plr-sema/data/derived_contracts.json --report /tmp/tier2b.json` — satisfying **AC-12.17**, **AC-12.18** | ~460 | T20, #4880 | Sonnet — this is the increment's only executed soundness evidence for regions |
+| **#4939** | Loader-only well-ref normalisation (§12.4.3): `<base>_<Row><Col>` → `<base>.<Row><Col>` iff `<base>` is a declared layout resource of that row; `rows_normalised` added to the replay report next to `rows_parse_error`. Corpus files and `training/verify/grounding.py` untouched, asserted by a byte-identity test | modify `plr-sema/eval/oracle_common.py`, `plr-sema/eval/oracle_replay.py`, `plr-sema/tests/test_oracle_replay.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_oracle_replay.py -q`; then `uv run python plr-sema/eval/oracle_replay.py --corpus training/assemble/out/corpus_p25.jsonl --contracts plr-sema/data/derived_contracts.json --report $TMPDIR/replay_4939.json` and publish `rows_normalised` — satisfying **AC-12.19** | ~90 | — | Haiku |
+| **#4938** | The derived reset effect, in this order: (1) P5 in `derive/receiver_state.py` — the **three**-conjunct rule (fresh-only construction, no carry-over, **unconditional statement position**) + `constructor_state(C)` via the existing `_classify_write`, plus both fail-closed cases; (2) `ReceiverState.entry_reset` + `receiver_state_to_json` key + the ledger's `entry_reset` value in `derive/__main__.py`; (3) E6 in `check/tipstate.py` and its wiring in `check/__init__.py`; (4) `plr-sema/eval/` prepends the scaffolding reset call to `lower_calls`' input with `origin == "setup"`; (5) two new graph fixtures + the two fail-closed derivation fixtures + the AST literal scan + **AC-12.1(iv)'s real-PLR selection check, which must show conjuncts 1–2 alone selecting two methods and all three selecting one (round-1 remediation)**; (6) artifact regenerated | create `plr-sema/tests/fixtures/{setup_then_aspirate,aspirate_no_setup}_graph.json`; modify `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/src/plr_sema/derive/__main__.py`, `plr-sema/src/plr_sema/check/tipstate.py`, `plr-sema/src/plr_sema/check/__init__.py`, `plr-sema/eval/oracle_common.py`, `plr-sema/eval/tip_mutants.py`, `plr-sema/tests/test_{derive,tip_typestate,check_graph}.py`, `plr-sema/data/derived_contracts.json` (regenerated) | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_derive.py -q`; `uv run pytest plr-sema/tests/test_tip_typestate.py -q`; `uv run pytest plr-sema/tests/test_check_graph.py -q`; then `uv run python -m plr_sema.derive --survey-json training/verify/data/plr_preconditions.json --taxonomy-json training/verify/data/plr_exception_taxonomy.json --out plr-sema/data/derived_contracts.json --gap-ledger plr-sema/data/gap_ledger.json`; then `uv run python plr-sema/eval/tip_mutants.py --corpus training/assemble/out/corpus_p25.jsonl --examples-dir training/examples --contracts plr-sema/data/derived_contracts.json --report $TMPDIR/tip_mutants_4938.json` and `uv run python plr-sema/eval/oracle_replay.py --corpus training/assemble/out/corpus_p25.jsonl --contracts plr-sema/data/derived_contracts.json --report $TMPDIR/replay_4938.json` — satisfying **AC-12.1**, **AC-12.2**, **AC-12.3**, **AC-12.4** | ~420 | #4939 (so the replay baseline is the post-normalisation one) | Sonnet — the derivation is diagnostic and the m1 number is a measurement, not a mechanical edit |
+| **#4932** | Praxis-side region emission (§12.2): `GraphNodeType.REGION`; region-header `OperationNode`s from `visit_For`/`visit_While`/`visit_If` with body ids collected and not re-emitted at top level — **note that this restructures the visitor from a flat single-pass traversal (where `visit_Call` appends unconditionally to `_execution_order`) into a body-accumulator, stack-scoped one pushed and popped around each region body; that traversal-shape change, not the trip-count arithmetic, is this estimate's largest risk (round-1 O4)**; proved trip counts from the three language-semantics sources only, withdrawn by a `Continue` anywhere in the body; `elif` as a nested header; `self.<attr>` `ResourceNode` registration; consumer side — `lower_graph` emits no `CALL` for a `REGION` header, skips the `node_type` cross-check for one, resolves `self.<attr>` bases in the value grammar, and bumps `IR_VERSION` 1 → 2 | modify `praxis/backend/utils/plr_static_analysis/models.py`, `praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py`, `plr-sema/src/plr_sema/check/ir.py`, `tests/utils/test_computation_graph.py`, `plr-sema/tests/test_ir.py` | `uv sync --all-packages`; `uv run pytest tests/utils/test_computation_graph.py -q`; `uv run pytest plr-sema/tests/test_ir.py -q` — satisfying **AC-12.5**, **AC-12.6**, **AC-12.7**, **AC-12.8**, **AC-12.9** | ~520 | — | Sonnet — the region/execution-order restructure is diagnostic, and AC-12.9 is a non-regression judgement over a 515-line existing test file |
+| **T20** | Region semantics in the checker (§12.3): L1 bounded unroll with the tail widen at `K = 8`; L2 fixpoint with final-pass-only emission and a `K`-pass hard cap; L3 restricting the blanket entry-widen to synthetic regions **and retiring the stale increment-2 compensation at `plr-sema/src/plr_sema/check/__init__.py:462-478`, whose "CALL immediately followed by a region open ⇒ widen own receiver" predicate stops identifying a region owner once headers are real (round-1 O3)**; B1 arm-wise branch walk with `⊔` at the merge, B3 keeping today's behaviour for a synthetic branch; iteration index into `Finding.detail`; `OBLIGED(graph)` (§12.3.4) implemented once and used by the relabel, AC-11.7's bijection clause and main spec AC-6.4, all amended in the same commit | modify `plr-sema/src/plr_sema/check/__init__.py`, `plr-sema/src/plr_sema/check/tipstate.py`; create `plr-sema/tests/fixtures/{loop_double_pickup,while_alternating,branch_join,trip_20,call_before_unowned_region,dead_loop_body}_graph.json`; modify `plr-sema/tests/test_{ir,tip_typestate,check_graph}.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_tip_typestate.py -q`; `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_wire_fuzz.py -q` — satisfying **AC-12.10**, **AC-12.11**, **AC-12.12**, **AC-12.13**, **AC-12.14** | ~380 | #4932, #4938 | Sonnet — the fixpoint's final-pass-only rule is the one place a plausible implementation is unsound |
+| **#4880** | Tier 2a (§12.4.1): the source renderer over `PlanResult.kwargs` with resources as typed parameters; `plr-sema/eval/extract_runner.py` as an out-of-process runner keyed by source digest; the bytecode differential against tier 1 with divergences classified into extractor / renderer / grammar / reset causes and counted | create `plr-sema/eval/extract_runner.py`, `plr-sema/eval/tier2_extractor.py`, `plr-sema/eval/render_protocol.py`; modify `plr-sema/eval/oracle_common.py`, `plr-sema/tests/test_oracle_replay.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_oracle_replay.py -q`; `uv run pytest plr-sema/tests/test_import_boundary.py -q`; then `uv run python plr-sema/eval/tier2_extractor.py --corpus training/assemble/out/corpus_p25.jsonl --contracts plr-sema/data/derived_contracts.json --report $TMPDIR/tier2a.json` — satisfying **AC-12.15**, **AC-12.16** | ~430 | #4932, #4938 | Sonnet — divergence classification is diagnostic |
+| **T21** | Tier 2b (§12.4.2): (1) **the recorder** — an instance-level `async functools.wraps` shim over the tool methods of the `setup.machine` object `build_setup` returns, with a `sys._getframe(1).f_lineno` call-site key, a monotonic `dict[(method_name, lineno), int]` visit counter, loud failure on a duplicate registration, and teardown that leaves the class untouched; **not** `plan_call`, which cannot fire on this execution path (round-1 O1); (2) authored region source fixtures with both tip outcomes across `for`/`while`/`if`/nesting, plus one `continue` body and one `break` body (the §12.2.3 condition-4 and `A-EARLY-EXIT` cases), all honouring the one-call-site-per-method-per-body constraint the join needs; (3) execution against the chatterbox deck under the verifier's STRICT + tracker configuration; (4) static side through §12.4.1's runner; (5) the `(operation, iteration)`-keyed comparison, joining executed `lineno` to `sideband["span"]` and thence to `sideband["origin"]`, and marking call sites skipped by `break`/`return`/`raise` as not-reached (§12.2.3); (6) the bathos sidecar and its result schema | create `plr-sema/eval/fixtures/regions/*.py`, `plr-sema/eval/region_recorder.py`, `plr-sema/eval/region_oracle.py`, `plr-sema/eval/tier2_extractor.bth.toml`; modify `plr-sema/eval/oracle_common.py`, `plr-sema/tests/test_oracle_replay.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_oracle_replay.py -q`; then `uv run python plr-sema/eval/region_oracle.py --fixtures plr-sema/eval/fixtures/regions --contracts plr-sema/data/derived_contracts.json --report $TMPDIR/tier2b.json` — satisfying **AC-12.17**, **AC-12.18** | ~490 | T20, #4880 | Sonnet — this is the increment's only executed soundness evidence for regions |
 | **T22** | Lint and index: add `SPEC_INCREMENT_3` to `plr-sema/tests/test_spec_lint.py`'s two parametrised live-spec tests; regenerate `.praxia/docs/INDEX.md` | modify `plr-sema/tests/test_spec_lint.py`; regenerate `.praxia/docs/INDEX.md` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_spec_lint.py -q` — satisfying **AC-12.20** | ~15 | — | Haiku |
 
-**Honest sizing note.** #4932 (~520) and T21 (~460) are both past the upper edge of one session. #4932
+**Honest sizing note.** #4932 (~520) and T21 (~490) are both past the upper edge of one session. #4932
 splits cleanly at the producer/consumer seam — the praxis-side emission plus its own tests leaves the
 tree green on its own, because `lower_graph` already consumes the fields and the synthetic wrap
 already stops firing when real regions appear; the consumer-side `REGION` handling and the
-`IR_VERSION` bump are the second half. **Do not split T21 between the fixtures and the comparison:** a
-fixture set with no executed comparison is exactly the fixture-only evidence this increment exists to
-replace. Do not split T20 between L1 and L2 either — an unroll with no fallback silently changes
+`IR_VERSION` bump are the second half. Its ~520 is the least trustworthy number on this table, for the
+reason its own row now names: the visitor's flat-to-stack-scoped restructuring is a traversal-shape
+change, and the round-1 draft's framing of #4932 as "a producer for a consumer that already exists"
+was accurate about `lower_graph` and understated the producer. **Do not split T21 between the
+recorder and the comparison, or between the fixtures and the comparison:** a recorder with nothing to
+compare, or a fixture set with no executed comparison, is exactly the fixture-only evidence this
+increment exists to replace. T21's estimate moved ~460 → ~490 in round-1 remediation — the
+instance-wrapping recorder is *smaller* than extending `plan_call` would have been, but the draft's
+~460 was sized against a mechanism that cannot run at all (O1), so the number is re-derived rather
+than adjusted. Do not split T20 between L1 and L2 either — an unroll with no fallback silently changes
 `while` behaviour with no test covering it.
 
 ---
 
 ## 12.9 What this changes in increments 1 and 2
 
-Six normative amendments, listed so a reader of the earlier documents is not misled by text this one
+Seven normative amendments, listed so a reader of the earlier documents is not misled by text this one
 supersedes. None changes either increment's *design*.
 
 **In `260902_plr-sema-tip-typestate-increment.md` (spec_version 9):**
@@ -909,10 +1137,19 @@ supersedes. None changes either increment's *design*.
    synthetic-region widen correct; what changes is that widening is no longer the *only* thing a loop
    does. §10.5's own 260902 paragraph, which relocated rule 2 to SEMA-IR region entry, is likewise
    narrowed to synthetic regions.
+3. **§10.6.3's A-COMPLETES is generalised from "did not raise" to "was reached" (round-1 O7).** Its
+   text — *"each operation preceding the one being checked completed without raising"* — is about
+   exceptions only, and unrolling introduces two other ways for a listed body operation not to run:
+   `break`/`return` terminate the region, and `continue` skips the rest of an iteration. The
+   generalised form reads *"each operation preceding the pc being checked was reached and completed —
+   control did not exit early via `break`, `return` or `raise` before that pc"*, and is recorded as
+   `A-EARLY-EXIT` in §12.1.5's own table. `continue` is deliberately **not** folded into it: it does
+   not terminate anything, so no reachability assumption discharges it, and §12.2.3's fourth
+   trip-proof condition withdraws the proof instead.
 
 **In `260902_plr-sema-ir-bytecode-increment.md` (spec_version 10):**
 
-3. **§11.4.1's synthetic whole-stream wrap becomes the fallback, not the real-data mechanism.** It
+4. **§11.4.1's synthetic whole-stream wrap becomes the fallback, not the real-data mechanism.** It
    fires only when `has_loops`/`has_conditionals` is set and no real region was emitted — which after
    #4932 means the constructs §12.2.4 leaves out of scope (`for`/`else`, `try`), not every loop. Its
    three load-bearing properties stand; property 3's *"a later extractor that emits real regions
@@ -921,7 +1158,7 @@ supersedes. None changes either increment's *design*.
    cross-check is skipped for `REGION` nodes (§12.2.2). The disposition table's *key set* is unchanged,
    so AC-11.1 is unaffected; AC-11.2's `I` half gains one field.
 5. **AC-11.7's bijection clause and AC-11.11/AC-11.13's scope qualifiers.** The bijection becomes a
-   function onto the call-bearing operation ids (§12.3.4) — the generalisation §11.12's Q1 costed and
+   function onto `OBLIGED(graph)` (§12.3.4) — the generalisation §11.12's Q1 costed and
    deferred, now forced by unrolling. The *"fixture-only, zero soundness claim over real corpus or
    graph data"* qualifiers on AC-11.11 and AC-11.13 are **deleted**, not reworded, once T21's executed
    region fixtures pass — which is the condition §11.11's named blocking follow-up set for exactly this
@@ -930,9 +1167,10 @@ supersedes. None changes either increment's *design*.
    `lower_graph` **grammar** cause closed by §12.2.5 and a new **reset** cause added; the renderer
    residual is retained, measured and explicitly not gated.
 
-**And in the main spec:** AC-6.4's set equality is re-read over call-bearing operations (§12.3.4), and
-§Deferred row (d)'s escape-hatch clause about `items_x`×`items_y` giving proved trip counts is now
-*partly* exercised — `range(<resource>.items_x)` is consumed, `wells()` is not (§12.11).
+**And in the main spec:** AC-6.4's set equality and AC-7.2's totality are both re-read over
+`OBLIGED(graph)` — call-bearing operations, minus the bodies of proved-`trip == 0` regions (§12.3.4)
+— and §Deferred row (d)'s escape-hatch clause about `items_x`×`items_y` giving proved trip counts is
+now *partly* exercised — `range(<resource>.items_x)` is consumed, `wells()` is not (§12.11).
 
 ---
 
@@ -970,6 +1208,20 @@ supersedes. None changes either increment's *design*.
 - **Incremental re-check (#4923).** Unrolling makes the per-`pc` memo point non-unique — a `pc` inside
   an unrolled region has one prefix hash per iteration — which #4923 will have to handle. Named here so
   it is not discovered there; not specified.
+- **Arm-scoping the extractor's `_active_states` (round-1 O4, second half).** `visit_Call` mutates a
+  flat `self._active_states` set — adding `"tips_loaded"` on a tip-loading method, discarding it on a
+  tip-dropping one, and auto-satisfying `TIPS_LOADED` preconditions from it
+  (`praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py:479-491`) — with
+  no snapshot/restore around branch arms. Once #4932 actually visits both arms of a conditional in one
+  stateful pass, a true arm's `pick_up_tips` leaks `"tips_loaded"` into the false arm's precondition
+  computation, even though the two arms are mutually exclusive at runtime. **This increment does not
+  fix it, and provably cannot regress because of it:** `preconditions` and `creates_state` are the two
+  `X`-dispositioned `OperationNode` fields (`plr-sema/src/plr_sema/check/ir.py:272-288`), so
+  `check_ir` never reads either — that exclusion is what AC-11.14 pins by identity, and it is why the
+  leak cannot reach a verdict. It does corrupt the extractor's own hand-written precondition fields,
+  which are §8's *comparison target*, so it must be fixed before §8's differential is ever read as
+  evidence. The fix is a snapshot/restore of `_active_states` around each arm, and it belongs with
+  whoever next touches §8, not here.
 - **The error-recovery interpreter (#4924).** Unchanged.
 - **A `pred`-aware `BRANCH`.** §12.3.6's B2. The natural next increment, since `condition_expr` now
   actually arrives populated; deferred item (c) still governs.
@@ -992,14 +1244,30 @@ supersedes. None changes either increment's *design*.
 Six, and the first three are the ones where a design was chosen over a live alternative rather than
 found.
 
-1. **§12.1.2's template-free reset rule.** The rule is stated as a two-conjunct whole-expression
+**Post-round-1 status.** Round 1 (challenger `260903_plr-sema-real-programs-round1-challenger.md`,
+defender `260903_plr-sema-real-programs-round1-defender.md`) adjudicated all six. **Q2** (the
+`wells()` line) and **Q3** (unroll + fixpoint, `K = 8`) are **non-issues by agreement of both sides**
+and are kept below as the record of why. **Q5** is **resolved by O5** — §12.2.2 now argues why
+`REGION` is not `FOREACH`/`CONDITIONAL`, which was the precondition the round set on adjudicating the
+registry-row half; the registry-row question itself is carried forward unresolved. **Q6** is
+**agreed** (the conservative "no"). **Q1 is sharpened rather than closed** — round 1 called the rule
+sound for its stated target, and the remediation then found `load_state`, a live near-miss that forced
+a third conjunct (§12.1.2); the question is now about the discriminator, not about existence.
+**Q4 was ruled moot until O1 was resolved and is now live again**, since the executed side finally has
+a producer to compare an iteration index against.
+
+1. **§12.1.2's template-free reset rule.** The rule is stated as a three-conjunct whole-expression
    property rather than as a `DictComp` template, and §12.6 says plainly that the reason is HM-25's
-   zero headroom. Two things a challenger should press on. (a) Is the formulation actually *sound*, or
-   merely *cheaper*? It **sharpens** `TOP → NO_TIP`, so unlike a widening rule it is not free, and its
-   correctness rests entirely on the no-carry-over conjunct. Is there a PLR-shaped expression that
-   satisfies both conjuncts and yet leaves a tracker holding a tip? (b) If the answer is yes, the
-   remedy is the template plus a sixth HM-25 pattern plus a cap conversation — and the document should
-   say so rather than defending the cheaper rule.
+   zero headroom. It **sharpens** `TOP → NO_TIP`, so unlike a widening rule it is not free.
+   **Round 1 adjudicated this "sound for its stated target"** — `TipTracker.__init__` sets both state
+   fields to `None` regardless of arguments, so fresh-only construction always yields `NO_TIP` — but
+   the remediation then found a live near-miss the round did not: `LiquidHandler.load_state` satisfies
+   conjuncts 1 and 2 and was excluded only by the newly added conjunct 3. That is one near-miss found
+   in one pass over one class, so the question a round 2 should press is **not** the original "is
+   there such an expression?" but the sharper: **how many more are there, and is statement-position
+   the right discriminator or merely the one that separated the two cases we happen to have?** If a
+   second discriminator is needed, the remedy is the template plus a sixth HM-25 pattern plus a cap
+   conversation, and the document should say so rather than defending the cheaper rule.
 2. **§12.2.3's three proof sources, and the `wells()` line.** `range(plate.items_x)` is proved and `for
    w in plate.wells()` is not, on the grounds that the first is language semantics over a field the
    graph carries and the second is a PLR API fact. A reviewer may think that line is drawn in the wrong
@@ -1059,6 +1327,14 @@ found.
   `.praxia/docs/audits/260902_plr-sema-ir-round1-challenger.md` (O1 is the origin of #4932's region
   emission and of the false-`SAFE` loop counterexample §12.3.2 answers; O4 is the origin of §12.2.5's
   `self.<attr>` registration) and `.praxia/docs/audits/260902_plr-sema-ir-round1-defender.md`.
+- **Adversarial round 1 on *this* increment:**
+  `.praxia/docs/audits/260903_plr-sema-real-programs-round1-challenger.md` (O1–O6, plus the
+  orchestrator's O7 addendum) and
+  `.praxia/docs/audits/260903_plr-sema-real-programs-round1-defender.md` (per-objection verdicts —
+  O1/O2/O3/O6 CONCEDE, O4 and O5 PARTIAL, O7 CONCEDE for `continue` and PARTIAL for
+  `break`/`return`/`raise` — a severity table, and an eight-item ordered remediation list). The
+  defender's list is the remediation contract; the changelog below maps each item to the text that
+  changed, and records the one correction found while applying it that neither report raised.
 - Backlog: `#4938` (derived `setup()` head-reset), `#4932` (extractor regions), `#4880` (tier 2),
   `#4939` (loader well-ref normalisation); deferred hooks `#4922`/`#4923`/`#4924`; `#4881` (tier-3
   mutants, the gate AC-12.4 moves).
@@ -1071,7 +1347,10 @@ found.
   `plr-sema/scripts/check_spec_crossrefs.py`;
   `praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py`;
   `praxis/backend/utils/plr_static_analysis/models.py`; `tests/utils/test_computation_graph.py`;
-  `training/verify/verifier.py`; `training/verify/deck.py`.
+  `training/verify/verifier.py`; `training/verify/deck.py`. Additionally read during round-1
+  remediation: `training/verify/dispatcher.py`; `plr-sema/tests/fixtures/branchy_graph.json`;
+  `external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py` (`load_state`) and
+  `external/pylabrobot/pylabrobot/resources/tip_tracker.py` (`load_state`).
 - Data read: `outputs/plr-sema/oracle_replay_260902.json` — the tier-1 numbers this document cites
   (900 rows processed, 268 executed, 426 operations, 0 unsound, 0 `check_graph` exceptions, 0 totality
   violations, 189 of 189 crosscheck agreement) are its `summary_flat` block verbatim. **The 40
@@ -1093,3 +1372,55 @@ found.
 ---
 
 ## Remediation changelog (round 1)
+
+Applied against the defender's adjudication of the round-1 challenger, in the defender's own order.
+`status` moved `draft` → `reviewed-round-1`; `spec_version` stays **11** — every entry below is text,
+one set definition, one added trip-proof condition, two assumption rows, one new fixture and one
+revised AC. No opcode, no verdict, no wire change, no registry change, and no new AC id (the AC count
+is unchanged at 20, so nothing renumbers and every existing gate still resolves).
+
+| item | O-id | verdict | change | section(s) |
+|---|---|---|---|---|
+| 1 | **O1** | CONCEDE (blocking) | §12.4.2's "Execution mechanics" rewritten: `plan_call` reuse is **retired** and shown to be structurally impossible on this execution path (it is a function of a JSON call dict and its list index, reached only from `_execute`'s `call_sequence` loop, and `recording_plan_call` patches that module-level name). Replaced by a normative **instance-level** recorder: an `async functools.wraps` shim over the tool methods of the `setup.machine` object, a `sys._getframe(1).f_lineno` call-site key, a monotonic `dict[(method_name, lineno), int]` visit counter, and a join to the static side through `OperationNode.line_number` → `sideband["span"]` → `sideband["origin"]`. Adds the fixture-design constraint (one call site per method per body) that makes the join a lookup rather than a heuristic, and requires loud failure on a duplicate key | §12.4.2 (new normative block + two new paragraphs) |
+| 1 | **O1** | CONCEDE | AC-12.17 gains four sub-assertions pinning the producer, of which (i) — `verifier.plan_call` is never invoked during a region-fixture run, asserted by leaving `recording_plan_call` installed and requiring its `planned` list to stay empty — is the stub-defeating half | AC-12.17 |
+| 1 | **O1** | CONCEDE | T21's row rewritten to name the recorder as sub-step (1) and the `continue`/`break` fixtures as part of (2); estimate re-derived ~460 → ~490 with the reason stated (the old number was sized against a mechanism that cannot run, not against a bigger one) | §12.8 T21, honest-sizing note |
+| 2 | **O2** | CONCEDE, remedy (a) | §12.3.4 now defines **`OBLIGED(graph)`** once — call-bearing operations, minus those nested at any depth in a region whose lowered `LOOP` carries a proved `trip == 0` — and AC-6.4(amended), AC-7.2 and AC-11.7's function-onto clause all read over it. Remedy (b) (a "totality-only dry visit") is named and rejected, with the reason: it needs its own rule for which state to evaluate against and which finding to emit, and any finding it emitted would assert something about code the program provably does not run. A closing paragraph states why the exclusion cannot be abused (`trip == 0` is *proved*, never inferred from ignorance) | §12.3.4 |
+| 2 | **O2** | CONCEDE | AC-12.6's `range(0)` case now states the exclusion explicitly and requires the body to be non-empty (a real `pick_up_tips`) or the "zero findings" assertion is vacuous; AC-12.13 gains a second assertion pinning the carve-out from the other side — `OBLIGED` differs from the plain call-bearing set on **exactly** dead-region bodies, and on AC-12.10's fixture the two are equal | AC-12.6, AC-12.13 |
+| 3 | **O3** | CONCEDE | §12.3.3's L3 additionally **retires** the stale increment-2 compensation at `plr-sema/src/plr_sema/check/__init__.py:462-478`, with its own docstring's pre-§12.2.2 justification quoted as the reason it no longer identifies a region owner; a following paragraph records that AC-12.10's fixture escapes the bug only by coincidence (adjacency to a reset, which E6 overwrites) | §12.3.3, §12.2.2 (one cross-reference) |
+| 3 | **O3** | CONCEDE | AC-12.14 gains assertion (iv) and the named fixture `call_before_unowned_region_graph.json`: `setup()`, then `pick_up_tips(use_channels=[0])`, then a region header it does not own over a *different* receiver — the reset deliberately **not** adjacent to the region, because adjacency is what masks the defect. T20's row gains the fixture and the retirement clause | AC-12.14, §12.8 T20 |
+| 4 | **O7** | CONCEDE (`continue`) | §12.2.3's trip-proof rule gains a **fourth** condition: `trip = null` whenever the body contains a `Continue` at any nesting depth within it, excluding nested function/lambda defs. A worked paragraph gives the counterexample (a `continue` past a `drop_tips` on iteration 1 makes L1's threaded state wrong at an iteration the execution *does* reach) and states why A-COMPLETES does not cover it | §12.2.3 |
+| 4 | **O7** | PARTIAL (`break`/`return`/`raise`) | A-COMPLETES generalised from *"completed without raising"* to *"was reached and completed — control did not exit early via `break`, `return` or `raise` before that pc"*, recorded as the **`A-EARLY-EXIT`** row in this document's own assumption table; and tier 2b's comparison is required to mark call sites skipped by early exit as **not-reached**, the same exemption `compare` already gives post-raise operations | §12.2.3, §12.1.5, §12.9 item 3 |
+| 4 | **O7** | CONCEDE | AC-12.6's loop list grows to seven with a `continue`-containing `for i in range(4)`; trip values corrected to `3, 4, 3, 12, None, None, None`; the `range(0)` loop becomes the eighth. T21 gains a `continue` fixture and a `break` fixture | AC-12.6, §12.8 T21 |
+| 5 | **O4** (first half) | CONCEDE | #4932's row names the visitor's flat-single-pass → body-accumulator (stack-scoped) restructuring as **the estimate's largest risk**, and the honest-sizing note says plainly that the draft's "a producer for a consumer that already exists" framing was accurate about `lower_graph` and understated the producer | §12.8 #4932, honest-sizing note |
+| 6 | **O4** (second half) | REBUT → named follow-up | §12.11 gains a bullet on `_active_states`'s cross-arm leak: what it is, why #4932 makes it reachable, why it **provably cannot regress any AC here** (`preconditions`/`creates_state` are the two `X`-dispositioned fields `check_ir` never reads), and why it must nonetheless be fixed before §8's differential is read as evidence | §12.11 |
+| 7 | **O5** | PARTIAL — keep `REGION` | §12.2.2 gains a paragraph: `FOREACH`/`CONDITIONAL` are **live**, not dead — `branchy_graph.json` carries `"node_type": "conditional"` on a *call-bearing* `aspirate` — so reuse would make `node_type`'s reading depend on `method_name`, which no other disposition does. The loop-vs-branch distinction is recovered losslessly from which region field is populated. Retiring the two as dead is explicitly *not* claimed | §12.2.2 |
+| 8 | **O6** | CONCEDE | §12.1.5's table gains **`A-NO-REINTRODUCTION`**, tracing the `load_state` path in full: it matches the HM-24 bridge shape, `_classify_write` classifies `TipTracker.load_state` as `HAS_TIP`, and it discharges safely **by machinery rather than by argument** — `channels_for_call` returns `None` for it, so `_apply_transfer` widens. What would break it is named: a reintroducing method that *does* resolve an exact channel set | §12.1.5 |
+| — | lint | — | Every `/tmp/...` report path in §12.8's gate commands replaced with `$TMPDIR/...`, since the Bash sandbox writes only under `$TMPDIR` | §12.8 (four paths, three rows) |
+| — | housekeeping | — | `status` → `reviewed-round-1`; `sources` extended with both round-1 audit files and the six ranges read to verify the remediation; References gains a round-1 entry for this increment and the extra code read; §12.9 grows 6 → 7 amendments; §12.12 gains a post-round-1 status paragraph (Q2/Q3 non-issues by agreement, Q5's precondition discharged by O5, Q6 agreed, Q1 sharpened, Q4 live again now that O1 has a producer); §12.5's oracle table gains four rows for the claims this round added | frontmatter, References, §12.9, §12.12, §12.5 |
+
+### Correction made in passing, disclosed because neither round-1 report raised it
+
+Verifying O6's `load_state` trace surfaced a defect in **this document's own P5 rule**, and it would
+have disabled the entire increment at the current pin. `LiquidHandler.load_state` assigns
+`self.head = {c: TipTracker(thing=f"Channel {c}") for c in head_state}`
+(`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:239-257`, the assignment at
+`:248`) — an expression that satisfies the draft's conjunct 1 (constructs only `TipTracker`s) and
+conjunct 2 (loads no `self.head`) exactly as `setup`'s does. Under the two-conjunct rule P5 would have
+selected **two** qualifying methods, hit its own more-than-one fail-closed clause, emitted nothing,
+and silently reverted every verdict to `UNKNOWN` — a failure that would have presented as a wiring bug
+rather than as a rule defect.
+
+**Fix: a third conjunct — the assignment must be a direct statement of the method's body, not nested
+inside an `If`/`For`/`While`/`Try`/`With`/`match`.** This is not a patch chosen to make the arithmetic
+come out: a reassignment that runs on only some paths through `m` cannot establish a post-state on all
+of them, and E6 asserts a post-state unconditionally, so withdrawing the reset there is correct
+independently of how many methods it happens to separate. `setup`'s assignment is top-level;
+`load_state`'s sits under `if head_state and self.head == {}:`.
+
+**AC-12.1 gains sub-assertion (iv) to keep the fix honest**, and it is deliberately checked against
+**real PLR rather than a synthetic fixture**: the set satisfying conjuncts 1–2 alone must be exactly
+`{"setup", "load_state"}` and the set satisfying all three exactly `{"setup"}`. A synthetic fixture
+would have tested the rule against an example built to fit it; this tests it against the codebase that
+broke it. §12.12's Q1 is re-pointed accordingly — the live question is no longer "does such an
+expression exist" (one does) but "is statement position the right discriminator, or merely the one
+that separated the two cases we have".
