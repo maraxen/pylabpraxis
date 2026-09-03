@@ -248,7 +248,7 @@ class ComputationGraphExtractor(cst.CSTVisitor):
 
     """
     self._protocol_fqn = protocol_fqn
-    self._protocol_name = protocol_fqn.split(".")[-1] if "." in protocol_fqn else protocol_fqn
+    self._protocol_name = protocol_fqn.rsplit(".", maxsplit=1)[-1] if "." in protocol_fqn else protocol_fqn
     self._deck_layout_type = deck_layout_type
 
     # Type tracking
@@ -260,6 +260,14 @@ class ComputationGraphExtractor(cst.CSTVisitor):
     self._resources: dict[str, ResourceNode] = {}
     self._preconditions: list[StatePrecondition] = []
     self._execution_order: list[str] = []
+
+    # Body-accumulator stack (§12.2.2's restructure): the top of this stack
+    # is where a newly emitted operation/region-header id is appended.
+    # `self._execution_order` IS the bottom frame (same list object), so
+    # top-level statements still land there unchanged; a region body pushes
+    # a fresh frame, walks its statements into it, then pops it back out as
+    # that region header's `foreach_body`/`true_branch`/`false_branch`.
+    self._exec_stack: list[list[str]] = [self._execution_order]
 
     # State tracking
     self._active_states: set[str] = set()  # Currently active states (e.g., "tips_loaded")
@@ -285,7 +293,7 @@ class ComputationGraphExtractor(cst.CSTVisitor):
         is_container = is_container_type(type_hint)
 
         # Get primary resource type for parental chain
-        primary_type = elem_type if elem_type else resource_types[0]
+        primary_type = elem_type or resource_types[0]
         chain = get_parental_chain(primary_type, self._deck_layout_type)
 
         self._resources[param_name] = ResourceNode(
@@ -373,52 +381,302 @@ class ComputationGraphExtractor(cst.CSTVisitor):
     receiver_type = self._type_tracker.get_type(receiver_name)
     return receiver_name, receiver_type
 
+  # ===========================================================================
+  # Region emission (spec §12.2): visit_For/visit_While/visit_If restructure
+  # the traversal from a flat single pass into a body-accumulator,
+  # stack-scoped one. Each pushes a fresh accumulator frame, walks its own
+  # body/branches into it via `_walk_body`, then either discards the frame
+  # (body carried no operation the extractor would otherwise emit -- no
+  # header, nothing enters the parent's execution order) or emits a single
+  # `GraphNodeType.REGION` header `OperationNode` whose id is appended to the
+  # PARENT frame (so it lands at the statement's own position) and whose
+  # region field(s) list the frame's collected child ids -- never repeated at
+  # top level (§12.2.2).
+  # ===========================================================================
+
+  def _push_body(self) -> None:
+    """Push a fresh accumulator frame for a region body."""
+    self._exec_stack.append([])
+
+  def _pop_body(self) -> list[str]:
+    """Pop and return the current accumulator frame's collected ids."""
+    return self._exec_stack.pop()
+
+  def _walk_body(self, node: cst.CSTNode) -> list[str]:
+    """Walk `node` (a suite/body) into a fresh accumulator frame."""
+    self._push_body()
+    _walk_cst_node(node, self)
+    return self._pop_body()
+
   def visit_For(self, node: cst.For) -> bool:  # noqa: N802
-    """Track that the protocol contains loops."""
+    """Emit a REGION header for a for-loop with >=1 body operation.
+
+    A `for ... else` is explicitly out of scope (§12.2.4): its body and
+    orelse are emitted as ordinary top-level operations exactly as before
+    this restructure (`has_loops` still fires, so the retained synthetic
+    wrap still catches it) -- returning True lets the generic walker
+    descend without pushing a body frame at all.
+    """
     self._has_loops = True
-    return True
+    if node.orelse is not None:
+      return True
+
+    foreach_source = self._get_expr_source(node.iter)
+    body_ids = self._walk_body(node.body)
+    if not body_ids:
+      return False
+
+    trip = self._proved_trip_count(node.iter, node.body)
+    op_id = self._generate_op_id()
+    self._operations.append(
+      OperationNode(
+        id=op_id,
+        line_number=self._current_line,
+        method_name="",
+        receiver_variable="",
+        receiver_type=None,
+        arguments={},
+        node_type=GraphNodeType.REGION,
+        preconditions=[],
+        creates_state=[],
+        depends_on_params=[],
+        foreach_source=foreach_source,
+        foreach_body=body_ids,
+        trip=trip,
+      )
+    )
+    self._exec_stack[-1].append(op_id)
+    return False
 
   def visit_While(self, node: cst.While) -> bool:  # noqa: N802
-    """Track that the protocol contains loops."""
+    """Emit a REGION header for a while-loop with >=1 body operation.
+
+    `trip` is always `None` for a while (§12.2.3 -- no proof rule for a
+    runtime condition). A `while ... else` is treated the same as a
+    `for ... else` (§12.2.4's retained fallback, extended here for the same
+    reason: there is no region shape for a second arm to live in without
+    silently dropping its operations).
+    """
     self._has_loops = True
-    return True
+    if node.orelse is not None:
+      return True
+
+    body_ids = self._walk_body(node.body)
+    if not body_ids:
+      return False
+
+    op_id = self._generate_op_id()
+    self._operations.append(
+      OperationNode(
+        id=op_id,
+        line_number=self._current_line,
+        method_name="",
+        receiver_variable="",
+        receiver_type=None,
+        arguments={},
+        node_type=GraphNodeType.REGION,
+        preconditions=[],
+        creates_state=[],
+        depends_on_params=[],
+        foreach_source=None,
+        foreach_body=body_ids,
+        trip=None,
+      )
+    )
+    self._exec_stack[-1].append(op_id)
+    return False
 
   def visit_If(self, node: cst.If) -> bool:  # noqa: N802
-    """Track that the protocol contains conditionals."""
+    """Emit a REGION header for an if/elif/else with >=1 body operation.
+
+    An `elif` is a nested `If` directly in `node.orelse` (libcst's own
+    shape), so it lowers as a nested header inside this header's own
+    `false_branch` -- no flattening, no chain node (§12.2.4).
+    """
     self._has_conditionals = True
-    return True
+    self._emit_if_region(node)
+    return False
+
+  def _emit_if_region(self, node: cst.If) -> None:
+    condition_expr = self._get_expr_source(node.test)
+    true_ids = self._walk_body(node.body)
+    false_ids = self._walk_orelse(node.orelse)
+    if not true_ids and not false_ids:
+      return
+
+    op_id = self._generate_op_id()
+    self._operations.append(
+      OperationNode(
+        id=op_id,
+        line_number=self._current_line,
+        method_name="",
+        receiver_variable="",
+        receiver_type=None,
+        arguments={},
+        node_type=GraphNodeType.REGION,
+        preconditions=[],
+        creates_state=[],
+        depends_on_params=[],
+        condition_expr=condition_expr,
+        true_branch=true_ids,
+        false_branch=false_ids,
+      )
+    )
+    self._exec_stack[-1].append(op_id)
+
+  def _walk_orelse(self, orelse: cst.Else | cst.If | None) -> list[str]:
+    """Walk an `If.orelse`.
+
+    `None` (no else), an `Else` (plain else body), or a nested `If` (an
+    elif -- recurse through `_emit_if_region` inside a fresh frame so the
+    nested header's own id, if any, becomes this region's sole
+    `false_branch` entry).
+    """
+    if orelse is None:
+      return []
+    if isinstance(orelse, cst.If):
+      self._push_body()
+      self._emit_if_region(orelse)
+      return self._pop_body()
+    return self._walk_body(orelse.body)
+
+  # ===========================================================================
+  # Proved trip counts (§12.2.3): language semantics only, from `range()`
+  # int-literal forms, a literal list/tuple/set display, or
+  # `range(<resource>.items_x | items_y)` against an already-known resource
+  # grid -- withdrawn to `None` by a `Continue` anywhere in the body (any
+  # nesting depth, excluding nested function/lambda defs, round-1 O7).
+  # ===========================================================================
+
+  def _proved_trip_count(
+    self, iter_expr: cst.BaseExpression, body: cst.BaseSuite
+  ) -> int | None:
+    if self._body_has_continue(body):
+      return None
+    return self._proved_iterable_length(iter_expr)
+
+  def _proved_iterable_length(self, expr: cst.BaseExpression) -> int | None:
+    if isinstance(expr, cst.Call) and isinstance(expr.func, cst.Name) and expr.func.value == "range":
+      return self._proved_range_length(expr)
+    if isinstance(expr, (cst.List, cst.Tuple, cst.Set)):
+      return len(expr.elements)
+    return None
+
+  def _proved_range_length(self, call: cst.Call) -> int | None:
+    args = call.args
+    if not args or any(a.star for a in args) or any(a.keyword is not None for a in args):
+      return None
+
+    if len(args) == 1:
+      literal = self._int_literal(args[0].value)
+      if literal is not None:
+        return len(range(literal))
+      item_count = self._resource_item_count(args[0].value)
+      if item_count is not None:
+        return len(range(item_count))
+      return None
+
+    if len(args) in (2, 3):
+      values = [self._int_literal(a.value) for a in args]
+      if any(v is None for v in values):
+        return None
+      return len(range(*values))  # type: ignore[arg-type]
+
+    return None
+
+  def _int_literal(self, node: cst.BaseExpression) -> int | None:
+    if isinstance(node, cst.Integer):
+      return int(node.value)
+    if (
+      isinstance(node, cst.UnaryOperation)
+      and isinstance(node.operator, cst.Minus)
+      and isinstance(node.expression, cst.Integer)
+    ):
+      return -int(node.expression.value)
+    return None
+
+  def _resource_item_count(self, node: cst.BaseExpression) -> int | None:
+    """Resolve `<name>.items_x` / `<name>.items_y` against a known resource.
+
+    `<name>` must be a declared resource whose `ResourceNode` already
+    carries that grid dimension (§12.2.3 condition 3).
+    """
+    if not (isinstance(node, cst.Attribute) and isinstance(node.value, cst.Name)):
+      return None
+    if node.attr.value not in ("items_x", "items_y"):
+      return None
+    resource = self._resources.get(node.value.value)
+    if resource is None:
+      return None
+    return resource.items_x if node.attr.value == "items_x" else resource.items_y
+
+  def _body_has_continue(self, node: cst.CSTNode) -> bool:
+    """Check for a `Continue` anywhere within `node`.
+
+    Any nesting depth, EXCLUDING the body of a nested function/lambda
+    definition (whose own `continue` would be a syntax error against this
+    loop anyway).
+    """
+    if isinstance(node, (cst.FunctionDef, cst.Lambda)):
+      return False
+    if isinstance(node, cst.Continue):
+      return True
+    for child in node.children:
+      if isinstance(child, cst.CSTNode) and self._body_has_continue(child):
+        return True
+    return False
 
   def visit_Assign(self, node: cst.Assign) -> bool:  # noqa: N802
-    """Track variable assignments for type inference."""
-    # Get assigned variable name(s)
+    """Track variable assignments for type inference.
+
+    Registers a `ResourceNode` for a bare-`Name` target, and (§12.2.5,
+    round-1 O4) for a `self.<attr>` target too -- under
+    `variable_name == f"self.{attr}"`, `is_parameter=False` -- so
+    `self.plate_1["A1"]` has a resource slot for `lower_graph`'s value
+    grammar to resolve a `Ref` against, closing the tier-1/tier-2 grammar
+    residual §11.10 named.
+    """
     for target in node.targets:
-      if isinstance(target.target, cst.Name):
-        var_name = target.target.value
-        source_expr = self._get_expr_source(node.value)
-
-        # Try to infer type from the assignment
-        inferred_type = self._infer_assignment_type(node.value)
-        if inferred_type:
-          self._type_tracker.set_type(var_name, inferred_type, source_expr)
-
-          # If this is a PLR resource, add a ResourceNode
-          resource_types = extract_resource_types(inferred_type)
-          if resource_types:
-            elem_type = get_element_type(inferred_type)
-            primary_type = elem_type if elem_type else resource_types[0]
-            chain = get_parental_chain(primary_type, self._deck_layout_type)
-
-            self._resources[var_name] = ResourceNode(
-              variable_name=var_name,
-              declared_type=inferred_type,
-              element_type=elem_type,
-              is_container=is_container_type(inferred_type),
-              is_parameter=False,
-              parental_chain=chain.chain,
-              source_expression=source_expr,
-            )
+      t = target.target
+      if isinstance(t, cst.Name):
+        self._register_resource_assignment(t.value, node.value)
+      elif (
+        isinstance(t, cst.Attribute)
+        and isinstance(t.value, cst.Name)
+        and t.value.value == "self"
+      ):
+        self._register_resource_assignment(f"self.{t.attr.value}", node.value)
 
     return True
+
+  def _register_resource_assignment(self, var_name: str, value: cst.BaseExpression) -> None:
+    """Infer `value`'s type and register a `ResourceNode` if it is a PLR resource.
+
+    Under `var_name` -- shared by both the bare-`Name` and `self.<attr>`
+    assignment-target shapes.
+    """
+    source_expr = self._get_expr_source(value)
+    inferred_type = self._infer_assignment_type(value)
+    if not inferred_type:
+      return
+
+    self._type_tracker.set_type(var_name, inferred_type, source_expr)
+
+    resource_types = extract_resource_types(inferred_type)
+    if resource_types:
+      elem_type = get_element_type(inferred_type)
+      primary_type = elem_type or resource_types[0]
+      chain = get_parental_chain(primary_type, self._deck_layout_type)
+
+      self._resources[var_name] = ResourceNode(
+        variable_name=var_name,
+        declared_type=inferred_type,
+        element_type=elem_type,
+        is_container=is_container_type(inferred_type),
+        is_parameter=False,
+        parental_chain=chain.chain,
+        source_expression=source_expr,
+      )
 
   def _infer_assignment_type(self, value: cst.BaseExpression) -> str | None:
     """Infer the type of an assignment value."""
@@ -512,7 +770,7 @@ class ComputationGraphExtractor(cst.CSTVisitor):
       )
 
       self._operations.append(operation)
-      self._execution_order.append(op_id)
+      self._exec_stack[-1].append(op_id)
 
     return True
 
