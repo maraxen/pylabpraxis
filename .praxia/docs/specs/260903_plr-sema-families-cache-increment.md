@@ -1,31 +1,31 @@
 ---
-title: "plr-sema increment 4 — a second guard family, a content-addressed cache, and a derived inert-name filter"
-description: "Fourth post-corpus increment to the plr-sema pre-corpus specification. Four backlog items across five scope sections, plus two go/no-go decisions. (1) #4881 adds guard families beyond tip state, and the evidence reverses the dispatch brief's premise on both of them: the LID family is NOT tip-shaped and is NOT adopted for verdicts -- `Liddable.has_lid` is a plain method not a property, `Liddable.lid` is derived from `children` so there is no state field, the wire format carries `parents` (parent TYPES, upward) and no children at all so entry is unavoidably TOP, and -- fatally -- the two lid guards that reach `LiquidHandler.aspirate`/`dispense` carry conditions `\"lidded is resource\"` and `null`, neither of which is a lid-state atom, because the survey drops the `if lidded is None: return` early-out that actually guards them; the VOLUME family, by contrast, is derivable today and is adopted, narrowly and asymmetrically -- `VolumeTracker.remove_liquid`/`add_liquid` already carry clean depth-0 `Cmp` guards raising taxonomy-`volume_state` exceptions from `pylabrobot.resources.errors`, the same two-conjunct selector shape the tip family uses, so an interval domain over well and tip cells decides the under-draw (`TooLittleLiquidError`) half, while the over-fill (`TooLittleVolumeError`) half stays Kleene half because `max_volume` is labware geometry the graph does not carry. (2) #4922 lands the content-addressed cache on increment 2's key, storing the PRE-relabel `Finding` tuple -- post-relabel storage is unsound because `sideband.origin` is excluded from `bytecode_hash` -- read-through opt-in and default off. (3) #4883 derives the dropped-receiver inert-name filter from `sys.stdlib_module_names` plus the class-object rule already shipped, and the registry finding is that it retires NO row because the surface has none: `_INERT_RECEIVER_PREFIXES`/`_INERT_CALL_SUFFIXES` are unregistered hand-maintained surface, discovery under section 9.4's own rule, so headroom stays 0 and the lid/volume families get none from it. (4) #4946 closes the m1 residual #4938 filed and commit 92f97256 diagnosed without moving: `LiquidHandler.transfer` already inherits its delegate's bridged NoTipError guard (`derived_contracts.json:58363-58383`) but not the delegate call site's literal channel argument -- `use_channels=[0]` on the `dispense` call, and a one-element `resources=[source]` display feeding `aspirate`'s own P3a idiom -- so 17 of 101 m1 mutants stay UNKNOWN and the gate sits at 84/101 against a 91% bar; P9 binds the guard's channel set from the caller's own AST, widens on every other shape, and leaves `channels_for_call` and E2 untouched. Zero new registry rows, zero rows retired, two per-row ceilings bumped (HM-24 1->2, HM-25 5->8), two new REASON_VOCABULARY members (8 -> 10 of cap 12), no wire-format change, no `IR_VERSION` bump. Go/no-go: #4923 NO-GO (the workload is unmeasured -- no committed artifact records a check-only wall time -- and #4922 absorbs the case it targets); #4924 NO-GO (re-planning a liquid move needs the over-fill half, which is undecidable until `max_volume` reaches the wire)."
-status: draft
+title: "plr-sema increment 4 — a content-addressed cache, a derived inert-name filter, and delegate-call channel binding"
+description: "Fourth post-corpus increment to the plr-sema pre-corpus specification, as revised after adversarial round 1. Three items ship and two families do not. (1) #4922 lands the content-addressed cache on increment 2's existing key, storing the PRE-relabel `Finding` tuple -- post-relabel storage is unsound because `sideband.origin` is excluded from `bytecode_hash`, so two graphs differing only in operation ids share a hash -- with read-through hooked in `check_graph`, which is the only function holding the raw `contracts_json` string the key needs (round-1 O5). (2) #4883 derives the dropped-receiver inert-name filter, and its registry finding is the opposite of the one the dispatch predicted: it retires NO row, because `_INERT_RECEIVER_PREFIXES`/`_INERT_CALL_SUFFIXES` were never registered -- unregistered discovery under section 9.4, whose one re-baseline is spent -- so headroom stays 0. Clause 1 is import-resolved only and per-file (round-1 O6 plus a second correction found in implementation): a head counts as stdlib ONLY when that file's own module-level import table binds the name to a `sys.stdlib_module_names` member, because bare coincidence with a stdlib name wrongly filtered 280 whole-surface calls on `resource.*`. (3) #4946 binds a delegate-inherited guard's channel set from the caller's literal call-site argument, the only item that moves an already-missed gate. The LID family is specified and NOT adopted, on four verified structural blockers, with the `null`-condition landmine pinned by a regression test. The VOLUME family is DEFERRED whole to increment 5 (`260903_plr-sema-volume-increment.md`): round 1 established that its bridge does not match on real PLR at the pin and that its `env` gate cannot reach a bridged guard, which would have shipped an unsound default-`env` `WILL_FAIL`. Zero new registry rows, zero retired, ONE per-row ceiling bump (HM-25 5 -> 6, for P9 alone); HM-24 stays 1 and `REASON_VOCABULARY` stays 8 of 12 -- increment 5 carries the rest. No wire-format change, no `IR_VERSION` bump. Go/no-go: #4923 NO-GO (workload unmeasured; #4922 absorbs the case it targets); #4924 NO-GO (re-planning a liquid move needs an over-fill verdict that is undecidable until `max_volume` reaches the wire)."
+status: implemented-round-1
 spec_version: 12
 amends: 260901_plr-sema-pre-corpus-spec.md
 task_id: 260903_sema-followups
 date: '260903'
 confidence: medium
-sources: "Read this session, in full or in the cited ranges. Specs and plans: .praxia/docs/specs/260903_plr-sema-real-programs-increment.md (in full, including the section 12.13 implementation record and the round-1 remediation changelog); .praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md:55-170,173-501,505-646,650-701,1136-1165; .praxia/docs/specs/260902_plr-sema-ir-bytecode-increment.md:88-160,425-491,624-653; .praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md:42-138 (Open decisions), 139-205 (section 0 and 0.1), 2287-2345 (section 9.1), 2347-2385 (section 9.2 inventory), 2412-2495 (section 9.4), 2499-2535 (Deferred + boundary summary), plus the section-header index. Audits: .praxia/docs/audits/260903_plr-sema-real-programs-round1-challenger.md:1-58 and its header index. Analyzer source: plr-sema/src/plr_sema/verdict.py:100-179; plr-sema/src/plr_sema/_hand_maintained.py:1-80,240-263,640-690,753-847,851-871 plus a grep index of every `what=`/`id=` field across all 25 REGISTRY rows; plr-sema/src/plr_sema/derive/__init__.py:840-959; plr-sema/src/plr_sema/check/ir.py:50-95,178-192,690-702,770-781,830-870,900-926; plr-sema/src/plr_sema/check/__init__.py:443-457,686-700,713-727. Harness: plr-sema/eval/oracle_common.py:690-739,976-1006; plr-sema/eval/tip_mutants.py:63-70,86-166,166-224,227-251. Front end: praxis/backend/utils/plr_static_analysis/models.py:95-105,340-350,555-563,575-599. PLR at submodule pin dd79c4c89: liquid_handling/liquid_handler.py:90-229,968-1069,1170-1199,1273-1289,1330-1374 and the `_check_no_lid`/`does_volume_tracking`/`maximal_volume` grep index over the whole file; resources/volume_tracker.py (in full, 171 lines); resources/lid.py (in full, 121 lines); resources/container.py:22-88,141-147 (grep context); resources/tip.py:16-80 (grep context). Artifacts: plr-sema/data/derived_contracts.json:53592-53633,58363-58394,58432-58486,157962-158133,159897-159936,161251-161253; training/verify/data/plr_exception_taxonomy.json:2964-2972,2991-2999,3010-3056; training/verify/data/plr_preconditions.json:49451-50431 (grep index for `op.resource.tracker.*`/`op.tip.tracker.*`/`tip.tracker.*`). Data: outputs/plr-sema/oracle_replay_260903_rebaseline.json:2-29; outputs/plr-sema/tip_mutants_260903_4938.json:1-38; outputs/plr-sema/tip_mutants_260903_4946.json:1-38; outputs/plr-sema/tier2a_260903.json:1-26; outputs/plr-sema/tier2b_260903.json:1-45."
+sources: "Read this session, in full or in the cited ranges. Specs and plans: .praxia/docs/specs/260903_plr-sema-real-programs-increment.md (in full, including the section 12.13 implementation record and the round-1 remediation changelog); .praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md:55-170,173-501,505-646,650-701,1136-1165; .praxia/docs/specs/260902_plr-sema-ir-bytecode-increment.md:88-160,425-491,624-653; .praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md:42-138 (Open decisions), 139-205 (section 0 and 0.1), 2287-2345 (section 9.1), 2347-2385 (section 9.2 inventory), 2412-2495 (section 9.4), 2499-2535 (Deferred + boundary summary), plus the section-header index. Audits read in full during round-1 remediation: .praxia/docs/audits/260903_plr-sema-families-cache-round1-challenger.md (O1-O6) and .praxia/docs/audits/260903_plr-sema-families-cache-round1-defender.md (all six CONCEDED; ordered remediation list); and, for objection style, .praxia/docs/audits/260903_plr-sema-real-programs-round1-challenger.md:1-58. Analyzer source: plr-sema/src/plr_sema/verdict.py:100-179; plr-sema/src/plr_sema/_hand_maintained.py:1-80,240-263,640-690,753-847,851-871 plus a grep index of every `what=`/`id=` field across all 25 REGISTRY rows; plr-sema/src/plr_sema/derive/__init__.py:840-959; plr-sema/src/plr_sema/derive/receiver_state.py:160-190,523-563,770-799; plr-sema/src/plr_sema/check/ir.py:50-95,178-192,690-702,770-781,830-870,900-926; plr-sema/src/plr_sema/check/__init__.py:443-457,686-700,713-727. Harness: plr-sema/eval/oracle_common.py:690-739,976-1006; plr-sema/eval/tip_mutants.py:63-70,86-166,166-224,227-251. Front end: praxis/backend/utils/plr_static_analysis/models.py:95-105,340-350,555-563,575-599. PLR at submodule pin dd79c4c89: liquid_handling/liquid_handler.py:90-229,968-1069,1170-1199,1273-1289,1330-1374 and the `_check_no_lid`/`does_volume_tracking`/`maximal_volume` grep index over the whole file; resources/lid.py (in full, 121 lines); resources/volume_tracker.py (in full, 171 lines); resources/container.py:22-88; resources/tip.py:16-80; liquid_handling/standard.py:40-67. Artifacts: plr-sema/data/derived_contracts.json:53592-53633,58363-58394,58432-58486,157962-158133,159897-159936,161251-161253; plr-sema/data/gap_ledger.json:28-60 (the 50063d52 inert-filter run: `derive_python_version` at :38, the newly-admitted `logger.debug`/`logger.warning` entries at :119,:139); training/verify/data/plr_exception_taxonomy.json:2964-2972,2991-2999,3010-3056; training/verify/data/plr_preconditions.json:49764-49773,49863-49864. Data: outputs/plr-sema/oracle_replay_260903_rebaseline.json:2-29; outputs/plr-sema/oracle_replay_260903_4950.json:1-29; outputs/plr-sema/tip_mutants_260903_4938.json:1-38; outputs/plr-sema/tip_mutants_260903_4946.json:1-38; outputs/plr-sema/tier2a_260903.json:1-26; outputs/plr-sema/tier2b_260903.json:1-45."
 ---
 
-# Increment 4: families, cache, inert names
+# Increment 4: cache, inert names, delegate binding
 
 > **This document amends `260901_plr-sema-pre-corpus-spec.md` by reference.** It adds §13 to that
-> document's numbering and edits exactly one thing in it: **§Open decisions 2**'s sunset clause
-> ("leave numeric atoms at Kleene ½ *through v1 and the first post-corpus increment*") has **expired**
-> — increments 1, 2 and 3 have all shipped — and §13.2 reopens it for exactly one class of numeric
-> atom (§13.10). **It also amends `260902_plr-sema-tip-typestate-increment.md`** (spec_version 9) in
-> three places and **`260902_plr-sema-ir-bytecode-increment.md`** (spec_version 10) in two; §13.10 lists
-> all six amendments. Everything else in spec_version 8–11 — `Verdict`, `Finding`, `PlrSite`,
-> `AnalysisReport`, `join`, the telemetry schema, the fork-drift tests, the derivation closure
-> mechanic, the value grammar, the canonical form, the hash, the cache key, `OBLIGED(graph)`, L1/L2/L3
-> and B1/B2/B3 — is **unchanged**. No `schema_version` bump; no wire-format change; **no `IR_VERSION`
+> document's numbering. **Post-round-1 it edits nothing in the main spec**: the volume family, which
+> was the only thing that reopened §Open decisions 2's numeric-atom reservation, has moved out whole
+> to increment 5 (`.praxia/docs/specs/260903_plr-sema-volume-increment.md`), and that reservation is
+> untouched here. It amends `260902_plr-sema-tip-typestate-increment.md` (spec_version 9) in one place
+> and `260902_plr-sema-ir-bytecode-increment.md` (spec_version 10) in two; §13.10 lists all three.
+> Everything else in spec_version 8–11 — `Verdict`, `Finding`, `PlrSite`, `AnalysisReport`, `join`,
+> `REASON_VOCABULARY`, the telemetry schema, the fork-drift tests, the derivation closure mechanic,
+> the value grammar, the canonical form, the hash, the cache key, `OBLIGED(graph)`, L1/L2/L3 and
+> B1/B2/B3 — is **unchanged**. No `schema_version` bump; no wire-format change; **no `IR_VERSION`
 > bump** (it is `2`, `plr-sema/src/plr_sema/check/ir.py:93`); **zero new registry rows and zero rows
 > retired** (24 live against `BUDGET_CAP = 24`, `plr-sema/src/plr_sema/_hand_maintained.py:43`,
-> headroom 0). Two per-row ceilings move and two `REASON_VOCABULARY` members are added; §13.7 does the
-> arithmetic.
+> headroom 0). **One** per-row ceiling moves — HM-25 `declared` 5 → 6, for P9 alone — and
+> `REASON_VOCABULARY` stays at 8 of cap 12; §13.7 does the arithmetic.
 
 ---
 
@@ -33,53 +33,50 @@ sources: "Read this session, in full or in the cited ranges. Specs and plans: .p
 
 Increment 3 gave the analyzer real programs to run on; this increment asks what it can *say* about
 them beyond tip state, whether it has to say it twice, and whether the machinery it says it with is
-still hand-typed. Four backlog items across five scope sections, plus two go/no-go decisions.
-**#4881** was dispatched as "two new guard families,
-derived like the tip family", and the evidence reverses the framing on both. The **lid** family, sold
-as the cheap tip-shaped one, is not tip-shaped in any of the four ways that matter — `Liddable` has no
-state field, `has_lid` is a plain method rather than a property, the wire format carries no children
-so entry state is unavoidably `TOP`, and the lid guards that actually reach `aspirate`/`dispense`
-carry conditions `"lidded is resource"` and `null` because the survey drops the `if lidded is None:
-return` early-out that guards them — so it is **specified and not adopted for verdicts**, with a named
-trigger and a landmine flagged. The **volume** family, sold as the bigger one, turns out to be the one
-that is already derivable: `VolumeTracker.remove_liquid` and `add_liquid` carry clean depth-0 `Cmp`
-guards raising `TooLittleLiquidError`/`TooLittleVolumeError`, both members of taxonomy category
-`volume_state` in module `pylabrobot.resources.errors` — the exact two-conjunct selector shape §10.2.5
-already uses — and `dropped_calls` already records the bridge expressions `op.resource.tracker.
-remove_liquid` / `op.tip.tracker.add_liquid`. So volume is adopted, **narrowly and asymmetrically**:
-an interval domain decides the under-draw half, and the over-fill half stays ½ because container
-capacity is labware geometry the graph does not carry. **#4922** lands the cache on increment 2's
-existing key, with one correctness argument that is not obvious and is easy to get wrong in the
-unsound direction. **#4883** derives the inert-name filter, and its registry finding is the opposite
-of the one the dispatch expected: there is no row to retire, because the surface was never registered.
-**#4946** is the sixth item and the only one that moves an existing gate: `LiquidHandler.transfer`
-already inherits its delegate's bridged `NoTipError` guard, but not the delegate call site's *literal
-channel argument*, so 17 of 101 m1 mutants stay `UNKNOWN` and the m1 gate sits at 84/101 against a
-91% bar — closed by binding the guard's channel set from the caller's own AST.
+still hand-typed. It was dispatched with five scope items and, after adversarial round 1, **three
+ship and two do not** — which is the honest summary and is stated first because the two that do not
+ship were the two the dispatch called the headline. **#4881** was dispatched as "two new guard
+families, derived like the tip family", and the evidence reversed the framing on both. The **lid**
+family, sold as the cheap tip-shaped one, is not tip-shaped in any of the four ways that matter —
+`Liddable` has no state field, `has_lid` is a plain method rather than a property, the wire format
+carries no children so entry state is unavoidably `TOP`, and the lid guards that actually reach
+`aspirate`/`dispense` carry conditions `"lidded is resource"` and `null` because the survey drops the
+`if lidded is None: return` early-out that guards them — so it is **specified and not adopted for
+verdicts** (§13.1), with a named trigger and a landmine pinned by a regression test. The **volume**
+family looked derivable and, round 1 established, is not yet: its bridge does not match
+`op.resource.tracker.remove_liquid` on real PLR at the pin, and the `does_volume_tracking()` gate it
+depends on cannot reach a bridged guard at all — which would have shipped a `WILL_FAIL` for programs
+whose tracking hypothesis was never asserted. **It is deferred whole to increment 5**, not patched and
+not dropped (§13.2). What ships is three items that round 1 left standing: **#4922**, the cache, on
+increment 2's existing key, with one correctness argument that is not obvious and easy to get wrong
+in the unsound direction; **#4883**, the derived inert-name filter, whose registry finding is the
+opposite of the one the dispatch expected — there is no row to retire, because the surface was never
+registered; and **#4946**, the only item here that moves an already-missed gate, binding a
+delegate-inherited guard's channel set from the caller's own literal call-site argument.
 
 | axis | today (spec_version 11) | this increment |
 |---|---|---|
-| guard families with an evaluator | tip only | tip + **volume (under-draw half)**; lid specified, not adopted |
+| guard families with an evaluator | tip only | **tip only** — lid specified and not adopted (§13.1); volume deferred to increment 5 (§13.2) |
 | channel set for a guard inherited through `delegates_to` | `⊤` — the guard folds to ½ | bound from the **delegate call site's literal** channel argument, else `⊤` (§13.5) |
-| `LiquidHandler.transfer`'s bridged `NoTipError` guard | `guard_predicate_unparsed` on every row | evaluated on channel 0; the m1 gate moves **84/101 → ≥ 92/101** |
-| abstract domains | one height-2 typestate lattice per channel | + one **interval** lattice per volume cell |
-| numeric `Cmp` atoms | all Kleene ½ (main spec §Open decisions 2) | ½ **except** a guard raising a `volume_state` exception from `pylabrobot.resources.errors` |
-| well/tip capacity (`max_volume`) | not modelled | still not modelled — **⊤**, and the over-fill half is ½ because of it |
-| `does_volume_tracking()` | not modelled | a **runtime-observed** `env` argument, default empty, which gates `WILL_FAIL` only |
-| repeat `check_graph` on one program | full re-lower + re-walk | optional read-through cache on §11.3.3's key |
-| the inert-name filter | 9 hand-typed prefixes + 11 hand-typed suffixes | derived from `sys.stdlib_module_names` + the shipped class-object rule |
+| `LiquidHandler.transfer`'s bridged `NoTipError` guard | `guard_predicate_unparsed` on every row | evaluated on channel 0; the m1 gate moves from 82% to **≥ 91%** (§13.5.4) |
+| repeat `check_graph` on one program | full re-lower + re-walk | optional read-through cache on §11.3.3's key, hooked in `check_graph` |
+| the inert-name filter | 9 hand-typed prefixes + 11 hand-typed suffixes | derived, **import-resolved per file**, plus the shipped class-object rule |
+| numeric `Cmp` atoms | all Kleene ½ (main spec §Open decisions 2) | **all Kleene ½ — unchanged**; the reservation is increment 5's to spend |
 | registry rows | 24 live, cap 24, headroom 0 | **24 live, cap 24, headroom 0** — unchanged |
-| per-row ceilings | HM-24 `CAPPED (1)`, HM-25 `CAPPED (5)` | **HM-24 → 2, HM-25 → 8** (loud diffs, no new row) |
-| `REASON_VOCABULARY` | 8 of cap 12 | **10 of cap 12** |
+| per-row ceilings | HM-24 `CAPPED (1)`, HM-25 `CAPPED (5)` | HM-24 **unchanged at 1**; **HM-25 → 6** for P9 alone (one loud diff, no new row) |
+| `REASON_VOCABULARY` | 8 of cap 12 | **8 of cap 12 — unchanged** |
 | `IR_VERSION` | 2 | **2** — unchanged |
 
-**Deliverable of this increment, stated as the property that must become true:** a protocol that
-aspirates 200 µL from a well the harness seeded with 100 µL produces `Verdict.WILL_FAIL` sited at
-`PlrSite("external/pylabrobot/pylabrobot/resources/volume_tracker.py", 92,
-"VolumeTracker.remove_liquid")`, and an *executed* run of that same call sequence against the
-verifier's chatterbox deck raises `TooLittleLiquidError` at the same operation index — while the
-*same* protocol run with the volume-tracking hypothesis unasserted produces `UNKNOWN` there, so that
-the definite verdict is visibly a function of an observation and not of an assumption.
+**Deliverable of this increment, stated as the properties that must become true.** Three, one per
+shipped item. **(a)** `check_graph(g, c, cache=store)` called twice on one payload returns, the second
+time, findings element-wise equal to the first — and returns the *second* graph's operation ids when a
+second payload differing only in `OperationNode` ids hits the same `bytecode_hash`, which is the case
+a plausible implementation gets silently wrong. **(b)** The dropped-receiver worklist filters
+`asyncio.sleep` and admits `logger.debug`, with both movements published as counts, and no registry
+row is added in the process. **(c)** A protocol whose only tip-relevant operation is a
+`LiquidHandler.transfer` produces `Verdict.WILL_FAIL` at the bridged `NoTipError` guard when the
+preceding `pick_up_tips` is removed — an operation whose channel set is `⊤` and whose *guard's*
+channel set is `[0]`, read out of the delegate call site's own literal.
 
 ---
 
@@ -144,12 +141,12 @@ The blockers are the anchor and the guard, and there are four:
 
 | # | blocker | evidence |
 |---|---|---|
-| **B1** | P2's anchor rule matches a **property** whose body is `return self.<F> is/is not None` (§10.2.2). `Liddable.has_lid` is a plain **method** (`lid.py:71-72`, no decorator; the `@property` at `:74` belongs to `lid`) | `lid.py:71-77` |
-| **B2** | P2 requires a **state field** `<F>` that P4 can classify writes to. `Liddable` has none: `lid` is computed from `self.children` on every read (`lid.py:74-77`), so there is nothing for `_classify_write` to see | `lid.py:74-77` |
-| **B3** | The wire format carries no children, so entry is `TOP` (§13.1.2) | `ir.py:190`, `models.py:587-589` |
-| **B4** | **The fatal one.** The lid guards that reach a `LiquidHandler` contract entry are unevaluable | see below |
+| **L1** | P2's anchor rule matches a **property** whose body is `return self.<F> is/is not None` (§10.2.2). `Liddable.has_lid` is a plain **method** (`lid.py:71-72`, no decorator; the `@property` at `:74` belongs to `lid`) | `lid.py:71-77` |
+| **L2** | P2 requires a **state field** `<F>` that P4 can classify writes to. `Liddable` has none: `lid` is computed from `self.children` on every read (`lid.py:74-77`), so there is nothing for `_classify_write` to see | `lid.py:74-77` |
+| **L3** | The wire format carries no children, so entry is `TOP` (§13.1.2) | `ir.py:190`, `models.py:587-589` |
+| **L4** | **The fatal one.** The lid guards that reach a `LiquidHandler` contract entry are unevaluable | see below |
 
-**B4, in full, because it is the one that decides the section.** The shipped table already inlines
+**L4, in full, because it is the one that decides the section.** The shipped table already inlines
 `_check_no_lid`'s two guards at depth 1 into six `LiquidHandler` contract entries — one such inlining
 is `plr-sema/data/derived_contracts.json:53597-53630` — and carries `_check_no_lid`'s own entry with
 the same two guards at depth 0 (`:159897-159933`). Their recorded shape is:
@@ -183,7 +180,7 @@ zero headroom.
 >
 > **The named trigger that converts this to adoptable:** the precondition survey records an
 > early-`return` guard scope — i.e. `_check_no_lid`'s `:117` raise acquires the condition
-> `not (lidded is None)` in its `scope_trail` — at which point B4 falls and B1/B2 become the ordinary
+> `not (lidded is None)` in its `scope_trail` — at which point L4 falls and L1/L2 become the ordinary
 > cost of one new anchor shape.
 
 **The landmine, disclosed because nothing else in this repo will.** A `raise_guard` with
@@ -192,8 +189,11 @@ not: `:117`'s raise is reachable only when the early `return` at `:113-114` did 
 is harmless — a `null` condition falls through to `guard_predicate_unparsed` and asserts nothing — but
 **any future rule that treats a `null`-condition `raise_guard` as a definite failure would manufacture
 `WILL_FAIL` on six `LiquidHandler` methods for programs that run clean.** #4924's recovery interpreter
-is precisely the consumer that would be tempted by such a rule. AC-13.4 pins the current behaviour so
-the temptation is caught by a test rather than by a reader.
+is precisely the consumer that would be tempted by such a rule. **Round 1 independently verified the
+landmine** (`derived_contracts.json:159918-159933` does carry `"condition": null`) and adjudicated
+that AC-13.4 is *"a genuine regression guard with real future value"*, recommending that #4881a be
+reframed from "lid family infrastructure" to **"a regression test for a landmine"**. That reframing is
+adopted: §13.9's row and AC-13.4 are what this item is for, and the ledger block is the smaller half.
 
 **This section reverses the dispatch brief's premise, on evidence.** The brief scoped lid as
 "tip-shaped, cheap". It is neither, and the four blockers above are all read out of source and shipped
@@ -201,346 +201,44 @@ artifacts at the current pin rather than argued from taste.
 
 ---
 
-## 13.2 #4881, second half — the volume family: an interval domain, adopted asymmetrically
+## 13.2 #4881, second half — the volume family: deferred whole to increment 5
 
-### 13.2.1 Why this one *is* derivable, and the correction the dispatch needs
+The volume family was this document's headline deliverable through spec_version 12's draft. **It is
+not in this increment.** Adversarial round 1 established two blocking defects — both conceded in full
+by the defender, both verified against the pin by both reports — and the user's decision (260903) is
+to **defer, not patch in place and not drop**.
 
-The dispatch brief described the volume guards as testing `_used_volume`/`_pending_volume` against
-`max_volume`. **The field names are wrong and the correction matters**, because the anchor derivation
-keys on them: `VolumeTracker.__init__` writes `self.volume` and `self.pending_volume`
-(`external/pylabrobot/pylabrobot/resources/volume_tracker.py:49-50`), and the guards read them only
-through two accessor **methods** — `get_used_volume` returning `self.pending_volume` (`:114-116`) and
-`get_free_volume` returning `self.max_volume - self.get_used_volume()` (`:118-120`). There is no
-`_used_volume` anywhere in the module. The line numbers the brief gave are right: the raises are at
-`:92` (`TooLittleLiquidError` inside `remove_liquid`, `:88-99`), `:105` (`TooLittleVolumeError` inside
-`add_liquid`, `:101-112`) and `:136` (`TooLittleLiquidError` inside the deprecated `get_liquids`,
-`:122-138`).
+- **The bridge does not match.** §13.2.4's rule required `<name>` to be "a comprehension target of a
+  P8 match"; in `LiquidHandler.aspirate`, `op` is the loop variable of a *separate* `for op in
+  aspirations:` statement over the comprehension's **output list**
+  (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1031`), not a zip-bound name.
+  Two further hops fail independently: `SingleChannelAspiration.resource` is a dataclass **class-level
+  bare-name annotation** (`external/pylabrobot/pylabrobot/liquid_handling/standard.py:53`) that
+  `_annotated_attributes`'s `_is_self_attr` test excludes
+  (`plr-sema/src/plr_sema/derive/receiver_state.py:177`, predicate at `:164-167`), and
+  `Container.tracker` is an unannotated `ast.Assign`
+  (`external/pylabrobot/pylabrobot/resources/container.py:85`) that P1a cannot see at all.
+- **The hypothesis gate cannot reach the guard it gates.** `compute_channel_bridge` sources a bridged
+  guard's `scope_trail` from the **callee's** own contract
+  (`plr-sema/src/plr_sema/derive/receiver_state.py:777-787`), and the survey's `dropped_calls` is a
+  bare string list with no line number and no scope
+  (`training/verify/data/plr_preconditions.json:49766-49772`). So `does_volume_tracking()` never
+  appears on the bridged guard, the guard is never marked conditional, and under the **default**
+  `env = frozenset()` the analyzer would emit `WILL_FAIL` for a program in which volume tracking may
+  never have been on. That is a live soundness bug in the direction the whole mechanism existed to
+  prevent, and it is why a partial fix — a working bridge with no threading — would be strictly worse
+  than shipping nothing.
 
-Four facts make this family derivable where the lid family is not, and all four are already in shipped
-artifacts:
-
-1. **The guards are clean, depth-0 and already derived.** `plr-sema/data/derived_contracts.json`
-   carries `"VolumeTracker.remove_liquid"` (`:158102-158133`) with a single depth-0 `raise_guard`,
-   `condition: "volume - self.get_used_volume() > 1e-06"`, `raises: "TooLittleLiquidError"`, sited at
-   `volume_tracker.py:92`; and `"VolumeTracker.add_liquid"` (`:157965-157996`) with
-   `condition: "volume - self.get_free_volume() > 1e-06"`, `raises: "TooLittleVolumeError"`, sited at
-   `:105`. Both carry `free_vars: ["self", "volume"]` — the condition mentions the method's own
-   parameter, which is exactly the value a `CALL`'s kwarg supplies.
-2. **The exception selector is the tip selector, verbatim in shape.** Both classes carry
-   `"category": "volume_state"` and `"module": "pylabrobot.resources.errors"`
-   (`training/verify/data/plr_exception_taxonomy.json:3011-3019` and `:3038-3046`). The unfiltered
-   `category == "volume_state"` set has **four** members; the module conjunct narrows it to **two**,
-   excluding `BlowOutVolumeError` (module `pylabrobot.liquid_handling.liquid_handler`, `:2964-2972`)
-   and `LiquidLevelError` (a Hamilton backend class, `:2991-2999`). That is the same 5→2 narrowing
-   §10.2.5 performs for tip state, against the same module path, so **no new hand-typed string enters
-   `plr_sema`** — the module literal is the one AC-10.9 already declares.
-3. **The bridge expressions are already recorded.** `training/verify/data/plr_preconditions.json`'s
-   `dropped_calls` carries `"op.resource.tracker.remove_liquid"` and `"op.tip.tracker.add_liquid"` for
-   aspirate (`:49768-49769`) and `"op.resource.tracker.add_liquid"` / `"op.tip.tracker.remove_liquid"`
-   for dispense (`:49863-49864`). They survive the inert filter: head `op` is lowercase and not a
-   prefix member, and the tails are not suffix members
-   (`plr-sema/src/plr_sema/derive/__init__.py:884-905`).
-4. **`BlowOutVolumeError` is genuinely out of scope and the module conjunct is what puts it there.**
-   Its two raises (`liquid_handler.py:1185` and `:1188`, inside the `does_volume_tracking()` block at
-   `:1182-1188`) guard `self._blow_out_air_volume` against a requested blow-out volume — a
-   `LiquidHandler` instance field, not a tracker cell, and therefore a different domain. The dispatch
-   brief listed it; this increment excludes it, by the selector rather than by an exception.
-
-### 13.2.2 The two cell kinds, and the capacity problem
-
-A volume cell is **a `VolumeTracker` instance**, and there are two kinds in the verdict path:
-
-- **container cells** — `Container.__init__` sets
-  `self.tracker = VolumeTracker(thing=..., max_volume=self.max_volume)` with
-  `self.max_volume = max_volume or (size_x * size_y * size_z)`
-  (`external/pylabrobot/pylabrobot/resources/container.py:84-85`). Wells, troughs, tubes.
-- **tip cells** — `Tip.__post_init__` sets
-  `self.tracker = VolumeTracker(thing=thing, max_volume=self.maximal_volume)`
-  (`external/pylabrobot/pylabrobot/resources/tip.py:45`), with `maximal_volume: float` declared at
-  `:27`. An aspirate moves liquid out of a container cell **and into a tip cell** in the same
-  statement pair (`liquid_handler.py:1034-1035`).
-
-> **Normative (the capacity asymmetry, and it is the section's main scope decision).** `max_volume` is
-> **⊤ for every cell**. For a container it is a function of the labware's physical dimensions
-> (`container.py:84`), and for a tip it is `Tip.maximal_volume` (`tip.py:27,45`); neither reaches the
-> analyzer, because `RESOURCE`'s operands are `slot`/`type`/`element_type`/`is_container`/
-> `is_parameter`/`parents`/`grid` (`plr-sema/src/plr_sema/check/ir.py:184-191`) and none of them is a
-> capacity. Therefore:
->
-> - the **under-draw** half — `remove_liquid`'s `volume - get_used_volume() > 1e-06`, raising
->   `TooLittleLiquidError` — is **decidable** from the interval alone, since `get_used_volume()`
->   returns `self.pending_volume` (`volume_tracker.py:114-116`) and nothing else;
-> - the **over-fill** half — `add_liquid`'s `volume - get_free_volume() > 1e-06`, raising
->   `TooLittleVolumeError` — is **not decidable**, since `get_free_volume()` is
->   `self.max_volume - self.get_used_volume()` (`:118-120`) and `max_volume` is ⊤. It stays Kleene ½
->   and emits `volume_state_unknown`.
->
-> A rule that guessed a capacity — a default well volume, a nominal tip volume — would construct a
-> definite verdict from a number nobody measured, which is the failure §0 exists to prevent.
-
-**This narrows the dispatch brief's specification, deliberately.** The brief asked for
-`WILL_FAIL iff lo > capacity`; that half is unreachable at the current wire format and is named in
-§13.12 with its trigger (a capacity operand on `RESOURCE`, which is an `IR_VERSION` bump and therefore
-not free — precisely the reason increment 3 took its bump when it was free).
-
-### 13.2.3 The abstract state
-
-```
-Interval    ::=  [lo, hi]  with 0 <= lo <= hi <= +inf   |   TOP
-VolumeState =  dict[cell: CellId, Interval]
-CellId      =  ("container", slot: int, cell: str|null)  |  ("tip", channel: int)
-```
-
-`TOP` is `[0, +inf]` and the two are identified; the join is `[min(lo), max(hi)]`, which is the least
-upper bound in the information order and gives a lattice of infinite height. **Infinite height is why
-a widening operator is needed here and was not needed for tip state** (§10.1.1: "height 1 above its
-two atoms … needs no widening operator"). The widening is stated in §13.2.5 and is the one place this
-domain differs structurally from every domain the analyzer has had so far.
-
-`CellId`'s container form reuses the `Ref(slot, cell)` pair the value grammar already produces
-(§11.1.2), so a well reference in a kwarg *is* a cell id with no new resolution machinery. The tip
-form keys on the channel index the tip family already computes (§10.1.3), which is the one place the
-two families touch: **a tip cell exists only where the tip family says a channel has a tip.** If the
-channel's `TipState` is not `HAS_TIP`, the tip cell is `TOP` — the analyzer does not know which tip is
-mounted, so it cannot know its used volume.
-
-### 13.2.4 The derived inputs — two new passes, and what they cost
-
-Everything below is computed at build time by `plr_sema.derive` and shipped in
-`derived_contracts.json`; `check/` stays stdlib-only.
-
-> **Normative (P7, the volume anchor).** A class `C` is **volume-anchored** iff it has ≥1 zero-argument
-> method whose body is a single `return <expr>` over `self.<F>` for some instance field `<F>` written
-> in `C.__init__`, **and** ≥1 method whose body contains an `ast.Raise` of a class in the two-conjunct
-> `volume_state` set (§13.2.1 fact 2) guarded by an `ast.Compare` mentioning one of those accessors and
-> one of the method's own parameters. `C`'s **used-volume accessor** is the accessor named by the
-> `TooLittleLiquidError` guard's comparison; its **free-volume accessor** is the one named by the
-> `TooLittleVolumeError` guard's. Both are recorded by name; neither name is typed into `plr_sema`.
->
-> **Fail-closed rule.** Zero anchors, or ≥2 candidate used-volume accessors, and P7 emits nothing for
-> `C`; the volume family is disabled for every cell typing to `C`, and every verdict reverts to
-> today's. The gap ledger records `volume_anchor: "absent"|"ambiguous"|{...}` per candidate class, the
-> same visible-absence discipline §10.2.2 established for `tipstate_anchor`.
->
-> Measured expectation over the current pin, which the fixer must **reproduce and publish, not
-> assume**: `C = VolumeTracker`, used-volume accessor `get_used_volume`, free-volume accessor
-> `get_free_volume`, field `pending_volume`.
-
-> **Normative (P8, the operand-pairing idiom).** For a method `m` of receiver class `R`, match an
-> `ast.ListComp` (or `GeneratorExp`) whose element is an `ast.Call` to a class `O` with keyword
-> arguments, and whose single comprehension iterates `zip(a1, …, an)` where each `ai` is an
-> `ast.Name`. Record, per keyword `k` of the element call whose value is a comprehension target bound
-> at zip position `i`, the pair `(O.k → ai)`. When `ai` is a parameter of `m`, the binding is a
-> **parameter pairing**; otherwise it is a **local pairing** and is recorded but not consumed.
->
-> Measured expectation over the current pin: `LiquidHandler.aspirate`'s comprehension
-> (`liquid_handler.py:1007-1028`, element call at `:1008`, `zip` at `:1018-1027`) yields
-> `SingleChannelAspiration.resource → resources` (`:1009`, zip position 0),
-> `.volume → vols` (`:1010`, position 1) and `.tip → tips` (`:1014`, position 5 — a **local**
-> pairing, since `tips` is the list built at `:974`, not a parameter).
-
-> **Normative (the volume bridge, a second HM-24 pattern).** Match, against every `dropped_calls`
-> entry reached at **depth 0** in `K`'s own body, the shape
->
-> ```
-> <name>.<field>.<attr>.<method>          e.g.  op.resource.tracker.remove_liquid
-> ```
->
-> where `<name>` is a comprehension target of a P8 match in `K`, `<field>` is a keyword of that
-> match's element call, `R`'s P1a map (or the element class `O`'s) sends `<attr>` to a P7-anchored
-> class `C`, and `f"{C}.{method}"` is a key in the contract table. When it matches, attach every guard
-> of `C.<method>` to `K` as a **volume guard** carrying the originating expression in `via`, the paired
-> parameter name in `cell_param`, and the guard-parameter-to-`K`-parameter binding in `amount_param`.
->
-> `derived_contracts.json` gains one additive block per anchored class under `receiver_state` and one
-> additive `volume_guards` list per contract entry, both read through `.get()` with an empty default so
-> a pre-increment table degrades to today's behaviour. `schema_version` stays **1**.
-
-Measured expectation, to be reproduced and published: `LiquidHandler.aspirate` acquires two volume
-guards — `cell_param: "resources"`, `amount_param: "vols"`, `via: "op.resource.tracker.remove_liquid"`,
-raising `TooLittleLiquidError`; and `cell_param: <the tip local>`, `via: "op.tip.tracker.add_liquid"`,
-raising `TooLittleVolumeError`. `LiquidHandler.dispense` acquires the mirror pair
-(`plr_preconditions.json:49863-49864`).
-
-**The honest cost, stated here rather than in §13.7's table alone.** The volume bridge is a **second**
-pattern for HM-24, whose row declares `metric="patterns"`, `declared=1`, `status="CAPPED"`
-(`_hand_maintained.py:781-814`, the three fields at `:793-795`), and P7's accessor shape plus P8's
-zip-comprehension shape are a **sixth and seventh** pattern for HM-25, whose row declares the same
-metric at `declared=5` (`:815-847`, the fields at `:828-830`). Increment 3 §12.1.2 declined a sixth HM-25 pattern on the
-grounds that "the registry has zero headroom, so a sixth pattern is a cap conversation". **That
-inference is wrong on the mechanics and is corrected here:** §9.4's cap of 24 is a cap on the *count
-of rows*, enforced by `test_total_declared_within_budget` over `live_rows()`
-(`_hand_maintained.py:851-855`); a per-row `declared` ceiling is enforced separately by
-`test_no_surface_exceeds_its_declared_size`, and §9.3 says of exactly that test, *"growth is not
-forbidden, it is made loud."* Bumping HM-24 to 2 and HM-25 to 7 adds **no row**, moves **no cap**, and
-produces two one-line reviewable diffs. §13.13's Q1 invites a reviewer who holds increment 3's
-stricter line to say so — under that line, the volume family does not land in this increment at all,
-and neither does §13.5's P9, which takes the same row 7 → 8 on the same argument.
-
-### 13.2.5 Transfer functions and the interval arithmetic
-
-For an operation `op` with a volume guard carrying `cell_param` and `amount_param`, let `cells(op)` be
-the `Value` of `op.kwargs[cell_param]` and `amounts(op)` the `Value` of `op.kwargs[amount_param]`.
-
-> **Normative (V0, pairing).** If `cells(op)` is `Seq([c₁…cₙ])` with every `cᵢ` a `Ref`, and
-> `amounts(op)` is `Seq([a₁…aₙ])` with every `aᵢ` a `Lit` of a JSON number, and the two lengths agree,
-> then `op` pairs to `[(cell(cᵢ), aᵢ)]`. A bare `Ref`/`Lit` pair is the length-1 case. **In every other
-> case — either operand `Top`, a length mismatch, a `Seq` containing a `Top` or a non-numeric `Lit` —
-> V0 does not apply and V3 does.** This mirrors PLR's own zip (`liquid_handler.py:1018-1027`), which
-> is why the length agreement is a *conjunct* and not a recovery.
->
-> **Normative (V1, evaluate then transition).** Guards are evaluated against the pre-state, then the
-> post-state is computed — E1's ordering, unchanged.
->
-> **Normative (V2, exact transfer).** For each paired `(cell, a)` with pre-state `[lo, hi]`:
-> a used-volume-**decreasing** effect (the `TooLittleLiquidError` guard's own method,
-> `remove_liquid`) gives `[max(0, lo - a), max(0, hi - a)]`; a used-volume-**increasing** effect
-> (`add_liquid`) gives `[lo + a, hi + a]`. Cells outside `cells(op)` are unchanged. Which method is
-> which is **derived**, not typed: the decreasing one is P7's `TooLittleLiquidError`-guarded method and
-> the increasing one is the `TooLittleVolumeError`-guarded one.
->
-> **Normative (V3, widen).** Every cell in `cells(op)` becomes `TOP` when V0 does not apply; **every
-> cell of the whole state** becomes `TOP` when `op`'s method has a volume bridge only at depth > 0, or
-> when two depth-0 volume bridges on the same cell disagree in direction — the E4.2/E4.3 discipline of
-> §10.4, transposed.
->
-> **Normative (V4, region widening).** On entry to a `LOOP` region whose `trip` is `null`, and on the
-> `K`-th iteration of L1's bounded unroll (§12.3.3), **every** volume cell mentioned in the region
-> becomes `TOP`. This is the widening operator the infinite-height lattice needs, and it is
-> deliberately the crudest one: an interval that grows without bound across a fixpoint is exactly the
-> non-termination case §12.3.3's finite-height argument did not have to handle, and jumping straight
-> to `TOP` terminates in one step. Precision inside a **proved-trip** unroll is unaffected, because L1
-> threads real iterations and only the tail widens.
-
-**Guard evaluation.** The two conditions are `volume - self.get_used_volume() > 1e-06` and
-`volume - self.get_free_volume() > 1e-06`, where `volume` binds to the paired amount `a` and the
-accessor reads the cell's interval. With `used ∈ [lo, hi]`:
-
-| guard | fires (`T`) iff | does not fire (`F`) iff | otherwise |
-|---|---|---|---|
-| under-draw (`remove_liquid`) | `a - hi > 1e-06` | `a - lo <= 1e-06` | `½` |
-| over-fill (`add_liquid`) | never (capacity ⊤) | never | **always `½`** (§13.2.2) |
-
-`T`/`F`/`½` then produce `WILL_FAIL`/`SAFE`/`UNKNOWN` through §10.3.3's existing table unchanged,
-with `category = "precondition_state"` and, for `½`, `reason = "volume_state_unknown"`.
-
-**The `1e-06` tolerance is read from the guard, not typed.** It is a literal in the derived
-`condition` string (`derived_contracts.json:158111`) and is evaluated as part of the `Cmp`; nothing in
-`plr_sema`'s source names it.
-
-### 13.2.6 The `does_volume_tracking()` hypothesis — discharged by narrowing, not by machinery
-
-Every volume guard in `LiquidHandler` sits under a process-global flag. In `aspirate` it is a scope:
-`if does_volume_tracking():` at `liquid_handler.py:1032`, wrapping the two tracker calls at
-`:1034-1035`. In `drop_tips` it is a *conjunct of the condition itself* —
-`"tip.tracker.get_used_volume() > 0 and (not allow_nonzero_volume) and does_volume_tracking()"`
-(`training/verify/data/plr_preconditions.json:50077-50080`). Main spec §Open decisions 2 and increment
-1 §10.9 both record that a definite volume verdict therefore needs a `SoundnessScope` environment
-record, which does not exist.
-
-**It is not needed, because the two verdict directions are not symmetric under the flag:**
-
-- If tracking is **off**, `remove_liquid` is never called from `aspirate` at all, so the site cannot
-  raise. A `SAFE` finding for that guard — "this guard does not fire" — is therefore **true under both
-  branches of the flag** and needs no hypothesis.
-- A `WILL_FAIL` finding claims the site *does* raise, which is false when tracking is off. It needs
-  the hypothesis.
-
-> **Normative (the env argument).** `check_ir` gains a keyword-only parameter
-> `env: frozenset[str] = frozenset()`. A volume guard whose `scope_trail` or `condition` mentions a
-> zero-argument call `f()` that the evaluator cannot interpret is **conditional on `f`**; a conditional
-> guard may emit `SAFE` and `UNKNOWN` but **never `WILL_FAIL`** unless `f`'s name is a member of `env`.
-> A `T`-evaluating conditional guard with `f ∉ env` emits `UNKNOWN` with reason
-> `volume_tracking_unasserted`.
->
-> **`env` defaults to empty and `check_graph`'s two-positional-argument signature does not change**
-> (`plr-sema/src/plr_sema/check/__init__.py:713`), so every existing test, every existing fixture and
-> the whole tier-1 replay are unaffected by construction — which is what makes this additive rather
-> than a re-baselining.
->
-> **The harness asserts the hypothesis by observation, not by typing it.** `plr-sema/eval/` already
-> imports from the verifier's package at runtime (`plr-sema/eval/oracle_common.py:698-702`), so after
-> the verifier establishes its configuration the harness **calls**
-> `pylabrobot.resources.volume_tracker.does_volume_tracking()` (`volume_tracker.py:21-22`) and passes
-> `env = {"does_volume_tracking"}` iff it returns `True`. The name reaching `env` is read from the
-> guard's own text on one side and from the callable's `__name__` on the other; **no string is typed
-> into `plr_sema` or into the harness**, which is why this costs no registry row.
-
-`f`'s other live instance is `not op.resource.tracker.is_disabled` (`liquid_handler.py:1033`), a
-*per-tracker* flag rather than a process-global one. It is handled by the same rule — it is an
-uninterpretable conjunct, so it makes the guard conditional — and it is recorded as an assumption
-rather than observed, because the harness can observe a module-level function and cannot observe every
-tracker instance.
-
-### 13.2.7 The assumptions, named so a reviewer can attack them
-
-| id | assumption | why it is needed | what breaks if it is false | oracle |
-|---|---|---|---|---|
-| **A-VOLUME-TRACKING** | when `"does_volume_tracking"` ∈ `env`, tracking was on for the whole walk | `WILL_FAIL` claims the guard was reached | a `WILL_FAIL` on a run that never evaluated the guard. `no_volume_tracking()` is a context manager (`volume_tracker.py:25-30`) the analyzer cannot see, exactly as §10.1.3's `use_channels` manager | tier 3's volume mutants (0 unsound gate) and tier 1's 0-unsound gate over 525 operations (`outputs/plr-sema/oracle_replay_260903_rebaseline.json:10-11`) |
-| **A-TRACKER-ENABLED** | no cell's tracker was individually disabled | `liquid_handler.py:1033`'s `not …is_disabled` conjunct is uninterpreted; a disabled tracker skips the call | a `WILL_FAIL` where the tracker was disabled. `VolumeTracker.disable` (`volume_tracker.py:58-60`) has no `LiquidHandler` caller in the corpus's executed path | the same two |
-| **A-NO-CORRECTION** | the volume PLR charges a cell is the literal the kwarg carries | V2 adds and subtracts the kwarg literal verbatim | an interval that drifts from the real one, in either direction, after the first corrected transfer. PLR's `vols` are `[float(v) for v in vols]` at `liquid_handler.py:968` — no liquid-class correction is applied on this path at the current pin, which is why the assumption discharges today and would not under a backend that applied one | tier 1 + tier 3; a drift shows up as an unsound row, not as a silent skew, because the oracle compares against the executed raise |
-| **A-COMMIT-VOLUME** | a committed transfer equals a pending one for the abstraction | V2 reads `get_used_volume()`, which returns `pending_volume` (`volume_tracker.py:114-116`), while `commit` copies it to `volume` (`:140-146`) and `rollback` restores it (`:148-151`) | an interval that reflects a rolled-back operation. `aspirate` commits or rolls back every touched tracker in one block (`liquid_handler.py:1058-1064`), which is A-COMMIT's own argument (§10.2.2) transposed to volume — and the rollback path only runs when the backend raised, which A-COMPLETES already scopes out | tier 3's volume mutants |
-| **A-TIP-CELL** | a tip cell's interval is `TOP` unless the tip family says the channel is `HAS_TIP` | the tip cell's identity is the mounted tip | nothing in the `SAFE` direction: an unknown tip cell is `TOP` and every guard on it is ½. Recorded because it is the one place the two families are coupled, and a later change to either could decouple them silently | AC-13.10's tip-cell assertion |
-
-### 13.2.8 Seeding, and why it reuses increment 3's scaffolding precedent
-
-An executed corpus row starts with wells that already contain liquid. The harness computes those
-seeds itself — `_precondition_plan` returns a `seed_volumes` dict (`plr-sema/eval/oracle_common.py:
-690-696`; the aspirate branch builds `dict(zip(sources, vols))` at `:733-739`) and
-`row_to_verifier_inputs` puts it in `deck_layout` at `:983-989`. **That dict is a harness artifact and
-is not in the extractor's graph**, so a `check_graph` on real extracted source sees no seeds and every
-cell is `TOP` at entry. That is correct and is not a defect.
-
-For the *oracle*, the two sides must describe one execution, which is §12.1.6's argument for lowering
-the scaffolding `setup()` call. The same remedy applies:
-
-> **Normative.** For each `(cell, volume)` in the row's `deck_layout.seed_volumes`, the caller in
-> `plr-sema/eval/` prepends a `CALL` to the derived volume-setting method — `VolumeTracker.set_volume`
-> at the current pin (`volume_tracker.py:66-72`, which writes both `volume` and `pending_volume`) —
-> with the cell as receiver and the seed as a `Lit` kwarg, **before** the scaffolding reset, with
-> `origin` the string `"seed"`. It is emitted **by the caller**, not synthesised inside `lower_calls`,
-> which stays a pure function of its input sequence. The method is selected by P7's own accessor pass
-> (a method assigning the anchored field from a parameter, unconditionally, at statement position),
-> not named in our source.
-
-**This is why no `IR_VERSION` bump is needed.** The alternative — a `seed` operand on `RESOURCE` — is
-a wire change and a bump, and would additionally have to carry `max_volume` to be worth having, which
-is §13.12's deferred item. A prepended `CALL` reuses an opcode, a lowering path and an `origin`
-convention that all shipped in increment 3 and are pinned by AC-12.3.
-
-### 13.2.9 The oracle: two mutant classes and a fixture set
-
-**Tier 3 (mutants).** `plr-sema/eval/tip_mutants.py`'s pattern generalises exactly, and the reason it
-generalises is a property of the existing code that must be stated because the whole construction
-depends on it: `row_to_verifier_inputs` is called on the **base** row and its `deck_layout` — seeds
-included — is carried into the mutant unchanged (`plr-sema/eval/tip_mutants.py:238-247`, where
-`example` is built from the base row's three outputs and the mutators at `:167` then edit only
-`example["call_sequence"]`). So a mutant that *raises* an aspirate volume over-draws against a seed
-computed from the **unmutated** call, and genuinely raises. Had the seeds been recomputed from the
-mutant, the mutation would be self-cancelling and the class would measure nothing — which is the same
-trap `_shift_tip_ref`'s docstring records for m2 (`tip_mutants.py:127-140`).
-
-> **Normative.** Two classes, in a new `plr-sema/eval/volume_mutants.py`:
-> **v1 (`v1_overdraw_aspirate`)** multiplies the last `aspirate`'s `volume_ul` so it exceeds the
-> base row's seed for that source; expected exception `TooLittleLiquidError`.
-> **v2 (`v2_overdraw_transfer`)** does the same to a `transfer`'s `volume_ul`; expected exception
-> `TooLittleLiquidError`.
-> Both reuse `run_one_mutant`'s shape (`tip_mutants.py:170-224`), which is refactored to take the
-> mutator and the expected exception as arguments rather than reading the module globals `_MUTATORS`
-> (`:167`) and `_EXPECTED_EXC` (`:69`). **The refactor must not move the m1/m2 numbers**, and AC-13.12
-> gates that as a non-regression against the committed
-> `outputs/plr-sema/tip_mutants_260903_4938.json`.
->
-> **No over-fill mutant class is specified**, because §13.2.2 makes an over-fill `WILL_FAIL`
-> unreachable; a class whose gate can only ever be `0 of n` is a class that measures the spec's own
-> scope decision rather than the implementation, and would be deleted at the first cleanup.
-
-**Tier 2b (executed fixtures).** The region fixture set (`plr-sema/eval/fixtures/regions/`, 11 fixtures
-at `outputs/plr-sema/tier2b_260903.json:7`) gains volume fixtures: one straight-line over-draw, one
-over-draw at the second iteration of a proved-trip loop, and one loop whose per-iteration draw is safe
-individually and exhausts the well collectively — the last being the case that distinguishes a real
-interval domain from a per-operation check. The existing `region_unsound = 0` and
-`region_will_fail_fired = 3` (`tier2b_260903.json:8-9`) become the floor, not the target.
+**Everything else about the family survived the round intact** — the interval domain, the capacity
+asymmetry that makes the over-fill half undecidable, the taxonomy selector, the seeding convention,
+the assumption table and the oracle plan — and all of it, plus two round-1 corrections the draft did
+not have (sequential pair threading for two channels on one well; a fail-closed generalisation
+covering `is_disabled`, which is a `@property` and not a zero-argument call), is carried verbatim
+under §14.x numbering in **`.praxia/docs/specs/260903_plr-sema-volume-increment.md`** (increment 5,
+spec_version 13, `status: draft-deferred`). That document's §14.0 states the four proof obligations as
+its first two tasks, each with its own normative box and its own measured-and-published expectation.
+**No acceptance criterion or task row in this document depends on it**, and the registry arithmetic it
+carries — HM-24 1 → 2, HM-25 6 → 8, `REASON_VOCABULARY` 8 → 10 — is not spent here (§13.7).
 
 ---
 
@@ -558,29 +256,32 @@ correspondingly smaller.
 
 ### 13.3.2 The correctness argument, which is a purity argument and has one non-obvious half
 
-> **Normative (the purity premise).** `check_ir(bytecode, contracts, receiver_states, env=…)` is a
-> pure function of its arguments (`plr-sema/src/plr_sema/check/__init__.py:443-445`, plus §13.2.6's
-> `env`). Nothing it reads is outside them: it does no I/O, imports no `pylabrobot`, and reads no
-> clock, environment variable or global. **A cache is sound iff its key determines every argument.**
+> **Normative (the purity premise).** `check_ir(bytecode, contracts, receiver_states)` is a pure
+> function of its arguments (`plr-sema/src/plr_sema/check/__init__.py:443-445`). Nothing it reads is
+> outside them: it does no I/O, imports no `pylabrobot`, and reads no clock, environment variable or
+> global. **A cache is sound iff its key determines every argument.**
 >
 > - `bytecode_hash` determines `bytecode` up to the canonical form, which is everything `check_ir`
 >   reads: §11.3.2 excludes only `sideband`, and `sideband` is by §11.1.4's disposition invariant the
 >   **S** class — "carried, never hashed, never read by `check_ir`".
-> - `contracts_sha` is a sha256 of the **whole `contracts_json` string** `check_graph` is handed
->   (§11.3.3), and `receiver_states` is a top-level key of that same document —
->   `_check` reads `contracts_payload.get("receiver_state", {})` and
->   `contracts_payload.get("contracts", {})` from one parsed object
->   (`plr-sema/src/plr_sema/check/__init__.py:686-691`). So one hash covers both arguments. This is
->   load-bearing and is easy to break: a key computed over the `contracts` *sub-dict* would not cover
->   `receiver_state`, and a table regenerated with a changed `entry_reset` or a changed volume anchor
+> - `contracts_sha` is a sha256 of the **whole `contracts_json` string** (§11.3.3), and
+>   `receiver_states` is a top-level key of that same document — `_check` reads
+>   `contracts_payload.get("receiver_state", {})` and `contracts_payload.get("contracts", {})` from
+>   one parsed object (`plr-sema/src/plr_sema/check/__init__.py:686-691`). So one hash covers both
+>   arguments. This is load-bearing and is easy to break: a key computed over the `contracts`
+>   *sub-dict* would not cover `receiver_state`, and a table regenerated with a changed `entry_reset`
 >   would silently reuse stale findings.
 > - `surface_identity` and `ir_version` answer "which PLR tree" and "which encoding" and are already
 >   in the key.
-> - **`env` is not in the key and must be**, since §13.2.6 makes it a real input. It is added as a
->   fifth component, `tuple(sorted(env))`.
+>
+> **The key stays a four-tuple this round.** The draft added a fifth component, `tuple(sorted(env))`,
+> for the volume family's hypothesis argument; with §13.2 deferred, `env` does not exist in this
+> increment and adding a component for it would be encoding a parameter no function takes. Increment 5
+> adds it, and every entry written before it is invalidated by that addition — which is correct and is
+> the cheap direction.
 
 **The non-obvious half: the cache must store the *pre-relabel* findings.** `_check` calls `check_ir`
-and then `ir.relabel_findings(raw_findings, origin)` (`check/__init__.py:691-693`), mapping each
+and then `ir.relabel_findings(raw_findings, origin)` (`check/__init__.py:691-694`), mapping each
 finding's `operation_id` from `str(pc)` to the graph's own operation id through `sideband["origin"]`.
 **`sideband` is excluded from `bytecode_hash`** (§11.3.2). Therefore two different graphs — the same
 program with different `OperationNode` ids — share a `bytecode_hash` and have *different* origin maps.
@@ -594,11 +295,11 @@ silently wrong report, not a cache miss.
 > pre-relabel findings specifically.**
 
 **Telemetry is part of the observable behaviour and must not be skipped.** `check_graph` "emits every
-finding via `plr_sema.telemetry`" (`check/__init__.py:713-719`). A hit that returned findings without
+finding via `plr_sema.telemetry`" (`check/__init__.py:725-729`). A hit that returned findings without
 emitting them would make the cache observable, which would falsify the purity claim the cache rests
 on. The emit therefore happens on the cached findings, on the hit path, unchanged.
 
-### 13.3.3 The store
+### 13.3.3 The store, and where the read-through hooks (round-1 O5)
 
 > **Normative.** `CacheStore` is a small class in a new module `plr_sema/check/cache.py`, stdlib-only
 > (the §6.2 packaging fact is untouched):
@@ -618,22 +319,41 @@ on. The emit therefore happens on the cached findings, on the hit path, unchange
 >   is `json.dumps(key, sort_keys=True, separators=(",", ":"), ensure_ascii=False)` — the same
 >   canonicalisation §11.3.1 item 6 already uses, so there is one serialisation convention in the
 >   package and not two.
-> - **Entry.** `{"key": <the five components, as JSON>, "created": <ISO-8601 UTC>, "findings":
+> - **Entry.** `{"key": <the four components, as JSON>, "created": <ISO-8601 UTC>, "findings":
 >   [<Finding as the wire form already defines>], "methods": [<sorted distinct CALL.method in the
 >   bytecode>]}`. The key is stored **in the entry** as well as in the filename so a hash collision or
 >   a filename-truncating filesystem is a loud mismatch rather than a wrong answer: `get` compares the
 >   stored key to the requested key and treats a mismatch as a miss.
 > - **`methods`** is what makes §13.3.4's targeted invalidation possible and is the only field that is
 >   not either the key or the payload.
+> - **`findings[].reason` is validated on read, not trusted.** Deserialisation
+>   (`plr-sema/src/plr_sema/check/cache.py:102-108`) passes each stored `reason` through
+>   `vocabulary_reason` (`plr-sema/src/plr_sema/verdict.py:157-169`) — the one dynamic form §3.3's
+>   forward scan admits — so a corrupt or foreign cache entry raises `ValueError` and becomes a miss
+>   rather than a `Finding` carrying a reason nobody registered.
 > - **No eviction policy.** Entries are removed only by `invalidate_by_methods` or by deleting the
 >   directory. An LRU or a size cap is a real requirement the moment this runs in CI over a large
 >   corpus, and it is deferred (§13.12) rather than guessed at.
+
+> **Normative (the hook, and it is `check_graph` — round-1 O5).** The read-through lives in
+> **`check_graph`** (`plr-sema/src/plr_sema/check/__init__.py:714`), which gains a keyword-only
+> `cache: CacheStore | None = None`. `check_graph` computes the key from **its own `contracts_json`
+> parameter**, consults the store, and on a miss calls into `_check`'s body and stores the result.
 >
-> **Read-through is opt-in.** `check_graph` gains a keyword-only `cache: CacheStore | None = None`,
-> defaulting to `None`. **With the default, no file is read, no file is written, and no directory is
-> created** — so the existing test suite stays pure and hermetic, and a test that wanted to exercise
-> the cache has to say so. `check_ir` itself is **not** given a cache parameter: it is the pure core
-> the cache's soundness argument is about, and giving it a cache would make the premise circular.
+> **It must not live in `_check`, and the reason is not stylistic.** `cache_key`'s second component is
+> a sha256 of the **raw string** (`plr-sema/src/plr_sema/check/ir.py:918-926`), and `_check`
+> (`check/__init__.py:686-700`) receives only `contracts_payload: dict[str, Any]` — an
+> already-`json.loads`'d object. The draft's task row put the hook there, which would have forced one
+> of two bad options: thread the raw string down as an unstated signature change, or re-serialise the
+> dict inside `_check` — and a re-serialisation is **not** guaranteed byte-identical to the file
+> (key order, whitespace, float `repr`), so `contracts_sha` could differ between two runs over the
+> same unchanged file. That direction is safe (extra misses, never a stale hit) but it silently
+> falsifies AC-13.5's premise that a second run over the same inputs hits.
+>
+> **With `cache=None` — the default — no file is read, no file is written, and no directory is
+> created**, so the existing test suite stays pure and hermetic and a test that wants the cache has to
+> ask for it. `check_ir` is **not** given a cache parameter: it is the pure core the soundness argument
+> is about, and giving it a cache would make the premise circular.
 
 ### 13.3.4 Invalidation on a pin bump
 
@@ -654,6 +374,7 @@ everything, which is correct but wasteful when one method's guards moved.
 > corpus-sized cache. **A bug in the diff produces a stale hit — a wrong answer — whereas a bug in the
 > "miss everything" path produces only slowness**, so the safe default (miss everything, via
 > `contracts_sha`) is the one that runs unattended, and the sharp tool is the one a human invokes.
+> Round 1 agreed with this reasoning explicitly (Q5).
 
 ### 13.3.5 The fork-D drift test guards the pin half
 
@@ -671,7 +392,7 @@ after the stamp's pin is perturbed must miss.
 
 ### 13.4.1 What is there today
 
-`_is_inert_dropped_receiver_call` (`plr-sema/src/plr_sema/derive/__init__.py:884-905`) is a
+`_is_inert_dropped_receiver_call` (`plr-sema/src/plr_sema/derive/__init__.py:969-1010`) is a
 three-clause predicate over a full receiver-qualified call expression:
 
 1. the head — text before the first `.` — is in `_INERT_RECEIVER_PREFIXES`, a hand-typed frozenset of
@@ -690,41 +411,85 @@ The predicate gates the two published `top_unresolved.dropped_receiver` worklist
 not listed) and clause 2 (lowercase) and clause 3 (their tails are not listed), so they rank as real
 unresolved receivers.
 
-### 13.4.2 The derivation
+### 13.4.2 The derivation — import-resolved, per file
 
-> **Normative.** Clause 1 is **replaced** by: the head is a member of `sys.stdlib_module_names`, or the
-> head is a module-level import alias resolving to such a member in the file the `dropped_calls` entry
-> came from. Clause 2 is **kept unchanged** — it is already derived and already carries its argument.
-> Clause 3 is **replaced** by: the tail is an attribute of a builtin container or `str`/`bytes` type,
-> i.e. `tail in set().union(*(dir(t) for t in (dict, list, set, tuple, str, bytes)))`, excluding
-> dunders.
+> **Normative (the predicate's signature — round-1 O6).** `_is_inert_dropped_receiver_call` gains the
+> originating record's **file**: `(call_expr: str, file: str) -> bool`. Both call sites already hold
+> it — `_dropped_receiver_worklist_from_survey` and `_dropped_receiver_worklist_whole_surface` iterate
+> `rec.dropped_calls` with `rec` in scope (`plr-sema/src/plr_sema/derive/__init__.py:1041-1044` and
+> `:1011`) — and neither passes it today. **Alias resolution is per file, never global**, because two
+> PLR files can bind the same name to different things and a global table would let one file's import
+> silence another file's local.
+>
+> **Normative (clause 1, import-resolved only).** The head is inert iff the **file's own module-level
+> import table** binds that name to a member of `sys.stdlib_module_names` — i.e. the file contains
+> `import <head>` where `<head>` is a stdlib module, or `import <mod> as <head>` / `from <pkg> import
+> <mod> as <head>` where the resolved module is one. **Bare coincidence with a stdlib module name is
+> NOT inert.** A head that merely happens to spell a stdlib module, with no import binding it in that
+> file, is a local variable and stays in the ranking.
+>
+> **Normative (clause 2).** Unchanged — the capitalized-head rule at `:902-903` is already derived and
+> already carries its own argument.
+>
+> **Normative (clause 3).** The tail is inert iff it is an attribute of a builtin container or
+> `str`/`bytes` type — `tail in set().union(*(dir(t) for t in (dict, list, set, tuple, str, bytes)))`,
+> excluding dunders.
 >
 > `_INERT_RECEIVER_PREFIXES` and `_INERT_CALL_SUFFIXES` are **deleted**, not left in place as a
 > fallback. A retained fallback would make the derivation unfalsifiable: every entry the derived rule
 > missed would be silently covered by the list, and nobody would ever learn which rule was doing the
 > work.
 
+**The import-resolved-only clause is not a refinement; it is a correction, and it was found in
+implementation rather than in review.** A first pass that treated *any* head coinciding with a
+`sys.stdlib_module_names` member as inert filtered **280 whole-surface calls on `resource.*`** — because
+`resource` is a Unix stdlib module *and* the single most common local variable name in PLR's own
+liquid-handling code (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:977-978`
+alone binds it in a `for` loop and passes it to `_check_no_lid`). Silencing `resource.*` would have
+hidden the deferred-item-(e) worklist's most interesting population behind a rule that looked
+principled. **The import binding is what makes the rule about the file rather than about the name**,
+and AC-13.1 asserts the `resource.*` case directly so the correction cannot regress.
+
 `sys.stdlib_module_names` is a frozenset shipped by CPython since 3.10 (the package's
 `requires-python`, main spec §1.1) and is a fact about **Python**, not about PLR — so it cannot go
 stale when PLR changes, which is the `breaks_when` question §9.1 makes every hand-maintained row
-answer. The same is true of `dir(dict)`.
+answer. The same is true of `dir(dict)`. **It is a fact about a specific Python, though**, which is why
+the gap ledger's stamp records `derive_python_version` (`plr-sema/data/gap_ledger.json:38`, `"3.14.6"`
+at the 50063d52 run): the same derivation on a different interpreter can select a different set, and
+that is a provenance fact, not a bug.
 
 **Both replacements strictly extend the shipped behaviour, and both must be measured rather than
 assumed.** Of the nine typed prefixes, `logging`, `warnings` and `inspect` are stdlib module names and
-are covered; `logger`, `args`, `kwargs`, `sig`, `backend_kwargs` and `default` are **local variable
-names** and are **not**. So the derived rule is not a superset of the typed one, and AC-13.1 requires
-the before/after ranking to be published rather than asserted — the same "show the ranked view before
-and after filtering" discipline the existing `filtered=False` path was built for (`:926-932`).
+are covered *when the file imports them*; `logger`, `args`, `kwargs`, `sig`, `backend_kwargs` and
+`default` are **local variable names** and are **not**. So the derived rule is not a superset of the
+typed one, and AC-13.1 requires the before/after ranking to be published rather than asserted — the
+same "show the ranked view before and after filtering" discipline the existing `filtered=False` path
+was built for (`:926-932`).
 
 > **Normative (what happens to the six uncovered locals).** They are **not** re-added by any means.
-> `logger.debug` is caught by nothing after this change and will re-enter the ranking. That is the
-> correct outcome and is the reason the item is worth doing: the ranking exists to be *read*, and a
-> filter that hides `logger.debug` by naming it hides the fact that the derivation cannot see it. The
-> honest remedy — resolving a local's type from its assignment (`logger = logging.getLogger(…)`) — is a
-> real dataflow pass, is named in §13.12, and is not attempted here. AC-13.1 publishes the resulting
-> ranking movement in both directions so the cost is visible rather than absorbed.
+> `logger.debug` is caught by nothing after this change and re-enters the ranking. That is the correct
+> outcome and is the reason the item is worth doing: the ranking exists to be *read*, and a filter that
+> hides `logger.debug` by naming it hides the fact that the derivation cannot see it. The honest remedy
+> — resolving a local's type from its assignment (`logger = logging.getLogger(…)`) — is a real
+> dataflow pass, is named in §13.12, and is not attempted here.
 
-### 13.4.3 The registry arithmetic, and the dispatch's premise is false
+### 13.4.3 What the implementation measured
+
+Three facts from the 50063d52 run, recorded here because they are the shape of the answer and a fixer
+re-running this must reproduce them, not re-derive them from scratch:
+
+- **`derived_contracts.json` is byte-identical.** The filter gates only the gap ledger's
+  `top_unresolved.dropped_receiver` *ranking*; it feeds no contract, no guard and no verdict. A change
+  that moved the contract table would mean the filter had leaked into the derivation, and AC-13.1
+  asserts the byte-identity for exactly that reason.
+- **Newly admitted: `logger.debug` and `logger.warning`, +3 entries whole-surface.** Both are visible
+  in the shipped ledger (`plr-sema/data/gap_ledger.json:119` and `:139`), which is the published
+  evidence that the typed prefix list is gone and nothing silently replaced it.
+- **The interpreter is stamped.** `derive_python_version` (`plr-sema/data/gap_ledger.json:38`) joins
+  the existing `plr`/`praxis` provenance in the ledger's stamp block (`:37-59`), so a ledger diff
+  caused by a Python upgrade is attributable rather than mysterious.
+
+### 13.4.4 The registry arithmetic, and the dispatch's premise is false
 
 The dispatch asked which registry row this retires, and predicted 24 → 23 live with headroom 1.
 **There is no such row.** Searched: `_hand_maintained.py` contains no occurrence of
@@ -744,10 +509,10 @@ and that re-baseline has been spent. So the position is:
   never added.
 
 > **Normative.** #4883 adds no registry row, retires no registry row, and moves no cap. `live_rows()`
-> stays **24**, `BUDGET_CAP` stays **24**, headroom stays **0**. **The lid and volume families get no
-> headroom from this item**, and §13.2.4's per-row ceiling bumps are the mechanism they use instead.
-> AC-13.2 asserts the deletion and the unchanged registry together, so that a fixer cannot satisfy the
-> item by adding a row and calling it registered.
+> stays **24**, `BUDGET_CAP` stays **24**, headroom stays **0**. **No family gets headroom from this
+> item**, and §13.7's single per-row ceiling bump is what P9 uses instead. AC-13.2 asserts the deletion
+> and the unchanged registry together, so that a fixer cannot satisfy the item by adding a row and
+> calling it registered.
 
 ---
 
@@ -770,8 +535,11 @@ the bridged tip guard: `plr-sema/data/derived_contracts.json:58363` opens the en
 `depth: 1`, `raises: "NoTipError"`, sited at `tip_tracker.py:65` `TipTracker.get_tip`, with
 `via: "self.head[channel].get_tip"`. P4's bridge, inherited through `delegates_to`, works exactly as
 §10.2.6 says it does. (The same entry inherits `dispense`'s `BlowOutVolumeError` guards at
-`:58449-58483`, whose `scope_trail` carries `"if does_volume_tracking()"` — independent corroboration
-of §13.2.6's claim that the flag is visible to the analyzer as a scope, not only as a conjunct.)
+`:58449-58483`, whose `scope_trail` carries `"if does_volume_tracking()"` — which is worth noting
+precisely because round 1 showed it does **not** generalise: that guard is a direct finding of
+`dispense`'s own body reached through a *resolved* delegate, so its scope comes along for free, while
+a guard reached through an unresolved `dropped_calls` entry gets no caller scope at all. That
+asymmetry is exactly what deferred the volume family, §13.2.)
 
 **The gap is the channel set.** `transfer`'s signature
 (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1273-1283`) declares `source`,
@@ -874,18 +642,33 @@ derived record or the strings `"absent"` / `"ambiguous"` / `"widened"` and the r
 the same visible-absence discipline §10.2.2 established for `tipstate_anchor` and §12.1.3 for
 `entry_reset`. **Every name in the record is read from PLR:** `"aspirate"` is the callee of an
 `ast.Attribute` on `self`, `"use_channels"` and `"resources"` come from P3a's own measured map, and
-`1347` is a line number. AC-13.15(iii) asserts this with the AST literal scan AC-10.9 established.
+`1347` is a line number. AC-13.10(iii) asserts this with the AST literal scan AC-10.9 established.
 
-### 13.5.4 What this does and does not reach
+### 13.5.4 What this does and does not reach, and the rescaled gate
 
-The 17 residual m1 rows are rows whose call sequence collapses to a lone `transfer`
-(§12.13). P9 makes the `aspirate`-delegated `NoTipError` guard evaluable on channel 0 for every one
-of them, so a mutant that removed the preceding `pick_up_tips` — leaving `default = NO_TIP` from the
-scaffolding reset (§12.1.4) — fires `WILL_FAIL` at the `transfer` index. **The gate is therefore
-directional and is set at m1 ≥ 92 of 101**, which is 9 of the 17 recovered rather than all 17: some
-of the 17 may fail for a second reason the residual analysis did not separate, and a gate set at
-101/101 would be a prediction rather than a threshold. AC-13.15(iv) requires the per-mutant residual
-to be published if the bar is missed, so a shortfall is diagnosed rather than merely reported.
+The residual m1 rows are rows whose call sequence collapses to a lone `transfer` (§12.13). P9 makes
+the `aspirate`-delegated `NoTipError` guard evaluable on channel 0 for every one of them, so a mutant
+that removed the preceding `pick_up_tips` — leaving `default = NO_TIP` from the scaffolding reset
+(§12.1.4) — fires `WILL_FAIL` at the `transfer` index.
+
+**The gate is expressed as a rate, because the denominator moved under it and will move again.** The
+committed baseline is `outputs/plr-sema/tip_mutants_260903_4946.json`: **84 `will_fail` of 101
+raised-as-expected** (`:9-14`), over `n_corpus_bases: 186` (`:36`), m2 190/190 (`:24-29`).
+**#4950 (`6e34be9b`) then changed the verifier**, and the mutant denominators moved with it: corpus
+bases 186 → 250, m1 raised-as-expected 101 → 193 with 158 `WILL_FAIL` (**82%**), m2 254/254. **Those
+post-#4950 numbers are not in any committed artifact** — the only committed evidence of #4950 is the
+replay report (`outputs/plr-sema/oracle_replay_260903_4950.json:2-13`: 331 executed, 528 operations,
+0 unsound, 0 totality violations), and the mutant run at `6e34be9b` was reported through the sprint,
+not through a file.
+
+> **Normative (the gate).** **m1 ≥ 91% of the rows the simulator rejects — i.e. ≥ 176 of 193 at
+> `6e34be9b` — with 0 unsound in both directions; m2 all of its rows with 0 unsound; tier 1
+> unchanged.** The percentage is the gate and the absolute is the reading of it at one commit: a fixer
+> who finds a different denominator **re-measures and publishes the difference rather than reconciling
+> to the number written here**, exactly as increment 3's AC-12.4 required of m2's 108/108. If the bar
+> is missed, the run publishes the **per-mutant residual** — base id, the operation the simulator
+> raised at, the static reason emitted there, and P9's `bound_channels` value for that guard — so a
+> shortfall is diagnosed rather than merely reported.
 
 **`transfer` is the only method this reaches at the current pin, and that must be measured rather
 than assumed.** P9 applies to any inherited `channel_guards` entry, and the fixer publishes the full
@@ -901,21 +684,16 @@ oracle is a claim this document is not entitled to make.
 
 | claim | § | oracle |
 |---|---|---|
-| a paired `(cell, amount)` under-draw guard evaluating `T` really raises | 13.2.5 | tier 3's v1/v2 mutants (`WILL_FAIL` at the raised index, 0 unsound) and tier 1's 0-unsound gate over 525 operations |
-| a paired under-draw guard evaluating `F` really does not raise, **whether or not tracking is on** | 13.2.6 | tier 1 (every executed row runs clean under the scaffolding, so any `SAFE` that was wrong is an unsound row) + AC-13.11's tracking-off fixture |
-| the over-fill half is genuinely undecidable and is not quietly guessed | 13.2.2 | AC-13.10's assertion that an `add_liquid`-derived guard yields `volume_state_unknown` for **every** fixture, including one whose interval would decide it if a capacity were assumed |
-| V2's interval arithmetic tracks the real used volume across a sequence | 13.2.5 | tier 2b's collective-exhaustion loop fixture, whose per-iteration draws are individually safe |
-| V4's `TOP` widening terminates the fixpoint on an infinite-height lattice | 13.2.5 | AC-13.10's `while`-loop volume fixture: `check_ir` converges within `K` passes and does not raise |
-| A-VOLUME-TRACKING, A-TRACKER-ENABLED, A-NO-CORRECTION, A-COMMIT-VOLUME, A-TIP-CELL | 13.2.7 | the per-row entries in that table |
-| the volume exception set is `{TooLittleLiquidError, TooLittleVolumeError}` and is derived | 13.2.1 | AC-13.9(ii): the unfiltered `volume_state` set has 4 members and the module conjunct selects 2, asserted against the taxonomy artifact, plus an AST literal scan finding no `ast.Constant` equal to either class name in `plr-sema/src/` |
 | the lid family emits nothing, and a `null`-condition guard is not a definite failure | 13.1.3 | AC-13.4, which asserts both the zero-lid-findings property and the `null`-condition non-firing directly |
-| a delegate call site's literal channel argument really is the channel PLR uses | 13.5.2 | **tier 3's existing m1 class** — the gate moves 84 → ≥ 92 of 101 with 0 unsound in both directions, and a mis-bound channel shows up as a `WILL_FAIL` where the simulator ran clean, which m1 already counts (`tip_mutants.py:204-211`) |
-| binding a channel does **not** license a tip effect for the caller | 13.5.2 | AC-13.15(ii): an operation *after* the `transfer` yields `channel_state_unknown`, so E4.2's widen is still in force |
-| P9 selects only where the caller's AST decides, and widens everywhere else | 13.5.2 | AC-13.15(i)'s five-shape negative fixture set, each shape asserted to yield `⊤` |
+| a delegate call site's literal channel argument really is the channel PLR uses | 13.5.2 | **tier 3's existing m1 class** — the gate moves from 82% to ≥ 91% with 0 unsound in both directions, and a mis-bound channel shows up as a `WILL_FAIL` where the simulator ran clean, which m1 already counts (`plr-sema/eval/tip_mutants.py:203-211`) |
+| binding a channel does **not** license a tip effect for the caller | 13.5.2 | AC-13.10(ii): an operation *after* the `transfer` yields `channel_state_unknown`, so E4.2's widen is still in force |
+| P9 selects only where the caller's AST decides, and widens everywhere else | 13.5.2 | AC-13.10(i)'s five-shape negative fixture set, each shape asserted to yield `⊤` |
 | a cache hit returns exactly what a miss computes | 13.3.2 | AC-13.5's hit/miss equality over every shipped fixture |
 | a cache hit is correct for a *second* graph sharing a bytecode hash | 13.3.2 | AC-13.6, the pre-relabel storage assertion — the one case where a plausible implementation is silently wrong |
+| the key is computed where the raw contracts string exists | 13.3.3 | AC-13.5's stability half: a second run over the same unchanged file **hits**, which a re-serialised key cannot guarantee |
 | a moved pin misses | 13.3.5 | AC-13.8 |
-| the derived inert filter changes the published ranking in both directions and hides nothing | 13.4.2 | AC-13.1's before/after publication |
+| the derived inert filter changes the published ranking in both directions and hides nothing | 13.4.2 | AC-13.1's before/after publication, including the `resource.*` non-filtering assertion |
+| the inert filter touches no verdict | 13.4.3 | AC-13.1's `derived_contracts.json` byte-identity assertion |
 
 ---
 
@@ -925,69 +703,63 @@ oracle is a claim this document is not entitled to make.
 (`plr-sema/src/plr_sema/_hand_maintained.py:851-855` — `RETIRED` rows do not count, and HM-8 is the
 only one) against `BUDGET_CAP = 24` (`:43`). **Headroom: 0, before and after.**
 
-**Two per-row ceilings move, and both are loud one-line diffs, not row additions:**
+**One per-row ceiling moves, and it is a loud one-line diff, not a row addition:**
 
 | row | today | after | what the new pattern is |
 |---|---|---|---|
-| **HM-24** (`_hand_maintained.py:781-814`), tip-typestate channel-receiver bridge shape, `metric="patterns"`/`declared=1`/`status="CAPPED"` at `:793-795` | live 1 | **live 2, declared 2** | the volume bridge `<name>.<field>.<attr>.<method>` (§13.2.4). `_measure_hm24` (`:244-261`) asserts `_BRIDGE_SHAPE_RE.groups == 3` on the *tip* regex and is unaffected; the volume regex gets its own measure, asserted the same way |
-| **HM-25** (`:815-847`, the same three fields at `:828-830` with `declared=5`), tip-typestate front-end syntactic patterns | live 5 | **live 8, declared 8** | P7's accessor-anchor shape and P8's zip-comprehension pairing idiom (§13.2.4), **plus P9's delegate-call channel-argument shape (§13.5.2)** |
+| **HM-25** (`_hand_maintained.py:815-847`, `metric="patterns"`/`declared=5`/`status="CAPPED"` at `:828-830`) | live 5 | **live 6, declared 6** | **P9 alone** — the delegate-call channel-argument shape (§13.5.2) |
+| **HM-24** (`:781-814`, the same three fields at `:793-795` with `declared=1`) | live 1 | **live 1 — unchanged** | nothing this round; the volume bridge that needed it is deferred (§13.2) |
 
-**P9 is the third pattern on HM-25 and takes it 7 → 8, and it carries the identical argument to P7's
-and P8's**: it is a syntactic pattern over *how PLR is written* — a keyword argument at a
-`self.<delegate>(…)` call site holding an int-constant display, or a display in the delegate's own
-P3a parameter — not a fact PLR records about itself. Its `breaks_when` is that PLR stops passing the
-channel literally at the call site (e.g. `transfer` computes `use_channels` into a local first), and
-it **fails closed**: `bound_channels` goes to `⊤`, the guard reverts to ½, and the m1 gate falls back
-toward 84/101 — fewer verdicts, never a wrong one. That failure is caught loudly by AC-13.15(iv)'s
-gate rather than silently, which is the HM-25 half of the HM-24/HM-25 split (§10.10 Q7) working as
-designed.
+**P9 carries the same argument HM-25's existing five do:** it is a syntactic pattern over *how PLR is
+written* — a keyword argument at a `self.<delegate>(…)` call site holding an int-constant display, or
+a display in the delegate's own P3a parameter — not a fact PLR records about itself. Its
+`breaks_when` is that PLR stops passing the channel literally at the call site (e.g. `transfer`
+computes `use_channels` into a local first), and it **fails closed**: `bound_channels` goes to `⊤`,
+the guard reverts to ½, and the m1 gate falls back toward 82%. That failure is caught loudly by
+§13.5.4's gate rather than silently, which is the HM-25 half of the HM-24/HM-25 split (§10.10 Q7)
+working as designed.
 
-Per §9.3, `test_no_surface_exceeds_its_declared_size` turns red on live 6 against declared 5, and the
-fixer must edit `declared` in a reviewable commit — which is the whole mechanism. Per §9.4, growth
-never raises the **row-count** cap, and neither of these does.
+> **The mechanical question this bump turns on, and increment 3's wording is wrong about it.**
+> Increment 3 §12.1.2 declined a sixth HM-25 pattern on the grounds that *"the registry has zero
+> headroom, so a sixth pattern is a cap conversation."* **[Correction, recorded here rather than by
+> editing increment 3, which is `implemented-round-1` and whose text is a historical record:** that
+> sentence conflates two separate ratchet tests. `test_total_declared_within_budget`
+> (`plr-sema/tests/test_hand_maintained_ratchet.py:344-352`) asserts `len(live_rows()) <= BUDGET_CAP`
+> — a cap on the **count of rows**, indifferent to any row's `declared` field —
+> while `test_no_surface_exceeds_its_declared_size` (`:271-283`) enforces `measure() <= declared`
+> **per row**. A sixth HM-25 pattern adds no row and moves no cap; it is a per-row ceiling edit, which
+> §9.3 describes as the mechanism working: *"growth is not forbidden, it is made loud."* Round 1's
+> challenger and defender both verified this reading against the two tests and adjudicated it correct
+> (Q1), and **the user approved the HM-25 5 → 6 bump on 260903** with the row-count cap explicitly
+> untouched. Increment 3's own decision to avoid the bump remains defensible as a conservative choice;
+> only its stated *reason* was wrong.**]**
 
-**`REASON_VOCABULARY` (HM-14): 8 → 10 of cap 12** (`plr-sema/src/plr_sema/verdict.py:129-154`; the row
-is `CAPPED` at declared 12, `_hand_maintained.py:553-557`, so live 10 ≤ 12 and **no `declared` edit is
-needed**). Two members, each naming a distinct give-up point in the sense §0's second consequence
-requires:
-
-- **`volume_state_unknown`** — a guard parsed as a volume `Cmp` atom, but the cell's interval is `TOP`
-  (or the capacity is, which is always). Cannot fold into `channel_state_unknown`: that reason names a
-  *channel*, and a volume cell is a well or a tip, keyed differently and widened by different rules.
-  Cannot fold into `guard_predicate_unparsed` for §10.8's own reason — the parse stage returned
-  something and the evaluation stage did not.
-- **`volume_tracking_unasserted`** — the atom evaluated to `T` but the guard is conditional on a
-  callable not in `env` (§13.2.6). This is a *third* stage: parse succeeded, evaluation succeeded, and
-  the **hypothesis** was not available. Without it a consumer cannot distinguish "I do not know the
-  volume" from "I know it over-draws but cannot prove tracking was on", and those are the two
-  different things a user would do two different things about.
-
-**No `lid_state_unknown` member.** §13.1 emits no lid finding, so a member for it would be vocabulary
-with no producer — dead data of exactly the kind §12.1.4 spent an argument discharging for
-`ChannelState.default`. It is added by whichever increment fires the lid family, and not before.
+**`REASON_VOCABULARY` (HM-14): unchanged at 8 of cap 12** (`plr-sema/src/plr_sema/verdict.py:129-154`;
+the row is `CAPPED` at declared 12, `_hand_maintained.py:561-565`). The draft added
+`volume_state_unknown` and `volume_tracking_unasserted`; both belong to the deferred volume family and
+**both move to increment 5**. Round 1's Q6 made the argument that decided it: a vocabulary member
+whose producer does not work on ship day is the same "dead data" problem §13.7 already raises for
+`lid_state_unknown`, and §13.2's deferral is exactly the case where the producer does not work. No
+member is added here.
 
 **What could have been hand-typed, and what it is instead:**
 
 | what could have been typed | what it is instead |
 |---|---|
-| `{"TooLittleLiquidError", "TooLittleVolumeError"}` as a class-name list | the two-conjunct taxonomy filter `category == "volume_state" AND module == "pylabrobot.resources.errors"` (§13.2.1), reusing the module literal AC-10.9 already declares. 4 members → 2 |
-| `"get_used_volume"` / `"get_free_volume"` / `"pending_volume"` as accessor names | P7 reads them off the guards' own `ast.Compare` operands (§13.2.4) |
-| a per-method map from resource parameter to volume parameter (`aspirate → (resources, vols)`) | P8's zip-comprehension pairing over `liquid_handler.py:1007-1028`, which is where PLR itself states the pairing |
-| `"does_volume_tracking"` as an environment key | the harness **calls** `does_volume_tracking()` (`volume_tracker.py:21-22`) and reads the callable's own name (§13.2.6). No string in `plr_sema`, none in the harness |
-| a default well capacity or nominal tip volume, to make the over-fill half decidable | **nothing.** The half stays ½ (§13.2.2) |
+| a `{"LiquidHandler.transfer": [0]}` channel map, or `"use_channels"`/`"aspirate"` as literals in our source | P9 reads the callee off an `ast.Attribute` on `self` and the keyword off P3a's own measured `channel_default_param` map (§13.5.3). AC-13.10(iii) scans for both strings |
+| 9 receiver prefixes + 11 call suffixes | a per-file **import binding** into `sys.stdlib_module_names`, and `dir(dict)`-class attributes — facts about **Python**, resolved against the file that produced the entry (§13.4.2). 20 strings deleted |
+| a list of stdlib names that are "really locals" (`resource`, `platform`, `types`, …) | **nothing.** The import binding decides it per file, which is why bare name-coincidence is not inert (§13.4.2) |
 | `"ValueError"` plus a site filter, to select the lid family | **nothing.** The family is not adopted (§13.1.3) |
-| a `{"LiquidHandler.transfer": [0]}` channel map, or `"use_channels"`/`"aspirate"` as literals in our source | P9 reads the callee off an `ast.Attribute` on `self` and the keyword off P3a's own measured `channel_default_param` map (§13.5.3). AC-13.15(iii) scans for both strings |
 | a cache eviction policy tuned to the corpus | no policy at all; explicit invalidation only (§13.3.3) |
-| 9 receiver prefixes + 11 call suffixes | `sys.stdlib_module_names` and `dir(dict)`-class attributes — facts about **Python** (§13.4.2). 20 strings deleted |
 
 **HM-21 (X dispositions): unchanged at live 3.** This increment reads no new upstream field and moves
 no field into or out of `X`. `RESOURCE`'s operand set does not change, which is the same statement as
 "no `IR_VERSION` bump".
 
 **Wire format: no change.** `Verdict`, `Finding`, `PlrSite`, `AnalysisReport`, `join`,
-`SCHEMA_VERSION`, `derived_contracts.json`'s `schema_version: 1` and `IR_VERSION = 2` are all
-unchanged. `volume_guards` and the per-class volume block are new optional keys read through `.get()`;
-`env` and `cache` are keyword-only parameters with defaults that reproduce today's behaviour exactly.
+`SCHEMA_VERSION`, `REASON_VOCABULARY`, `derived_contracts.json`'s `schema_version: 1` and
+`IR_VERSION = 2` are all unchanged. `bound_channels` is a new optional key read through `.get()`;
+`cache` is a keyword-only parameter whose default reproduces today's behaviour exactly.
 
 ---
 
@@ -996,20 +768,30 @@ unchanged. `volume_guards` and the per-class volume block are new optional keys 
 Written so that none can be satisfied while the property is false. Where a criterion could be passed by
 a stub, the stub-defeating half is named.
 
-- **AC-13.1 (the inert filter is derived, and the ranking movement is published in both directions).**
-  `_is_inert_dropped_receiver_call` classifies `asyncio.sleep`, `time.time`, `struct.pack` and
-  `contextlib.suppress` as inert and `self.head[channel].get_tip`,
-  `op.resource.tracker.remove_liquid` and `op.tip.tracker.add_liquid` as **not** inert. The gap
-  ledger's `top_unresolved.dropped_receiver` view is regenerated and the run publishes **three**
-  numbers: entries newly filtered, entries newly admitted, and the resulting rank of
-  `self.head[channel].get_tip`. The newly-admitted count must be **> 0** and must include
-  `logger.debug` — the stub-defeating half, because an implementation that quietly kept the typed
-  prefix list as a fallback would report 0 there (§13.4.2).
+- **AC-13.1 (the inert filter is derived, import-resolved, and its movement is published in both
+  directions).** Five sub-assertions. (i) `_is_inert_dropped_receiver_call` classifies
+  `asyncio.sleep`, `time.time`, `struct.pack` and `contextlib.suppress` as inert **when called with a
+  file that imports those modules**, and `self.head[channel].get_tip` and
+  `op.resource.tracker.remove_liquid` as **not** inert. (ii) **The `resource.*` correction:** a call
+  expression whose head is `resource`, from a file that does **not** `import resource`, is **not
+  inert** — asserted directly, since `resource` is both a Unix stdlib module and PLR's most common
+  local (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:977-978`). A
+  name-coincidence implementation filters it and fails. (iii) **Per-file, not global:** two files, one
+  importing `struct` and one not, give opposite answers for the same `struct.pack` expression.
+  (iv) The regenerated ledger publishes **three** numbers — entries newly filtered, entries newly
+  admitted, and the resulting rank of `self.head[channel].get_tip` — with the newly-admitted count
+  **> 0** and including `logger.debug` and `logger.warning`
+  (`plr-sema/data/gap_ledger.json:119`, `:139`). (v) `plr-sema/data/derived_contracts.json` is
+  **byte-identical** before and after, and the ledger's stamp carries `derive_python_version`
+  (`plr-sema/data/gap_ledger.json:38`). (ii) and (v) are the stub-defeating halves: a name-coincidence
+  rule passes (i) and fails (ii), and a filter that leaked into the derivation passes (i)–(iv) and
+  fails (v).
 - **AC-13.2 (the deletion is real and the registry does not grow).** An AST scan of
   `plr-sema/src/plr_sema/derive/__init__.py` finds no module-level assignment named
   `_INERT_RECEIVER_PREFIXES` or `_INERT_CALL_SUFFIXES` and no `ast.Constant` string equal to any of
-  their twenty former members; and `len(live_rows()) == 24` with `BUDGET_CAP == 24`, asserted after
-  the change, so the item cannot be satisfied by registering the surface instead of deriving it.
+  their twenty former members; `_is_inert_dropped_receiver_call`'s signature takes a file/record
+  parameter; and `len(live_rows()) == 24` with `BUDGET_CAP == 24`, asserted after the change, so the
+  item cannot be satisfied by registering the surface instead of deriving it.
 - **AC-13.3 (the lid facts are derived and published, and nothing is claimed from them).** The gap
   ledger gains a `lid_state` block naming, per candidate class: the `Liddable` anchor candidates found
   (expected: `has_lid` as a **method**, not a property, so the P2 anchor is `"absent"`), the state
@@ -1023,12 +805,17 @@ a stub, the stub-defeating half is named.
   other than `Verdict.UNKNOWN`; and the finding for the `:117` guard — the one whose derived
   `condition` is `null` — is `Verdict.UNKNOWN` with reason `guard_predicate_unparsed`, **not**
   `WILL_FAIL`. The second half is the stub-defeating one: an evaluator that read a `null` condition as
-  "raises unconditionally" would pass the first half and fail the second.
-- **AC-13.5 (a hit equals a miss).** For every shipped graph fixture, `check_graph(g, c)` and
-  `check_graph(g, c, cache=store)` called twice in a row produce reports whose `findings` tuples are
-  equal element-wise and whose `verdict` is equal; the second call's store reports a hit; and with
-  `cache=None` (the default) **no file is created and no directory is created** under
-  `plr-sema/.cache/` or anywhere else, asserted by comparing a directory listing before and after.
+  "raises unconditionally" would pass the first half and fail the second. **Round 1 adjudicated this
+  criterion the whole point of #4881a** (Q4), so it is the assertion that must not be dropped if the
+  row is trimmed.
+- **AC-13.5 (a hit equals a miss, and the key is stable across runs).** For every shipped graph
+  fixture, `check_graph(g, c)` and `check_graph(g, c, cache=store)` called twice in a row produce
+  reports whose `findings` tuples are equal element-wise and whose `verdict` is equal; the second call's
+  store reports a **hit**, and so does a third call made in a **fresh process** against the same
+  unchanged contracts file — the stability half, which a key computed from a re-serialised dict cannot
+  guarantee (§13.3.3). With `cache=None` (the default) **no file is created and no directory is
+  created** under `plr-sema/.cache/` or anywhere else, asserted by comparing a directory listing before
+  and after.
 - **AC-13.6 (the stored findings are pre-relabel, and a second graph proves it).** Two graph payloads
   that differ **only** in their `OperationNode` ids lower to the same `bytecode_hash`; running the
   first with a cold cache and the second against the now-warm cache yields, for the second, findings
@@ -1045,65 +832,15 @@ a stub, the stub-defeating half is named.
   `EXPECTED_SUBMODULE_PIN` is a **miss** when read with a stamp whose `surface_pin` differs by one
   character; `plr-sema/tests/test_fork_drift.py` passes unmodified; and HM-23's row is unchanged at
   `FROZEN`/declared 1.
-- **AC-13.9 (the volume passes select the measured set, published not assumed).** Re-running
-  `plr_sema.derive` emits, in `receiver_state`, a volume block for `VolumeTracker` with used-volume
-  accessor `get_used_volume`, free-volume accessor `get_free_volume` and field `pending_volume`; and
-  `contracts["LiquidHandler.aspirate"]["volume_guards"]` contains exactly two entries, one raising
-  `TooLittleLiquidError` with `via == "op.resource.tracker.remove_liquid"` and `cell_param ==
-  "resources"`, `amount_param == "vols"`, the other raising `TooLittleVolumeError` with `via ==
-  "op.tip.tracker.add_liquid"`. Three sub-assertions: (i) the emitted values equal the above;
-  (ii) the unfiltered taxonomy set `category == "volume_state"` has **4** members and the module
-  conjunct selects exactly `{TooLittleLiquidError, TooLittleVolumeError}`, asserted against
-  `training/verify/data/plr_exception_taxonomy.json`, so the narrowing is exercised rather than
-  incidental; (iii) an AST literal scan of `plr-sema/src/` finds no `ast.Constant` string equal to
-  `"get_used_volume"`, `"get_free_volume"`, `"pending_volume"`, `"TooLittleLiquidError"`,
-  `"TooLittleVolumeError"`, `"resources"` or `"vols"`.
-- **AC-13.10 (the interval domain decides one half and provably declines the other).** Four fixtures,
-  each with a prepended seed `CALL` (§13.2.8). (a) seed 100, `aspirate(vols=[200])` → exactly one
-  `Finding` with `verdict is Verdict.WILL_FAIL`, `category == "precondition_state"`, `plr_site ==
-  PlrSite("external/pylabrobot/pylabrobot/resources/volume_tracker.py", 92,
-  "VolumeTracker.remove_liquid")`. (b) seed 100, `aspirate(vols=[50])` → a `Verdict.SAFE` finding at
-  the same site. (c) the same graph with `vols` lowering to `Top` → `Verdict.UNKNOWN` with reason
-  `volume_state_unknown`. (d) **the declining half**: `dispense(vols=[10_000])` into a seeded well
-  yields `Verdict.UNKNOWN` with reason `volume_state_unknown` at the `add_liquid` site — never
-  `WILL_FAIL` — because the capacity is `TOP`; and a tip cell on a channel whose `TipState` is not
-  `HAS_TIP` likewise yields `volume_state_unknown` (A-TIP-CELL). A fifth fixture, a `while` loop
-  whose body aspirates a literal volume, asserts `check_ir` converges within `K` passes, does not
-  raise, and leaves every cell in the region `TOP` after the region's `END` (V4). (d) is the
-  stub-defeating half: an implementation that assumed a default capacity passes (a)–(c) and fails (d).
-- **AC-13.11 (the tracking hypothesis gates `WILL_FAIL` only, and defaults to unasserted).** AC-13.10's
-  fixture (a), run through `check_ir` with the default `env == frozenset()`, yields `Verdict.UNKNOWN`
-  with reason `volume_tracking_unasserted` — **not** `WILL_FAIL` — while fixture (b)'s `SAFE` is
-  **unchanged** by `env`, in both directions. `check_graph(g, c)` with two positional arguments
-  compiles, runs and returns the identical report it returns today for every shipped fixture. The
-  `SAFE`-unchanged half is what distinguishes this from a blanket "no volume verdicts without `env`"
-  rule, and is the whole content of §13.2.6's asymmetry argument.
-- **AC-13.12 (tier 3 — the volume mutants fire, and the tip mutants do not regress).**
-  `plr-sema/eval/volume_mutants.py` reports **v1 ≥ 60 of the rows that raised as expected** carrying a
-  static `WILL_FAIL` at the index the simulator raised, with **0 unsound** in both directions, and v2
-  reported with its own achieved number (no threshold — `transfer`'s guard is
-  `guard_predicate_unparsed` today, §12.13's #4946). And, as a non-regression over the committed
-  `outputs/plr-sema/tip_mutants_260903_4938.json`: m1 stays at **84 `will_fail` / 17 `unknown` of 101
-  raised-as-expected** (`:9-14`) and m2 at **190 of 190** (`:24-29`), with `gate_passed` still true
-  (`:34`) — the run-one-mutant refactor (§13.2.9) is what could move these, and this is what catches it.
-- **AC-13.13 (tier 2b — executed volume ground truth, including the collective case).** The three new
-  region fixtures (§13.2.9) are executed against the chatterbox deck under the verifier's
-  configuration and compared on `(operation, iteration)`: **zero** unsound rows; the straight-line
-  over-draw and the second-iteration over-draw each carry a static `WILL_FAIL` at the `(operation,
-  iteration)` the execution raised; and the **collective-exhaustion** fixture — per-iteration draws
-  individually safe, cumulatively over the seed — carries a static `WILL_FAIL` at the iteration the
-  execution raised, **not** at the first iteration and **not** nowhere. The existing
-  `region_unsound == 0` and `region_will_fail_fired >= 3`
-  (`outputs/plr-sema/tier2b_260903.json:8-9`) still hold. The collective case is the stub-defeating
-  half: a per-operation check that never accumulates passes the first two and fails this one.
-- **AC-13.14 (this document is machine-checked).** `plr-sema/tests/test_spec_lint.py` gains a
+- **AC-13.9 (this document is machine-checked).** `plr-sema/tests/test_spec_lint.py` gains a
   `SPEC_INCREMENT_4` entry alongside `SPEC_INCREMENT_3`, and both the citation checker and the
   AC-gating half of the cross-reference checker report **zero** failing violations over this file.
-- **AC-13.15 (delegate-call channel binding is derived, selective, and moves the gate).** Four
+- **AC-13.10 (delegate-call channel binding is derived, selective, and moves the gate).** Four
   sub-assertions. (i) **Selectivity, from both sides.** Re-running `plr_sema.derive` emits, on
   `contracts["LiquidHandler.transfer"]["channel_guards"][0]`, a `bound_channels` record with
   `channels == [0]`, `delegate == "aspirate"` and `rule == "arity_default"` — the rule-3 path, since
-  the `aspirate` call site passes no `use_channels` (`liquid_handler.py:1347-1352`) — and the fixer
+  the `aspirate` call site passes no `use_channels`
+  (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1347-1352`) — and the fixer
   publishes the **complete** set of `(K, delegate, rule, channels)` tuples P9 binds over the whole
   contract table, not only `transfer`'s. Against five synthetic caller fixtures — two depth-0 awaits
   of the same delegate; a `**kwargs` forward; a bare `ast.Name` in `use_channels`; a starred
@@ -1121,87 +858,54 @@ a stub, the stub-defeating half is named.
   and fails the second.
   (iii) **No hand-typed names.** An AST literal scan of `plr-sema/src/` finds no `ast.Constant`
   string equal to `"transfer"`, `"aspirate"`, `"dispense"` or `"use_channels"`.
-  (iv) **The gate, directional, with a published residual.** Tier 3's existing m1 class reports
-  **≥ 92 of 101** raised-as-expected rows carrying a static `WILL_FAIL` at the index the simulator
-  raised, with **0 unsound** in both directions; **m2 stays 190 of 190**; and tier 1 is byte-identical
-  to `outputs/plr-sema/oracle_replay_260903_rebaseline.json`. If the bar is missed, the run publishes
-  the **per-mutant residual** — base id, the operation the simulator raised at, the static reason
-  emitted there, and P9's `bound_channels` value for that guard — so a shortfall is diagnosed rather
-  than reported. The baseline this must move is 84 `will_fail` / 17 `unknown`
-  (`outputs/plr-sema/tip_mutants_260903_4946.json:9-16`, identical to `outputs/plr-sema/tip_mutants_260903_4938.json:9-16`), and the
-  directional half is that a binding which never fires cannot reach 92.
+  (iv) **The gate, directional, rate-expressed, with a published residual.** Tier 3's existing m1
+  class reports **≥ 91% of raised-as-expected rows** carrying a static `WILL_FAIL` at the index the
+  simulator raised — **≥ 176 of 193 at `6e34be9b`** — with **0 unsound** in both directions; **m2 all
+  of its rows** with 0 unsound; and tier 1 unchanged. The baseline this must move is 84 `will_fail` /
+  17 `unknown` of 101 over 186 corpus bases
+  (`outputs/plr-sema/tip_mutants_260903_4946.json:9-16,36`), and the post-#4950 denominators are
+  **re-measured and published, not reconciled to** (§13.5.4). The directional half is that a binding
+  which never fires cannot reach 91%; the residual publication is what makes a miss diagnosable.
+
 ---
 
 ## 13.9 Task rows
 
-Ordering is forced in three places and free elsewhere: **#4883 lands first** because it is the only
-item that touches the derivation's shared filter and it must not land under a merge with #4881b's and
-#4946's new passes; **#4881b then #4946 land last, in that order**, because they share HM-25 and each
-bumps its `declared` (5 → 7, then 7 → 8) — landing them out of order or concurrently makes the ratchet
-red for a reason a reviewer would misattribute, and the second commit's diff would silently absorb the
-first's. #4922 is independent of all four.
+Ordering is forced in one place and free elsewhere: **#4883 lands first**, because it is the only item
+that touches the derivation's shared filter and #4946 regenerates the same artifact. #4922 is
+independent of both. The volume family's row is **not here** — it is increment 5's T24–T28
+(`.praxia/docs/specs/260903_plr-sema-volume-increment.md`), unscheduled.
 
 | task | scope | files | gate | ~LOC | depends on | model |
 |---|---|---|---|---|---|---|
-| **#4883** | Derived inert-name filter (§13.4.2): replace clause 1 with `sys.stdlib_module_names` + import-alias resolution, keep clause 2 unchanged, replace clause 3 with builtin-container attribute membership, **delete** both frozensets; regenerate the gap ledger and publish the three ranking numbers of AC-13.1 including the newly-admitted `logger.debug`; assert the registry is unchanged at 24 live | modify `plr-sema/src/plr_sema/derive/__init__.py`, `plr-sema/tests/test_derive.py`, `plr-sema/tests/test_hand_maintained_ratchet.py`, `plr-sema/data/gap_ledger.json` (regenerated) | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_derive.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q`; then `uv run python -m plr_sema.derive --survey-json training/verify/data/plr_preconditions.json --taxonomy-json training/verify/data/plr_exception_taxonomy.json --out $TMPDIR/contracts_4883.json --gap-ledger plr-sema/data/gap_ledger.json` and publish the before/after ranking — satisfying **AC-13.1**, **AC-13.2** | ~130 | — | Sonnet — the ranking movement is a measurement, and the newly-admitted count is the finding |
-| **#4881a** | Lid family, derivation-and-ledger only (§13.1): the `lid_state` gap-ledger block recording the absent P2 anchor, the absent state fields, and the two `_check_no_lid` guard conditions with their `raises`; **no** `LidState`, **no** `receiver_state` entry, **no** `Finding` construction, **no** new `REASON_VOCABULARY` member; plus the negative fixture and the `null`-condition assertion | modify `plr-sema/src/plr_sema/derive/__main__.py`, `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/tests/test_derive.py`, `plr-sema/tests/test_check_graph.py`; create `plr-sema/tests/fixtures/lidded_plate_aspirate_graph.json` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_derive.py -q`; `uv run pytest plr-sema/tests/test_check_graph.py -q` — satisfying **AC-13.3**, **AC-13.4** | ~120 | #4883 | Sonnet — the four blockers must be re-verified against the pin and published, not copied from this document |
-| **#4922** | The content-addressed cache (§13.3): `plr_sema/check/cache.py` with `CacheStore.get`/`.put`/`.invalidate_by_methods`, `plr-sema/.cache/` as the default root (never `$TMPDIR`), the entry carrying key + `created` + **pre-relabel** findings + `methods`; `env` added as the key's fifth component; read-through in `_check` behind `check_graph`'s new keyword-only `cache=None`, with telemetry emitted on the hit path; the `python -m plr_sema.check.cache` diff-and-invalidate entry point; `.gitignore` for the cache dir | create `plr-sema/src/plr_sema/check/cache.py`, `plr-sema/tests/test_cache.py`; modify `plr-sema/src/plr_sema/check/__init__.py`, `plr-sema/src/plr_sema/check/ir.py`, `.gitignore` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_cache.py -q`; `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_fork_drift.py -q` — satisfying **AC-13.5**, **AC-13.6**, **AC-13.7**, **AC-13.8** | ~330 | — | Sonnet — the pre-relabel storage argument is the one place a plausible implementation is silently wrong |
-| **#4881b** | The volume family (§13.2), in this order: (1) P7 + P8 + the volume bridge in `derive/`, with both fail-closed cases and the `volume_anchor` ledger value; (2) the `volume_guards` block and the per-class volume block in the payload; (3) the interval domain and V0–V4 in a new `check/volumestate.py` plus its wiring in `check/__init__.py`; (4) `env` and the two new `REASON_VOCABULARY` members; (5) `plr-sema/eval/` prepends the seed `CALL`s with `origin == "seed"` and observes `does_volume_tracking()` at runtime; (6) `volume_mutants.py` and the `run_one_mutant` parameterisation; (7) the three tier-2b volume fixtures; (8) **HM-24 declared 1 → 2 and HM-25 declared 5 → 7 in `_hand_maintained.py`, each with its own `why_not_derived`/`breaks_when` sentence extended** | create `plr-sema/src/plr_sema/check/volumestate.py`, `plr-sema/eval/volume_mutants.py`, `plr-sema/eval/fixtures/regions/volume_*.py`, `plr-sema/tests/fixtures/volume_{overdraw,safe,top,overfill,while}_graph.json`; modify `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/src/plr_sema/derive/__main__.py`, `plr-sema/src/plr_sema/check/__init__.py`, `plr-sema/src/plr_sema/verdict.py`, `plr-sema/src/plr_sema/_hand_maintained.py`, `plr-sema/eval/oracle_common.py`, `plr-sema/eval/tip_mutants.py`, `plr-sema/eval/region_oracle.py`, `plr-sema/tests/test_{derive,check_graph,verdict,hand_maintained_ratchet}.py`, `plr-sema/data/derived_contracts.json` (regenerated) | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_derive.py -q`; `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_verdict.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q`; then `uv run python -m plr_sema.derive --survey-json training/verify/data/plr_preconditions.json --taxonomy-json training/verify/data/plr_exception_taxonomy.json --out plr-sema/data/derived_contracts.json --gap-ledger plr-sema/data/gap_ledger.json`; then `uv run python plr-sema/eval/volume_mutants.py --corpus training/assemble/out/corpus_p25.jsonl --examples-dir training/examples --contracts plr-sema/data/derived_contracts.json --report $TMPDIR/volume_mutants.json`; `uv run python plr-sema/eval/tip_mutants.py --corpus training/assemble/out/corpus_p25.jsonl --examples-dir training/examples --contracts plr-sema/data/derived_contracts.json --report $TMPDIR/tip_mutants_regression.json`; `uv run python plr-sema/eval/region_oracle.py --fixtures plr-sema/eval/fixtures/regions --contracts plr-sema/data/derived_contracts.json --report $TMPDIR/tier2b_volume.json` — satisfying **AC-13.9**, **AC-13.10**, **AC-13.11**, **AC-13.12**, **AC-13.13** | ~780 | #4883, #4881a | Sonnet — every published number is a measurement, and the v1 gate is directional |
-| **#4946** | Delegate-call literal channel binding (§13.5): P9 in `derive/receiver_state.py` — the singleton-call-site rule, the explicit `use_channels` int-display path (rule 2), P3a re-applied at the call site over a length-`n` display (rule 3), P3b disabler poisoning checked **after** both (rule 4), and `⊤` for every other shape (rule 5); the additive `bound_channels` key on a `channel_guards` entry and the ledger's `bound_channels` value with its widening rule; §10.3.1 criterion 4 re-read to accept a guard's bound set in place of the operation's; **`channels_for_call` unchanged and E2 not extended**; the five negative fixtures plus the rule-2 and rule-4 fixtures; the AST literal scan; artifact regenerated and the full selected `(K, delegate, rule, channels)` set published | modify `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/src/plr_sema/derive/__main__.py`, `plr-sema/src/plr_sema/check/tipstate.py`, `plr-sema/tests/test_{derive,tip_typestate,check_graph}.py`, `plr-sema/data/derived_contracts.json` (regenerated), `plr-sema/src/plr_sema/_hand_maintained.py` (**HM-25 `declared` 7 → 8**); create `plr-sema/tests/fixtures/transfer_after_pickup_graph.json` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_derive.py -q`; `uv run pytest plr-sema/tests/test_tip_typestate.py -q`; `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q`; then `uv run python -m plr_sema.derive --survey-json training/verify/data/plr_preconditions.json --taxonomy-json training/verify/data/plr_exception_taxonomy.json --out plr-sema/data/derived_contracts.json --gap-ledger plr-sema/data/gap_ledger.json`; then `uv run python plr-sema/eval/tip_mutants.py --corpus training/assemble/out/corpus_p25.jsonl --examples-dir training/examples --contracts plr-sema/data/derived_contracts.json --report $TMPDIR/tip_mutants_4946.json` and `uv run python plr-sema/eval/oracle_replay.py --corpus training/assemble/out/corpus_p25.jsonl --contracts plr-sema/data/derived_contracts.json --report $TMPDIR/replay_4946.json` — satisfying **AC-13.15** | ~260 | #4883, #4881b | Sonnet — the m1 number is a measurement and the residual analysis is diagnostic |
-| **T23** | Lint and index: add `SPEC_INCREMENT_4` to `plr-sema/tests/test_spec_lint.py`'s two parametrised live-spec tests; regenerate `.praxia/docs/INDEX.md` | modify `plr-sema/tests/test_spec_lint.py`; regenerate `.praxia/docs/INDEX.md` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_spec_lint.py -q` — satisfying **AC-13.14** | ~15 | — | Haiku |
+| **#4883** | Derived inert-name filter (§13.4.2): `_is_inert_dropped_receiver_call` gains a `file` parameter and both call sites pass it; clause 1 replaced by **per-file import resolution** into `sys.stdlib_module_names` (a bare name coincidence is **not** inert); clause 2 unchanged; clause 3 replaced by builtin-container attribute membership; **delete** both frozensets; regenerate the gap ledger, publish the three ranking numbers of AC-13.1(iv) including the newly-admitted `logger.debug`/`logger.warning`, stamp `derive_python_version`, and assert `derived_contracts.json` byte-identical and the registry unchanged at 24 live | modify `plr-sema/src/plr_sema/derive/__init__.py`, `plr-sema/tests/test_derive.py`, `plr-sema/tests/test_hand_maintained_ratchet.py`, `plr-sema/data/gap_ledger.json` (regenerated) | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_derive.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q`; then `uv run python -m plr_sema.derive --survey-json training/verify/data/plr_preconditions.json --taxonomy-json training/verify/data/plr_exception_taxonomy.json --out $TMPDIR/contracts_4883.json --gap-ledger plr-sema/data/gap_ledger.json` and publish the before/after ranking — satisfying **AC-13.1**, **AC-13.2** | ~150 | — | Sonnet — the ranking movement is a measurement and the `resource.*` case is the finding |
+| **#4881a** | The `null`-condition landmine regression test, plus the lid ledger block (§13.1, reframed per round-1 Q4): the `lid_state` gap-ledger block recording the absent P2 anchor, the absent state fields, and the two `_check_no_lid` guard conditions with their `raises`; **no** `LidState`, **no** `receiver_state` entry, **no** `Finding` construction, **no** new `REASON_VOCABULARY` member; the negative fixture and the `null`-condition assertion | modify `plr-sema/src/plr_sema/derive/__main__.py`, `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/tests/test_derive.py`, `plr-sema/tests/test_check_graph.py`; create `plr-sema/tests/fixtures/lidded_plate_aspirate_graph.json` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_derive.py -q`; `uv run pytest plr-sema/tests/test_check_graph.py -q` — satisfying **AC-13.3**, **AC-13.4** | ~120 | #4883 | Sonnet — the four blockers must be re-verified against the pin and published, not copied from this document |
+| **#4922** | The content-addressed cache (§13.3): `plr_sema/check/cache.py` with `CacheStore.get`/`.put`/`.invalidate_by_methods`, `plr-sema/.cache/` as the default root (never `$TMPDIR`), the entry carrying the four-component key + `created` + **pre-relabel** findings + `methods`; **read-through in `check_graph`**, which holds the raw `contracts_json` the key needs — **not** in `_check`, which sees only the parsed dict (round-1 O5) — behind a new keyword-only `cache=None`, with telemetry emitted on the hit path; the `python -m plr_sema.check.cache` diff-and-invalidate entry point; `.gitignore` for the cache dir | create `plr-sema/src/plr_sema/check/cache.py`, `plr-sema/tests/test_cache.py`; modify `plr-sema/src/plr_sema/check/__init__.py`, `.gitignore` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_cache.py -q`; `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_fork_drift.py -q` — satisfying **AC-13.5**, **AC-13.6**, **AC-13.7**, **AC-13.8** | ~310 | — | Sonnet — the pre-relabel storage argument is the one place a plausible implementation is silently wrong |
+| **#4946** | Delegate-call literal channel binding (§13.5): P9 in `derive/receiver_state.py` — the singleton-call-site rule, the explicit `use_channels` int-display path (rule 2), P3a re-applied at the call site over a length-`n` display (rule 3), P3b disabler poisoning checked **after** both (rule 4), and `⊤` for every other shape (rule 5); the additive `bound_channels` key on a `channel_guards` entry and the ledger's `bound_channels` value with its widening rule; §10.3.1 criterion 4 re-read to accept a guard's bound set in place of the operation's; **`channels_for_call` unchanged and E2 not extended**; the five negative fixtures plus the rule-2 and rule-4 fixtures; the AST literal scan; **HM-25 `declared` 5 → 6**; artifact regenerated, the full selected `(K, delegate, rule, channels)` set published, and the m1 rate re-measured against the current denominator | modify `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/src/plr_sema/derive/__main__.py`, `plr-sema/src/plr_sema/check/tipstate.py`, `plr-sema/tests/test_{derive,tip_typestate,check_graph}.py`, `plr-sema/data/derived_contracts.json` (regenerated), `plr-sema/src/plr_sema/_hand_maintained.py`; create `plr-sema/tests/fixtures/transfer_after_pickup_graph.json` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_derive.py -q`; `uv run pytest plr-sema/tests/test_tip_typestate.py -q`; `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q`; then `uv run python -m plr_sema.derive --survey-json training/verify/data/plr_preconditions.json --taxonomy-json training/verify/data/plr_exception_taxonomy.json --out plr-sema/data/derived_contracts.json --gap-ledger plr-sema/data/gap_ledger.json`; then `uv run python plr-sema/eval/tip_mutants.py --corpus training/assemble/out/corpus_p25.jsonl --examples-dir training/examples --contracts plr-sema/data/derived_contracts.json --report $TMPDIR/tip_mutants_4946.json` and `uv run python plr-sema/eval/oracle_replay.py --corpus training/assemble/out/corpus_p25.jsonl --contracts plr-sema/data/derived_contracts.json --report $TMPDIR/replay_4946.json` — satisfying **AC-13.10** | ~260 | #4883 | Sonnet — the m1 rate is a measurement against a moved denominator and the residual analysis is diagnostic |
+| **T23** | Lint and index: add `SPEC_INCREMENT_4` **and `SPEC_INCREMENT_5`** to `plr-sema/tests/test_spec_lint.py`'s two parametrised live-spec tests — increment 5 is `draft-deferred` but its citations and AC gating must lint from the day it exists, or it will rot before it is scheduled; regenerate `.praxia/docs/INDEX.md` | modify `plr-sema/tests/test_spec_lint.py`; regenerate `.praxia/docs/INDEX.md` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_spec_lint.py -q` — satisfying **AC-13.9** | ~20 | — | Haiku |
 
-**Honest sizing note.** **#4881b at ~780 is well past one session and must be split**, and the split
-point is stated here rather than left to whoever runs out of context: **sub-steps (1)–(2) — the
-derivation and the payload — land first and leave the tree green on their own**, because `check/`
-reads the new blocks through `.get()` with empty defaults and therefore ignores them entirely until
-(3) lands; sub-steps (3)–(5) are the evaluator; (6)–(8) are the oracle and the registry diff.
-**Do not split (3) from (4)**: an evaluator that can construct `WILL_FAIL` before `env` exists to gate
-it is unsound for the duration of the gap, and "we will add the gate in the next commit" is exactly the
-sequencing that ships it. **Do not split (6) from (8)** either: the ceiling bumps are what make the
-ratchet green, and a commit that adds patterns without them is red for a reason a reader will
-misdiagnose. #4922's ~330 is the most trustworthy number on the table — the key already exists
-(`ir.py:918-926`) and the store is a file per entry — and #4881a's ~120 is the least interesting, since
-most of its work is verification rather than code. **#4946's ~260 is a single session and should not
-be split**, but its risk is not its size: seven of its LOC are P9's five rules and the rest is the
-seven fixtures that pin them, and a fixer under pressure will be tempted to ship rules 2 and 3 without
-1, 4 and 5. AC-13.15(i) exists to make that fail, and it is the sub-assertion to run first rather than
-last.
+**Honest sizing note.** All four substantive rows are one session each, which is the direct
+consequence of round 1: the item that was not — the volume family at ~780 — is the one that left.
+**#4946's ~260 should not be split**, but its risk is not its size: a handful of its LOC are P9's five
+rules and the rest is the seven fixtures that pin them, and a fixer under pressure will be tempted to
+ship rules 2 and 3 without 1, 4 and 5. AC-13.10(i) exists to make that fail, and it is the
+sub-assertion to run first rather than last. **#4922's ~310 is the most trustworthy number here** —
+the key already exists (`plr-sema/src/plr_sema/check/ir.py:918-926`) and the store is a file per
+entry — and #4881a's ~120 is the least interesting, since most of its work is verification rather
+than code. **T23 covers both documents deliberately**: an unscheduled spec that does not lint is a
+spec whose citations decay silently between the round that wrote it and the sprint that runs it.
 
 ---
 
 ## 13.10 What this changes in increments 1–3
 
-Seven normative amendments, listed so a reader of the earlier documents is not misled by text this one
-supersedes. None changes any increment's *design*.
-
-**In the main spec (`260901_plr-sema-pre-corpus-spec.md`):**
-
-1. **§Open decisions 2's sunset clause has expired, and this increment is the one that spends it.**
-   Its resolution reads *"leave numeric atoms at ½ through v1 and the first post-corpus increment"*
-   (`:92`). Increments 1, 2 and 3 have all shipped, so the reservation no longer holds anything back,
-   and §13.2 reopens it **for exactly one class of atom**: a `Cmp` in a guard raising a taxonomy
-   `volume_state` exception from `pylabrobot.resources.errors`, evaluated against §13.2.3's interval
-   domain. **Every other numeric `Cmp` still folds to ½** — including `drop_tips`'s
-   `tip.tracker.get_used_volume() > 0 and (not allow_nonzero_volume) and does_volume_tracking()`
-   (`training/verify/data/plr_preconditions.json:50077-50080`), which is a **compound** condition and
-   is excluded by §10.3.1's single-atom criterion, not by its numerics. The decision's own reversibility
-   claim — *"it touches one grammar production … and nothing on the wire"* — is confirmed: nothing on
-   the wire changes.
-2. **§Open decisions 2's `SoundnessScope` prerequisite is discharged by narrowing, not by building
-   it.** The text holds that *"any definite volume verdict needs a `SoundnessScope` record … before it
-   can be honest"*. §13.2.6 shows the requirement applies to the `WILL_FAIL` direction only, and meets
-   it with a runtime-observed `env` argument that defaults to unasserted. `SoundnessScope` as a wire
-   record remains unbuilt and remains deferred row (b).
+Three normative amendments, listed so a reader of the earlier documents is not misled by text this one
+supersedes. None changes any increment's *design*. **The draft carried seven; four of them belonged to
+the volume family and have moved to increment 5 §14.14.**
 
 **In `260902_plr-sema-tip-typestate-increment.md` (spec_version 9):**
 
-3. **§10.9's first bullet, "Volume atoms — every numeric `Cmp` stays ½ … Volume also needs a
-   `SoundnessScope` record"**, is superseded by items 1 and 2 above. Its *second* clause — that tip
-   state does not need such a record — is unchanged and is still true.
-4. **§10.1.1's "finite-height and needs no widening operator"** is narrowed to the tip lattice, which
-   is what it was always about. §13.2.3's interval lattice has infinite height and §13.2.5's V4 is its
-   widening operator. The two domains do not interact except through A-TIP-CELL.
-5. **§10.3.1's fourth interpretability criterion — *"`op`'s channel set is exact"* — is re-read over
+1. **§10.3.1's fourth interpretability criterion — *"`op`'s channel set is exact"* — is re-read over
    the guard, not only the operation** (§13.5.2). A `channel_guards` entry carrying a P9
    `bound_channels` set is interpreted against *that* set; a guard without one is unchanged. §10.2.3's
    observation that *"`LiquidHandler.transfer` … gets no channel-set derivation and is handled by
@@ -1213,19 +917,19 @@ supersedes. None changes any increment's *design*.
 
 **In `260902_plr-sema-ir-bytecode-increment.md` (spec_version 10):**
 
-6. **§11.12's Q3 — "whether the cache stores findings or reports" — is answered**, and more narrowly
+2. **§11.12's Q3 — "whether the cache stores findings or reports" — is answered**, and more narrowly
    than the question was posed: it stores **pre-relabel** findings, and §13.3.2 gives the reason
    (`sideband.origin` is outside the hash). §11.3.2's design position — *"#4922 caches the `Finding`
    tuple, and the caller reassembles the report"* — is confirmed and sharpened.
-7. **§11.3.3's cache key gains a fifth component**, `tuple(sorted(env))`, because §13.2.6 introduces a
-   real input the four-tuple does not cover. `plr_sema.check.ir.cache_key`
-   (`plr-sema/src/plr_sema/check/ir.py:918-926`) gains the corresponding keyword-only parameter with an
-   empty default, so an existing caller's key is unchanged.
+3. **§11.5's #4922 hook is realised as specified, with its host named.** The store interface
+   (`CacheStore.get`/`.put`) is exactly the one §11.5 sketched; what §11.5 did not say, and round 1's
+   O5 found the draft getting wrong, is **which function calls it**: `check_graph`, the only one
+   holding the raw `contracts_json` that `cache_key`'s second component hashes. §11.3.3's key stays a
+   **four-tuple**; increment 5 adds the fifth component when `env` exists (§14.14 item 6).
 
-**And in increment 3 (`260903_plr-sema-real-programs-increment.md`, spec_version 11):** §12.11's first
-bullet — *"the volume and lid guard families (#4881's other mutation classes) … unchanged from
-increment 1 §10.9"* — is **superseded for volume** (§13.2) and **reaffirmed for lid, on new evidence**
-(§13.1): the family is still not adopted, but for four specific reasons rather than by inheritance.
+**And in the main spec:** nothing. The draft reopened §Open decisions 2's numeric-atom reservation for
+volume `Cmp` atoms; with §13.2 deferred, **that reservation is untouched by this increment** and is
+increment 5's to spend (`260903_plr-sema-volume-increment.md` §14.14 items 1–2).
 
 ---
 
@@ -1234,61 +938,54 @@ increment 1 §10.9"* — is **superseded for volume** (§13.2) and **reaffirmed 
 - **Tier 3's existing m1 class acquires a moving gate and becomes #4946's oracle.** The plan's tier-3
   row records m1 as measuring the tip family's directional reach; §13.5 makes it the *only* evidence
   that a delegate-bound channel is the right channel, so the row should say which item each threshold
-  belongs to — 84/101 is #4938's achieved number and ≥ 92/101 is #4946's gate, over the same class and
-  the same corpus. A single unlabelled "m1" threshold in the plan will be read as a property of the
-  tip family rather than of a binding rule, which is exactly the misreading §13.5.1 had to correct
-  about `tip_mutants_260903_4946.json`.
-- **Tier 3 gains a second module.** `plr-sema/eval/volume_mutants.py` sits alongside `tip_mutants.py`
-  with two classes, v1 and v2 (§13.2.9). The plan's tier-3 description — mutate a clean corpus row,
-  execute, compare the static verdict at the raised index — is unchanged in every respect except the
-  mutation and the expected exception. The plan should say which module produces which classes, since
-  "tier 3" is now two runs with two reports and two gates.
-- **Tier 2b gains three fixtures**, inside the existing region fixture set rather than as a new tier —
-  the same argument §12.10 makes for not adding a fifth input class. The `[result_schema]` of
-  `plr-sema/eval/tier2_extractor.bth.toml` gains `volume_fixtures`, `volume_unsound` and
-  `volume_will_fail_fired`, mirroring the region fields it already publishes.
-- **The plan's "which families are firing and which are still armed" sentence gains a second entry,
-  and it must be written with the asymmetry visible.** The volume family is firing for under-draw and
-  armed-but-structurally-silent for over-fill; a plan that recorded "volume: firing" would be read as
-  claiming an over-fill capability that §13.2.2 proves does not exist.
-- **Tier 1 is unchanged and must stay unchanged.** `check_graph`'s default `env` is empty and its
-  default `cache` is `None`, so the replay's committed numbers — 330 executed, 525 operations,
-  0 unsound, 0 totality violations, agreement 1.0
-  (`outputs/plr-sema/oracle_replay_260903_rebaseline.json:2-18`) — must be reproduced **byte-identically**
-  after every task in §13.9. That is the cheapest possible regression detector for five items that all
-  touch the derivation or the checker, and it costs one existing command.
+  belongs to — 84/101 (83%) is #4938's achieved number, 158/193 (82%) is the same analyzer measured
+  after #4950 moved the denominator, and ≥ 91% is #4946's gate. **A single unlabelled "m1" threshold
+  in the plan will be read as a property of the tip family rather than of a binding rule**, which is
+  exactly the misreading §13.5.1 had to correct about `tip_mutants_260903_4946.json`, and **an
+  absolute threshold will go stale the next time the verifier changes**, which is exactly what #4950
+  did to 101.
+- **The plan's "which families are firing and which are still armed" sentence gains no entry.** The
+  draft would have added volume; §13.2 defers it. The sentence should say tip only, and should name
+  the lid family as *specified and deliberately silent* rather than leaving its absence to be read as
+  an oversight.
+- **Tier 1 is unchanged and must stay unchanged.** `check_graph`'s default `cache` is `None`, so the
+  replay's committed numbers — 330 executed, 525 operations, 0 unsound, 0 totality violations,
+  agreement 1.0 (`outputs/plr-sema/oracle_replay_260903_rebaseline.json:2-18`), or 331/528 after
+  #4950 (`outputs/plr-sema/oracle_replay_260903_4950.json:2-13`) — must be reproduced
+  **byte-identically** after every task in §13.9. That is the cheapest possible regression detector
+  for three items that all touch the derivation or the checker, and it costs one existing command.
+- **No new tier, no new module.** The draft added `volume_mutants.py` and three tier-2b fixtures; both
+  move to increment 5 §14.9.
 
 ---
 
 ## 13.12 Explicitly not in this increment
 
+- **The volume family, whole.** §13.2, deferred to `.praxia/docs/specs/260903_plr-sema-volume-increment.md`
+  by round 1 and the user's decision. Its four proof obligations are that document's §14.0, and its
+  registry arithmetic (HM-24 1 → 2, HM-25 6 → 8, `REASON_VOCABULARY` 8 → 10) is not spent here.
 - **Lid verdicts.** §13.1's disposition. The named trigger is the precondition survey recording an
   early-`return` guard scope.
-- **A capacity operand on `RESOURCE`.** This is what would make the over-fill half decidable
-  (§13.2.2), and it is a wire change plus an `IR_VERSION` bump plus an upstream extractor change to
-  read `Container.max_volume`/`Tip.maximal_volume` off the labware definition. Increment 3 took its
-  bump when it was free (§12.2.7); this one is not free, and buying it for one guard direction is not
-  obviously worth it. Named with its cost, not deferred silently.
-- **Liquid-class corrections.** A-NO-CORRECTION assumes none is applied. PLR at this pin applies none
-  on the aspirate path (`liquid_handler.py:968`); a backend that did would need a correction model in
-  V2, which is a different increment.
-- **The 96-head's volume cells.** `head96` is excluded from the tip family (§10.9) and its tip cells
-  are therefore excluded here by A-TIP-CELL, with no separate rule.
-- **`BlowOutVolumeError`.** Excluded by the module conjunct (§13.2.1 fact 4); it guards a
-  `LiquidHandler` instance field, not a tracker cell.
+- **A capacity operand on `RESOURCE`.** Increment 5 §14.15; round 1 also removed the argument for
+  taking it *early*, since `ir_version` is already a cache-key component
+  (`plr-sema/src/plr_sema/check/ir.py:918-926`) and a later bump invalidates a populated cache exactly
+  as completely as an early one.
+- **`env`, and the fifth cache-key component.** Both belong to the volume family's hypothesis gate
+  (increment 5 §14.6) and neither is built here. The key is a four-tuple this round.
 - **Cache eviction.** No LRU, no size cap, no TTL (§13.3.3). Required the moment this runs unattended
-  over a corpus; guessing a policy now would be tuning against a workload nobody has measured — which
-  is the same reason #4923 is a no-go below.
-- **Single-hop passthrough effects, still.** §13.5's P9 binds a *channel set* for a guard inherited
-  through `delegates_to`; it does **not** give the caller the delegate's *effect*, so §10.2.6's named
+  over a corpus; guessing a policy now would be tuning against a workload nobody has measured — the
+  same reason #4923 is a no-go below.
+- **Single-hop passthrough effects.** §13.5's P9 binds a *channel set* for a guard inherited through
+  `delegates_to`; it does **not** give the caller the delegate's *effect*, so §10.2.6's named
   follow-up — recovering `discard_tips`/`return_tips` without recovering `move_tips` — is untouched
-  and `transfer` still widens its receiver after the call (§13.5.2, AC-13.15(ii)). The two are easy to
+  and `transfer` still widens its receiver after the call (§13.5.2, AC-13.10(ii)). The two are easy to
   conflate because both are about reading a delegate from its caller, and the asymmetry is the point:
   a precondition read through a call site is sound from syntax, a post-state is not.
 - **Resolving a local's type from its assignment** — the pass that would recover `logger.debug` after
-  §13.4.2 deletes the prefix list. A real dataflow pass; named, not attempted.
+  §13.4.2 deletes the prefix list, and the same pass that would let the inert filter see through
+  `logger = logging.getLogger(…)`. A real dataflow pass; named, not attempted.
 - **A `pred`-aware `BRANCH`.** Still §12.3.6's B2, still the natural next increment.
-- **Precision targets.** Deferred (f) stands. AC-13.12's v1 number is a *directional* gate on one
+- **Precision targets.** Deferred (f) stands. §13.5.4's m1 rate is a *directional* gate on one
   mutation class, not an `UNKNOWN`-rate threshold.
 
 ### 13.12.1 Go/no-go: #4923, incremental re-check — **NO-GO**
@@ -1299,7 +996,8 @@ only, excluding execution and excluding the extractor subprocess.
 
 **The measurement does not exist, and this is the finding.** No committed artifact records a
 check-only wall time. `outputs/plr-sema/oracle_replay_260903_rebaseline.json`'s `summary_flat`
-(`:2-18`) has no timing field at all. The only two committed timings measure something else:
+(`:2-18`) has no timing field at all, and neither does `oracle_replay_260903_4950.json`'s (`:2-18`).
+The only two committed timings measure something else:
 `outputs/plr-sema/tier2a_260903.json:16` reports `elapsed_seconds: 89.256` for 330 rows, which
 includes executing every row against the simulator **and** an out-of-process extractor invocation per
 row (§12.4.1), so it is an upper bound on the check cost by an unknown and probably large factor; and
@@ -1327,158 +1025,192 @@ replay — and (b) the post-#4922 residual exceeds the threshold.
 act on. The dispatch states the precondition as "a pass produces real state"; **that precondition is
 already met and is not the right one.** The tip family produces real state today: 84 of 101
 raised-as-expected m1 mutants carry a `WILL_FAIL` at the raised index with zero unsound rows
-(`outputs/plr-sema/tip_mutants_260903_4938.json:9-16`). If "a pass produces real state" were the test,
+(`outputs/plr-sema/tip_mutants_260903_4946.json:9-16`). If "a pass produces real state" were the test,
 #4924 would already be a go. The sharper precondition is: **the state must answer the questions a
 re-planner asks**, and a liquid-move re-planner asks two — *"where is there enough liquid to draw
 from"* and *"where is there room to put it"*.
 
-**This increment answers the first and provably cannot answer the second.** §13.2.2 makes the
-over-fill half undecidable at the current wire format, so an interpreter re-planning a dispense would
-have to choose a destination with no capacity information — i.e. re-plan into exactly the failure class
-it is recovering from, and do so with a `WILL_FAIL` it is not entitled to construct. That is worse than
-not re-planning.
+**This increment answers neither, and after round 1 that is more true than the draft claimed.** The
+volume family — which would have answered the first — is deferred whole (§13.2), so as of this
+increment the analyzer says nothing about liquid at all. Even once increment 5 lands, its §14.2 makes
+the over-fill half undecidable at the current wire format, so an interpreter re-planning a dispense
+would have to choose a destination with no capacity information — i.e. re-plan into exactly the
+failure class it is recovering from, and do so with a `WILL_FAIL` it is not entitled to construct.
 
 **The minimum this increment would have to deliver, and does not.** #4922's cache (delivered) plus a
-volume family whose **over-fill half is decidable** (not delivered, and blocked on the `RESOURCE`
-capacity operand, §13.12). §11.5's own hook — the `(pc, concrete state, abstract state)` triple — is
-untouched and remains available; the pc join it rests on is unchanged by this increment.
+volume family whose **over-fill half is decidable** (not delivered, and now two increments away:
+increment 5 ships the under-draw half, and the over-fill half is blocked behind the `RESOURCE`
+capacity operand). §11.5's own hook — the `(pc, concrete state, abstract state)` triple — is untouched
+and remains available; the pc join it rests on is unchanged by this increment.
 
-**Recommendation: no-go.** Revisit when the capacity operand lands, which is a decision about the wire
-format and not about the interpreter.
+**Recommendation: no-go**, and more firmly than the draft's. Revisit when the capacity operand lands,
+which is a decision about the wire format and not about the interpreter.
 
 ---
 
-## 13.13 Open questions for the adversarial round
+## 13.13 Open questions — dispositions after round 1
 
-Six, and the first three are the ones where a design was chosen over a live alternative rather than
-found.
+Round 1 (challenger `.praxia/docs/audits/260903_plr-sema-families-cache-round1-challenger.md`,
+defender `.praxia/docs/audits/260903_plr-sema-families-cache-round1-defender.md`) adjudicated all six
+of the draft's open questions, and the user decided the one that needed deciding. **None is left open
+for a second round on this document.**
 
-1. **§13.2.4's per-row ceiling bumps, and whether increment 3 was right.** Increment 3 §12.1.2 declined
-   a sixth HM-25 pattern on the grounds that zero *row* headroom makes it "a cap conversation". §13.2.4
-   argues that conflates the row-count cap with a per-row ceiling and that bumping HM-24 to 2 and HM-25
-   to 8 is ordinary, loud growth under §9.3. **A reviewer who holds increment 3's stricter line should
-   say so plainly, because the consequence is not a redesign — it is that the volume family does not
-   land in this increment at all**, since P7, P8 and the volume bridge are all irreducibly new
-   syntactic surface. **This question now decides two items, not one**, and the second is the awkward
-   one: §13.5's P9 is a third HM-25 pattern, and it is the only thing in this increment that moves an
-   *already-missed* gate (m1 84/101 against a 91% bar, unmoved since #4938). Under the stricter
-   reading, the reviewer is choosing to leave a known-failing gate failing in order to hold a ceiling —
-   which may still be the right call, but should be made with that framing visible rather than as a
-   side effect of a rule about the volume family. This is the single question that decides whether
-   §13.2 and §13.5 ship.
-2. **§13.2.2's capacity asymmetry.** The over-fill half is declined because `max_volume` is labware
-   geometry. A reviewer may hold that a family which decides one of its two directions is worse than no
-   family — that it invites a reader to believe volume is "handled" — or, conversely, that the capacity
-   operand should simply be taken now with an `IR_VERSION` bump, since the bump is cheap while nothing
-   is cached and expensive once #4922 has populated a cache. **That second framing is the strongest
-   argument against this document's own sequencing** and it deserves a direct answer, because #4922
-   and the deferred bump are in the same increment and land in the wrong order for it.
-3. **§13.2.6's `env` mechanism.** A runtime-observed environment hypothesis, passed as a parameter with
-   an empty default, is deliberately the smallest thing that could work, and it is *not* the
-   `SoundnessScope` record main spec deferred row (b) reserves machinery for. Three sub-questions:
-   (a) is "observe the flag in the harness and pass a name" honest, or is it a hypothesis smuggled in
-   as an observation, given that the observation happens once and the walk covers a whole program?
-   (b) should `env` be in the report — a consumer reading a `WILL_FAIL` cannot currently tell which
-   hypotheses it rests on — which would be a wire change this document declines to make; (c) should
-   A-TRACKER-ENABLED be handled by the same mechanism rather than left as an assumption, given that it
-   is per-instance and therefore not observable the same way?
-4. **§13.1's non-adoption.** The lid family is specified and not adopted, and the fixer is nonetheless
-   asked to build a ledger block for it (#4881a, ~120 LOC) that produces no verdict. A reviewer may
-   reasonably say that a section which builds nothing that fires should build nothing at all, and that
-   #4881a is documentation wearing a task row. The counter-argument is AC-13.4's landmine assertion,
-   which is a real regression guard and has to live somewhere. Which half survives is the reviewer's
-   call.
-5. **§13.3.4's invalidation-as-a-tool.** Targeted invalidation is exposed as a CLI a human runs, never
-   called automatically, on the argument that a diff bug produces a wrong answer while the automatic
-   path (miss everything via `contracts_sha`) produces only slowness. A reviewer may hold that a tool
-   nobody runs is dead code and that the item should ship without it, leaving `contracts_sha` to do all
-   the work. The measurement that would settle it is the same one #4923 lacks.
-6. **The two new `REASON_VOCABULARY` members.** `volume_state_unknown` and
-   `volume_tracking_unasserted` take the vocabulary from 8 to 10 of a cap of 12, leaving two. §13.7
-   argues they name genuinely different give-up stages. A reviewer may hold that
-   `volume_tracking_unasserted` is a *hypothesis* failure rather than a *stage* failure and so belongs
-   in a soundness annotation (deferred row (b)) rather than in a vocabulary §0 defines as
-   "derivation-mechanical, not semantic" — in which case the count is 9, and the distinction a consumer
-   needs is lost until row (b) lands.
+1. **Per-row ceiling bumps — DECIDED (user, 260903).** The draft argued that §9.4's cap of 24 is a cap
+   on the *count of rows* and that a per-row `declared` edit is ordinary, loud growth under §9.3.
+   **Both reports verified the mechanical claim against the two tests** —
+   `test_total_declared_within_budget` checks `len(live_rows()) <= BUDGET_CAP`
+   (`plr-sema/tests/test_hand_maintained_ratchet.py:344-352`) and
+   `test_no_surface_exceeds_its_declared_size` enforces per-row ceilings separately (`:271-283`) — and
+   confirmed that increment 3 §12.1.2's "cap conversation" wording conflates them. **The user approved
+   HM-25 5 → 6 for P9, with the row-count cap untouched at 24/24, HM-24 held at 1 and
+   `REASON_VOCABULARY` held at 8.** The scope the question originally covered — paying for P7, P8 and
+   the volume bridge — moved out with §13.2, so what remains approved is exactly one pattern.
+   §13.7 records the arithmetic and the bracketed correction to increment 3's wording.
+2. **The capacity asymmetry and this document's sequencing — RESOLVED against the draft.** The draft
+   named "take the `IR_VERSION` bump now, while nothing is cached" as the strongest argument against
+   its own ordering. Round 1 dissolved it: `ir_version` is **already** a component of §11.3.3's cache
+   key (`plr-sema/src/plr_sema/check/ir.py:918-926`), so a future capacity bump invalidates a
+   populated cache exactly as completely as one taken today. There is no accumulating cost being
+   avoided, the sequencing concern was not load-bearing, and the capacity operand stays deferred on
+   its own merits (increment 5 §14.15).
+3. **The `env` mechanism — MOVED to increment 5.** Round 1 ruled sub-question (a) moot until O2 was
+   fixed (the mechanism could not reach the guard it gated) and O3 a real defect (`is_disabled` is a
+   `@property`, not a zero-argument call, so the "same rule" claim did not hold). Both are addressed in
+   increment 5 §14.6, which generalises the rule to fail closed on **anything** unrecognised. Round 1's
+   sub-question (b) — that a `WILL_FAIL` carries no record of which hypothesis it rested on — is
+   carried forward there as an unresolved usability gap.
+4. **The lid family's non-adoption and #4881a — KEPT, reframed.** Round 1 verified the landmine
+   independently (`plr-sema/data/derived_contracts.json:159918-159933` does carry `"condition": null`)
+   and adjudicated AC-13.4 *"a genuine regression guard with real future value"*, recommending #4881a
+   stay but be described as **a regression test for a landmine** rather than as lid-family
+   infrastructure. §13.1.3 and §13.9's row adopt that framing.
+5. **Invalidation-as-a-tool — KEPT as specified.** Round 1 agreed with the document's own asymmetry
+   argument: a diff bug in an automatic path returns a wrong answer, while a diff bug in a
+   human-invoked tool wastes a human's time.
+6. **The `REASON_VOCABULARY` count — RESOLVED by the deferral.** Round 1 held that
+   `volume_tracking_unasserted` risked shipping as a member with no working producer — the same "dead
+   data" objection §13.7 raises for `lid_state_unknown` — and should be treated as blocked rather than
+   open. §13.2's deferral resolves it: both volume members move to increment 5, and this increment
+   holds the vocabulary at **8 of cap 12**.
+
+---
+
+## 13.14 Implementation record (sprint 122)
+
+- #4883 `50063d52` + `995b4948`: derived inert filter; frozensets deleted, no fallback; clause 1
+  import-resolved ONLY — the first cut's bare `sys.stdlib_module_names` membership wrongly filtered
+  280 whole-surface calls on PLR variables named `resource`/`cmd`/`site` (Unix stdlib module names);
+  `derived_contracts.json` byte-identical; newly admitted `logger.debug`/`logger.warning`; interpreter
+  version stamped `derive_python_version`; registry 24/24 unchanged (the frozensets were never
+  registered).
+- #4922 `1f082238`: cache per §13.3 with the round's O5 relocation (hook in `check_graph`); key
+  `(bytecode_hash, contracts_sha, surface_identity, ir_version, env)`, `env` empty by default;
+  pre-relabel storage; hit == miss (checker invoked once); invalidation CLI `python -m
+  plr_sema.check.cache invalidate --old --new --cache-dir`; deviations: `CacheStore.put(...,
+  methods=frozenset())`; moved-pin miss tested.
+- #4946 `18b8d38b` (P9): binding published as
+  `receiver_state.LiquidHandler.delegate_channel_binding.transfer = {aspirate: [0] arity_default @1347,
+  dispense: [0] explicit @1355}`, one `bound_channels` record in the whole table (attribution tie
+  resolved by `delegates_to` declaration order); E2 not extended, transfer widens after a bound-channel
+  evaluation; `channel_kwarg` derived from P3a's matched target, removing a pre-existing hand-typed
+  `"use_channels"` literal; HM-25 declared 5→6 (user-approved 260903), `_measure_hm25` counts P9;
+  **m1 193/193 WILL_FAIL at the raised index (was 158/193 at `6e34be9b`, 84/101 before #4950), 0
+  unsound; m2 254/254**; tier 1 unchanged (331/528/0/0/191 exact/1.0/setup_error 12). Tests named
+  `test_ac_13_15_*` refer to the pre-renumbering AC id (now AC-13.10) — recorded here as the alias.
+- Band A context (already in the sprint record elsewhere): #4948/#4951 `fe58ce4b`, #4949 `cc072883`,
+  #4950 `6e34be9b`, #4884 praxia `902786026`.
+- Denominator note: mutant bases 186 → 250 after #4950's verifier typing change (`6e34be9b`); the
+  260903_4938/4946 reports are pre-change baselines.
+- `a83e4067` (post-#4922 follow-up, sprint 122): the §3.3 reason-vocabulary forward scan admits ONE
+  dynamic form — `reason=vocabulary_reason(<expr>)`, a validator in `plr-sema/src/plr_sema/verdict.py`
+  (`:157-169`) that returns `value` iff it is `""` or a `REASON_VOCABULARY` member and raises
+  `ValueError` otherwise. The cache's `_finding_from_dict`
+  (`plr-sema/src/plr_sema/check/cache.py:102-108`) uses it, so a corrupt or foreign cache entry becomes
+  a miss instead of a `Finding` carrying an unregistered reason; the AST scan in `tests/test_verdict.py`
+  treats that call as validated (it adds no member to the reverse-direction count). Found by the
+  orchestrator's final per-file run: #4922's deserialiser had failed
+  `test_reason_vocabulary_closed_forward` (2 tests), which no fixer's gate had run.
 
 ---
 
 ## References
 
-- Main specification (amended): `.praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md` — §0 (the
-  organizing claim), §0.1 (the DERIVED / HAND-MAINTAINED classification and decision 2's scope note),
-  §Open decisions 1–3 (decision 2 is amended, §13.10), §6.2, §7.3–7.4, §9.1 (the registry dataclass and
-  the `measure` forms), §9.2 (the 25-row inventory), §9.3 (the ratchet tests), §9.4 (the row-count cap,
-  discovery-vs-growth, and `RETIRED` semantics), §Deferred rows (b)/(c)/(d)/(e)/(f).
-- Increment 1 (amended): `.praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md` — §10.1.1 (the
-  lattice and the no-widening claim, narrowed by §13.10 item 4), §10.1.3–10.1.4, §10.2.1–10.2.6 (P1–P4,
-  the bridge, the two-conjunct exception filter, the families), §10.3.1–10.3.3 (atoms, truth,
-  emission — criterion 4 re-read by §13.10 item 5), §10.4 (E1–E5), §10.5, §10.6.3, §10.8, §10.9
-  (superseded for volume by §13.10 item 3).
+- Main specification (unchanged by this increment): `.praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md`
+  — §0 (the organizing claim), §0.1 (the DERIVED / HAND-MAINTAINED classification and decision 2's
+  scope note), §Open decisions 2 (**not** reopened here; increment 5's to spend), §6.2, §7.3–7.4,
+  §9.1 (the registry dataclass and the `measure` forms), §9.2 (the 25-row inventory), §9.3 (the ratchet
+  tests), §9.4 (the row-count cap, discovery-vs-growth, and `RETIRED` semantics), §Deferred rows
+  (b)/(c)/(e)/(f).
+- Increment 1 (amended): `.praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md` — §10.1.3,
+  §10.2.2, §10.2.3 (P3a/P3b, whose measured map P9 re-applies at a call site), §10.2.5–10.2.6 (the
+  bridge and the depth-0-only effect rule §13.5.2 leaves intact), §10.3.1 (criterion 4 re-read by
+  §13.10 item 1), §10.3.3, §10.4 (E2/E4.2), §10.5, §10.8, §10.10 Q7 (the HM-24/HM-25 split).
 - Increment 2 (amended): `.praxia/docs/specs/260902_plr-sema-ir-bytecode-increment.md` — §11.1.2 (the
-  value grammar), §11.1.3 (the opcodes and `RESOURCE`'s operands), §11.1.4 (the disposition invariant
-  and the S class), §11.3.1–11.3.3 (canonical form, hash, cache key — amended, §13.10 item 7), §11.4.1,
-  §11.5 (the #4922/#4923/#4924 hooks), §11.6, §11.12 Q3 (answered, §13.10 item 6).
-- Increment 3 (amended): `.praxia/docs/specs/260903_plr-sema-real-programs-increment.md` — §12.1.2 (the
-  template-free rule and its HM-25 arithmetic, corrected in §13.2.4), §12.1.5–12.1.6 (the assumption
-  table and the scaffolding-`CALL` precedent §13.2.8 reuses), §12.2.7 (`IR_VERSION` 1 → 2), §12.3.3
-  (L1/L2/L3, whose tail widen §13.2.5's V4 attaches to), §12.3.4 (`OBLIGED(graph)`), §12.4.2 (tier 2b's
-  recorder), §12.6, §12.11 (superseded for volume), §12.13 (the implementation record whose numbers
-  this document cites).
+  value grammar and `Seq`'s length-without-contents property), §11.1.3, §11.1.4 (the disposition
+  invariant and the S class), §11.3.1–11.3.3 (canonical form, hash, cache key — the key stays a
+  four-tuple, §13.10 item 3), §11.4.1, §11.5 (the #4922/#4923/#4924 hooks), §11.6, §11.12 Q3
+  (answered, §13.10 item 2).
+- Increment 3: `.praxia/docs/specs/260903_plr-sema-real-programs-increment.md` — §12.1.2 (the
+  "cap conversation" wording corrected in §13.7's bracketed note; the `_constructor_state` precedent),
+  §12.1.3–12.1.4 (the ledger convention and the reset effect P9's bound channels read against),
+  §12.11, §12.13 (the implementation record whose numbers this document cites).
+- **Increment 5, created by this round's re-scope:**
+  `.praxia/docs/specs/260903_plr-sema-volume-increment.md` — the volume family whole, under §14.x, with
+  §14.0's four proof obligations, §14.5's sequential pair threading (round-1 O4), §14.6's fail-closed
+  generalisation (round-1 O3), and the registry arithmetic this document does not spend.
 - Oracle plan (affected): `.praxia/docs/plans/260902_plr-sema-oracle-harness.md` — the soundness
   contract table, tiers 1–4, "Where it lives".
-- Adversarial round 1 on increment 3:
-  `.praxia/docs/audits/260903_plr-sema-real-programs-round1-challenger.md` (O1–O6 plus the
-  orchestrator's O7) and `.praxia/docs/audits/260903_plr-sema-real-programs-round1-defender.md`. Read
-  for the objection style this document is written to pre-empt: a location, a mechanism that does not
-  exist on the actual code path, a counterexample from shipped code, and a named remedy.
-- Backlog: `#4881` (the two families), `#4922` (the cache), `#4883` (the derived inert filter),
-  `#4946` (delegate-call literal channel binding — the residual #4938 filed and commit `92f97256`
-  diagnosed without moving); go/no-go only: `#4923` (incremental re-check), `#4924` (error-recovery
-  interpreter). Related open item referenced but not addressed: `#4948` (`OperationNode.line_number`
-  is 0 at every call site).
+- **Adversarial round 1 on *this* document:**
+  `.praxia/docs/audits/260903_plr-sema-families-cache-round1-challenger.md` (O1 the volume bridge does
+  not match at the pin; O2 the `env` gate cannot reach a bridged guard; O3 `is_disabled` is a
+  `@property`; O4 the V0/V2 update order; O5 the cache hook's host; O6 per-file alias resolution) and
+  `.praxia/docs/audits/260903_plr-sema-families-cache-round1-defender.md` (all six **CONCEDED**, a
+  severity table, the re-scope recommendation, and a seven-item ordered remediation list whose items
+  1–3 became increment 5 and whose items 4–7 are the changes in this document). The remediation
+  changelog below maps each item to the text that changed.
+- Adversarial round 1 on increment 3, read for objection style:
+  `.praxia/docs/audits/260903_plr-sema-real-programs-round1-challenger.md`.
+- Backlog: `#4922` (the cache), `#4883` (the derived inert filter), `#4946` (delegate-call literal
+  channel binding — the residual #4938 filed and commit `92f97256` diagnosed without moving),
+  `#4881` (the two families: lid not adopted, volume deferred); go/no-go only: `#4923` (incremental
+  re-check), `#4924` (error-recovery interpreter). Related items referenced but not addressed:
+  `#4948` (`OperationNode.line_number` is 0 at every call site), `#4950` (the verifier change at
+  `6e34be9b` that moved the mutant denominators).
 - Code read for this document: `plr-sema/src/plr_sema/verdict.py`;
   `plr-sema/src/plr_sema/_hand_maintained.py`; `plr-sema/src/plr_sema/derive/__init__.py`;
-  `plr-sema/src/plr_sema/check/ir.py`; `plr-sema/src/plr_sema/check/__init__.py`;
-  `plr-sema/eval/oracle_common.py`; `plr-sema/eval/tip_mutants.py`;
-  `praxis/backend/utils/plr_static_analysis/models.py`.
+  `plr-sema/src/plr_sema/derive/receiver_state.py`; `plr-sema/src/plr_sema/check/ir.py`;
+  `plr-sema/src/plr_sema/check/__init__.py`; `plr-sema/eval/oracle_common.py`;
+  `plr-sema/eval/tip_mutants.py`; `praxis/backend/utils/plr_static_analysis/models.py`.
 - PLR source at submodule pin `dd79c4c89`: `liquid_handling/liquid_handler.py` (`BlowOutVolumeError` at
   `:91-92`, `_lidded_ancestor` at `:95-107` with the `Liddable`/`has_lid` test at `:104`,
-  `_check_no_lid` at `:110-120` with its two raises at `:116` and `:117-120`, the aspirate lid check at
-  `:978`, the dispense lid check at `:1191`, `vols` coercion at `:968`, the aspiration comprehension at
-  `:1007-1028` with `resource=r` at `:1009`, `volume=v` at `:1010` and the `zip` at `:1018-1027`, the
-  tracking-gated tracker calls at `:1032-1035`, the commit/rollback block at `:1058-1064`, the
-  `BlowOutVolumeError` raises at `:1185`/`:1188`, `transfer`'s signature at `:1273-1283` with no
-  `use_channels` parameter, and its two delegate call sites at `:1347-1352` (`aspirate`, with
-  `resources=[source]` at `:1348` and no `use_channels`) and `:1355-1361` (`dispense`, with
-  `use_channels=[0]` at `:1359`, inside the `for` at `:1354`)); `resources/volume_tracker.py` (the tracking flag at
-  `:17-22`, `no_volume_tracking` at `:25-30`, `__init__`'s fields at `:40-52`, `set_volume` at
-  `:66-72`, `remove_liquid` at `:88-99` with its guard and raise at `:91-94`, `add_liquid` at `:101-112`
-  with its guard and raise at `:104-107`, `get_used_volume` at `:114-116`, `get_free_volume` at
-  `:118-120`, `get_liquids`'s raise at `:135-136`, `commit`/`rollback` at `:140-151`, `disable` at
-  `:58-60`, `no_volume_tracking` at `:25-30`, `load_state` at
-  `:162-167`); `resources/lid.py` (`Liddable` at `:62-72` with `has_lid` as a plain method at `:71-72`,
-  the `lid` property at `:74-77`, the setter at `:79-86`, `assign_child_resource` at `:102-120` with
-  the already-lidded raise at `:110`); `resources/container.py:84-85`; `resources/tip.py:27,45`.
-- Artifacts read: `plr-sema/data/derived_contracts.json` (`VolumeTracker.add_liquid` at
-  `:157965-157996`, `VolumeTracker.remove_liquid` at `:158102-158133`, `_check_no_lid`'s own entry at
-  `:159897-159933`, `_lidded_ancestor`'s at `:161251-161253`, one of the six depth-1 lid-guard
-  inlinings at `:53597-53630`, and `LiquidHandler.transfer`'s entry at `:58363` with its
-  single inherited `channel_guards` bridge at `:58364-58383` and `dispense`'s inherited
-  `BlowOutVolumeError` guards — whose `scope_trail` carries `"if does_volume_tracking()"` — at
-  `:58449-58483`); `training/verify/data/plr_exception_taxonomy.json`
-  (`BlowOutVolumeError` at `:2964-2972`, `LiquidLevelError` at `:2991-2999`, `TooLittleLiquidError` at
-  `:3010-3036`, `TooLittleVolumeError` at `:3037-3056`); `training/verify/data/plr_preconditions.json`
-  (the `dropped_calls` bridge expressions at `:49768-49769` and `:49863-49864`, and `drop_tips`'s
-  compound tracking-gated guard at `:50077-50080`).
+  `_check_no_lid` at `:110-120` with its two raises at `:116` and `:117-120`, the aspirate lid check
+  and its `resource` loop variable at `:977-978`, the dispense lid check at `:1191`,
+  `transfer`'s signature at `:1273-1283` with no `use_channels` parameter, and its two delegate call
+  sites at `:1347-1352` (`aspirate`, with `resources=[source]` at `:1348` and no `use_channels`) and
+  `:1355-1361` (`dispense`, with `use_channels=[0]` at `:1359`, inside the `for` at `:1354`));
+  `resources/lid.py` (`Liddable` at `:62-72` with `has_lid` as a plain method at `:71-72`, the `lid`
+  property at `:74-77`, the setter at `:79-86`, `assign_child_resource` at `:102-120` with the
+  already-lidded raise at `:110`).
+- Artifacts read: `plr-sema/data/derived_contracts.json` (`_check_no_lid`'s own entry at
+  `:159897-159933` with the `null` condition at `:159918-159933`, `_lidded_ancestor`'s at
+  `:161251-161253`, one of the six depth-1 lid-guard inlinings at `:53597-53630`, and
+  `LiquidHandler.transfer`'s entry at `:58363` with its single inherited `channel_guards` bridge at
+  `:58364-58383` and `dispense`'s inherited `BlowOutVolumeError` guards at `:58449-58483`);
+  `plr-sema/data/gap_ledger.json` (the 50063d52 inert-filter run: `derive_python_version` at `:38`
+  inside the stamp block at `:37-59`, the newly-admitted `logger.debug` at `:119` and `logger.warning`
+  at `:139`); `training/verify/data/plr_exception_taxonomy.json` (searched for `ValueError`: **no
+  entry**, which is §13.1.3's L4 half); `training/verify/data/plr_preconditions.json:49766-49772` (the
+  flat `dropped_calls` string list that is §13.2's second deferral reason).
 - Data read: `outputs/plr-sema/oracle_replay_260903_rebaseline.json:2-29` (330 executed, 525
   operations, 0 unsound, 0 `check_graph` exceptions, 0 totality violations, `unknown_rate` 1.0,
   191 exact crosscheck joins, agreement 1.0 — **and no elapsed-time field, which is §13.12.1's
-  finding**); `outputs/plr-sema/tip_mutants_260903_4938.json:1-38` (m1 84 `will_fail` / 17 `unknown` of
-  101 raised-as-expected over 190 run, m2 190/190, both with empty unsound lists, `gate_passed` true);
-`outputs/plr-sema/tip_mutants_260903_4946.json:1-38` (commit `92f97256` — **numerically identical** to
-the `…_4938` run in every field, which is what establishes it as §13.5's baseline rather than a
-result);
+  finding**); `outputs/plr-sema/oracle_replay_260903_4950.json:2-29` (331 executed, 528 operations,
+  12 setup errors, the same zero-unsound gate — the only committed evidence of #4950, and it carries
+  no timing field either); `outputs/plr-sema/tip_mutants_260903_4938.json:1-38` (m1 84 `will_fail` /
+  17 `unknown` of 101 raised-as-expected over 190 run, m2 190/190, both with empty unsound lists,
+  `gate_passed` true); `outputs/plr-sema/tip_mutants_260903_4946.json:1-38` (commit `92f97256` —
+  **numerically identical** to the `…_4938` run in every field, which is what establishes it as
+  §13.5's baseline rather than a result, with `n_corpus_bases: 186` at `:36`);
   `outputs/plr-sema/tier2a_260903.json:1-26` (330 compared, 235 agreeing, extractor divergences 0,
   renderer 122, grammar 0, reset 0, directional 208/210, `elapsed_seconds` 89.256);
   `outputs/plr-sema/tier2b_260903.json:1-45` (11 fixtures, 35 operations, `region_unsound` 0,
@@ -1487,3 +1219,22 @@ result);
 ---
 
 ## Remediation changelog (round 1)
+
+Applied against the defender's adjudication of the round-1 challenger, in the defender's own order.
+`status` moved `draft` → `reviewed-round-1`; `spec_version` stays **12**. The largest change is a
+**re-scope, not an edit**: §13.2 left this document entirely. Every AC and task row that gated it left
+with it, so the AC count moves 15 → 10 and the task-row count 6 → 5, and the surviving ACs were
+renumbered contiguously (the volume ACs were 13.9–13.13; T23's lint AC became AC-13.9 and #4946's
+became AC-13.10).
+
+| item | O-id | verdict | change | section(s) |
+|---|---|---|---|---|
+| 1 | **O1** | CONCEDE (blocking) | The volume bridge does not match at the pin under any literal reading — `op` is a for-loop variable over the comprehension's **output list** (`liquid_handler.py:1031`), `SingleChannelAspiration.resource` is a dataclass class-level annotation `_is_self_attr` excludes (`external/pylabrobot/pylabrobot/liquid_handling/standard.py:52-53`, `receiver_state.py:164-167,177`), and `Container.tracker` is an unannotated `ast.Assign` (`container.py:85`). Three new mechanisms, one without precedent. **§13.2 moved whole to `260903_plr-sema-volume-increment.md`**, whose §14.0.1 states B1, B2 and P1c as three normative sub-boxes each with a measured expectation | §13.2 (now a stub), §13.0, new increment 5 |
+| 1 | **O2** | CONCEDE (blocking, live soundness bug) | `compute_channel_bridge` sources `scope_trail` from the **callee** (`receiver_state.py:977-1041`) and `dropped_calls` is a bare string list (`plr_preconditions.json:49766-49772`), so `does_volume_tracking()` never reaches the bridged guard and a default-`env` run would emit `WILL_FAIL` unasserted. Moved with O1; increment 5 §14.0.2 specifies P10 (derive-side, with the survey-side alternative costed and declined) and §14.0 gates T26/T27 behind **both** T24 and T25 | §13.2, increment 5 §14.0.2 |
+| 2 | **O4** | CONCEDE (soundness) | V2's pair-update order was unspecified and read as simultaneous; PLR is sequential (`liquid_handler.py:1031`, `volume_tracker.py:96`) and two channels drawing one well would have produced a false `SAFE`. Folded into increment 5 §14.5 as a normative threading sentence plus the two-channel/one-well fixture (AC-14.6) | increment 5 §14.5, AC-14.6 |
+| 3 | **O3** | CONCEDE | `VolumeTracker.is_disabled` is a `@property` (`volume_tracker.py:54-56`), not a zero-argument call, so the draft's "handled by the same rule" was false. Folded into increment 5 §14.6, which **generalises** the rule: anything unrecognised blocks `WILL_FAIL`. A-TRACKER-ENABLED downgraded from a soundness assumption to a precision note, and the consequence — no `WILL_FAIL` on real corpus rows at the current pin — is disclosed and raised as that document's Q1 | increment 5 §14.6, §14.7, §14.16 |
+| 4 | **O5** | CONCEDE | The cache read-through moved from `_check` — which receives only `contracts_payload: dict` (`check/__init__.py:686-700`) — to **`check_graph`** (`:713`), the only function holding the raw `contracts_json` string `cache_key` hashes (`ir.py:918-926`). §13.3.3 gains a normative box naming the host and the two bad options the draft's placement would have forced; the #4922 row and AC-13.5 (a fresh-process hit) follow | §13.3.3, §13.9 #4922, AC-13.5 |
+| 5 | **O6** | CONCEDE | `_is_inert_dropped_receiver_call` gains the record's `file` and resolves aliases **per file**; both call sites (`derive/__init__.py:940`, `:1011`) pass it. **Plus a second correction found in implementation (50063d52) that neither report raised:** clause 1 is **import-resolved only** — a head coinciding with a stdlib module name but not bound by that file's imports is **not** inert, because the first implementation wrongly filtered 280 whole-surface `resource.*` calls. §13.4.3 records the implementation facts (`derived_contracts.json` byte-identical, `logger.debug`/`logger.warning` newly admitted, `derive_python_version` stamped); AC-13.1 grows to five sub-assertions with the `resource.*` case as a stub-defeater | §13.4.2, §13.4.3, §13.9 #4883, AC-13.1, AC-13.2 |
+| 6 | — | user decision | Registry arithmetic reduced to what ships: **HM-25 `declared` 5 → 6 for P9 alone**; HM-24 stays **1**; `REASON_VOCABULARY` stays **8 of 12**; rows 24/24, headroom 0. Increment 5 carries HM-24 1 → 2, HM-25 6 → 8 and the two volume reasons. Increment 3 §12.1.2's "cap conversation" wording corrected by a **bracketed note in §13.7**, not by editing that document | §13.7, §13.0's table |
+| 7 | — | round-1 adjudication | §13.13 rewritten from six open questions to six dispositions: Q1 **decided** by the user with the mechanical claim verified against both ratchet tests; Q2 **resolved against** the draft's sequencing argument (`ir_version` is already a key component); Q3 and Q6 **moved** to increment 5; Q4 **kept, reframed** as a landmine regression test per the round's own recommendation; Q5 **kept as specified** | §13.13, §13.1.3, §13.9 #4881a |
+| — | housekeeping | — | `status` → `reviewed-round-1`; frontmatter `description` rewritten around what ships; `sources` extended with both round-1 audit files, `plr-sema/data/gap_ledger.json:28-60,2585`, `outputs/plr-sema/oracle_replay_260903_4950.json` and the PLR/analyzer ranges read to verify the remediation; §13.5.4's gate **rescaled from an absolute to a rate** (≥ 91%, i.e. ≥ 176 of 193 at `6e34be9b`) after #4950 moved the denominators 186 → 250 bases and 101 → 193 raised rows, with the post-#4950 numbers flagged as **not in any committed artifact** and required to be re-measured; §13.1.3's blocker ids renamed B1–B4 → L1–L4 to stop colliding with increment 5's B1/B2; T23 extended to lint increment 5 as well | frontmatter, §13.1.3, §13.5.4, §13.9 T23, References |

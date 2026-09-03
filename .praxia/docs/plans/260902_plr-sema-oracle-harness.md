@@ -165,6 +165,15 @@ run, `uv run --package plr-sema`) and `plr-sema/tests/test_wire_fuzz.py`
 see `.praxia/docs/specs/260903_plr-sema-real-programs-increment.md` §12.13 for the full
 implementation record and commit shas. Volume/lid mutation families (tier 3) remain under #4881.
 
+**260903 (sprint 122 close):** tier 1 331 executed / 528 ops after #4950 (the verifier now types
+resources by call-sequence usage rather than name prefix; `rows_setup_error` 13 → 12; the one residual
+is `build_setup`'s own limits, tracked as #4952). Tier 2a 330/330 agreeing (the renderer residual
+closed, #4949). Tier 2b's join is now by the real `(method, line_number)` pair rather than the
+method-only degradation §12.13's caveat recorded (#4948), fires 4 findings, 0 unsound. Tier 3's tip
+family: m1 193/193 WILL_FAIL at the raised index, m2 254/254, 0 unsound (#4946, up from 84/101 at the
+sprint-121 baseline). Volume and lid mutation families remain deferred, now explicitly to increment 5
+(`.praxia/docs/specs/260903_plr-sema-volume-increment.md`) rather than open-ended under #4881.
+
 The adapter this plan described (`adapt_graph`) is retired: tier 1 lowers call sequences with
 `lower_calls` over `PlanResult.kwargs` (SEMA-IR §11.2.2), so the tool-vs-PLR parameter-name defect
 noted above is closed structurally (Gate B: 104 CALLs, 0 violations).

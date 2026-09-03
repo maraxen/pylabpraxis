@@ -179,7 +179,7 @@ performs no AST work — main spec §6.2's packaging fact is untouched.
 The existing derivation (`plr-sema/src/plr_sema/derive/__init__.py:446-492`) already gives us guards
 with polarity (`InlinedGuard.kind`, `:406-432`), the raising class (`InlinedGuard.raises`), the
 defining site, and depth. It throws away one field that this increment needs:
-`SurveyRecord.dropped_calls` (`derive/__init__.py:151-160`) — the receiver-qualified call expressions
+`SurveyRecord.dropped_calls` (`derive/__init__.py:151-162`) — the receiver-qualified call expressions
 the survey drops for every non-`self.<name>` attribute receiver. `derive_contract` never reads it.
 
 ### 10.2.1 P1 — receiver-attribute typing (research c-e's rule R3)
@@ -1159,7 +1159,7 @@ which is the same fail-closed-to-`UNKNOWN` direction §Open decisions 1 establis
 - **The non-legacy surface.** The verifier and the oracle run at submodule pin `dd79c4c89`, where
   `LiquidHandler` lives under `legacy/`. `upstream_nonlegacy` has contracts (T14) but no executable
   oracle, so this increment is specified, derived and gated **at the pin**. `SurveyStamp.surface` /
-  `surface_pin` (`plr-sema/src/plr_sema/check/__init__.py:156-171`) already record which surface a table came from; the
+  `surface_pin` (`plr-sema/src/plr_sema/check/__init__.py:158-173`) already record which surface a table came from; the
   fixer changes nothing there.
 - **Precision targets.** No threshold, no rate, no `UNKNOWN`-reduction goal. Deferred (f) stands.
 
