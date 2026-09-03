@@ -44,7 +44,12 @@ from oracle_common import (  # noqa: E402
     param_names_from_contracts,
     resources_from_example,
 )
-from render_protocol import render_protocol  # noqa: E402
+from render_protocol import (  # noqa: E402
+    RESIDUAL_UNKNOWN_RESOURCE,
+    RESIDUAL_UNRENDERABLE_VALUE_KIND,
+    classify_residual_reason,
+    render_protocol,
+)
 from tier2_extractor import _extract_calls, _seq_len, compare_bytecode  # noqa: E402
 
 import region_oracle  # noqa: E402
@@ -132,6 +137,42 @@ def _render_row():
     return bc1, rendered, calls
 
 
+# Same shape as `_ROW_EXAMPLE`, but the tip rack's real runtime NAME is
+# hyphenated -- backlog #4949 (260903 tier2a followup)'s dominant residual
+# class (122/122 in the 260903 full-corpus run, all this one shape).
+_HYPHEN_ROW_EXAMPLE = {
+    "call_sequence": [
+        {"name": "pick_up_tips", "params": {"at": ["tip-rack-1.A1", "tip-rack-1.B1"]}},
+        {"name": "aspirate", "params": {"source": "src.A1", "volume_ul": 50}},
+    ],
+    "deck_layout": {"resources": {"tip-rack-1": "TipRack", "src": "Plate"}},
+}
+_HYPHEN_ROW_PLR_KWARGS = {
+    0: {
+        "tip_spots": {
+            "k": "seq",
+            "items": [
+                {"k": "ref", "name": "tip-rack-1", "cell": "A1"},
+                {"k": "ref", "name": "tip-rack-1", "cell": "B1"},
+            ],
+        },
+    },
+    1: {"resource": {"k": "ref", "name": "src", "cell": "A1"}},
+}
+_HYPHEN_ROW_RESOURCE_TYPES = {"tip-rack-1": "TipRack", "src": "Plate"}
+
+
+def _render_hyphen_row():
+    resources = resources_from_example(_HYPHEN_ROW_EXAMPLE)
+    bc1, not_planned = lower_row_calls(
+        _HYPHEN_ROW_EXAMPLE, _HYPHEN_ROW_PLR_KWARGS, resources=resources, param_names=_PARAM_NAMES,
+    )
+    assert not_planned == []
+    calls, _ = calls_from_plr_kwargs(_HYPHEN_ROW_EXAMPLE, _HYPHEN_ROW_PLR_KWARGS)
+    rendered = render_protocol(calls, _HYPHEN_ROW_RESOURCE_TYPES)
+    return bc1, rendered, calls
+
+
 class TestDirectionalHalf:
     """AC-12.15's directional half: 'for at least one row the tier-2
     stream's first CALL has method == "setup" and its pick_up_tips CALL
@@ -205,6 +246,32 @@ class TestCompareBytecode:
         assert reset_divs[0].cause == "reset"
 
 
+class TestHyphenatedResourceName:
+    """Backlog #4949 (260903 tier2a followup): a resource whose real
+    runtime NAME is not a valid Python identifier renders under a
+    sanitised, collision-safe parameter name and compares EQUAL to tier 1
+    (which only ever sees the original name) once the name mapping is
+    threaded into ``compare_bytecode`` -- zero renderer residuals, zero
+    extractor-cause divergences.
+    """
+
+    def test_hyphenated_name_renders_extracts_and_compares_equal(self):
+        bc1, rendered, calls = _render_hyphen_row()
+        assert not rendered.residuals, rendered.residuals
+        assert "tip_rack_1: TipRack" in rendered.source
+        assert "tip-rack-1" not in rendered.source
+        assert rendered.name_map["tip-rack-1"] == "tip_rack_1"
+
+        bc2, payload = _extract_and_lower(rendered.source)
+        divergences = compare_bytecode(
+            bc1, bc2, _ir, residuals=list(rendered.residuals), source_lines=rendered.call_lines,
+            tier1_wire_calls=calls, tier2_payload=payload, resource_name_map=rendered.name_map,
+        )
+        assert divergences == [], [
+            (d.call_index, d.field, d.tier1, d.tier2, d.detail) for d in divergences
+        ]
+
+
 class TestRenderProtocol:
     def test_renders_setup_first_and_keyword_args(self):
         calls = [
@@ -242,6 +309,54 @@ class TestRenderProtocol:
         assert rendered.residuals[0].method == "move_resource"
         assert rendered.residuals[0].kwarg == "resource"
         assert "await lh.move_resource()" in rendered.source
+        assert classify_residual_reason(rendered.residuals[0].reason) == RESIDUAL_UNKNOWN_RESOURCE
+
+    def test_unresolvable_resource_inside_seq_becomes_residual(self):
+        """The same unknown-resource residual, but the ref is NESTED
+        inside a `seq` kwarg value rather than the top-level value --
+        backlog #4949's `_render_value` fix (name-map membership, not
+        `.isidentifier()`) must catch this case too, not just the
+        top-level one `render_protocol`'s own pre-check already handled.
+        """
+        calls = [
+            {"method": "setup", "kwargs": {}, "receiver": "lh", "receiver_type": "LiquidHandler"},
+            {
+                "method": "pick_up_tips",
+                "kwargs": {
+                    "tip_spots": {
+                        "k": "seq",
+                        "items": [{"k": "ref", "name": "mystery", "cell": "A1"}],
+                    },
+                },
+                "receiver": "lh", "receiver_type": "LiquidHandler",
+            },
+        ]
+        rendered = render_protocol(calls, {})
+        assert len(rendered.residuals) == 1
+        assert rendered.residuals[0].kwarg == "tip_spots"
+        assert classify_residual_reason(rendered.residuals[0].reason) == RESIDUAL_UNKNOWN_RESOURCE
+        assert "await lh.pick_up_tips()" in rendered.source
+
+    def test_unrenderable_value_kind_is_a_classified_residual_not_invented(self):
+        """A kwarg value whose `k` is genuinely outside `{lit, ref, seq}`
+        (e.g. the extractor's own `top`, a value with no Python literal
+        form at all) is dropped and classified as
+        `RESIDUAL_UNRENDERABLE_VALUE_KIND` -- never coerced into a literal
+        or a ref that would misrepresent it.
+        """
+        calls = [
+            {"method": "setup", "kwargs": {}, "receiver": "lh", "receiver_type": "LiquidHandler"},
+            {
+                "method": "aspirate",
+                "kwargs": {"volume_ul": {"k": "top"}},
+                "receiver": "lh", "receiver_type": "LiquidHandler",
+            },
+        ]
+        rendered = render_protocol(calls, {})
+        assert len(rendered.residuals) == 1
+        assert rendered.residuals[0].kwarg == "volume_ul"
+        assert classify_residual_reason(rendered.residuals[0].reason) == RESIDUAL_UNRENDERABLE_VALUE_KIND
+        assert "await lh.aspirate()" in rendered.source
 
 
 class TestExtractRunnerSubprocess:

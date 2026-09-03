@@ -88,6 +88,7 @@ import dataclasses
 import json
 import logging
 import time
+from collections.abc import Mapping
 from typing import Any
 
 sys.path.insert(0, str(_EVAL_DIR))
@@ -103,7 +104,7 @@ from oracle_common import (  # noqa: E402
     row_to_verifier_inputs,
     run_runtime,
 )
-from render_protocol import render_protocol  # noqa: E402
+from render_protocol import classify_residual_reason, render_protocol  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -285,14 +286,16 @@ def _value_from_pyobj_by_name(x: Any) -> dict[str, Any]:
     return {"k": "top"}
 
 
-def _lower_ast_node_by_name(node: Any, resources_payload: dict[str, Any]) -> dict[str, Any]:
+def _lower_ast_node_by_name(
+    node: Any, resources_payload: dict[str, Any], sanitized_to_original: Mapping[str, str],
+) -> dict[str, Any]:
     import ast
 
     if isinstance(node, ast.Name) and node.id in resources_payload:
-        return {"k": "ref", "name": node.id, "cell": None}
+        return {"k": "ref", "name": sanitized_to_original.get(node.id, node.id), "cell": None}
     self_attr = _self_attr_name(node)
     if self_attr is not None and self_attr in resources_payload:
-        return {"k": "ref", "name": self_attr, "cell": None}
+        return {"k": "ref", "name": sanitized_to_original.get(self_attr, self_attr), "cell": None}
     if isinstance(node, ast.Subscript):
         base = node.value
         idx = node.slice
@@ -304,10 +307,15 @@ def _lower_ast_node_by_name(node: Any, resources_payload: dict[str, Any]) -> dic
             if base_self_attr is not None and base_self_attr in resources_payload:
                 base_name = base_self_attr
         if base_name is not None and isinstance(idx, ast.Constant) and isinstance(idx.value, str):
-            return {"k": "ref", "name": base_name, "cell": idx.value}
+            return {"k": "ref", "name": sanitized_to_original.get(base_name, base_name), "cell": idx.value}
         return {"k": "top"}
     if isinstance(node, (ast.List, ast.Tuple)):
-        return {"k": "seq", "items": [_lower_ast_node_by_name(elt, resources_payload) for elt in node.elts]}
+        return {
+            "k": "seq",
+            "items": [
+                _lower_ast_node_by_name(elt, resources_payload, sanitized_to_original) for elt in node.elts
+            ],
+        }
     try:
         literal = ast.literal_eval(node)
     except Exception:
@@ -315,10 +323,21 @@ def _lower_ast_node_by_name(node: Any, resources_payload: dict[str, Any]) -> dic
     return _value_from_pyobj_by_name(literal)
 
 
-def _lower_arg_value_by_name(raw: Any, resources_payload: dict[str, Any]) -> dict[str, Any]:
+def _lower_arg_value_by_name(
+    raw: Any, resources_payload: dict[str, Any], sanitized_to_original: Mapping[str, str],
+) -> dict[str, Any]:
     """One raw ``OperationNode.arguments`` VALUE (a source-text string, per
     the graph wire format) -> IR-value-JSON with a ``Ref`` resolved by
     resource NAME rather than a lowering-assigned slot int.
+
+    ``sanitized_to_original`` (backlog #4949, 260903 tier2a followup) is
+    ``render_protocol.RenderedProtocol.name_map`` INVERTED
+    (:func:`compare_bytecode`'s own job) -- the rendered SOURCE only ever
+    names a resource by its sanitised parameter identifier (e.g.
+    ``plate_carrier_1`` for the runtime name ``"plate_carrier-1"``), so
+    every ``Ref`` this function resolves off that source needs translating
+    back to the ORIGINAL runtime name before it can be compared against
+    tier 1's own (never-sanitised) ``Ref.name``.
 
     A deliberate, MINIMAL mirror of ``plr_sema.check.ir.lower_graph``'s own
     internal ``_lower_ast_node``/``lower_arg_value`` (read, not imported --
@@ -339,10 +358,12 @@ def _lower_arg_value_by_name(raw: Any, resources_payload: dict[str, Any]) -> dic
         node = ast.parse(raw, mode="eval").body
     except SyntaxError:
         return {"k": "top"}
-    return _lower_ast_node_by_name(node, resources_payload)
+    return _lower_ast_node_by_name(node, resources_payload, sanitized_to_original)
 
 
-def _tier2_kwargs_by_name(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def _tier2_kwargs_by_name(
+    payload: dict[str, Any], *, sanitized_to_original: Mapping[str, str] | None = None,
+) -> list[dict[str, Any]]:
     """``[{kwarg_name: value-json-by-name}, ...]`` per REAL (non-``region``)
     operation, in payload order. Payload order == execution order == the
     order :func:`_extract_calls` walks ``bc2``'s own ``CALL`` instructions
@@ -351,12 +372,15 @@ def _tier2_kwargs_by_name(payload: dict[str, Any]) -> list[dict[str, Any]]:
     possible on this path at all).
     """
     resources_payload = dict(payload.get("resources") or {})
+    reverse_map = sanitized_to_original or {}
     out: list[dict[str, Any]] = []
     for op in payload.get("operations") or []:
         if op.get("node_type") == "region":
             continue
         args = op.get("arguments") or {}
-        out.append({k: _lower_arg_value_by_name(v, resources_payload) for k, v in args.items()})
+        out.append({
+            k: _lower_arg_value_by_name(v, resources_payload, reverse_map) for k, v in args.items()
+        })
     return out
 
 
@@ -439,6 +463,7 @@ def _overlay_name_kwargs(calls: list[dict[str, Any]], by_index_kwargs: list[dict
 def compare_bytecode(
     bc1, bc2, ir_mod, *, residuals: list, source_lines: dict[int, int],
     tier1_wire_calls: list[dict[str, Any]], tier2_payload: dict[str, Any],
+    resource_name_map: Mapping[str, str] | None = None,
 ) -> list[Divergence]:
     """``tier1_wire_calls`` is :func:`oracle_common.calls_from_plr_kwargs`'s
     own output (already NAME-keyed ``ref`` wire JSON -- no transformation
@@ -452,11 +477,21 @@ def compare_bytecode(
     (§12.4.1: "receiver slot identity up to renaming", "kwargs values
     with Ref resolved by resource NAME not slot number") it names an
     explicit exception for.
+
+    ``resource_name_map`` (backlog #4949, 260903 tier2a followup) is
+    ``render_protocol.RenderedProtocol.name_map`` -- ``{original_name:
+    sanitised_name}``. Inverted here (sanitised -> original) and threaded
+    into :func:`_tier2_kwargs_by_name` so a tier-2 ``Ref`` resolved off the
+    RENDERED source (which only ever spells a resource by its sanitised
+    parameter identifier, e.g. ``plate_carrier_1``) is compared against
+    tier 1's ``Ref.name`` (which is always the real, unsanitised runtime
+    name, e.g. ``"plate_carrier-1"``) under the SAME name.
     """
     calls1 = _canonicalize_receiver(_extract_calls(bc1, ir_mod))
     calls2 = _canonicalize_receiver(_extract_calls(bc2, ir_mod))
     tier1_kwargs_by_index = [c.get("kwargs") or {} for c in tier1_wire_calls]
-    tier2_kwargs_by_index = _tier2_kwargs_by_name(tier2_payload)
+    sanitized_to_original = {v: k for k, v in (resource_name_map or {}).items()}
+    tier2_kwargs_by_index = _tier2_kwargs_by_name(tier2_payload, sanitized_to_original=sanitized_to_original)
     calls1 = _overlay_name_kwargs(calls1, tier1_kwargs_by_index)
     calls2 = _overlay_name_kwargs(calls2, tier2_kwargs_by_index)
     residual_kwargs = {(r.call_index, r.kwarg) for r in residuals}
@@ -499,6 +534,12 @@ class RowOutcome:
     divergences: list[Divergence] = dataclasses.field(default_factory=list)
     n_calls_tier1: int = 0
     residual_count: int = 0
+    #: One :func:`render_protocol.classify_residual_reason` label per
+    #: residual this row's :func:`render_protocol.render_protocol` call
+    #: emitted -- ``main()`` sums these into the report's
+    #: ``renderer_residual_by_class`` (backlog #4949, 260903 tier2a
+    #: followup).
+    residual_classes: list[str] = dataclasses.field(default_factory=list)
     detail: str | None = None
     rendered_source: str | None = None
     #: AC-12.15's directional half: True iff THIS row's own bc1/bc2 both
@@ -583,7 +624,7 @@ def run_row(
 
     divergences = compare_bytecode(
         bc1, bc2, ir_mod, residuals=list(rendered.residuals), source_lines=rendered.call_lines,
-        tier1_wire_calls=calls, tier2_payload=payload,
+        tier1_wire_calls=calls, tier2_payload=payload, resource_name_map=rendered.name_map,
     )
 
     # AC-12.15's directional half: computed from the RAW (uncanonicalized)
@@ -604,6 +645,7 @@ def run_row(
         record_id, source_file, line_no, "compared",
         agreeing=not divergences, divergences=divergences,
         n_calls_tier1=len(calls), residual_count=len(rendered.residuals),
+        residual_classes=[classify_residual_reason(r.reason) for r in rendered.residuals],
         rendered_source=rendered.source if divergences else None,
         directional_ok=directional_ok,
     )
@@ -646,6 +688,15 @@ def main(argv: list[str] | None = None) -> int:
     n_setup_error = 0
     n_harness_error = 0
     cause_counts: dict[str, int] = collections.Counter()
+    #: backlog #4949 (260903 tier2a followup): every renderer RESIDUAL
+    #: (dropped-kwarg, not a divergence) classified by
+    #: ``render_protocol.classify_residual_reason`` -- published in the
+    #: report as ``renderer_residual_by_class``, distinct from
+    #: ``cause_counts["renderer"]`` (a divergence COUNT, one per diverging
+    #: field) because a single residual can suppress more than one
+    #: divergence field (e.g. a dropped ``ref`` used as both ``source`` and
+    #: ``target``).
+    residual_class_counts: dict[str, int] = collections.Counter()
     n_directional_checked = 0
     n_directional_ok = 0
     first_directional_example: dict[str, Any] | None = None
@@ -690,6 +741,8 @@ def main(argv: list[str] | None = None) -> int:
                     n_agreeing += 1
                 for d in outcome.divergences:
                     cause_counts[d.cause] += 1
+                for cls in outcome.residual_classes:
+                    residual_class_counts[cls] += 1
                 if outcome.directional_ok is not None:
                     n_directional_checked += 1
                     if outcome.directional_ok:
@@ -735,6 +788,7 @@ def main(argv: list[str] | None = None) -> int:
     report = {
         "summary_flat": summary_flat,
         "divergences_by_cause": dict(cause_counts),
+        "renderer_residual_by_class": dict(residual_class_counts),
         "directional_example": first_directional_example,
         "top_extractor_divergences": [d for d in top_divergences if d["cause"] == "extractor"][:50],
         "top_renderer_divergences": [d for d in top_divergences if d["cause"] == "renderer"][:20],
@@ -748,7 +802,8 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "record_id": r.record_id, "source_file": r.source_file, "line": r.line,
                 "status": r.status, "agreeing": r.agreeing, "n_calls_tier1": r.n_calls_tier1,
-                "residual_count": r.residual_count, "n_divergences": len(r.divergences),
+                "residual_count": r.residual_count, "residual_classes": sorted(set(r.residual_classes)),
+                "n_divergences": len(r.divergences),
                 "causes": sorted({d.cause for d in r.divergences}),
                 "directional_ok": r.directional_ok,
             }
