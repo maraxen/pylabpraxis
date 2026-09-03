@@ -1,7 +1,7 @@
 ---
 title: "plr-sema increment 5 — the volume family: an interval domain, deferred out of increment 4 until its derivation is proved"
 description: "Fifth post-corpus increment to the plr-sema pre-corpus specification, created by re-scoping section 13.2 out of 260903_plr-sema-families-cache-increment.md after adversarial round 1. Deferred, not dropped: the domain, the transfer functions, the capacity asymmetry, the seeding convention and the oracle plan all survive round 1 intact; what did not survive is the claim that the bridge DERIVES on real PLR at the pin. O1 established three independent structural gaps -- `op` in `op.resource.tracker.remove_liquid` is a for-loop variable over the comprehension's OUTPUT list (`liquid_handler.py:1031`), not a zip-bound comprehension target; `SingleChannelAspiration.resource` is a dataclass class-level bare-name annotation (`external/pylabrobot/pylabrobot/liquid_handling/standard.py:51-60`) that `_annotated_attributes`'s `_is_self_attr` predicate structurally excludes; and `Container.tracker` is an unannotated `ast.Assign` (`container.py:85`) that P1a cannot see at all. O2 established a fourth: `compute_channel_bridge` sources a bridged guard's `scope_trail` from the CALLEE's own contract (`receiver_state.py:977-1041`), and the survey's `dropped_calls` is a bare string list with no line number and no scope (`plr_preconditions.json:49766-49772`), so `does_volume_tracking()` never reaches the bridged guard and a default-`env` run would emit an unsound `WILL_FAIL`. Section 14.0 states all four as this increment's first two tasks, each with its own normative box and its own measured-and-published expectation, before any `Finding` machinery. Also folds O4 (V2 threads pairs sequentially in `cells(op)`/`amounts(op)` order, mirroring PLR's own `for op in aspirations` -- a simultaneous reading gives a false SAFE for two channels drawing one well) and O3 (fail-closed on any unrecognised boolean conjunct, since `is_disabled` is a @property and not a zero-argument call). Carries HM-24 1->2, HM-25 6->8 and REASON_VOCABULARY 8->10 -- none of which increment 4 spends. NOT SCHEDULED: the task rows below are unscheduled by construction and no AC here gates any increment-4 work."
-status: draft-deferred
+status: draft
 spec_version: 13
 amends: 260901_plr-sema-pre-corpus-spec.md
 task_id: 260903_sema-followups
@@ -711,7 +711,7 @@ today's behaviour. `IR_VERSION` stays **2**.
 
 ---
 
-## 14.13 Task rows — **NOT SCHEDULED**
+## 14.13 Task rows — **scheduled: next sprint (user decision 260903)**
 
 > **Every row in this table is unscheduled.** No row is dispatched by increment 4's sprint, no gate
 > below is run this round, and no `**AC-14.n**` above gates any increment-4 work. The table is written
@@ -795,6 +795,12 @@ mutants-versus-fixtures.
    defer again until a mechanism exists that can discharge a per-instance flag. **This is the
    successor to §13.13's Q3 and it is now the increment's central question**, because round 1 turned
    the `env` mechanism from a convenience into the thing that decides whether the family says anything.
+   **RESOLVED (user, 260903): (a) — build it if it is firable at all.** The corpus is a set of
+   examples, not the sum of what is valid and useful; a family that produces `SAFE` on real rows and
+   `WILL_FAIL` on every protocol a fixture or a future corpus row can construct is covered, not
+   worthless, and the `WILL_FAIL` path on today's rows returns for free when the recognition set
+   grows. The fail-closed rule stays (soundness); §14.6's disclosure stays as a precision note; the
+   increment is no longer deferred and its task rows are scheduled (§14.13).
 2. **§14.11's pattern accounting.** B2 and P1c are argued to be Python-language constructs and not
    HM-25 patterns; B1 and P10 are argued to be bindings rather than idioms. If a reviewer counts all
    four, HM-25 is 10 rather than 8 — a bigger single-row diff than the registry has taken — and the
@@ -806,7 +812,7 @@ mutants-versus-fixtures.
    should say so before T25 writes a text matcher whose ambiguity case is fail-closed-by-necessity.
 4. **Whether `volume_tracking_unasserted` survives.** Round 1's Q6 flagged it as a vocabulary member
    at risk of having no working producer. §14.6 gives it one — but by §14.16's Q1, that producer fires
-   only on fixtures at the current pin. If Q1 resolves to (c), the member should not land.
+   only on fixtures at the current pin. If Q1 resolves to (c), the member should not land. **Q1 resolved to (a) (user, 260903), so the member lands.**
 5. **AC-14.9's v2 has no threshold.** `transfer`'s volume guard interacts with increment 4's #4946
    channel binding, and neither this document nor increment 4 has measured that interaction. Setting a
    gate before measuring it would be a prediction. A reviewer may hold that an ungated class should not
