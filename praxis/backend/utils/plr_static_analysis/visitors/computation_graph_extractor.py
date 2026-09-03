@@ -14,6 +14,7 @@ method patterns (e.g., `lh.transfer()` requires tips loaded).
 from typing import Any
 
 import libcst as cst
+from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
 
 from praxis.backend.utils.plr_static_analysis.models import (
   GraphNodeType,
@@ -28,6 +29,7 @@ from praxis.backend.utils.plr_static_analysis.resource_hierarchy import (
   get_parental_chain,
 )
 from praxis.common.type_inspection import (
+  PLR_MACHINE_FRONTEND_TYPES,
   extract_resource_types,
   get_element_type,
   is_container_type,
@@ -233,6 +235,14 @@ class ComputationGraphExtractor(cst.CSTVisitor):
 
   """
 
+  # backlog #4948: PositionProvider gives every visited node's real
+  # (line, column) span via `self.get_metadata(PositionProvider, node)`,
+  # PROVIDED `self.metadata` was populated first -- see `_line_of` and the
+  # `extract_graph_from_function`/`extract_graph_from_source` entry points
+  # at the bottom of this file, which resolve it via `MetadataWrapper`
+  # before any traversal starts.
+  METADATA_DEPENDENCIES = (PositionProvider,)
+
   def __init__(
     self,
     protocol_fqn: str,
@@ -247,6 +257,7 @@ class ComputationGraphExtractor(cst.CSTVisitor):
         deck_layout_type: Type of deck layout for parental chain inference.
 
     """
+    super().__init__()
     self._protocol_fqn = protocol_fqn
     self._protocol_name = protocol_fqn.rsplit(".", maxsplit=1)[-1] if "." in protocol_fqn else protocol_fqn
     self._deck_layout_type = deck_layout_type
@@ -277,17 +288,41 @@ class ComputationGraphExtractor(cst.CSTVisitor):
     self._has_loops = False
     self._has_conditionals = False
 
-    # Current line tracking (updated as we visit)
-    self._current_line = 0
-
     # Initialize resources from parameters
     self._initialize_resources_from_params(parameter_types)
 
+  def _line_of(self, node: cst.CSTNode) -> int:
+    """Real source line for `node`, via the resolved `PositionProvider`.
+
+    Falls back to `0` (the pre-#4948 constant) if metadata was never
+    resolved for this node -- e.g. a caller that walks the extractor
+    outside a `self.resolve(wrapper)` context, or a node that is not part
+    of the wrapped tree (shouldn't happen via the public entry points, but
+    fail soft rather than raise from deep inside a visit_* callback).
+    """
+    try:
+      position: CodeRange = self.get_metadata(PositionProvider, node)
+    except KeyError:
+      return 0
+    return position.start.line
+
   def _initialize_resources_from_params(self, parameter_types: dict[str, str]) -> None:
-    """Create ResourceNode entries for all PLR resource parameters."""
+    """Create ResourceNode entries for all PLR resource parameters.
+
+    backlog #4951: a parameter whose resolved primary type is a machine
+    frontend (`lh: LiquidHandler`, `pr: PlateReader`, ...) is the receiver
+    driving operations, never itself something placed on a deck -- it must
+    not get a `ResourceNode`/`RESOURCE_ON_DECK` precondition. This was a
+    live false-positive from `PLR_RESOURCE_TYPES` widening (b5635334) to
+    include machine frontends for a DIFFERENT consumer's benefit
+    (`is_pylabrobot_resource`'s "assets that need to be acquired at
+    runtime" sense); `get_parental_chain("LiquidHandler", ...)` itself
+    returns an empty chain -- corroborating that a machine simply doesn't
+    fit this method's "resource -> deck" model at all.
+    """
     for param_name, type_hint in parameter_types.items():
       resource_types = extract_resource_types(type_hint)
-      if resource_types:
+      if resource_types and resource_types[0] not in PLR_MACHINE_FRONTEND_TYPES:
         # This parameter is a PLR resource
         elem_type = get_element_type(type_hint)
         is_container = is_container_type(type_hint)
@@ -431,7 +466,7 @@ class ComputationGraphExtractor(cst.CSTVisitor):
     self._operations.append(
       OperationNode(
         id=op_id,
-        line_number=self._current_line,
+        line_number=self._line_of(node),
         method_name="",
         receiver_variable="",
         receiver_type=None,
@@ -469,7 +504,7 @@ class ComputationGraphExtractor(cst.CSTVisitor):
     self._operations.append(
       OperationNode(
         id=op_id,
-        line_number=self._current_line,
+        line_number=self._line_of(node),
         method_name="",
         receiver_variable="",
         receiver_type=None,
@@ -508,7 +543,7 @@ class ComputationGraphExtractor(cst.CSTVisitor):
     self._operations.append(
       OperationNode(
         id=op_id,
-        line_number=self._current_line,
+        line_number=self._line_of(node),
         method_name="",
         receiver_variable="",
         receiver_type=None,
@@ -580,7 +615,20 @@ class ComputationGraphExtractor(cst.CSTVisitor):
       values = [self._int_literal(a.value) for a in args]
       if any(v is None for v in values):
         return None
-      return len(range(*values))  # type: ignore[arg-type]
+      # backlog #4951: `range(*values)` (star-unpacking a `list[int]`) has
+      # no matching overload for `ty` -- `range.__new__`'s overloads are
+      # keyed on ARITY (2 vs 3 positional ints), which a starred list
+      # can't express statically. Narrow to an explicit `int` tuple (the
+      # `is not None` filter above already proved every element is an
+      # `int` at runtime; this re-states that for the type checker) and
+      # branch on length instead, matching `range`'s own two real
+      # constructor shapes.
+      ints = tuple(v for v in values if v is not None)
+      if len(ints) == 2:
+        start, stop = ints
+        return len(range(start, stop))
+      start, stop, step = ints
+      return len(range(start, stop, step))
 
     return None
 
@@ -663,7 +711,9 @@ class ComputationGraphExtractor(cst.CSTVisitor):
     self._type_tracker.set_type(var_name, inferred_type, source_expr)
 
     resource_types = extract_resource_types(inferred_type)
-    if resource_types:
+    # backlog #4951: same machine-frontend exclusion as
+    # `_initialize_resources_from_params` -- see that method's docstring.
+    if resource_types and resource_types[0] not in PLR_MACHINE_FRONTEND_TYPES:
       elem_type = get_element_type(inferred_type)
       primary_type = elem_type or resource_types[0]
       chain = get_parental_chain(primary_type, self._deck_layout_type)
@@ -758,7 +808,7 @@ class ComputationGraphExtractor(cst.CSTVisitor):
 
       operation = OperationNode(
         id=op_id,
-        line_number=self._current_line,
+        line_number=self._line_of(node),
         method_name=method_name,
         receiver_variable=receiver_name,
         receiver_type=receiver_type,
@@ -859,6 +909,8 @@ def extract_graph_from_function(
   module_name: str,
   parameter_types: dict[str, str] | None = None,
   deck_layout_type: DeckLayoutType = DeckLayoutType.CARRIER_BASED,
+  *,
+  _wrapper: MetadataWrapper | None = None,
 ) -> ProtocolComputationGraph:
   """Extract a computation graph from a function definition.
 
@@ -867,6 +919,19 @@ def extract_graph_from_function(
       module_name: The module name for FQN generation.
       parameter_types: Optional pre-extracted parameter types.
       deck_layout_type: Type of deck layout.
+      _wrapper: Internal-only. A `MetadataWrapper` that already contains
+          `function_node` (i.e. `function_node` is (a descendant of) one of
+          `_wrapper.module.body`'s statements) -- passed by
+          `extract_graph_from_source`, which already has the real, full
+          module in hand and wraps it ONCE so `OperationNode.line_number`
+          reflects the function's real position within that source, not a
+          position relative to a synthetic one-function module. Public
+          callers (e.g. `protocol_discovery.py`, which only ever has a bare
+          `function_node`) leave this `None`: a synthetic single-function
+          module is wrapped instead, which still gives every call/region a
+          real, distinct, non-zero line number (backlog #4948) -- just
+          relative to that function's own text, since no wider module
+          context is available to this call shape.
 
   Returns:
       The extracted ProtocolComputationGraph.
@@ -892,8 +957,30 @@ def extract_graph_from_function(
     deck_layout_type=deck_layout_type,
   )
 
-  # Visit the function node - this will traverse into the body
-  _walk_cst_node(function_node, extractor)
+  # backlog #4948: resolve PositionProvider metadata via MetadataWrapper so
+  # `OperationNode.line_number` is real. `MetadataWrapper.__init__` deep-
+  # clones its module by default, which means node IDENTITY (what
+  # PositionProvider's mapping is keyed on) only matches between
+  # `wrapper.module`'s own nodes -- so the walk below must start from
+  # `wrapped_function` (a node reachable from `wrapper.module`), never from
+  # the caller's original `function_node`.
+  if _wrapper is not None:
+    wrapper = _wrapper
+    wrapped_function = function_node
+  else:
+    wrapper = MetadataWrapper(cst.Module(body=[function_node]))
+    wrapped_function = wrapper.module.body[0]
+
+  # `extractor.resolve(wrapper)` is what `MetadataWrapper.visit()` does
+  # under the hood before delegating to `self.module.visit(visitor)`
+  # (`libcst/metadata/wrapper.py`); we reuse the same resolve step but keep
+  # our own scoped traversal (`_walk_cst_node`, starting at just the target
+  # function) rather than `wrapper.visit()`'s whole-module traversal, since
+  # `extract_graph_from_source` may hand in a wrapper over a module with
+  # OTHER top-level statements (imports, sibling functions) that must not
+  # be visited here.
+  with extractor.resolve(wrapper):
+    _walk_cst_node(wrapped_function, extractor)
 
   return extractor.build_graph()
 
@@ -945,11 +1032,19 @@ def extract_graph_from_source(
   except cst.ParserSyntaxError:
     return None
 
+  # backlog #4948: wrap the REAL, full module once so line numbers are
+  # correct relative to `source` as a whole (not just the extracted
+  # function's own text) -- `MetadataWrapper` deep-clones `tree`, so the
+  # target `FunctionDef` must be looked up in `wrapper.module.body` (the
+  # clone), not `tree.body` (node identity is what PositionProvider keys
+  # on; the two trees are structurally identical but distinct objects).
+  wrapper = MetadataWrapper(tree)
+
   # Find the function
-  for stmt in tree.body:
+  for stmt in wrapper.module.body:
     if isinstance(stmt, cst.FunctionDef) and stmt.name.value == function_name:
       return extract_graph_from_function(
-        stmt, module_name, deck_layout_type=deck_layout_type
+        stmt, module_name, deck_layout_type=deck_layout_type, _wrapper=wrapper
       )
 
   return None

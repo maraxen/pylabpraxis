@@ -5,6 +5,7 @@ import pathlib
 
 import libcst as cst
 import pytest
+from libcst.metadata import MetadataWrapper
 
 from praxis.backend.utils.plr_static_analysis.models import (
   GraphNodeType,
@@ -397,7 +398,24 @@ class TestPreconditionExtraction:
     assert "tips_loaded" in pickup_op.creates_state
 
   def test_resource_on_deck_preconditions(self) -> None:
-    """Test that resources have on_deck preconditions."""
+    """Test that resources have on_deck preconditions.
+
+    backlog #4951: `b5635334` widened `PLR_RESOURCE_TYPES` to include
+    machine frontends (`LiquidHandler`, `PlateReader`, ...) for
+    `is_pylabrobot_resource`'s "asset that needs to be acquired at
+    runtime" sense, which made this test regress to `4 == 3` -- `lh`
+    (typed `LiquidHandler`) started getting its own spurious
+    `RESOURCE_ON_DECK` precondition. That is a FALSE recognition, not a
+    newly-correct one: `lh` is the instrument driving every call in this
+    graph, never itself something placed on a deck, and
+    `get_parental_chain("LiquidHandler", ...)` independently returns an
+    empty chain -- corroborating that a machine simply does not fit the
+    "resource -> deck" model this precondition encodes. The fix lives in
+    `computation_graph_extractor.py`'s `_initialize_resources_from_params`
+    (excludes `PLR_MACHINE_FRONTEND_TYPES`, `praxis/common/
+    type_inspection.py`), not here -- the expected count stays `3`
+    (source, dest, tips; not `lh`).
+    """
     graph = extract_graph_from_source(
       SIMPLE_TRANSFER_SOURCE, "simple_transfer", "test_module"
     )
@@ -613,7 +631,8 @@ def _extract_with_resource_grid(
   (`range(<resource>.items_x)`) has something real to prove against.
   """
   tree = cst.parse_module(source)
-  for stmt in tree.body:
+  wrapper = MetadataWrapper(tree)
+  for stmt in wrapper.module.body:
     if isinstance(stmt, cst.FunctionDef) and stmt.name.value == function_name:
       parameter_types: dict[str, str] = {}
       for param in stmt.params.params:
@@ -633,7 +652,8 @@ def _extract_with_resource_grid(
         if resource is not None:
           resource.items_x = items_x
           resource.items_y = items_y
-      _walk_cst_node(stmt, extractor)
+      with extractor.resolve(wrapper):
+        _walk_cst_node(stmt, extractor)
       return extractor.build_graph()
   return None
 
@@ -786,3 +806,77 @@ async def empty_loop_protocol(lh: LiquidHandler):
     assert len(graph.operations) == 0
     assert graph.has_loops is True
     assert graph.has_conditionals is True
+
+
+class TestLineNumbers:
+  """backlog #4948: `OperationNode.line_number` is real (PositionProvider
+  via `MetadataWrapper`), not the pre-fix constant `0`
+  (`_current_line` was assigned once in `__init__` and never again).
+  """
+
+  def test_three_calls_on_three_distinct_lines_report_distinct_lines(self) -> None:
+    """`SIMPLE_TRANSFER_SOURCE`'s four straight-line calls sit on four
+    consecutive, known source lines (9-12) -- each `OperationNode` must
+    carry its OWN call's real line, not `0` and not one shared value.
+    """
+    graph = extract_graph_from_source(SIMPLE_TRANSFER_SOURCE, "simple_transfer", "test_module")
+    assert graph is not None
+    by_method = {op.method_name: op.line_number for op in graph.operations}
+    assert by_method == {
+      "pick_up_tips": 9,
+      "aspirate": 10,
+      "dispense": 11,
+      "drop_tips": 12,
+    }
+    # Three (in fact four) distinct, non-zero lines -- not the pre-fix
+    # collapse where every call reported the same `0`.
+    assert len(set(by_method.values())) == len(by_method)
+    assert 0 not in by_method.values()
+
+  def test_region_header_carries_its_own_statement_line_and_body_ops_carry_theirs(
+    self,
+  ) -> None:
+    """`LOOP_PROTOCOL_SOURCE`: the `for` statement is on line 15; its body
+    (`aspirate`, `dispense`) is on lines 16-17; the straight-line
+    `pick_up_tips`/`drop_tips` bracketing the loop are on lines 13 and 19.
+    The REGION header's own `line_number` is the `for` keyword's line, NOT
+    its first body operation's line (they must differ) and NOT `0`.
+    """
+    graph = extract_graph_from_source(LOOP_PROTOCOL_SOURCE, "multi_well_transfer", "test_module")
+    assert graph is not None
+    by_method = {
+      op.method_name: op.line_number
+      for op in graph.operations
+      if op.node_type != GraphNodeType.REGION
+    }
+    assert by_method == {
+      "pick_up_tips": 13,
+      "aspirate": 16,
+      "dispense": 17,
+      "drop_tips": 19,
+    }
+    headers = [op for op in graph.operations if op.node_type == GraphNodeType.REGION]
+    assert len(headers) == 1
+    header = headers[0]
+    assert header.line_number == 15
+    # The header's own line is distinct from every one of its body ops'.
+    assert header.line_number not in {by_method["aspirate"], by_method["dispense"]}
+
+  def test_if_region_header_line_is_the_if_statement_not_an_arm(self) -> None:
+    """`CONDITIONAL_PROTOCOL_SOURCE`'s `if` header reports the `if`
+    keyword's own line, distinct from both the `true_branch` and
+    `false_branch` `aspirate` calls' lines.
+    """
+    graph = extract_graph_from_source(
+      CONDITIONAL_PROTOCOL_SOURCE, "conditional_volume", "test_module"
+    )
+    assert graph is not None
+    headers = [op for op in graph.operations if op.node_type == GraphNodeType.REGION]
+    assert len(headers) == 1
+    header = headers[0]
+    aspirate_lines = {
+      op.line_number for op in graph.operations if op.method_name == "aspirate"
+    }
+    assert len(aspirate_lines) == 2  # the true and false arms are on different lines
+    assert header.line_number not in aspirate_lines
+    assert header.line_number != 0
