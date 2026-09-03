@@ -20,10 +20,19 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 import sys
+import warnings
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
 from pylabrobot.resources import ResourceHolder
+
+from coxswain.plr.param_namespace import (
+    RESOURCE_TYPE_CONTAINER,
+    RESOURCE_TYPE_PLATE,
+    RESOURCE_TYPE_TIP_SPOT,
+    ParamKind,
+    params_of,
+)
 
 __all__ = [
     "DeckLayout",
@@ -151,28 +160,143 @@ class SetupHandle:
         return float(obj.tracker.get_free_volume())
 
 
+def _prefix_classification(name: str) -> tuple[str, str]:
+    """The ORIGINAL (pre-#4950) name-prefix rule, kept as the fallback for
+    names with no usable usage evidence and as the recorded behaviour for a
+    tip/container conflict (see :func:`infer_layout`).  Returns (layout_key,
+    kind); the key is "tip_rack" for TipRack entries since build_setup
+    aliases every TipRack-kind entry onto the single factory-built rack
+    regardless of key.
+    """
+    if name in ("tip_rack",) or name.startswith("tip"):
+        return "tip_rack", "TipRack"
+    if name.endswith("trough"):
+        return name, "Trough"
+    return name, "Plate"
+
+
+def _collect_usage(calls: Sequence[Mapping[str, Any]]) -> dict[str, dict[str, bool]]:
+    """Classify each referenced base name by how it is USED across the call
+    sequence, keyed off the canonical param_namespace table (THE mapping
+    dispatcher.py already drives dispatch from -- see its module docstring),
+    not name-string guessing:
+
+    * a ref bound to a SYMBOLIC_RESOURCE_REF param whose resource_type is
+      "tip_spot" (pick_up_tips.at, drop_tips.destination, discard_tips.at,
+      and any future tool sharing that resource_type) -> tip usage.
+    * a ref bound to resource_type "container" (aspirate.source,
+      dispense.destination, transfer.source/destination) -> container usage,
+      further split on whether THIS occurrence carried a "<name>.<tail>"
+      well address ("container_dotted") or named the base resource bare
+      ("container_bare") -- a bare container ref needs a resource that
+      itself carries a volume tracker (PLR's ``Plate`` does not; only its
+      wells do), which is exactly the AttributeError('Plate' object has no
+      attribute 'tracker') failure class this fix targets.
+    * a ref bound to resource_type "plate" (stamp.source/destination) always
+      counts as "container_dotted" regardless of literal dot -- stamp needs
+      an actual multi-well Plate, never a Trough, so it must never earn the
+      bare-container Trough treatment.
+    * resource_type "resource"/"lid" (move_resource/move_plate/move_lid) is
+      NOT classified here -- those go through the caller's own
+      DeckLayout.holders/exclude mechanism (T16d, #4879) before infer_layout
+      ever sees them; leave to the prefix-rule fallback if they do.
+    """
+    usage: dict[str, dict[str, bool]] = {}
+
+    def mark(name: str, *, tip: bool = False, dotted: bool = False, bare: bool = False) -> None:
+        slot = usage.setdefault(
+            name, {"tip": False, "container_dotted": False, "container_bare": False}
+        )
+        if tip:
+            slot["tip"] = True
+        if dotted:
+            slot["container_dotted"] = True
+        if bare:
+            slot["container_bare"] = True
+
+    for call in calls:
+        tool = (call or {}).get("name")
+        if not isinstance(tool, str):
+            continue
+        try:
+            specs = params_of(tool)
+        except KeyError:
+            continue  # not a phase-2 canonical tool; no usage evidence available
+        params = (call or {}).get("params") or {}
+        for spec in specs:
+            if spec.kind is not ParamKind.SYMBOLIC_RESOURCE_REF:
+                continue
+            if spec.resource_type == RESOURCE_TYPE_TIP_SPOT:
+                role = "tip"
+            elif spec.resource_type == RESOURCE_TYPE_CONTAINER:
+                role = "container"
+            elif spec.resource_type == RESOURCE_TYPE_PLATE:
+                role = "plate"
+            else:
+                continue
+            value = params.get(spec.name)
+            if value is None:
+                continue
+            for name, dotted in _refs_with_tail_flag(value):
+                if role == "tip":
+                    mark(name, tip=True)
+                elif role == "plate":
+                    mark(name, dotted=True)
+                elif dotted:
+                    mark(name, dotted=True)
+                else:
+                    mark(name, bare=True)
+    return usage
+
+
 def infer_layout(calls: Sequence[Mapping[str, Any]],
                  exclude: set[str] | None = None) -> DeckLayout:
     """Derive a minimal DeckLayout from a call sequence.
 
-    Every referenced resource name gets a Plate unless its name suggests tips
-    ("tip*" -> TipRack) or liquid supply ("*trough*" -> Trough).  Names in
-    ``exclude`` (typically explicit-layout resources/holders) are skipped so
-    an explicit DeckLayout fully owns them.
+    Type is inferred from USAGE first (#4950): a name referenced as a
+    pick_up_tips/drop_tips/discard_tips tip-spot target becomes TipRack; a
+    name referenced (bare, no well address) as an aspirate/dispense/transfer
+    container becomes Trough (needs its own tracker); a name referenced with
+    a well address stays a Plate. A name used BOTH as a tip target and a
+    container/well target is a conflict -- today's name-prefix rule is kept
+    verbatim for it (a UserWarning records why) rather than guessing.  Names
+    with no usage evidence (unknown tools, resource_type "resource"/"lid"
+    refs already owned by an explicit DeckLayout.holders, or refs outside a
+    known tool's canonical param table) fall back to the same prefix rule.
+
+    Names in ``exclude`` (typically explicit-layout resources/holders) are
+    skipped so an explicit DeckLayout fully owns them.
     """
     resources: dict[str, str] = {}
     skip = exclude or set()
+    usage = _collect_usage(calls)
     for call in calls:
         for value in (call or {}).get("params", {}).values():
             for name in _names_in(value):
                 if name in skip:
                     continue
-                if name in ("tip_rack",) or name.startswith("tip"):
+                info = usage.get(name)
+                is_container = info is not None and (
+                    info["container_dotted"] or info["container_bare"]
+                )
+                if info is not None and info["tip"] and is_container:
+                    warnings.warn(
+                        f"infer_layout: {name!r} is used both as a tip-spot "
+                        "target and as an aspirate/dispense/transfer "
+                        "container/well in this call sequence -- keeping "
+                        "today's name-prefix classification for it rather "
+                        "than guessing.",
+                        stacklevel=2,
+                    )
+                    key, kind = _prefix_classification(name)
+                    resources.setdefault(key, kind)
+                elif info is not None and info["tip"]:
                     resources.setdefault("tip_rack", "TipRack")
-                elif name.endswith("trough"):
+                elif info is not None and info["container_bare"] and not info["container_dotted"]:
                     resources.setdefault(name, "Trough")
                 else:
-                    resources.setdefault(name, "Plate")
+                    key, kind = _prefix_classification(name)
+                    resources.setdefault(key, kind)
     return DeckLayout(resources=resources)
 
 
@@ -193,9 +317,38 @@ def _names_in(value: Any) -> list[str]:
     return [n for n in names if n]
 
 
+def _refs_with_tail_flag(value: Any) -> list[tuple[str, bool]]:
+    """Like :func:`_names_in`, but also reports whether EACH occurrence
+    carried a "<name>.<tail>" well/spot address (vs. naming the base
+    resource bare) -- the signal :func:`_collect_usage` needs to tell a
+    dotted well-on-a-Plate ref from a bare whole-container ref.
+    """
+    out: list[tuple[str, bool]] = []
+    if isinstance(value, str):
+        base = _base_name(value)
+        if base:
+            out.append((base, _has_tail(value)))
+    elif isinstance(value, Mapping):
+        if set(("x", "y", "z")) & set(value.keys()):
+            return []
+        for v in value.values():
+            out.extend(_refs_with_tail_flag(v))
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+        for v in value:
+            out.extend(_refs_with_tail_flag(v))
+    return out
+
+
 def _base_name(ref: str) -> str:
     head = ref.split(".", 1)[0]
     return head.split("[", 1)[0].strip()
+
+
+def _has_tail(ref: str) -> bool:
+    """True iff ``ref`` addresses a sub-position ("<name>.<tail>") rather
+    than naming its base resource bare."""
+    head = ref.split("[", 1)[0]
+    return "." in head
 
 
 def build_setup(
