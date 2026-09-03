@@ -75,6 +75,26 @@ def _simple_transfer_payload() -> dict[str, Any]:
     return json.loads((FIXTURES_DIR / "simple_transfer_graph.json").read_text(encoding="utf-8"))
 
 
+def _loop_protocol_payload() -> dict[str, Any]:
+    return json.loads((FIXTURES_DIR / "loop_protocol_graph.json").read_text(encoding="utf-8"))
+
+
+def _conditional_protocol_payload() -> dict[str, Any]:
+    return json.loads((FIXTURES_DIR / "conditional_protocol_graph.json").read_text(encoding="utf-8"))
+
+
+def _proved_trip_payload() -> dict[str, Any]:
+    return json.loads((FIXTURES_DIR / "proved_trip_graph.json").read_text(encoding="utf-8"))
+
+
+def _nested_regions_payload() -> dict[str, Any]:
+    return json.loads((FIXTURES_DIR / "nested_regions_graph.json").read_text(encoding="utf-8"))
+
+
+def _self_attr_payload() -> dict[str, Any]:
+    return json.loads((FIXTURES_DIR / "self_attr_graph.json").read_text(encoding="utf-8"))
+
+
 _ASPIRATE_PARAM_NAMES = {
     "LiquidHandler.aspirate": ("resources", "vols", "use_channels"),
 }
@@ -87,13 +107,15 @@ _ASPIRATE_PARAM_NAMES = {
 
 @pytest.mark.parametrize(
     "model_name, expected_count",
-    [("OperationNode", 15), ("ResourceNode", 9), ("ProtocolComputationGraph", 10)],
+    # OperationNode 15 -> 16 (spec §12.2/#4932: `trip` added for a REGION
+    # loop header's proved trip count, §12.2.3).
+    [("OperationNode", 16), ("ResourceNode", 9), ("ProtocolComputationGraph", 10)],
 )
 def test_disposition_table_is_exhaustive(model_name: str, expected_count: int) -> None:
     """AC-11.1: ``set(DISPOSITIONS[M]) == set(M.model_fields)`` for each of
     the three upstream models, checked both directions (a new upstream
     field OR a stale disposition both turn this red) -- and the second half
-    pins the three measured counts are ``(15, 9, 10)`` at the current
+    pins the three measured counts are ``(16, 9, 10)`` at the current
     model, the number that must be RE-READ, not re-guessed, when it
     changes. Field names are read by AST from ``models.py`` directly (a
     hardcoded field list in this test would defeat the point -- see the
@@ -644,12 +666,14 @@ def test_cache_key_components_are_independently_load_bearing() -> None:
     assert key_diff_surface[3] == key_base[3]
 
     # Bumping ir_version changes component 4 AND the bytecode_hash (via the
-    # hash prefix), which is IR_HASH_PREFIX's whole point.
-    key_diff_version = ir.cache_key(bc_hash, contracts_json_a, stamp_a, ir_version=2)
+    # hash prefix), which is IR_HASH_PREFIX's whole point. `IR_VERSION`
+    # itself is 2 (spec §12.2.7/#4932), so the override under test must be
+    # a THIRD, different value to demonstrate the mechanism.
+    key_diff_version = ir.cache_key(bc_hash, contracts_json_a, stamp_a, ir_version=3)
     assert key_diff_version[3] != key_base[3]
-    prefix_v1 = "sema-ir/1\n"
     prefix_v2 = "sema-ir/2\n"
-    assert prefix_v1 != prefix_v2  # the actual mechanism AC-11.9 relies on
+    prefix_v3 = "sema-ir/3\n"
+    assert prefix_v2 != prefix_v3  # the actual mechanism AC-11.9 relies on
 
 
 # ---------------------------------------------------------------------------
@@ -839,3 +863,148 @@ def test_region_well_formedness_over_hypothesis_fuzz() -> None:
         _assert_regions_well_formed(bc)  # must always be balanced
 
     _prop()
+
+
+# ---------------------------------------------------------------------------
+# Spec §12.2 / backlog #4932: real LOOP/BRANCH regions, AC-12.5 through
+# AC-12.8. `IR_VERSION` is 2 (§12.2.7) for this whole file's lowerings.
+# ---------------------------------------------------------------------------
+
+
+def test_ac_12_5_loop_protocol_real_region_no_synthetic_wrap() -> None:
+    """AC-12.5's loop half, over the extractor's OWN output (the
+    `LOOP_PROTOCOL_SOURCE` fixture from `tests/utils/test_computation_graph.py`,
+    lowered and saved -- see that file's `:240-254`). A REGION header emits
+    no `CALL`; `lower_graph` produces >=1 real `LOOP` and zero synthetic
+    `WIDEN(has_loops)`/`Loop` wrap.
+    """
+    payload = _loop_protocol_payload()
+    assert payload["has_loops"] is True
+    header = next(op for op in payload["operations"] if op["node_type"] == "region")
+    assert header["method_name"] == ""
+    assert header["receiver_variable"] == ""
+    assert header["receiver_type"] is None
+    assert header["foreach_body"]
+    # Body ops are not repeated at top level in execution_order.
+    assert not (set(header["foreach_body"]) & set(payload["execution_order"]))
+
+    bc = ir.lower_graph(payload, param_names=_ASPIRATE_PARAM_NAMES)
+    widens = {i.reason for i in bc.instructions if isinstance(i, ir.Widen)}
+    assert "has_loops" not in widens
+    loops = [i for i in bc.instructions if isinstance(i, ir.Loop)]
+    assert len(loops) == 1
+    # The header itself never produced a CALL/WIDEN -- only the (real)
+    # aspirate/dispense body calls and the pick_up_tips/drop_tips outside
+    # the loop are present.
+    calls = [i for i in bc.instructions if isinstance(i, ir.Call)]
+    assert {c.method for c in calls} == {"pick_up_tips", "aspirate", "dispense", "drop_tips"}
+    assert "receiver_type" not in widens  # the header's own None receiver_type never widens
+    _assert_regions_well_formed(bc)
+
+
+def test_ac_12_5_conditional_protocol_real_region_no_synthetic_wrap() -> None:
+    """AC-12.5's branch half, over the extractor's own
+    `CONDITIONAL_PROTOCOL_SOURCE` output: a real `BRANCH ... ELSE ... END`,
+    zero synthetic `WIDEN(has_conditionals)` wrap.
+    """
+    payload = _conditional_protocol_payload()
+    assert payload["has_conditionals"] is True
+    header = next(op for op in payload["operations"] if op["node_type"] == "region")
+    assert header["true_branch"] and header["false_branch"]
+    assert not (
+        (set(header["true_branch"]) | set(header["false_branch"])) & set(payload["execution_order"])
+    )
+
+    bc = ir.lower_graph(payload, param_names=_ASPIRATE_PARAM_NAMES)
+    widens = {i.reason for i in bc.instructions if isinstance(i, ir.Widen)}
+    assert "has_conditionals" not in widens
+    branches = [i for i in bc.instructions if isinstance(i, ir.Branch)]
+    assert len(branches) == 1
+    _assert_regions_well_formed(bc)
+
+
+def test_ac_12_6_proved_trip_counts_relayed_into_loop_trip() -> None:
+    """AC-12.6: a REGION header's own proved `trip` (§12.2.3, computed by
+    the extractor) is read straight into `Loop.trip` by `lower_graph` --
+    seven loops `3, 4, 3, 12, None, None, None`, plus an eighth
+    (`range(0)`) `0`.
+    """
+    payload = _proved_trip_payload()
+    bc = ir.lower_graph(payload)
+    loops = [i for i in bc.instructions if isinstance(i, ir.Loop)]
+    assert [loop.trip for loop in loops] == [3, 4, 3, 12, None, None, None, 0]
+    _assert_regions_well_formed(bc)
+
+
+def test_ac_12_6_pre_4932_fixture_shape_still_always_none() -> None:
+    """The pre-#4932 fixture/fuzz-only shape (a call-bearing, non-REGION
+    operation that also carries its own region fields, e.g. `branchy_graph
+    .json`/`all_fields_graph.json`) has no `trip` field at all and keeps
+    the old, unconditional `Loop.trip is None` behaviour -- unaffected by
+    #4932's REGION-specific relay.
+    """
+    for fixture_payload in (_all_fields_payload(), _branchy_payload()):
+        bc = ir.lower_graph(fixture_payload, param_names=_ASPIRATE_PARAM_NAMES)
+        for instr in bc.instructions:
+            if isinstance(instr, ir.Loop):
+                assert instr.trip is None
+
+
+def test_ac_12_7_nested_regions_well_formed_and_elif_is_nested_branch() -> None:
+    """AC-12.7: `for` containing `if`/`elif`/`else`, itself containing a
+    `while`, lowers to a balanced stream -- `LOOP` -> `BRANCH` -> `ELSE` ->
+    nested `BRANCH` -> `ELSE` -> `LOOP` -> matched `END`s -- with `ELSE`
+    only inside an open `BRANCH`, and `check_ir` never raises. The `elif`
+    is a nested `BRANCH` in the outer branch's false arm, not a third arm.
+    """
+    payload = _nested_regions_payload()
+    bc = ir.lower_graph(payload)
+    _assert_regions_well_formed(bc)
+
+    ops = [i.op for i in bc.instructions if not isinstance(i, ir.Widen)]
+    loop_idx = [i for i, op in enumerate(ops) if op == ir.Loop.op]
+    branch_idx = [i for i, op in enumerate(ops) if op == ir.Branch.op]
+    else_idx = [i for i, op in enumerate(ops) if op == ir.Else.op]
+    assert len(loop_idx) == 2  # the outer `for` and the nested `while`
+    assert len(branch_idx) == 2  # the outer `if` and the nested `elif`
+    assert len(else_idx) == 2
+
+    # The outer LOOP opens before both BRANCHes and closes after the
+    # (later, nested) LOOP -- i.e. the for-loop's own region spans the
+    # if/elif/else AND the while.
+    outer_loop_open = loop_idx[0]
+    inner_loop_open = loop_idx[1]
+    assert outer_loop_open < branch_idx[0] < branch_idx[1] < inner_loop_open
+
+    # No third arm: exactly two BRANCH opens and two ELSEs (if/elif), never
+    # a third BRANCH sibling at the same nesting level for the same `if`.
+    assert len(branch_idx) == len(else_idx) == 2
+
+    # check_ir must not raise over this stream, contracts or not.
+    findings = check_ir(bc, {})
+    assert isinstance(findings, tuple)
+
+
+def test_ac_12_8_self_attr_resolves_to_ref_not_top() -> None:
+    """AC-12.8: `self.plate_1 = deck.get_resource("plate")` then
+    `lh.aspirate(self.plate_1["A1"], vols=50)` -- the `ResourceNode` is
+    registered under `variable_name == "self.plate_1"`,
+    `is_parameter is False` (the extractor's own producer half, §12.2.5),
+    and `lower_graph`'s value grammar resolves the argument to
+    `Ref(slot_of("self.plate_1"), "A1")`, NOT `Top` (round-1 O4's latent
+    divergence, closed).
+    """
+    payload = _self_attr_payload()
+    resource = payload["resources"]["self.plate_1"]
+    assert resource["variable_name"] == "self.plate_1"
+    assert resource["is_parameter"] is False
+
+    param_names = {"LiquidHandler.aspirate": ("resources", "vols")}
+    bc = ir.lower_graph(payload, param_names=param_names)
+    call = next(i for i in bc.instructions if isinstance(i, ir.Call) and i.method == "aspirate")
+    resource_instr = next(i for i in bc.instructions if isinstance(i, ir.Resource))
+    resolved = call.kwargs["resources"]
+    assert isinstance(resolved, ir.Ref)
+    assert resolved.cell == "A1"
+    assert resolved.slot == resource_instr.slot
+    assert resolved != ir.Top()

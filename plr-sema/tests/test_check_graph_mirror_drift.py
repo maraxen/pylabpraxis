@@ -112,8 +112,10 @@ def test_mirror_is_exhaustive_against_upstream(mirror_cls, mirror_name, upstream
 
 @pytest.mark.parametrize(
     "mirror_cls, expected_count",
+    # OperationNode 15 -> 16 (spec §12.2/#4932: `trip` added for a REGION
+    # loop header's proved trip count, §12.2.3).
     [
-        (OperationNode, 15),
+        (OperationNode, 16),
         (ResourceNode, 9),
         (ProtocolComputationGraph, 10),
     ],
@@ -121,7 +123,7 @@ def test_mirror_is_exhaustive_against_upstream(mirror_cls, mirror_name, upstream
 )
 def test_mirror_field_counts_match_spec(mirror_cls, expected_count) -> None:
     """§11.7 AC-11.1's second half: the three measured counts are pinned at
-    (15, 9, 10) for the current upstream model -- the number that must be
+    (16, 9, 10) for the current upstream model -- the number that must be
     RE-READ, not re-guessed, the day it changes. Does not require `praxis`
     to be importable (a pure count of this module's own dataclass fields).
     """

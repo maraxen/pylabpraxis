@@ -84,7 +84,12 @@ __all__ = [
 #: (§11.1.3) bumps this. It is a cache-key component (§11.3.3) so a bump
 #: invalidates every stored result rather than silently reusing one
 #: computed under different rules.
-IR_VERSION = 1
+#:
+#: 1 -> 2 (spec §12.2.7, backlog #4932): the extractor now emits real
+#: LOOP/BRANCH regions, which changes `bytecode_hash` for every protocol
+#: that previously got the synthetic whole-stream wrap -- exactly the case
+#: §11.4.1 property 3 named as this follow-up's own trigger.
+IR_VERSION = 2
 
 
 # ---------------------------------------------------------------------------
@@ -268,7 +273,7 @@ class Bytecode:
 # ---------------------------------------------------------------------------
 
 DISPOSITIONS: dict[str, dict[str, str]] = {
-    # OperationNode (models.py:524-559, 15 fields).
+    # OperationNode (models.py:524-559 pre-#4932, now 16 fields with `trip`).
     "OperationNode": {
         "id": "S",
         "line_number": "S",
@@ -276,7 +281,12 @@ DISPOSITIONS: dict[str, dict[str, str]] = {
         "receiver_variable": "I",
         "receiver_type": "I+W",
         "arguments": "I+W",
-        "node_type": "S+W",
+        # §12.2.2/§12.9: moved S+W -> I+S+W -- node_type is now READ to
+        # decide whether a CALL is emitted at all (GraphNodeType.REGION
+        # skips lower_one_call and its recomputed_node_type cross-check
+        # entirely), in addition to the pre-existing widen-on-mismatch
+        # behaviour for every non-REGION node.
+        "node_type": "I+S+W",
         "preconditions": "X",
         "creates_state": "X",
         "depends_on_params": "W+S",
@@ -285,6 +295,9 @@ DISPOSITIONS: dict[str, dict[str, str]] = {
         "condition_expr": "I+S",
         "true_branch": "I",
         "false_branch": "I",
+        # §12.2.3/§12.2.7 (#4932): a REGION loop header's proved trip count
+        # (or null), read straight into Loop.trip.
+        "trip": "I",
     },
     # ResourceNode (models.py:562-587, 9 fields).
     "ResourceNode": {
@@ -376,27 +389,42 @@ def lower_graph(
     to that method's PLR parameter names (§11.2.4's trust rule). ``None``
     means "trust nothing" -- fail-closed default.
 
-    **Resolved ambiguity (fixture/fuzz-only region semantics).** The
-    extractor never populates ``foreach_source``/``foreach_body``/
-    ``condition_expr``/``true_branch``/``false_branch`` on real graphs
-    (§11.1.4's live-data caveat) -- this lowering's handling of them is
-    therefore exercised by fixtures and the tier-4 hypothesis fuzzer only.
-    This implementation: (1) an operation carrying ``foreach_source``/
-    ``foreach_body`` ALSO gets its own ``CALL`` (so per-operation totality,
-    AC-6.4/AC-11.7, holds even for a loop-carrying operation) immediately
-    followed by a ``LOOP null`` region wrapping whichever ``foreach_body``
-    ids resolve to real, not-yet-emitted operations (dangling/unresolvable
-    ids -- the common case from the tier-4 fuzzer, which never emits a
-    matching id -- are silently skipped, not an error: the region still
-    opens and closes validly around whatever real content exists, which is
-    what keeps AC-11.13's well-formedness total even under fuzzed input).
-    Same shape for ``condition_expr``/``true_branch``/``false_branch`` ->
-    ``BRANCH null ... ELSE ... END``. This is one reasonable, explicit,
-    total interpretation of an underspecified (self-admittedly
-    unreachable-from-real-data) corner; see the task report for the
-    alternative considered and rejected (a separate, CALL-less "loop
-    header" node) and why it would violate AC-6.4/AC-11.7's totality
-    guarantee.
+    **Real regions (§12.2, #4932).** The extractor now populates a
+    ``GraphNodeType.REGION`` header -- ``method_name == ""``,
+    ``receiver_variable == ""``, ``receiver_type is None`` -- for every
+    ``for``/``while``/``if`` whose body carries >=1 operation. Such a
+    header emits **no** ``CALL`` at all (§12.2.2: it is not an operation
+    and carries no obligation) -- just the region alone, ``LOOP``
+    (respectively ``BRANCH ... ELSE ... END``), with ``Loop.trip`` read
+    straight from the header's own ``trip`` field (§12.2.3's proved value,
+    or ``None``).
+
+    **Resolved ambiguity (fixture/fuzz-only region semantics, PRE-#4932
+    shape, still supported).** Before real regions existed, the extractor
+    never populated ``foreach_source``/``foreach_body``/``condition_expr``/
+    ``true_branch``/``false_branch`` on real graphs (§11.1.4's live-data
+    caveat) -- this lowering's handling of them was therefore exercised by
+    fixtures and the tier-4 hypothesis fuzzer only, and that fixture/fuzz
+    shape (a call-bearing, non-``REGION`` operation that ALSO carries its
+    own region fields) is still supported unchanged, for backward
+    compatibility: (1) such an operation gets its own ``CALL`` (so
+    per-operation totality, AC-6.4/AC-11.7, holds even for a loop-carrying
+    operation) immediately followed by a ``LOOP null`` region wrapping
+    whichever ``foreach_body`` ids resolve to real, not-yet-emitted
+    operations (dangling/unresolvable ids -- the common case from the
+    tier-4 fuzzer, which never emits a matching id -- are silently
+    skipped, not an error: the region still opens and closes validly
+    around whatever real content exists, which is what keeps AC-11.13's
+    well-formedness total even under fuzzed input). Same shape for
+    ``condition_expr``/``true_branch``/``false_branch`` -> ``BRANCH null
+    ... ELSE ... END``. This is one reasonable, explicit, total
+    interpretation of an underspecified (self-admittedly
+    unreachable-from-real-data, at the time) corner; see the task report
+    for the alternative considered and rejected (a separate, CALL-less
+    "loop header" node) and why it would violate AC-6.4/AC-11.7's totality
+    guarantee -- the same argument #4932 later adopted FOR the real
+    ``REGION`` shape once headers stopped needing to double as an
+    operation's own totality-bearing ``CALL``.
 
     **Resolved ambiguity (duplicate operation ids, tier-4 fuzz-discovered).**
     A real extractor's ``id`` is documented "Unique identifier for this
@@ -421,10 +449,12 @@ def lower_graph(
 
     positions_by_id: dict[str, list[int]] = {}
     op_ids_in_payload_order: list[str] = []
+    by_id_first: dict[str, Mapping[str, Any]] = {}
     for idx, op in enumerate(operations_raw):
         oid = op["id"]
         positions_by_id.setdefault(oid, []).append(idx)
         op_ids_in_payload_order.append(oid)
+        by_id_first.setdefault(oid, op)
     # FIFO per id: pop the earliest not-yet-consumed position for `oid`.
     _next_pos_cursor: dict[str, int] = {}
 
@@ -438,11 +468,40 @@ def lower_graph(
         _next_pos_cursor[oid] = cursor + 1
         return positions[cursor]
 
+    def _region_children(op: Mapping[str, Any]) -> tuple[str, ...]:
+        return (
+            *(op.get("foreach_body") or ()),
+            *(op.get("true_branch") or ()),
+            *(op.get("false_branch") or ()),
+        )
+
+    def _reachable_from(top_ids: list[str]) -> set[str]:
+        # §12.2.2 (#4932): a REGION header's body ids are NOT repeated at
+        # top level in `execution_order` -- they are only reachable by
+        # recursing through the header's own region field(s). A flat
+        # `set(execution_order) == set(op_ids_in_payload_order)` check
+        # would therefore treat every real region-bearing payload as an
+        # invalid permutation and always fall back to the (mis-ordered,
+        # since body ops are appended to `operations` before their owning
+        # header -- see the extractor's own body-accumulator ordering)
+        # flat walk. This closure is the region-aware replacement.
+        seen: set[str] = set()
+        stack = list(top_ids)
+        while stack:
+            oid = stack.pop()
+            if oid in seen:
+                continue
+            seen.add(oid)
+            op = by_id_first.get(oid)
+            if op is not None:
+                stack.extend(_region_children(op))
+        return seen
+
     front_widens: list[Widen] = []
     if (
         execution_order
-        and len(execution_order) == len(op_ids_in_payload_order)
-        and set(execution_order) == set(op_ids_in_payload_order)
+        and len(execution_order) == len(set(execution_order))
+        and _reachable_from(execution_order) == set(op_ids_in_payload_order)
     ):
         ordered_ids = list(execution_order)
     else:
@@ -466,19 +525,41 @@ def lower_graph(
             return Top()
         return _lower_ast_node(node)
 
+    def _self_attr_name(node: ast.AST) -> str | None:
+        # §12.2.5 (#4932, round-1 O4): `self.<attr>` resolves against the
+        # declared resource set by its dotted name, matching the
+        # extractor's own `visit_Assign` registration
+        # (`variable_name == f"self.{attr}"`).
+        if (
+            isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == "self"
+        ):
+            return f"self.{node.attr}"
+        return None
+
     def _lower_ast_node(node: ast.AST) -> Value:
         if isinstance(node, ast.Name) and node.id in resources_payload:
             return Ref(get_slot(node.id), None)
+        self_attr = _self_attr_name(node)
+        if self_attr is not None and self_attr in resources_payload:
+            return Ref(get_slot(self_attr), None)
         if isinstance(node, ast.Subscript):
             base = node.value
             idx = node.slice
+            base_name: str | None = None
+            if isinstance(base, ast.Name) and base.id in resources_payload:
+                base_name = base.id
+            else:
+                base_self_attr = _self_attr_name(base)
+                if base_self_attr is not None and base_self_attr in resources_payload:
+                    base_name = base_self_attr
             if (
-                isinstance(base, ast.Name)
-                and base.id in resources_payload
+                base_name is not None
                 and isinstance(idx, ast.Constant)
                 and isinstance(idx.value, str)
             ):
-                return Ref(get_slot(base.id), idx.value)
+                return Ref(get_slot(base_name), idx.value)
             return Top()
         if isinstance(node, (ast.List, ast.Tuple)):
             return Seq(tuple(_lower_ast_node(elt) for elt in node.elts))
@@ -542,12 +623,27 @@ def lower_graph(
         if idx is None:
             return
         op = operations_raw[idx]
-        lower_one_call(op)
+        # §12.2.2 (#4932): a REGION header emits no CALL at all -- it is
+        # not an operation, carries no obligation, and would otherwise
+        # spuriously WIDEN on `receiver_type`/`node_type` (a header's
+        # `receiver_type` is always None and its `node_type` disagrees
+        # with both "static" and "dynamic" by construction).
+        is_region_header = op.get("node_type") == "region"
+        if not is_region_header:
+            lower_one_call(op)
 
         foreach_source = op.get("foreach_source")
         foreach_body = op.get("foreach_body") or ()
         if foreach_source is not None or foreach_body:
-            body_instrs.append(Loop(trip=None))
+            # §12.2.3/§12.2.7 (#4932): a REGION header's proved trip count
+            # (or `None`) is read straight through. A pre-#4932 fixture
+            # carrying `foreach_source`/`foreach_body` on a call-bearing,
+            # non-REGION node (the increment-2 fixture/fuzz-only shape
+            # this lowering also still supports, per this function's own
+            # docstring) has no `trip` field at all and keeps the old
+            # always-`None` behaviour.
+            trip = op.get("trip") if is_region_header else None
+            body_instrs.append(Loop(trip=trip))
             for cid in foreach_body:
                 lower_op_and_regions(cid)
             body_instrs.append(End())

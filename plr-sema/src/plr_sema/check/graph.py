@@ -29,7 +29,8 @@ own input (``check_graph`` now calls ``plr_sema.check.ir.lower_graph``
 directly on the raw JSON payload, never through these dataclasses -- see
 ``plr_sema.check``'s module docstring), it is the LOWERING's documented
 input schema, grown from 7/1/3 fields (the old derived-from-consumers
-subset) to the full 15/9/10 upstream field set. ``tests/
+subset) to the full 15/9/10 upstream field set (260902), now 16/9/10
+(spec §12.2/#4932's ``trip`` field, §12.2.3). ``tests/
 test_check_graph_mirror_drift.py`` (Fork C) is correspondingly strengthened
 from a subset check to an EXHAUSTIVENESS check: ``{f.name for f in
 dataclasses.fields(Mirror)} == set(UpstreamModel.model_fields)``, both
@@ -78,8 +79,10 @@ __all__ = [
 class OperationNode:
     """Total stdlib mirror of
     ``praxis.backend.utils.plr_static_analysis.models.OperationNode``
-    (:524-559, 15 fields) -- see ``plr_sema.check.ir.DISPOSITIONS
-    ["OperationNode"]`` for the per-field disposition (§11.1.4).
+    (16 fields, spec §12.2/#4932 -- ``trip`` added for a REGION loop
+    header's proved trip count, §12.2.3) -- see ``plr_sema.check.ir.
+    DISPOSITIONS["OperationNode"]`` for the per-field disposition
+    (§11.1.4).
     """
 
     id: str
@@ -94,6 +97,7 @@ class OperationNode:
     depends_on_params: tuple[str, ...]
     foreach_source: str | None
     foreach_body: tuple[str, ...]
+    trip: int | None
     condition_expr: str | None
     true_branch: tuple[str, ...]
     false_branch: tuple[str, ...]
@@ -153,6 +157,7 @@ def _operation_from_dict(d: dict[str, Any]) -> OperationNode:
         depends_on_params=tuple(d.get("depends_on_params", ())),
         foreach_source=d.get("foreach_source"),
         foreach_body=tuple(d.get("foreach_body", ())),
+        trip=d.get("trip"),
         condition_expr=d.get("condition_expr"),
         true_branch=tuple(d.get("true_branch", ())),
         false_branch=tuple(d.get("false_branch", ())),
