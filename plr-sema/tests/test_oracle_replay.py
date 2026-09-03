@@ -34,6 +34,7 @@ from oracle_common import (
     content_digest,
     extract_first_call,
     ir_value_of,
+    lower_row_calls,
     param_names_from_contracts,
     resources_from_example,
     row_to_verifier_inputs,
@@ -209,11 +210,29 @@ class TestResourcesAndCallsFromExample:
         plr_kwargs = {0: {"tip_spots": {"k": "seq", "items": [{"k": "ref", "name": "tip_rack", "cell": "A1"}]}}}
         calls, not_planned = calls_from_plr_kwargs(example, plr_kwargs)
         assert not_planned == [1]
-        assert len(calls) == 1
-        assert calls[0]["method"] == "pick_up_tips"
-        assert calls[0]["kwargs"] == plr_kwargs[0]
+        # §12.1.6 (#4938): calls[0] is UNCONDITIONALLY the scaffolding's
+        # setup() reset -- the real (planned) calls follow it.
+        assert len(calls) == 2
+        assert calls[0]["method"] == "setup"
+        assert calls[0]["kwargs"] == {}
         assert calls[0]["receiver"] == "lh"
         assert calls[0]["receiver_type"] == "LiquidHandler"
+        assert calls[1]["method"] == "pick_up_tips"
+        assert calls[1]["kwargs"] == plr_kwargs[0]
+        assert calls[1]["receiver"] == "lh"
+        assert calls[1]["receiver_type"] == "LiquidHandler"
+
+    def test_calls_from_plr_kwargs_prepends_setup_even_when_nothing_planned(self):
+        """A row where nothing was planned (rows_setup_error, per
+        oracle_replay.py's `_is_setup_error`) still gets the prepend --
+        harmless, since `not_planned_indices`/`n_operations_executed` (what
+        `_is_setup_error` keys off) never read `calls`.
+        """
+        example = {"call_sequence": [{"name": "pick_up_tips", "params": {"at": ["tip_rack.A1"]}}]}
+        calls, not_planned = calls_from_plr_kwargs(example, {})
+        assert not_planned == [0]
+        assert len(calls) == 1
+        assert calls[0]["method"] == "setup"
 
 
 class TestCompare:
@@ -433,6 +452,115 @@ class TestPLRNamedArguments:
         st, not_planned = run_static_calls(example, plr_kwargs, contracts_json)
         assert not_planned == [1]
         assert st["op_1"] == {"verdict": "unknown", "n_findings": 0, "reasons": []}
+
+
+class TestSetupPrepend:
+    """§12.1.6 / AC-12.3 (#4938 real-programs increment): the corpus
+    lowering carries the scaffolding's real `setup()` reset as the first
+    CALL, with the sentinel origin "setup", and every OTHER CALL's origin
+    is unchanged from a lowering that never saw the prepend at all -- the
+    exact `record_id` join to P2.5's recorded results is not shifted by
+    one.
+    """
+
+    def test_first_call_is_setup_empty_kwargs_sentinel_origin(self):
+        example = {
+            "call_sequence": [
+                {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1"]}},
+                {"name": "aspirate", "params": {"source": "src.A1", "volume_ul": 50}},
+            ],
+            "deck_layout": {"resources": {"tip_rack": "TipRack", "src": "Plate"}},
+        }
+        plr_kwargs = {
+            0: {"tip_spots": {"k": "seq", "items": [{"k": "ref", "name": "tip_rack", "cell": "A1"}]}},
+            1: {"resource": {"k": "ref", "name": "src", "cell": "A1"}},
+        }
+        resources = resources_from_example(example)
+        bc, not_planned = lower_row_calls(example, plr_kwargs, resources=resources)
+        assert not_planned == []
+
+        sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "src"))
+        from plr_sema.check import ir as _ir
+
+        call_instrs = [(pc, instr) for pc, instr in enumerate(bc.instructions) if isinstance(instr, _ir.Call)]
+        assert [instr.method for _pc, instr in call_instrs] == ["setup", "pick_up_tips", "aspirate"]
+        setup_pc, setup_instr = call_instrs[0]
+        assert setup_instr.kwargs == {}
+        assert bc.sideband["origin"][setup_pc] == "setup"
+
+    def test_other_origins_unchanged_from_a_lowering_without_the_prepend(self):
+        """The origin VALUE sequence assigned to the real calls (in call
+        order) is identical whether or not the setup CALL is prepended --
+        only its own pc position shifts, never the numbering of the real
+        calls after it.
+        """
+        example = {
+            "call_sequence": [
+                {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1"]}},
+                {"name": "aspirate", "params": {"source": "src.A1", "volume_ul": 50}},
+            ],
+            "deck_layout": {"resources": {"tip_rack": "TipRack", "src": "Plate"}},
+        }
+        plr_kwargs = {
+            0: {"tip_spots": {"k": "seq", "items": [{"k": "ref", "name": "tip_rack", "cell": "A1"}]}},
+            1: {"resource": {"k": "ref", "name": "src", "cell": "A1"}},
+        }
+        resources = resources_from_example(example)
+        bc, _not_planned = lower_row_calls(example, plr_kwargs, resources=resources)
+
+        sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "src"))
+        from plr_sema.check import ir as _ir
+
+        # Origin values in pc-ascending order, WITH the prepend.
+        with_setup = [v for _pc, v in sorted(bc.sideband["origin"].items())]
+        assert with_setup == ["setup", "0", "1"]
+
+        # The same two real calls, lowered directly (no prepend at all) --
+        # exactly the pre-increment shape.
+        real_calls = [
+            {"method": "pick_up_tips", "kwargs": plr_kwargs[0], "receiver": "lh", "receiver_type": "LiquidHandler"},
+            {"method": "aspirate", "kwargs": plr_kwargs[1], "receiver": "lh", "receiver_type": "LiquidHandler"},
+        ]
+        bc_no_setup = _ir.lower_calls(real_calls, resources=resources)
+        without_setup = [v for _pc, v in sorted(bc_no_setup.sideband["origin"].items())]
+        assert without_setup == ["0", "1"]
+
+        # Same values (with "setup" stripped), in the same order.
+        assert [v for v in with_setup if v != "setup"] == without_setup
+
+    def test_compare_alignment_not_shifted_by_setup_pc(self):
+        """Tier-1's `compare` alignment (`run_static_calls` -> `compare`)
+        never misindexes because of the prepended setup pc: every real
+        `call_sequence` index gets its OWN `op_<i>` entry, and no
+        `"op_setup"` (or any non-`op_`-prefixed key) leaks into the
+        returned per-op dict for downstream consumers (e.g.
+        `tip_mutants.py`'s `int(oid.split("_", 1)[1])`) to choke on.
+        """
+        example = {
+            "call_sequence": [
+                {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1"]}},
+                {"name": "aspirate", "params": {"source": "src.A1", "volume_ul": 50}},
+                {"name": "drop_tips", "params": {"at": ["tip_rack.A1"]}},
+            ],
+            "deck_layout": {"resources": {"tip_rack": "TipRack", "src": "Plate"}},
+        }
+        plr_kwargs = {
+            0: {"tip_spots": {"k": "seq", "items": [{"k": "ref", "name": "tip_rack", "cell": "A1"}]}},
+            2: {"tip_spots": {"k": "seq", "items": [{"k": "ref", "name": "tip_rack", "cell": "A1"}]}},
+        }
+        contracts_json = json.dumps({"contracts": {}})
+        st, not_planned = run_static_calls(example, plr_kwargs, contracts_json)
+        assert not_planned == [1]
+        assert set(st.keys()) == {"op_0", "op_1", "op_2"}
+        for oid in st:
+            assert oid.startswith("op_")
+            int(oid.split("_", 1)[1])  # never raises -- no "op_setup" leak
+        rt = RuntimeOutcome(
+            error=None, exc_class=None, failing_index=None, planned_indices=[0, 2], passed=True
+        )
+        rows = compare(example, rt, st)
+        assert [r["index"] for r in rows] == [0, 1, 2]
+        assert [r["method"] for r in rows] == ["pick_up_tips", "aspirate", "drop_tips"]
 
 
 class TestT16dSidecarGating:

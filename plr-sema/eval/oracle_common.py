@@ -277,8 +277,24 @@ def calls_from_plr_kwargs(
     input, in the SAME relative order as the planned subset of
     ``example["call_sequence"]``; ``not_planned_indices`` is the original
     ``call_sequence`` indices the caller should count/report separately.
+
+    §12.1.6 (#4938 real-programs increment): ``calls[0]`` is UNCONDITIONALLY
+    the scaffolding's real reset -- ``setup.machine.setup()``, awaited by the
+    verifier before ``_execute`` on every row (``training/verify/verifier.py:
+    117-126``) -- on the same receiver slot (``"lh"``/``LiquidHandler``) with
+    empty ``kwargs``. It is a plain dict here, exactly like every other
+    element; it is :func:`lower_row_calls`, not this function or
+    ``lower_calls`` itself, that gives it the sentinel origin ``"setup"``.
+    Prepending it unconditionally (even for a row where nothing was planned,
+    i.e. every index lands in ``not_planned``) is harmless: such a row is
+    the ``rows_setup_error`` bucket downstream (``oracle_replay.py``'s
+    ``_is_setup_error``), which is keyed off ``not_planned_indices`` and
+    ``n_operations_executed`` -- neither reads ``calls`` -- and is excluded
+    from every metric that would otherwise see the phantom setup CALL.
     """
-    calls: list[dict[str, Any]] = []
+    calls: list[dict[str, Any]] = [
+        {"method": "setup", "kwargs": {}, "receiver": "lh", "receiver_type": _LH_TYPE}
+    ]
     not_planned: list[int] = []
     for i, call in enumerate(example["call_sequence"]):
         kwargs = plr_kwargs.get(i)
@@ -287,6 +303,53 @@ def calls_from_plr_kwargs(
             continue
         calls.append({"method": call["name"], "kwargs": kwargs, "receiver": "lh", "receiver_type": _LH_TYPE})
     return calls, not_planned
+
+
+def lower_row_calls(
+    example: dict[str, Any],
+    plr_kwargs: dict[int, dict[str, Any]],
+    *,
+    resources: dict[str, dict[str, Any]],
+    param_names: dict[str, tuple[str, ...]] | None = None,
+):
+    """§12.1.6: builds :func:`plr_sema.check.ir.lower_calls`'s input via
+    :func:`calls_from_plr_kwargs` (which always prepends the scaffolding's
+    ``setup()`` reset as ``calls[0]``), lowers it, and rewrites
+    ``bytecode.sideband["origin"]`` so:
+
+    * pc 0's CALL (always the prepended setup, since ``calls[0]`` always is)
+      carries the sentinel origin ``"setup"`` instead of ``lower_calls``' own
+      auto-numbered ``"0"``;
+    * every other CALL's origin is shifted down by one, making it IDENTICAL
+      to what ``lower_calls`` would have produced over ``calls[1:]`` alone --
+      the unchanged-origin half of AC-12.3, and what keeps the exact
+      ``record_id`` join to P2.5's recorded per-operation results from
+      shifting by one.
+
+    ``lower_calls`` itself is untouched: it auto-numbers every CALL 0..N-1 in
+    order and has no notion that the first one is special, so it stays a
+    pure function of its ``calls`` argument (§12.1.6's normative paragraph).
+    This rewrite is caller-side sideband normalisation, which is why it
+    lives here in ``plr-sema/eval/`` rather than in ``plr_sema.check.ir``.
+
+    Returns ``(bytecode, not_planned_indices)``.
+    """
+    sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "src"))
+    from plr_sema.check import ir as _ir
+
+    calls, not_planned = calls_from_plr_kwargs(example, plr_kwargs)
+    bc = _ir.lower_calls(calls, resources=resources, param_names=param_names)
+    origin = bc.sideband.get("origin", {})
+    new_origin: dict[int, str] = {}
+    for pc, local_idx in origin.items():
+        if local_idx == "0":
+            new_origin[pc] = "setup"
+        else:
+            new_origin[pc] = str(int(local_idx) - 1)
+    new_sideband = dict(bc.sideband)
+    new_sideband["origin"] = new_origin
+    bc = dataclasses.replace(bc, sideband=new_sideband)
+    return bc, not_planned
 
 
 def run_static(graph: dict[str, Any], contracts_json: str) -> dict[str, dict[str, Any]]:
@@ -323,13 +386,18 @@ def run_static_calls(
 ) -> tuple[dict[str, dict[str, Any]], list[int]]:
     """The ``lower_calls`` path (§11.2.2/§11.10 tier 1) -- ``adapt_graph``'s
     replacement. Lowers ``example["call_sequence"]``'s PLANNED subset
-    (``i in plr_kwargs``) through :func:`plr_sema.check.ir.lower_calls`,
-    runs :func:`plr_sema.check.check_ir`, and relabels back to the
-    ``op_<i>`` convention :func:`compare` expects -- but keyed by the
-    REAL ``call_sequence`` index, not the position among only-planned
-    calls (``lower_calls``'s own ``origin`` map is 0-based over its
-    ``calls`` argument, which skips not-planned indices; this function
-    composes that with the planned-index list to restore the real index).
+    (``i in plr_kwargs``), plus the §12.1.6 scaffolding ``setup()`` reset
+    :func:`lower_row_calls` always prepends, through
+    :func:`plr_sema.check.ir.lower_calls`, runs
+    :func:`plr_sema.check.check_ir`, and relabels back to the ``op_<i>``
+    convention :func:`compare` expects -- but keyed by the REAL
+    ``call_sequence`` index, not the position among only-planned calls
+    (:func:`lower_row_calls`'s rewritten ``origin`` map is 0-based over the
+    REAL calls only and skips not-planned indices, using the sentinel
+    ``"setup"`` for the prepended reset; this function composes the numeric
+    half with the planned-index list to restore the real index, and drops
+    the setup CALL's own findings entirely -- it has no real
+    ``call_sequence`` index to compare against, §12.1.6).
 
     Returns ``(per_op, not_planned_indices)`` -- ``per_op`` additionally
     carries a ``{"verdict": "unknown", "n_findings": 0, "reasons": []}``
@@ -343,7 +411,6 @@ def run_static_calls(
     from plr_sema.check import ir as _ir
     from plr_sema.verdict import join
 
-    calls, not_planned = calls_from_plr_kwargs(example, plr_kwargs)
     resources = resources_from_example(example)
     contracts_payload = json.loads(contracts_json)
     contracts = contracts_payload.get("contracts", {})
@@ -354,12 +421,16 @@ def run_static_calls(
     # produces, for a reason that has nothing to do with argument naming.
     receiver_states = contracts_payload.get("receiver_state", {})
 
-    bc = _ir.lower_calls(calls, resources=resources, param_names=param_names)
+    bc, not_planned = lower_row_calls(example, plr_kwargs, resources=resources, param_names=param_names)
     raw_findings = check_ir(bc, contracts, receiver_states)
 
     planned_indices = [i for i in range(len(example["call_sequence"])) if i not in set(not_planned)]
     origin = bc.sideband.get("origin", {})
-    real_origin = {pc: f"op_{planned_indices[int(local_idx)]}" for pc, local_idx in origin.items()}
+    setup_pcs = {pc for pc, local_idx in origin.items() if local_idx == "setup"}
+    real_origin = {
+        pc: f"op_{planned_indices[int(local_idx)]}" for pc, local_idx in origin.items() if local_idx != "setup"
+    }
+    raw_findings = tuple(f for f in raw_findings if int(f.operation_id) not in setup_pcs)
     findings = _ir.relabel_findings(raw_findings, real_origin)
 
     per_op: dict[str, list] = {f"op_{i}": [] for i in not_planned}
