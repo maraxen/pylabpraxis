@@ -60,6 +60,12 @@ PROMPT_VERSION: Final[str] = "p23_nlify_v1"
 #: natural prompt text or to VERB_PARAPHRASE_LEXICON.
 PROMPT_VERSION_NATURAL: Final[str] = "p23_nlify_v2_natural"
 
+#: Out-of-surface natural lane (task 260903_p26c_oos_natural): a THIRD prompt
+#: version whose text lives in prompts.build_prompt_natural_oos, separate so
+#: neither the base prompt nor the in-surface natural prompt (and their cached
+#: rows) ever changes. Bump on ANY change to the oos natural prompt text.
+PROMPT_VERSION_NATURAL_OOS: Final[str] = "p23_nlify_v2_natural_oos"
+
 #: Everyday phrasings per verb, offered to the teacher instead of the tool
 #: name (P2.6 finding: golden eval says "pull / put / toss / copy", floor
 #: training rows say "aspirate / dispense / discard_tips / stamp").

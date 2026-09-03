@@ -128,7 +128,7 @@ def cmd_batches(args: argparse.Namespace) -> int:
 
 
 def cmd_generate_natural(args: argparse.Namespace) -> int:
-    """Natural-phrasing variants of every accepted in-surface floor row."""
+    """Natural-phrasing variants of every accepted floor row (in-surface and out-of-surface lanes)."""
     import json
 
     from floor_gen.natural import (
@@ -139,6 +139,8 @@ def cmd_generate_natural(args: argparse.Namespace) -> int:
 
     base_corpus = Path(args.base_corpus)
     base_rows = [json.loads(l) for l in base_corpus.read_text(encoding="utf-8").splitlines() if l.strip()]
+    if args.only_class:
+        base_rows = [r for r in base_rows if r["matrix_cell"]["ambiguity_class"] == args.only_class]
     if args.offset:
         base_rows = base_rows[args.offset:]
     if args.limit is not None:
@@ -156,7 +158,8 @@ def cmd_generate_natural(args: argparse.Namespace) -> int:
         Path(args.out_dir), rows, manifest, corpus_name=args.corpus_name, manifest_name=args.manifest_name
     )
     print(
-        f"natural: base={stats.base_rows} skipped_oos={stats.skipped_out_of_surface} "
+        f"natural: base={stats.base_rows} per_class={json_compact(stats.per_class)} "
+        f"teachers={json_compact(stats.teacher_model_versions)} "
         f"accepted={stats.accepted} rejected_shape={stats.rejected_shape} "
         f"rejected_filter={stats.rejected_filter} by_reason={json_compact(stats.rejected_by_reason)} "
         f"acceptance={stats.acceptance_rate:.3f} cache_hits={stats.cache_hits} cache_misses={stats.cache_misses}"
@@ -260,6 +263,8 @@ def main(argv: list[str] | None = None) -> int:
     nat.add_argument("--manifest-name", default="manifest_natural.json")
     nat.add_argument("--limit", type=int, default=None, help="first N base rows only (acceptance check)")
     nat.add_argument("--offset", type=int, default=0, help="skip the first N base rows (parallel cache warming)")
+    nat.add_argument("--only-class", choices=["none", "missing-slot", "ambiguous-referent", "out-of-surface"],
+                     default=None, help="restrict to base rows of one ambiguity class (cache warming per lane)")
     nat.add_argument("--teacher-timeout", type=float, default=None,
                      help="per-call teacher timeout in seconds (default: backend's 180)")
     nat.set_defaults(func=cmd_generate_natural)

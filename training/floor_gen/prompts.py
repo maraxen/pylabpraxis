@@ -20,9 +20,15 @@ from typing import Any, Final
 from floor_gen.declarations import render_declarations
 from floor_gen.synth import SynthExample
 from floor_gen.value_formats import VALUE_FORMAT_CONVENTIONS
-from floor_gen.versions import PROMPT_VERSION, PROMPT_VERSION_NATURAL, VERB_PARAPHRASE_LEXICON
+from floor_gen.versions import PROMPT_VERSION_NATURAL_OOS, PROMPT_VERSION, PROMPT_VERSION_NATURAL, VERB_PARAPHRASE_LEXICON
 
-__all__ = ["build_prompt", "build_prompt_natural", "compute_input_hash", "response_shape_instructions"]
+__all__ = [
+    "build_prompt",
+    "build_prompt_natural",
+    "build_prompt_natural_oos",
+    "compute_input_hash",
+    "response_shape_instructions",
+]
 
 
 #: Shared contract for BOTH backends: the assistant-under-test must reply with
@@ -176,6 +182,60 @@ _NATURAL_CLASS: Final[dict[str, str]] = {
 }
 
 
+#: The natural lane's system prompt (byte-identical to what produced every
+#: cached p23_nlify_v2_natural row; prewarm_prompts assumes one system string
+#: per chunk, so the oos lane reuses it verbatim).
+_NATURAL_SYSTEM: Final[str] = (
+    "You are a data-generation teacher for a liquid-handling lab copilot "
+    "(FunctionGemma training corpus, natural-phrasing lane). You convert "
+    "structured tool calls into realistic single-turn user utterances that "
+    "sound like a scientist talking, under exact ambiguity-class constraints. "
+    "You follow the output contract literally."
+)
+
+# Out-of-surface natural lane (task 260903_p26c_oos_natural). No structured
+# call to NL-ify: the seed is the cell's off-surface request plus the base
+# row's own utterance; the assistant reply is COPIED from the base row by the
+# lane, so the teacher is asked for the utterance only.
+_NATURAL_OOS_INSTRUCTION: Final[str] = (
+    "The original request below is OUTSIDE the supported tool surface (the "
+    "copilot will decline it). Rewrite it as the SAME request, phrased the way a "
+    "scientist casually asks a colleague in the lab. Keep every concrete detail "
+    "of the original (wells, plates, volumes, temperatures, speeds, counts, "
+    "timings) and keep it asking for the same off-surface thing -- do NOT turn "
+    "it into something the copilot could do instead, and do NOT name any tool. "
+    "Vary the sentence shape (a question, an imperative, or a 'could you ...' "
+    "ask). Set 'clarification' to null: the assistant reply is supplied "
+    "separately."
+)
+
+
+def build_prompt_natural_oos(example: SynthExample, base_utterance: str) -> dict[str, str]:
+    """Natural-phrasing prompt for an OUT-OF-SURFACE example (never in-surface)."""
+    cell = example.cell
+    if cell.ambiguity_class != "out-of-surface":
+        raise ValueError("oos natural lane is for out-of-surface cells only")
+    user = "\n".join(
+        [
+            f"Task context (prompt_version={PROMPT_VERSION_NATURAL_OOS}, cell={cell.cell_id}, class=out-of-surface):",
+            f"Off-surface request seed: {cell.off_surface_request}",
+            f"Original request: {base_utterance}",
+            "Instruction:",
+            _NATURAL_OOS_INSTRUCTION,
+            _NATURAL_LOCATION_RULE,
+            _RESPONSE_SHAPE,
+        ]
+    )
+    payload = {
+        "prompt_version": PROMPT_VERSION_NATURAL_OOS,
+        "cell_id": cell.cell_id,
+        "example_index": example.index,
+        "ambiguity_class": cell.ambiguity_class,
+        "base_utterance": base_utterance,
+    }
+    return {"system": _NATURAL_SYSTEM, "user": user, "input_hash": compute_input_hash(payload)}
+
+
 def _vague_hint_from_call(example: SynthExample) -> str:
     cell = example.cell
     if cell.slot_param and example.schema_calls:
@@ -223,13 +283,7 @@ def build_prompt_natural(example: SynthExample) -> dict[str, str]:
             _RESPONSE_SHAPE,
         ]
     )
-    system = (
-        "You are a data-generation teacher for a liquid-handling lab copilot "
-        "(FunctionGemma training corpus, natural-phrasing lane). You convert "
-        "structured tool calls into realistic single-turn user utterances that "
-        "sound like a scientist talking, under exact ambiguity-class constraints. "
-        "You follow the output contract literally."
-    )
+    system = _NATURAL_SYSTEM
     payload = {
         "prompt_version": PROMPT_VERSION_NATURAL,
         "cell_id": cell.cell_id,

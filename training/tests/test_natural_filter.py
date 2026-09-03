@@ -44,3 +44,15 @@ def test_duplicates_rejected():
 
 def test_record_id_mapping():
     assert natural_record_id("cov-0015-aspirate__missing-slot-00") == "nat-0015-aspirate__missing-slot-00"
+
+
+def test_out_of_surface_lane_skips_canonical_verb_but_keeps_identifier_rules():
+    oos_base = "Can you mix the liquid in well A1 by moving the pipette up and down before transferring it?"
+    ok = "Could you give well A1 a quick stir by pipetting up and down before you transfer it over?"
+    assert surface_violations(ok, base_utterance=oos_base, ambiguity_class="out-of-surface") == []
+    # the same text is rejected by the in-surface lane (rule d)
+    assert surface_violations(ok, base_utterance=oos_base) == ["canonical_verb"]
+    leaky = "Could you stir plate_1.A1 up and down before the transfer?"
+    v = surface_violations(leaky, base_utterance=oos_base, ambiguity_class="out-of-surface")
+    assert v == ["underscore_identifier", "dotted_well_ref"]
+    assert surface_violations(oos_base, base_utterance=oos_base, ambiguity_class="out-of-surface") == ["duplicate_of_base"]
