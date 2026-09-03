@@ -114,3 +114,28 @@ def test_doc_pointers():
     m = _manifest()
     assert (REPO_ROOT / m["thresholds_doc"]).exists()
     assert (REPO_ROOT / m["slice_gate_doc"]).exists()
+
+
+def test_probe_has_out_of_surface_rows_with_clarification_targets():
+    """0.1.5: the natural lane covers out-of-surface rows; their eval-base
+    variants form an out_of_surface probe class supervised as NL clarification."""
+    import json
+
+    from assemble.build import PROBE_CORPUS_NAME, PROBE_SIDECAR_NAME
+
+    out = REPO_ROOT / "training" / "assemble" / "out"
+    m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    assert m["probe"]["by_class"]["out_of_surface"] >= 20
+    probe = [json.loads(line) for line in (out / PROBE_CORPUS_NAME).read_text(encoding="utf-8").splitlines() if line.strip()]
+    side = [json.loads(line) for line in (out / PROBE_SIDECAR_NAME).read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(probe) == len(side) == m["probe"]["rows"]
+    n_oos = 0
+    for row, s in zip(probe, side, strict=True):
+        assistant = row["messages"][-1]
+        if s["ambiguity_class"] == "out_of_surface":
+            n_oos += 1
+            assert assistant.get("content") and not assistant.get("tool_calls")
+            assert s["supervision_kind"] == "nl_clarification" and s["calls"] == []
+        else:
+            assert assistant.get("tool_calls")
+    assert n_oos == m["probe"]["by_class"]["out_of_surface"]

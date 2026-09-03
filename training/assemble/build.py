@@ -76,7 +76,11 @@ __all__ = [
 #: The natural-phrasing floor lane (provenance coverage_natural) joins train
 #: when its base row is train, and forms the separate PROBE set when its base
 #: row is eval (never the 228). Repaired floor rows (synth 0.2.1) are train-only.
-ASSEMBLY_VERSION = "0.1.4"
+#: 0.1.5 (260903, task 260903_p26c_oos_natural): the natural lane also covers
+#: out-of-surface floor rows (supervision nl_clarification, the base row's
+#: clarification copied verbatim as the assistant text); same routing (eval
+#: base -> probe, so the probe gains an out_of_surface class). Pin unchanged.
+ASSEMBLY_VERSION = "0.1.5"
 GAP_FIELDS_RULE = (
     "missing_required and unresolved_slots derived per call via "
     "coxswain.plr.slot_derivation.derive_call_gaps(name, params with sorted keys); "
@@ -281,8 +285,9 @@ def load_floor() -> list[dict[str, Any]]:
 
 def load_natural() -> list[dict[str, Any]]:
     """Natural-phrasing floor variants (floor_gen/natural.py). Same intent as
-    the base row; provenance coverage_natural; lineage carries base_record_id
-    so assign_splits can route the variant by its base's split."""
+    the base row (out-of-surface rows: no calls, the base clarification as the
+    assistant text); provenance coverage_natural; lineage carries
+    base_record_id so assign_splits can route the variant by its base's split."""
     path = REPO_ROOT / NATURAL_CORPUS_REL
     if not path.exists():
         return []
@@ -293,9 +298,14 @@ def load_natural() -> list[dict[str, Any]]:
         if prov.get("provenance") != "coverage_natural":
             raise AssertionError(f"{row['record_id']}: natural corpus row with provenance {prov!r}")
         kind = row["supervision"]["kind"]
+        clarification = row.get("clarification")
         calls = [{"name": c["name"], "params": dict(c.get("params", {}))} for c in row["intent"]["calls"]]
-        if cell["ambiguity_class"] == "out-of-surface" or kind != "tool_call":
-            raise AssertionError(f"{row['record_id']}: natural lane has no out-of-surface variants")
+        oos = cell["ambiguity_class"] == "out-of-surface"
+        if oos != (kind == "nl_clarification") or oos != (clarification is not None) or (oos and calls):
+            raise AssertionError(
+                f"{row['record_id']}: natural row shape mismatch (class {cell['ambiguity_class']!r}, "
+                f"kind {kind!r}, clarification {'set' if clarification is not None else 'null'}, {len(calls)} calls)"
+            )
         records.append({
             "record_id": row["record_id"],
             "provenance": "coverage_natural",
@@ -303,7 +313,7 @@ def load_natural() -> list[dict[str, Any]]:
             "verb": cell["verb"],
             "utterance": row["utterance"],
             "calls": calls,
-            "assistant_text": None,
+            "assistant_text": clarification,
             "supervision_kind": kind,
             "lineage": {
                 "source_file": NATURAL_CORPUS_REL,
