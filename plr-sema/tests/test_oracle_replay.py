@@ -235,6 +235,55 @@ class TestResourcesAndCallsFromExample:
         assert calls[0]["method"] == "setup"
 
 
+class TestResourceTypeCapture:
+    """§12.4.1 (#4880): `resource_type_of`/`resource_types_from_kwargs` --
+    the tier-2a renderer's only source of truth for what PLR class to
+    annotate a rendered protocol's resource parameters with, read from the
+    REAL bound object rather than guessed from `deck_layout` (which only
+    ever carries the scaffolding's own additions).
+    """
+
+    def test_resource_type_of_top_level_resource(self):
+        from pylabrobot.resources import Resource
+
+        from oracle_common import resource_type_of
+
+        r = Resource(name="tip_rack", size_x=10, size_y=10, size_z=10)
+        assert resource_type_of(r) == ("tip_rack", "Resource")
+
+    def test_resource_type_of_cell_resolves_to_parent_name_and_class(self):
+        from pylabrobot.resources import Coordinate, Resource, Well
+
+        from oracle_common import resource_type_of
+
+        parent = Resource(name="plate", size_x=10, size_y=10, size_z=10)
+        well = Well(name="A1", size_x=1, size_y=1, size_z=1)
+        parent.assign_child_resource(well, location=Coordinate(0, 0, 0))
+        # The PARENT's name/class, not the well's -- mirrors ir_value_of's
+        # own "parent wins" identity rule.
+        assert resource_type_of(well) == ("plate", "Resource")
+
+    def test_resource_type_of_non_resource_is_none(self):
+        from oracle_common import resource_type_of
+
+        assert resource_type_of(50) is None
+        assert resource_type_of("A1") is None
+        assert resource_type_of(None) is None
+
+    def test_resource_types_from_kwargs_walks_lists(self):
+        from pylabrobot.resources import Coordinate, Resource, Well
+
+        from oracle_common import resource_types_from_kwargs
+
+        tip_rack = Resource(name="tip_rack", size_x=10, size_y=10, size_z=10)
+        a1 = Well(name="A1", size_x=1, size_y=1, size_z=1)
+        b1 = Well(name="B1", size_x=1, size_y=1, size_z=1)
+        tip_rack.assign_child_resource(a1, location=Coordinate(0, 0, 0))
+        tip_rack.assign_child_resource(b1, location=Coordinate(0, 1, 0))
+        kwargs = {"tip_spots": [a1, b1], "use_channels": [0, 1]}
+        assert resource_types_from_kwargs(kwargs) == {"tip_rack": "Resource"}
+
+
 class TestCompare:
     """Tests for soundness comparisons."""
 

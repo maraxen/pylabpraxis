@@ -181,6 +181,111 @@ def ir_value_of(obj: Any) -> dict[str, Any]:
     return {"k": "top"}
 
 
+#: §12.4.1 (#4880): the SAME generic vocabulary praxis's extractor
+#: recognizes via ``praxis.common.type_inspection.PLR_RESOURCE_TYPES``
+#: (word-boundary regex match over a type-HINT string,
+#: ``_initialize_resources_from_params`` -> ``extract_resource_types``) --
+#: duplicated here, not imported, because ``plr-sema/eval/`` may not
+#: import ``praxis`` outside ``extract_runner.py``'s own subprocess
+#: (AC-12.16). A VENDOR SUBCLASS name (e.g. ``HamiltonSTARDeck``) never
+#: appears as a whole word inside that regex's pattern space ("Deck" is
+#: preceded by "R", a word character, so ``\\b`` never matches there) --
+#: found live in the 260903 full-corpus run: every ``move_resource`` row
+#: rendered ``deck: HamiltonSTARDeck`` (the exact runtime class), which the
+#: extractor's own ``_initialize_resources_from_params`` silently never
+#: registered as a resource at all, producing 62 Top-vs-Ref divergences
+#: that LOOKED like ``lower_graph``'s value-grammar gap (§12.2.5's closed
+#: ``self.<attr>`` case) but were actually this renderer choosing too
+#: specific a type hint for a parameter the extractor's recognizer cannot
+#: see. Kept intentionally small and copied verbatim from the source list
+#: (not derived) -- see that module's own docstring for why derivation was
+#: rejected there; the same caution applies to a second, independent copy.
+_PLR_GENERIC_RESOURCE_NAMES: frozenset[str] = frozenset({
+    "Well", "TipSpot", "Spot", "Tube", "Plate", "TipRack", "Trough", "TubeRack",
+    "Container", "PlateCarrier", "TipCarrier", "TroughCarrier", "Carrier",
+    "CarrierSite", "Deck", "Slot", "Resource", "Lid", "LiquidHandler",
+    "PlateReader", "HeaterShaker", "Shaker", "TemperatureController",
+    "Centrifuge", "Thermocycler", "Pump", "PumpArray", "Fan", "Sealer",
+    "Peeler", "PowderDispenser", "Incubator", "SCARA", "Machine",
+})
+
+
+def _generic_plr_type_name(obj: Any) -> str:
+    """The most-specific ancestor class of ``obj`` whose NAME is in
+    :data:`_PLR_GENERIC_RESOURCE_NAMES`, walked via ``type(obj).__mro__``
+    (most to least specific). Falls back to ``type(obj).__name__`` (the
+    concrete class) when nothing in the MRO matches -- an honest "no
+    generic name known for this", not a crash; the renderer still tries
+    the concrete name (better than omitting the parameter outright), and
+    any resulting divergence is exactly what this increment exists to
+    surface.
+    """
+    for cls in type(obj).__mro__:
+        if cls.__name__ in _PLR_GENERIC_RESOURCE_NAMES:
+            return cls.__name__
+    return type(obj).__name__
+
+
+def resource_type_of(obj: Any) -> tuple[str, str] | None:
+    """§12.4.1 (#4880): ``(name, plr_type_hint)`` for the RESOURCE a bound
+    PLR object ultimately belongs to -- mirrors :func:`ir_value_of`'s own
+    "parent wins" rule (a cell reference's resource identity is its
+    PARENT's name), but returns a type-hint string the extractor's own
+    ``_initialize_resources_from_params`` can actually recognize
+    (:func:`_generic_plr_type_name`), which ``ir_value_of``'s IR-value JSON
+    deliberately does not carry (the grounded VALUE representation has no
+    use for it -- only tier 2's renderer, which needs a real Python
+    type-hint string for the resource's function-parameter annotation,
+    does). Returns ``None`` for a non-``Resource`` (e.g. a bare literal).
+    """
+    try:
+        from pylabrobot.resources import Resource as _PLRResource
+    except ImportError:  # pragma: no cover - pylabrobot always installed in eval/'s env
+        return None
+    if not isinstance(obj, _PLRResource):
+        return None
+    parent = getattr(obj, "parent", None)
+    target = parent if parent is not None else obj
+    name = getattr(target, "name", None)
+    if name is None:
+        return None
+    return name, _generic_plr_type_name(target)
+
+
+def resource_types_from_kwargs(kwargs: Mapping[str, Any]) -> dict[str, str]:
+    """Walk one call's RAW (pre-:func:`ir_value_of`) ``PlanResult.kwargs``
+    values -- scalars, ``Resource``s, and lists/tuples thereof -- and return
+    ``{resource_name: plr_class_name}`` for every resource reachable from
+    them.
+
+    Used by ``plr-sema/eval/render_protocol.py`` (§12.4.1) to type the
+    rendered protocol's parameters with the SAME class the runtime actually
+    bound, rather than guessing from ``deck_layout`` (which only carries the
+    scaffolding's OWN additions, e.g. ``prime_plate`` -- most referenced
+    resources, e.g. the mined utterance's own plate/tip rack, are never in
+    it: ``_precondition_plan`` never populates ``extra_resources`` for them,
+    and ``training/verify``'s own ``infer_layout()`` silently defaults every
+    other unrecognized name to a bare ``Plate`` at RUNTIME, a decision this
+    function does not need to replicate because it reads the real bound
+    object instead of guessing).
+    """
+    out: dict[str, str] = {}
+
+    def walk(v: Any) -> None:
+        if isinstance(v, (list, tuple)):
+            for item in v:
+                walk(item)
+            return
+        found = resource_type_of(v)
+        if found is not None:
+            name, cls = found
+            out.setdefault(name, cls)
+
+    for v in kwargs.values():
+        walk(v)
+    return out
+
+
 @dataclasses.dataclass
 class RuntimeOutcome:
     error: str | None
@@ -192,12 +297,18 @@ class RuntimeOutcome:
     #: by construction (PlanResult.kwargs is written by plan_call's bind
     #: closure under spec.plr_arg, training/verify/dispatcher.py:117-135).
     plr_kwargs: dict[int, dict[str, Any]] = dataclasses.field(default_factory=dict)
+    #: §12.4.1 (#4880): {resource_name: plr_class_name}, merged across every
+    #: planned call's RAW kwargs (:func:`resource_types_from_kwargs`) -- the
+    #: renderer's only source of truth for what type to annotate a rendered
+    #: protocol's resource parameters with.
+    resource_types: dict[str, str] = dataclasses.field(default_factory=dict)
 
 
 def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
     verifier = _import_verifier()
     planned: list[int] = []
     plr_kwargs: dict[int, dict[str, Any]] = {}
+    resource_types: dict[str, str] = {}
     real_plan_call = verifier.plan_call
 
     def recording_plan_call(call, index, setup, *, strict):
@@ -207,6 +318,7 @@ def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
         # value JSON (§11.2.2) rather than a repr string.
         if hasattr(plan_result, "kwargs"):
             plr_kwargs[index] = {k: ir_value_of(v) for k, v in plan_result.kwargs.items()}
+            resource_types.update(resource_types_from_kwargs(plan_result.kwargs))
         return plan_result
 
     verifier.plan_call = recording_plan_call
@@ -226,7 +338,9 @@ def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
     error = result.get("error")
     exc_class = error.split(":", 1)[0].strip() if error else None
     failing = planned[-1] if (error and planned) else None
-    return RuntimeOutcome(error, exc_class, failing, planned, bool(result.get("passed")), plr_kwargs)
+    return RuntimeOutcome(
+        error, exc_class, failing, planned, bool(result.get("passed")), plr_kwargs, resource_types
+    )
 
 
 # --------------------------------------------------------------------------
