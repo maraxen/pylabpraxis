@@ -24,24 +24,24 @@ Pipeline per fixture (`plr-sema/eval/fixtures/regions/*.py`):
 5. join executed `(method, lineno, visit_index)` to static
    `(operation_id, iteration)` and compare, per spec §12.4.2/AC-12.17.
 
-**The live `OperationNode.line_number` defect (found while building this
-tier -- see the module-level `_LINE_NUMBER_DEFECT_NOTE` below).** Every
-operation the real extractor emits today carries `line_number == 0`
-(`computation_graph_extractor.py`'s `_current_line` is initialized once,
-in `__init__`, and never assigned again anywhere in that file -- a
-pre-existing bug this tier's own join mechanism is the first thing to
-depend on `line_number` being real). This tier is NOT permitted to fix
-`praxis`'s extractor (out of scope; see the dispatch prompt), so the join
-here is deliberately written against the SPEC'S key shape,
-`(method_name, lineno)`, and is forward-compatible with a future fix --
-but is safe TODAY only because every authored fixture in
-`plr-sema/eval/fixtures/regions/` independently upholds a stronger
-constraint than §12.4.2's own ("at most one call site per method per
-region body"): at most one call site per PLR method **in the whole
-fixture**, so every operation's `(method_name, 0)` key is unique within
-one extracted graph regardless of the defect. :func:`_build_join_map`
-still raises loudly (`region_recorder.DuplicateCallSiteError`) if that
-ever stops holding for a given fixture.
+**The (now-fixed) `OperationNode.line_number` defect, backlog #4948.**
+Every operation the extractor emitted used to carry `line_number == 0`
+(`computation_graph_extractor.py`'s `_current_line` was initialized once,
+in `__init__`, and never assigned again -- this tier's own join was the
+first thing to depend on `line_number` being real, which is how the bug
+was found). The join was written against the SPEC'S key shape,
+`(method_name, lineno)`, from the start, and :func:`_join_key` was the one
+place normalizing `lineno` to a constant `0` as a workaround -- see that
+function's own docstring for the history. Now that the extractor gives
+real line numbers, `_join_key` is an identity pass-through and the join
+supports spec §12.4.2's actual rule ("at most one call site per method
+per region body"), not just the previous, stronger-than-spec constraint
+("at most one call site per PLR method in the whole fixture").
+`two_sites_same_method.py` is the fixture that exercises this directly:
+two `pick_up_tips` call sites in two different bodies, joined to two
+different operations. :func:`_build_join_map` still raises loudly
+(`region_recorder.DuplicateCallSiteError`) on a genuine same-body
+same-method duplicate.
 """
 
 from __future__ import annotations
@@ -259,38 +259,31 @@ def _extract_graph_payload(
 
 
 def _join_key(method: str, lineno: int) -> tuple[str, int]:
-    """The join key spec §12.4.2 specifies, `(method_name, lineno)` --
-    EXCEPT that today `lineno` is normalized to `0` on both sides
-    regardless of the real value passed in.
+    """The join key spec §12.4.2 specifies: `(method_name, lineno)`.
 
-    **Why.** `praxis`'s extractor's own `OperationNode.line_number` is
-    live-broken (found while building this tier -- see this module's
-    docstring and the dispatch report): `_current_line` is initialized
-    once in `ComputationGraphExtractor.__init__`
-    (`computation_graph_extractor.py:281`) and never assigned again
-    anywhere in that file, so EVERY extracted operation carries
-    `line_number == 0`. `sys._getframe(1).f_lineno` on the EXECUTED side
-    (`region_recorder.py`) has no such defect -- it reads the real
-    CPython frame, which is a REAL, distinct source line per call site.
-    A literal `(method, real_lineno)` executed key can therefore never
-    match a `(method, 0)` static key, unconditionally, for any fixture,
-    until the extractor is fixed -- which is out of this tier's scope
-    (the dispatch prompt forbids editing `praxis`'s extractor).
+    **History (backlog #4948).** Until `computation_graph_extractor.py`'s
+    `OperationNode.line_number` was fixed, this function normalized
+    `lineno` to a constant `0` on both sides -- `_current_line` was
+    assigned once in `ComputationGraphExtractor.__init__` and never again,
+    so every extracted operation carried `line_number == 0`, while
+    `sys._getframe(1).f_lineno` on the EXECUTED side
+    (`region_recorder.py`) read a real, distinct CPython frame line per
+    call site. A literal `(method, real_lineno)` executed key could never
+    match a `(method, 0)` static key, so the join degraded to
+    `method_name` alone -- safe only because every fixture in
+    `plr-sema/eval/fixtures/regions/` upheld a STRONGER constraint than
+    spec §12.4.2's own ("at most one call site per method per region
+    body"): at most one call site per PLR method in the WHOLE fixture.
 
-    This function is the ONE place that workaround lives: both
-    :func:`_build_join_map` and every executed-side lookup route their
-    `(method, lineno)` pair through it before comparing, so the join
-    degrades to `method_name` alone today -- safe only because every
-    fixture in `plr-sema/eval/fixtures/regions/` independently upholds a
-    STRONGER constraint than spec §12.4.2's own ("at most one call site
-    per method per region body"): at most one call site per PLR method in
-    the WHOLE fixture (each fixture's own docstring says so). Delete this
-    function (and use `(method, lineno)` directly, unnormalized, at both
-    call sites) once `computation_graph_extractor.py`'s `_current_line`
-    tracking is fixed -- the join logic upstream of this function already
-    reads real spec-shaped keys and needs no other change.
+    Now that `line_number` is real, this is the identity pass-through the
+    docstring above always said it would become -- kept as a named
+    function (rather than inlined at both call sites) so a future
+    normalization need has one obvious place to live, and so
+    `two_sites_same_method.py` (two DIFFERENT `pick_up_tips` call sites in
+    two DIFFERENT bodies -- exactly the case the old constant-`0` version
+    could never join) has something to test against directly.
     """
-    return (method, 0)
+    return (method, lineno)
 
 
 def _build_join_map(bytecode, ir_mod) -> dict[tuple[str, int], str]:
@@ -434,7 +427,7 @@ async def _run_fixture_execution(
                 }
                 try:
                     await protocol_fn(setup.machine, **kwargs)
-                except Exception as e:  # noqa: BLE001 - the fixture's own outcome, not a harness bug
+                except Exception as e:
                     raised = f"{type(e).__name__}: {e}"
             finally:
                 recorder.uninstall()

@@ -35,7 +35,8 @@ from __future__ import annotations
 import dataclasses
 import functools
 import sys
-from typing import Any, Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing import Any
 
 __all__ = [
     "VisitRecord",
@@ -47,12 +48,11 @@ __all__ = [
 class DuplicateCallSiteError(RuntimeError):
     """Two operations in one extracted graph share a ``(method_name,
     lineno)`` key -- spec §12.4.2's fixture-design constraint ("each
-    fixture body therefore contains at most one call site per PLR method")
-    is violated, or (see :mod:`region_oracle`'s own docstring on the
-    live ``OperationNode.line_number`` defect) two DIFFERENT call sites of
-    the same method collide because line numbers are not actually
-    distinguishing them today. Raised loudly rather than silently
-    overwriting -- the join is a LOOKUP, not a heuristic (§12.4.2).
+    fixture body therefore contains at most one call site per PLR method
+    per region body") is genuinely violated (two call sites of the same
+    method on the SAME source line, e.g. inside the same straight-line
+    body). Raised loudly rather than silently overwriting -- the join is a
+    LOOKUP, not a heuristic (§12.4.2).
     """
 
 
@@ -132,7 +132,7 @@ class RegionRecorder:
             recorder._visit_counts[key] = visit_index
             try:
                 result = await original(*args, **kwargs)
-            except Exception as exc:  # noqa: BLE001 - recorded, then re-raised verbatim
+            except Exception as exc:
                 recorder.records.append(
                     VisitRecord(name, caller_lineno, visit_index, f"raised:{type(exc).__name__}")
                 )
