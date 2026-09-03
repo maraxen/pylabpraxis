@@ -299,6 +299,7 @@ def test_unknown_requires_reason() -> None:
 # ---------------------------------------------------------------------------
 
 _UNRESOLVED = object()
+_VALIDATED = object()  # reason=vocabulary_reason(...): dynamic, validated form
 
 
 def _module_level_constants(tree: ast.Module) -> dict[str, object]:
@@ -347,6 +348,16 @@ def _resolve_reason_kwarg(call: ast.Call, module_consts: dict[str, object]) -> o
             resolved = module_consts[value_node.id]
             if isinstance(resolved, str):
                 return resolved
+        # Increment 4 §13.3 (sprint 122): the ONE dynamic form §3.3 admits --
+        # `reason=vocabulary_reason(<expr>)`, the validator in verdict.py that
+        # raises on any non-member, so a deserialised (cache) Finding can never
+        # carry a reason outside the vocabulary. It resolves to no member of
+        # its own (it adds nothing to the reverse-direction count).
+        if isinstance(value_node, ast.Call):
+            f = value_node.func
+            fname = f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else None
+            if fname == "vocabulary_reason":
+                return _VALIDATED
         return _UNRESOLVED
     return None
 
@@ -493,6 +504,8 @@ def _scan_src_reason_sites() -> tuple[list[str], set[str], int]:
     for path in sorted(SRC_ROOT.rglob("*.py")):
         for call_node, resolved in _find_finding_reason_sites(path.read_text(), str(path)):
             total_sites += 1
+            if resolved is _VALIDATED:
+                continue  # §13.3: reason=vocabulary_reason(...), validated at runtime
             if resolved is _UNRESOLVED:
                 offenders.append(f"{path}:{call_node.lineno}: unresolvable reason= form")
             elif resolved not in REASON_VOCABULARY:

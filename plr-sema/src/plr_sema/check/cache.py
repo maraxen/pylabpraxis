@@ -57,7 +57,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from plr_sema.verdict import Finding, PlrSite, Verdict
+from plr_sema.verdict import Finding, PlrSite, Verdict, vocabulary_reason
 
 __all__ = ["CacheStore", "canonical_key", "main"]
 
@@ -105,7 +105,7 @@ def _finding_from_dict(d: dict[str, Any]) -> Finding:
         operation_id=d["operation_id"],
         category=d["category"],
         plr_site=_plr_site_from_dict(d["plr_site"]),
-        reason=d["reason"],
+        reason=vocabulary_reason(d["reason"]),  # §3.3: validated, never trusted
         detail=d.get("detail", ""),
         evidence=tuple(_plr_site_from_dict(site) for site in d.get("evidence", ())),
     )

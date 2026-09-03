@@ -154,6 +154,22 @@ REASON_VOCABULARY: frozenset[str] = frozenset(
 )
 
 
+def vocabulary_reason(value: str) -> str:
+    """Return ``value`` iff it is the empty string or a REASON_VOCABULARY member.
+
+    Spec §3.3 (amended by increment 4 §13.3, sprint 122): the AST scan in
+    ``tests/test_verdict.py`` requires every ``Finding(..., reason=...)``
+    construction site to resolve to a vocabulary member *syntactically*. A
+    deserialiser cannot -- its reason is data -- so this is the ONE blessed
+    dynamic form the scan accepts: it raises ``ValueError`` on anything not in
+    the vocabulary, so a corrupt or foreign cache entry becomes a miss rather
+    than a Finding carrying a reason nobody registered.
+    """
+    if value == "" or value in REASON_VOCABULARY:
+        return value
+    raise ValueError(f"reason {value!r} is not a REASON_VOCABULARY member")
+
+
 @dataclass(frozen=True, slots=True)
 class PlrSite:
     """A location in PLR's own source that grounds a Finding's evidence."""
