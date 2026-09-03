@@ -1,7 +1,7 @@
 ---
 title: "plr-sema increment 3 — real programs: derived setup() entry state, extractor-emitted regions, loop semantics, and the tier-2 oracle"
 description: "Third post-corpus increment to the plr-sema pre-corpus specification. Closes the four gaps that keep increments 1 and 2 fixture-only on real data. (1) #4938 derives PLR's setup() head-reset as an effect, so a receiver whose setup() the analyzer OBSERVED enters NO_TIP on every channel and ChannelState.default finally has a producer; a receiver with no observed setup stays TOP. (2) #4932 makes praxis's libcst extractor emit real LOOP/BRANCH regions instead of two graph-level booleans, with proved trip counts from language semantics only, plus self.<attr> resource registration (round-1 O4). (3) The checker stops widening every receiver at region entry: a proved trip count of n is unrolled to min(n, K) iterations with a widened tail, an unproved one goes to a fixpoint over the height-2 lattice whose findings are emitted from the final pass only, and BRANCH becomes an arm-wise walk with a join at the merge. (4) #4880 lands tier 2 in two halves -- a bytecode-level extractor/renderer differential against tier 1, and an authored source-fixture set whose ground truth is EXECUTED against the verifier's chatterbox deck, which is the only thing that lifts the LOOP/BRANCH soundness claims off fixtures -- folding in #4939's loader-only well-ref normalisation. Zero new registry rows, zero new REASON_VOCABULARY members, zero wire-format change, no schema_version bump; one upstream enum member (GraphNodeType.REGION), one disposition change (node_type S+W -> I+S+W), and seven amendments across increments 1 and 2. Revised after adversarial round 1: the tier-2b recorder is now instance-level method wrapping joined on OperationNode.line_number rather than plan_call, which cannot fire on that execution path (O1); AC-6.4/AC-7.2/AC-11.7 read over a single defined set OBLIGED(graph) that excludes proved-trip-0 region bodies (O2); L3 retires the stale increment-2 CALL-followed-by-region compensation (O3); a Continue anywhere in a loop body withdraws the trip proof and A-COMPLETES is generalised to early exit (O7); plus the visitor-restructuring estimate risk (O4), an _active_states follow-up, a REGION-versus-FOREACH/CONDITIONAL rationale (O5), and the A-NO-REINTRODUCTION assumption row (O6). One correction found while remediating and raised by neither report: LiquidHandler.load_state satisfies the draft's two-conjunct reset rule, which would have selected two methods and disabled the feature, so P5 gains an unconditional-statement-position conjunct. See the remediation changelog at the end."
-status: reviewed-round-1
+status: implemented-round-1
 spec_version: 11
 amends: 260901_plr-sema-pre-corpus-spec.md
 task_id: 260903_sema-real-programs
@@ -165,8 +165,8 @@ read. It is a filter over an existing index, not a new scan.
 
 ### 12.1.3 Where it lands in the payload, and the provenance stamp
 
-`ReceiverState` (`plr-sema/src/plr_sema/derive/receiver_state.py:441-452`) gains one field and
-`receiver_state_to_json` (`plr-sema/src/plr_sema/derive/receiver_state.py:455-465`) one key:
+`ReceiverState` (`plr-sema/src/plr_sema/derive/receiver_state.py:598-611`) gains one field and
+`receiver_state_to_json` (`plr-sema/src/plr_sema/derive/receiver_state.py:614-624`) one key:
 
 ```jsonc
 "receiver_state": {
@@ -178,7 +178,7 @@ read. It is a filter over an existing index, not a new scan.
 ```
 
 `schema_version` stays **1**. `check/` reads the block through `.get()` with an empty default
-(`evaluate_call`, `plr-sema/src/plr_sema/check/tipstate.py:399-471`, already does this for every
+(`evaluate_call`, `plr-sema/src/plr_sema/check/tipstate.py:509-536`, already does this for every
 other key), so a pre-increment table degrades to today's `default = TOP` behaviour — the same
 fail-closed direction as AC-10.7 and AC-11.12, and pinned here by AC-12.2's third sub-assertion.
 
@@ -249,8 +249,8 @@ is exactly why they had to be written down rather than relied upon:
 |---|---|---|---|---|
 | **A-CHANNELS** | the reset method populates at least every channel index a later operation names | `default = NO_TIP` answers for indices `exact` does not carry; if the map is *smaller* than the operation's channel set, PLR raises `KeyError` where the analyzer says `SAFE` | a `SAFE` against a run that raised — the first-severity class. Requires a backend whose `num_channels` (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:197`) is below the operation's arity; no corpus row and no chatterbox configuration produces one | tier 1's 0-unsound gate over 268 executed rows / 426 operations, and tier 2b's executed fixtures (§12.4.2) |
 | **A-RESET-ONCE** | a second reset call is a reset, not an error | E6 applies unconditionally; PLR in fact raises `RuntimeError` on a repeat `setup()` (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:190-191`) | nothing in the `SAFE` direction: the *analyzer* would report `NO_TIP` for a program that raises before reaching the next operation, which A-COMPLETES already scopes out — a `WILL_FAIL` claim is a claim about the trace *reaching* that index | the same two |
-| **A-NO-REINTRODUCTION** (round-1 O6) | no method other than the derived `entry_reset.method` reintroduces tip state between an observed reset and a later read, *unless* the ordinary P4 bridge machinery catches it | E6 fires only on the exact reset method; every other tracker-touching method is left to §10.2.4's effect classification and §10.4's E2/E4 split, so the reset's `default` survives across calls the bridge does not model | a channel silently reading `NO_TIP` after something put a tip on it. The live instance is `LiquidHandler.load_state` (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:239-257`), which calls `self.head[channel].load_state(...)` at `:250` — the HM-24 bridge shape exactly — and `TipTracker.load_state` assigns `self._tip = cast(...)` (`external/pylabrobot/pylabrobot/resources/tip_tracker.py:138-142`), which `_classify_write` (`plr-sema/src/plr_sema/derive/receiver_state.py:396-409`) classifies `HAS_TIP` since the RHS is neither a `None` literal nor a self-attr load. **It discharges safely today, but by machinery rather than by argument:** `channels_for_call` returns `None` for `load_state` (no `use_channels`, no channel-default idiom), so `_apply_transfer`'s channels-are-`Top` branch (`plr-sema/src/plr_sema/check/tipstate.py:391-395`) widens instead of asserting anything. What would break it is a future reintroducing method that *does* resolve an exact channel set | tier 1 + tier 2b; and, structurally, AC-12.1's requirement that P5 select exactly one reset method |
-| **A-EARLY-EXIT** (round-1 O7) | control did not exit a region early via `break`, `return` or `raise` before the pc being checked | L1 evaluates every listed body operation on every unrolled iteration; a terminated loop's later iterations do not happen | findings for iterations the execution never ran. Sound because the oracle declines to constrain unreached call sites, the same exemption `compare` already gives post-raise operations (`plr-sema/eval/oracle_common.py:325-345`); this row is the generalisation of increment 1's A-COMPLETES from "did not raise" to "was reached", stated at the width §12.2.3 actually uses it. `continue` is **not** covered here — it does not terminate anything — and is handled instead by withdrawing the trip proof (§12.2.3 condition 4) | tier 2b's `(operation, iteration)` comparison, in which an unvisited call site is not-reached by construction (AC-12.17) |
+| **A-NO-REINTRODUCTION** (round-1 O6) | no method other than the derived `entry_reset.method` reintroduces tip state between an observed reset and a later read, *unless* the ordinary P4 bridge machinery catches it | E6 fires only on the exact reset method; every other tracker-touching method is left to §10.2.4's effect classification and §10.4's E2/E4 split, so the reset's `default` survives across calls the bridge does not model | a channel silently reading `NO_TIP` after something put a tip on it. The live instance is `LiquidHandler.load_state` (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:239-257`), which calls `self.head[channel].load_state(...)` at `:250` — the HM-24 bridge shape exactly — and `TipTracker.load_state` assigns `self._tip = cast(...)` (`external/pylabrobot/pylabrobot/resources/tip_tracker.py:138-142`), which `_classify_write` (`plr-sema/src/plr_sema/derive/receiver_state.py:396-409`) classifies `HAS_TIP` since the RHS is neither a `None` literal nor a self-attr load. **It discharges safely today, but by machinery rather than by argument:** `channels_for_call` returns `None` for `load_state` (no `use_channels`, no channel-default idiom), so `_apply_transfer`'s channels-are-`Top` branch (`plr-sema/src/plr_sema/check/tipstate.py:478-504`) widens instead of asserting anything. What would break it is a future reintroducing method that *does* resolve an exact channel set | tier 1 + tier 2b; and, structurally, AC-12.1's requirement that P5 select exactly one reset method |
+| **A-EARLY-EXIT** (round-1 O7) | control did not exit a region early via `break`, `return` or `raise` before the pc being checked | L1 evaluates every listed body operation on every unrolled iteration; a terminated loop's later iterations do not happen | findings for iterations the execution never ran. Sound because the oracle declines to constrain unreached call sites, the same exemption `compare` already gives post-raise operations (`plr-sema/eval/oracle_common.py:569-580`); this row is the generalisation of increment 1's A-COMPLETES from "did not raise" to "was reached", stated at the width §12.2.3 actually uses it. `continue` is **not** covered here — it does not terminate anything — and is handled instead by withdrawing the trip proof (§12.2.3 condition 4) | tier 2b's `(operation, iteration)` comparison, in which an unvisited call site is not-reached by construction (AC-12.17) |
 
 ### 12.1.6 The corpus rows must carry the real `setup()` call
 
@@ -293,7 +293,7 @@ Three visitors set a boolean and return `True`
 fields exist and are typed (`praxis/backend/utils/plr_static_analysis/models.py:551-559`); and the
 graph carries `has_loops`/`has_conditionals`
 (`praxis/backend/utils/plr_static_analysis/models.py:643-646`). The consumer is already written and
-already total: `lower_op_and_regions` (`plr-sema/src/plr_sema/check/ir.py:540-568`) opens `Loop` and
+already total: `lower_op_and_regions` (`plr-sema/src/plr_sema/check/ir.py:622-640`) opens `Loop` and
 `Branch` regions from exactly those fields and recurses into the body ids, and the synthetic
 whole-stream wrap (`plr-sema/src/plr_sema/check/ir.py:570-579`) is the fallback that fires when no
 real region was emitted. **This item is a producer for a consumer that already exists.**
@@ -438,7 +438,7 @@ both sides.
 
 - **Nesting** is structural: a region header inside another region's body list produces a nested
   region in the stream, and `lower_op_and_regions` already recurses
-  (`plr-sema/src/plr_sema/check/ir.py:540-568`). `region_receivers`
+  (`plr-sema/src/plr_sema/check/ir.py:622-640`). `region_receivers`
   (`plr-sema/src/plr_sema/check/tipstate.py:216-239`) already handles nested opens with a depth
   counter.
 - **`else`** is the header's `false_branch`. An **`elif` chain** lowers as a *nested* header in the
@@ -780,7 +780,12 @@ and this is the replacement.
 >
 > **The join to the static side is `OperationNode.line_number`.** That field already exists
 > (`praxis/backend/utils/plr_static_analysis/models.py:532`), is already populated at every call site
-> (`praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py:503`), and is
+> (`praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py:503`)
+> **[FALSIFIED 260903 — see §12.13: `_current_line` is set to 0 in `__init__` and never reassigned,
+> so `OperationNode.line_number` is 0 at every call site, not populated per-site; the join degrades to
+> method-only and is guarded by the fixture's one-call-site-per-method constraint plus
+> `DuplicateCallSiteError`, not by the two-part key this paragraph describes; praxis-side defect
+> tracked as backlog #4948]**, and is
 > already carried into the bytecode's sideband
 > (`plr-sema/src/plr_sema/check/ir.py:538`). Since §12.4.1's runner extracts **the same source file**
 > the harness just executed, the executed side's `lineno` and the static side's `line_number` are two
@@ -813,7 +818,7 @@ The tier-1 replay loses 40 golden rows to unparseable underscore references such
 268 rows executed, 426 operations, 0 unsound, 189 of 189 crosscheck agreement
 (`outputs/plr-sema/oracle_replay_260902.json:2-17`).
 
-> **Normative.** `row_to_verifier_inputs` (`plr-sema/eval/oracle_common.py:520-573`) normalises a
+> **Normative.** `row_to_verifier_inputs` (`plr-sema/eval/oracle_common.py:840-860`) normalises a
 > reference of the form `<base>_<Row><Col>` to `<base>.<Row><Col>` **if and only if `<base>` is a
 > declared resource of the row's own deck layout** — the layout it has already computed, not a name
 > pattern. `<Row>` is a single `A`–`H`, `<Col>` one or two digits, matching the regex shape
@@ -992,7 +997,7 @@ by a stub, the stub-defeating half is named.
   the absence of a `WIDEN`.
 - **AC-12.9 (the extractor does not regress).** Every existing test in
   `tests/utils/test_computation_graph.py` passes unmodified, including
-  `test_multi_machine_operation_count` (`tests/utils/test_computation_graph.py:265-272`), whose
+  `test_multi_machine_operation_count` (`tests/utils/test_computation_graph.py:351-358`), whose
   straight-line protocol must still produce exactly 5 operations and **no** region header. A change
   that emitted a header for every statement would fail it.
 - **AC-12.10 (bounded unrolling is precise on the round-1 counterexample).** The O1 fixture — a
@@ -1301,6 +1306,53 @@ a producer to compare an iteration index against.
    mounted", which main spec deferred row (b) already reserves the machinery for. The document does not
    take that position because the record does not exist yet; a reviewer may think it should be built
    here rather than deferred, since the same record is what the volume family will need.
+
+## 12.13 Implementation record (sprint 121)
+
+- #4939 b35bc338: premise corrected — the 40 golden rows never parse-failed; they executed and
+  raised inside `training/verify/deck.py`'s `infer_layout`/`ground_ref`. Only 1 of 16
+  underscore-shaped refs meets AC-12.19's declared-base gate; `rows_normalised` = 1. The verifier
+  types non-`'tip'`-prefixed names as `Plate` (coxswain-side defect, out of scope).
+- Harness follow-up #4944 85fe6eb5: the regenerated corpus (assembly 0.1.5, 900 → 1427 rows) plus a
+  replay run without `--sidecar` produced 297 spurious totality violations; fixed with a
+  `rows_setup_error` bucket (13 rows), content-digest `record_id`, sidecar re-baseline: 330 executed
+  / 525 ops / 191 exact join / agreement 1.0 / 0 unsound / 0 totality
+  (`outputs/plr-sema/oracle_replay_260903_rebaseline.json`). Like-for-like vs 260902 on the 728
+  shared rows: 216/341/0/0.
+- #4932 297ce8f9 + 976ed6d8: as specified; AC-12.6 trip values 3,4,3,12,None,None,None,0 observed;
+  `for`/`while … else` left flat (out of scope); one PRE-EXISTING extractor test failure
+  (`test_resource_on_deck_preconditions`, assert 4 == 3) reproduced at the parent commit, attributed
+  to b5635334.
+- #4938 b39020cd + f1cecd0e: `entry_reset == {"method":"setup","post":"no_tip"}` derived;
+  AC-12.1(iv) confirmed conjuncts 1–2 alone select {setup, load_state}; real bug fixed —
+  `TipTracker.__init__` uses `AnnAssign`, which `_effects` never scanned (new `_constructor_state`
+  pass). AC-12.4 on the regenerated corpus: m1 **84/101** WILL_FAIL at the raised index (was 1/55),
+  17 UNKNOWN, 0 unsound; m2 **190/190**; tier 1 byte-identical to the rebaseline. The 91% bar (50/55)
+  is NOT met at 83%: all 17 misses collapse to a lone `transfer` call whose derived guard is
+  `guard_predicate_unparsed` — follow-up #4946. No tuning was applied.
+- T20 cea29d77: as specified; the O1 counterexample yields `SAFE` at iteration 1 and exactly one
+  WILL_FAIL verdict at iteration 2, sited at `external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:535`
+  (the raise site); `while_alternating` fixture simplified
+  to a single-call body (documented in its test) because a pick+drop body converges on pass 0 and
+  would not exercise the final-pass rule; `obliged_operation_ids` implements `OBLIGED(graph)`; two
+  existing tests re-read over it.
+- #4880 12bc591a (tier 2a): 330 rows compared as bytecode, extractor-cause divergences 0, renderer
+  122, grammar 0, reset 0, 235 agreeing, directional 208/210; `RESOURCE` declarations and
+  `WIDEN(depends_on_params)` excluded from the compared substream (structural asymmetries). Two
+  harness defects fixed (vendor PLR subclass recognition via MRO; slot canonicalisation shifted by
+  dropped residuals → compare by resource name).
+- T21 88f01fdb (tier 2b): 11 fixtures (`for` ×2, `while` ×2, `if` ×2, nested, `range(0)`, `continue`,
+  `break`, straight-line); `region_unsound = 0`, `region_will_fail_fired = 3` (one per shape), trip
+  mismatches 0; bathos sidecar validates. **Spec claim falsified:** §12.4.2's "`line_number` is
+  already populated at every call site" is false — `_current_line` is set to 0 in `__init__` and
+  never reassigned, so every `OperationNode.line_number == 0` (predates #4932). The recorder's
+  `(method, lineno)` join therefore degrades to method-only today and is guarded by a
+  fixture-wide one-call-site-per-method rule + `DuplicateCallSiteError`. Filed as a praxis-side
+  defect, backlog #4948.
+- T22: done in 8868b34e (lint extended for the new AC gating).
+
+Status (260903, sprint 121 close): all increment-3 tasks landed; this section is a factual record
+of what was observed against what was specified, not a re-derivation of the spec's argument.
 
 ---
 

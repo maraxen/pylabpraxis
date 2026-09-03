@@ -29,7 +29,7 @@ sources: "Read this session, in full or in the cited ranges: .praxia/docs/specs/
 ## 11.0 What this increment is, in one paragraph
 
 `plr-sema` is a compiler missing its middle. It has a front end (`praxis`'s libcst extractor →
-`ProtocolComputationGraph`, `computation_graph_extractor.py:456-517,572-580`), it has a contract database
+`ProtocolComputationGraph`, `computation_graph_extractor.py:830-848`), it has a contract database
 (`derive_contract`, `derive/__init__.py:446-492`, 4,770 entries), and it has a back end that walks
 `graph.operations` and emits one `Finding` per guard (`_findings_for_operation`,
 `check/__init__.py:293-321`). What it does not have is an intermediate representation: the checker
@@ -129,14 +129,14 @@ Six opcodes. `pc` is the index into `instructions`.
 programs and must hash differently; if the operand were added later, every result cached under the
 operand-free encoding would be silently reused for a program the analyzer now knows more about. The
 operand exists now so that deferred item (d) (trip counts from `RESOURCE.grid`, i.e. upstream
-`items_x`/`items_y`, `models.py:583-589`) and deferred item (c) (a predicate over `pred`) are
+`items_x`/`items_y`, `models.py:593-597`) and deferred item (c) (a predicate over `pred`) are
 *additive with an `ir_version` bump*, not a re-encoding. v1 fills neither, and §11.7's AC-11.11 pins
 that it does not pretend to.
 
 **Why every v1 condition lowers to ⊤.** There is no predicate language over protocol-level
 expressions — that is main spec deferred item (c), and main spec §Open decisions 2 additionally
 resolved that numeric atoms stay Kleene ½ "through v1 and the first post-corpus increment". A
-`condition_expr` (`models.py:557-559`) is a raw source string; parsing it would require the binding
+`condition_expr` (`models.py:567`) is a raw source string; parsing it would require the binding
 chain main spec §3.3 withdrew `argument_not_static` for not having. `BRANCH null` is therefore not a
 placeholder for laziness, it is the honest encoding of "both arms are reachable as far as this
 analyzer knows".
@@ -189,8 +189,8 @@ under the no-drop invariant fails AC-11.1 mechanically, because the table must b
 | `receiver_type` (`:535`) | I+W | `CALL.receiver_type`; `None` additionally emits `WIDEN receiver_type` before the `CALL` |
 | `arguments` (`:536-538`) | I+W | `CALL.kwargs`, values by §11.1.2; an untrusted key additionally emits `WIDEN arguments` (§11.2.4) |
 | `node_type` (`:539-541`) | S+W | sideband; recomputable (`DYNAMIC` ⟺ some kwarg is `Top` or `depends_on_params` is non-empty). Disagreement between the two views emits `WIDEN node_type` |
-| `preconditions` (`:542`) | **X** | produced by upstream's hand-typed frozensets (`_determine_preconditions`, `computation_graph_extractor.py:537-570`, whose tips gate reads `TIPS_REQUIRED_METHODS` at `:547`). §6.2 already forbids consuming these: they are §8's comparison **target**, and lowering them would launder a hand-written contract through the IR |
-| `creates_state` (`:543-545`) | **X** | same population, same reason (`TIPS_LOADING_METHODS`, `computation_graph_extractor.py:479-491`) |
+| `preconditions` (`:542`) | **X** | produced by upstream's hand-typed frozensets (`_determine_preconditions`, `computation_graph_extractor.py:795-828`, whose tips gate reads `TIPS_REQUIRED_METHODS` at `:547`). §6.2 already forbids consuming these: they are §8's comparison **target**, and lowering them would launder a hand-written contract through the IR |
+| `creates_state` (`:543-545`) | **X** | same population, same reason (`TIPS_LOADING_METHODS`, `computation_graph_extractor.py:73-90`) |
 | `depends_on_params` (`:546-548`) | W+S | non-empty ⇒ `WIDEN depends_on_params` before the `CALL`; the names go to sideband |
 | `foreach_source` (`:551-553`) | I+S | opens `LOOP null`; the iterated expression itself is sideband |
 | `foreach_body` (`:554`) | I | the `LOOP` region's extent: body op ids are resolved to the instruction range between `LOOP` and its `END` |
@@ -269,7 +269,7 @@ site anyway. A widened instruction that later yields a finding uses the existing
 def lower_graph(payload: dict, *, param_names: Mapping[str, tuple[str, ...]] | None = None) -> Bytecode
 ```
 
-Input is the same JSON payload `parse_graph` (`check/graph.py:164-178`) reads today — the raw
+Input is the same JSON payload `parse_graph` (`check/graph.py:181-195`) reads today — the raw
 `model_dump(mode="json")` of a real `ProtocolComputationGraph`. `param_names` maps a contract key
 (`f"{receiver_type}.{method_name}"`, §7.3) to that method's PLR parameter names, and is used only by
 §11.2.4's trust rule; **`None` means "trust nothing"**, which is the fail-closed default that unit
@@ -291,7 +291,7 @@ The argument values are lowered by `ast.parse`-ing each `arguments` value as an 
 match none of the four rules above and therefore lower to `Top`, with the `WIDEN arguments` that
 §11.2.4's trust rule already forces on an untrusted key. This is an acknowledged `Top`, not an
 oversight, and extending the grammar alone would not fix it: `visit_Assign`
-(`computation_graph_extractor.py:395`) registers a `ResourceNode` only when the assignment target is
+(`computation_graph_extractor.py:629`) registers a `ResourceNode` only when the assignment target is
 a bare `cst.Name`, so `self.foo = ...` produces **no resource slot for a `Ref` to point at**. The
 grammar gap and the extractor gap have to close together, in `extract/` round 2. The cell-access half
 of the case is additionally unlikely to materialise from a valid renderer: PLR's `ItemizedResource`
@@ -313,8 +313,8 @@ a `Resource` with a parent → `Ref(slot_of(parent), obj.name)`; a top-level `Re
 `Ref(slot_of(obj), None)`; a `list` → `Seq`; a JSON scalar → `Lit`; anything else → `Top`.
 
 The kwargs come from `PlanResult.kwargs` (`dispatcher.py:54-64`), which `run_runtime` already
-harvests through its `recording_plan_call` wrapper (`plr-sema/eval/oracle_common.py:144-151`) and carries out on
-`RuntimeOutcome.plr_kwargs` (`plr-sema/eval/oracle_common.py:135`). **Those kwargs are PLR-named by
+harvests through its `recording_plan_call` wrapper (`plr-sema/eval/oracle_common.py:312-324`) and carries out on
+`RuntimeOutcome.plr_kwargs` (`plr-sema/eval/oracle_common.py:299`). **Those kwargs are PLR-named by
 construction**: `plan_call` (`dispatcher.py:92-101`) writes `kwargs[spec.plr_arg]` inside its `bind`
 closure (`dispatcher.py:117-135`), and `spec.plr_arg` is `ParamSpec`'s "vendored kwarg name" field
 (`param_namespace.py:81-99`, `:88`). For `pick_up_tips` the single row is
@@ -377,7 +377,7 @@ keyword. §11.2.4 is what covers that side.
 ### 11.2.4 The parameter-name trust rule — the structural close of increment 1's Q3
 
 The graph path has a defect the corpus path does not, and it is upstream:
-`_extract_arguments` (`computation_graph_extractor.py:519-535`) names *positional* arguments from a
+`_extract_arguments` (`computation_graph_extractor.py:777-793`) names *positional* arguments from a
 hand-typed `common_arg_names = ["resource", "volume", "source", "destination", "tips"]`
 (`:524`), falling back to `f"arg{i}"`. So `lh.aspirate(plate["A1"], 100)` yields
 `arguments == {"resource": ..., "volume": ...}` while PLR's actual parameters are `resources` and
@@ -477,7 +477,7 @@ cache_key = (bytecode_hash, contracts_sha, surface_identity, ir_version)
 | component | where it already exists |
 |---|---|
 | `bytecode_hash` | defined here (§11.3.2) |
-| `contracts_sha` | `sha256` of the `contracts_json` **string `check_graph` is already handed** (`plr-sema/src/plr_sema/check/__init__.py:536-556`) — no artifact change, no new field, computable in-band today |
+| `contracts_sha` | `sha256` of the `contracts_json` **string `check_graph` is already handed** (`plr-sema/src/plr_sema/check/__init__.py:713-732`) — no artifact change, no new field, computable in-band today |
 | `surface_identity` | `(stamp.surface, stamp.surface_pin or stamp.plr.hash, stamp.plr.dirty_content_id)` — all four already on `SurveyStamp` (`_provenance/stamp.py:77-103`, `surface`/`surface_pin` at `:96-103`) and already reconstructed by `_stamp_from_dict` (`plr-sema/src/plr_sema/check/__init__.py:156-171`). `Surface.pin` exists precisely because a non-git extraction cannot answer "what commit is this" (`stamp.py:51-67`), which is why the key falls back to `plr.hash` rather than requiring one form |
 | `ir_version` | `plr_sema.check.ir.IR_VERSION` (§11.1.1) |
 
@@ -501,7 +501,7 @@ def check_graph(graph_json: str, contracts_json: str) -> AnalysisReport      # u
 ```
 
 `check_graph` keeps its signature, its docstring's promises (no `libcst`, no `pylabrobot`, never
-shells out) and its telemetry emission (`_check`, `plr-sema/src/plr_sema/check/__init__.py:509-533`). Its body becomes:
+shells out) and its telemetry emission (`_check`, `plr-sema/src/plr_sema/check/__init__.py:686-710`). Its body becomes:
 `json.loads` both inputs → build `param_names` from the contract table → `lower_graph` →
 `check_ir` → relabel (§11.4.3) → `join` (`verdict.py:220-232`) → `AnalysisReport`. **Every existing
 acceptance criterion that names `check_graph` continues to name `check_graph`**; AC-6.1 through
@@ -665,7 +665,7 @@ thing becomes `Top`/`WIDEN`, and the finding that eventually reports it uses
 `guard_predicate_unparsed` (parse stage) or `channel_state_unknown` (evaluation stage), whose
 division of labour increment 1 §10.8 already argued. The one genuine failure mode — a *structurally
 invalid* payload, e.g. missing `protocol_fqn`, which `parse_graph` raises on today
-(`check/graph.py:164-178`) — keeps today's exception behaviour. That behaviour is arguably wrong
+(`check/graph.py:181-195`) — keeps today's exception behaviour. That behaviour is arguably wrong
 (tier 4 / #4882 wants `check_graph` never to raise), but it is wrong *today*, this increment does not
 make it worse, and fixing it is #4882's call, not a reason to spend a vocabulary slot here.
 
@@ -763,7 +763,7 @@ by a stub, the stub-defeating half is named.
   table carrying `params`: a `CALL` whose `arguments` key is a real PLR parameter of that method is
   trusted and emits **no** `WIDEN arguments`; a `CALL` carrying the extractor's guessed positional
   name (`{"resource": ..., "volume": ...}` for `LiquidHandler.aspirate`, the shape
-  `_extract_arguments` produces at `computation_graph_extractor.py:519-535`) is untrusted, keeps both
+  `_extract_arguments` produces at `computation_graph_extractor.py:777-793`) is untrusted, keeps both
   values under `"?0"`/`"?1"`, and emits `WIDEN arguments`. With `param_names=None`, **every** key is
   untrusted. The `None` case is what makes this fail-closed rather than fail-quiet.
 - **AC-11.11 (v1 lowers every condition and every trip count to ⊤, and says so).** For every lowered
@@ -880,7 +880,7 @@ rule, the E1–E5 transfer functions and every soundness argument stand exactly 
   (call.get("params") or {}).items()}` — the tool-named path — has no
   successor: a row whose call was never planned produces no `CALL` at all rather than a
   tool-named one, and is counted as `not_planned` in the report. `run_static`
-  and `compare` (`plr-sema/eval/oracle_common.py:325-345`), including the `unsound`
+  and `compare` (`plr-sema/eval/oracle_common.py:569-587`), including the `unsound`
   predicate, are unchanged — they read verdicts, not arguments.
 - **Tier 2** (`#4880`) renders each call sequence to Python source, extracts with
   `computation_graph_extractor` out of process, and lowers **the same way** with `lower_graph`. The
@@ -899,7 +899,7 @@ rule, the E1–E5 transfer functions and every soundness argument stand exactly 
   The grammar residual is the attribute-style reference disclosed in §11.2.1: `lower_graph` resolves
   `self.plate_1["A1"]` to `Top` while `lower_calls`' `ir_value_of` resolves the same bound object to
   a `Ref`, so the two sides can differ on a program neither the extractor nor the renderer got
-  wrong. It is **latent, not live**, because `visit_Assign` (`computation_graph_extractor.py:395`)
+  wrong. It is **latent, not live**, because `visit_Assign` (`computation_graph_extractor.py:629`)
   registers no `self.foo` resource for a `Ref` to name — it becomes reachable only when `extract/`
   gains `self.`-assignment support, in round 2. All three should be stated in the plan rather than
   dropped — the honest replacement sentence is *"a divergence is a defect in the extractor, in the

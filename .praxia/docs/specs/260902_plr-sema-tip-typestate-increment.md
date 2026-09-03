@@ -161,7 +161,7 @@ more interesting reason — see AC-10.11's vacuity disclosure and §10.10's Q3 d
 AbstractState = dict[receiver_variable: str, ChannelState]
 ```
 
-State is **per `OperationNode.receiver_variable`** (`plr-sema/src/plr_sema/check/graph.py:88`), not
+State is **per `OperationNode.receiver_variable`** (`plr-sema/src/plr_sema/check/graph.py:88-91`), not
 per `receiver_type`: two `LiquidHandler`s in one protocol are two independent states. Any receiver
 variable whose `receiver_type` is not a class carrying a derived channel-tracker attribute (§10.2.1)
 never gets an entry, and every operation on it behaves exactly as it does today — `UNKNOWN`,
@@ -749,7 +749,7 @@ a reviewer can attack them; none of them is buried in code.
 | id | assumption | why it is needed | what breaks if it is false |
 |---|---|---|---|
 | **A-SINGLE** | one `receiver_variable` denotes one `LiquidHandler` instance for the whole graph, and no other name aliases it | state is keyed on the variable name (§10.1.4) | a second alias mutating the head trackers desynchronises `σ`; both a false `SAFE` and a false `WILL_FAIL` become possible. Mitigation: no `plr_static_analysis` graph today emits two names for one instance, and `is_grounded` (`plr-sema/src/plr_sema/check/graph.py:204-212`) exists to detect ungrounded references when a reason for it lands |
-| **A-COMPLETES** | each operation preceding the one being checked completed without raising | E1/E2's post-state is the state *after a successful* call | it is the same assumption the oracle's own comparison already makes: `oracle_common.compare` marks every operation after the failing index `not_reached` and imposes no constraint there (`plr-sema/eval/oracle_common.py:325-345`; the round-1 draft cited `:148-163`, which is `run_static`'s per-operation grouping, not the comparison). A `WILL_FAIL` at index `i` is a claim about the trace *reaching* `i` |
+| **A-COMPLETES** | each operation preceding the one being checked completed without raising | E1/E2's post-state is the state *after a successful* call | it is the same assumption the oracle's own comparison already makes: `oracle_common.compare` marks every operation after the failing index `not_reached` and imposes no constraint there (`plr-sema/eval/oracle_common.py:569-580`; the round-1 draft cited `:148-163`, which is `run_static`'s per-operation grouping, not the comparison). A `WILL_FAIL` at index `i` is a claim about the trace *reaching* `i` |
 | **A-COMMIT** (narrowed, round 1 O1) | at operation boundaries **of `pick_up_tips` and `drop_tips` only**, `_tip` and `_pending_tip` agree | P2 merges two concrete fields into one abstract cell (§10.2.2) | verified for exactly those two: each ends in a commit-or-rollback fold over every touched channel (`liquid_handler.py:570-573`, `:716-723`). It is **known false** for `update_head_state` (`liquid_handler.py:262-282`, `remove_tip(commit=False)` with no later `commit()`) and `clear_head_state` (`:284-287`) — both of which widen to `TOP` before any later guard is evaluated, by §10.4's E4.2 and E4.3 respectively, so neither can read the merged cell. What breaks it is a *new* PLR method that mutates a head tracker at depth 0 with a single non-conflicting effect and no commit; Fork D's pin test is the tripwire, and §10.6.4 is the worked non-example |
 | **A-ENABLED** | the head trackers are not `disable()`d | `TipTracker.add_tip`/`remove_tip` raise `RuntimeError` when disabled (`tip_tracker.py:89-90`, `:102-103`) | **largely self-discharging**: under A-COMPLETES, if `op_0`'s `add_tip` had raised `RuntimeError`, `op_0` would not have completed, so a completed `pick_up_tips` implies its head tracker was enabled. The residual is a `disable()` call *between* two operations, which no graph emits |
 
@@ -916,7 +916,7 @@ operation, and the exact site, so a stubbed evaluator that returns a constant fa
   tip_dropping` — the three §10.2.6 expectations, so a rule that silently selects nothing fails.
 - **AC-10.11 (oracle gate — replay; vacuous under tier 1 as configured, and says so).** `#4879`'s
   tier-1 corpus replay over the 812 + 88 rows reports **0 unsound rows** under
-  `oracle_common.compare`'s own `unsound` predicate (`plr-sema/eval/oracle_common.py:325-345`): no
+  `oracle_common.compare`'s own `unsound` predicate (`plr-sema/eval/oracle_common.py:569-587`): no
   operation is `SAFE` where the simulator raised, and none is `WILL_FAIL` where the simulator ran
   clean. This is a hard gate. The `UNKNOWN` rate is **reported, not gated** — main spec Deferred (f)
   still defers the number.
@@ -1019,7 +1019,7 @@ spec §6.2's normative derived-from-consumers table gains two rows:
 | field | consumer |
 |---|---|
 | `arguments` (`models.py:536-538`) | §10.1.3's channel-set derivation (rules 1 and 3) — the *only* source for `use_channels` and for the channel-default parameter's cardinality |
-| `execution_order` (`models.py:632-634`, on `ProtocolComputationGraph`) | §10.5 rule 1 — cross-checks the `operations` list order the state fold depends on |
+| `execution_order` (`models.py:642-644`, on `ProtocolComputationGraph`) | §10.5 rule 1 — cross-checks the `operations` list order the state fold depends on |
 
 `arguments` was deliberately **deleted** by the main spec's round-4 M1/B4 pass ("never read by
 anything except `graph.py`'s own declaration/parse"; it also fed the withdrawn `argument_not_static`).
@@ -1203,7 +1203,7 @@ therefore gates totality and non-regression only, and requires the replay to rep
 real directional gate and is `#4888`'s own gate, not a downstream one (see the task row). One thing
 the round-1 draft got wrong in the challenger's favour and against its own: option (a) does **not**
 require hand-typing a tool→PLR name map — `run_runtime` already harvests PLR-named kwargs from the
-verifier's `plan_call` (wrapped by `recording_plan_call`, `plr-sema/eval/oracle_common.py:144-151`) and `adapt_graph` already
+verifier's `plan_call` (wrapped by `recording_plan_call`, `plr-sema/eval/oracle_common.py:312-324`) and `adapt_graph` already
 accepts them (`:94`, `:118-125`). Option (a) is therefore cheaper than the draft claimed and is the
 natural follow-up; (c) is chosen for *this* increment because it does not make `#4888` depend on a
 change to `#4879`'s harness. The corollary for the oracle plan — that a tier-1/tier-2 divergence is
