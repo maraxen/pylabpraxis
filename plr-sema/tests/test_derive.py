@@ -22,6 +22,7 @@ in-memory indexes for the tests that are about the closure MECHANIC itself
 from __future__ import annotations
 
 import ast
+import json
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -43,10 +44,15 @@ from plr_sema.derive import (
     scan_dropped_receiver_calls_in_source,
 )
 from plr_sema.derive.__main__ import build_derived_contracts_payload
-from plr_sema.derive.receiver_state import derive_receiver_states, reset_rule_candidates
+from plr_sema.derive.receiver_state import (
+    compute_delegate_channel_bindings,
+    derive_receiver_states,
+    reset_rule_candidates,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SURVEY_JSON = REPO_ROOT / "training" / "verify" / "data" / "plr_preconditions.json"
+TAXONOMY_JSON = REPO_ROOT / "training" / "verify" / "data" / "plr_exception_taxonomy.json"
 
 
 # ---------------------------------------------------------------------------
@@ -1069,3 +1075,136 @@ class Receiver:
     rs = receiver_states["Receiver"]
     assert rs.entry_reset is None
     assert rs.entry_reset_ledger == "absent"
+
+
+# ---------------------------------------------------------------------------
+# AC-13.15(i) -- delegate-call literal channel binding (spec §13.5.2, P9,
+# backlog #4946): the real-PLR derived binding, and the five-shape negative
+# fixture set plus the rule-2 fixture (tested directly against
+# `compute_delegate_channel_bindings`, at a level BELOW the whole survey
+# pipeline -- the same "exercise the mechanic itself" pattern this file's
+# own module docstring names). The rule-4 (disabler ordering) half and
+# AC-13.15(ii) (binding grants no effect) live in test_tip_typestate.py,
+# next to the check-time fixtures/`_check` helper they need.
+# ---------------------------------------------------------------------------
+
+
+def test_ac_13_15_i_transfer_binds_via_aspirate_arity_default(
+    survey_records: list[SurveyRecord],
+    survey_index: dict[tuple[str, str], SurveyRecord],
+    real_stamp: SurveyStamp,
+) -> None:
+    """Re-running `plr_sema.derive` over real PLR at the current pin emits,
+    on `contracts["LiquidHandler.transfer"]["channel_guards"][0]`, a
+    `bound_channels` record with `channels == [0]`, `delegate == "aspirate"`
+    and `rule == "arity_default"` -- the rule-3 path, since the `aspirate`
+    call site (`liquid_handler.py:1347-1352`) passes no explicit channel
+    keyword. `dispense`'s call site at `:1355-1361` binds EXPLICITLY to the
+    same numeric channel set through the SAME tracker guard (`get_tip`),
+    which is what makes this a real tie the fixer's own one-hop-delegate
+    tie-break (K's OWN `delegates_to` declaration order) has to resolve,
+    not a vacuous "some [0] shows up somewhere" assertion. And: exactly ONE
+    `bound_channels` record exists anywhere in the whole contract table at
+    this pin (§13.5.4's own "transfer is the only method this reaches, and
+    that must be measured rather than assumed").
+    """
+    taxonomy = json.loads(TAXONOMY_JSON.read_text(encoding="utf-8"))
+    receiver_states = derive_receiver_states(None, survey_records, taxonomy["classes"])
+    payload = build_derived_contracts_payload(
+        survey_records, survey_index, real_stamp, receiver_states=receiver_states
+    )
+    contracts = payload["contracts"]
+
+    channel_guards = contracts["LiquidHandler.transfer"]["channel_guards"]
+    assert len(channel_guards) == 1
+    bound = channel_guards[0]["bound_channels"]
+    assert bound["channels"] == [0]
+    assert bound["delegate"] == "aspirate"
+    assert bound["rule"] == "arity_default"
+    assert bound["site_lineno"] == 1347
+
+    found = [
+        (key, g["bound_channels"])
+        for key, entry in contracts.items()
+        for g in entry.get("channel_guards", ())
+        if "bound_channels" in g
+    ]
+    assert found == [("LiquidHandler.transfer", bound)]
+
+
+_P9_SYNTHETIC_SOURCE = '''
+class R:
+    async def caller_double_call(self):
+        await self.helper(use_channels=[0])
+        await self.helper(use_channels=[1])
+
+    async def caller_kwargs_forward(self, **kw):
+        await self.helper(**kw)
+
+    async def caller_bare_name(self, chans):
+        await self.helper(use_channels=chans)
+
+    async def caller_starred(self, chans):
+        await self.helper(use_channels=[*chans])
+
+    async def caller_empty_display(self):
+        await self.helper(resources=[])
+
+    async def caller_explicit(self):
+        await self.helper(use_channels=[1, 3])
+
+    async def caller_arity_default(self):
+        await self.helper(resources=[1, 2, 3])
+
+    async def helper(self, resources=None, use_channels=None):
+        pass
+'''
+
+
+def _p9_synthetic_receiver() -> ast.ClassDef:
+    tree = ast.parse(_P9_SYNTHETIC_SOURCE)
+    (class_node,) = [n for n in ast.iter_child_nodes(tree) if isinstance(n, ast.ClassDef)]
+    return class_node
+
+
+def test_ac_13_15_i_five_negative_fixtures_all_widen() -> None:
+    """AC-13.15(i)'s five-shape negative fixture set: two depth-0 awaits of
+    the same delegate (rule 1); a `**kwargs` forward; a bare `ast.Name` in
+    `use_channels`; a starred argument; and a delegate-parameter display of
+    length 0 -- P9 yields `Top` (no entry in the returned table at all,
+    §13.5.3's "absent when P9 yields Top") in all five.
+    """
+    receiver = _p9_synthetic_receiver()
+    bindings = compute_delegate_channel_bindings(receiver, {"helper": "resources"}, "use_channels")
+
+    for widened_caller in (
+        "caller_double_call",
+        "caller_kwargs_forward",
+        "caller_bare_name",
+        "caller_starred",
+        "caller_empty_display",
+    ):
+        assert widened_caller not in bindings, f"{widened_caller} must widen (Top), found {bindings.get(widened_caller)!r}"
+
+
+def test_ac_13_15_i_rule_2_explicit_binds_exact_channels() -> None:
+    """The rule-2 fixture: `use_channels=[1, 3]` at the call site binds
+    EXACTLY `[1, 3]`, `rule == "explicit"` -- not narrowed, not widened,
+    and not confused with rule 3's arity-default path (a DIFFERENT caller
+    in the same synthetic class, `caller_arity_default`, binds via
+    `resources=[1, 2, 3]` to `[0, 1, 2]`, `rule == "arity_default"` --
+    both assert here so the two rules are pinned as genuinely distinct,
+    not just "some rule matched").
+    """
+    receiver = _p9_synthetic_receiver()
+    bindings = compute_delegate_channel_bindings(receiver, {"helper": "resources"}, "use_channels")
+
+    explicit = bindings["caller_explicit"]["helper"]
+    assert explicit["channels"] == [1, 3]
+    assert explicit["rule"] == "explicit"
+    assert explicit["delegate"] == "helper"
+
+    arity = bindings["caller_arity_default"]["helper"]
+    assert arity["channels"] == [0, 1, 2]
+    assert arity["rule"] == "arity_default"
+    assert arity["delegate"] == "helper"

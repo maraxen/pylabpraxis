@@ -23,11 +23,13 @@ module never aggregates; `plr_sema.verdict.join` still does that, unchanged.
 
 **No hand-typed PLR fact.** Every name this module reads (`channel_attr`,
 `bool_view`'s `attr`/`field`, `state_fields`, `channel_default_param`,
-`channel_default_disablers`) comes from the `receiver_state` block
-`plr_sema.derive.receiver_state` computed at build time (§10.2) -- this
-module only reads it via `.get()`, never types a PLR name itself
-(AC-10.9's AST literal scan enforces this for this file specifically, same
-mechanism as `plr_sema.check.ir`'s own AC-11.8 scan).
+`channel_default_disablers`, and, as of 260903 P9 (spec §13.5), `channel_kwarg`
+and a `channel_guards` entry's own `bound_channels`) comes from the
+`receiver_state`/`channel_guards` blocks `plr_sema.derive.receiver_state`
+computed at build time (§10.2/§13.5.2) -- this module only reads them via
+`.get()`, never types a PLR name itself (AC-10.9/AC-13.15(iii)'s AST
+literal scan enforces this for this file specifically, same mechanism as
+`plr_sema.check.ir`'s own AC-11.8 scan).
 """
 
 from __future__ import annotations
@@ -240,14 +242,24 @@ def _int_seq(value: ir.Value | None) -> tuple[int, ...] | None:
     return tuple(out)
 
 
-def channels_for_call(call: ir.Call, channel_default_param: dict[str, str]) -> tuple[int, ...] | None:
+def channels_for_call(
+    call: ir.Call, channel_default_param: dict[str, str], channel_kwarg: str | None = None
+) -> tuple[int, ...] | None:
     """§10.1.3, rules 1/3/4 (rule 2 -- the instance-default disabler -- is
     enforced structurally by :func:`disabled_receivers`'s pre-scan, which
     forces this function to be skipped entirely for a poisoned receiver;
     see `evaluate_call`). Returns the exact channel tuple, or `None` for
     `channels = Top` (rule 4).
+
+    `channel_kwarg` -- the keyword PLR itself uses to select channels
+    explicitly (§13.5.2/AC-13.15(iii): read from `receiver_state`'s own
+    derived `channel_kwarg`, never hand-typed as `"use_channels"` here --
+    that string is one of AC-13.15(iii)'s forbidden literals). `None`
+    (a pre-P9 contract table, or a receiver whose P3a matches disagree on
+    the name) degrades rule 1 to "never explicit", matching the pre-P9
+    behaviour only for a receiver this fact cannot be derived for.
     """
-    explicit = _int_seq(call.kwargs.get("use_channels"))
+    explicit = _int_seq(call.kwargs.get(channel_kwarg)) if channel_kwarg is not None else None
     if explicit is not None:
         return explicit
     param = channel_default_param.get(call.method)
@@ -534,8 +546,9 @@ def evaluate_call(
     bool_view_attr = receiver_state["bool_view"]["attr"]
     state_fields = frozenset(receiver_state.get("state_fields", ()))
     channel_default_param = receiver_state.get("channel_default_param", {})
+    channel_kwarg = receiver_state.get("channel_kwarg")
 
-    channels = None if poisoned else channels_for_call(call, channel_default_param)
+    channels = None if poisoned else channels_for_call(call, channel_default_param, channel_kwarg)
 
     # §10.3.1 criterion 4, GATING (not a fold-to-Top input): "op's channel
     # set is exact ... and every channel in it has a state that is not
@@ -568,15 +581,57 @@ def evaluate_call(
             consumed.add(idx)
             findings.append(_finding_for_atom(operation_id, guard, atom, s))
 
-        for guard in contract.get("channel_guards", ()):
-            if guard.get("kind") != "raise_guard":
-                continue
-            atom = parse_bridge_atom(guard.get("condition"), bool_view_attr=bool_view_attr, state_fields=state_fields)
-            if atom is None:
-                continue
-            findings.append(_finding_for_atom(operation_id, guard, atom, s))
+    # 260903 (spec §13.5.2, P9): the channel_guards loop runs INDEPENDENTLY
+    # of the `channels is not None` gate above -- a `channel_guards` entry
+    # carrying a derived `bound_channels` record is interpretable off ITS
+    # OWN bound channel set even when the OPERATION's own `channels_for_call`
+    # is Top (exactly `transfer`'s case, §13.5.1: no P3a idiom of its own,
+    # no explicit `use_channels` either). §10.3.1 criterion 4 is re-read,
+    # per guard, to accept `bound_channels` in place of the operation's own
+    # channel set. Rule 4 (P3b disabler poisoning) is re-applied HERE, via
+    # the pre-existing `poisoned` pre-scan, AFTER `bound_channels` was
+    # already computed at derive time -- §13.5.2's own ordering requirement
+    # ("checked after 2 and 3, never before"): a poisoned receiver ignores
+    # `bound_channels` and falls back to the operation's own (poisoned ->
+    # `None`) channel set, same as a guard with no `bound_channels` at all.
+    used_bound_channels = False
+    for guard in contract.get("channel_guards", ()):
+        if guard.get("kind") != "raise_guard":
+            continue
+        bound = None if poisoned else guard.get("bound_channels")
+        if bound is not None:
+            guard_channels = tuple(bound.get("channels", ()))
+            if not guard_channels:
+                guard_channels = None
+            else:
+                used_bound_channels = True
+        else:
+            guard_channels = channels
+        if guard_channels is None:
+            continue
+        s_g = fold_channels(guard_channels, lambda c: walk.state(call.receiver, c))
+        atom = parse_bridge_atom(guard.get("condition"), bool_view_attr=bool_view_attr, state_fields=state_fields)
+        if atom is None:
+            continue
+        findings.append(_finding_for_atom(operation_id, guard, atom, s_g))
 
     _apply_transfer(call, channels, contract, walk, poisoned=poisoned)
+
+    # 260903 (spec §13.5.2's last paragraph / AC-13.15(ii)): E2 is NOT
+    # extended -- a bound channel set makes a channel_guards entry
+    # EVALUABLE, it does not give the CALL a tip effect, so `_apply_transfer`
+    # above (driven entirely by `contract["channel_effect"]`, unchanged by
+    # P9) still applies E3's no-op for a delegate-only method like
+    # `transfer`. But having just read receiver state THROUGH a delegate
+    # via `bound_channels`, this call demonstrably reaches into a delegate
+    # this analyzer does not otherwise model the post-state of -- E4.2's
+    # widen (a "delegate-only method" bridge) applies to the receiver
+    # afterward, same as it would if `channel_effect` had come back
+    # `"widen"` on its own. Scoped to the E3 case (`channel_effect is None`)
+    # only: if the contract table already resolved a real HAS_TIP/NO_TIP/
+    # widen effect for this call, that (unrelated) fact governs unchanged.
+    if used_bound_channels and not poisoned and contract.get("channel_effect") is None:
+        walk.widen(call.receiver)
 
     # E6 (spec 260903 §12.1.4, the reset effect): AFTER the call's own
     # guards have been evaluated against the pre-state (the loop above)

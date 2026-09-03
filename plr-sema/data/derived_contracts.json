@@ -58363,6 +58363,14 @@
     "LiquidHandler.transfer": {
       "channel_guards": [
         {
+          "bound_channels": {
+            "channels": [
+              0
+            ],
+            "delegate": "aspirate",
+            "rule": "arity_default",
+            "site_lineno": 1347
+          },
           "condition": "self._tip is None",
           "depth": 1,
           "free_vars": [
@@ -168083,6 +168091,27 @@
         "drop_tips": "tip_spots",
         "pick_up_tips": "tip_spots"
       },
+      "channel_kwarg": "use_channels",
+      "delegate_channel_binding": {
+        "transfer": {
+          "aspirate": {
+            "channels": [
+              0
+            ],
+            "delegate": "aspirate",
+            "rule": "arity_default",
+            "site_lineno": 1347
+          },
+          "dispense": {
+            "channels": [
+              0
+            ],
+            "delegate": "dispense",
+            "rule": "explicit",
+            "site_lineno": 1355
+          }
+        }
+      },
       "effects": {
         "add_tip": "HAS_TIP",
         "clear": "NO_TIP",
@@ -168131,6 +168160,7 @@
   },
   "schema_version": 1,
   "stamp": {
+    "derive_python_version": "3.14.6",
     "plr": {
       "branch": "HEAD",
       "dirty": true,
@@ -168142,14 +168172,14 @@
     "praxis": {
       "branch": "coxswain-p2-pipeline",
       "dirty": true,
-      "dirty_content_id": "9d9699660f3519074ef877e396632703765353fb",
-      "hash": "b35bc338f15d8030c8766db3d551c6028d23297a",
+      "dirty_content_id": "392abf91b50d1922843811afc2babad4de76053b95450de5471d9f6ea8f081c7",
+      "hash": "995b4948faefa0a80a026939d1320416f8f23489",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-03T17:23:18.962406+00:00",
+    "stamped_at": "2026-09-03T21:08:49.500931+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   }

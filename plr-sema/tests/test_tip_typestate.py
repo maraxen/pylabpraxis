@@ -352,7 +352,25 @@ def test_ac_10_9_taxonomy_filter_is_checked() -> None:
 
 
 _FORBIDDEN_LITERALS = frozenset(
-    {"TipTracker", "has_tip", "_pending_tip", "NoTipError", "HasTipError", "head", "setup"}
+    {
+        "TipTracker",
+        "has_tip",
+        "_pending_tip",
+        "NoTipError",
+        "HasTipError",
+        "head",
+        "setup",
+        # 260903 (spec §13.5.3, P9, AC-13.15(iii)): the delegate-call
+        # channel binding must read these four names off PLR itself
+        # (an ast.Attribute callee, P3a's own measured
+        # `channel_default_param` map, and the assignment target `p`
+        # `_channel_kwarg_name` derives) -- never spell them as string
+        # constants in `check/tipstate.py`/`derive/receiver_state.py`.
+        "transfer",
+        "aspirate",
+        "dispense",
+        "use_channels",
+    }
 )  # "setup" added spec 260903 §12.1/AC-12.1(ii): P5's reset-method name must be read from PLR, not typed.
 _TIPSTATE_SRC_FILES = (
     PLR_SEMA_ROOT / "src" / "plr_sema" / "check" / "tipstate.py",
@@ -747,3 +765,95 @@ def test_ac_12_14_iv_call_before_unowned_region_uses_real_state(contracts_json: 
         "on iteration 2 -- unrelated to op_2's own correctness, asserted here only to "
         "confirm the fixture's region half behaves as AC-12.10 predicts"
     )
+
+
+# ---------------------------------------------------------------------------
+# AC-13.15 -- delegate-call literal channel binding (spec §13.5, P9,
+# backlog #4946). Sub-assertion (iii) is covered above by this module's own
+# extended `_FORBIDDEN_LITERALS` (next to AC-10.9, whose scan mechanism it
+# reuses). (i)'s derived-binding assertion and its negative-fixture set live
+# in test_derive.py, next to `compute_delegate_channel_bindings` itself;
+# this section covers (ii) (binding a channel grants no effect) and the
+# rule-4 ordering half of (i) (disabler poisoning checked AFTER rules 2/3).
+# ---------------------------------------------------------------------------
+
+
+def test_ac_13_15_ii_transfer_safe_then_following_call_widens(contracts_json: str) -> None:
+    """(ii): `setup()`, `pick_up_tips(use_channels=[0])`, `transfer(...)`,
+    then `aspirate(use_channels=[0])`. `transfer`'s own bridged guard
+    (sited at `TipTracker.get_tip:65`) evaluates via P9's `bound_channels`
+    (`[0]`, bound through `aspirate`'s arity-default idiom) against the
+    HAS_TIP state `pick_up_tips` just established on channel 0 -> SAFE.
+    The FOLLOWING `aspirate` must NOT see that same HAS_TIP state carried
+    through unchanged -- E2 is not extended (binding a channel licenses
+    reading a precondition, never a post-state), so `transfer`'s own
+    `channel_effect` stays `None` (E3) and P9's own widen fires instead
+    (this module's docstring's "E4.2 still widens the receiver after a
+    delegate-only method"), landing on `channel_state_unknown`.
+    """
+    report = _check("transfer_after_pickup_graph", contracts_json)
+    op3 = _findings_for(report, "op_3")  # transfer
+    op4 = _findings_for(report, "op_4")  # aspirate, immediately after
+
+    safe_at_get_tip = [f for f in op3 if f.verdict is Verdict.SAFE and f.plr_site == _GET_TIP_SITE]
+    assert len(safe_at_get_tip) == 1, (
+        "transfer must carry exactly one SAFE finding for the bridged NoTipError guard, "
+        "sited at TipTracker.get_tip:65 -- the P9 bound_channels evaluation"
+    )
+    assert not any(f.verdict is Verdict.WILL_FAIL for f in op3)
+
+    unknown_at_get_tip = [
+        f for f in op4 if f.verdict is Verdict.UNKNOWN and f.reason == "channel_state_unknown" and f.plr_site == _GET_TIP_SITE
+    ]
+    assert unknown_at_get_tip, (
+        "the aspirate immediately after transfer must yield channel_state_unknown at "
+        "TipTracker.get_tip:65 -- an implementation that extended E2 would instead see "
+        "the HAS_TIP state pick_up_tips left behind and emit SAFE here, which is exactly "
+        "the stub this sub-assertion defeats"
+    )
+    assert not any(f.verdict is Verdict.WILL_FAIL for f in op4)
+
+
+def test_ac_13_15_i_disabler_checked_after_rules_2_and_3(contracts_json: str) -> None:
+    """(i)'s ordering half, at check time: inserting a P3b disabler call
+    (`use_channels`, the SAME real disabler AC-10.6 already exercises)
+    between `pick_up_tips` and `transfer` must poison the receiver and
+    suppress the `bound_channels`-driven SAFE finding `transfer` would
+    otherwise carry (the companion positive case is
+    `test_ac_13_15_ii_transfer_safe_then_following_call_widens`, above) --
+    despite `bound_channels` having already been computed (rules 2/3, at
+    derive time) with a real, non-Top binding. An implementation that
+    checked the disabler FIRST (or skipped it entirely for `channel_guards`)
+    would still emit the SAFE finding here; this is the stub it defeats.
+    """
+    graph = _graph("transfer_after_pickup_graph")
+    graph["operations"].insert(
+        2,
+        {
+            "arguments": {},
+            "condition_expr": None,
+            "creates_state": [],
+            "depends_on_params": [],
+            "false_branch": [],
+            "foreach_body": [],
+            "foreach_source": None,
+            "id": "op_1b",
+            "line_number": 0,
+            "method_name": "use_channels",
+            "node_type": "static",
+            "preconditions": [],
+            "receiver_type": "LiquidHandler",
+            "receiver_variable": "lh",
+            "true_branch": [],
+        },
+    )
+    graph["execution_order"] = ["op_1", "op_2", "op_1b", "op_3", "op_4"]
+    report = check_graph(json.dumps(graph), contracts_json)
+    op3 = _findings_for(report, "op_3")  # transfer, now poisoned
+
+    assert not any(f.plr_site == _GET_TIP_SITE for f in op3), (
+        "a poisoned receiver must yield NO finding at all for the bound-channels bridged "
+        "guard (channels_for_call also poisoned -> None, same as a guard with no "
+        "bound_channels) -- not a SAFE, and not a WILL_FAIL"
+    )
+    assert not any(f.verdict is Verdict.WILL_FAIL for f in op3)

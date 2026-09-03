@@ -306,6 +306,33 @@ def main(argv: list[str] | None = None) -> int:
             tip_state_block: dict[str, Any] = {}
             for name, rs in sorted(receiver_states.items()):
                 families = compute_tip_families(contract_entries, receiver_class=name, receiver_state=rs)
+                # 260903 (spec §13.5.3, P9): a `bound_channels` entry per
+                # contract key of THIS receiver class that carries at least
+                # one channel_guards entry reached at closure depth 1 (i.e.
+                # every key P9 could possibly bind at) -- the derived record
+                # where P9 bound one, else the widening reason (rules 1/5)
+                # publishes "absent" (K's own body never named a candidate
+                # delegate a single time) or "widened" (a candidate existed
+                # but its shape/multiplicity forced Top) so an absence is
+                # readable in the artifact rather than inferred from silence
+                # (the same discipline §10.2.2 established for
+                # `tipstate_anchor`, §12.1.3 for `entry_reset`).
+                bound_channels_block: dict[str, Any] = {}
+                prefix = f"{name}."
+                for key, entry in contract_entries.items():
+                    if not key.startswith(prefix) or "@" in key:
+                        continue
+                    depth1_guards = [g for g in entry.get("channel_guards", ()) if g.get("depth") == 1]
+                    if not depth1_guards:
+                        continue
+                    method = key[len(prefix) :]
+                    bound = next((g["bound_channels"] for g in depth1_guards if "bound_channels" in g), None)
+                    if bound is not None:
+                        bound_channels_block[key] = dict(bound)
+                    elif method in rs.delegate_channel_binding:
+                        bound_channels_block[key] = "widened"
+                    else:
+                        bound_channels_block[key] = "absent"
                 tip_state_block[name] = {
                     "tipstate_anchor": rs.bool_view_field,
                     "tip_loading": list(families.tip_loading),
@@ -316,6 +343,7 @@ def main(argv: list[str] | None = None) -> int:
                     # nothing -- an absence must be readable in the
                     # artifact, not inferred from an absence of verdicts.
                     "entry_reset": dict(rs.entry_reset) if rs.entry_reset is not None else rs.entry_reset_ledger,
+                    "bound_channels": bound_channels_block,
                 }
             ledger["tip_state"] = tip_state_block
         args.gap_ledger.parent.mkdir(parents=True, exist_ok=True)

@@ -60,7 +60,7 @@ from __future__ import annotations
 
 import ast
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -72,6 +72,7 @@ from plr_sema.derive import (
     _walk_closure,
     default_plr_pkg_root,
     derive_contract,
+    resolve,
 )
 
 __all__ = [
@@ -84,6 +85,7 @@ __all__ = [
     "TipFamilies",
     "compute_tip_families",
     "reset_rule_candidates",
+    "compute_delegate_channel_bindings",
 ]
 
 #: §10.2.5's second conjunct: the taxonomy module path that narrows the
@@ -292,11 +294,17 @@ def _is_list_range_len_call(node: ast.expr, param_name: str | None) -> str | Non
     return len_call.args[0].id
 
 
-def _channel_default_idiom(class_node: ast.ClassDef) -> dict[str, tuple[str, str]]:
-    """P3a: `method_name -> (q, x)` for every method matching
-    `<p> = <p> or self.<x> or list(range(len(<q>)))`.
+def _channel_default_idiom(class_node: ast.ClassDef) -> dict[str, tuple[str, str, str]]:
+    """P3a: `method_name -> (q, x, p)` for every method matching
+    `<p> = <p> or self.<x> or list(range(len(<q>)))`. `p` -- the KEYWORD
+    PLR itself uses to select channels explicitly (empirically
+    `"use_channels"` at the current pin, always) -- is read straight off
+    the assignment target (`target.id`), never hand-typed: `channels_for_call`
+    / P9 (§13.5.2) both need this exact name and AC-10.9/AC-13.15(iii)'s AST
+    literal scan forbids spelling it as a string constant anywhere in this
+    module or `plr_sema.check.tipstate`.
     """
-    out: dict[str, tuple[str, str]] = {}
+    out: dict[str, tuple[str, str, str]] = {}
     for member in ast.iter_child_nodes(class_node):
         if not isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
@@ -318,12 +326,12 @@ def _channel_default_idiom(class_node: ast.ClassDef) -> dict[str, tuple[str, str
             q = _is_list_range_len_call(v2, p)
             if q is None:
                 continue
-            out.setdefault(member.name, (q, v1.attr))  # type: ignore[union-attr]
+            out.setdefault(member.name, (q, v1.attr, p))  # type: ignore[union-attr]
     return out
 
 
 def _channel_default_disablers(
-    idiom_matches: dict[str, tuple[str, str]], attribute_writers: dict[str, list[str]]
+    idiom_matches: dict[str, tuple[str, str, str]], attribute_writers: dict[str, list[str]]
 ) -> tuple[str, ...]:
     """P3b: the set of methods writing the `self.<x>` middle term of any P3a
     match, unioned across every distinct `x`. `attribute_writers` (P1b) is
@@ -333,10 +341,25 @@ def _channel_default_disablers(
     check time against `ir.Call.method`, which never carries a qualname).
     """
     disablers: set[str] = set()
-    for _q, x in idiom_matches.values():
+    for _q, x, _p in idiom_matches.values():
         for qualname in attribute_writers.get(x, ()):
             disablers.add(qualname.rsplit(".", 1)[-1])
     return tuple(sorted(disablers))
+
+
+def _channel_kwarg_name(idiom_matches: dict[str, tuple[str, str, str]]) -> str | None:
+    """The single explicit-channel keyword name every P3a-matched method of
+    this receiver agrees on (`p`, §13.5.2 rule 2's `use_channels=`),
+    derived rather than hand-typed. `None` (fail-closed, same direction as
+    P2's own anchor rule) when no method matched at all, or matched
+    methods disagree on `p` -- a receiver whose own idiom is internally
+    inconsistent about its channel keyword cannot be trusted to name one
+    globally.
+    """
+    names = {p for _q, _x, p in idiom_matches.values()}
+    if len(names) != 1:
+        return None
+    return next(iter(names))
 
 
 # ---------------------------------------------------------------------------
@@ -609,6 +632,19 @@ class ReceiverState:
     tip_state_exceptions: tuple[str, ...]
     entry_reset: dict[str, str] | None = None
     entry_reset_ledger: str = "absent"
+    #: 260903 (spec §13.5.3, P9): the keyword PLR itself uses to select
+    #: channels explicitly (`p` in P3a's own idiom, §13.5.2 rule 2's
+    #: `use_channels=`), or `None` when the receiver's own P3a matches
+    #: disagree on it. Additive; a pre-increment `ReceiverState` has no
+    #: caller passing this, so it defaults to `None` (fail-closed --
+    #: `channels_for_call`'s rule 2 degrades to "never explicit").
+    channel_kwarg: str | None = None
+    #: 260903 (spec §13.5.2, P9): `method_name -> {delegate_name: binding}`
+    #: -- see `compute_delegate_channel_bindings`. Additive; defaults to
+    #: `{}` (no binding published, `compute_channel_bridge` attaches no
+    #: `bound_channels` key -- every channel_guards entry degrades to
+    #: today's `⊤` behaviour exactly).
+    delegate_channel_binding: dict[str, dict[str, dict[str, Any]]] = field(default_factory=dict)
 
 
 def receiver_state_to_json(rs: ReceiverState) -> dict[str, Any]:
@@ -624,6 +660,17 @@ def receiver_state_to_json(rs: ReceiverState) -> dict[str, Any]:
     }
     if rs.entry_reset is not None:
         payload["entry_reset"] = dict(rs.entry_reset)
+    if rs.channel_kwarg is not None:
+        payload["channel_kwarg"] = rs.channel_kwarg
+    if rs.delegate_channel_binding:
+        # 260903 (spec §13.5.3, P9): published so the "complete set of
+        # (K, delegate, rule, channels) tuples P9 binds" (AC-13.15(i)) is
+        # visible on the shipped artifact, not just inferable from the
+        # per-guard `bound_channels` keys `compute_channel_bridge` attaches.
+        payload["delegate_channel_binding"] = {
+            method: {delegate: dict(binding) for delegate, binding in sorted(bindings.items())}
+            for method, bindings in sorted(rs.delegate_channel_binding.items())
+        }
     return payload
 
 
@@ -696,9 +743,17 @@ def derive_receiver_states(
             effects = effects_cache[tracker_class]
 
             idiom_matches = _channel_default_idiom(receiver_node)
-            channel_default_param = {m: q for m, (q, _x) in idiom_matches.items()}
+            channel_default_param = {m: q for m, (q, _x, _p) in idiom_matches.items()}
             attribute_writers = _attribute_writers(receiver_node, receiver_name)
             disablers = _channel_default_disablers(idiom_matches, attribute_writers)
+            channel_kwarg = _channel_kwarg_name(idiom_matches)
+            # P9 (§13.5.2): purely syntactic over `receiver_node`'s own
+            # body -- computed once per receiver, independent of any
+            # `delegates_to` closure walk (that happens per contract entry,
+            # in `compute_channel_bridge`, which looks this table up).
+            delegate_channel_binding = compute_delegate_channel_bindings(
+                receiver_node, channel_default_param, channel_kwarg
+            )
 
             # P5 (§12.1.2): `class_nodes` IS the "P1 class index" conjunct 1
             # matches `ast.Call` funcs against -- every top-level class
@@ -723,15 +778,200 @@ def derive_receiver_states(
                 tip_state_exceptions=tip_state_exceptions,
                 entry_reset=entry_reset,
                 entry_reset_ledger=entry_reset_ledger,
+                channel_kwarg=channel_kwarg,
+                delegate_channel_binding=delegate_channel_binding,
             )
             break  # first (alphabetically) qualifying attribute wins.
     return out
 
 
 # ---------------------------------------------------------------------------
+# P9 (spec 260903 §13.5.2, backlog #4946) -- delegate-call literal channel
+# binding. Purely syntactic over `receiver_node`'s OWN body -- no closure
+# walk, no contract/index lookup. `compute_channel_bridge` (below) is the
+# ONLY caller: once its closure walk knows, from the depth-1 step, which
+# one-hop delegate D produced a given `channel_guards` entry, it looks up
+# `(K, D)` in the table this section builds.
+#
+# Rule 4 (P3b disabler poisoning) is DELIBERATELY not applied here -- it is
+# a CHECK-TIME fact over the whole call graph (whether some disabler method
+# was invoked anywhere on the receiver), not a derive-time one over a single
+# call site's own syntax. `plr_sema.check.tipstate.evaluate_call` re-applies
+# it, via the pre-existing `poisoned` pre-scan, AFTER consulting the record
+# this section computes -- §13.5.2's own ordering requirement ("checked
+# after 2 and 3, never before").
+# ---------------------------------------------------------------------------
+
+
+def _iter_depth0_calls(member: ast.FunctionDef | ast.AsyncFunctionDef) -> list[ast.Call]:
+    """Every `ast.Call` in `member`'s own body at DEPTH 0: descends into
+    `If`/`For`/`While`/`Try`/`With`/`match` bodies (§13.5.2's own "why the
+    `for` loop around the `dispense` call does not defeat rule 1" note --
+    rule 1 counts SYNTACTIC call sites, not dynamic invocations) but NEVER
+    into a nested `FunctionDef`/`AsyncFunctionDef`/`Lambda`'s own body.
+    """
+    calls: list[ast.Call] = []
+
+    def _walk(node: ast.AST) -> None:
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                continue
+            if isinstance(child, ast.Call):
+                calls.append(child)
+            _walk(child)
+
+    _walk(member)
+    return calls
+
+
+def _int_list_display(node: ast.expr) -> tuple[int, ...] | None:
+    """Rule 2's `<E>`: an `ast.List`/`ast.Tuple` display whose every
+    element is an `ast.Constant` of type `int` (`bool` excluded, same guard
+    `plr_sema.check.tipstate._int_seq` applies at check time over a lowered
+    `ir.Seq` -- mirrored here at derive time over raw syntax).
+    """
+    if not isinstance(node, (ast.List, ast.Tuple)):
+        return None
+    out: list[int] = []
+    for elt in node.elts:
+        if not (isinstance(elt, ast.Constant) and isinstance(elt.value, int) and not isinstance(elt.value, bool)):
+            return None
+        out.append(elt.value)
+    return tuple(out)
+
+
+def _display_length(node: ast.expr) -> int | None:
+    """Rule 3's `<E>`: an `ast.List`/`ast.Tuple` display -- LENGTH only,
+    same "the elements need not be resolvable" property P3a's own
+    `list(range(len(<q>)))` production relies on. A `Starred` element
+    defeats even the length read (rule 5's "a starred argument" widening
+    case) -- the display's true runtime length is not syntactically known.
+    """
+    if isinstance(node, (ast.List, ast.Tuple)):
+        if any(isinstance(elt, ast.Starred) for elt in node.elts):
+            return None
+        return len(node.elts)
+    return None
+
+
+def _bound_channels_from_call(
+    call: ast.Call, delegate: str, channel_default_param: dict[str, str], channel_kwarg: str | None
+) -> dict[str, Any] | None:
+    """Rules 2/3/5 (§13.5.2), applied to the ONE call site rule 1's
+    singleton test (`_delegate_channel_bindings`, below) already narrowed
+    to. Returns the bound-channels record (`channels`/`rule`/`delegate`/
+    `site_lineno`) or `None` (rule 5, `⊤`).
+    """
+    kwargs = {kw.arg: kw.value for kw in call.keywords if kw.arg is not None}
+
+    if channel_kwarg is not None:
+        explicit = kwargs.get(channel_kwarg)
+        if explicit is not None:
+            ints = _int_list_display(explicit)
+            if ints is None:
+                return None  # rule 5: present but not a clean int display.
+            return {
+                "channels": list(ints),
+                "rule": "explicit",
+                "delegate": delegate,
+                "site_lineno": call.lineno,
+            }
+
+    q = channel_default_param.get(delegate)
+    if q is not None:
+        q_value = kwargs.get(q)
+        if q_value is not None:
+            n = _display_length(q_value)
+            if n is not None and n >= 1:
+                return {
+                    "channels": list(range(n)),
+                    "rule": "arity_default",
+                    "delegate": delegate,
+                    "site_lineno": call.lineno,
+                }
+    return None  # rule 5: otherwise Top.
+
+
+def _delegate_channel_bindings(
+    receiver_node: ast.ClassDef, channel_default_param: dict[str, str], channel_kwarg: str | None
+) -> dict[str, dict[str, dict[str, Any]]]:
+    """P9: `method_name -> {delegate_name: binding}` for every method K of
+    `receiver_node`, over every depth-0 `self.<delegate>(...)` call site
+    rule 1's singleton test admits (a delegate named zero times never
+    enters the dict at all; named more than once is dropped here, both
+    collapsing to the same "absent -> Top" outcome the JSON payload uses,
+    §13.5.3).
+    """
+    out: dict[str, dict[str, dict[str, Any]]] = {}
+    for member in ast.iter_child_nodes(receiver_node):
+        if not isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        by_name: dict[str, list[ast.Call]] = {}
+        for call in _iter_depth0_calls(member):
+            func = call.func
+            if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) and func.value.id == "self":
+                by_name.setdefault(func.attr, []).append(call)
+        bindings: dict[str, dict[str, Any]] = {}
+        for delegate, sites in by_name.items():
+            if len(sites) != 1:
+                continue  # rule 1: zero handled by absence above; >1 here.
+            binding = _bound_channels_from_call(sites[0], delegate, channel_default_param, channel_kwarg)
+            if binding is not None:
+                bindings[delegate] = binding
+        if bindings:
+            out[member.name] = bindings
+    return out
+
+
+def compute_delegate_channel_bindings(
+    receiver_node: ast.ClassDef, channel_default_param: dict[str, str], channel_kwarg: str | None
+) -> dict[str, dict[str, dict[str, Any]]]:
+    """Public alias of `_delegate_channel_bindings` -- exposed (not
+    `_`-prefixed) because AC-13.15(i)'s five negative fixtures and the
+    rule-2/rule-4 fixtures exercise this function directly against
+    synthetic `ast.ClassDef` bodies, not through the whole survey pipeline.
+    """
+    return _delegate_channel_bindings(receiver_node, channel_default_param, channel_kwarg)
+
+
+# ---------------------------------------------------------------------------
 # §10.2.5 -- the channel bridge, and §10.2.6's tip-loading / tip-requiring /
 # tip-dropping family selection (AC-10.10).
 # ---------------------------------------------------------------------------
+
+
+def _one_hop_delegate_name(
+    k_rec: SurveyRecord | None,
+    index: dict[Qualkey, SurveyRecord],
+    channel_attr: str,
+    method: str,
+) -> str | None:
+    """260903 (spec §13.5.2, P9): the FIRST (declaration-order) name in
+    `k_rec.delegates_to` that resolves to a record whose OWN
+    `dropped_calls` directly contains the bridge-shape match for `method`
+    (e.g. `get_tip`) -- i.e. the one-hop delegate D through which THIS
+    guard was actually inherited. Declaration order, deliberately NOT
+    `_walk_closure`'s own traversal order (its LIFO frontier visits a
+    node's `delegates_to` in REVERSE): when two delegates both bridge to
+    the same tracker method (e.g. `transfer`'s `aspirate` AND `dispense`
+    both reaching `TipTracker.get_tip`), this resolves the tie to
+    whichever K's OWN source lists first -- `aspirate`, ahead of
+    `dispense`, for `transfer` at the current pin (AC-13.15(i)).
+    """
+    if k_rec is None:
+        return None
+    for name in k_rec.delegates_to:
+        resolved = resolve(name, k_rec, index)
+        if resolved is None:
+            continue
+        resolved_rec = index.get(resolved)
+        if resolved_rec is None:
+            continue
+        for expr in resolved_rec.dropped_calls:
+            m = _BRIDGE_SHAPE_RE.match(expr)
+            if m is not None and m.group(1) == channel_attr and m.group(3) == method:
+                return name
+    return None
 
 
 def compute_channel_bridge(
@@ -750,11 +990,26 @@ def compute_channel_bridge(
     conflicting-depth-0, per §10.2.4/§10.4 -- both collapse to the SAME
     transfer-function outcome, so the evaluator does not need to
     distinguish them).
+
+    260903 (spec §13.5.2, P9): a guard reached at closure `depth == 1` was
+    inherited through exactly ONE `delegates_to` hop -- `key` (the visited
+    record's own `(module, qualname)` at that step) IS `entry`'s one-hop
+    delegate D, so its bare method name is looked up, together with
+    `entry`'s own bare method name K, in `receiver_state
+    .delegate_channel_binding` (built once per receiver, purely
+    syntactically, by `compute_delegate_channel_bindings`). A hit attaches
+    an additive `bound_channels` key to the guard (§13.5.3); a miss leaves
+    the guard exactly as today (`⊤`, by omission). `depth != 1` (a direct
+    depth-0 bridge, or a chain more than one hop deep) is out of P9's
+    stated scope (§13.5.2: "a delegates_to hop", singular) and never gets
+    `bound_channels`.
     """
     channel_guards: list[dict[str, Any]] = []
     depth0_effects: set[str] = set()
     any_deep_effect = False
     seen: set[tuple[int, str]] = set()
+    k_bare = entry[1].rsplit(".", 1)[-1]
+    k_rec = index.get(entry)
 
     for rec, _key, depth in _walk_closure(entry, index):
         if rec is None:
@@ -778,22 +1033,27 @@ def compute_channel_bridge(
                 receiver_state.tracker_module, f"{receiver_state.tracker_class}.{method}", index, stamp=stamp
             )
             for guard in method_contract.guards:
-                channel_guards.append(
-                    {
-                        "condition": guard.condition,
-                        "kind": guard.kind,
-                        "raises": guard.raises,
-                        "free_vars": list(guard.free_vars),
-                        "scope_trail": list(guard.scope_trail),
-                        "depth": depth,
-                        "site": {
-                            "file": guard.site.file,
-                            "lineno": guard.site.lineno,
-                            "qualname": guard.site.qualname,
-                        },
-                        "via": expr,
-                    }
-                )
+                guard_json: dict[str, Any] = {
+                    "condition": guard.condition,
+                    "kind": guard.kind,
+                    "raises": guard.raises,
+                    "free_vars": list(guard.free_vars),
+                    "scope_trail": list(guard.scope_trail),
+                    "depth": depth,
+                    "site": {
+                        "file": guard.site.file,
+                        "lineno": guard.site.lineno,
+                        "qualname": guard.site.qualname,
+                    },
+                    "via": expr,
+                }
+                if depth == 1:
+                    delegate_name = _one_hop_delegate_name(k_rec, index, receiver_state.channel_attr, method)
+                    if delegate_name is not None:
+                        binding = receiver_state.delegate_channel_binding.get(k_bare, {}).get(delegate_name)
+                        if binding is not None:
+                            guard_json["bound_channels"] = dict(binding)
+                channel_guards.append(guard_json)
 
             effect = receiver_state.effects.get(method)
             if effect is not None:

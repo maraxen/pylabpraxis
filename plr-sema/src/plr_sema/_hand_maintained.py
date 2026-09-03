@@ -268,16 +268,24 @@ def _measure_hm25() -> int:
     and the three atom productions (BoolView, NullCheck-is-None,
     NullCheck-is-not-None, §10.3.1) -- each of whose failures AC-10.1
     through AC-10.3's exact-count assertions catch loudly, unlike HM-24's
-    bridge shape. Measured by importing the five symbols that implement
-    them (two in `derive/receiver_state.py`, three atom-kind branches
-    inside `check/tipstate.py`'s shared parser, proven live via
+    bridge shape -- PLUS, as of 260903 (spec §13.5.2, backlog #4946), P9's
+    own delegate-call channel-argument shape (the ordered explicit/
+    arity-default/disabler-poisoning/widen rule set), whose failure
+    AC-13.15's gate (tier 3's m1 class) catches loudly the same way.
+    Measured by importing the six symbols that implement these patterns
+    (three in `derive/receiver_state.py`: P2, P3a, P9; three atom-kind
+    branches inside `check/tipstate.py`'s shared parser, proven live via
     `TipState`'s two atom-bearing members plus the bool-view branch) --
     fails loudly, ImportError/AttributeError, if any is deleted.
     """
     from plr_sema.check.tipstate import TipState, atom_truth
-    from plr_sema.derive.receiver_state import _channel_default_idiom, _typestate_anchor
+    from plr_sema.derive.receiver_state import (
+        _channel_default_idiom,
+        _typestate_anchor,
+        compute_delegate_channel_bindings,
+    )
 
-    shape_matchers = (_typestate_anchor, _channel_default_idiom)  # P2, P3a
+    shape_matchers = (_typestate_anchor, _channel_default_idiom, compute_delegate_channel_bindings)  # P2, P3a, P9
     # atom_truth's three productions: BoolView, NullCheck(is_none=True),
     # NullCheck(is_none=False) -- proven live by actually exercising all
     # three against TipState.HAS_TIP (any concrete, non-Top state suffices
@@ -815,33 +823,41 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
     HandMaintainedSurface(
         id="HM-25",
         what=(
-            "tip-typestate front-end syntactic patterns, the other five "
-            "(spec §10.2.2/§10.2.3/§10.3.1, 260902 tip typestate "
-            "increment): the typestate-anchor property shape (`return "
-            "self.<F> is/is not None`, P2), the channel-default idiom "
-            "(`<p> = <p> or self.<x> or list(range(len(<q>)))`, P3a), and "
-            "the three atom productions (`BoolView`, "
-            "`NullCheck(is_none=True)`, `NullCheck(is_none=False)`, "
-            "§10.3.1). Split out of the original single 6-pattern HM-24 "
-            "per the user's 260902 Q7 decision (option B)."
+            "tip-typestate front-end syntactic patterns (spec "
+            "§10.2.2/§10.2.3/§10.3.1, 260902 tip typestate increment, plus "
+            "§13.5.2, 260903 P9/backlog #4946): the typestate-anchor "
+            "property shape (`return self.<F> is/is not None`, P2), the "
+            "channel-default idiom (`<p> = <p> or self.<x> or "
+            "list(range(len(<q>)))`, P3a), the three atom productions "
+            "(`BoolView`, `NullCheck(is_none=True)`, "
+            "`NullCheck(is_none=False)`, §10.3.1), and P9's delegate-call "
+            "channel-argument shape -- a keyword argument at a "
+            "`self.<delegate>(...)` call site holding an int-constant "
+            "display, or a display in the delegate's own P3a parameter, "
+            "ordered explicit > arity-default > (check-time) disabler "
+            "poisoning > widen. Split out of the original single "
+            "6-pattern HM-24 per the user's 260902 Q7 decision (option B)."
         ),
         metric="patterns",
-        declared=5,
+        declared=6,
         status="CAPPED",
         why_not_derived=(
             "Syntactic patterns over how PLR/its own analyzer is written "
-            "(a property-body shape, an argument-default idiom, three "
+            "(a property-body shape, two argument-default idioms, three "
             "condition-string grammars), not facts PLR records anywhere "
             "-- same argument HM-3/HM-24 make."
         ),
         breaks_when=(
             "PLR stops writing the `has_tip`-style boolean-view property "
             "in the single-return-Compare shape P2 matches, drops the "
-            "`or list(range(len(...)))` idiom P3a matches, or a guard "
+            "`or list(range(len(...)))` idiom P3a matches, a guard "
             "condition stops parsing under one of the three atom "
-            "productions. Fails LOUDLY here (unlike HM-24): "
-            "AC-10.1/AC-10.2/AC-10.3's exact-count assertions on the "
-            "shipped fixtures go red."
+            "productions, or PLR stops passing a delegate's channel "
+            "literally at the call site (P9, e.g. `transfer` computes "
+            "`use_channels` into a local first). Fails LOUDLY here (unlike "
+            "HM-24): AC-10.1/AC-10.2/AC-10.3/AC-13.15(iv)'s exact-count/"
+            "gate assertions on the shipped fixtures go red; P9 itself "
+            "fails CLOSED (`bound_channels` reverts to `⊤`), never wrong."
         ),
         measure="plr_sema._hand_maintained:_measure_hm25",
     ),

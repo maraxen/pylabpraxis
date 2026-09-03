@@ -47,14 +47,14 @@
     "praxis": {
       "branch": "coxswain-p2-pipeline",
       "dirty": true,
-      "dirty_content_id": "e3b9890797f4d02e5f2afd03af1069feffa5a42c16ad67a662762eaa058a8ac6",
-      "hash": "1f0822380180bef392ce6645d32adaafc7e7ce35",
+      "dirty_content_id": "392abf91b50d1922843811afc2babad4de76053b95450de5471d9f6ea8f081c7",
+      "hash": "995b4948faefa0a80a026939d1320416f8f23489",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-03T20:44:15.596980+00:00",
+    "stamped_at": "2026-09-03T21:08:49.500931+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   },
@@ -71,6 +71,23 @@
   },
   "tip_state": {
     "LiquidHandler": {
+      "bound_channels": {
+        "LiquidHandler.clear_head_state": "absent",
+        "LiquidHandler.consolidate_tip_inventory": "absent",
+        "LiquidHandler.discard_tips": "absent",
+        "LiquidHandler.move_tips": "absent",
+        "LiquidHandler.probe_tip_presence_via_pickup": "absent",
+        "LiquidHandler.return_tips": "absent",
+        "LiquidHandler.transfer": {
+          "channels": [
+            0
+          ],
+          "delegate": "aspirate",
+          "rule": "arity_default",
+          "site_lineno": 1347
+        },
+        "LiquidHandler.use_tips": "absent"
+      },
       "entry_reset": {
         "method": "setup",
         "post": "no_tip"
@@ -105,6 +122,7 @@
       "tipstate_anchor": "_pending_tip"
     },
     "LiquidHandlerBackend": {
+      "bound_channels": {},
       "entry_reset": "absent",
       "tip_dropping": [],
       "tip_loading": [],
