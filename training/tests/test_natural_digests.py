@@ -54,3 +54,23 @@ def test_digest_ignores_only_the_dropped_key():
   assert row_digest(row, drop_provenance_keys=("teacher_model_version",)) != row_digest(
     other, drop_provenance_keys=("teacher_model_version",)
   )
+
+
+def test_committed_natural_corpus_carries_no_fake_teacher_stamp():
+    """P2.6b stamped fake-teacher@test on real Gemini rows; the lane now stamps from the cache record."""
+    rows = _rows(NATURAL)
+    bad = sorted(rid for rid, r in rows.items() if r["provenance"]["teacher_model_version"].startswith("fake-teacher"))
+    assert not bad, bad[:5]
+    assert {r["provenance"]["teacher_model_version"] for r in rows.values()} == {"gemini-3.7-flash-medium"}
+
+
+def test_committed_natural_corpus_has_out_of_surface_rows_with_base_clarification():
+    rows = _rows(NATURAL)
+    base = _rows(REPO / "training" / "out" / "corpus_p23_floor.jsonl")
+    oos = [r for r in rows.values() if r["matrix_cell"]["ambiguity_class"] == "out-of-surface"]
+    assert len(oos) >= 140
+    for r in oos:
+        b = base[r["lineage"]["base_record_id"]]
+        assert r["clarification"] == b["clarification"] and r["clarification"]
+        assert r["structured_calls"] == [] and r["supervision"]["kind"] == "nl_clarification"
+        assert r["provenance"]["prompt_version"] == "p23_nlify_v2_natural_oos"

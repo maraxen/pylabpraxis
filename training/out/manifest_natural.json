@@ -1,38 +1,53 @@
 {
- "acceptance_rate": 0.9886,
- "accepted": 519,
+ "acceptance_rate": 0.9883,
+ "accepted": 677,
+ "backend_teacher_model_version": "gemini-3.7-flash-medium",
  "base_corpus": "/home/marielle/projects/praxis/training/out/corpus_p23_floor.jsonl",
  "base_generator_version": "0.2.1",
  "base_prompt_version": "p23_nlify_v1",
  "base_rows": 685,
- "cache_hits": 525,
+ "cache_hits": 685,
  "cache_misses": 0,
  "execution_verify": "inherited from base rows (identical structured_calls asserted)",
- "filter_rules": [
-  "underscore_identifier",
-  "dotted_well_ref",
-  "bracket",
-  "canonical_verb",
-  "duplicate_of_base",
-  "duplicate_of_eval_row"
- ],
+ "filter_rules": {
+  "in_surface": [
+   "underscore_identifier",
+   "dotted_well_ref",
+   "bracket",
+   "canonical_verb",
+   "duplicate_of_base",
+   "duplicate_of_eval_row"
+  ],
+  "out_of_surface": [
+   "underscore_identifier",
+   "dotted_well_ref",
+   "bracket",
+   "duplicate_of_base",
+   "duplicate_of_eval_row"
+  ]
+ },
  "generator_version": "0.2.1",
  "matrix_version": "2",
+ "out_of_surface_supervision": "clarification copied verbatim from the base row",
  "per_class": {
   "ambiguous-referent": 148,
   "missing-slot": 180,
-  "none": 191
+  "none": 191,
+  "out-of-surface": 158
  },
  "pipeline": "p23_coverage_floor_natural",
  "plr_submodule_sha": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
  "prompt_version": "p23_nlify_v2_natural",
+ "prompt_version_oos": "p23_nlify_v2_natural_oos",
  "rejected_by_reason": {
-  "canonical_verb": 6
+  "canonical_verb": 6,
+  "duplicate_of_base": 2
  },
- "rejected_filter": 6,
+ "rejected_filter": 8,
  "rejected_shape": 0,
- "skipped_out_of_surface": 160,
- "teacher_model_version": "fake-teacher@test",
+ "teacher_model_versions": {
+  "gemini-3.7-flash-medium": 677
+ },
  "verb_paraphrase_lexicon": {
   "aspirate": [
    "pull",
