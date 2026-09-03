@@ -27,6 +27,7 @@ import collections
 import contextlib
 import dataclasses
 import functools
+import hashlib
 import io
 import json
 import logging
@@ -39,6 +40,62 @@ log = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONTRACTS = REPO_ROOT / "plr-sema" / "data" / "derived_contracts.json"
+
+
+# --------------------------------------------------------------------------
+# content-digest identity (#4939 follow-up, 260903): the 260902->260903
+# corpus regrew 900->1427 rows via MID-FILE insertion (natural-phrasing
+# lane, assembly 0.1.4/0.1.5), which silently invalidated every
+# line-number-keyed record_id ("{source_stem}:{line}") and every test
+# fixture that hardcoded a line number to reach a specific row -- the row
+# formerly at that line moved. A content digest over (utterance, first
+# tool call) is stable across insertion/reordering; ``line`` is kept
+# alongside it purely as a display field, not an identity key.
+# --------------------------------------------------------------------------
+
+
+def extract_first_call(row: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
+    """First user utterance + first assistant tool call (name, params) from
+    a corpus ``messages``-format row. A narrower, identity-only sibling of
+    :func:`row_to_verifier_inputs`'s own message-parsing loop -- kept
+    separate (not shared code) so callers that only need row IDENTITY
+    (e.g. a ``--sidecar`` content-digest lookup, done BEFORE
+    :func:`row_to_verifier_inputs` runs and without a contracts_json /
+    ambiguity_class context) don't need the full parse. Mirrors that
+    loop's own tool_calls[0] extraction exactly, so a digest computed here
+    and one computed from :func:`row_to_verifier_inputs`'s own
+    ``user_message_content``/``real_call`` locals agree for the same row.
+    """
+    utterance = ""
+    call: dict[str, Any] | None = None
+    for msg in row.get("messages", []):
+        if msg.get("role") == "user":
+            utterance = msg.get("content", "")
+        elif msg.get("role") == "assistant" and call is None:
+            tool_calls = msg.get("tool_calls", [])
+            if tool_calls:
+                func = tool_calls[0].get("function", {})
+                call = {"name": func.get("name", ""), "params": func.get("arguments", {})}
+    return utterance, call
+
+
+def content_digest(utterance: str, call: dict[str, Any] | None) -> str:
+    """``sha256(utterance + "\\n" + canonical JSON of the tool call))[:16]``.
+
+    ``call`` is a single ``{"name": ..., "params": ...}`` dict (or
+    ``None`` for a no-call row) -- every row in this corpus pipeline
+    carries exactly one ground-truth tool call (``row_to_verifier_inputs``'s
+    own "corpus has 1 call per row" comment), so there is no list-of-calls
+    ordering question to canonicalize. ``json.dumps(..., sort_keys=True)``
+    recursively sorts nested dict keys too, so ``params`` key order never
+    perturbs the digest. NOT collision-free: 58/1427 corpus_p25.jsonl rows
+    (260903) share a digest with >=1 other row (template-generated
+    utterances repeat); ``record_id`` is therefore a content key, not a
+    guaranteed-unique primary key -- ``line`` remains the disambiguator
+    when one is needed.
+    """
+    canon = json.dumps(call, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(f"{utterance}\n{canon}".encode("utf-8")).hexdigest()[:16]
 
 
 def _import_param_namespace():
@@ -652,8 +709,6 @@ def row_to_verifier_inputs(
         - no_call_reason: "no_tool_calls" if assistant had no tool_calls; else None
 
     """
-    record_id = sidecar_record_id or f"{source_file}:{line}"
-
     # Find the assistant message with tool_calls
     real_call: dict[str, Any] | None = None
     user_message_content = ""
@@ -672,6 +727,18 @@ def row_to_verifier_inputs(
                     "name": func.get("name", ""),
                     "params": func.get("arguments", {}),
                 }
+
+    # #4939 follow-up (260903): content-digest record_id, computed from the
+    # RAW extraction above (before any naturalness-normalize_params /
+    # _normalize_well_refs mutation below) -- stable across corpus
+    # reordering, unlike the old "{source_file}:{line}" scheme.
+    # ``sidecar_record_id`` is accepted for signature compatibility with
+    # existing callers/tests but is intentionally no longer used for
+    # identity: the sidecar's own id is joined via a separate content-digest
+    # lookup on the CALLER's side (oracle_replay.py's ``_sidecar_for``), not
+    # folded into this row's own record_id.
+    del sidecar_record_id
+    record_id = f"{source_file}:{content_digest(user_message_content, real_call)}"
 
     skip_reason = None
     call_sequence = []

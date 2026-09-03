@@ -31,6 +31,8 @@ from oracle_common import (
     _underscore_ref_base_counts,
     calls_from_plr_kwargs,
     compare,
+    content_digest,
+    extract_first_call,
     ir_value_of,
     param_names_from_contracts,
     resources_from_example,
@@ -84,7 +86,14 @@ class TestRowToVerifierInputs:
         assert len(call_seq) == 2
         assert call_seq[0]["name"] == "pick_up_tips"
         assert call_seq[1]["name"] == "transfer"
-        assert intent["record_id"] == "test:1"
+        # #4939 follow-up (260903): record_id is a content digest over
+        # (utterance, RAW tool call), not "{source_file}:{line}" -- stable
+        # across corpus reordering. "line" is a display-only field now.
+        expected_digest = content_digest(
+            "Transfer 50 microliters from A1 to B1",
+            {"name": "transfer", "params": {"source": "src.A1", "destination": "dst.B1", "volume_ul": 50}},
+        )
+        assert intent["record_id"] == f"test:{expected_digest}"
         assert intent["utterance"] == "Transfer 50 microliters from A1 to B1"
         assert intent["source"] == "synthetic"
         assert intent["expected_effects"] == []
@@ -115,8 +124,12 @@ class TestRowToVerifierInputs:
             for call in call_seq:
                 assert "name" in call
                 assert "params" in call
-        # Intent record should match the structure
-        assert intent["record_id"] == "corpus_p25:1"
+        # Intent record should match the structure. #4939 follow-up
+        # (260903): record_id is a content digest over the row's own
+        # (utterance, raw tool call), recomputed the same way here.
+        expected_utterance, expected_call = extract_first_call(row)
+        expected_digest = content_digest(expected_utterance, expected_call)
+        assert intent["record_id"] == f"corpus_p25:{expected_digest}"
         assert intent["source"] == "synthetic"
         assert len(intent["calls"]) == len(call_seq)
 
@@ -425,8 +438,23 @@ class TestPLRNamedArguments:
 class TestT16dSidecarGating:
     """Regression tests for the T16d (#4879) root-cause fixes: ambiguity_class
     gating, move_*/holders wiring, and naturalness mined-call normalization.
-    Each test replays a REAL joined corpus row (by line number, verified
-    260902) and asserts our outcome now matches P2.5's recorded outcome.
+    Each test replays a REAL joined corpus row, looked up by the sidecar's
+    own stable ``record_id`` (content, e.g. "cov-0080-dispense__missing-slot-00")
+    rather than a hardcoded line number, and asserts our outcome now matches
+    P2.5's recorded outcome.
+
+    #4939 follow-up (260903): this class previously hardcoded the LINE
+    NUMBER each target record_id was verified to sit at in the 260902
+    900-row corpus. The 260902->260903 corpus regrew to 1427 rows via
+    MID-FILE insertion (natural-phrasing lane, assembly 0.1.4/0.1.5), which
+    shifted every row after the insertion point to a new line number and
+    broke all 5 of these hardcoded constants (each one now silently fetched
+    an unrelated row and failed its own ``srow["record_id"] == ...``
+    assertion). corpus_p25.jsonl and corpus_p25_sidecar.jsonl remain
+    line-paired companion files (same assembler pass writes both), so
+    ``_row_and_sidecar_by_id`` still uses a single positional scan under
+    the hood -- it just scans for the target id instead of trusting a
+    remembered line number.
     """
 
     CORPUS_FILE = REPO_ROOT / "training" / "assemble" / "out" / "corpus_p25.jsonl"
@@ -435,12 +463,19 @@ class TestT16dSidecarGating:
     OVERLAY_FILE = REPO_ROOT / "training" / "overlay_gen" / "out" / "overlay_full.jsonl"
 
     @staticmethod
-    def _row_and_sidecar(line_no: int):
-        with open(TestT16dSidecarGating.CORPUS_FILE) as f:
-            corpus_line = f.readlines()[line_no - 1]
-        with open(TestT16dSidecarGating.SIDECAR_FILE) as f:
-            sidecar_line = f.readlines()[line_no - 1]
-        return json.loads(corpus_line), json.loads(sidecar_line)
+    def _row_and_sidecar_by_id(record_id: str):
+        """(corpus_row, sidecar_row, line_no) for the sidecar row whose OWN
+        ``record_id`` field equals ``record_id`` -- found by content, not by
+        a remembered line number. Raises (not skips) if the id is gone
+        entirely, since that's a real regression, not a missing-fixture
+        skip condition (see ``_require_files``).
+        """
+        with open(TestT16dSidecarGating.CORPUS_FILE) as cf, open(TestT16dSidecarGating.SIDECAR_FILE) as sf:
+            for line_no, (corpus_line, sidecar_line) in enumerate(zip(cf, sf), 1):
+                srow = json.loads(sidecar_line)
+                if srow.get("record_id") == record_id:
+                    return json.loads(corpus_line), srow, line_no
+        raise AssertionError(f"record_id {record_id!r} not found in {TestT16dSidecarGating.SIDECAR_FILE}")
 
     def _require_files(self):
         for p in (self.CORPUS_FILE, self.SIDECAR_FILE):
@@ -448,8 +483,8 @@ class TestT16dSidecarGating:
                 pytest.skip(f"{p} not found")
 
     def test_missing_slot_dispense_is_skipped_not_keyerror(self):
-        """cov-0080-dispense__missing-slot-00 (line 59): dispense with
-        volume_ul deliberately omitted. Pre-fix, _precondition_plan indexed
+        """cov-0080-dispense__missing-slot-00: dispense with volume_ul
+        deliberately omitted. Pre-fix, _precondition_plan indexed
         params["volume_ul"] unconditionally and KeyError-crashed (17 rows,
         all missing_slot). floor_gen never reaches _precondition_plan for
         non-"none" ambiguity classes (exec_verify.py cls != "none" gate) --
@@ -458,10 +493,9 @@ class TestT16dSidecarGating:
         no exception.
         """
         self._require_files()
-        row, srow = self._row_and_sidecar(59)
-        assert srow["record_id"] == "cov-0080-dispense__missing-slot-00"
+        row, srow, line_no = self._row_and_sidecar_by_id("cov-0080-dispense__missing-slot-00")
         call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
-            row, source_file="corpus_p25", line=59,
+            row, source_file="corpus_p25", line=line_no,
             ambiguity_class=srow["ambiguity_class"], sidecar_record_id=srow["record_id"],
             provenance=srow["provenance"],
         )
@@ -471,16 +505,15 @@ class TestT16dSidecarGating:
         assert call_seq == []
 
     def test_ambiguous_referent_aspirate_is_skipped(self):
-        """cov-0030-aspirate__ambiguous-referent-00 (line 21): a
-        deliberately-vague ref. Pre-fix, this executed and usually raised
-        GroundingError (spurious -- floor_gen's own harness never runs
-        ambiguous-referent cells at all). Post-fix: skipped.
+        """cov-0030-aspirate__ambiguous-referent-00: a deliberately-vague
+        ref. Pre-fix, this executed and usually raised GroundingError
+        (spurious -- floor_gen's own harness never runs ambiguous-referent
+        cells at all). Post-fix: skipped.
         """
         self._require_files()
-        row, srow = self._row_and_sidecar(21)
-        assert srow["record_id"] == "cov-0030-aspirate__ambiguous-referent-00"
+        row, srow, line_no = self._row_and_sidecar_by_id("cov-0030-aspirate__ambiguous-referent-00")
         call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
-            row, source_file="corpus_p25", line=21,
+            row, source_file="corpus_p25", line=line_no,
             ambiguity_class=srow["ambiguity_class"], sidecar_record_id=srow["record_id"],
             provenance=srow["provenance"],
         )
@@ -490,8 +523,8 @@ class TestT16dSidecarGating:
         assert call_seq == []
 
     def test_move_resource_holders_fix_matches_p25_passed(self):
-        """cov-0455-move_resource__none-00 (line 396): "Move hotel_stack_1
-        to reservoir_1." Pre-fix, oracle_common never computed
+        """cov-0455-move_resource__none-00: "Move hotel_stack_1 to
+        reservoir_1." Pre-fix, oracle_common never computed
         DeckLayout.holders, so infer_layout() defaulted both names to a bare
         Plate and PLR raised "RuntimeError: Can only drop Lid resources onto
         Plate 'reservoir_1'." on every move_resource/move_plate/move_lid row
@@ -503,10 +536,9 @@ class TestT16dSidecarGating:
         self._require_files()
         if not self.FLOOR_FILE.exists():
             pytest.skip(f"{self.FLOOR_FILE} not found")
-        row, srow = self._row_and_sidecar(396)
-        assert srow["record_id"] == "cov-0455-move_resource__none-00"
+        row, srow, line_no = self._row_and_sidecar_by_id("cov-0455-move_resource__none-00")
         call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
-            row, source_file="corpus_p25", line=396,
+            row, source_file="corpus_p25", line=line_no,
             ambiguity_class=srow["ambiguity_class"], sidecar_record_id=srow["record_id"],
             provenance=srow["provenance"],
         )
@@ -521,7 +553,7 @@ class TestT16dSidecarGating:
         assert rt.error is None, f"expected ran_ok (matches P2.5 passed={p25_passed}), got {rt.error!r}"
 
     def test_naturalness_ungroundable_mined_expr_is_skipped(self):
-        """ovl-0740a87130 (line 716): pick_up_tips at a loop-variable slice
+        """ovl-0740a87130: pick_up_tips at a loop-variable slice
         (source_tip_spots[i:i + batch_size]) -- not a literal, statically
         groundable ref. overlay_gen's own harness never executes this
         (execution_verify=None, confirmed 260902); pre-fix, oracle_common fed
@@ -529,11 +561,10 @@ class TestT16dSidecarGating:
         via overlay_gen._normalize_params, matching overlay_gen's own gate.
         """
         self._require_files()
-        row, srow = self._row_and_sidecar(716)
-        assert srow["record_id"] == "ovl-0740a87130"
+        row, srow, line_no = self._row_and_sidecar_by_id("ovl-0740a87130")
         assert srow["provenance"] == "naturalness"
         call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
-            row, source_file="corpus_p25", line=716,
+            row, source_file="corpus_p25", line=line_no,
             ambiguity_class=srow["ambiguity_class"], sidecar_record_id=srow["record_id"],
             provenance=srow["provenance"],
         )
@@ -543,8 +574,8 @@ class TestT16dSidecarGating:
         assert call_seq == []
 
     def test_naturalness_bracket_ref_normalizes_and_matches_p25_passed(self):
-        """ovl-05a03ba41d (line 715): dispense(destination='plate["C1"]', ...)
-        -- a literal bracket-subscript mined ref. Pre-fix, this opaque
+        """ovl-05a03ba41d: dispense(destination='plate["C1"]', ...) -- a
+        literal bracket-subscript mined ref. Pre-fix, this opaque
         un-normalized name typed as a bare Plate via infer_layout, producing
         "'Plate' object has no attribute 'tracker'" / TypeError (the
         remaining naturalness disagreement classes). Post-fix: normalized to
@@ -555,10 +586,9 @@ class TestT16dSidecarGating:
         self._require_files()
         if not self.OVERLAY_FILE.exists():
             pytest.skip(f"{self.OVERLAY_FILE} not found")
-        row, srow = self._row_and_sidecar(715)
-        assert srow["record_id"] == "ovl-05a03ba41d"
+        row, srow, line_no = self._row_and_sidecar_by_id("ovl-05a03ba41d")
         call_seq, intent, layout, skip_reason, no_call_reason = row_to_verifier_inputs(
-            row, source_file="corpus_p25", line=715,
+            row, source_file="corpus_p25", line=line_no,
             ambiguity_class=srow["ambiguity_class"], sidecar_record_id=srow["record_id"],
             provenance=srow["provenance"],
         )

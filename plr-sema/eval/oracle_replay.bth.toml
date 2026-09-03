@@ -32,3 +32,7 @@ check_graph_exceptions = "int"
 totality_violations = "int"
 unknown_rate = "float"
 crosscheck_agreement = "float"
+# 260903 (#4939 follow-up): rows whose runtime failed before op 0 was ever
+# planned are now bucketed separately (rows_setup_error, oracle_replay.py's
+# summary_flat) rather than folded into totality/unsound/unknown_rate.
+rows_setup_error = "int"

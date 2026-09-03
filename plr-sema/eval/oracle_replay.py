@@ -76,6 +76,8 @@ from oracle_common import (
     DEFAULT_CONTRACTS,
     RuntimeOutcome,
     compare,
+    content_digest,
+    extract_first_call,
     param_names_from_contracts,
     row_to_verifier_inputs,
     run_runtime,
@@ -215,8 +217,13 @@ def run_row(
         )
     except Exception as e:
         log.warning("Failed to parse row %s:%d: %s", corpus_file, row_index, e)
+        # #4939 follow-up (260903): content-digest record_id, best-effort
+        # (row_to_verifier_inputs itself raised, so we can't reuse its
+        # extraction; re-extract independently -- extract_first_call
+        # tolerates a malformed row by returning ("", None)).
+        _utt, _call = extract_first_call(row)
         return RowResult(
-            record_id=sidecar_record_id or f"{corpus_file}:{row_index}",
+            record_id=f"{Path(corpus_file).stem}:{content_digest(_utt, _call)}",
             corpus_file=corpus_file,
             row_index=row_index,
             utterance="",
@@ -419,15 +426,33 @@ def main(argv: list[str] | None = None) -> int:
     contracts_json = args.contracts.read_text(encoding="utf-8")
 
     # ------------------------------------------------------------------
-    # T16d (#4879): sidecar join. sidecar.record_id is the EXACT join key
-    # against both floor (record_id) and overlay (id) crosscheck files for
-    # coverage/naturalness rows respectively (verified 260902: corpus_p25.jsonl
-    # is perfectly line-paired with corpus_p25_sidecar.jsonl; golden_pairs.jsonl
-    # is a reordered near-duplicate of corpus_p25's own golden slice, so it is
-    # joined by (utterance) content instead -- labelled "content_fallback").
+    # T16d (#4879) + #4939 follow-up (260903): sidecar join. Primary path
+    # is still LINE POSITION when corpus and sidecar are line-count-matched
+    # (``exact_eligible``) -- corpus_p25.jsonl/corpus_p25_sidecar.jsonl are
+    # written as COMPANION files by the same assembler pass, so line i of
+    # one is always line i of the other REGARDLESS of what content either
+    # side carries; this is not the same kind of "line number" fragility a
+    # hardcoded line constant in a test fixture has (that constant assumes
+    # a corpus LAYOUT that can silently shift out from under it on a later
+    # regen -- verified 260903: 260902's 900-row corpus regrew to 1427 rows
+    # via mid-file insertion, invalidating TestT16dSidecarGating's hardcoded
+    # line numbers, see below -- while THIS join recomputes both sides
+    # fresh, every run, so it was never stale). Content-digest join
+    # (utterance + first tool call, :func:`content_digest`) is the fallback
+    # for files that are NOT line-paired (golden_pairs.jsonl is a reordered
+    # near-duplicate of corpus_p25's own golden slice) -- an upgrade over
+    # the prior utterance-ONLY fallback, which could conflate two rows that
+    # share an utterance but differ in tool call/params. Note: a pure
+    # content-digest join over the WHOLE file (ignoring position) is
+    # deliberately NOT used even when eligible -- 58/1427 corpus_p25.jsonl
+    # rows (260903) share a content digest with >=1 other row, and a
+    # position-blind digest-to-digest join would silently misassign one of
+    # those duplicates' sidecar metadata (ambiguity_class, provenance) to
+    # the WRONG row of the group; the line-paired join has no such failure
+    # mode for files it actually applies to.
     # ------------------------------------------------------------------
     sidecar_rows: list[dict[str, Any]] = []
-    sidecar_by_utterance: dict[str, dict[str, Any]] = {}
+    sidecar_by_digest: dict[str, dict[str, Any]] = {}
     if args.sidecar:
         with open(args.sidecar) as f:
             for line in f:
@@ -435,9 +460,16 @@ def main(argv: list[str] | None = None) -> int:
                     continue
                 srow = json.loads(line)
                 sidecar_rows.append(srow)
-                utt = srow.get("utterance")
-                if utt and utt not in sidecar_by_utterance:
-                    sidecar_by_utterance[utt] = srow
+                utt = srow.get("utterance", "")
+                raw_calls = srow.get("calls") or []
+                call = (
+                    {"name": raw_calls[0].get("name", ""), "params": raw_calls[0].get("params", {})}
+                    if raw_calls
+                    else None
+                )
+                digest = content_digest(utt, call)
+                if digest not in sidecar_by_digest:
+                    sidecar_by_digest[digest] = srow
         log.info("Loaded %d sidecar rows from %s", len(sidecar_rows), args.sidecar)
 
     def _sidecar_for(corpus_file: str, line_no: int, row: dict[str, Any], exact_eligible: bool) -> tuple[dict[str, Any] | None, str]:
@@ -446,8 +478,8 @@ def main(argv: list[str] | None = None) -> int:
             return None, "none"
         if exact_eligible and 1 <= line_no <= len(sidecar_rows):
             return sidecar_rows[line_no - 1], "line_exact"
-        utterance, _call = _extract_utterance_and_call(row)
-        srow = sidecar_by_utterance.get(utterance) if utterance else None
+        utterance, call = extract_first_call(row)
+        srow = sidecar_by_digest.get(content_digest(utterance, call))
         if srow is not None:
             return srow, "content_fallback"
         return None, "unmatched"
@@ -497,6 +529,12 @@ def main(argv: list[str] | None = None) -> int:
     #: (a rewritten row can still be skipped by a LATER precondition check).
     n_rows_normalised = 0
     sidecar_join_counts: dict[str, collections.Counter] = collections.defaultdict(collections.Counter)
+    # #4939 follow-up (260903): a row's OWN record_id is now a content
+    # digest (stable across corpus reordering), decoupled from the
+    # sidecar's own id scheme ("cov-...", "ovl-..."). The crosscheck EXACT
+    # join below still needs THAT id (it's the floor/overlay join key), so
+    # thread it through this side dict rather than overloading record_id.
+    record_id_to_sidecar_id: dict[str, str] = {}
 
     for corpus_file in args.corpus:
         try:
@@ -525,6 +563,8 @@ def main(argv: list[str] | None = None) -> int:
                         provenance=provenance,
                     )
                     results.append(result)
+                    if sidecar_record_id:
+                        record_id_to_sidecar_id[result.record_id] = sidecar_record_id
                     n_rows_total += 1
                     if result.normalized_refs:
                         n_rows_normalised += 1
@@ -554,14 +594,44 @@ def main(argv: list[str] | None = None) -> int:
 
     # Compute summary statistics (only on executed rows)
     executed_results = [r for r in results if not r.no_call_reason and not r.skip_reason]
-    n_unsound = sum(r.unsound_count for r in executed_results)
-    n_totality_violations = sum(1 for r in executed_results if not r.totality_ok)
-    n_check_graph_exceptions = sum(1 for r in executed_results if r.check_graph_raised)
-    n_operations_executed = sum(r.n_operations_executed for r in executed_results)
 
-    # Agreement matrix: runtime outcome × static verdict (executed rows only)
+    # #4939 follow-up (260903): a row whose runtime failed BEFORE op 0 was
+    # ever planned -- every index in call_sequence is in not_planned_indices,
+    # so plr_kwargs is {} and static analysis has literally nothing to
+    # analyze (every op gets a contentless "unknown"/0-findings entry,
+    # §11.10) -- is a SETUP failure, not an analyzable execution: it
+    # contributes no real signal to totality/unsound/unknown_rate and
+    # inflates all three if left in. Bucketed separately as
+    # ``rows_setup_error``; excluded from every "analyzable" aggregate
+    # below (totality, unsound, check_graph_exceptions, operations_executed,
+    # unknown_rate, agreement_matrix, exception_ranking,
+    # precondition_state_ranking). Crosscheck (ground-truth PASS/FAIL
+    # agreement) is NOT static-analysis-derived, so setup_error rows stay
+    # in it -- "did we and P2.5 agree this row fails" is still meaningful
+    # signal even with zero static findings.
+    def _is_setup_error(r: RowResult) -> bool:
+        return bool(r.not_planned_indices) and len(r.not_planned_indices) == r.n_operations_executed
+
+    setup_error_results = [r for r in executed_results if _is_setup_error(r)]
+    analyzable_results = [r for r in executed_results if not _is_setup_error(r)]
+    n_rows_setup_error = len(setup_error_results)
+    n_rows_executed = len(analyzable_results)
+
+    setup_error_error_counts: dict[str, int] = collections.Counter(
+        r.runtime_error for r in setup_error_results if r.runtime_error
+    )
+    setup_error_top = [
+        {"error": err, "count": count} for err, count in setup_error_error_counts.most_common(10)
+    ]
+
+    n_unsound = sum(r.unsound_count for r in analyzable_results)
+    n_totality_violations = sum(1 for r in analyzable_results if not r.totality_ok)
+    n_check_graph_exceptions = sum(1 for r in analyzable_results if r.check_graph_raised)
+    n_operations_executed = sum(r.n_operations_executed for r in analyzable_results)
+
+    # Agreement matrix: runtime outcome × static verdict (analyzable rows only)
     agreement_matrix = collections.defaultdict(lambda: collections.Counter())
-    for r in executed_results:
+    for r in analyzable_results:
         if not r.compare_rows:
             continue
         for comp in r.compare_rows:
@@ -573,7 +643,7 @@ def main(argv: list[str] | None = None) -> int:
     method_unknown_rate: dict[str, float] = {}
     method_counts: dict[str, int] = collections.defaultdict(int)
     method_unknown: dict[str, int] = collections.defaultdict(int)
-    for r in executed_results:
+    for r in analyzable_results:
         for comp in r.compare_rows:
             method = comp["method"]
             method_counts[method] += 1
@@ -587,7 +657,7 @@ def main(argv: list[str] | None = None) -> int:
     exc_category_counter: dict[str, int] = collections.Counter()
     exc_methods: dict[str, set[str]] = collections.defaultdict(set)
     precondition_exceptions: dict[str, int] = collections.Counter()
-    for r in executed_results:
+    for r in analyzable_results:
         if r.runtime_exc_class:
             exc_counter[r.runtime_exc_class] += 1
             category = _classify_exception(r.runtime_exc_class)
@@ -612,6 +682,16 @@ def main(argv: list[str] | None = None) -> int:
     # Crosscheck: exact join by record_id (floor.record_id / overlay.id) is
     # primary; (utterance, first_call_name) content join is a LABELLED
     # fallback for rows with no sidecar-derived record_id (T16d, #4879).
+    # #4939 follow-up (260903): the corpus row's OWN record_id is now a
+    # content digest, decoupled from the sidecar's "cov-.../ovl-..." id
+    # scheme (see record_id_to_sidecar_id above, populated from the SAME
+    # content-digest sidecar join _sidecar_for now uses) -- floor/overlay's
+    # id space is the sidecar's, not the corpus's, so this join goes
+    # through that side table rather than r.record_id directly. Crosscheck
+    # intentionally still iterates the FULL executed_results (including
+    # setup_error rows, not just analyzable_results): ground-truth
+    # pass/fail agreement is meaningful even when static analysis had
+    # nothing to say about a row.
     crosscheck_result = {
         "joined": 0, "agree": 0, "disagree": 0,
         "joined_exact": 0, "joined_content_fallback": 0,
@@ -623,10 +703,9 @@ def main(argv: list[str] | None = None) -> int:
             continue
         cc_row = None
         join_method = None
-        # record_id looks sidecar-derived (not the synthetic "file:line" form)
-        # when it doesn't contain the corpus stem verbatim with a colon.
-        if r.record_id and ":" not in r.record_id:
-            cc_row = floor_by_record_id.get(r.record_id) or overlay_by_id.get(r.record_id)
+        sidecar_id = record_id_to_sidecar_id.get(r.record_id)
+        if sidecar_id:
+            cc_row = floor_by_record_id.get(sidecar_id) or overlay_by_id.get(sidecar_id)
             if cc_row is not None:
                 join_method = "exact"
         if cc_row is None:
@@ -661,7 +740,7 @@ def main(argv: list[str] | None = None) -> int:
     # Compute global unknown_rate
     total_unknown_ops = sum(
         sum(1 for comp in r.compare_rows if comp["static"] == "unknown")
-        for r in executed_results
+        for r in analyzable_results
     )
     global_unknown_rate = total_unknown_ops / n_operations_executed if n_operations_executed > 0 else 0.0
 
@@ -681,6 +760,7 @@ def main(argv: list[str] | None = None) -> int:
         "rows_parse_error": n_rows_parse_error,
         "rows_normalised": n_rows_normalised,
         "rows_skipped": n_rows_skipped,
+        "rows_setup_error": n_rows_setup_error,
         "rows_executed": n_rows_executed,
         "operations_executed": n_operations_executed,
         "unsound": n_unsound,
@@ -702,6 +782,7 @@ def main(argv: list[str] | None = None) -> int:
             "rows_parse_error": n_rows_parse_error,
             "rows_normalised": n_rows_normalised,
             "rows_skipped": n_rows_skipped,
+            "rows_setup_error": n_rows_setup_error,
             "rows_executed": n_rows_executed,
             "operations_executed": n_operations_executed,
         },
@@ -710,6 +791,7 @@ def main(argv: list[str] | None = None) -> int:
             "rows_no_call": n_rows_no_call,
             "rows_parse_error": n_rows_parse_error,
             "rows_skipped": n_rows_skipped,
+            "rows_setup_error": n_rows_setup_error,
             "rows_executed": n_rows_executed,
             "total_operations_executed": n_operations_executed,
             "unsound_count": n_unsound,
@@ -717,6 +799,7 @@ def main(argv: list[str] | None = None) -> int:
             "check_graph_exceptions": n_check_graph_exceptions,
         },
         "sidecar_join_counts": {k: dict(v) for k, v in sidecar_join_counts.items()},
+        "setup_error_top": setup_error_top,
         "parse_error_rows": parse_error_rows,
         "agreement_matrix": {
             outcome: dict(verdicts)
@@ -770,12 +853,13 @@ def main(argv: list[str] | None = None) -> int:
 
     # Log summary
     log.info(
-        "summary: rows_total=%d no_call=%d parse_error=%d normalised=%d skipped=%d executed=%d ops=%d unsound=%d check_graph_exc=%d totality_vio=%d unknown_rate=%.3f crosscheck_joined=%d (exact=%d fallback=%d) agree=%.3f",
+        "summary: rows_total=%d no_call=%d parse_error=%d normalised=%d skipped=%d setup_error=%d executed=%d ops=%d unsound=%d check_graph_exc=%d totality_vio=%d unknown_rate=%.3f crosscheck_joined=%d (exact=%d fallback=%d) agree=%.3f",
         n_rows_total,
         n_rows_no_call,
         n_rows_parse_error,
         n_rows_normalised,
         n_rows_skipped,
+        n_rows_setup_error,
         n_rows_executed,
         n_operations_executed,
         n_unsound,
