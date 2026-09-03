@@ -135,6 +135,7 @@ from typing import Any
 
 from plr_sema._provenance import SurveyStamp
 from plr_sema._provenance.git_state import GitState
+from plr_sema.check import cache as cache_mod
 from plr_sema.check import ir, tipstate
 from plr_sema.check._supported_tools import SUPPORTED_TOOLS
 from plr_sema.telemetry import emit_finding
@@ -710,24 +711,76 @@ def _check(bytecode: ir.Bytecode, protocol_fqn: str, contracts_payload: dict[str
     return report
 
 
-def check_graph(graph_json: str, contracts_json: str) -> AnalysisReport:
-    """Round-1 entry point (spec §6.2), unchanged signature (§11.4.1).
+def check_graph(
+    graph_json: str,
+    contracts_json: str,
+    *,
+    cache: cache_mod.CacheStore | None = None,
+) -> AnalysisReport:
+    """Round-1 entry point (spec §6.2), signature additive since #4922
+    (§13.3.3, ``cache=`` keyword-only, defaulting to ``None``).
     ``graph_json``/``contracts_json`` are JSON strings, not pre-parsed
     objects -- both are ``json.loads``'d here and nowhere else. Never
     imports ``libcst``/``pylabrobot``/``pydantic``; never shells out.
     Emits every finding via ``plr_sema.telemetry`` (M2, round-4
-    remediation) -- a no-op unless a sink is attached (§4.1).
+    remediation) -- a no-op unless a sink is attached (§4.1), on BOTH the
+    hit and the miss path (§13.3.2: a cache hit that skipped the emit would
+    make the cache observable and falsify the purity premise the cache
+    rests on).
 
-    260902 (spec §11, SEMA-IR): the body is now lower-then-check --
+    260902 (spec §11, SEMA-IR): the body is lower-then-check --
     ``json.loads`` both inputs, build ``param_names`` from the contract
     table's additive ``params`` key, :func:`plr_sema.check.ir.lower_graph`,
     :func:`check_ir`, relabel through the origin map, ``join``,
     ``AnalysisReport``. AC-11.6 pins that the shipped fixture's report does
     not move; AC-6.1 through AC-6.7 are untouched.
+
+    #4922 (spec §13.3): with ``cache=None`` (the default), this is exactly
+    the pre-#4922 body -- delegates to :func:`_check`, which stays pure and
+    unchanged, and touches no file anywhere (AC-13.5). With a
+    :class:`plr_sema.check.cache.CacheStore`, the read-through hook lives
+    HERE, not in ``_check`` -- this function is the only one holding the
+    raw ``contracts_json`` string :func:`plr_sema.check.ir.cache_key`
+    hashes; ``_check`` receives only the already-parsed
+    ``contracts_payload`` dict. On a hit, the cached PRE-relabel findings
+    (§13.3.2's non-obvious half -- ``sideband``/``origin`` is excluded from
+    ``bytecode_hash``, so two graphs differing only in operation ids share
+    a key and a post-relabel entry would silently return the first graph's
+    ids for the second) are relabelled through THIS graph's own
+    ``sideband["origin"]``, exactly as a miss would be. On a miss, the
+    normal pure computation runs once and its pre-relabel findings are
+    stored under the key before relabelling.
     """
     payload = json.loads(graph_json)
     contracts_payload = json.loads(contracts_json)
     contracts = contracts_payload.get("contracts", {})
     param_names = _build_param_names(contracts)
     bytecode = ir.lower_graph(payload, param_names=param_names)
-    return _check(bytecode, payload["protocol_fqn"], contracts_payload)
+
+    if cache is None:
+        return _check(bytecode, payload["protocol_fqn"], contracts_payload)
+
+    receiver_states = contracts_payload.get("receiver_state", {})
+    stamp = _stamp_from_dict(contracts_payload["stamp"])
+    bc_hash = ir.bytecode_hash(bytecode)
+    key = ir.cache_key(bc_hash, contracts_json, stamp)
+
+    raw_findings = cache.get(key)
+    if raw_findings is None:
+        raw_findings = check_ir(bytecode, contracts, receiver_states)
+        methods = frozenset(
+            instr.method for instr in bytecode.instructions if isinstance(instr, ir.Call)
+        )
+        cache.put(key, raw_findings, methods=methods)
+
+    origin = bytecode.sideband.get("origin", {})
+    findings = ir.relabel_findings(raw_findings, origin)
+    report = AnalysisReport(
+        protocol_fqn=payload["protocol_fqn"],
+        verdict=join(findings),
+        findings=findings,
+        stamp=stamp,
+    )
+    for finding in report.findings:
+        emit_finding(finding, protocol_fqn=report.protocol_fqn, stamp=report.stamp)
+    return report

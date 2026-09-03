@@ -187,3 +187,11 @@ training/out/checkpoints/
 /outputs/
 # (root-anchored: training/eval/outputs/ holds the committed generation dumps)
 scripts/scratch/
+
+# plr-sema: content-addressed report cache (#4922, spec 260903 §13.3.3).
+# Already covered by the bare `.cache` pattern above, but pinned explicitly
+# here too since the spec is normative that this directory is never
+# $TMPDIR/a system temp dir and must not be silently emptied between runs --
+# an explicit entry documents that this is a deliberate, permanent local
+# store, not an accident the bare pattern happens to catch.
+plr-sema/.cache/

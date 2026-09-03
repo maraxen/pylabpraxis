@@ -921,13 +921,27 @@ def cache_key(
     stamp: Any,
     *,
     ir_version: int = IR_VERSION,
-) -> tuple[str, str, tuple[Any, Any, Any], int]:
-    """§11.3.3: ``(bytecode_hash, contracts_sha, surface_identity,
-    ir_version)``. Defines the key; stores nothing (#4922).
+    env: frozenset[str] = frozenset(),
+) -> tuple[str, str, tuple[Any, Any, Any], int, tuple[str, ...]]:
+    """§11.3.3/§13.3.2: ``(bytecode_hash, contracts_sha, surface_identity,
+    ir_version, env)``. Defines the key; stores nothing (#4922 -- the store
+    is :class:`plr_sema.check.cache.CacheStore`).
 
     ``stamp`` is a ``plr_sema._provenance.SurveyStamp`` (duck-typed via
     ``getattr`` here rather than imported, to keep this module's own import
     list minimal and independent of that module's own import graph).
+
+    ``env`` (spec 260903 §13.3.2/§13.2.6) is the fifth key component --
+    added because the volume family's ``does_volume_tracking()`` hypothesis
+    makes ``check_ir`` a function of a runtime-observed environment set, not
+    just of ``bytecode``/``contracts``/``receiver_states``. It defaults to
+    the empty ``frozenset`` because the volume family (its only producer)
+    is deferred out of this increment (#4922) -- every caller today gets
+    the same fifth component, ``()``, until a later increment threads a
+    real ``env`` through ``check_ir``/``check_graph``. Encoded as
+    ``tuple(sorted(env))`` so the key stays JSON-round-trippable and
+    order-independent (two callers passing the same set in different
+    iteration order must produce the same key).
     """
     contracts_sha = hashlib.sha256(contracts_json.encode("utf-8")).hexdigest()
     plr = getattr(stamp, "plr", None)
@@ -936,7 +950,7 @@ def cache_key(
         getattr(stamp, "surface_pin", None) or getattr(plr, "hash", None),
         getattr(plr, "dirty_content_id", None),
     )
-    return (bc_hash, contracts_sha, surface_identity, ir_version)
+    return (bc_hash, contracts_sha, surface_identity, ir_version, tuple(sorted(env)))
 
 
 def obliged_operation_ids(payload: Mapping[str, Any]) -> frozenset[str]:
