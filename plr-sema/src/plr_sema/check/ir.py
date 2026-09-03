@@ -77,6 +77,7 @@ __all__ = [
     "bytecode_hash",
     "cache_key",
     "relabel_findings",
+    "obliged_operation_ids",
 ]
 
 #: Normative bump rule (§11.1.1): any change to the opcode set, the value
@@ -936,6 +937,62 @@ def cache_key(
         getattr(plr, "dirty_content_id", None),
     )
     return (bc_hash, contracts_sha, surface_identity, ir_version)
+
+
+def obliged_operation_ids(payload: Mapping[str, Any]) -> frozenset[str]:
+    """Spec 260903 §12.3.4: `OBLIGED(graph)` -- call-bearing operations
+    (§12.2.2's `node_type is not REGION` exclusion) minus every operation
+    that lies, at any nesting depth, within the `foreach_body`/
+    `true_branch`/`false_branch` of a `REGION` header whose own `trip` is
+    the PROVED integer `0` (§12.2.3). Only a `LOOP`-shaped header (one with
+    a `trip` field at all) can be "dead" this way -- a `BRANCH` never
+    excuses its arms, since either arm may run depending on a predicate
+    this analyzer does not evaluate (§12.3.6 B2).
+
+    This is main spec AC-6.4 (amended) and AC-7.2 (amended)'s right-hand
+    side, and AC-11.7 (amended)'s target set for `sideband.origin` restricted
+    to visited `CALL` pcs -- implemented once here so all three (and the
+    tests that pin them) read the same definition rather than three
+    independently hand-rolled set comprehensions. Operates on the RAW wire
+    payload (`lower_graph`'s own input shape), not on `Bytecode`, because
+    `OBLIGED` is a property of the GRAPH, not of how many times `check_ir`
+    chooses to walk a region (§12.3.4 point 1: unrolling is a property of
+    the walk, not the stream).
+    """
+    operations = list(payload.get("operations") or ())
+    by_id: dict[str, Mapping[str, Any]] = {}
+    for op in operations:
+        by_id.setdefault(op["id"], op)
+
+    def region_children(op: Mapping[str, Any]) -> tuple[str, ...]:
+        return (
+            *(op.get("foreach_body") or ()),
+            *(op.get("true_branch") or ()),
+            *(op.get("false_branch") or ()),
+        )
+
+    dead: set[str] = set()
+
+    def mark_dead(ids: Sequence[str]) -> None:
+        stack = list(ids)
+        while stack:
+            oid = stack.pop()
+            if oid in dead:
+                continue
+            dead.add(oid)
+            op = by_id.get(oid)
+            if op is not None:
+                stack.extend(region_children(op))
+
+    for op in operations:
+        if op.get("node_type") == "region" and op.get("trip") == 0:
+            mark_dead(region_children(op))
+
+    return frozenset(
+        op["id"]
+        for op in operations
+        if op.get("node_type") != "region" and op["id"] not in dead
+    )
 
 
 def relabel_findings(findings: Sequence[Any], origin: Mapping[int, str]) -> tuple[Any, ...]:

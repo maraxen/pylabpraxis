@@ -27,7 +27,7 @@ from pathlib import Path
 
 import pytest
 
-from plr_sema.check import SUPPORTED_TOOLS, check_graph
+from plr_sema.check import SUPPORTED_TOOLS, check_graph, ir
 from plr_sema.verdict import AnalysisReport, Finding, PlrSite, Verdict
 
 PLR_SEMA_ROOT = Path(__file__).resolve().parents[1]
@@ -102,23 +102,29 @@ def test_fixture_graph_yields_unknown_report_with_findings(report: AnalysisRepor
 
 def test_operation_ids_are_a_subset_of_real_graph_ids(report: AnalysisReport) -> None:
     """AC-6.4 (round-4 remediation, B2/fix 6: strengthened from subset to
-    surjectivity). `{f.operation_id for f in report.findings}` must equal
-    -- not just be a subset of -- the fixture graph's REAL `OperationNode.id`
-    values. The subset-only form was the anti-fabrication anchor but said
-    nothing about COVERAGE: `len(findings) >= len(operations)` (AC-6.3)
-    does not imply every operation actually received >=1 finding, and
-    nothing in the pre-round-4 suite asserted the surjective direction.
+    surjectivity; spec 260903 §12.3.4/§12.9's main-spec amendment: now
+    re-read over `OBLIGED(graph)`, not the raw operation-id set).
+    `{f.operation_id for f in report.findings}` must equal --  not just be
+    a subset of -- `ir.obliged_operation_ids(graph_payload)`. The shipped
+    `simple_transfer_graph.json` fixture carries no `REGION` at all
+    (AC-12.9), so `OBLIGED(graph) == {op.id for op in graph.operations}`
+    here and this test's own behaviour is UNCHANGED from pre-260903 -- see
+    `test_dead_loop_body_...` below for the fixture where the two sets
+    actually differ. The subset-only form was the anti-fabrication anchor
+    but said nothing about COVERAGE: `len(findings) >= len(operations)`
+    (AC-6.3) does not imply every operation actually received >=1 finding,
+    and nothing in the pre-round-4 suite asserted the surjective direction.
     `research_a_d.md:339-345`'s finding, independently confirmed: a
     `check_graph` that only ever emits findings for op_1 would still pass a
     subset-only check and a count-only check simultaneously, while silently
     never reporting anything about op_2/op_3/op_4."""
     graph_payload = json.loads(FIXTURE_GRAPH_JSON.read_text(encoding="utf-8"))
-    real_ids = {op["id"] for op in graph_payload["operations"]}
+    real_ids = ir.obliged_operation_ids(graph_payload)
 
     finding_ids = {f.operation_id for f in report.findings}
     assert finding_ids == real_ids, (
         f"report.findings' operation_id set {sorted(finding_ids)} != the "
-        f"fixture graph's real operation id set {sorted(real_ids)} -- either "
+        f"fixture graph's OBLIGED(graph) set {sorted(real_ids)} -- either "
         f"a fabricated id ({finding_ids - real_ids}) or an uncovered "
         f"operation ({real_ids - finding_ids})"
     )
@@ -360,3 +366,27 @@ def test_full_pipeline_emits_stamped_jsonl(
     # The pin is still confirmed live for THIS checkout, as a secondary,
     # self-scoping sanity check (not the primary assertion above).
     assert expected_hash == _PLR_PIN_SHA
+
+
+# ---------------------------------------------------------------------------
+# Spec 260903 §12.3.4 -- OBLIGED(graph) at check_graph level: a proved-
+# trip-0 region's body must never receive a Finding, and AC-6.4/AC-7.2
+# amended must both hold over that exclusion.
+# ---------------------------------------------------------------------------
+
+DEAD_LOOP_BODY_FIXTURE = PLR_SEMA_ROOT / "tests" / "fixtures" / "dead_loop_body_graph.json"
+
+
+def test_dead_loop_body_excluded_from_findings_and_obliged(contracts_json: str) -> None:
+    graph_json = DEAD_LOOP_BODY_FIXTURE.read_text(encoding="utf-8")
+    graph_payload = json.loads(graph_json)
+    report = check_graph(graph_json, contracts_json)
+
+    obliged = ir.obliged_operation_ids(graph_payload)
+    finding_ids = {f.operation_id for f in report.findings}
+
+    assert "op_3" not in finding_ids, "op_3 is the trip==0 loop's body -- never visited, never a Finding"
+    assert "op_3" not in obliged, "OBLIGED(graph) must exclude the dead loop body"
+    assert finding_ids == obliged, "AC-6.4 amended: {f.operation_id} == OBLIGED(graph)"
+    assert len(report.findings) >= len(obliged), "AC-7.2 amended: len(findings) >= len(OBLIGED(graph))"
+    assert finding_ids == {"op_1", "op_4"}

@@ -129,6 +129,7 @@ this fallback is defense in depth, not the sole fix -- see
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from typing import Any
 
@@ -338,7 +339,10 @@ def _findings_for_call(
     ``call.receiver_type``/``call.method``; the loop test
     ``op.foreach_source is not None or op.foreach_body`` becomes "this pc is
     inside an open LOOP region" (``inside_loop``, computed by ``check_ir``'s
-    region-stack walk). T11: step 2 is a single contract-table lookup, not a
+    recursive region walk, spec 260903 §12.3 -- true for a CALL nested
+    under ANY ancestor LOOP, real or synthetic, regardless of intervening
+    BRANCHes; unaffected by §12.3's L1/L2/L3 change to what else happens on
+    a LOOP/BRANCH). T11: step 2 is a single contract-table lookup, not a
     ``SUPPORTED_TOOLS`` membership test followed by a second lookup -- see
     the module docstring's "``unsupported_tool``, redefined" section.
 
@@ -388,106 +392,279 @@ def _findings_for_call(
     return findings
 
 
+#: Spec 260903 §12.3.5: L1's bounded-unroll cap and L2's fixpoint hard-pass
+#: cap share one constant. Explicitly NOT a hand-maintained surface under
+#: §0.1's classification (zero registry rows in `_hand_maintained.py`) --
+#: it is a tuning parameter of THIS analyzer's own walk, every value of
+#: which is sound (§12.3.5's own argument), not a fact about PLR that could
+#: go stale.
+_K = 8
+
+
+def _is_synthetic_loop(instructions: tuple[ir.Instruction, ...], pc: int) -> bool:
+    """Spec 260903 §12.3.3 (L3): a `LOOP` open is the whole-stream synthetic
+    wrap iff `ir.lower_graph` emitted `WIDEN(reason="has_loops")`
+    immediately before it -- the two are always adjacent by construction
+    (`lower_graph`'s own prepend order, §11.4.1/§12.2.6), and no REAL region
+    header ever carries that reason (`has_loops`/`has_conditionals` are
+    GRAPH-level widen reasons, never a per-operation one, §11.1.4/§11.1.5).
+    """
+    return (
+        pc > 0
+        and isinstance(instructions[pc - 1], ir.Widen)
+        and instructions[pc - 1].reason == "has_loops"
+    )
+
+
+def _is_synthetic_branch(instructions: tuple[ir.Instruction, ...], pc: int) -> bool:
+    """Spec 260903 §12.3.6 (B3): the `BRANCH` analogue of
+    :func:`_is_synthetic_loop` -- adjacency to `WIDEN(reason="has_conditionals")`.
+    """
+    return (
+        pc > 0
+        and isinstance(instructions[pc - 1], ir.Widen)
+        and instructions[pc - 1].reason == "has_conditionals"
+    )
+
+
+def _with_iteration(finding: Finding, iteration: int) -> Finding:
+    """Spec 260903 §12.3.4 point 2: L1's unroll iteration index goes into
+    `Finding.detail`, prefixed to whatever detail the finding already
+    carried (a guard condition, a gap name, or "") -- no new field, no wire
+    change. `operation_id` is untouched (stays `str(pc)`, shared by every
+    iteration's findings at that pc, §12.3.4 point 2's "conjoin, not
+    merge" reading of `join`'s obligation order).
+    """
+    prefix = f"iteration {iteration}"
+    detail = f"{prefix}: {finding.detail}" if finding.detail else prefix
+    return dataclasses.replace(finding, detail=detail)
+
+
 def check_ir(
     bytecode: ir.Bytecode, contracts: dict[str, Any], receiver_states: dict[str, Any] | None = None
 ) -> tuple[Finding, ...]:
-    """Spec §11.4.1: the new analysis core -- a single left-to-right pass
-    over ``bytecode.instructions`` with a program counter. Every ``CALL``
-    pc receives >=1 ``Finding`` (§11.4.4's totality, restated over
-    instructions); ``RESOURCE``/``LOOP``/``BRANCH``/``ELSE``/``END``/
-    ``WIDEN`` receive none -- they are context, not obligations.
+    """Spec §11.4.1 (260902) / §12.3 (260903, "region semantics for a
+    region with a proved trip"): the analysis core. A structured,
+    RECURSIVE walk over ``bytecode.instructions`` -- straight-line runs are
+    still visited left to right with a program counter, but a ``LOOP``/
+    ``BRANCH`` open is now handled by parsing the region's own boundaries
+    (:func:`tipstate.region_bounds`) and recursing, rather than by a flat
+    region-stack pass. Every ``CALL`` pc **visited** by the walk receives
+    ``>=1`` ``Finding``; ``RESOURCE``/``LOOP``/``BRANCH``/``ELSE``/``END``/
+    ``WIDEN`` receive none -- they are context, not obligations. A ``CALL``
+    inside the body of a proved-``trip == 0`` ``LOOP`` is never visited at
+    all (§12.3.4's ``OBLIGED(graph)`` exclusion (2) -- L1 unrolls
+    ``min(0, K) = 0`` times) and therefore never receives a ``Finding``,
+    which is what makes ``OBLIGED(graph)``, not ``{op.id for op in
+    graph.operations if op.node_type is not REGION}``, the right-hand side
+    of AC-6.4/AC-7.2/AC-11.7 (all three amended, §12.3.4).
 
-    ``operation_id`` on every emitted ``Finding`` is ``str(pc)`` -- the only
-    identity the IR has (§11.4.3); ``check_graph`` relabels through
-    ``bytecode.sideband["origin"]`` before constructing an ``AnalysisReport``
-    so ``AC-6.4``'s graph-id equality still holds. A region stack (not a
-    bare counter) tracks LOOP/BRANCH/END nesting so an ``END`` closes
-    whichever region is innermost, and ``ELSE`` never itself pops (it
-    separates the two arms of the SAME open ``BRANCH``, §11.1.3).
+    ``operation_id`` on every emitted ``Finding`` is still ``str(pc)`` --
+    unrolling means one ``CALL`` pc can now be visited more than once, so
+    one ``operation_id`` can carry more than one guard's worth of findings
+    PER ITERATION; the iteration index is threaded into ``Finding.detail``
+    (:func:`_with_iteration`), never into ``operation_id`` itself (§12.3.4
+    point 2/3). ``check_graph`` relabels through
+    ``bytecode.sideband["origin"]`` before constructing an ``AnalysisReport``.
 
     260902 (spec §10.5/§11.1.3, tip typestate increment): ``receiver_states``
     (the additive ``receiver_state`` top-level block, §10.2) threads a
-    :class:`plr_sema.check.tipstate.TipWalk` through this same pass.
+    :class:`plr_sema.check.tipstate.TipWalk` through this same walk.
     ``None``/``{}`` (a pre-increment contract table, or a caller that never
     passes it -- AC-10.7/AC-11.12's fail-closed degrade) disables tip-state
     entirely: every receiver type is then simply absent from the mapping,
     so :func:`tipstate.evaluate_call` returns ``E5``'s empty result for
-    every call, unchanged from pre-increment behavior. On ``LOOP``/
-    ``BRANCH`` open, every receiver slot mentioned anywhere in the region is
-    widened BEFORE the region's first ``CALL`` (§11.1.3's region-entry
-    rule, generalised from increment 1's own §10.5 rule 2); a ``BRANCH``
-    ADDITIONALLY widens the same set again at region exit (§11.1.3).
+    every call, unchanged from pre-increment behavior.
+
+    260903 (spec §12.3, region semantics): a REAL ``LOOP`` with a proved
+    integer ``trip`` is visited ``min(trip, K)`` times, threading state from
+    one iteration into the next (L1); if ``trip > K`` every receiver
+    mentioned anywhere in the region is widened after the ``K``-th
+    iteration (the tail widen). A REAL ``LOOP`` with ``trip is None``
+    (an unprovable ``while``, or ``for`` over an un-proved extent) iterates
+    to a fixpoint over the per-receiver, per-channel join, emitting
+    findings from the FINAL (stabilizing) pass only, with a ``K``-pass hard
+    cap that widens on overrun (L2). A REAL ``BRANCH`` walks both arms from
+    the SAME entry state and joins the two post-states at the merge (B1);
+    ``pred`` is never evaluated (B2). The blanket region-entry-and-exit
+    widen of pre-260903 behaviour survives ONLY for a SYNTHETIC region --
+    the whole-stream ``WIDEN(has_loops)``/``WIDEN(has_conditionals)`` wrap
+    ``ir.lower_graph`` falls back to when the extractor emitted no real
+    region (L3/B3). L3 additionally RETIRES the stale increment-2
+    compensation that used to widen a ``CALL``'s own receiver merely for
+    sitting immediately before a ``LOOP``/``BRANCH`` open -- once region
+    headers are real (§12.2.2) that adjacency no longer identifies a region
+    OWNER, so the rule fired on an unrelated preceding call and silently
+    destroyed a real verdict with no diagnostic (round-1 O3; see
+    ``tests/test_tip_typestate.py``'s ``test_ac_10_5a``/``test_ac_10_6_condition_expr_widens``,
+    now updated to assert the retirement, and the dedicated
+    ``call_before_unowned_region_graph.json`` fixture, AC-12.14(iv)).
     """
     receiver_states = receiver_states or {}
     walk = tipstate.TipWalk()
     poisoned_slots = tipstate.disabled_receivers(bytecode.instructions, receiver_states)
     findings: list[Finding] = []
-    region_stack: list[tuple[str, frozenset[int]]] = []
-    n_instr = len(bytecode.instructions)
-    for pc, instr in enumerate(bytecode.instructions):
-        if isinstance(instr, ir.Widen) and instr.reason == "depends_on_params":
-            # Increment 1 §10.5 rule 3 ("dynamic arguments widen"): a
-            # `WIDEN(reason="depends_on_params")` instruction always
-            # precedes the `CALL` it was computed for, possibly with OTHER
-            # `WIDEN`s interleaved between them (`ir.lower_graph`'s
-            # `lower_one_call` can emit up to four, in a fixed order:
-            # receiver_type, depends_on_params, arguments, node_type, THEN
-            # the `Call`) -- scan forward past any further `Widen`s to find
-            # it, rather than assuming `pc + 1` is the `Call` directly.
-            # Widen that CALL's receiver BEFORE its own guards are
-            # evaluated, "same permanence" as every other E4 trigger.
-            lookahead = pc + 1
-            while lookahead < n_instr and isinstance(bytecode.instructions[lookahead], ir.Widen):
-                lookahead += 1
-            if lookahead < n_instr and isinstance(bytecode.instructions[lookahead], ir.Call):
-                walk.widen(bytecode.instructions[lookahead].receiver)
-        if isinstance(instr, ir.Loop):
-            receivers, _end_pc = tipstate.region_receivers(bytecode.instructions, pc)
-            for slot in receivers:
-                walk.widen(slot)
-            region_stack.append((ir.Loop.op, receivers))
-        elif isinstance(instr, ir.Branch):
-            receivers, _end_pc = tipstate.region_receivers(bytecode.instructions, pc)
-            for slot in receivers:
-                walk.widen(slot)
-            region_stack.append((ir.Branch.op, receivers))
-        elif isinstance(instr, ir.End):
-            if region_stack:
-                kind, receivers = region_stack.pop()
-                if kind == ir.Branch.op:
-                    # §11.1.3: BRANCH widens AGAIN at region exit (LOOP only
-                    # widens at entry, per increment 1's own §10.5 rule 2).
-                    for slot in receivers:
-                        walk.widen(slot)
-        elif isinstance(instr, ir.Call):
-            inside_loop = any(kind == ir.Loop.op for kind, _receivers in region_stack)
-            # A CALL immediately followed by a LOOP/BRANCH open is (by
-            # `ir.lower_graph`'s own `lower_one_call`-then-region-open
-            # construction, its docstring's fixture/fuzz-only note) always
-            # the operation that CARRIES the `foreach_source`/`foreach_body`
-            # or `condition_expr` that opened it -- pre-IR increment 1 §10.5
-            # rule 2 widens THIS SAME operation's own receiver "before its
-            # own guards are evaluated", not only its region's children
-            # (region-entry widening above covers a LATER sibling reading a
-            # region opened by an EARLIER operation; this covers an
-            # operation widening on its OWN foreach/condition fields, which
-            # `lower_graph` always emits as a CALL immediately followed by
-            # the region it opens, wrapping zero or more subsequent
-            # children -- AC-10.5(a)/AC-10.6).
-            if pc + 1 < n_instr and isinstance(bytecode.instructions[pc + 1], (ir.Loop, ir.Branch)):
-                walk.widen(instr.receiver)
-            findings.extend(
-                _findings_for_call(
-                    str(pc),
-                    instr,
-                    contracts,
-                    inside_loop=inside_loop,
-                    receiver_states=receiver_states,
-                    walk=walk,
-                    poisoned=instr.receiver in poisoned_slots,
-                )
+    instructions = bytecode.instructions
+    n_instr = len(instructions)
+
+    def process_call(pc: int, instr: ir.Call, *, inside_loop: bool) -> list[Finding]:
+        return list(
+            _findings_for_call(
+                str(pc),
+                instr,
+                contracts,
+                inside_loop=inside_loop,
+                receiver_states=receiver_states,
+                walk=walk,
+                poisoned=instr.receiver in poisoned_slots,
             )
-        # ir.Resource, ir.Else, ir.Widen: never a Finding source.
+        )
+
+    def widen_region(open_pc: int) -> None:
+        receivers, _end_pc = tipstate.region_receivers(instructions, open_pc)
+        for slot in receivers:
+            walk.widen(slot)
+
+    def walk_block(
+        pc: int, stop_pc: int, *, inside_loop: bool, record: bool, iteration: int | None = None
+    ) -> None:
+        """Walk a straight-line run of instructions from ``pc`` to
+        ``stop_pc`` (exclusive), recursing into any nested ``LOOP``/
+        ``BRANCH`` region encountered. ``record`` gates whether a visited
+        ``CALL``'s findings are kept (``False`` during an L2 fixpoint's
+        exploratory, non-final passes -- the call is still evaluated for
+        its STATE effect on ``walk``, only its findings are discarded).
+        """
+        while pc < stop_pc:
+            instr = instructions[pc]
+            if isinstance(instr, ir.Widen) and instr.reason == "depends_on_params":
+                # Increment 1 §10.5 rule 3 ("dynamic arguments widen"),
+                # unchanged by §12.3: scan forward past any further
+                # `Widen`s to find the `Call` this one was computed for,
+                # and widen that call's receiver BEFORE its own guards are
+                # evaluated -- re-fires independently on every visit of
+                # this pc (once per unrolled iteration / fixpoint pass),
+                # which is correct: each visit is an independent
+                # evaluation of a dynamically-argued call.
+                lookahead = pc + 1
+                while lookahead < n_instr and isinstance(instructions[lookahead], ir.Widen):
+                    lookahead += 1
+                if lookahead < n_instr and isinstance(instructions[lookahead], ir.Call):
+                    walk.widen(instructions[lookahead].receiver)
+                pc += 1
+                continue
+            if isinstance(instr, ir.Call):
+                call_findings = process_call(pc, instr, inside_loop=inside_loop)
+                if record:
+                    if iteration is not None:
+                        call_findings = [_with_iteration(f, iteration) for f in call_findings]
+                    findings.extend(call_findings)
+                pc += 1
+                continue
+            if isinstance(instr, ir.Loop):
+                end_pc, _else_pc = tipstate.region_bounds(instructions, pc)
+                walk_loop(pc, end_pc, record=record)
+                pc = end_pc + 1
+                continue
+            if isinstance(instr, ir.Branch):
+                end_pc, else_pc = tipstate.region_bounds(instructions, pc)
+                walk_branch(
+                    pc, else_pc, end_pc, inside_loop=inside_loop, record=record, iteration=iteration
+                )
+                pc = end_pc + 1
+                continue
+            # ir.Resource, ir.Else, any other ir.Widen: never a Finding
+            # source and never a state-affecting instruction on their own.
+            pc += 1
+
+    def walk_loop(open_pc: int, end_pc: int, *, record: bool) -> None:
+        loop = instructions[open_pc]
+        assert isinstance(loop, ir.Loop)
+        body_start = open_pc + 1
+        if _is_synthetic_loop(instructions, open_pc):
+            # L3 (§12.3.3): the blanket entry widen survives ONLY here.
+            widen_region(open_pc)
+            walk_block(body_start, end_pc, inside_loop=True, record=record)
+            return
+        if loop.trip is None:
+            walk_loop_fixpoint(open_pc, body_start, end_pc, record=record)
+            return
+        # L1 (§12.3.3): bounded unroll, min(trip, K) real iterations,
+        # threading state from one into the next; findings on every one.
+        n = min(loop.trip, _K)
+        for i in range(n):
+            walk_block(body_start, end_pc, inside_loop=True, record=record, iteration=i + 1)
+        if loop.trip > _K:
+            # The tail widen (§12.3.5): whatever K is, the remainder is
+            # answered by a widen, which asserts nothing -- K can only move
+            # findings between definite and UNKNOWN, never make one wrong.
+            widen_region(open_pc)
+
+    def walk_loop_fixpoint(open_pc: int, body_start: int, end_pc: int, *, record: bool) -> None:
+        # L2 (§12.3.3): iterate sigma_{i+1} = sigma_i JOIN post(body, sigma_i)
+        # to a stable loop-head state; findings are kept from the FINAL
+        # (stabilizing) pass only -- every earlier pass is evaluated
+        # against a state that is not yet a valid over-approximation of the
+        # loop head, so a finding from it could assert a definite-failure
+        # claim about a program that may take a different path on a later
+        # real iteration (§12.3.3's own "not an optimisation" note). A
+        # K-pass hard cap widens on overrun rather than looping forever.
+        head = walk.snapshot()
+        for _pass_index in range(_K):
+            walk.restore(head)
+            start_len = len(findings)
+            walk_block(body_start, end_pc, inside_loop=True, record=record)
+            pass_findings = findings[start_len:]
+            del findings[start_len:]
+            post = walk.snapshot()
+            new_head = tipstate.join_walk_states(head, post)
+            if new_head == head:
+                findings.extend(pass_findings)
+                walk.restore(new_head)
+                return
+            head = new_head
+        # Cap reached without stabilizing: no pass is "the final pass" of a
+        # converged walk, so none of their findings are trustworthy --
+        # fail-closed, same discipline as everywhere else in this module.
+        widen_region(open_pc)
+
+    def walk_branch(
+        open_pc: int,
+        else_pc: int | None,
+        end_pc: int,
+        *,
+        inside_loop: bool,
+        record: bool,
+        iteration: int | None,
+    ) -> None:
+        if _is_synthetic_branch(instructions, open_pc) or else_pc is None:
+            # B3 (§12.3.6): no arm structure to walk -- widen at entry AND
+            # exit, exactly pre-260903 behaviour. `else_pc is None` for a
+            # non-synthetic BRANCH should not arise from any well-formed
+            # `lower_graph` output (a real region always emits its own
+            # ELSE, §12.2.2) -- this fallback keeps the walk total on a
+            # malformed/fuzzed stream rather than raising.
+            widen_region(open_pc)
+            walk_block(
+                open_pc + 1, end_pc, inside_loop=inside_loop, record=record, iteration=iteration
+            )
+            widen_region(open_pc)
+            return
+        # B1 (§12.3.6): arm-wise walk from the SAME entry state, joined at
+        # the merge. A missing arm (empty true_branch/false_branch) simply
+        # walks zero instructions, which leaves that arm's state identical
+        # to the entry snapshot -- "a missing arm contributes sigma
+        # unchanged" falls out of the walk rather than needing a special
+        # case. `pred` (B2) is never read.
+        entry = walk.snapshot()
+        walk_block(open_pc + 1, else_pc, inside_loop=inside_loop, record=record, iteration=iteration)
+        true_states = walk.snapshot()
+        walk.restore(entry)
+        walk_block(else_pc + 1, end_pc, inside_loop=inside_loop, record=record, iteration=iteration)
+        false_states = walk.snapshot()
+        walk.restore(tipstate.join_walk_states(true_states, false_states))
+
+    walk_block(0, n_instr, inside_loop=False, record=True)
     return tuple(findings)
 
 

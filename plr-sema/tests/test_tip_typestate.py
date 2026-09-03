@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -172,12 +173,36 @@ def _assert_widened(report: AnalysisReport) -> None:
     assert report.verdict is Verdict.UNKNOWN
 
 
-def test_ac_10_5a_widening_erases_foreach_source(contracts_json: str) -> None:
+def test_ac_10_5a_own_foreach_field_no_longer_widens_self(contracts_json: str) -> None:
+    """Spec 260903 §12.9 amendment 2 / §12.3.3's L3: increment 2's AC-10.5
+    rule 2 ("an operation carrying its own `foreach_source`/`foreach_body`
+    widens ITS OWN receiver") is SUPERSEDED, not merely refined -- L3
+    retires the stale increment-2 compensation this exact fixture used to
+    exercise (`check/__init__.py:462-478`, pre-260903). Under increment 3,
+    op_2 carries a stray `foreach_source` but is NOT a real `REGION`
+    header (`node_type` is still `"static"`) -- `lower_graph` still emits
+    the pre-#4932 fixture/fuzz-only shape (op_2's own `CALL` immediately
+    followed by an EMPTY `LOOP null ... END`, ir.py's own documented
+    backward-compatible interpretation), and that adjacency no longer
+    identifies a region owner (§12.2.2 retired the shape it used to lean
+    on). op_2 must therefore be evaluated against its REAL pre-call state
+    -- identical to unmodified `double_pickup_graph`'s op_2, i.e.
+    `Verdict.WILL_FAIL` (round-1 O3; see AC-12.14(iv)'s dedicated
+    `call_before_unowned_region_graph.json` fixture for the REAL-region
+    version of this same regression test).
+    """
     graph = _graph("double_pickup_graph")
     graph["operations"][1]["foreach_source"] = "wells"
     graph["has_loops"] = True
     report = check_graph(json.dumps(graph), contracts_json)
-    _assert_widened(report)
+    baseline = check_graph((FIXTURES / "double_pickup_graph.json").read_text(encoding="utf-8"), contracts_json)
+
+    op2 = _findings_for(report, "op_2")
+    baseline_op2 = _findings_for(baseline, "op_2")
+    assert _join(op2) is Verdict.WILL_FAIL
+    assert sorted((f.verdict.value, f.category, f.reason, str(f.plr_site), f.detail) for f in op2) == sorted(
+        (f.verdict.value, f.category, f.reason, str(f.plr_site), f.detail) for f in baseline_op2
+    ), "the stray foreach_source must have ZERO effect on op_2's own evaluation"
 
 
 def test_ac_10_5b_widening_erases_depends_on_params(contracts_json: str) -> None:
@@ -200,12 +225,30 @@ def test_ac_10_5c_widening_erases_bare_name_use_channels(contracts_json: str) ->
 # ---------------------------------------------------------------------------
 
 
-def test_ac_10_6_condition_expr_widens(contracts_json: str) -> None:
+def test_ac_10_6_own_condition_expr_no_longer_widens_self(contracts_json: str) -> None:
+    """Spec 260903 §12.9 amendment 2 / §12.3.3's L3 -- the `BRANCH`
+    analogue of `test_ac_10_5a_own_foreach_field_no_longer_widens_self`
+    above; see that test's docstring for the full argument. op_2 carries a
+    stray `condition_expr` but is not a real `REGION` header, so
+    `lower_graph` emits the pre-#4932 shape (op_2's own `CALL` immediately
+    followed by an empty, real, non-synthetic `BRANCH null ... ELSE ...
+    END`) -- L3's retirement means this no longer widens op_2's own
+    receiver, and B1's arm-wise join over two EMPTY arms is a no-op (each
+    arm's post-state equals the entry state unchanged), so op_2 is
+    evaluated exactly as in unmodified `double_pickup_graph`.
+    """
     graph = _graph("double_pickup_graph")
     graph["operations"][1]["condition_expr"] = "True"
     graph["has_conditionals"] = True
     report = check_graph(json.dumps(graph), contracts_json)
-    _assert_widened(report)
+    baseline = check_graph((FIXTURES / "double_pickup_graph.json").read_text(encoding="utf-8"), contracts_json)
+
+    op2 = _findings_for(report, "op_2")
+    baseline_op2 = _findings_for(baseline, "op_2")
+    assert _join(op2) is Verdict.WILL_FAIL
+    assert sorted((f.verdict.value, f.category, f.reason, str(f.plr_site), f.detail) for f in op2) == sorted(
+        (f.verdict.value, f.category, f.reason, str(f.plr_site), f.detail) for f in baseline_op2
+    ), "the stray condition_expr must have ZERO effect on op_2's own evaluation"
 
 
 def test_ac_10_6_disabler_call_widens(contracts_json: str) -> None:
@@ -495,3 +538,212 @@ def test_ac_12_2_c_stale_contract_table_degrades_without_raising(contracts_json:
         )
 
     assert _aspirate_shape(report_a_stale) == _aspirate_shape(report_b)
+
+
+# ---------------------------------------------------------------------------
+# Spec 260903 §12.3 (region semantics for a region with a proved trip),
+# AC-12.10 through AC-12.14. `CONTRACTS_PAYLOAD` below is the parsed form of
+# `contracts_json`, needed to cross-check a SAFE finding's `detail` against
+# the real, published guard condition (AC-12.14(iii)).
+# ---------------------------------------------------------------------------
+
+_ITERATION_RE = re.compile(r"^iteration (\d+): (.*)$", re.DOTALL)
+
+
+def _iteration_of(detail: str) -> tuple[int | None, str]:
+    """Split `_with_iteration`'s `"iteration N: <original detail>"` prefix
+    back out. Returns `(None, detail)` unchanged for a finding with no
+    iteration label (fixpoint findings, or any finding outside an unrolled
+    loop) -- `check/__init__.py::_with_iteration` is the producer this
+    inverts.
+    """
+    m = _ITERATION_RE.match(detail)
+    if m is None:
+        return None, detail
+    return int(m.group(1)), m.group(2)
+
+
+@pytest.fixture(scope="module")
+def contracts_payload(contracts_json: str) -> dict:
+    return json.loads(contracts_json)
+
+
+def _all_real_guard_conditions(contracts_payload: dict) -> set[str]:
+    """The union of every guard/channel_guard `condition` across the WHOLE
+    contract table -- a SAFE finding's `detail` need not come from the
+    checked operation's OWN contract entry (a bridged `channel_guards`
+    condition is sited in a DIFFERENT class, e.g. `TipTracker`, than the
+    receiver's own `LiquidHandler.<method>` key), so this checks "is a
+    real, non-fabricated condition somewhere in the table", not "is this
+    exact operation's own condition".
+    """
+    conditions: set[str] = set()
+    for contract in contracts_payload["contracts"].values():
+        for guard in (*contract.get("guards", ()), *contract.get("channel_guards", ())):
+            condition = guard.get("condition")
+            conditions.add(condition if condition is not None else "<unconditional>")
+    return conditions
+
+
+# ---------------------------------------------------------------------------
+# AC-12.10 -- L1 bounded unrolling is precise on the round-1 counterexample.
+# ---------------------------------------------------------------------------
+
+
+def test_ac_12_10_bounded_unroll_precise_on_repeated_pickup(contracts_json: str) -> None:
+    report = _check("loop_double_pickup_graph", contracts_json)
+    op3 = _findings_for(report, "op_3")  # pick_up_tips, inside the trip=2 LOOP
+
+    own_site_will_fail = [
+        f
+        for f in op3
+        if f.verdict is Verdict.WILL_FAIL and f.category == "precondition_state" and f.plr_site == _PICK_UP_TIPS_SITE
+    ]
+    assert len(own_site_will_fail) == 1, (
+        "exactly one WILL_FAIL sited at pick_up_tips:535 -- AC-12.10's literal pin "
+        "(a second, ADDITIVE WILL_FAIL at the bridged TipTracker.add_tip:92 site is "
+        "expected too, per this module's docstring's disclosed AC-10.1 deviation, and "
+        "does not violate this count, which is scoped to the :535 site specifically)"
+    )
+    (finding,) = own_site_will_fail
+    iteration, _detail = _iteration_of(finding.detail)
+    assert iteration == 2, "the detail must name iteration 2"
+
+    # The first iteration's pick_up_tips guard is SAFE.
+    iteration_1_safe = [
+        f
+        for f in op3
+        if f.verdict is Verdict.SAFE and f.plr_site == _PICK_UP_TIPS_SITE and _iteration_of(f.detail)[0] == 1
+    ]
+    assert iteration_1_safe, "iteration 1's own :535 guard must be SAFE"
+
+    assert report.verdict is Verdict.WILL_FAIL
+
+
+# ---------------------------------------------------------------------------
+# AC-12.11 -- the L2 fixpoint emits findings from the final pass only.
+# ---------------------------------------------------------------------------
+
+
+def test_ac_12_11_fixpoint_emits_final_pass_only(contracts_json: str) -> None:
+    report = _check("while_alternating_graph", contracts_json)
+    op3 = _findings_for(report, "op_3")  # pick_up_tips, inside a real LOOP(trip=None)
+
+    assert not any(f.verdict is Verdict.WILL_FAIL for f in op3), (
+        "a pass-1 finding (evaluated against NO_TIP alone, before the head state "
+        "widens to TOP at the fixpoint) would be a definite-failure claim about a "
+        "program that may take a different path on a later real iteration -- an "
+        "implementation that emits it fails this assertion"
+    )
+    assert not any(f.verdict is Verdict.SAFE for f in op3)
+    assert any(f.reason == "channel_state_unknown" for f in op3), (
+        "the STABLE (final) pass sees the joined TOP head state -- own+bridged "
+        "guards resolve to channel_state_unknown, not silence"
+    )
+    assert report.verdict is Verdict.UNKNOWN
+    # check_ir must not raise and must converge within K passes -- reaching
+    # this assertion at all (rather than a hang or a RecursionError) is the
+    # convergence/no-raise half of this AC.
+
+
+# ---------------------------------------------------------------------------
+# AC-12.12 -- the tail widen fires at K.
+# ---------------------------------------------------------------------------
+
+
+def test_ac_12_12_tail_widen_at_k(contracts_json: str) -> None:
+    report = _check("trip_20_graph", contracts_json)
+    op3 = _findings_for(report, "op_3")  # pick_up_tips, inside the trip=20 LOOP
+
+    own_site = [f for f in op3 if f.plr_site == _PICK_UP_TIPS_SITE]
+    iterations_seen = {_iteration_of(f.detail)[0] for f in own_site}
+    assert iterations_seen == set(range(1, 9)), (
+        f"findings for iterations 1 through 8 only, none for 9 through 20; got {sorted(iterations_seen)}"
+    )
+
+    # Every receiver in the region reads TOP immediately after the region's
+    # END: the following aspirate on the same receiver yields
+    # channel_state_unknown, not a definite verdict.
+    op4 = _findings_for(report, "op_4")  # aspirate, AFTER the region
+    tip_family_op4 = [f for f in op4 if f.reason in ("channel_state_unknown",) or f.plr_site == _GET_TIP_SITE]
+    assert tip_family_op4, "op_4 must carry a tip-family finding to assert against"
+    assert all(f.verdict is Verdict.UNKNOWN and f.reason == "channel_state_unknown" for f in tip_family_op4)
+    assert not any(f.verdict in (Verdict.SAFE, Verdict.WILL_FAIL) and f.plr_site == _GET_TIP_SITE for f in op4)
+
+
+# ---------------------------------------------------------------------------
+# AC-12.14 -- regions widen-or-join, never construct SAFE without an
+# evaluated guard, and never widen a call that owns no region.
+# ---------------------------------------------------------------------------
+
+
+def test_ac_12_14_i_ii_branch_arm_state_and_post_join(contracts_json: str) -> None:
+    report = _check("branch_join_graph", contracts_json)
+
+    # (i) the true arm's guard evaluates against the true arm's own state
+    # and can be SAFE.
+    op3 = _findings_for(report, "op_3")  # pick_up_tips, the BRANCH's true arm
+    true_arm_safe = [f for f in op3 if f.verdict is Verdict.SAFE and f.plr_site == _PICK_UP_TIPS_SITE]
+    assert true_arm_safe, "the true arm's own pick_up_tips guard must be SAFE (entry state is NO_TIP post-setup)"
+
+    # (ii) an operation after the region reads the join and yields
+    # channel_state_unknown, not SAFE.
+    op4 = _findings_for(report, "op_4")  # aspirate, AFTER the region
+    get_tip = [f for f in op4 if f.plr_site == _GET_TIP_SITE]
+    assert get_tip
+    assert all(f.verdict is Verdict.UNKNOWN and f.reason == "channel_state_unknown" for f in get_tip), (
+        "join(HAS_TIP from the true arm, NO_TIP unchanged from the missing false arm) == TOP"
+    )
+    assert not any(f.verdict is Verdict.SAFE for f in get_tip)
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    [
+        "loop_double_pickup_graph",
+        "trip_20_graph",
+        "branch_join_graph",
+        "call_before_unowned_region_graph",
+        # while_alternating_graph is deliberately excluded: its whole point
+        # (AC-12.11) is that the final fixpoint pass sees a widened (TOP)
+        # head state and therefore emits NO SAFE finding at all -- there is
+        # nothing for this check to exercise there.
+    ],
+)
+def test_ac_12_14_iii_safe_findings_carry_a_real_guard_condition(
+    fixture_name: str, contracts_json: str, contracts_payload: dict
+) -> None:
+    """(iii): every Finding whose verdict is SAFE carries a non-empty
+    detail equal to a guard condition present in the contract table -- the
+    mechanical form of "no SAFE constructed without an evaluated guard".
+    Checked over every §12.3 region fixture that produces a SAFE finding at
+    all, per the AC's own "over all region fixtures" scope.
+    """
+    report = _check(fixture_name, contracts_json)
+    safe = [f for f in report.findings if f.verdict is Verdict.SAFE]
+    assert safe, f"{fixture_name} must produce at least one SAFE finding to exercise this check"
+    real_conditions = _all_real_guard_conditions(contracts_payload)
+    for finding in safe:
+        assert finding.detail, f"{finding} has empty detail"
+        _iteration, condition = _iteration_of(finding.detail)
+        assert condition in real_conditions, (
+            f"{finding}'s detail {condition!r} is not a real guard condition anywhere in the contract table"
+        )
+
+
+def test_ac_12_14_iv_call_before_unowned_region_uses_real_state(contracts_json: str) -> None:
+    report = _check("call_before_unowned_region_graph", contracts_json)
+    op2 = _findings_for(report, "op_2")  # pick_up_tips on "lh", immediately before a region it does not own
+
+    safe_at_535 = [f for f in op2 if f.verdict is Verdict.SAFE and f.plr_site == _PICK_UP_TIPS_SITE]
+    assert len(safe_at_535) == 1, "exactly one SAFE finding sited at pick_up_tips:535"
+    assert not any(f.reason == "channel_state_unknown" for f in op2), (
+        "no channel_state_unknown for op_2 -- its real pre-call state (NO_TIP from the "
+        "reset at the top of the graph) is exact, not TOP; the retired stale compensation "
+        "would have widened it to TOP purely for sitting before a region it does not own"
+    )
+    assert report.verdict is Verdict.WILL_FAIL, (
+        "op_4 (inside the region, a DIFFERENT receiver) still produces its own WILL_FAIL "
+        "on iteration 2 -- unrelated to op_2's own correctness, asserted here only to "
+        "confirm the fixture's region half behaves as AC-12.10 predicts"
+    )

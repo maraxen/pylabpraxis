@@ -48,6 +48,9 @@ __all__ = [
     "channels_for_call",
     "evaluate_call",
     "region_receivers",
+    "region_bounds",
+    "join_channel_state",
+    "join_walk_states",
     "disabled_receivers",
 ]
 
@@ -110,6 +113,15 @@ class ChannelState:
     def get(self, channel: int) -> TipState:
         return self.exact.get(channel, self.default)
 
+    def copy(self) -> "ChannelState":
+        """Spec 260903 §12.3.3 (L2)/§12.3.6 (B1): both the fixpoint and the
+        branch join need to explore a pass/arm from a given entry state and
+        then either discard it or merge it with a sibling exploration --
+        neither is expressible as an in-place mutation of the one live
+        state map, so both need an independent copy.
+        """
+        return ChannelState(default=self.default, exact=dict(self.exact))
+
 
 class TipWalk:
     """Per-receiver-slot `ChannelState`, threaded through `check_ir`'s
@@ -159,6 +171,50 @@ class TipWalk:
         "sticky" against a later widen.
         """
         self._states[slot] = ChannelState(default=default, exact={})
+
+    def snapshot(self) -> dict[int, "ChannelState"]:
+        """Spec 260903 §12.3.3/§12.3.6: an independent copy of every
+        receiver slot's state, for a fixpoint pass or a branch arm to
+        explore from without mutating the walk other explorations share.
+        """
+        return {slot: cs.copy() for slot, cs in self._states.items()}
+
+    def restore(self, states: "dict[int, ChannelState]") -> None:
+        """Replace the whole live state with an (independently copied)
+        snapshot -- used to rewind to a fixpoint pass's head state, or to
+        install a branch's joined post-state.
+        """
+        self._states = {slot: cs.copy() for slot, cs in states.items()}
+
+
+def join_channel_state(a: ChannelState, b: ChannelState) -> ChannelState:
+    """Spec 260903 §12.3.6 (B1)/§12.3.3 (L2): the per-receiver half of a
+    join -- `default`s join directly (§10.1.1's `join_tip`), and each
+    channel's EFFECTIVE state (`.get`, which falls back to `default`) joins
+    over the UNION of both sides' explicit `exact` keys, never just one
+    side's keys -- a channel exact on only one side still joins against the
+    OTHER side's `default`, not against a missing key (which would silently
+    drop that channel's information instead of widening it correctly).
+    """
+    default = join_tip(a.default, b.default)
+    channels = set(a.exact) | set(b.exact)
+    exact = {c: join_tip(a.get(c), b.get(c)) for c in channels}
+    return ChannelState(default=default, exact=exact)
+
+
+def join_walk_states(
+    a: "dict[int, ChannelState]", b: "dict[int, ChannelState]"
+) -> "dict[int, ChannelState]":
+    """Whole-walk join over every receiver slot mentioned by EITHER side.
+    A slot absent from one side is a slot that side's walk never touched --
+    the same thing as a fresh `ChannelState()` (`TipWalk._cs`'s own lazy
+    default), not information to drop by restricting to the intersection.
+    """
+    slots = set(a) | set(b)
+    return {
+        slot: join_channel_state(a.get(slot, ChannelState()), b.get(slot, ChannelState()))
+        for slot in slots
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +306,37 @@ def region_receivers(instructions: tuple[ir.Instruction, ...], open_pc: int) -> 
             receivers.add(instr.receiver)
         pc += 1
     return frozenset(receivers), pc
+
+
+def region_bounds(instructions: tuple[ir.Instruction, ...], open_pc: int) -> tuple[int, int | None]:
+    """Spec 260903 §12.3.3/§12.3.6: sibling to :func:`region_receivers` --
+    same nesting-depth walk from a `LOOP`/`BRANCH` open, but returns
+    boundaries for a STRUCTURAL (recursive) walk rather than the
+    region-entry widen set. Returns `(the pc of the matching END, the pc of
+    the matching ELSE at the SAME nesting depth)`. `ELSE` is only ever
+    `None` for a `LOOP`, or for an unterminated/malformed `BRANCH` in a
+    fuzzed stream (`lower_graph` always emits one for every real or
+    synthetic-with-real-arms `BRANCH` it constructs; a genuinely missing
+    `ELSE` cannot arise from well-formed output, but the walker must stay
+    total rather than raise on adversarial input, spec §12's own
+    `check_graph` "never raises" property).
+    """
+    depth = 1
+    pc = open_pc + 1
+    n = len(instructions)
+    else_pc: int | None = None
+    while pc < n and depth > 0:
+        instr = instructions[pc]
+        if isinstance(instr, (ir.Loop, ir.Branch)):
+            depth += 1
+        elif isinstance(instr, ir.End):
+            depth -= 1
+            if depth == 0:
+                break
+        elif isinstance(instr, ir.Else) and depth == 1:
+            else_pc = pc
+        pc += 1
+    return pc, else_pc
 
 
 # ---------------------------------------------------------------------------

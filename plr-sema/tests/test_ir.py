@@ -499,6 +499,20 @@ def test_check_graph_report_unchanged_for_shipped_fixture(contracts_json: str) -
 
 
 def test_totality_and_relabel_bijection(contracts_payload: dict[str, Any]) -> None:
+    """Spec 260903 §12.3.4/§12.9 amendment 5: AC-11.7's bijection clause is
+    amended to read over `OBLIGED(graph)`, not the raw `{op.id}` set --
+    `sideband.origin` restricted to CALL pcs is a FUNCTION ONTO
+    `OBLIGED(graph)`, and after relabelling `{f.operation_id} ==
+    OBLIGED(graph)` (this is also main spec AC-6.4, re-asserted through the
+    amended path). `simple_transfer_graph.json` carries no REGION at all
+    (AC-12.9), so `OBLIGED(graph) == {op.id for op in graph.operations}`
+    here and this test's own numbers are UNCHANGED from pre-260903 -- the
+    assertions below read over `ir.obliged_operation_ids(payload)` rather
+    than the raw id set precisely so that equivalence is checked, not
+    assumed. See `test_ac_12_13_...` below for the fixture where the two
+    sets actually DIFFER (a proved-`trip == 0` region), which is what
+    actually exercises the amendment.
+    """
     payload = _simple_transfer_payload()
     contracts = contracts_payload.get("contracts", {})
     bc = ir.lower_graph(payload)
@@ -515,13 +529,18 @@ def test_totality_and_relabel_bijection(contracts_payload: dict[str, Any]) -> No
     assert not (set(findings_by_pc) & non_call_pcs)
 
     origin = bc.sideband["origin"]
-    origin_over_calls = {pc: opid for pc, opid in origin.items() if pc in call_pcs}
-    real_ids = {op["id"] for op in payload["operations"]}
-    assert set(origin_over_calls.values()) == real_ids, "origin restricted to CALL pcs must be a bijection onto operation ids"
-    assert len(origin_over_calls) == len(real_ids), "origin must be injective over CALL pcs (a true bijection)"
+    origin_over_visited_calls = {pc: opid for pc, opid in origin.items() if pc in findings_by_pc}
+    obliged = ir.obliged_operation_ids(payload)
+    assert set(origin_over_visited_calls.values()) == obliged, (
+        "origin restricted to VISITED CALL pcs must be a function onto OBLIGED(graph)"
+    )
+    assert len(origin_over_visited_calls) == len(obliged), (
+        "no REGION in this fixture -- every call-bearing op is visited exactly once, "
+        "so the amended function is still injective HERE (not asserted in general)"
+    )
 
     relabeled = ir.relabel_findings(findings, origin)
-    assert {f.operation_id for f in relabeled} == real_ids
+    assert {f.operation_id for f in relabeled} == obliged
 
 
 # ---------------------------------------------------------------------------
@@ -1008,3 +1027,60 @@ def test_ac_12_8_self_attr_resolves_to_ref_not_top() -> None:
     assert resolved.cell == "A1"
     assert resolved.slot == resource_instr.slot
     assert resolved != ir.Top()
+
+
+# ---------------------------------------------------------------------------
+# AC-12.13 -- totality and the relabel under unrolling, and the OBLIGED(graph)
+# exclusion for a proved-trip-0 region body.
+# ---------------------------------------------------------------------------
+
+
+def test_ac_12_13_obliged_excludes_only_the_dead_loop_body(contracts_payload: dict[str, Any]) -> None:
+    """AC-12.13's second half: `OBLIGED(graph)` differs from `{op.id for op
+    in graph.operations if op.node_type is not REGION}` on EXACTLY the body
+    operations of proved-`trip == 0` regions. Uses `proved_trip_graph.json`
+    (AC-12.6's own fixture -- seven proved loops plus an eighth,
+    `range(0)`, `trip == 0`), the fixture AC-12.13 itself names.
+    """
+    payload = _proved_trip_payload()
+    call_bearing = {
+        op["id"] for op in payload["operations"] if op.get("node_type") != "region"
+    }
+    obliged = ir.obliged_operation_ids(payload)
+    assert obliged != call_bearing, "the eighth (range(0)) loop's body must be excluded"
+    excluded = call_bearing - obliged
+    assert len(excluded) == 1, f"exactly one call-bearing op should be excluded, got {excluded}"
+
+
+def test_ac_12_13_totality_and_relabel_over_a_dead_region(contracts_payload: dict[str, Any]) -> None:
+    """AC-12.13's first half, over a fixture WITH a dead region (unlike
+    `test_totality_and_relabel_bijection`, which uses the region-free
+    `simple_transfer` fixture): every CALL pc VISITED by `check_ir`
+    receives >=1 Finding and no non-CALL pc receives any; `sideband.origin`
+    restricted to visited CALL pcs is a function onto `OBLIGED(graph)`;
+    after relabelling, `{f.operation_id} == OBLIGED(graph)` (AC-6.4
+    amended); and `len(findings) >= len(OBLIGED(graph))` (AC-7.2 amended).
+    """
+    payload = _proved_trip_payload()
+    contracts = contracts_payload.get("contracts", {})
+    bc = ir.lower_graph(payload)
+    findings = check_ir(bc, contracts)
+
+    call_pcs = {pc for pc, i in enumerate(bc.instructions) if isinstance(i, ir.Call)}
+    non_call_pcs = {pc for pc, i in enumerate(bc.instructions) if not isinstance(i, ir.Call)}
+    visited_pcs = {int(f.operation_id) for f in findings}
+
+    assert visited_pcs <= call_pcs
+    assert not (visited_pcs & non_call_pcs)
+    assert visited_pcs != call_pcs, "the dead loop's body CALL pc must never be visited"
+
+    origin = bc.sideband["origin"]
+    origin_over_visited = {pc: opid for pc, opid in origin.items() if pc in visited_pcs}
+    obliged = ir.obliged_operation_ids(payload)
+    assert set(origin_over_visited.values()) == obliged, (
+        "origin restricted to visited CALL pcs must be a function onto OBLIGED(graph)"
+    )
+
+    relabeled = ir.relabel_findings(findings, origin)
+    assert {f.operation_id for f in relabeled} == obliged, "AC-6.4 amended: {f.operation_id} == OBLIGED(graph)"
+    assert len(findings) >= len(obliged), "AC-7.2 amended: len(findings) >= len(OBLIGED(graph))"
