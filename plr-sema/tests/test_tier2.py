@@ -1,14 +1,23 @@
-"""Unit tests for tier 2a (spec 260903 §12.4.1, backlog #4880): render one
-executed row -> extract out of process -> `lower_graph` -> compare
-bytecode against tier 1's own `lower_calls` output.
+"""Unit tests for tier 2 (spec 260903 §12.4, backlog #4880/T21).
 
-AC-12.15 (the two lowerings agree, and the reset agrees too) and AC-12.16
-(the runner is out of process and the import boundary holds) are the
-gate. Unlike `plr-sema/tests/test_oracle_replay.py`'s tests, this file
-freely imports `praxis` directly (test files are outside AC-12.16's scan
-scope, which is `plr-sema/src/` and `plr-sema/eval/` only) so the
-extractor can be exercised in-process where that is simpler, alongside a
-dedicated subprocess test for the actual out-of-process contract.
+**Tier 2a** (§12.4.1): render one executed row -> extract out of process
+-> `lower_graph` -> compare bytecode against tier 1's own `lower_calls`
+output. AC-12.15 (the two lowerings agree, and the reset agrees too) and
+AC-12.16 (the runner is out of process and the import boundary holds) are
+the gate.
+
+**Tier 2b** (§12.4.2, T21): the `region_recorder`/`region_oracle` classes
+at the bottom of this file -- an instance-level method recorder, the
+executed-vs-static `(operation, iteration)` join, and one end-to-end run
+of the smallest `for`-shaped region fixture against a real chatterbox
+deck. AC-12.17 (executed ground truth for regions) and AC-12.18 (the run
+is bathos-tracked) are the gate.
+
+Unlike `plr-sema/tests/test_oracle_replay.py`'s tests, this file freely
+imports `praxis` directly (test files are outside AC-12.16's scan scope,
+which is `plr-sema/src/` and `plr-sema/eval/` only) so the extractor can
+be exercised in-process where that is simpler, alongside a dedicated
+subprocess test for the actual out-of-process contract.
 """
 
 from __future__ import annotations
@@ -18,6 +27,8 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EVAL_DIR = REPO_ROOT / "plr-sema" / "eval"
@@ -36,8 +47,20 @@ from oracle_common import (  # noqa: E402
 from render_protocol import render_protocol  # noqa: E402
 from tier2_extractor import _extract_calls, _seq_len, compare_bytecode  # noqa: E402
 
+import region_oracle  # noqa: E402
+from region_recorder import (  # noqa: E402
+    DuplicateCallSiteError,
+    RegionRecorder,
+    build_static_join_map,
+)
+
 sys.path.insert(0, str(SRC_ROOT))
+from plr_sema import check as _check_mod  # noqa: E402
 from plr_sema.check import ir as _ir  # noqa: E402
+from plr_sema.check._supported_tools import SUPPORTED_TOOLS  # noqa: E402
+from plr_sema.verdict import Verdict, join  # noqa: E402
+
+FIXTURES_DIR = EVAL_DIR / "fixtures" / "regions"
 
 # Real contract param names -- WITHOUT these, `lower_graph`'s §11.2.4 trust
 # rule fail-closes every kwarg to `?<i>` (untrusted-by-default), which is
@@ -326,3 +349,154 @@ class TestImportBoundaryEval:
             if top == "praxis"
         ]
         assert praxis_in_main, "expected the praxis import inside main()"
+
+
+# ---------------------------------------------------------------------------
+# Tier 2b (spec 260903 §12.4.2, backlog #4880/T21, AC-12.17/AC-12.18)
+# ---------------------------------------------------------------------------
+
+
+class _DummyReceiver:
+    """A minimal async-method receiver for `RegionRecorder` unit tests --
+    no PLR/deck construction needed for the recorder's OWN mechanics
+    (visit counter, re-raise, teardown); those are exercised for real by
+    `TestSmallestForFixtureEndToEnd` below.
+    """
+
+    async def pick_up_tips(self, **kwargs):
+        return "picked"
+
+    async def drop_tips(self, **kwargs):
+        raise RuntimeError("boom")
+
+
+class TestRegionRecorderUnit:
+    """Recorder unit tests (deliverable 7, bullet 1): visit counter,
+    re-raise, and (via `build_static_join_map`) duplicate-key failure.
+    """
+
+    def test_visit_counter_increments_per_call_site(self):
+        import asyncio
+
+        receiver = _DummyReceiver()
+        recorder = RegionRecorder(receiver, ["pick_up_tips", "drop_tips"])
+        recorder.install()
+
+        async def _twice():
+            for _ in range(2):
+                await receiver.pick_up_tips()
+
+        asyncio.run(_twice())
+        recorder.uninstall()
+
+        records = [r for r in recorder.records if r.method == "pick_up_tips"]
+        assert [r.visit_index for r in records] == [1, 2]
+        assert all(r.outcome == "ran_ok" for r in records)
+        # Both calls came from the SAME caller line inside `_twice` --
+        # the whole point of a per-(method, lineno) monotonic counter.
+        assert len({r.lineno for r in records}) == 1
+
+    def test_reraise_is_recorded_and_propagated(self):
+        import asyncio
+
+        receiver = _DummyReceiver()
+        recorder = RegionRecorder(receiver, ["pick_up_tips", "drop_tips"])
+        recorder.install()
+
+        async def _raise():
+            await receiver.drop_tips()
+
+        with pytest.raises(RuntimeError, match="boom"):
+            asyncio.run(_raise())
+        recorder.uninstall()
+
+        assert len(recorder.records) == 1
+        record = recorder.records[0]
+        assert record.method == "drop_tips"
+        assert record.visit_index == 1
+        assert record.outcome == "raised:RuntimeError"
+        assert recorder.raised is record
+
+    def test_uninstall_restores_original_method(self):
+        receiver = _DummyReceiver()
+        original = type(receiver).pick_up_tips
+        recorder = RegionRecorder(receiver, ["pick_up_tips"])
+        recorder.install()
+        assert "pick_up_tips" in receiver.__dict__
+        recorder.uninstall()
+        assert "pick_up_tips" not in receiver.__dict__
+        assert type(receiver).pick_up_tips is original
+
+    def test_build_static_join_map_raises_on_duplicate(self):
+        with pytest.raises(DuplicateCallSiteError):
+            build_static_join_map(
+                [("pick_up_tips", 5, "op_1"), ("pick_up_tips", 5, "op_2")]
+            )
+
+    def test_build_static_join_map_ok_when_unique(self):
+        join_map = build_static_join_map(
+            [("pick_up_tips", 5, "op_1"), ("aspirate", 6, "op_2")]
+        )
+        assert join_map == {("pick_up_tips", 5): "op_1", ("aspirate", 6): "op_2"}
+
+
+class TestOperationIterationJoin:
+    """The `(operation, iteration)` join on one real fixture (deliverable
+    7, bullet 2): `for_pickup_no_drop_raises.py`'s two-element `for` gives
+    iteration 1 a non-WILL_FAIL verdict and iteration 2 a definite
+    WILL_FAIL (HasTipError) for `pick_up_tips`.
+    """
+
+    def test_for_pickup_no_drop_raises_join_and_verdict(self, tmp_path):
+        contracts_json = DEFAULT_CONTRACTS.read_text(encoding="utf-8")
+        contracts_payload = json.loads(contracts_json)
+        param_names = param_names_from_contracts(contracts_json)
+        fixture_path = FIXTURES_DIR / "for_pickup_no_drop_raises.py"
+
+        payload = region_oracle._extract_graph_payload(
+            fixture_path, cache_dir=tmp_path, runner_python=sys.executable,
+        )
+        _bytecode, findings, join_map, static, _proved_trips = region_oracle._static_report(
+            payload, contracts_payload, param_names, _ir, _check_mod,
+        )
+        assert findings, "expected at least one static finding"
+
+        op_id = join_map.get(("pick_up_tips", 0))
+        assert op_id is not None, f"join map missing pick_up_tips: {join_map}"
+
+        verdict_1 = region_oracle._verdict_at(static, join, op_id, 1)
+        verdict_2 = region_oracle._verdict_at(static, join, op_id, 2)
+        assert verdict_2 is Verdict.WILL_FAIL, verdict_2
+        assert verdict_1 is not Verdict.WILL_FAIL, verdict_1
+
+
+class TestSmallestForFixtureEndToEnd:
+    """Deliverable 7, bullet 3: the smallest `for`-fixture, run end to end
+    (chatterbox, no hardware -- fast) via `region_oracle.run_fixture`.
+    Asserts the WILL_FAIL lands at the raised key and `unsound == 0`.
+    """
+
+    def test_for_pickup_no_drop_raises_end_to_end(self, tmp_path):
+        contracts_json = DEFAULT_CONTRACTS.read_text(encoding="utf-8")
+        contracts_payload = json.loads(contracts_json)
+        param_names = param_names_from_contracts(contracts_json)
+        fixture_path = FIXTURES_DIR / "for_pickup_no_drop_raises.py"
+
+        outcome = region_oracle.run_fixture(
+            fixture_path,
+            contracts_payload=contracts_payload,
+            param_names=param_names,
+            ir_mod=_ir,
+            check_mod=_check_mod,
+            supported_tools=SUPPORTED_TOOLS,
+            join_fn=join,
+            will_fail_verdict=Verdict.WILL_FAIL,
+            safe_verdict=Verdict.SAFE,
+            cache_dir=tmp_path,
+            runner_python=sys.executable,
+        )
+
+        assert outcome.status == "compared", outcome.detail
+        assert outcome.raised is not None and "HasTipError" in outcome.raised
+        assert outcome.will_fail_at_raised is True, outcome
+        assert outcome.unsound_rows == [], outcome.unsound_rows
