@@ -251,6 +251,18 @@ which was the single worst-supported behavior in the 0826 revision.
    needs an out-of-surface counterpart (tripwire 1 -> 3). Decision doc
    `.praxia/docs/audits/260902_p26b-floor-surface-decision.md`.
 
+7. **260903 -- P2.6c out-of-surface natural lane** (task `260903_p26c_oos_natural`,
+   backlog 4933): natural variants of the 160 out-of-surface floor rows (158
+   accepted, base clarification copied) -> assembly 0.1.5 (train 1199, probe
+   122 with 32 out_of_surface; pin unchanged). Arm A3: 0.671 / 0.898 / 0.878 /
+   tripwire 3, NOT PROMOTED. P2.6b's "casual phrasing => emit a call" reading
+   is falsified: the three tripwire rows are near-surface topical confusions
+   (sample -> read_*, deck -> move_plate, tips -> pick_up_tips) and every
+   checkpoint already abstains 32/32 on casual floor-style requests. Next
+   candidate: near-surface out-of-surface matrix cells (new prereg). Also
+   fixed: the natural corpus provenance stamp (all rows said fake-teacher@test).
+   Decision doc `.praxia/docs/audits/260903_p26c-oos-natural-decision.md`.
+
 **Open for the jury (not blockers, recorded so they are decided rather than
 defaulted):**
 

@@ -30,6 +30,13 @@ backlog_item: 480
 > **Anchors unchanged, D8 revision still UNSPENT.** Decision doc
 > `.praxia/docs/audits/260902_p26b-floor-surface-decision.md`.
 
+> **Status 260903 (P2.6c, task `260903_p26c_oos_natural`):** natural lane extended to the
+> out-of-surface floor rows; arm A3 on assembly 0.1.5 = 0.671 [0.608, 0.729] / recall 0.898 /
+> precision 0.878 / tripwire 3 on the pinned 228 -- NOT PROMOTED, anchors and D8 revision
+> UNCHANGED/UNSPENT. The tripwire rows are near-surface topical confusions, not a phrasing
+> cue; next lever is a near-surface out-of-surface matrix cell (new prereg). Decision doc
+> `.praxia/docs/audits/260903_p26c-oos-natural-decision.md`.
+
 Spec: `.praxia/docs/specs/260825_coxswain-phase-2-functiongemma-copilot-p.md`
 rev2 D8 / §5 P2.5 deliverable 5 / §7 AC-2.5.x ("thresholds labeled
 provisional"). These are ANCHORS for the blocking jury, not final gates:

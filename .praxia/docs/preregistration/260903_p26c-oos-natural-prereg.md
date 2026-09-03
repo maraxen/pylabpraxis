@@ -1,7 +1,7 @@
 ---
 title: 'P2.6c pre-registration: out-of-surface natural-phrasing lane, arm-A retrain vs A2 on the frozen eval split'
 description: Pre-registration (task 260903_p26c_oos_natural, backlog 4933) for extending the natural-phrasing lane to the 160 out-of-surface floor rows with the base row's clarification as supervision, assembling 0.1.5 with the pinned 228-row eval split unchanged, retraining the arm-A recipe once and scoring it against arm A2 (control) under the unchanged promotion rule; tripwire, no-regression, retention and out-of-surface probe predictions registered before generation.
-status: registered 3c943fe4; data 137a850d..4315538b; run pending
+status: registered 3c943fe4; run 21886402 evaluated -- P1/P4 fail, P2/P3 hold, NOT PROMOTED
 task_id: 260903_p26c_oos_natural
 date: '260903'
 ---
@@ -109,3 +109,14 @@ optimizer steps ≈ 8 × ⌈1108/16⌉ = 560 (A2: 496; ≈ 1.13×, the recorded 
 asserted at assembly (228 ids + digests); probe 122 rows (90 in-surface + 32 out-of-surface).
 Job = one Slurm GPU job: `bth run` (train + eval + probe) for A3, then the eval CLI scoring the
 A2 and A checkpoints on the same 122-row probe (`--dump-outputs`), as in P2.6b's job 21842239.
+
+## 6. Outcome (260903, mechanical)
+
+P1 **fails** (tripwire 3, 0/3 recovered -- the same three golden rows, same generations as A2),
+P2 **holds** (0.671 = control, recall 0.898, 1 flip each way), P3 **holds** (surface6 4/6,
+verb22 12/22, in-surface probe 0.811), P4 **fails** (A, A2 and A3 all 32/32 on the casual
+out-of-surface probe: the probe never discriminated), P5 ambig4 0/4, golden misses 63 → 63.
+Sidecar `fail` (residual). Promotion: NOT PROMOTED (selected A3 on the precision tie-break).
+Deviations: none. The hypothesis in §2 is falsified: the tripwire rows are near-surface topical
+confusions, not a casual-phrasing cue. Decision doc
+`.praxia/docs/audits/260903_p26c-oos-natural-decision.md`.
