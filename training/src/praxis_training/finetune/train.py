@@ -476,7 +476,8 @@ def main(argv: list[str] | None = None) -> int:
                  head["clarify_recall"]["value"], head["clarify_precision"]["value"],
                  head["tripwire_out_of_surface_tool_calls"])
         if args.compare_report is not None:
-            from praxis_training.finetune.p26b_predictions import evaluate_predictions
+            # P2.6c superset of the P2.6b checks (same field names; adds tripwire3_recovered).
+            from praxis_training.finetune.p26c_predictions import evaluate_predictions
 
             old_report = json.loads(Path(args.compare_report).read_text(encoding="utf-8"))
             pred = evaluate_predictions(old_report, report)
@@ -486,11 +487,14 @@ def main(argv: list[str] | None = None) -> int:
                 "surface6_recovered": pred["surface6_recovered"],
                 "verb_category_migrated": pred["verb_category_migrated"],
                 "flips_hit_to_miss": pred["flips_hit_to_miss"],
+                "tripwire3_recovered": pred["tripwire3_recovered"],
             })
             log.info("predictions: surface6=%d/6 verb_migrated=%d/22 hit->miss=%d miss->hit=%d",
                      pred["surface6_recovered"], pred["verb_category_migrated"],
                      pred["flips_hit_to_miss"], pred["flips_miss_to_hit"])
         if args.probe_pairs is not None:
+            from praxis_training.finetune.p26c_predictions import probe_split
+
             probe_sidecar = args.probe_sidecar or args.probe_pairs.with_name(args.probe_pairs.stem + "_sidecar.jsonl")
             probe = run_eval(
                 ckpt_dir=ckpt_dir, corpus=args.probe_pairs, sidecar=probe_sidecar, device=device,
@@ -502,7 +506,7 @@ def main(argv: list[str] | None = None) -> int:
             results.update({
                 "probe_n": phead["n_examples"],
                 "probe_exact_match_accuracy": phead["exact_match_accuracy"]["value"],
-            })
+            } | probe_split(probe))
             log.info("probe n=%d acc=%.3f", phead["n_examples"], phead["exact_match_accuracy"]["value"] or 0.0)
         _write_json(out_dir / "train_manifest.json", manifest)
 
