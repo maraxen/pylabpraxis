@@ -746,7 +746,7 @@ check.
 > containing `for`, `while`, `if`/`elif`/`else` and nesting, each with both tip outcomes represented
 > (a loop that fails at iteration 2; a loop that drops before re-picking and runs clean; a branch
 > where one arm picks up and the other does not). Ground truth is obtained by **executing the source**
-> against the verifier's own chatterbox deck — `build_setup` (`training/verify/deck.py:201`) under the
+> against the verifier's own chatterbox deck — `build_setup` (`training/verify/deck.py:354`) under the
 > STRICT + tip/volume-tracking configuration `verify` establishes
 > (`training/verify/verifier.py:104-116`) — recording, per raise, the **operation and the iteration**
 > at which it happened. The static side runs the same source through §12.4.1's runner, `lower_graph`,

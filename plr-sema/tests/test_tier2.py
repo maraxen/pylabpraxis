@@ -37,12 +37,18 @@ RUNNER_MODULE = EVAL_DIR / "extract_runner.py"
 
 sys.path.insert(0, str(EVAL_DIR))
 
+import region_oracle  # noqa: E402
 from oracle_common import (  # noqa: E402
     DEFAULT_CONTRACTS,
     calls_from_plr_kwargs,
     lower_row_calls,
     param_names_from_contracts,
     resources_from_example,
+)
+from region_recorder import (  # noqa: E402
+    DuplicateCallSiteError,
+    RegionRecorder,
+    build_static_join_map,
 )
 from render_protocol import (  # noqa: E402
     RESIDUAL_UNKNOWN_RESOURCE,
@@ -51,13 +57,6 @@ from render_protocol import (  # noqa: E402
     render_protocol,
 )
 from tier2_extractor import _extract_calls, _seq_len, compare_bytecode  # noqa: E402
-
-import region_oracle  # noqa: E402
-from region_recorder import (  # noqa: E402
-    DuplicateCallSiteError,
-    RegionRecorder,
-    build_static_join_map,
-)
 
 sys.path.insert(0, str(SRC_ROOT))
 from plr_sema import check as _check_mod  # noqa: E402
@@ -576,7 +575,9 @@ class TestOperationIterationJoin:
         )
         assert findings, "expected at least one static finding"
 
-        op_id = join_map.get(("pick_up_tips", 0))
+        # #4948: OperationNode.line_number is real now, so the join key carries the
+        # fixture's actual source line; look the method up regardless of it.
+        op_id = next((v for (m, _ln), v in join_map.items() if m == "pick_up_tips"), None)
         assert op_id is not None, f"join map missing pick_up_tips: {join_map}"
 
         verdict_1 = region_oracle._verdict_at(static, join, op_id, 1)

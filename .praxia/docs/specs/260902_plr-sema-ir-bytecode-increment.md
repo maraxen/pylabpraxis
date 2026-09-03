@@ -29,7 +29,7 @@ sources: "Read this session, in full or in the cited ranges: .praxia/docs/specs/
 ## 11.0 What this increment is, in one paragraph
 
 `plr-sema` is a compiler missing its middle. It has a front end (`praxis`'s libcst extractor →
-`ProtocolComputationGraph`, `computation_graph_extractor.py:830-848`), it has a contract database
+`ProtocolComputationGraph`, `computation_graph_extractor.py:888-899`), it has a contract database
 (`derive_contract`, `derive/__init__.py:446-492`, 4,770 entries), and it has a back end that walks
 `graph.operations` and emits one `Finding` per guard (`_findings_for_operation`,
 `check/__init__.py:293-321`). What it does not have is an intermediate representation: the checker
@@ -189,7 +189,7 @@ under the no-drop invariant fails AC-11.1 mechanically, because the table must b
 | `receiver_type` (`:535`) | I+W | `CALL.receiver_type`; `None` additionally emits `WIDEN receiver_type` before the `CALL` |
 | `arguments` (`:536-538`) | I+W | `CALL.kwargs`, values by §11.1.2; an untrusted key additionally emits `WIDEN arguments` (§11.2.4) |
 | `node_type` (`:539-541`) | S+W | sideband; recomputable (`DYNAMIC` ⟺ some kwarg is `Top` or `depends_on_params` is non-empty). Disagreement between the two views emits `WIDEN node_type` |
-| `preconditions` (`:542`) | **X** | produced by upstream's hand-typed frozensets (`_determine_preconditions`, `computation_graph_extractor.py:795-828`, whose tips gate reads `TIPS_REQUIRED_METHODS` at `:547`). §6.2 already forbids consuming these: they are §8's comparison **target**, and lowering them would launder a hand-written contract through the IR |
+| `preconditions` (`:542`) | **X** | produced by upstream's hand-typed frozensets (`_determine_preconditions`, `computation_graph_extractor.py:845-879`, whose tips gate reads `TIPS_REQUIRED_METHODS` at `:547`). §6.2 already forbids consuming these: they are §8's comparison **target**, and lowering them would launder a hand-written contract through the IR |
 | `creates_state` (`:543-545`) | **X** | same population, same reason (`TIPS_LOADING_METHODS`, `computation_graph_extractor.py:73-90`) |
 | `depends_on_params` (`:546-548`) | W+S | non-empty ⇒ `WIDEN depends_on_params` before the `CALL`; the names go to sideband |
 | `foreach_source` (`:551-553`) | I+S | opens `LOOP null`; the iterated expression itself is sideband |
@@ -291,7 +291,7 @@ The argument values are lowered by `ast.parse`-ing each `arguments` value as an 
 match none of the four rules above and therefore lower to `Top`, with the `WIDEN arguments` that
 §11.2.4's trust rule already forces on an untrusted key. This is an acknowledged `Top`, not an
 oversight, and extending the grammar alone would not fix it: `visit_Assign`
-(`computation_graph_extractor.py:629`) registers a `ResourceNode` only when the assignment target is
+(`computation_graph_extractor.py:677`) registers a `ResourceNode` only when the assignment target is
 a bare `cst.Name`, so `self.foo = ...` produces **no resource slot for a `Ref` to point at**. The
 grammar gap and the extractor gap have to close together, in `extract/` round 2. The cell-access half
 of the case is additionally unlikely to materialise from a valid renderer: PLR's `ItemizedResource`
@@ -899,7 +899,7 @@ rule, the E1–E5 transfer functions and every soundness argument stand exactly 
   The grammar residual is the attribute-style reference disclosed in §11.2.1: `lower_graph` resolves
   `self.plate_1["A1"]` to `Top` while `lower_calls`' `ir_value_of` resolves the same bound object to
   a `Ref`, so the two sides can differ on a program neither the extractor nor the renderer got
-  wrong. It is **latent, not live**, because `visit_Assign` (`computation_graph_extractor.py:629`)
+  wrong. It is **latent, not live**, because `visit_Assign` (`computation_graph_extractor.py:677`)
   registers no `self.foo` resource for a `Ref` to name — it becomes reachable only when `extract/`
   gains `self.`-assignment support, in round 2. All three should be stated in the plan rather than
   dropped — the honest replacement sentence is *"a divergence is a defect in the extractor, in the
