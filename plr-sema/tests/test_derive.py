@@ -21,6 +21,7 @@ in-memory indexes for the tests that are about the closure MECHANIC itself
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 import pytest
@@ -28,6 +29,7 @@ from plr_sema._provenance import SurveyStamp, survey_stamp
 from plr_sema.derive import (
     SurveyFinding,
     SurveyRecord,
+    _iter_plr_source_files,
     build_contract_keys,
     build_gap_ledger,
     build_index,
@@ -38,6 +40,7 @@ from plr_sema.derive import (
     scan_dropped_receiver_calls_in_source,
 )
 from plr_sema.derive.__main__ import build_derived_contracts_payload
+from plr_sema.derive.receiver_state import derive_receiver_states, reset_rule_candidates
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SURVEY_JSON = REPO_ROOT / "training" / "verify" / "data" / "plr_preconditions.json"
@@ -635,3 +638,121 @@ def test_whole_surface_dropped_receiver_worklist_populated_on_legacy(
     assert whole_surface
     for row in whole_surface:
         assert set(row.keys()) == {"call", "blocks_methods"}
+
+
+# ---------------------------------------------------------------------------
+# AC-12.1 -- the derived setup() head-reset effect (spec 260903 §12.1),
+# sub-assertions (iii) and (iv). (i) and (ii) live in test_tip_typestate.py,
+# next to AC-10.9, whose shipped-artifact fixture and forbidden-literal scan
+# they reuse.
+# ---------------------------------------------------------------------------
+
+
+def _class_index_from_root(root: Path) -> dict[str, ast.ClassDef]:
+    """The same "P1 class index" build `derive_receiver_states` does
+    internally (every top-level class across a source tree, first
+    definition wins) -- duplicated here, not imported, because it is a
+    ~10-line loop over already-public helpers and the point of this
+    section's own tests is to exercise `reset_rule_candidates` directly,
+    at a level BELOW `derive_receiver_states`'s own one-ReceiverState-per-
+    class assembly.
+    """
+    class_nodes: dict[str, ast.ClassDef] = {}
+    for file in _iter_plr_source_files(root):
+        try:
+            tree = ast.parse(file.read_text(encoding="utf-8"), filename=str(file))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        for top in ast.iter_child_nodes(tree):
+            if isinstance(top, ast.ClassDef):
+                class_nodes.setdefault(top.name, top)
+    return class_nodes
+
+
+def test_ac_12_1_iv_conjunct_sets_against_real_plr() -> None:
+    """AC-12.1(iv): conjuncts 1-2 alone select `{"setup", "load_state"}` at
+    the current pin (`LiquidHandler.load_state` also constructs only fresh
+    `TipTracker`s with no carry-over, §12.1.2's own worked example) --
+    conjunct 3 (direct statement of the method body, not nested in the
+    `if head_state and self.head == {}:` `load_state` sits inside) narrows
+    that to exactly `{"setup"}`. This is the sub-assertion that fails
+    loudly if conjunct 3 is dropped or weakened, per §12.1.2/AC-12.1(iv)'s
+    own framing -- without it P5's more-than-one rule would fire and the
+    whole feature would silently disable itself at this pin.
+    """
+    root = default_plr_pkg_root()
+    class_nodes = _class_index_from_root(root)
+    liquid_handler = class_nodes["LiquidHandler"]
+
+    conj12, conj123 = reset_rule_candidates(liquid_handler, "head", "TipTracker", class_nodes)
+    assert conj12 == frozenset({"setup", "load_state"})
+    assert conj123 == frozenset({"setup"})
+
+
+_SYNTH_TRACKER_AND_ANCHOR = '''
+class Tracker:
+    def __init__(self):
+        self._pending_tip = None
+
+    @property
+    def has_tip(self):
+        return self._pending_tip is not None
+'''
+
+
+def test_ac_12_1_iii_two_qualifying_methods_is_ambiguous(tmp_path: Path) -> None:
+    """AC-12.1(iii), first half: a synthetic class with TWO methods that
+    each satisfy all three conjuncts produces NO `entry_reset` -- P5's
+    more-than-one rule, §12.1.2 -- and the ledger reason is `"ambiguous"`.
+    """
+    synth = tmp_path / "synth.py"
+    synth.write_text(
+        _SYNTH_TRACKER_AND_ANCHOR
+        + '''
+
+class Receiver:
+    def __init__(self):
+        self.head: "Tracker" = {}
+
+    def setup(self):
+        self.head = {c: Tracker() for c in range(3)}
+
+    def reboot(self):
+        self.head = {c: Tracker() for c in range(3)}
+''',
+        encoding="utf-8",
+    )
+    receiver_states = derive_receiver_states(tmp_path, records=[], taxonomy_classes=[])
+    rs = receiver_states["Receiver"]
+    assert rs.entry_reset is None
+    assert rs.entry_reset_ledger == "ambiguous"
+
+
+def test_ac_12_1_iii_carry_over_comprehension_is_absent(tmp_path: Path) -> None:
+    """AC-12.1(iii), second half: a method whose value expression is a
+    carry-over comprehension (`{k: v for k, v in self.head.items()}`) --
+    conjunct 2's own load-bearing counterexample, §12.1.2 -- qualifies for
+    NEITHER `conj12` nor `conj123` (it constructs no tracker at all and
+    loads `self.head`), so `entry_reset` is `None` and the ledger reason is
+    `"absent"`, not `"ambiguous"` -- there is only one candidate method and
+    it does not qualify, which is a different fail-closed disposition than
+    "more than one qualified".
+    """
+    synth = tmp_path / "synth.py"
+    synth.write_text(
+        _SYNTH_TRACKER_AND_ANCHOR
+        + '''
+
+class Receiver:
+    def __init__(self):
+        self.head: "Tracker" = {}
+
+    def reload(self):
+        self.head = {k: v for k, v in self.head.items()}
+''',
+        encoding="utf-8",
+    )
+    receiver_states = derive_receiver_states(tmp_path, records=[], taxonomy_classes=[])
+    rs = receiver_states["Receiver"]
+    assert rs.entry_reset is None
+    assert rs.entry_reset_ledger == "absent"

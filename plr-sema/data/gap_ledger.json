@@ -46,14 +46,14 @@
     "praxis": {
       "branch": "coxswain-p2-pipeline",
       "dirty": true,
-      "dirty_content_id": "b4e148bb37ec43ea0c36a0a34eaf92d30c7a087d72d2887e30bbd2cf5165dd90",
-      "hash": "51446375a2eca5fab9f0cc86d17989afea8444ed",
+      "dirty_content_id": "9d9699660f3519074ef877e396632703765353fb",
+      "hash": "b35bc338f15d8030c8766db3d551c6028d23297a",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-02T03:17:29.853016+00:00",
+    "stamped_at": "2026-09-03T17:23:18.962406+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   },
@@ -67,6 +67,49 @@
     "methods_with_dropped_receiver_call": 6,
     "methods_with_gaps": 3,
     "methods_with_no_recorded_gap": 7
+  },
+  "tip_state": {
+    "LiquidHandler": {
+      "entry_reset": {
+        "method": "setup",
+        "post": "no_tip"
+      },
+      "tip_dropping": [
+        "drop_tips"
+      ],
+      "tip_loading": [
+        "clear_head_state",
+        "consolidate_tip_inventory",
+        "load_state",
+        "move_tips",
+        "pick_up_tips",
+        "probe_tip_presence_via_pickup",
+        "update_head_state",
+        "use_tips"
+      ],
+      "tip_requiring": [
+        "aspirate",
+        "clear_head_state",
+        "consolidate_tip_inventory",
+        "discard_tips",
+        "dispense",
+        "drop_tips",
+        "move_tips",
+        "probe_tip_presence_via_pickup",
+        "return_tips",
+        "transfer",
+        "update_head_state",
+        "use_tips"
+      ],
+      "tipstate_anchor": "_pending_tip"
+    },
+    "LiquidHandlerBackend": {
+      "entry_reset": "absent",
+      "tip_dropping": [],
+      "tip_loading": [],
+      "tip_requiring": [],
+      "tipstate_anchor": "_pending_tip"
+    }
   },
   "top_unresolved": {
     "dropped_receiver": [

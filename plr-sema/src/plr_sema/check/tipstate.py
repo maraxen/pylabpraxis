@@ -147,6 +147,19 @@ class TipWalk:
         for c in channels:
             cs.exact[c] = effect
 
+    def reset(self, slot: int, default: TipState) -> None:
+        """E6 (spec 260903 §12.1.4): `sigma' = ChannelState(default=<post>,
+        exact={})` -- the reset effect's post-state is a claim about EVERY
+        channel of the slot (§12.1.4 consequence 1: "precision arrives on
+        channels nobody named"), so unlike `apply_exact` it replaces the
+        whole slot state rather than updating individual channels. This is
+        the first and only producer of `ChannelState.default`
+        (§10.1.3/§12.1.4) -- everywhere else it stays `TOP`. `widen` still
+        wipes it back to `TOP` (E4, §12.1.4 consequence 2): a reset is not
+        "sticky" against a later widen.
+        """
+        self._states[slot] = ChannelState(default=default, exact={})
+
 
 # ---------------------------------------------------------------------------
 # §10.1.3 -- channel-set derivation over an already-lowered ir.Value
@@ -364,6 +377,16 @@ def _finding_for_atom(operation_id: str, guard_json: dict[str, Any], atom: _Atom
 # §10.4 -- the transfer function, and the per-CALL entry point.
 # ---------------------------------------------------------------------------
 
+#: §12.1.3's `"post"` wire values -> `TipState`. Built from `TipState`'s own
+#: member values (`.value.lower()`), never a hand-typed literal -- one of
+#: those values is the PLR bool-view attribute name `has_tip`
+#: (`TipTracker.has_tip`, AC-10.9/AC-12.1(ii)'s forbidden-literal scan), so
+#: it must be DERIVED here, not spelled out. Read only through this table
+#: (never a hand-typed comparison against the string in-line at the call
+#: site) so a stale/unrecognised `post` value degrades to `TOP` --
+#: fail-closed, the same direction as E5/AC-10.7.
+_POST_TO_TIPSTATE: dict[str, TipState] = {s.value.lower(): s for s in (TipState.NO_TIP, TipState.HAS_TIP)}
+
 
 def _apply_transfer(
     call: ir.Call,
@@ -467,5 +490,21 @@ def evaluate_call(
             findings.append(_finding_for_atom(operation_id, guard, atom, s))
 
     _apply_transfer(call, channels, contract, walk, poisoned=poisoned)
+
+    # E6 (spec 260903 §12.1.4, the reset effect): AFTER the call's own
+    # guards have been evaluated against the pre-state (the loop above)
+    # and after E1-E4's own transfer (`_apply_transfer`, whose bridge
+    # `channel_effect` for a reset method such as `setup` is `None` -- E3,
+    # no bridge -- so there is nothing for E6 to be racing against here),
+    # a CALL whose method is the derived `entry_reset.method` sets the
+    # receiver's WHOLE state to `ChannelState(default=post, exact={})`.
+    # Read through `.get()` with an empty default (`receiver_state` may be
+    # a pre-increment table with no `entry_reset` key at all, AC-12.2(c)):
+    # this degrades to a no-op, unconditionally on `channels`/`poisoned`
+    # -- the reset is a fact about the CALL itself, not about a channel
+    # set `setup()` never takes.
+    entry_reset = receiver_state.get("entry_reset")
+    if entry_reset is not None and call.method == entry_reset.get("method"):
+        walk.reset(call.receiver, _POST_TO_TIPSTATE.get(entry_reset.get("post"), TipState.TOP))
 
     return tuple(findings), frozenset(consumed)

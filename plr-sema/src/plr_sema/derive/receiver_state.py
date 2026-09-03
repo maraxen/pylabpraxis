@@ -83,6 +83,7 @@ __all__ = [
     "compute_channel_bridge",
     "TipFamilies",
     "compute_tip_families",
+    "reset_rule_candidates",
 ]
 
 #: §10.2.5's second conjunct: the taxonomy module path that narrows the
@@ -433,6 +434,162 @@ def _effects(class_node: ast.ClassDef, state_fields: tuple[str, ...]) -> dict[st
 
 
 # ---------------------------------------------------------------------------
+# P5 (spec 260903 §12.1.2) -- the derived setup() head-reset effect. A
+# WHOLE-EXPRESSION property over inputs P1/P4 already compute (the class
+# index, the attribute-writer index, the constructor's own P4
+# classification), not a sixth HM-25 template -- see the module-level
+# rationale in §12.1.2 itself. `_attribute_writers` (P1b) already gives the
+# per-attribute candidate method set; P5 adds only the three-conjunct test
+# below plus the constructor-state read.
+# ---------------------------------------------------------------------------
+
+
+def _is_fresh_only_construction(value: ast.expr, tracker_class: str, class_index: Any) -> bool:
+    """Conjunct 1: every `ast.Call` in `value` whose `func` is an
+    `ast.Name` that is a key of `class_index` (the whole-PLR class index,
+    not just receiver classes) must construct `tracker_class`, and at
+    least one such call must exist. A call to a name `class_index` does
+    not know (`range`, `len`, `dict`, ...) cannot produce a tracker and is
+    ignored -- it is simply not a key of `class_index`.
+    """
+    found_target = False
+    for node in ast.walk(value):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in class_index:
+            if node.func.id != tracker_class:
+                return False
+            found_target = True
+    return found_target
+
+
+def _no_self_attr_load(value: ast.expr, attr_name: str) -> bool:
+    """Conjunct 2: `value` contains no load of `self.<attr_name>`
+    anywhere. `value` is an assignment's RHS, so every `ast.Attribute`
+    found by `ast.walk` here is necessarily a load, never a store target.
+    """
+    return not any(_is_self_attr(node, attr_name) for node in ast.walk(value))
+
+
+def reset_rule_candidates(
+    receiver_node: ast.ClassDef,
+    attr_name: str,
+    tracker_class: str,
+    class_index: Any,
+) -> tuple[frozenset[str], frozenset[str]]:
+    """`(conj12, conj123)`: the bare method names of `receiver_node` that
+    contain an `ast.Assign` whose single target is `self.<attr_name>` (an
+    `ast.Attribute`, never an `ast.Subscript` -- `_is_self_attr` already
+    enforces that) and whose value satisfies conjuncts 1-2 (fresh-only
+    construction, no carry-over). `conj12` matches such an assignment at
+    ANY depth in the method body (mirroring P1b's own `ast.walk`);
+    `conj123` matches only when that assignment is additionally a DIRECT
+    statement of the method's own body -- not nested inside an `If`,
+    `For`, `While`, `Try`, `With` or `match` -- which is conjunct 3 and is
+    enforced simply by looking at `member.body` directly instead of
+    `ast.walk`-ing into it.
+
+    Exposed (not `_`-prefixed) because AC-12.1(iv) asserts these two sets
+    directly against real PLR -- `{"setup", "load_state"}` for `conj12`,
+    `{"setup"}` for `conj123` at the pin this module derives against --
+    not just P5's final one-or-none selection.
+    """
+    conj12: set[str] = set()
+    conj123: set[str] = set()
+    for member in ast.iter_child_nodes(receiver_node):
+        if not isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for node in ast.walk(member):
+            if not (isinstance(node, ast.Assign) and len(node.targets) == 1):
+                continue
+            target = node.targets[0]
+            if not _is_self_attr(target, attr_name):
+                continue
+            if _is_fresh_only_construction(node.value, tracker_class, class_index) and _no_self_attr_load(
+                node.value, attr_name
+            ):
+                conj12.add(member.name)
+        for stmt in member.body:
+            if not (isinstance(stmt, ast.Assign) and len(stmt.targets) == 1):
+                continue
+            target = stmt.targets[0]
+            if not _is_self_attr(target, attr_name):
+                continue
+            if _is_fresh_only_construction(stmt.value, tracker_class, class_index) and _no_self_attr_load(
+                stmt.value, attr_name
+            ):
+                conj123.add(member.name)
+    return frozenset(conj12), frozenset(conj123)
+
+
+def _constructor_state(tracker_node: ast.ClassDef, state_fields: tuple[str, ...]) -> str | None:
+    """`constructor_state(C)` (§12.1.2): P4's OWN three-way classification
+    (`_classify_write`) applied to `C.__init__`'s writes to
+    `state_fields` -- the same rule `_effects` applies to every other
+    method of `C`, but via a DEDICATED pass over `__init__` specifically,
+    because `__init__` conventionally writes its state fields via
+    `ast.AnnAssign` (e.g. `TipTracker.__init__`'s `self._tip:
+    Optional["Tip"] = None`), which `_effects`'s `ast.Assign`-only scan --
+    matching how every OTHER tracker method writes them, by plain
+    reassignment -- does not match at all. Returns `"NO_TIP"`/`"HAS_TIP"`
+    when `__init__` unambiguously establishes one polarity over
+    `state_fields`, `None` otherwise (no such write, a polarity mix, or
+    `"ambiguous"` -- E3's own "no effect" disposition, reused here per
+    §12.1.2's "both-kinds or ambiguous is not a reset").
+    """
+    state_field_set = frozenset(state_fields)
+    init_method: ast.FunctionDef | ast.AsyncFunctionDef | None = None
+    for member in ast.iter_child_nodes(tracker_node):
+        if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)) and member.name == "__init__":
+            init_method = member
+            break
+    if init_method is None:
+        return None
+    kinds: set[str] = set()
+    for node in ast.walk(init_method):
+        if isinstance(node, ast.Assign):
+            targets: list[ast.expr] = list(node.targets)
+            value = node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            targets = [node.target]
+            value = node.value
+        else:
+            continue
+        for target in targets:
+            if _is_self_attr(target) and target.attr in state_field_set:  # type: ignore[union-attr]
+                kinds.add(_classify_write(value, state_field_set))
+    if kinds == {"NO_TIP"}:
+        return "NO_TIP"
+    if kinds == {"HAS_TIP"}:
+        return "HAS_TIP"
+    return None
+
+
+def _entry_reset(conj123: frozenset[str], constructor_state: str | None) -> tuple[dict[str, str] | None, str]:
+    """`(entry_reset, ledger_reason)`. `entry_reset` is
+    `{"method": <name>, "post": "no_tip"|"has_tip"}` iff exactly one
+    method satisfies all three conjuncts (`conj123`) AND
+    `constructor_state` (`_constructor_state(C)`, above) is admissible
+    (`"NO_TIP"` or `"HAS_TIP"`, never `None`). `ledger_reason` is
+    `"ambiguous"` when more than one method satisfies all three conjuncts
+    (§12.1.2's own more-than-one rule, fail-closed), `"absent"` for every
+    other nothing-emitted case (zero qualifying methods, or a qualifying
+    method whose constructor state is itself inadmissible), and `"ok"`
+    when `entry_reset` is populated.
+    """
+    if len(conj123) > 1:
+        return None, "ambiguous"
+    if len(conj123) != 1:
+        return None, "absent"
+    method = next(iter(conj123))
+    if constructor_state not in ("NO_TIP", "HAS_TIP"):
+        return None, "absent"
+    # `.lower()`, not a hand-typed `"has_tip"` literal: that string is
+    # ALSO PLR's own bool-view attribute name (`TipTracker.has_tip`),
+    # forbidden by AC-10.9/AC-12.1(ii)'s AST literal scan.
+    post = constructor_state.lower()
+    return {"method": method, "post": post}, "ok"
+
+
+# ---------------------------------------------------------------------------
 # Assembling one ReceiverState per qualifying receiver class.
 # ---------------------------------------------------------------------------
 
@@ -450,10 +607,12 @@ class ReceiverState:
     channel_default_param: dict[str, str]
     channel_default_disablers: tuple[str, ...]
     tip_state_exceptions: tuple[str, ...]
+    entry_reset: dict[str, str] | None = None
+    entry_reset_ledger: str = "absent"
 
 
 def receiver_state_to_json(rs: ReceiverState) -> dict[str, Any]:
-    return {
+    payload: dict[str, Any] = {
         "channel_attr": rs.channel_attr,
         "tracker_class": rs.tracker_class,
         "bool_view": {"attr": rs.bool_view_attr, "field": rs.bool_view_field, "true_when": rs.true_when},
@@ -463,6 +622,9 @@ def receiver_state_to_json(rs: ReceiverState) -> dict[str, Any]:
         "channel_default_disablers": list(rs.channel_default_disablers),
         "tip_state_exceptions": list(rs.tip_state_exceptions),
     }
+    if rs.entry_reset is not None:
+        payload["entry_reset"] = dict(rs.entry_reset)
+    return payload
 
 
 def derive_receiver_states(
@@ -503,6 +665,7 @@ def derive_receiver_states(
     anchor_cache: dict[str, tuple[str, str, str] | None] = {}
     effects_cache: dict[str, dict[str, str]] = {}
     state_fields_cache: dict[str, tuple[str, ...]] = {}
+    constructor_state_cache: dict[str, str | None] = {}
 
     out: dict[str, ReceiverState] = {}
     for receiver_name, receiver_node in sorted(class_nodes.items()):
@@ -537,6 +700,15 @@ def derive_receiver_states(
             attribute_writers = _attribute_writers(receiver_node, receiver_name)
             disablers = _channel_default_disablers(idiom_matches, attribute_writers)
 
+            # P5 (§12.1.2): `class_nodes` IS the "P1 class index" conjunct 1
+            # matches `ast.Call` funcs against -- every top-level class
+            # across the whole PLR source tree, already built above.
+            if tracker_class not in constructor_state_cache:
+                constructor_state_cache[tracker_class] = _constructor_state(tracker_node, state_fields)
+            constructor_state = constructor_state_cache[tracker_class]
+            _conj12, conj123 = reset_rule_candidates(receiver_node, attr_name, tracker_class, class_nodes)
+            entry_reset, entry_reset_ledger = _entry_reset(conj123, constructor_state)
+
             out[receiver_name] = ReceiverState(
                 channel_attr=attr_name,
                 tracker_class=tracker_class,
@@ -549,6 +721,8 @@ def derive_receiver_states(
                 channel_default_param=channel_default_param,
                 channel_default_disablers=disablers,
                 tip_state_exceptions=tip_state_exceptions,
+                entry_reset=entry_reset,
+                entry_reset_ledger=entry_reset_ledger,
             )
             break  # first (alphabetically) qualifying attribute wins.
     return out

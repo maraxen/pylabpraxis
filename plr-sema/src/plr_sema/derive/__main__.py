@@ -284,7 +284,8 @@ def main(argv: list[str] | None = None) -> int:
                     f"receiver_state[{name!r}]: channel_attr={rs.channel_attr!r} "
                     f"tracker_class={rs.tracker_class!r} state_fields={list(rs.state_fields)} "
                     f"effects={rs.effects} channel_default_param={rs.channel_default_param} "
-                    f"channel_default_disablers={list(rs.channel_default_disablers)}",
+                    f"channel_default_disablers={list(rs.channel_default_disablers)} "
+                    f"entry_reset={rs.entry_reset if rs.entry_reset is not None else rs.entry_reset_ledger!r}",
                     file=sys.stderr,
                 )
 
@@ -310,6 +311,11 @@ def main(argv: list[str] | None = None) -> int:
                     "tip_loading": list(families.tip_loading),
                     "tip_requiring": list(families.tip_requiring),
                     "tip_dropping": list(families.tip_dropping),
+                    # 260903 (spec §12.1.3): the derived {method, post}
+                    # pair, or "absent"/"ambiguous" when P5 emitted
+                    # nothing -- an absence must be readable in the
+                    # artifact, not inferred from an absence of verdicts.
+                    "entry_reset": dict(rs.entry_reset) if rs.entry_reset is not None else rs.entry_reset_ledger,
                 }
             ledger["tip_state"] = tip_state_block
         args.gap_ledger.parent.mkdir(parents=True, exist_ok=True)

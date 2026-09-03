@@ -308,7 +308,9 @@ def test_ac_10_9_taxonomy_filter_is_checked() -> None:
     assert set(compute_tip_state_exceptions(classes)) == filtered
 
 
-_FORBIDDEN_LITERALS = frozenset({"TipTracker", "has_tip", "_pending_tip", "NoTipError", "HasTipError", "head"})
+_FORBIDDEN_LITERALS = frozenset(
+    {"TipTracker", "has_tip", "_pending_tip", "NoTipError", "HasTipError", "head", "setup"}
+)  # "setup" added spec 260903 §12.1/AC-12.1(ii): P5's reset-method name must be read from PLR, not typed.
 _TIPSTATE_SRC_FILES = (
     PLR_SEMA_ROOT / "src" / "plr_sema" / "check" / "tipstate.py",
     PLR_SEMA_ROOT / "src" / "plr_sema" / "derive" / "receiver_state.py",
@@ -401,3 +403,95 @@ def test_ac_10_10_family_selection_is_published(contracts_json: str) -> None:
     assert "pick_up_tips" in families.tip_loading
     assert "aspirate" in families.tip_requiring
     assert "drop_tips" in families.tip_requiring and "drop_tips" in families.tip_dropping
+
+
+# ---------------------------------------------------------------------------
+# AC-12.1(i) -- the reset rule is derived and published, not asserted
+# (spec 260903 §12.1). Sub-assertions (ii)/(iii)/(iv) are covered by this
+# module's extended `_FORBIDDEN_LITERALS` scan (ii) and by test_derive.py
+# (iii, iv), which exercise `reset_rule_candidates`/`derive_receiver_states`
+# directly rather than through the shipped artifact.
+# ---------------------------------------------------------------------------
+
+GAP_LEDGER_JSON_PATH = REPO_ROOT / "plr-sema" / "data" / "gap_ledger.json"
+
+
+def test_ac_12_1_i_entry_reset_is_derived_and_published(contracts_json: str) -> None:
+    payload = json.loads(contracts_json)
+    lh = payload["receiver_state"]["LiquidHandler"]
+    assert lh["entry_reset"] == {"method": "setup", "post": "no_tip"}
+
+    ledger = json.loads(GAP_LEDGER_JSON_PATH.read_text(encoding="utf-8"))
+    assert ledger["tip_state"]["LiquidHandler"]["entry_reset"] == {"method": "setup", "post": "no_tip"}
+
+
+# ---------------------------------------------------------------------------
+# AC-12.2 -- entry state fires only on an OBSERVED reset, both directions
+# (spec 260903 §12.1.5).
+# ---------------------------------------------------------------------------
+
+
+def test_ac_12_2_a_will_fail_after_observed_setup(contracts_json: str) -> None:
+    """(a): `setup()` then `aspirate(use_channels=[0])` -- exactly one
+    `WILL_FAIL` `Finding` in the whole report, sited at the bridged
+    `TipTracker.get_tip` `NoTipError` guard. `setup`'s own guard (`if
+    self.setup_finished: raise RuntimeError`, A-RESET-ONCE) does not parse
+    as a tip-state atom and so still emits its own (`UNKNOWN`,
+    `guard_predicate_unparsed`) finding on `op_1` -- filtering to
+    `Verdict.WILL_FAIL` (as (b)/(c) below already do for their own
+    zero-count assertions) is what "exactly one" is checked over, not a
+    bare `len(report.findings) == 1`.
+    """
+    report = _check("setup_then_aspirate_graph", contracts_json)
+    will_fail = [f for f in report.findings if f.verdict is Verdict.WILL_FAIL]
+    assert len(will_fail) == 1
+    (finding,) = will_fail
+    assert finding.operation_id == "op_2"
+    assert finding.category == "precondition_state"
+    assert finding.plr_site == _GET_TIP_SITE
+    assert report.verdict is Verdict.WILL_FAIL
+
+
+def test_ac_12_2_b_no_setup_stays_unknown(contracts_json: str) -> None:
+    """(b), the stub-defeating half: the identical `aspirate` with no
+    preceding `setup()` yields zero `WILL_FAIL` and zero `SAFE` findings
+    over the whole report -- an implementation that seeds `NO_TIP` at
+    graph entry (instead of only on an observed reset `CALL`) would pass
+    (a) and fail this.
+    """
+    report = _check("aspirate_no_setup_graph", contracts_json)
+    assert not [f for f in report.findings if f.verdict is Verdict.WILL_FAIL]
+    assert not [f for f in report.findings if f.verdict is Verdict.SAFE]
+    assert report.verdict is Verdict.UNKNOWN
+
+
+def test_ac_12_2_c_stale_contract_table_degrades_without_raising(contracts_json: str) -> None:
+    """(c): fixture (a) against a contract table with no `entry_reset` key
+    must not raise, and must degrade to (b)'s behaviour for the tip-state
+    question -- read via `.get()` with an empty default (AC-12.2's own
+    "fires only on an observed reset" claim depends on this NOT crashing
+    on a pre-increment table). Fixture (a) additionally contains the
+    `setup` operation itself (deleted in (b)), so the two reports are not
+    byte-identical as a whole; the equality this asserts is scoped to (i)
+    the report-level verdict and (ii) the `aspirate` operation's own
+    findings, which is the tip-state-relevant surface (b) has no
+    counterpart operation to diverge on.
+    """
+    payload = json.loads(contracts_json)
+    del payload["receiver_state"]["LiquidHandler"]["entry_reset"]
+    stale_contracts_json = json.dumps(payload)
+
+    report_a_stale = check_graph(
+        (FIXTURES / "setup_then_aspirate_graph.json").read_text(encoding="utf-8"), stale_contracts_json
+    )  # must not raise
+    report_b = _check("aspirate_no_setup_graph", contracts_json)
+
+    assert report_a_stale.verdict is Verdict.UNKNOWN
+    assert report_b.verdict is Verdict.UNKNOWN
+
+    def _aspirate_shape(report: AnalysisReport) -> list[tuple[str, str, str, str]]:
+        return sorted(
+            (f.verdict.value, f.category, f.reason, f.detail) for f in _findings_for(report, "op_2")
+        )
+
+    assert _aspirate_shape(report_a_stale) == _aspirate_shape(report_b)

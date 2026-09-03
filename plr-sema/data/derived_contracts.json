@@ -168089,6 +168089,10 @@
         "load_state": "HAS_TIP",
         "remove_tip": "NO_TIP"
       },
+      "entry_reset": {
+        "method": "setup",
+        "post": "no_tip"
+      },
       "state_fields": [
         "_pending_tip",
         "_tip"
@@ -168138,14 +168142,14 @@
     "praxis": {
       "branch": "coxswain-p2-pipeline",
       "dirty": true,
-      "dirty_content_id": "6c937ba0608e986f525dbff40cb5681b0cf6aa66",
-      "hash": "bbe7da51665f8e1bcf898a0c174ff20379efecf5",
+      "dirty_content_id": "9d9699660f3519074ef877e396632703765353fb",
+      "hash": "b35bc338f15d8030c8766db3d551c6028d23297a",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-02T19:28:24.639346+00:00",
+    "stamped_at": "2026-09-03T17:23:18.962406+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   }
