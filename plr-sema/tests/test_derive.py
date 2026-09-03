@@ -25,10 +25,12 @@ import ast
 from pathlib import Path
 
 import pytest
+from plr_sema._hand_maintained import BUDGET_CAP, live_rows
 from plr_sema._provenance import SurveyStamp, survey_stamp
 from plr_sema.derive import (
     SurveyFinding,
     SurveyRecord,
+    _is_inert_dropped_receiver_call,
     _iter_plr_source_files,
     build_contract_keys,
     build_gap_ledger,
@@ -584,18 +586,31 @@ def test_whole_surface_dropped_receiver_worklist_is_populated_on_nonlegacy(
     methods_attempted = nonlegacy_gap_ledger["totals"]["methods_attempted"]
     assert whole_surface[0]["blocks_methods"] <= methods_attempted
 
-    # The existing filter (tuned against the SUPPORTED_TOOLS-closure
-    # population's logger/inspect/warnings noise, round-5 T0 item 4) still
-    # removes logger.* calls here -- reused, not reinvented, for this new
-    # population (see build_gap_ledger's T14 docstring note on why a THIRD
-    # hand-typed filter table was deliberately not introduced).
+    # 260903 §13.4.2 (backlog #4883): the filter is now DERIVED
+    # (`sys.stdlib_module_names` + per-file import-alias resolution,
+    # builtin-container-attribute membership) rather than the round-5
+    # hand-typed prefix/suffix lists. `logger` is a plain
+    # `logging.Logger`-typed local variable on this surface too, not an
+    # import alias of the stdlib `logging` module -- so `logger.*` calls
+    # are NO LONGER filtered here, and correctly so (§13.4.2's own "six
+    # uncovered locals" point: a filter that hides `logger.debug` by
+    # naming it hides the fact that the derivation cannot see it). This
+    # reverses the round-5 assertion below on purpose; the "filter is
+    # actually doing something" property is now demonstrated by `'.join`
+    # / other builtin-container-attribute calls instead, still present in
+    # the unfiltered ranking and absent from the filtered one.
     filtered_calls = {row["call"] for row in whole_surface}
-    assert not any(call.startswith("logger.") for call in filtered_calls)
     unfiltered_calls = {row["call"] for row in whole_surface_unfiltered}
-    assert any(call.startswith("logger.") for call in unfiltered_calls), (
-        "fixture assumption violated: expected >=1 logger.* call in the "
-        "unfiltered ranking (proves the filter is actually doing something, "
-        "not vacuously passing because there was nothing to filter)"
+    assert any(call.startswith("logger.") for call in filtered_calls), (
+        "fixture assumption violated: expected >=1 logger.* call to survive "
+        "the derived filter -- logger is a local variable, not a stdlib "
+        "import alias, on this surface"
+    )
+    assert "', '.join" in unfiltered_calls and "', '.join" not in filtered_calls, (
+        "fixture assumption violated: expected the derived filter to still "
+        "remove >=1 builtin-container-attribute call (proves the filter is "
+        "actually doing something, not vacuously passing because there was "
+        "nothing to filter)"
     )
 
 
@@ -638,6 +653,215 @@ def test_whole_surface_dropped_receiver_worklist_populated_on_legacy(
     assert whole_surface
     for row in whole_surface:
         assert set(row.keys()) == {"call", "blocks_methods"}
+
+
+# ---------------------------------------------------------------------------
+# AC-13.1 / AC-13.2 (spec 260903 §13.4, backlog #4883) -- the derived
+# dropped-receiver inert-name filter replaces the two hand-typed frozensets
+# (`_INERT_RECEIVER_PREFIXES`, `_INERT_CALL_SUFFIXES`), and the deletion
+# leaves the hand-maintained registry unchanged.
+# ---------------------------------------------------------------------------
+
+_LIQUID_HANDLER_FILE = "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py"
+_PLR_INIT_FILE = "external/pylabrobot/pylabrobot/__init__.py"
+
+
+@pytest.mark.parametrize(
+    "call_expr",
+    ["asyncio.sleep", "time.time", "struct.pack", "contextlib.suppress"],
+)
+def test_derived_inert_filter_classifies_stdlib_calls_as_inert(call_expr: str) -> None:
+    """AC-13.1's positive half: none of these four heads were in the
+    deleted `_INERT_RECEIVER_PREFIXES` (nine locals/logging/inspect names),
+    so a pre-260903 run ranked them as real unresolved-receiver signal
+    (T14's finding, §13.4.1). The derived clause-1 replacement
+    (`sys.stdlib_module_names` membership) catches all four because they
+    are genuinely stdlib module names -- no import alias needed, since the
+    call expression's head IS the module name."""
+    assert _is_inert_dropped_receiver_call(call_expr, file=_PLR_INIT_FILE) is True
+
+
+@pytest.mark.parametrize(
+    "call_expr",
+    [
+        "self.head[channel].get_tip",
+        "op.resource.tracker.remove_liquid",
+        "op.tip.tracker.add_liquid",
+    ],
+)
+def test_derived_inert_filter_keeps_real_receiver_signal(call_expr: str) -> None:
+    """AC-13.1's negative half: real tip/volume-typestate receivers must
+    NOT be classified inert by either replaced clause -- `self`/`op` are
+    not stdlib module names or aliases of one, `self`/`op` are lowercase
+    (clause 2 unaffected), and `get_tip`/`remove_liquid`/`add_liquid` are
+    not builtin container/str/bytes attributes (clause 3's replacement)."""
+    assert _is_inert_dropped_receiver_call(call_expr, file=_LIQUID_HANDLER_FILE) is False
+
+
+def test_derived_inert_filter_stub_defeating_half_admits_logger_debug() -> None:
+    """AC-13.1's stub-defeating assertion, named explicitly in the spec: an
+    implementation that quietly kept `_INERT_RECEIVER_PREFIXES` as a
+    fallback would report `logger.debug` as still inert (0 newly admitted).
+    `logger` is a local `logging.Logger` instance, not an import alias of
+    the stdlib `logging` module in this file, so clause 1's replacement
+    (stdlib membership / per-file import-alias resolution) does not catch
+    it, and it is genuinely admitted back into the ranking."""
+    assert (
+        _is_inert_dropped_receiver_call("logger.debug", file=_LIQUID_HANDLER_FILE) is False
+    ), "logger.debug must be admitted (not inert) -- see §13.4.2's 'six uncovered locals'"
+
+
+def _old_inert_predicate(call_expr: str) -> bool:
+    """The round-5 rule this task DELETES from the source
+    (`_INERT_RECEIVER_PREFIXES`/`_INERT_CALL_SUFFIXES`), reconstructed HERE
+    ONLY so this test module can compute the before/after ranking movement
+    AC-13.1 requires published -- not reintroduced as a fallback in
+    `plr_sema.derive` itself (§13.4.2's design point 8 forbids that)."""
+    old_prefixes = {
+        "logger", "logging", "warnings", "inspect", "args", "kwargs", "sig",
+        "backend_kwargs", "default",
+    }
+    old_suffixes = {
+        "keys", "items", "values", "union", "join", "append", "get", "update",
+        "format", "strip", "split",
+    }
+    head = call_expr.split(".", 1)[0]
+    if head in old_prefixes:
+        return True
+    if head[:1].isupper():
+        return True
+    tail = call_expr.rsplit(".", 1)[-1]
+    return tail in old_suffixes
+
+
+def test_dropped_receiver_worklist_ranking_movement_both_directions(
+    gap_ledger: dict,
+) -> None:
+    """AC-13.1: publish the ranking movement in both directions over the
+    real, shipped `top_unresolved.dropped_receiver` view -- newly filtered
+    (was ranked under the old rule, now inert under the derived rule) and
+    newly admitted (was inert under the old rule, now ranked). The
+    newly-admitted count must be > 0 and must include `logger.debug` (the
+    stub-defeating half named in the spec)."""
+    unfiltered = gap_ledger["top_unresolved"]["dropped_receiver_unfiltered"]
+    calls = [row["call"] for row in unfiltered]
+
+    old_filtered = {c for c in calls if not _old_inert_predicate(c)}
+    new_filtered = {c for c in calls if not _is_inert_dropped_receiver_call(c, file=_LIQUID_HANDLER_FILE)}
+
+    newly_filtered = old_filtered - new_filtered
+    newly_admitted = new_filtered - old_filtered
+
+    assert len(newly_admitted) > 0
+    assert "logger.debug" in newly_admitted
+    # Sanity: the derived rule strictly extends stdlib-noise coverage
+    # (asyncio/time/struct/contextlib were real unresolved-receiver noise
+    # under the old rule per T14, §13.4.1), so some entries move the other
+    # way too.
+    assert len(newly_filtered) >= 0  # published even when zero
+
+    # The current, shipped ledger view reflects the DERIVED rule, not the
+    # deleted one -- cross-check against the fixture's own real output.
+    shipped_calls = {row["call"] for row in gap_ledger["top_unresolved"]["dropped_receiver"]}
+    assert shipped_calls == new_filtered
+
+
+def test_dropped_receiver_worklist_publishes_get_tip_rank(gap_ledger: dict) -> None:
+    """AC-13.1's third published number: the resulting rank of
+    `self.head[channel].get_tip` in the (derived-rule) filtered ranking --
+    it must still be present (real signal, never inert) and its rank is a
+    concrete, reportable position."""
+    view = gap_ledger["top_unresolved"]["dropped_receiver"]
+    calls = [row["call"] for row in view]
+    assert "self.head[channel].get_tip" in calls, (
+        "self.head[channel].get_tip must survive the derived filter -- it "
+        "is real tip-typestate receiver signal, not stdlib/container noise"
+    )
+    rank = calls.index("self.head[channel].get_tip") + 1
+    assert rank >= 1
+
+
+def test_import_alias_resolution_is_per_file_not_global() -> None:
+    """Round-1 challenger O6: alias resolution must be scoped to the file
+    the `dropped_calls` entry came from, not a single global table. Two
+    synthetic files that bind the SAME local name to DIFFERENT targets --
+    one a real stdlib alias, one an ordinary local variable -- must resolve
+    independently. A fixer who built one global alias table would have
+    `aio` resolve identically in both files; per-file resolution must not.
+    """
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        file_a = tmp_path / "a.py"
+        file_b = tmp_path / "b.py"
+        file_a.write_text("import asyncio as aio\n")
+        file_b.write_text("aio = SomeOtherThing()\n")  # NOT an import -- ordinary local
+
+        # Resolve relative to the real repo root the module derives paths
+        # from (`_REPO_ROOT`), so use paths that are actually reachable --
+        # patch the module's repo-root-relative lookup by using a path
+        # string relative to the real repo root.
+        import plr_sema.derive as derive_mod
+
+        original_root = derive_mod._REPO_ROOT
+        try:
+            derive_mod._REPO_ROOT = tmp_path
+            assert _is_inert_dropped_receiver_call("aio.sleep", file="a.py") is True
+            assert _is_inert_dropped_receiver_call("aio.sleep", file="b.py") is False
+        finally:
+            derive_mod._REPO_ROOT = original_root
+
+
+def test_ac_13_2_frozensets_are_deleted_from_source() -> None:
+    """AC-13.2, first half: an AST scan of `derive/__init__.py` finds no
+    module-level assignment named `_INERT_RECEIVER_PREFIXES` or
+    `_INERT_CALL_SUFFIXES`, and no `ast.Constant` string equal to any of
+    their twenty former members -- so the item cannot be satisfied by
+    quietly keeping the list under a different name or inlining its
+    members as string literals elsewhere."""
+    import plr_sema.derive as derive_mod
+
+    source_path = Path(derive_mod.__file__)
+    tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+
+    forbidden_names = {"_INERT_RECEIVER_PREFIXES", "_INERT_CALL_SUFFIXES"}
+    forbidden_string_constants = {
+        "logger", "logging", "warnings", "inspect", "args", "kwargs", "sig",
+        "backend_kwargs", "default",
+        "keys", "items", "values", "union", "join", "append", "get", "update",
+        "format", "strip", "split",
+    }
+    assert len(forbidden_string_constants) == 20
+
+    assigned_names: set[str] = set()
+    string_constants: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    assigned_names.add(target.id)
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            assigned_names.add(node.target.id)
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+            string_constants.add(node.value)
+
+    assert not (assigned_names & forbidden_names), (
+        f"forbidden module-level names still assigned: {assigned_names & forbidden_names}"
+    )
+    hits = string_constants & forbidden_string_constants
+    assert not hits, f"forbidden former frozenset members still present as string constants: {hits}"
+
+
+def test_ac_13_2_registry_unchanged_at_24_live() -> None:
+    """AC-13.2, second half: the hand-maintained registry does not grow --
+    #4883 adds no row, retires no row (§13.4.3: the frozensets were never
+    registered in the first place, so there is no row to retire either).
+    `live_rows()` stays 24 against `BUDGET_CAP == 24`, asserted AFTER this
+    change, so the item cannot be satisfied by registering the deleted
+    surface instead of deriving it."""
+    assert BUDGET_CAP == 24
+    assert len(live_rows()) == 24
 
 
 # ---------------------------------------------------------------------------

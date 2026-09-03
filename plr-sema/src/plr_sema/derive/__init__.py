@@ -45,7 +45,9 @@ from __future__ import annotations
 
 import ast
 import json
+import sys
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -853,44 +855,127 @@ def _dropped_receiver_worklist(
     return [{"call": attr, "blocks_methods": count} for attr, count in ranked]
 
 
-#: (round-5 T0 item 4) Receiver PREFIXES -- the text before the first `.` in
-#: a `dropped_calls` entry -- that are never a receiver whose typestate this
-#: analysis cares about. An UNFILTERED ranking of `dropped_calls` saturates
-#: at (approximately) "every tool" by construction, because every
-#: `SUPPORTED_TOOLS` closure passes through `LiquidHandler._check_args`,
-#: which itself calls `inspect.signature`, `sig.parameters.items`,
-#: `args.keys`, `', '.join` and `warnings.warn`, and every closure member
-#: logs -- see round-5 defense F1. A metric pinned at 100% by `logger.debug`
-#: is exactly as uninterpretable as one pinned at 0% by an over-narrow
-#: filter; this list exists to make the ranking MOVE, not to hide anything
-#: (the unfiltered view is still computed -- see
-#: `_dropped_receiver_worklist_from_survey`'s `filtered=False` path).
-_INERT_RECEIVER_PREFIXES: frozenset[str] = frozenset({
-    "logger", "logging", "warnings", "inspect", "args", "kwargs", "sig",
-    "backend_kwargs", "default",
-})
+#: 260903 §13.4.2 (backlog #4883): the derived replacement for the two
+#: hand-typed frozensets that used to gate clauses 1 and 3 of
+#: `_is_inert_dropped_receiver_call`. Both are FACTS ABOUT PYTHON, not
+#: about PLR, so neither can go stale when PLR changes (the `breaks_when`
+#: question §9.1 makes every hand-maintained row answer -- these two answer
+#: it with "never, by construction").
+#:
+#: `sys.stdlib_module_names` is a frozenset shipped by CPython since 3.10
+#: (the package's `requires-python`). Cached once at import time rather
+#: than re-read per call; the interpreter version it was read from is
+#: recorded in the gap ledger's stamp (`_stamp_to_dict`), so a rerun under a
+#: different interpreter is provenance-visible rather than silently
+#: assumed identical.
+_STDLIB_MODULE_NAMES: frozenset[str] = frozenset(sys.stdlib_module_names)
 
-#: (round-5 T0 item 4) Trailing method names that mark a call as
-#: container/string plumbing regardless of receiver -- e.g. `', '.join`,
-#: `x.keys()`, `x.items()`, `x.union()`, `x.append()` -- which fire on
-#: whatever local variable happens to hold a dict/list/str in `_check_args`
-#: and carry no receiver-typestate signal.
-_INERT_CALL_SUFFIXES: frozenset[str] = frozenset({
-    "keys", "items", "values", "union", "join", "append", "get", "update",
-    "format", "strip", "split",
-})
+#: dir() of every builtin container/string/bytes type, dunders excluded --
+#: clause 3's replacement for the eleven hand-typed call suffixes
+#: (`keys`, `items`, `union`, `join`, ...). Strictly wider than the old
+#: list (it also catches e.g. `pop`, `discard`, `copy`, `count`) by
+#: construction, since it is generated from the SAME types the old list was
+#: transcribed from by hand.
+_BUILTIN_CONTAINER_ATTRS: frozenset[str] = frozenset(
+    name
+    for t in (dict, list, set, tuple, str, bytes)
+    for name in dir(t)
+    if not (name.startswith("__") and name.endswith("__"))
+)
 
 
-def _is_inert_dropped_receiver_call(call_expr: str) -> bool:
-    """F1/item 4's filter predicate. Applied to a single `dropped_calls`
-    entry (a full receiver-qualified call expression, e.g.
-    `self.head[channel].get_tip` or `warnings.warn`) -- NOT to a bare
-    attribute name, so it can distinguish `self.head[channel].get_tip`
-    (real signal) from `warnings.warn` (noise) even though both would
-    collapse to the same bare name under the pre-T0 `top_unresolved` views.
+@lru_cache(maxsize=None)
+def _module_level_import_aliases(file: str) -> dict[str, str]:
+    """260903 §13.4.2 / round-1 challenger O6: PER-FILE module-level import
+    alias resolution -- ``{bound_local_name: fully_dotted_target}``, e.g.
+    ``{"aio": "asyncio"}`` for ``import asyncio as aio`` in this file,
+    ``{"t": "time.time"}`` for ``from time import time as t``. Built fresh
+    per ``file`` (a path relative to the repo root, matching
+    `SurveyRecord.file`) and memoized per file via `lru_cache` -- NOT a
+    single global alias table. A global table would silently merge aliases
+    from files that bind the same local name to different targets (O6's
+    exact objection), which is a materially different and less correct
+    design than the per-file resolution §13.4.2 specifies.
+
+    Only MODULE-LEVEL `Import`/`ImportFrom` nodes are read
+    (`ast.iter_child_nodes(tree)`, not a full `ast.walk`) -- §13.4.2 says
+    "module-level import alias"; a function-local import shadowing a
+    stdlib name is a different, narrower claim this derivation does not
+    make. Relative imports (`from . import x`, `node.level > 0`) can never
+    resolve to a stdlib module and are skipped, as is `from x import *`
+    (no individual bound name to record).
+    """
+    path = _REPO_ROOT / file
+    try:
+        source = path.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(path))
+    except (OSError, SyntaxError, UnicodeDecodeError):
+        return {}
+    aliases: dict[str, str] = {}
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.asname is not None:
+                    aliases[alias.asname] = alias.name
+                else:
+                    # `import a.b.c` binds the top-level package name `a` in
+                    # scope -- already resolvable directly against
+                    # `_STDLIB_MODULE_NAMES` without going through this
+                    # table, but recorded for uniformity.
+                    top = alias.name.split(".", 1)[0]
+                    aliases.setdefault(top, top)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module is None or node.level:
+                continue
+            for alias in node.names:
+                if alias.name == "*":
+                    continue
+                bound = alias.asname or alias.name
+                aliases[bound] = f"{node.module}.{alias.name}"
+    return aliases
+
+
+def _head_resolves_to_stdlib(head: str, *, file: str) -> bool:
+    """Clause 1's replacement (§13.4.2): ``head`` is itself a member of
+    ``sys.stdlib_module_names``, or is a module-level import alias -- in
+    ``file`` -- resolving to a member of one."""
+    if head in _STDLIB_MODULE_NAMES:
+        return True
+    resolved = _module_level_import_aliases(file).get(head)
+    if resolved is None:
+        return False
+    return resolved.split(".", 1)[0] in _STDLIB_MODULE_NAMES
+
+
+def _is_inert_dropped_receiver_call(call_expr: str, *, file: str) -> bool:
+    """F1/item 4's filter predicate, DERIVED (260903 §13.4.2, backlog
+    #4883). Applied to a single `dropped_calls` entry (a full
+    receiver-qualified call expression, e.g. `self.head[channel].get_tip`
+    or `warnings.warn`) -- NOT to a bare attribute name, so it can
+    distinguish `self.head[channel].get_tip` (real signal) from
+    `warnings.warn` (noise) even though both would collapse to the same
+    bare name under the pre-T0 `top_unresolved` views.
+
+    ``file`` is the `SurveyRecord.file` the `dropped_calls` entry came
+    from (repo-root-relative, e.g.
+    `"external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py"`)
+    -- REQUIRED, keyword-only: clause 1's import-alias resolution is
+    per-file (round-1 challenger O6), so this predicate cannot answer
+    clause 1 without knowing which file's imports to read.
+
+    Round-5's two hand-typed frozensets (`_INERT_RECEIVER_PREFIXES`,
+    `_INERT_CALL_SUFFIXES`) are DELETED, not kept as a fallback --
+    §13.4.2's design point 8: a retained fallback would make the
+    derivation unfalsifiable, since every entry the derived rule missed
+    would be silently covered by the list. The derived rule is NOT a
+    superset of the typed one: `logger`, `args`, `kwargs`, `sig`,
+    `backend_kwargs` and `default` were local-variable names, not stdlib
+    modules or import aliases, and are not covered here -- `logger.debug`
+    re-enters the ranking (§13.4.2's "what happens to the six uncovered
+    locals").
     """
     head = call_expr.split(".", 1)[0]
-    if head in _INERT_RECEIVER_PREFIXES:
+    if _head_resolves_to_stdlib(head, file=file):
         return True
     # A capitalized head (`Coordinate.zero`, `Coordinate.parse`, ...) is a
     # call on a CLASS/type object -- a value-factory or classmethod, not a
@@ -898,11 +983,12 @@ def _is_inert_dropped_receiver_call(call_expr: str) -> bool:
     # Real tip/resource-typestate receivers in this population are always
     # lowercase local variables (self, tip_spot, channel, resource,
     # container, tracker, ...); this rule generalizes past any one PLR
-    # class name rather than hand-naming `Coordinate`.
+    # class name rather than hand-naming `Coordinate`. Kept UNCHANGED from
+    # round 5 -- already derived, §13.4.2 does not touch it.
     if head[:1].isupper():
         return True
     tail = call_expr.rsplit(".", 1)[-1]
-    return tail in _INERT_CALL_SUFFIXES
+    return tail in _BUILTIN_CONTAINER_ATTRS
 
 
 def _dropped_receiver_worklist_from_survey(
@@ -937,7 +1023,7 @@ def _dropped_receiver_worklist_from_survey(
             if rec is None:
                 continue
             for call_expr in rec.dropped_calls:
-                if filtered and _is_inert_dropped_receiver_call(call_expr):
+                if filtered and _is_inert_dropped_receiver_call(call_expr, file=rec.file):
                     continue
                 blocks.setdefault(call_expr, set()).add(key)
     ranked = sorted(
@@ -1008,7 +1094,7 @@ def _dropped_receiver_worklist_whole_surface(
     blocks: dict[str, int] = {}
     for rec in records:
         for call_expr in set(rec.dropped_calls):
-            if filtered and _is_inert_dropped_receiver_call(call_expr):
+            if filtered and _is_inert_dropped_receiver_call(call_expr, file=rec.file):
                 continue
             blocks[call_expr] = blocks.get(call_expr, 0) + 1
     ranked = sorted(blocks.items(), key=lambda item: (-item[1], item[0]))
@@ -1036,6 +1122,12 @@ def _stamp_to_dict(stamp: SurveyStamp) -> dict[str, Any]:
         # computed against -- additive fields, see SurveyStamp's docstring.
         "surface": stamp.surface,
         "surface_pin": stamp.surface_pin,
+        # 260903 §13.4.2 (backlog #4883): the interpreter this run's
+        # `sys.stdlib_module_names` came from -- the derived inert-name
+        # filter's clause 1 is a fact about THIS Python, not about PLR, so a
+        # rerun under a different interpreter is provenance-visible here
+        # rather than silently assumed identical.
+        "derive_python_version": sys.version.split()[0],
     }
 
 
