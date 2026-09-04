@@ -125,7 +125,11 @@ class Verdict(str, Enum):
 # binding chain guard free var -> PLR parameter position ->
 # `op.arguments[param]` -> protocol expression -> `depends_on_params`; 260902
 # added `channel_state_unknown`, §10.8), hard cap 12 (registry row HM-14);
-# adding a 9th is a deliberate, reviewable act.
+# adding a 9th is a deliberate, reviewable act. 260903 (spec §14.6/§14.16 Q4,
+# volume increment 5) added `volume_tracking_unasserted` and
+# `volume_state_unknown` -- 8 -> 10 of the same cap 12 -- both with working
+# producers under `plr_sema.check.volumestate`'s guard-evaluation table
+# (§14.5) gated by §14.6's conditional-guard rule.
 REASON_VOCABULARY: frozenset[str] = frozenset(
     {
         # the target method has no entry in the derived contract table at all
@@ -150,6 +154,16 @@ REASON_VOCABULARY: frozenset[str] = frozenset(
         # something; the EVALUATION stage did not, which is why this cannot
         # fold into `guard_predicate_unparsed` (§10.8's own argument).
         "channel_state_unknown",
+        # 260903 (spec §14.5/§14.6, volume increment 5): a volume guard's
+        # atom evaluated T (would fire), but the guard is CONDITIONAL
+        # (§14.6's rule) and the hypothesis is not asserted -- the analyzer
+        # cannot emit WILL_FAIL for a program that may never have reached
+        # the guard at all.
+        "volume_tracking_unasserted",
+        # 260903 (spec §14.2/§14.5): a volume guard's cell interval (or,
+        # for the over-fill half, the capacity itself) is Top -- the ½
+        # case of §14.5's guard-evaluation table.
+        "volume_state_unknown",
     }
 )
 

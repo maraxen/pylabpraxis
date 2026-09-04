@@ -153,10 +153,27 @@ def test_ac_10_4_shipped_fixture_unchanged(contracts_json: str) -> None:
     assert all(f.verdict is Verdict.UNKNOWN for f in report.findings)
     # Pre-increment finding count over this fixture (measured against the
     # pre-increment-shaped contract table, AC-10.7's fixture, below) is the
-    # same 38 -- asserted there, cross-checked here by equality.
+    # same 38 -- asserted there, cross-checked here, EXCLUDING volume-family
+    # findings. 260903 (spec §14, T26): the LIVE `contracts_json` fixture's
+    # `LiquidHandler.aspirate`/`dispense` entries have carried `volume_guards`
+    # since T24/T25 landed, but nothing consumed them until T26 wired
+    # `plr_sema.check.volumestate` into this same walk -- this fixture's own
+    # aspirate/dispense calls now ALSO pick up 4 additive
+    # `volume_state_unknown`/`volume_tracking_unasserted` findings (2 guards
+    # apiece), which `derived_contracts_pre_increment.json` (predating every
+    # increment) cannot produce at all. That is the correct, disclosed
+    # consequence of T26 landing, not a tip-state regression -- so this test
+    # narrows to reasons tip state's OWN AC-10.4 cares about, tip-family
+    # findings, by excluding the two volume reasons before comparing counts.
     pre_contracts = (FIXTURES / "derived_contracts_pre_increment.json").read_text(encoding="utf-8")
     pre_report = _check("simple_transfer_graph", pre_contracts)
-    assert len(report.findings) == len(pre_report.findings)
+    _VOLUME_REASONS = {"volume_state_unknown", "volume_tracking_unasserted"}
+    non_volume = [f for f in report.findings if f.reason not in _VOLUME_REASONS]
+    assert len(non_volume) == len(pre_report.findings)
+    assert len(report.findings) - len(non_volume) == 4, (
+        "expected exactly 4 additive volume findings (aspirate's 2 guards + "
+        "dispense's 2 guards) over this fixture"
+    )
     assert not any(f.reason == "channel_state_unknown" for f in report.findings)
 
 

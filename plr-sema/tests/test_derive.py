@@ -1294,7 +1294,12 @@ def test_ac_13_3_no_lidstate_no_receiver_state_entry_no_reason_vocabulary_member
     (keyed by receiver CLASS, e.g. `LiquidHandler`) carries no `Liddable`
     entry -- the lid ledger block lives ONLY under the separate top-level
     `lid_state` key, never inside `receiver_state`; and `REASON_VOCABULARY`
-    gains no lid-related member (still exactly 8, per §13.7/§13.13 item 6).
+    gains no lid-related member. Was "still exactly 8" (§13.7/§13.13 item
+    6) through increment 4; 260903 (spec §14.6/§14.16 Q4, T26) bumped it
+    8 -> 10 for the volume family's `volume_tracking_unasserted`/
+    `volume_state_unknown` -- unrelated to lid, which is what the
+    no-"lid"-substring assertion below re-confirms independently of the
+    exact count.
     """
     import plr_sema
 
@@ -1313,7 +1318,7 @@ def test_ac_13_3_no_lidstate_no_receiver_state_entry_no_reason_vocabulary_member
 
     from plr_sema.verdict import REASON_VOCABULARY
 
-    assert len(REASON_VOCABULARY) == 8
+    assert len(REASON_VOCABULARY) == 10
     assert not any("lid" in reason.lower() for reason in REASON_VOCABULARY)
 
 

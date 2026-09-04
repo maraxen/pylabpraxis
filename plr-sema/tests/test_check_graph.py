@@ -498,3 +498,286 @@ def test_lid_family_null_condition_guard_is_unknown_not_will_fail(contracts_json
     assert finding.verdict is Verdict.UNKNOWN
     assert finding.reason == "guard_predicate_unparsed"
     assert finding.verdict is not Verdict.WILL_FAIL
+
+
+# ---------------------------------------------------------------------------
+# Spec 260903 §14 (`260903_plr-sema-volume-increment.md`), T26 (backlog
+# #4959): the interval domain and its transfer functions (V0-V5), wired
+# into `check_ir`/`check_graph`'s walk. AC-14.5/AC-14.6.
+# ---------------------------------------------------------------------------
+
+_REMOVE_LIQUID_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+    lineno=92,
+    qualname="VolumeTracker.remove_liquid",
+)
+_ADD_LIQUID_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+    lineno=105,
+    qualname="VolumeTracker.add_liquid",
+)
+_DOES_VOLUME_TRACKING_ENV = frozenset({"does_volume_tracking"})
+
+
+def _volume_graph(name: str) -> str:
+    return (PLR_SEMA_ROOT / "tests" / "fixtures" / f"{name}_graph.json").read_text(encoding="utf-8")
+
+
+def _volume_check(name: str, contracts_json: str, *, env: frozenset[str] = frozenset()) -> AnalysisReport:
+    return check_graph(_volume_graph(name), contracts_json, env=env)
+
+
+def _site_findings(report: AnalysisReport, site: PlrSite, operation_id: str | None = None) -> list[Finding]:
+    return [
+        f
+        for f in report.findings
+        if f.plr_site == site and (operation_id is None or f.operation_id == operation_id)
+    ]
+
+
+def _no_volume_will_fail(report: AnalysisReport) -> bool:
+    """`True` iff no finding sited in `volume_tracker.py` is `WILL_FAIL` --
+    narrower than "no WILL_FAIL in the report", since several of these
+    fixtures deliberately omit a `pick_up_tips` (AC-14.5(d)) or vary
+    `use_channels` (AC-14.6's D2 sub-assertion), which the PRE-EXISTING tip
+    family (not volume) correctly flags as its own, unrelated WILL_FAIL
+    (e.g. `TipTracker.get_tip`, "dispense with no tip mounted") -- a real,
+    correct finding this module must not suppress or be confused by.
+    """
+    return not any(
+        f.verdict is Verdict.WILL_FAIL and f.plr_site is not None and f.plr_site.file.endswith("volume_tracker.py")
+        for f in report.findings
+    )
+
+
+def test_ac_14_5_a_headline_tip_overdraw_will_fail_under_env(contracts_json: str) -> None:
+    """AC-14.5(a): pick_up_tips ch0 / seeded well 100 / aspirate(vols=[50])
+    / dispense(vols=[60]), under `env={"does_volume_tracking"}` -> exactly
+    ONE `WILL_FAIL` finding in the whole report, sited at
+    `PlrSite(volume_tracker.py, 92, VolumeTracker.remove_liquid)`. The
+    report also carries the seed CALL's own `unresolved_delegate` finding
+    (§14.8) and the well-side `volume_state_unknown` (the over-fill half,
+    always ½, §14.2)."""
+    report = _volume_check("volume_overdraw", contracts_json, env=_DOES_VOLUME_TRACKING_ENV)
+
+    will_fail = [f for f in report.findings if f.verdict is Verdict.WILL_FAIL]
+    assert len(will_fail) == 1, f"expected exactly one WILL_FAIL, got {will_fail!r}"
+    (finding,) = will_fail
+    assert finding.plr_site == _REMOVE_LIQUID_SITE
+    assert finding.category == "precondition_state"
+    assert report.verdict is Verdict.WILL_FAIL
+
+    seed_findings = [f for f in report.findings if f.operation_id == "op_2"]
+    assert any(f.reason == "unresolved_delegate" for f in seed_findings), (
+        "the seed CALL's own unresolved_delegate finding (§14.8) is missing"
+    )
+    well_side = _site_findings(report, _ADD_LIQUID_SITE, operation_id="op_4")
+    assert well_side and all(f.verdict is Verdict.UNKNOWN and f.reason == "volume_state_unknown" for f in well_side)
+
+
+def test_ac_14_7_headline_tip_overdraw_unasserted_by_default(contracts_json: str) -> None:
+    """AC-14.7: the SAME headline fixture, under the DEFAULT `env ==
+    frozenset()`, yields `UNKNOWN`/`volume_tracking_unasserted` at the same
+    site -- never `WILL_FAIL` -- while the well's own aspirate guard's
+    `SAFE` (below) is unchanged by `env` in either direction. Also pins
+    `check_graph`'s two-positional-argument call form (no `env=`) to the
+    identical default-`env` result."""
+    report_kwarg = _volume_check("volume_overdraw", contracts_json)
+    report_positional = check_graph(_volume_graph("volume_overdraw"), contracts_json)
+    assert report_kwarg.findings == report_positional.findings
+
+    dispense_tip_side = _site_findings(report_kwarg, _REMOVE_LIQUID_SITE, operation_id="op_5")
+    assert len(dispense_tip_side) == 1
+    (finding,) = dispense_tip_side
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "volume_tracking_unasserted"
+    assert not any(f.verdict is Verdict.WILL_FAIL for f in report_kwarg.findings)
+
+    aspirate_well_side = _site_findings(report_kwarg, _REMOVE_LIQUID_SITE, operation_id="op_4")
+    assert len(aspirate_well_side) == 1
+    assert aspirate_well_side[0].verdict is Verdict.SAFE
+
+
+def test_ac_14_5_b_safe_tip_dispense_under_capacity(contracts_json: str) -> None:
+    """AC-14.5(b): the same graph with `dispense(vols=[40])` -> a `SAFE`
+    finding at the same tip-side site, and the well's own aspirate guard
+    (`op_4`) is `SAFE` too -- the well half this increment does ship."""
+    report = _volume_check("volume_safe", contracts_json, env=_DOES_VOLUME_TRACKING_ENV)
+
+    tip_side = _site_findings(report, _REMOVE_LIQUID_SITE, operation_id="op_5")
+    assert len(tip_side) == 1 and tip_side[0].verdict is Verdict.SAFE
+
+    well_side = _site_findings(report, _REMOVE_LIQUID_SITE, operation_id="op_4")
+    assert len(well_side) == 1 and well_side[0].verdict is Verdict.SAFE
+
+    assert not any(f.verdict is Verdict.WILL_FAIL for f in report.findings)
+
+
+def test_ac_14_5_c_top_amount_yields_unknown(contracts_json: str) -> None:
+    """AC-14.5(c): the same graph with the dispense's own `vols` lowering
+    to Top (an unresolvable call expression) -> `UNKNOWN` with reason
+    `volume_state_unknown` at the tip-side site -- V0 does not apply
+    (amounts unresolved), V3 widens."""
+    report = _volume_check("volume_top", contracts_json, env=_DOES_VOLUME_TRACKING_ENV)
+
+    tip_side = _site_findings(report, _REMOVE_LIQUID_SITE, operation_id="op_5")
+    assert len(tip_side) == 1
+    assert tip_side[0].verdict is Verdict.UNKNOWN
+    assert tip_side[0].reason == "volume_state_unknown"
+    assert not any(f.verdict is Verdict.WILL_FAIL for f in report.findings)
+
+
+def test_ac_14_5_d_overfill_and_tip_cell_are_always_unknown(contracts_json: str) -> None:
+    """AC-14.5(d), the declining half: `dispense(vols=[10_000])` into a
+    seeded well, with NO preceding `pick_up_tips` at all -> `UNKNOWN` with
+    reason `volume_state_unknown` at BOTH the well-side (`add_liquid`,
+    over-fill -- capacity is Top, §14.2) and the tip-side (`remove_liquid`
+    -- the channel's `TipState` is not `HAS_TIP`, A-TIP-CELL) sites, under
+    EITHER `env` -- never `WILL_FAIL` for either."""
+    for env in (frozenset(), _DOES_VOLUME_TRACKING_ENV):
+        report = _volume_check("volume_overfill", contracts_json, env=env)
+        well_side = _site_findings(report, _ADD_LIQUID_SITE, operation_id="op_3")
+        tip_side = _site_findings(report, _REMOVE_LIQUID_SITE, operation_id="op_3")
+        assert len(well_side) == 1 and well_side[0].reason == "volume_state_unknown"
+        assert len(tip_side) == 1 and tip_side[0].reason == "volume_state_unknown"
+        assert _no_volume_will_fail(report)
+
+
+def test_ac_14_5_e_retip_dirty_tip_never_safe(contracts_json: str) -> None:
+    """AC-14.5(e), the round-1 O4 counterexample: `pick_up_tips` /
+    `aspirate(50)` / `drop_tips(allow_nonzero_volume=True)` (at a tip whose
+    interval is NOT provably `[0, 0]`) / `pick_up_tips` / `dispense(50)` ->
+    `UNKNOWN` with reason `volume_state_unknown` at the final dispense's
+    tip-side site -- NEVER `SAFE`. A `[0, 0]`-always implementation (the
+    unsound simple rule V5 replaces) would get this wrong."""
+    report = _volume_check("volume_retip", contracts_json, env=_DOES_VOLUME_TRACKING_ENV)
+
+    final_dispense = _site_findings(report, _REMOVE_LIQUID_SITE, operation_id="op_7")
+    assert len(final_dispense) == 1
+    assert final_dispense[0].verdict is Verdict.UNKNOWN
+    assert final_dispense[0].reason == "volume_state_unknown"
+    assert final_dispense[0].verdict is not Verdict.SAFE
+
+
+def test_ac_14_5_e_retip_provably_empty_drop_keeps_precision(contracts_json: str) -> None:
+    """AC-14.5(e), the OTHER half: "the same sequence with the drop taken
+    at a provably empty tip leaves `tips_dirty` false" -- constructed here
+    by inserting a `dispense(50)` immediately before the drop (emptying the
+    tip exactly, `[0, 0]`) and replacing the tail with an
+    `aspirate(30)`/`dispense(20)` pair. If `tips_dirty` had (incorrectly)
+    been set anyway, the second `pick_up_tips` would yield Top and this
+    tail's final `dispense(20)` would be `UNKNOWN`, not the `SAFE` a
+    provably-empty retip is entitled to.
+    """
+    graph = json.loads(_volume_graph("volume_retip"))
+    ops = graph["operations"]
+    by_id = {o["id"]: o for o in ops}
+
+    empty_out = copy.deepcopy(by_id["op_7"])
+    empty_out["id"] = "op_4b"
+    ops.insert(ops.index(by_id["op_5"]), empty_out)
+    graph["execution_order"].insert(graph["execution_order"].index("op_5"), "op_4b")
+
+    by_id["op_7"]["method_name"] = "aspirate"
+    by_id["op_7"]["arguments"] = {"resources": "[well]", "vols": "[30]", "use_channels": "[0]"}
+    tail = copy.deepcopy(by_id["op_7"])
+    tail["id"] = "op_8"
+    tail["method_name"] = "dispense"
+    tail["arguments"] = {"resources": "[well]", "vols": "[20]", "use_channels": "[0]"}
+    ops.append(tail)
+    graph["execution_order"].append("op_8")
+
+    report = check_graph(json.dumps(graph), contracts_json, env=_DOES_VOLUME_TRACKING_ENV)
+
+    final_dispense = _site_findings(report, _REMOVE_LIQUID_SITE, operation_id="op_8")
+    assert len(final_dispense) == 1
+    assert final_dispense[0].verdict is Verdict.SAFE, (
+        f"expected SAFE (tips_dirty must stay false after a provably-empty drop), got {final_dispense[0]!r}"
+    )
+
+
+VOLUME_WHILE_FIXTURE = PLR_SEMA_ROOT / "tests" / "fixtures" / "volume_while_graph.json"
+
+
+def test_ac_14_5_while_loop_converges_and_widens_to_top(contracts_json: str) -> None:
+    """AC-14.5's sixth fixture (V4): a `while`-shaped (`trip == null`)
+    region whose body dispenses a literal volume repeatedly. `check_ir`
+    (via `check_graph`) must converge within the shared `K`-pass cap
+    without raising -- a plain, unguarded fixpoint join over the interval
+    domain (infinite height) would not be guaranteed to stabilize in any
+    fixed number of passes, which is exactly why V4 widens on entry instead
+    of iterating to a real fixpoint for volume cells. The probe call AFTER
+    the region's `END` requests an enormous amount (999,999); if the tip
+    cell had kept ANY finite upper bound from inside the loop, so large a
+    request would be decidable (and, under the hypothesis env, WILL_FAIL);
+    observing `UNKNOWN`/`volume_state_unknown` instead is the direct,
+    externally-observable proof that every cell mentioned in the region is
+    Top after the region's END.
+    """
+    report = check_graph(VOLUME_WHILE_FIXTURE.read_text(encoding="utf-8"), contracts_json, env=_DOES_VOLUME_TRACKING_ENV)
+
+    post_loop_probe = _site_findings(report, _REMOVE_LIQUID_SITE, operation_id="op_6")
+    assert len(post_loop_probe) == 1
+    assert post_loop_probe[0].verdict is Verdict.UNKNOWN
+    assert post_loop_probe[0].reason == "volume_state_unknown"
+    assert not any(f.verdict is Verdict.WILL_FAIL for f in report.findings)
+
+
+# ---------------------------------------------------------------------------
+# AC-14.6: V2 threads pair-by-pair, not against one shared snapshot --
+# static only, against a SYNTHETIC contract table whose bridged guard has
+# no `is_disabled` conjunct (round-1 O14; no real `aspirate` guard is
+# unconditional, since the well-side guard always carries the `is_disabled`
+# entry -- §14.0.2's disposition table).
+# ---------------------------------------------------------------------------
+
+VOLUME_TWO_CHANNEL_FIXTURE = PLR_SEMA_ROOT / "tests" / "fixtures" / "volume_two_channel_one_well_graph.json"
+
+
+def _synthetic_two_channel_contracts_json(contracts_json: str) -> str:
+    payload = json.loads(contracts_json)
+    (guard,) = [
+        dict(g) for g in payload["contracts"]["LiquidHandler.aspirate"]["volume_guards"] if g["cell_param"] == "resources"
+    ]
+    guard["caller_scope"] = ["if does_volume_tracking()", "for op in aspirations"]
+    payload["contracts"]["LiquidHandler.aspirate"] = dict(payload["contracts"]["LiquidHandler.aspirate"])
+    payload["contracts"]["LiquidHandler.aspirate"]["volume_guards"] = [guard]
+    return json.dumps(payload)
+
+
+def test_ac_14_6_two_channel_one_well_threads_sequentially(contracts_json: str) -> None:
+    """AC-14.6, first half: a well seeded to 100, `aspirate(resources=[well,
+    well], vols=[60, 60], use_channels=[0, 1])` -> `SAFE` for the FIRST
+    pair and `WILL_FAIL` for the SECOND, both sited at
+    `VolumeTracker.remove_liquid`, and no `SAFE` for the second. An
+    implementation that evaluated both guards against one shared
+    pre-operation snapshot would emit two `SAFE`s instead."""
+    synthetic_contracts_json = _synthetic_two_channel_contracts_json(contracts_json)
+    report = check_graph(
+        VOLUME_TWO_CHANNEL_FIXTURE.read_text(encoding="utf-8"), synthetic_contracts_json, env=_DOES_VOLUME_TRACKING_ENV
+    )
+
+    pair_findings = _site_findings(report, _REMOVE_LIQUID_SITE, operation_id="op_3")
+    assert [f.verdict for f in pair_findings] == [Verdict.SAFE, Verdict.WILL_FAIL], (
+        f"expected [SAFE, WILL_FAIL] in pair order, got {[f.verdict for f in pair_findings]!r}"
+    )
+
+
+def test_ac_14_6_use_channels_length_mismatch_widens(contracts_json: str) -> None:
+    """AC-14.6, second sub-assertion (round-1 D2): the SAME fixture with
+    `use_channels=[0, 1, 2]` (disagreeing with the two-element pair list)
+    widens to Top and emits no definite verdict for either pair -- V0's
+    clause (c)."""
+    synthetic_contracts_json = _synthetic_two_channel_contracts_json(contracts_json)
+    graph = json.loads(VOLUME_TWO_CHANNEL_FIXTURE.read_text(encoding="utf-8"))
+    for operation in graph["operations"]:
+        if operation["method_name"] == "aspirate":
+            operation["arguments"]["use_channels"] = "[0, 1, 2]"
+
+    report = check_graph(json.dumps(graph), synthetic_contracts_json, env=_DOES_VOLUME_TRACKING_ENV)
+
+    pair_findings = _site_findings(report, _REMOVE_LIQUID_SITE, operation_id="op_3")
+    assert len(pair_findings) == 1
+    assert pair_findings[0].verdict is Verdict.UNKNOWN
+    assert pair_findings[0].reason == "volume_state_unknown"
+    assert _no_volume_will_fail(report)

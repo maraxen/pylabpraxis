@@ -136,7 +136,7 @@ from typing import Any
 from plr_sema._provenance import SurveyStamp
 from plr_sema._provenance.git_state import GitState
 from plr_sema.check import cache as cache_mod
-from plr_sema.check import ir, tipstate
+from plr_sema.check import ir, tipstate, volumestate
 from plr_sema.check._supported_tools import SUPPORTED_TOOLS
 from plr_sema.telemetry import emit_finding
 from plr_sema.verdict import AnalysisReport, Finding, PlrSite, Verdict, join
@@ -332,6 +332,8 @@ def _findings_for_call(
     inside_loop: bool,
     receiver_states: dict[str, Any],
     walk: tipstate.TipWalk,
+    vwalk: volumestate.VolumeWalk,
+    env: frozenset[str],
     poisoned: bool,
 ) -> list[Finding]:
     """The per-``CALL`` body: exactly today's (pre-IR) per-operation logic
@@ -356,6 +358,14 @@ def _findings_for_call(
     ``channel_guards`` entry that parsed is an ADDITIVE finding this
     operation never had before (no old finding to replace, since
     ``channel_guards`` did not exist pre-increment).
+
+    260903 (spec §14, volume increment 5): ``plr_sema.check.volumestate
+    .evaluate_call`` runs alongside tipstate's, purely ADDITIVELY -- a
+    volume guard is never present in ``contract["guards"]``, so there is
+    nothing for it to consume/replace. It runs for EVERY resolved contract,
+    not only one with a nonempty ``volume_guards`` (V5's tip-cell lifecycle
+    fires off ``channel_effect``, which ``pick_up_tips``/``drop_tips``
+    contracts carry with no ``volume_guards`` at all).
     """
     if call.receiver_type is None:
         return [_receiver_type_unknown(operation_id)]
@@ -368,6 +378,9 @@ def _findings_for_call(
     tip_findings, consumed = tipstate.evaluate_call(
         operation_id, call, contract, receiver_states.get(call.receiver_type), walk, poisoned=poisoned
     )
+    volume_findings = volumestate.evaluate_call(
+        operation_id, call, contract, receiver_states.get(call.receiver_type), vwalk, env=env, poisoned=poisoned
+    )
 
     findings: list[Finding] = [
         _findings_for_gap(operation_id, gap) for gap in contract.get("gaps", ())
@@ -378,6 +391,7 @@ def _findings_for_call(
         if idx not in consumed
     )
     findings.extend(tip_findings)
+    findings.extend(volume_findings)
     if inside_loop:
         findings.append(_loop_bounds_unknown(operation_id))
     if not findings:
@@ -442,7 +456,11 @@ def _with_iteration(finding: Finding, iteration: int) -> Finding:
 
 
 def check_ir(
-    bytecode: ir.Bytecode, contracts: dict[str, Any], receiver_states: dict[str, Any] | None = None
+    bytecode: ir.Bytecode,
+    contracts: dict[str, Any],
+    receiver_states: dict[str, Any] | None = None,
+    *,
+    env: frozenset[str] = frozenset(),
 ) -> tuple[Finding, ...]:
     """Spec §11.4.1 (260902) / §12.3 (260903, "region semantics for a
     region with a proved trip"): the analysis core. A structured,
@@ -500,9 +518,28 @@ def check_ir(
     ``tests/test_tip_typestate.py``'s ``test_ac_10_5a``/``test_ac_10_6_condition_expr_widens``,
     now updated to assert the retirement, and the dedicated
     ``call_before_unowned_region_graph.json`` fixture, AC-12.14(iv)).
+
+    260903 (spec §14, volume increment 5): ``env`` (keyword-only, defaults
+    to empty -- the same ``cache=`` precedent #4922 added to
+    ``check_graph``'s signature, §14.6's normative box) threads the
+    hypothesis set into every ``plr_sema.check.volumestate.evaluate_call``
+    call. A ``plr_sema.check.volumestate.VolumeWalk`` (``vwalk``) is
+    threaded through this same walk, alongside ``walk`` (the tip family's
+    own), with its own region-entry/tail widen (V4) and its own
+    branch-merge join (interval hull + ``tips_dirty`` OR) -- see
+    ``widen_region``/``walk_branch``/``walk_loop`` below. A trip=``None``
+    ``LOOP`` region does NOT run volume cells through the K-pass fixpoint
+    join tip state uses (V4: the interval lattice has infinite height, so a
+    fixpoint over it is not guaranteed to stabilize within any fixed pass
+    count -- see §14.5's own non-termination counterexample) -- volume
+    cells mentioned in such a region are widened to Top BOTH on entry and
+    again after the (tip-state-only) fixpoint returns, so no precision
+    ever survives a real ``while``/unproven ``for`` for the volume family,
+    regardless of what happens to actually run inside it.
     """
     receiver_states = receiver_states or {}
     walk = tipstate.TipWalk()
+    vwalk = volumestate.VolumeWalk()
     poisoned_slots = tipstate.disabled_receivers(bytecode.instructions, receiver_states)
     findings: list[Finding] = []
     instructions = bytecode.instructions
@@ -517,14 +554,21 @@ def check_ir(
                 inside_loop=inside_loop,
                 receiver_states=receiver_states,
                 walk=walk,
+                vwalk=vwalk,
+                env=env,
                 poisoned=instr.receiver in poisoned_slots,
             )
         )
+
+    def widen_region_volumes(open_pc: int) -> None:
+        for cell in volumestate.region_cells(instructions, open_pc, contracts, receiver_states):
+            vwalk.widen(cell)
 
     def widen_region(open_pc: int) -> None:
         receivers, _end_pc = tipstate.region_receivers(instructions, open_pc)
         for slot in receivers:
             walk.widen(slot)
+        widen_region_volumes(open_pc)
 
     def walk_block(
         pc: int, stop_pc: int, *, inside_loop: bool, record: bool, iteration: int | None = None
@@ -588,7 +632,19 @@ def check_ir(
             walk_block(body_start, end_pc, inside_loop=True, record=record)
             return
         if loop.trip is None:
+            # V4 (§14.5): an unproven trip count means the interval domain
+            # (infinite height) is not guaranteed to reach a fixpoint
+            # within any fixed pass count -- unlike tip state (height 1),
+            # which the fixpoint join below still runs normally. Volume
+            # cells mentioned in the region go straight to Top, both
+            # before AND after the tip-only fixpoint (a call inside the
+            # region can still narrow a cell away from Top during a single
+            # pass; the post-widen is what makes "every cell in the region
+            # is Top after the region's END" true unconditionally, not
+            # just as an artifact of however many passes tip state needed).
+            widen_region_volumes(open_pc)
             walk_loop_fixpoint(open_pc, body_start, end_pc, record=record)
+            widen_region_volumes(open_pc)
             return
         # L1 (§12.3.3): bounded unroll, min(trip, K) real iterations,
         # threading state from one into the next; findings on every one.
@@ -658,12 +714,17 @@ def check_ir(
         # unchanged" falls out of the walk rather than needing a special
         # case. `pred` (B2) is never read.
         entry = walk.snapshot()
+        entry_v = vwalk.snapshot()
         walk_block(open_pc + 1, else_pc, inside_loop=inside_loop, record=record, iteration=iteration)
         true_states = walk.snapshot()
+        true_v = vwalk.snapshot()
         walk.restore(entry)
+        vwalk.restore(entry_v)
         walk_block(else_pc + 1, end_pc, inside_loop=inside_loop, record=record, iteration=iteration)
         false_states = walk.snapshot()
+        false_v = vwalk.snapshot()
         walk.restore(tipstate.join_walk_states(true_states, false_states))
+        vwalk.restore(volumestate.join_walk_states(true_v, false_v))
 
     walk_block(0, n_instr, inside_loop=False, record=True)
     return tuple(findings)
@@ -684,12 +745,18 @@ def _build_param_names(contracts: dict[str, Any]) -> dict[str, tuple[str, ...]]:
     }
 
 
-def _check(bytecode: ir.Bytecode, protocol_fqn: str, contracts_payload: dict[str, Any]) -> AnalysisReport:
+def _check(
+    bytecode: ir.Bytecode,
+    protocol_fqn: str,
+    contracts_payload: dict[str, Any],
+    *,
+    env: frozenset[str] = frozenset(),
+) -> AnalysisReport:
     contracts = contracts_payload.get("contracts", {})
     receiver_states = contracts_payload.get("receiver_state", {})
     stamp = _stamp_from_dict(contracts_payload["stamp"])
 
-    raw_findings = check_ir(bytecode, contracts, receiver_states)
+    raw_findings = check_ir(bytecode, contracts, receiver_states, env=env)
     origin = bytecode.sideband.get("origin", {})
     findings = ir.relabel_findings(raw_findings, origin)
 
@@ -716,6 +783,7 @@ def check_graph(
     contracts_json: str,
     *,
     cache: cache_mod.CacheStore | None = None,
+    env: frozenset[str] = frozenset(),
 ) -> AnalysisReport:
     """Round-1 entry point (spec §6.2), signature additive since #4922
     (§13.3.3, ``cache=`` keyword-only, defaulting to ``None``).
@@ -758,16 +826,23 @@ def check_graph(
     bytecode = ir.lower_graph(payload, param_names=param_names)
 
     if cache is None:
-        return _check(bytecode, payload["protocol_fqn"], contracts_payload)
+        return _check(bytecode, payload["protocol_fqn"], contracts_payload, env=env)
 
     receiver_states = contracts_payload.get("receiver_state", {})
     stamp = _stamp_from_dict(contracts_payload["stamp"])
     bc_hash = ir.bytecode_hash(bytecode)
+    # 260903 (spec §14.13 T26 scope note): `env` is deliberately NOT
+    # threaded into this `cache_key` call yet, even though `cache_key`
+    # itself already accepts an `env` parameter (#4922, §11.3.3's fifth
+    # component) -- doing so, and making a cache entry vary by hypothesis,
+    # is T27's job (§14.6's normative box). Until then a cache HIT here can
+    # return findings computed under a DIFFERENT `env` than this call's own
+    # -- a known, disclosed gap, not an oversight; see T26's task report.
     key = ir.cache_key(bc_hash, contracts_json, stamp)
 
     raw_findings = cache.get(key)
     if raw_findings is None:
-        raw_findings = check_ir(bytecode, contracts, receiver_states)
+        raw_findings = check_ir(bytecode, contracts, receiver_states, env=env)
         methods = frozenset(
             instr.method for instr in bytecode.instructions if isinstance(instr, ir.Call)
         )
