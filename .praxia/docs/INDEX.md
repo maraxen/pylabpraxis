@@ -14,6 +14,7 @@
 - [260121_final-merge-handoff](handoffs/260121_final-merge-handoff.md)
 
 ## Plans
+- [260903_plr-sema-sprint123-volume](plans/260903_plr-sema-sprint123-volume.md) — Sprint plan for 260903_sema-volume: Band A adversarial round on increment 5 (spec_version 13) -> reviewed-round-1; Band B the derivation proof T24/T25 as the go/no-go gate (user decision 260903: build the volume family if it is firable); Band C T26-T29 domain, env gate, registry HM-24 1->2 / HM-25 6->8, mutants v1/v2, tier-2b volume fixtures, lint; Band D the carried #4881a landmine test and #4952 build_setup limits. Baselines to hold, exclusions (#4923/#4924 NO-GO, #4956), dispatch conventions.
 - [260902_plr-sema-oracle-harness](plans/260902_plr-sema-oracle-harness.md) — Design for catching plr-sema bugs by comparing static verdicts against PLR's chatterbox simulator (STRICT + tip/volume tracking) as ground-truth oracle: four input tiers (corpus replay, source-rendered corpus, mutation/metamorphic, wire-format fuzz), the soundness contract each verdict must satisfy, metrics, and phasing.
 - [260824_repl-autocomplete-scope](plans/260824_repl-autocomplete-scope.md) — Scope and outcome for as-you-type completion in the JupyterLite PLR REPL; the planned jedi preload proved unnecessary
 - [260824_w2_dispatch_draft](plans/260824_w2_dispatch_draft.md)
