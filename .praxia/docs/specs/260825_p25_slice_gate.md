@@ -262,6 +262,17 @@ which was the single worst-supported behavior in the 0826 revision.
    candidate: near-surface out-of-surface matrix cells (new prereg). Also
    fixed: the natural corpus provenance stamp (all rows said fake-teacher@test).
    Decision doc `.praxia/docs/audits/260903_p26c-oos-natural-decision.md`.
+8. **260903 -- P2.6d near-surface out-of-surface matrix cells** (task
+   `260903_p26d_near_surface`, backlog 4940): six cells appended to the matrix
+   (v3, record ids unchanged), 120 rows, assembly 0.1.6 (train 1295, 24-row
+   near-surface probe; pin unchanged). Arm A4: 0.671 / 0.966 / 0.867 /
+   tripwire 1, NOT PROMOTED (sidecar marginal: P1 and P4 hold, P2 and P3 slip
+   by one unit each). golden-out-surface-05 and -10 recovered; the near probe
+   went 0.50 -> 0.96; the six lost rows are cross-cell label conflicts
+   (move_lid ambiguous-vs-missing on an identical utterance, move_resource vs
+   move_plate). Next candidate: a label-conflict audit of the assembled corpus.
+   Jury brief on the eval-revision items filed alongside (no revision promotes).
+   Decision doc `.praxia/docs/audits/260903_p26d-near-surface-decision.md`.
 
 **Open for the jury (not blockers, recorded so they are decided rather than
 defaulted):**

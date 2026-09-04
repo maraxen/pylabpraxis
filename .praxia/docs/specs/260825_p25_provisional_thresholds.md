@@ -36,6 +36,14 @@ backlog_item: 480
 > UNCHANGED/UNSPENT. The tripwire rows are near-surface topical confusions, not a phrasing
 > cue; next lever is a near-surface out-of-surface matrix cell (new prereg). Decision doc
 > `.praxia/docs/audits/260903_p26c-oos-natural-decision.md`.
+>
+> **Status 260903 (P2.6d, task `260903_p26d_near_surface`):** six near-surface out-of-surface
+> matrix cells (v3); arm A4 on assembly 0.1.6 = 0.671 [0.608, 0.729] / recall 0.966 /
+> precision 0.867 / tripwire 1 on the pinned 228 -- NOT PROMOTED (A3 selected on the precision
+> tie-break), anchors and D8 revision UNCHANGED/UNSPENT. The shape diagnosis is confirmed
+> (two of three tripwire rows recovered, near-surface probe 0.50 -> 0.96); exact match stays
+> pinned at 153/228 by cross-cell label conflicts. Decision doc
+> `.praxia/docs/audits/260903_p26d-near-surface-decision.md`.
 
 Spec: `.praxia/docs/specs/260825_coxswain-phase-2-functiongemma-copilot-p.md`
 rev2 D8 / §5 P2.5 deliverable 5 / §7 AC-2.5.x ("thresholds labeled

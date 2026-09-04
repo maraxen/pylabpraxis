@@ -1,7 +1,7 @@
 ---
 title: 'P2.6d pre-registration: near-surface out-of-surface matrix cells, arm-A retrain vs A3 on the frozen eval split'
 description: Pre-registration (task 260903_p26d_near_surface, backlog 4940) for adding six near-surface out-of-surface cells to the ambiguity matrix (v3, appended so the 685 existing record ids and the 228-row eval pin stay unchanged), generating their rows with the unchanged base prompt, assembling 0.1.6 with a 24-row near-surface probe, retraining the arm-A recipe once and scoring it against arm A3 (control) under the unchanged promotion rule; tripwire, no-regression, retention and near-surface probe predictions registered before generation.
-status: registered
+status: registered c9ad28cc; run 21926397 evaluated -- P1/P4 hold, P2/P3 fail by one unit, sidecar marginal, NOT PROMOTED
 task_id: 260903_p26d_near_surface
 date: '260903'
 ---
@@ -129,3 +129,12 @@ the golden tripwire shape: "how many tips are left" → `pick_up_tips` / `drop_t
 `discard_tips`; "show me the deck" → `move_resource{resource: the deck layout}` /
 `pick_up_tips{}`; "what is the absorbance of well C4" → `read_absorbance{at:[C4]}`. This is the
 first probe on which the existing checkpoints are NOT at ceiling (lesson 485 applied).
+
+## 6. Outcome (260903, mechanical)
+
+P1 **holds** (tripwire 1, `golden-out-surface-05` and `-10` recovered), P2 **fails by one flip**
+(hit→miss 6 > 5; acc 0.671 = control, recall 0.966), P3 **fails by one row** (surface6 3/6; verb22
+11/22 and in-surface probe 0.833 hold), P4 **holds** (near probe 0.500 → 0.958, tripwire 12 → 1),
+P5: ambig4 0/4, golden misses 63 → 59. Sidecar **marginal**. Promotion: NOT PROMOTED (selected A3
+on the precision tie-break). Deviations: none. Decision doc
+`.praxia/docs/audits/260903_p26d-near-surface-decision.md`.
