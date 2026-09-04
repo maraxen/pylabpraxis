@@ -97,7 +97,13 @@ VERB_PARAPHRASE_LEXICON: Final[dict[str, tuple[str, ...]]] = {
 #: assembly split rule (k=floor(0.2n), n>=4) yields >=40 eval rows per
 #: clarify class; cell set unchanged. Cache keys ignore this value, so the
 #: first 3 rows per cell stay cache hits.
-MATRIX_VERSION: Final[str] = "2"
+#: 3 (260903, task 260903_p26d_near_surface): six near-surface out-of-surface
+#: cells APPENDED (``appended_in_matrix_version: "3"``); ``cells_round_robin``
+#: keeps the original cells' order and iterates appended cells after them, so
+#: every pre-existing ordinal / record id is unchanged (the eval pin depends on
+#: it). Cache keys ignore this value and the base prompt text is unchanged, so
+#: only the new cells' rows are teacher misses.
+MATRIX_VERSION: Final[str] = "3"
 
 #: Vendored PLR the namespace table is parity-pinned to (param_namespace.py).
 PLR_SUBMODULE_SHA: Final[str] = "dd79c4c89bc008629a1c598ea614be5e6067d1f9"

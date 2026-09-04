@@ -1,7 +1,12 @@
 {
-  "matrix_version": "2",
-  "description": "Coxswain P2.3 coverage-floor matrix: phase-2 copilot verbs x ambiguity classes {none, missing-slot, ambiguous-referent, out-of-surface}. Committed DATA validated against coxswain.plr.param_namespace + TOOL_SCHEMA by floor_gen.matrix.load_matrix. Out-of-surface cells anchor verbs OUTSIDE the generation surface entirely (experimental/excluded entries or off-domain requests); their supervision is an NL clarification turn with NO tool_call (spec rev2 D7/D11).",
-  "ambiguity_classes": ["none", "missing-slot", "ambiguous-referent", "out-of-surface"],
+  "matrix_version": "3",
+  "description": "Coxswain P2.3 coverage-floor matrix: phase-2 copilot verbs x ambiguity classes {none, missing-slot, ambiguous-referent, out-of-surface}. Committed DATA validated against coxswain.plr.param_namespace + TOOL_SCHEMA by floor_gen.matrix.load_matrix. Out-of-surface cells anchor verbs OUTSIDE the generation surface entirely (experimental/excluded entries or off-domain requests); their supervision is an NL clarification turn with NO tool_call (spec rev2 D7/D11). v3 (260903, task 260903_p26d_near_surface): six near-surface out-of-surface cells appended (appended_in_matrix_version \"3\"): a surface object (tips, deck, plate, sample) named inside an unsupported action (inventory, ordering, display, value query, scheduling/logging, run status); iterated after the original cells so existing record ids are unchanged.",
+  "ambiguity_classes": [
+    "none",
+    "missing-slot",
+    "ambiguous-referent",
+    "out-of-surface"
+  ],
   "cells": [
     {
       "cell_id": "aspirate__none",
@@ -341,6 +346,66 @@
       "surface_status": "outside-copilot-domain",
       "off_surface_request": "user asks something unrelated to lab work, like what the weather is like today or to tell a joke",
       "notes": "off-domain sentinel: not a lab verb at all; clarification turn must decline without inventing a call"
+    },
+    {
+      "cell_id": "tip_inventory__out-of-surface",
+      "verb": null,
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "near-surface-unsupported-action",
+      "off_surface_request": "user asks how many tips are left in a tip rack, whether a rack still has tips, or to check the tip inventory (a question about stock, not a request to pick up or drop tips)",
+      "notes": "near-surface (P2.6d): nearest supported: pick_up_tips / drop_tips act on tips but never report stock; outside surface => NL clarification, no tool_call",
+      "appended_in_matrix_version": "3"
+    },
+    {
+      "cell_id": "consumables_ordering__out-of-surface",
+      "verb": null,
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "near-surface-unsupported-action",
+      "off_surface_request": "user asks to order, reorder or buy more tips, plates or reagents from a supplier or vendor website (procurement, not a deck operation)",
+      "notes": "near-surface (P2.6d): A2/A3 tripwire shape: golden-out-surface-11 -> pick_up_tips; outside surface => NL clarification, no tool_call",
+      "appended_in_matrix_version": "3"
+    },
+    {
+      "cell_id": "deck_display__out-of-surface",
+      "verb": null,
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "near-surface-unsupported-action",
+      "off_surface_request": "user asks to show, display, describe or list the current deck layout, or where a particular plate or tip rack sits on the deck (a view request, not a move)",
+      "notes": "near-surface (P2.6d): A2/A3 tripwire shape: golden-out-surface-10 -> move_plate; outside surface => NL clarification, no tool_call",
+      "appended_in_matrix_version": "3"
+    },
+    {
+      "cell_id": "sample_value_query__out-of-surface",
+      "verb": null,
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "near-surface-unsupported-action",
+      "off_surface_request": "user asks what the concentration, absorbance, or remaining volume of a specific sample or well is right now (a question about a value, not a request to run a plate read or to aspirate)",
+      "notes": "near-surface (P2.6d): A2/A3 tripwire shape: golden-out-surface-05 -> read_sample (unknown verb); outside surface => NL clarification, no tool_call",
+      "appended_in_matrix_version": "3"
+    },
+    {
+      "cell_id": "scheduling_logging__out-of-surface",
+      "verb": null,
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "near-surface-unsupported-action",
+      "off_surface_request": "user asks to schedule a run for later, set a reminder, or log a note about a plate or a sample in the lab notebook",
+      "notes": "near-surface (P2.6d): plates/samples named, action outside the surface; outside surface => NL clarification, no tool_call",
+      "appended_in_matrix_version": "3"
+    },
+    {
+      "cell_id": "run_status__out-of-surface",
+      "verb": null,
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "near-surface-unsupported-action",
+      "off_surface_request": "user asks how the current run is going, how many steps or how much time remain, or whether the last step finished (a status question, not an instruction)",
+      "notes": "near-surface (P2.6d): status query about the run itself; outside surface => NL clarification, no tool_call",
+      "appended_in_matrix_version": "3"
     }
   ]
 }

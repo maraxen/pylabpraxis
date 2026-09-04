@@ -231,3 +231,51 @@ def test_repair_is_noop_on_previously_accepted_rows():
         assert [dict(c) for c in ex.structured_calls] == row["structured_calls"], rid
         checked += 1
     assert checked == 625
+
+
+# ---------------------------------------------------------------------------
+# matrix v3 (task 260903_p26d_near_surface): appended cells never re-number
+# the rows of earlier cells -- the eval pin depends on record ids.
+# ---------------------------------------------------------------------------
+
+def _plan_positions(matrix):
+    """(cell_id, index) at each ordinal, exactly as corpus.generate_corpus counts."""
+    return [(cell.cell_id, index) for cell in cells_round_robin(matrix.cells) for index in range(cell.examples_per_cell)]
+
+
+def test_v3_appended_cells_iterate_after_the_original_design():
+    matrix = load_matrix(committed_matrix_path())
+    ordered = cells_round_robin(matrix.cells)
+    appended = [c for c in ordered if c.appended_in_matrix_version]
+    assert len(appended) == 6 and {c.appended_in_matrix_version for c in appended} == {"3"}
+    assert all(c.ambiguity_class == "out-of-surface" and c.verb is None and c.examples_per_cell == 20 for c in appended)
+    assert list(ordered[-6:]) == appended
+    assert len([c for c in matrix.cells if c.ambiguity_class == "out-of-surface"]) == 14
+    # the original 43 cells in their v2 order form a prefix
+    original = tuple(c for c in matrix.cells if not c.appended_in_matrix_version)
+    assert ordered[: len(original)] == cells_round_robin(original)
+
+
+def test_v3_committed_corpus_record_ids_match_the_plan_ordinals():
+    """Every committed floor row's ordinal still addresses its own (cell, index)."""
+    from pathlib import Path
+
+    floor = Path(__file__).resolve().parents[1] / "out" / "corpus_p23_floor.jsonl"
+    positions = _plan_positions(load_matrix(committed_matrix_path()))
+    assert len(positions) == 685 + 120
+    rows = [json.loads(line) for line in floor.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(rows) >= 685
+    for row in rows:
+        _, ordinal, rest = row["record_id"].split("-", 2)
+        cell_id, index = rest.rsplit("-", 1)
+        assert positions[int(ordinal)] == (cell_id, int(index)), row["record_id"]
+    assert sum(1 for row in rows if int(row["record_id"].split("-", 2)[1]) < 685) == 685
+
+
+def test_v3_bad_appended_revision_is_loud(tmp_path):
+    raw = json.loads(committed_matrix_path().read_text(encoding="utf-8"))
+    raw["cells"][-1]["appended_in_matrix_version"] = "9"
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(MatrixError, match="appended_in_matrix_version"):
+        load_matrix(bad)

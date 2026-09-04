@@ -63,6 +63,10 @@ class MatrixCell:
     surface_status: str = ""  # out-of-surface only: why it's outside
     off_surface_request: str = ""  # out-of-surface only: seed for teacher
     notes: str = ""
+    #: matrix revision that APPENDED this cell ("" = original design). Cells
+    #: appended in revision r iterate AFTER every cell of earlier revisions
+    #: (``cells_round_robin``), so appending never re-numbers existing rows.
+    appended_in_matrix_version: str = ""
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -78,6 +82,7 @@ class MatrixCell:
                     ("surface_status", self.surface_status),
                     ("off_surface_request", self.off_surface_request),
                     ("notes", self.notes),
+                    ("appended_in_matrix_version", self.appended_in_matrix_version),
                 )
                 if v
             },
@@ -113,6 +118,7 @@ def load_matrix(path: Path | None = None) -> AmbiguityMatrix:
             surface_status=str(entry.get("surface_status", "")),
             off_surface_request=str(entry.get("off_surface_request", "")),
             notes=str(entry.get("notes", "")),
+            appended_in_matrix_version=str(entry.get("appended_in_matrix_version", "")),
         )
         for entry in raw["cells"]
     )
@@ -135,6 +141,12 @@ def _validate(cells: tuple[MatrixCell, ...]) -> None:
             raise MatrixError(f"unknown ambiguity class {cell.ambiguity_class!r}")
         if cell.examples_per_cell < 1:
             raise MatrixError(f"{cell.cell_id}: examples_per_cell must be >= 1")
+        if cell.appended_in_matrix_version:
+            if not cell.appended_in_matrix_version.isdigit() or int(cell.appended_in_matrix_version) > int(MATRIX_VERSION):
+                raise MatrixError(
+                    f"{cell.cell_id}: appended_in_matrix_version {cell.appended_in_matrix_version!r} "
+                    f"is not a matrix revision <= {MATRIX_VERSION}"
+                )
         by_class[cell.ambiguity_class].append(cell)
 
         if cell.ambiguity_class == "out-of-surface":
@@ -189,15 +201,24 @@ def _validate(cells: tuple[MatrixCell, ...]) -> None:
 
 def cells_round_robin(cells: tuple[MatrixCell, ...]) -> tuple[MatrixCell, ...]:
     """Deterministic iteration order cycling through the four classes so a
-    limited smoke run always spans them. Within a class, file order holds."""
-    buckets: dict[str, list[MatrixCell]] = {cls: [] for cls in AMBIGUITY_CLASSES}
-    for cell in cells:
-        buckets[cell.ambiguity_class].append(cell)
-    levels = max((len(bucket) for bucket in buckets.values()), default=0)
+    limited smoke run always spans them. Within a class, file order holds.
+
+    Cells carry ``appended_in_matrix_version``; the round-robin runs over the
+    original design first ("") and then over each appended revision in
+    ascending order, so appending cells never changes the position -- hence
+    the record-id ordinal -- of any earlier cell's rows.
+    """
+    revisions = sorted({c.appended_in_matrix_version for c in cells}, key=lambda r: (r != "", int(r or 0)))
     ordered: list[MatrixCell] = []
-    for level in range(levels):
-        for cls in AMBIGUITY_CLASSES:
-            bucket = buckets[cls]
-            if level < len(bucket):
-                ordered.append(bucket[level])
+    for rev in revisions:
+        buckets: dict[str, list[MatrixCell]] = {cls: [] for cls in AMBIGUITY_CLASSES}
+        for cell in cells:
+            if cell.appended_in_matrix_version == rev:
+                buckets[cell.ambiguity_class].append(cell)
+        levels = max((len(bucket) for bucket in buckets.values()), default=0)
+        for level in range(levels):
+            for cls in AMBIGUITY_CLASSES:
+                bucket = buckets[cls]
+                if level < len(bucket):
+                    ordered.append(bucket[level])
     return tuple(ordered)
