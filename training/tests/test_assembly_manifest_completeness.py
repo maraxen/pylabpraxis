@@ -86,7 +86,7 @@ def test_inputs_are_hashed_and_account_for_all_rows():
     m = _manifest()
     kept = m["counts"]["total_rows"]
     excluded = m["exclusions"]["total"]
-    diverted = m["probe"]["rows"]
+    diverted = m["probe"]["rows"] + m["probe_near"]["rows"]
     input_rows = sum(m["inputs"][k]["rows"] for k in ("golden_pairs", "floor_corpus", "overlay_corpus", "natural_corpus"))
     assert kept + excluded + diverted == input_rows, (
         f"kept({kept}) + excluded({excluded}) + probe({diverted}) != input rows({input_rows})"
@@ -139,3 +139,32 @@ def test_probe_has_out_of_surface_rows_with_clarification_targets():
         else:
             assert assistant.get("tool_calls")
     assert n_oos == m["probe"]["by_class"]["out_of_surface"]
+
+
+def test_near_surface_probe_is_the_appended_cells_hold_out():
+    """0.1.6: the last 4 examples of each appended (matrix v3) cell form the
+    near-surface probe: 24 clarification-only rows, none of them in train or eval."""
+    import json
+
+    from assemble.build import NEAR_PROBE_CORPUS_NAME, NEAR_PROBE_INDEX_MIN, NEAR_PROBE_SIDECAR_NAME, SIDECAR_NAME, appended_matrix_cells
+
+    out = REPO_ROOT / "training" / "assemble" / "out"
+    m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    cells = appended_matrix_cells()
+    assert len(cells) == 6 and set(cells.values()) == {"3"}
+    assert m["probe_near"]["rows"] == 24 and m["probe_near"]["index_min"] == NEAR_PROBE_INDEX_MIN == 16
+    assert m["probe_near"]["cells"] == {c: 4 for c in cells} and m["probe_near"]["by_class"] == {"out_of_surface": 24}
+    near = [json.loads(line) for line in (out / NEAR_PROBE_CORPUS_NAME).read_text(encoding="utf-8").splitlines() if line.strip()]
+    side = [json.loads(line) for line in (out / NEAR_PROBE_SIDECAR_NAME).read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(near) == len(side) == 24
+    for row, s in zip(near, side, strict=True):
+        assistant = row["messages"][-1]
+        assert assistant.get("content") and not assistant.get("tool_calls")
+        assert s["split"] == "probe_near" and s["supervision_kind"] == "nl_clarification" and s["calls"] == []
+        assert s["lineage"]["cell_id"] in cells and int(s["record_id"].rsplit("-", 1)[1]) >= 16
+        assert row["metadata"] == "eval"  # scored by baseline_eval --split eval, like the natural probe
+    main_side = [json.loads(line) for line in (out / SIDECAR_NAME).read_text(encoding="utf-8").splitlines() if line.strip()]
+    near_ids = {s["record_id"] for s in side}
+    assert not near_ids & {s["record_id"] for s in main_side}
+    in_train = [s for s in main_side if s["lineage"].get("cell_id") in cells]
+    assert len(in_train) == 96 and all(s["split"] == "train" and int(s["record_id"].rsplit("-", 1)[1]) < 16 for s in in_train)

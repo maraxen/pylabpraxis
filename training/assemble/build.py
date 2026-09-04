@@ -40,6 +40,7 @@ from praxis_training.golden_build.corpus import (
 from overlay_gen.normalize import normalize_utterance
 
 from assemble.pin import PIN_REL, load_pin, native_digest
+from floor_gen.matrix import committed_matrix_path, load_matrix
 
 from .scaffold import (
     SCAFFOLD_TEMPLATE_NAME,
@@ -58,6 +59,9 @@ __all__ = [
     "SIDECAR_NAME",
     "PROBE_CORPUS_NAME",
     "PROBE_SIDECAR_NAME",
+    "NEAR_PROBE_CORPUS_NAME",
+    "NEAR_PROBE_SIDECAR_NAME",
+    "NEAR_PROBE_INDEX_MIN",
     "NATURAL_CORPUS_REL",
     "TARGET_EXAMPLES",
     "build_artifacts",
@@ -80,7 +84,13 @@ __all__ = [
 #: out-of-surface floor rows (supervision nl_clarification, the base row's
 #: clarification copied verbatim as the assistant text); same routing (eval
 #: base -> probe, so the probe gains an out_of_surface class). Pin unchanged.
-ASSEMBLY_VERSION = "0.1.5"
+#: 0.1.6 (260903, task 260903_p26d_near_surface): matrix v3 appends six
+#: near-surface out-of-surface cells (record ordinals >= 685). Their rows are
+#: coverage rows outside the pin -> train, EXCEPT example indices >= 16 (the
+#: k = floor(0.2*20) = 4 hold-out the pre-freeze rule would have cut), which
+#: form the separate NEAR-SURFACE PROBE (corpus_p25_probe_near*.jsonl): never
+#: train, never the 228. Pin unchanged.
+ASSEMBLY_VERSION = "0.1.6"
 GAP_FIELDS_RULE = (
     "missing_required and unresolved_slots derived per call via "
     "coxswain.plr.slot_derivation.derive_call_gaps(name, params with sorted keys); "
@@ -101,6 +111,11 @@ SIDECAR_NAME = "corpus_p25_sidecar.jsonl"
 MANIFEST_NAME = "manifest.json"
 PROBE_CORPUS_NAME = "corpus_p25_probe.jsonl"
 PROBE_SIDECAR_NAME = "corpus_p25_probe_sidecar.jsonl"
+NEAR_PROBE_CORPUS_NAME = "corpus_p25_probe_near.jsonl"
+NEAR_PROBE_SIDECAR_NAME = "corpus_p25_probe_near_sidecar.jsonl"
+#: 0.1.6: example index (last record_id field) from which an APPENDED matrix
+#: cell's rows go to the near-surface probe instead of train.
+NEAR_PROBE_INDEX_MIN = 16
 #: Train rows whose normalized utterance equals an eval row's, as measured at
 #: the pin (assembly 0.1.3). Pre-existing (missing-slot cells collapse to
 #: "Move to reservoir_1"); 0.1.4 must not grow it.
@@ -441,19 +456,35 @@ def validate_and_normalize(record: dict[str, Any]) -> tuple[list[dict[str, Any]]
 # split assignment (disjoint BY CONSTRUCTION)
 # ---------------------------------------------------------------------------
 
+def appended_matrix_cells() -> dict[str, str]:
+    """cell_id -> matrix revision for every cell APPENDED after the pin (0.1.6)."""
+    return {c.cell_id: c.appended_in_matrix_version for c in load_matrix(committed_matrix_path()).cells if c.appended_in_matrix_version}
+
+
+def _floor_example_index(record_id: str) -> int:
+    return int(record_id.rsplit("-", 1)[1])
+
+
 def assign_splits_pinned(records: list[dict[str, Any]], pin: dict[str, Any]) -> dict[str, set[str]]:
     """0.1.4: eval == the pinned record_ids EXACTLY (loud if one is missing or
     excluded); golden must all be pinned; natural variants follow their base
-    row (eval base -> probe, never eval); everything else -> train."""
+    row (eval base -> probe, never eval); 0.1.6: rows of APPENDED matrix cells
+    with example index >= NEAR_PROBE_INDEX_MIN -> probe_near; everything else
+    -> train."""
     pinned = set(pin["rows"])
+    appended = appended_matrix_cells()
     present = {r["record_id"] for r in records}
     missing = sorted(pinned - present)
     if missing:
         raise AssertionError(f"pinned eval rows missing/excluded from assembly: {missing[:5]} (+{max(0, len(missing) - 5)})")
-    by_split: dict[str, set[str]] = {"train": set(), "eval": set(), "probe": set()}
+    by_split: dict[str, set[str]] = {"train": set(), "eval": set(), "probe": set(), "probe_near": set()}
     for r in records:
         rid = r["record_id"]
-        if r["provenance"] == "golden":
+        if r["provenance"] == "coverage" and r["lineage"]["cell_id"] in appended:
+            if rid in pinned:
+                raise AssertionError(f"{rid}: appended-cell row cannot be in the eval pin")
+            by_split["probe_near" if _floor_example_index(rid) >= NEAR_PROBE_INDEX_MIN else "train"].add(rid)
+        elif r["provenance"] == "golden":
             if rid not in pinned:
                 raise AssertionError(f"golden row {rid} is not in the eval pin")
             by_split["eval"].add(rid)
@@ -579,9 +610,11 @@ def build_manifest(
     scaffold_sha256: str,
     *,
     probe_records: list[dict] | None = None,
+    near_probe_records: list[dict] | None = None,
     pin: dict[str, Any] | None = None,
 ) -> dict:
     probe_records = probe_records or []
+    near_probe_records = near_probe_records or []
     n_total = len(records)
     n_eval = len(by_split["eval"])
     eval_norm = {normalize_utterance(r["utterance"]) for r in records if r["record_id"] in by_split["eval"]}
@@ -658,6 +691,15 @@ def build_manifest(
             "by_class": dict(sorted(Counter(r["ambiguity_class"] for r in probe_records).items())),
             "rule": "natural-phrasing variants whose base row is a pinned eval row; scored separately, never part of the 228",
         },
+        "probe_near": {
+            "corpus": NEAR_PROBE_CORPUS_NAME,
+            "sidecar": NEAR_PROBE_SIDECAR_NAME,
+            "rows": len(near_probe_records),
+            "index_min": NEAR_PROBE_INDEX_MIN,
+            "cells": dict(sorted(Counter(r["lineage"]["cell_id"] for r in near_probe_records).items())),
+            "by_class": dict(sorted(Counter(r["ambiguity_class"] for r in near_probe_records).items())),
+            "rule": "0.1.6: rows of matrix cells APPENDED after the pin (matrix v3 near-surface out-of-surface cells) with example index >= index_min; scored separately, never train, never the 228",
+        },
         "prompt_versions": _lineage_versions("prompt_version"),
         "teacher_model_versions": _lineage_versions("teacher_model_version"),
         "split_rule": (
@@ -666,7 +708,8 @@ def build_manifest(
             "(provenance x ambiguity-class x verb) sorted by record_id, LAST k -> "
             "eval, k = min(n-1, floor(n*0.2)) bumped to >=1 when n>=4), content "
             "digests asserted; coverage_natural rows follow their base row (eval "
-            "base -> probe set); every other row -> train"
+            "base -> probe set); 0.1.6: rows of appended matrix cells with example "
+            "index >= 16 -> near-surface probe; every other row -> train"
         ),
         "counts": {
             "total_rows": n_total,
@@ -741,10 +784,18 @@ def build_artifacts() -> dict[str, bytes]:
     sidecar_lines: list[str] = []
     probe_lines: list[str] = []
     probe_sidecar_lines: list[str] = []
+    near_lines: list[str] = []
+    near_sidecar_lines: list[str] = []
     main_records: list[dict] = []
     probe_records: list[dict] = []
+    near_probe_records: list[dict] = []
     for r in kept:
         rid = r["record_id"]
+        if rid in by_split["probe_near"]:
+            near_lines.append(_canonical_json(render_native_row(r, "eval", tools)))
+            near_sidecar_lines.append(_canonical_json(render_sidecar_row(r, "probe_near")))
+            near_probe_records.append(r)
+            continue
         if rid in by_split["probe"]:
             # probe rows carry metadata "eval" so baseline_eval --split eval
             # scores them unchanged; they live in their own files.
@@ -769,7 +820,8 @@ def build_artifacts() -> dict[str, bytes]:
 
     manifest = build_manifest(
         main_records, {"train": by_split["train"], "eval": by_split["eval"]}, exclusion_map,
-        hashlib.sha256(scaffold_bytes).hexdigest(), probe_records=probe_records, pin=pin,
+        hashlib.sha256(scaffold_bytes).hexdigest(), probe_records=probe_records,
+        near_probe_records=near_probe_records, pin=pin,
     )
     manifest_bytes = (json.dumps(manifest, indent=1, sort_keys=True) + "\n").encode("utf-8")
     return {
@@ -778,6 +830,8 @@ def build_artifacts() -> dict[str, bytes]:
         MANIFEST_NAME: manifest_bytes,
         PROBE_CORPUS_NAME: ("\n".join(probe_lines) + "\n").encode("utf-8"),
         PROBE_SIDECAR_NAME: ("\n".join(probe_sidecar_lines) + "\n").encode("utf-8"),
+        NEAR_PROBE_CORPUS_NAME: ("\n".join(near_lines) + "\n").encode("utf-8"),
+        NEAR_PROBE_SIDECAR_NAME: ("\n".join(near_sidecar_lines) + "\n").encode("utf-8"),
     }
 
 

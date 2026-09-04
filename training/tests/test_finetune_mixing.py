@@ -17,22 +17,25 @@ ROOT = Path(__file__).resolve().parents[2]
 CORPUS = ROOT / CORPUS_REL
 SIDECAR = ROOT / SIDECAR_REL
 
-# Pinned 260903 against assembly_version 0.1.5 (1427 rows; eval 228 PINNED,
-# train 1199 = 1073 + 126 out-of-surface natural-lane variants).
-# History: 0.1.4 (1301 rows; train 1073; dedup 984/89; A 382/265/216/121,
+# Pinned 260903 against assembly_version 0.1.6 (1523 rows; eval 228 PINNED,
+# train 1295 = 1199 + 96 near-surface out-of-surface rows of the six matrix-v3
+# cells; 24 more of those rows form the near-surface probe, never train).
+# History: 0.1.5 (1427 rows; train 1199; dedup 1108/91; A 382/265/216/245,
+# B 382/139/114/129, C 382/70/57/64) -- the P2.6c arm A3 was trained on that set;
+# 0.1.4 (1301 rows; train 1073; dedup 984/89; A 382/265/216/121,
 # B 382/168/137/77, C 382/84/69/38) -- the P2.6b arm A2 was trained on that set;
 # 0.1.2/0.1.3 (812 rows; train 584; dedup 515/69; A 226/102/66/121,
 # B 226/80/51/95, C 226/40/26/47) -- the P2.6 arms were trained on that set.
-EXPECT_ROWS = 1427
+EXPECT_ROWS = 1523
 EXPECT_EVAL = 228
-EXPECT_TRAIN = 1199
-EXPECT_DEDUP_KEPT = 1108
-EXPECT_DEDUP_DROPPED = 91
-EXPECT_KEPT_BY_CLASS = {"clean_parse": 382, "missing_slot": 265, "ambiguous_referent": 216, "out_of_surface": 245}
+EXPECT_TRAIN = 1295
+EXPECT_DEDUP_KEPT = 1200
+EXPECT_DEDUP_DROPPED = 95
+EXPECT_KEPT_BY_CLASS = {"clean_parse": 382, "missing_slot": 265, "ambiguous_referent": 216, "out_of_surface": 337}
 EXPECT_ARMS = {
-    "A": {"clean_parse": 382, "missing_slot": 265, "ambiguous_referent": 216, "out_of_surface": 245},
-    "B": {"clean_parse": 382, "missing_slot": 139, "ambiguous_referent": 114, "out_of_surface": 129},
-    "C": {"clean_parse": 382, "missing_slot": 70, "ambiguous_referent": 57, "out_of_surface": 64},
+    "A": {"clean_parse": 382, "missing_slot": 265, "ambiguous_referent": 216, "out_of_surface": 337},
+    "B": {"clean_parse": 382, "missing_slot": 124, "ambiguous_referent": 101, "out_of_surface": 157},
+    "C": {"clean_parse": 382, "missing_slot": 62, "ambiguous_referent": 50, "out_of_surface": 79},
 }
 
 
