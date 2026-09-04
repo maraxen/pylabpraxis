@@ -78,7 +78,11 @@ def main() -> int:
     log.info("non-additive meta-field diffs: %s", non_additive_meta or "none")
     log.info("new record-level keys: %s", sorted(new_only_keys))
     log.info("records with >=1 dropped_calls entry: %d", with_dropped)
-    log.info("total dropped_calls entries (deduplicated per-record): %d", total_dropped_calls)
+    # (260903, T25) `dropped_calls` entries are no longer deduplicated
+    # per-record -- multiplicity is preserved (spec §14.0.2's schema-change
+    # box) -- so this total now counts every recorded call site, not every
+    # distinct expression.
+    log.info("total dropped_calls entries: %d", total_dropped_calls)
 
     return 0 if (non_additive_diffs == 0 and not non_additive_meta) else 1
 

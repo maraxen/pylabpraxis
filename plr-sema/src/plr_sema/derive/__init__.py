@@ -60,6 +60,7 @@ __all__ = [
     "SCHEMA_VERSION",
     "SUPPORTED_TOOLS",
     "SurveyFinding",
+    "DroppedCall",
     "SurveyRecord",
     "load_survey",
     "build_index",
@@ -138,6 +139,27 @@ class SurveyFinding:
 
 
 @dataclass(frozen=True, slots=True)
+class DroppedCall:
+    """One `dropped_calls` record (§14.0.2, T25): a receiver-qualified call
+    expression the survey could not attribute to a same-class/module-level
+    function, together with WHERE it sits -- its own `lineno` and the
+    nearest-first, polarity-aware `scope_trail` live at the survey's visit
+    point (the identical trail `SurveyFinding.scope_trail` uses).
+
+    `lineno`/`scope_trail` are `None`/`()` for a record produced by a
+    pre-T25 survey artifact, which recorded only a bare `expr` string --
+    fail-closed, not an error: `compute_volume_bridge`'s P10 consumer reads
+    `lineno is None` as "no position available" and attaches `caller_scope:
+    null` (spec §14.0.2's normative box), degrading to pre-increment
+    behaviour rather than fabricating a position.
+    """
+
+    expr: str
+    lineno: int | None
+    scope_trail: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class SurveyRecord:
     """One FunctionPreconditions record from the survey JSON (§7.1)."""
 
@@ -159,7 +181,15 @@ class SurveyRecord:
     #: construction (`survey_plr_preconditions.py`'s `visit_Call` routes a
     #: call into exactly one of `delegates`/`unresolved`/`dropped`, never
     #: two).
-    dropped_calls: tuple[str, ...] = ()
+    #: (260903, T25) Each entry is a `DroppedCall` record, not a bare
+    #: `str` -- the survey schema change (§14.0.2). `_record_from_dict`
+    #: (below) accepts EITHER shape on load: a `dict` (post-T25 artifact) or
+    #: a bare `str` (pre-T25 artifact, degrading to `lineno=None`,
+    #: `scope_trail=()`), so an un-regenerated artifact still loads, just
+    #: with every `caller_scope` fail-closed to `null`. Multiplicity is
+    #: preserved here too: two records sharing an `expr` are two entries,
+    #: not one.
+    dropped_calls: tuple[DroppedCall, ...] = ()
 
 
 def _finding_from_dict(d: dict[str, Any]) -> SurveyFinding:
@@ -170,6 +200,20 @@ def _finding_from_dict(d: dict[str, Any]) -> SurveyFinding:
         scope_trail=tuple(d.get("scope_trail", ())),
         mentions_params=tuple(d.get("mentions_params", ())),
         lineno=d["lineno"],
+    )
+
+
+def _dropped_call_from_any(item: Any) -> DroppedCall:
+    """Accept both the post-T25 `{expr, lineno, scope_trail}` record shape
+    and a pre-T25 bare `str` -- see `SurveyRecord.dropped_calls`'s
+    docstring. A bare string degrades to `lineno=None`, `scope_trail=()`,
+    which is exactly what a `caller_scope`-fail-closed consumer needs."""
+    if isinstance(item, str):
+        return DroppedCall(expr=item, lineno=None, scope_trail=())
+    return DroppedCall(
+        expr=item["expr"],
+        lineno=item.get("lineno"),
+        scope_trail=tuple(item.get("scope_trail", ())),
     )
 
 
@@ -184,7 +228,7 @@ def _record_from_dict(d: dict[str, Any]) -> SurveyRecord:
         findings=tuple(_finding_from_dict(f) for f in d.get("findings", ())),
         delegates_to=tuple(d.get("delegates_to", ())),
         unresolved_calls=tuple(d.get("unresolved_calls", ())),
-        dropped_calls=tuple(d.get("dropped_calls", ())),
+        dropped_calls=tuple(_dropped_call_from_any(x) for x in d.get("dropped_calls", ())),
     )
 
 
@@ -1041,7 +1085,13 @@ def _dropped_receiver_worklist_from_survey(
         for rec, key, _depth in _walk_closure(entry, index):
             if rec is None:
                 continue
-            for call_expr in rec.dropped_calls:
+            # (260903, T25) `dropped_calls` entries are `DroppedCall`
+            # records now, not bare `str`s -- read `.expr`. `blocks[...]` is
+            # keyed on a `set[Qualkey]`, so a record contributing the same
+            # `expr` more than once (multiplicity is now preserved at the
+            # survey layer) still counts `key` exactly once here, unchanged.
+            for dropped in rec.dropped_calls:
+                call_expr = dropped.expr
                 if filtered and _is_inert_dropped_receiver_call(call_expr, file=rec.file):
                     continue
                 blocks.setdefault(call_expr, set()).add(key)
@@ -1112,7 +1162,14 @@ def _dropped_receiver_worklist_whole_surface(
     """
     blocks: dict[str, int] = {}
     for rec in records:
-        for call_expr in set(rec.dropped_calls):
+        # (260903, T25) `dropped_calls` entries are `DroppedCall` records,
+        # not bare `str`s -- dedupe on `.expr` (a `set[str]` comprehension,
+        # not `set(rec.dropped_calls)`) so a record's `blocks_methods`
+        # contribution stays "once per record", unaffected by the survey
+        # now preserving multiplicity WITHIN one record (two occurrences of
+        # the same `expr` under different scopes must still count as one
+        # method here, per this function's own docstring).
+        for call_expr in {dropped.expr for dropped in rec.dropped_calls}:
             if filtered and _is_inert_dropped_receiver_call(call_expr, file=rec.file):
                 continue
             blocks[call_expr] = blocks.get(call_expr, 0) + 1

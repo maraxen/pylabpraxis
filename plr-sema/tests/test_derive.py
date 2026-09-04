@@ -30,6 +30,7 @@ import pytest
 from plr_sema._hand_maintained import BUDGET_CAP, live_rows
 from plr_sema._provenance import SurveyStamp, survey_stamp
 from plr_sema.derive import (
+    DroppedCall,
     SurveyFinding,
     SurveyRecord,
     _is_inert_dropped_receiver_call,
@@ -56,6 +57,7 @@ from plr_sema.derive.receiver_state import (
     for_over_comprehension_output,
     operand_pairing_idiom,
     reset_rule_candidates,
+    volume_guard_is_unconditional,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -641,7 +643,10 @@ def test_whole_surface_dropped_receiver_worklist_matches_direct_recount(
     finding_bearing = [rec for rec in nonlegacy_survey_records if rec.findings]
     expected: dict[str, int] = {}
     for rec in finding_bearing:
-        for call_expr in set(rec.dropped_calls):
+        # (260903, T25) `dropped_calls` entries are `DroppedCall` records --
+        # dedupe on `.expr`, mirroring `_dropped_receiver_worklist_whole_
+        # surface`'s own `{dropped.expr for dropped in rec.dropped_calls}`.
+        for call_expr in {dropped.expr for dropped in rec.dropped_calls}:
             expected[call_expr] = expected.get(call_expr, 0) + 1
 
     whole_surface_unfiltered = nonlegacy_gap_ledger["top_unresolved"][
@@ -1691,6 +1696,213 @@ def test_ac_14_2_bridge_absent_when_volume_args_omitted(
     assert not any("volume_guards" in entry for entry in payload["contracts"].values())
 
 
+# ---------------------------------------------------------------------------
+# AC-14.3 (T25, §14.0.2, §14.6): caller scope reaches the bridged guard,
+# with polarity and position.
+# ---------------------------------------------------------------------------
+
+
+def test_ac_14_3_caller_scope_reaches_bridged_guards_with_polarity_and_position(
+    survey_records: list[SurveyRecord],
+    survey_index: dict[tuple[str, str], SurveyRecord],
+    real_stamp: SurveyStamp,
+    volume_taxonomy_classes: list[dict],
+    volume_class_index: tuple[dict[str, ast.ClassDef], dict[str, str]],
+) -> None:
+    """AC-14.3: all four bridged guards of `aspirate`/`dispense` carry a
+    non-null `caller_scope`, published verbatim, each of length >= 2, and
+    the two guards under the `is_disabled` test (`:1034`/`:1234`) carry an
+    entry the other two do not (a set difference, not eyeballed). (ii):
+    each guard's own `scope_trail` is unchanged from the callee's contract,
+    disjoint from `caller_scope`, and both use the nearest-first
+    convention. Verbatim values match §14.0.2's own disposition table.
+    """
+    class_nodes, class_modules = volume_class_index
+    volume_state_exceptions = frozenset(compute_volume_state_exceptions(volume_taxonomy_classes))
+    anchors = compute_volume_anchors(class_nodes, volume_state_exceptions)
+
+    payload = build_derived_contracts_payload(
+        survey_records,
+        survey_index,
+        real_stamp,
+        volume_class_index=class_nodes,
+        volume_class_modules=class_modules,
+        volume_anchors=anchors,
+    )
+    contracts = payload["contracts"]
+    aspirate_guards = {g["via"]: g for g in contracts["LiquidHandler.aspirate"]["volume_guards"]}
+    dispense_guards = {g["via"]: g for g in contracts["LiquidHandler.dispense"]["volume_guards"]}
+
+    well_aspirate = aspirate_guards["op.resource.tracker.remove_liquid"]
+    tip_aspirate = aspirate_guards["op.tip.tracker.add_liquid"]
+    well_dispense = dispense_guards["op.resource.tracker.add_liquid"]
+    tip_dispense = dispense_guards["op.tip.tracker.remove_liquid"]
+
+    for guard in (well_aspirate, tip_aspirate, well_dispense, tip_dispense):
+        assert guard["caller_scope"] is not None
+        assert len(guard["caller_scope"]) >= 2
+
+    is_disabled_entry = "if not op.resource.tracker.is_disabled"
+    with_is_disabled = {
+        via for via, guard in {**aspirate_guards, **dispense_guards}.items()
+        if is_disabled_entry in guard["caller_scope"]
+    }
+    assert with_is_disabled == {"op.resource.tracker.remove_liquid", "op.resource.tracker.add_liquid"}
+
+    # Verbatim, per §14.0.2's own disposition table (nearest-first).
+    assert well_aspirate["caller_scope"] == [
+        "if not op.resource.tracker.is_disabled",
+        "if does_volume_tracking()",
+        "for op in aspirations",
+    ]
+    assert tip_aspirate["caller_scope"] == ["if does_volume_tracking()", "for op in aspirations"]
+    assert well_dispense["caller_scope"] == [
+        "if not op.resource.tracker.is_disabled",
+        "if does_volume_tracking()",
+        "for op in dispenses",
+    ]
+    assert tip_dispense["caller_scope"] == ["if does_volume_tracking()", "for op in dispenses"]
+
+    assert well_aspirate["caller_lineno"] == 1034
+    assert tip_aspirate["caller_lineno"] == 1035
+    assert well_dispense["caller_lineno"] == 1234
+    assert tip_dispense["caller_lineno"] == 1235
+
+    # (ii): the guard's OWN scope_trail (callee-sourced) is unchanged from
+    # the callee's own contract and disjoint from caller_scope.
+    assert well_aspirate["scope_trail"] == ["if volume - self.get_used_volume() > 1e-06"]
+    assert tip_aspirate["scope_trail"] == ["if volume - self.get_free_volume() > 1e-06"]
+    assert well_dispense["scope_trail"] == ["if volume - self.get_free_volume() > 1e-06"]
+    assert tip_dispense["scope_trail"] == ["if volume - self.get_used_volume() > 1e-06"]
+
+
+def _scan_dropped_calls_in_function(source: str) -> list:
+    """Run the survey's OWN `_BodyScanner` (`scripts/survey_plr_
+    preconditions.py`) over one synthetic function's body, for AC-14.3(iii)/
+    (iv)'s survey-side fixtures -- exercised at the same level `scripts/
+    survey_plr_preconditions.py`'s own `_survey_function` runs it at, not
+    reimplemented."""
+    import sys as _sys
+
+    scripts_dir = str(REPO_ROOT / "scripts")
+    if scripts_dir not in _sys.path:
+        _sys.path.insert(0, scripts_dir)
+    from survey_plr_preconditions import _BodyScanner  # noqa: PLC0415
+
+    tree = ast.parse(source)
+    (func,) = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)]
+    scanner = _BodyScanner({a.arg for a in func.args.args}, set(), set())
+    for stmt in func.body:
+        scanner.visit(stmt)
+    return scanner.dropped
+
+
+_AC_14_3_III_SOURCE = '''
+def method(self, a, b):
+    if a:
+        widget.tracker.spend()
+    if b:
+        widget.tracker.spend()
+'''
+
+_AC_14_3_IV_SOURCE = '''
+def method(self):
+    if flag_check():
+        pass
+    else:
+        widget.tracker.spend()
+'''
+
+
+def test_ac_14_3_iii_duplicate_expr_under_different_scopes_not_collapsed() -> None:
+    """AC-14.3(iii): a fixture whose method body contains the same dotted
+    call expression twice under different `if` scopes yields TWO
+    `dropped_calls` records with different `lineno`s and different
+    `scope_trail`s -- multiplicity preserved, not collapsed (the old
+    `set[str]` schema WOULD have collapsed these into one)."""
+    dropped = _scan_dropped_calls_in_function(_AC_14_3_III_SOURCE)
+    assert len(dropped) == 2
+    assert {d.expr for d in dropped} == {"widget.tracker.spend"}
+    assert dropped[0].lineno != dropped[1].lineno
+    assert dropped[0].scope_trail != dropped[1].scope_trail
+    assert dropped[0].scope_trail == ["if a"]
+    assert dropped[1].scope_trail == ["if b"]
+
+
+def test_ac_14_3_iv_orelse_call_records_negated_polarity_and_is_never_recognized() -> None:
+    """AC-14.3(iv), the stub-defeating half: a fixture whose call sits in
+    an `orelse` records an entry beginning `"else of: if "`, and that entry
+    is NOT recognised as satisfied by §14.6's rule even when its test text
+    is a member of `env`."""
+    (dropped,) = _scan_dropped_calls_in_function(_AC_14_3_IV_SOURCE)
+    assert dropped.expr == "widget.tracker.spend"
+    assert dropped.scope_trail == ["else of: if flag_check()"]
+
+    # Even with "flag_check" IN env, the negated enclosure is unrecognised.
+    recognized = volume_guard_is_unconditional(
+        dropped.scope_trail, dropped.lineno, None, frozenset({"flag_check"})
+    )
+    assert recognized is False
+
+
+# ---------------------------------------------------------------------------
+# AC-14.4 (T25, §14.6): fail-closed on anything unrecognised; R1 recognises
+# exactly one node.
+# ---------------------------------------------------------------------------
+
+
+def test_ac_14_4_fail_closed_env_gate_and_r1_position_recognition() -> None:
+    """AC-14.4: with `env == {"does_volume_tracking"}`, a guard whose
+    `caller_scope == ["if does_volume_tracking()", "for op in dispenses"]`
+    WITH a `for_span` containing its `caller_lineno` is unconditional
+    (`WILL_FAIL`-eligible); the same guard is CONDITIONAL (blocks
+    `WILL_FAIL`) under each of six perturbations, one fixture apiece. The
+    `null`/span-absent cases are the stub-defeating halves: an
+    implementation that treats a missing scope as an empty one, or that
+    recognises `for` headers by TEXT rather than position, passes the
+    others and fails these.
+    """
+    env = frozenset({"does_volume_tracking"})
+    base_scope = ["if does_volume_tracking()", "for op in dispenses"]
+    base_lineno = 1235
+    base_span = (1231, 1235)
+
+    # The base case itself: fully recognised, may emit WILL_FAIL.
+    assert volume_guard_is_unconditional(base_scope, base_lineno, base_span, env) is True
+
+    # 1. An added is_disabled attribute test -- unrecognised (UnaryOp, no call).
+    with_is_disabled = [
+        "if not op.resource.tracker.is_disabled",
+        "if does_volume_tracking()",
+        "for op in dispenses",
+    ]
+    assert volume_guard_is_unconditional(with_is_disabled, base_lineno, base_span, env) is False
+
+    # 2. A second `for` header whose span does NOT contain caller_lineno --
+    # R1 identifies a NODE (this guard's own for_span), never a shape;
+    # a second, non-B1 for entry never rescues a guard whose OWN for_span
+    # fails position containment.
+    second_for_header = ["if does_volume_tracking()", "for inner_op in something", "for op in dispenses"]
+    mismatched_span = (1300, 1310)
+    assert volume_guard_is_unconditional(second_for_header, base_lineno, mismatched_span, env) is False
+
+    # 3. The same for entry with for_span absent -- the stub-defeating half
+    # against a text-matching implementation.
+    assert volume_guard_is_unconditional(base_scope, base_lineno, None, env) is False
+
+    # 4. A while header -- never recognised, independently of env.
+    while_header = ["if does_volume_tracking()", "while some_cond"]
+    assert volume_guard_is_unconditional(while_header, base_lineno, base_span, env) is False
+
+    # 5. An "else of: if does_volume_tracking()" entry -- negated enclosure,
+    # never recognised under any env.
+    else_of_entry = ["else of: if does_volume_tracking()", "for op in dispenses"]
+    assert volume_guard_is_unconditional(else_of_entry, base_lineno, base_span, env) is False
+
+    # 6. caller_scope: null -- the other stub-defeating half.
+    assert volume_guard_is_unconditional(None, None, base_span, env) is False
+
+
 def test_compute_volume_bridge_direct_on_synthetic_receiver() -> None:
     """`compute_volume_bridge` itself, exercised directly against a
     synthetic receiver + tracker pair -- at a level BELOW the whole survey
@@ -1758,7 +1970,9 @@ class R:
             findings=(),
             delegates_to=(),
             unresolved_calls=(),
-            dropped_calls=("op.resource.tracker.spend",),
+            dropped_calls=(
+                DroppedCall(expr="op.resource.tracker.spend", lineno=35, scope_trail=["for op in ops"]),
+            ),
         ),
         SurveyRecord(
             qualname="Tracker.spend",
@@ -1801,3 +2015,9 @@ class R:
     assert guard["amount_param"] == "vols"
     assert guard["direction"] == "decreasing"
     assert guard["for_span"][0] <= guard["for_span"][1]
+    # (260903, T25) P10: attached verbatim from the one matching
+    # dropped_calls record -- disjoint from `guard["scope_trail"]`, which
+    # stays the callee's own (`Tracker.spend`'s `if volume - ...`).
+    assert guard["caller_scope"] == ["for op in ops"]
+    assert guard["caller_lineno"] == 35
+    assert guard["scope_trail"] == ["if volume - self.get_used() > 1e-06"]

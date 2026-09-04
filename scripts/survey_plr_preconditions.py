@@ -74,6 +74,25 @@ DEFAULT_OUT = PROJECT_ROOT / "training" / "verify" / "data" / "plr_preconditions
 
 
 @dataclass
+class DroppedCall:
+    """One receiver-qualified call expression dropped by `visit_Call`'s
+    `name is None` fallthrough (see `FunctionPreconditions.dropped_calls`),
+    recorded WHERE it was seen: its own line number and the nearest-first
+    `scope_trail` live at the moment of the visit (260903, spec
+    260903_plr-sema-volume-increment.md §14.0.2, T25). Same shape and same
+    trail convention `PreconditionFinding` already uses -- `_record` builds
+    the identical three facts for findings; this is the same recording,
+    applied to a dropped call instead of a finding. Multiplicity is
+    preserved: two call sites with the identical `expr` under different
+    scopes are two separate `DroppedCall` records, not one deduplicated
+    entry (AC-14.3(iii))."""
+
+    expr: str
+    lineno: int
+    scope_trail: list[str]
+
+
+@dataclass
 class PreconditionFinding:
     kind: str  # "raise_guard" | "assert"
     #: The nearest enclosing branch condition's source text, or None if the
@@ -117,7 +136,14 @@ class FunctionPreconditions:
     #: `self.head[channel].get_tip` is distinguishable from `tip_spot.get_tip`.
     #: Strictly additive: does not alter `name`/`delegates_to`/
     #: `unresolved_calls` for any existing call shape.
-    dropped_calls: list[str] = field(default_factory=list)
+    #: (260903, T25) Each entry is now a `DroppedCall` record -- `expr` plus
+    #: the call's own `lineno` and nearest-first `scope_trail` -- rather than
+    #: a bare `expr` string. Multiplicity preserved (this is a `list`, built
+    #: from `_BodyScanner.dropped`, itself now a `list` and not a `set`): a
+    #: dotted call expression appearing twice under two different scopes
+    #: yields two distinct records here (spec §14.0.2's normative schema-
+    #: change box, AC-14.3(iii)).
+    dropped_calls: list[DroppedCall] = field(default_factory=list)
 
 
 def _is_validation_looking(name: str) -> bool:
@@ -138,8 +164,11 @@ class _BodyScanner(ast.NodeVisitor):
         self.unresolved: set[str] = set()
         #: (round-5 T0, F1) receiver-qualified call expressions dropped by
         #: the `name is None` fallthrough below -- see PreconditionFinding's
-        #: dropped_calls docstring.
-        self.dropped: set[str] = set()
+        #: dropped_calls docstring. (260903, T25) A `list`, not a `set`:
+        #: multiplicity is preserved, since each entry now also carries its
+        #: own `lineno`/`scope_trail`, which distinguishes two otherwise-
+        #: identical `expr`s recorded at two different call sites.
+        self.dropped: list[DroppedCall] = []
 
     def _mentions(self, node: ast.expr) -> list[str]:
         names = {n.id for n in ast.walk(node) if isinstance(n, ast.Name)}
@@ -247,9 +276,16 @@ class _BodyScanner(ast.NodeVisitor):
             # Purely additive: `name`/`is_self_call` are untouched, so the
             # existing delegates/unresolved recording below is unaffected.
             try:
-                self.dropped.add(ast.unparse(target))
+                expr = ast.unparse(target)
             except Exception:
-                self.dropped.add(f"<unparseable>.{target.attr}")
+                expr = f"<unparseable>.{target.attr}"
+            # (260903, T25) Record WHERE this dropped call sits, not just
+            # what it looks like -- `node.lineno` is the Call node's own
+            # line (the call, not the receiver expression), and
+            # `self._scope_trail` is the SAME nearest-first, polarity-aware
+            # trail `_record` captures for findings, read at the identical
+            # point in the walk (§14.0.2's normative schema-change box).
+            self.dropped.append(DroppedCall(expr=expr, lineno=node.lineno, scope_trail=list(self._scope_trail)))
 
         if name is not None:
             if (is_self_call and name in self.class_method_names) or (not is_self_call and name in self.module_func_names):
@@ -300,7 +336,12 @@ def survey(plr_root: Path) -> list[FunctionPreconditions]:
                 qualname=qualname, class_name=class_name, module=module, file=rel_file,
                 lineno=node.lineno, params=params, findings=scanner.findings,
                 delegates_to=sorted(scanner.delegates), unresolved_calls=sorted(scanner.unresolved),
-                dropped_calls=sorted(scanner.dropped),
+                # (260903, T25) NOT sorted -- `scanner.dropped` is already a
+                # deterministic list in AST-visitation order, and multiplicity
+                # (two records sharing an `expr` from two different scopes)
+                # must be preserved verbatim, not collapsed or reordered by a
+                # `sorted()` over records that carry no total order.
+                dropped_calls=list(scanner.dropped),
             ))
 
         for node in ast.iter_child_nodes(tree):

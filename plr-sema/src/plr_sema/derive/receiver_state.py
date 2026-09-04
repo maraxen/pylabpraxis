@@ -65,6 +65,7 @@ from pathlib import Path
 from typing import Any
 
 from plr_sema.derive import (
+    DroppedCall,
     Qualkey,
     SurveyRecord,
     _iter_plr_source_files,
@@ -100,6 +101,10 @@ __all__ = [
     "operand_pairing_idiom",
     "for_over_comprehension_output",
     "compute_volume_bridge",
+    # 260903 (spec 260903_plr-sema-volume-increment.md §14.6, T25, backlog
+    # #4958): the generalised conditional-guard rule and R1's
+    # position-containment recognition, as a pure function T26/T27 import.
+    "volume_guard_is_unconditional",
 ]
 
 #: §10.2.5's second conjunct: the taxonomy module path that narrows the
@@ -1004,8 +1009,10 @@ def _one_hop_delegate_name(
         resolved_rec = index.get(resolved)
         if resolved_rec is None:
             continue
-        for expr in resolved_rec.dropped_calls:
-            m = _BRIDGE_SHAPE_RE.match(expr)
+        # (260903, T25) `dropped_calls` entries are `DroppedCall` records --
+        # match on `.expr`, same regex, same semantics.
+        for dropped in resolved_rec.dropped_calls:
+            m = _BRIDGE_SHAPE_RE.match(dropped.expr)
             if m is not None and m.group(1) == channel_attr and m.group(3) == method:
                 return name
     return None
@@ -1051,7 +1058,12 @@ def compute_channel_bridge(
     for rec, _key, depth in _walk_closure(entry, index):
         if rec is None:
             continue
-        for expr in rec.dropped_calls:
+        # (260903, T25) `dropped_calls` entries are `DroppedCall` records --
+        # match on `.expr`; `expr` itself is unchanged below (still the
+        # bare string the rest of this loop, and the `"via"` payload key,
+        # use).
+        for dropped in rec.dropped_calls:
+            expr = dropped.expr
             # HM-24, pattern 1: the ONE canonical bridge-shape regex,
             # checked against THIS receiver's own `channel_attr` (group 1)
             # -- not a fresh per-call `re.compile`.
@@ -1202,16 +1214,18 @@ def compute_tip_families(
 # selection input at `derive_receiver_states`'s own `_annotated_attributes`
 # call remains that function's result and nothing else.
 #
-# **What T24 ships and what it does not (§14.0's own gate).** This section
-# builds `volume_guards` -- via/cell_param/amount_param/direction/for_span
-# -- but attaches NO `caller_scope`/`caller_lineno` (P10, T25's job: the
-# survey's `dropped_calls` is still a bare `list[str]` until T25 migrates
-# it, so there is no scope/lineno to attach yet) and constructs no
-# `Finding`. §14.0's normative gate is explicit that a landed T24 alone,
-# wired into `check/`, would let the analyzer construct an ungated volume
-# `WILL_FAIL` -- T24 does not wire anything into `check/` at all (no
-# `check/volumestate.py` exists yet, T26's job), so that gate is respected
-# by construction, not by restraint.
+# **What T24 shipped and what T25 adds (§14.0's own gate).** T24 built
+# `volume_guards` -- via/cell_param/amount_param/direction/for_span -- but
+# attached NO `caller_scope`/`caller_lineno` (P10 was undischarged: the
+# survey's `dropped_calls` was still a bare `list[str]`, so there was no
+# scope/lineno to attach). T25 (§14.0.2) migrates the survey schema and
+# wires P10 as a CONSUMER of it -- see `compute_volume_bridge` below -- and
+# adds the generalised conditional-guard rule plus R1 (§14.6) as pure,
+# importable functions. Neither T24 nor T25 constructs a `Finding` or wires
+# anything into `check/` (no `check/volumestate.py` exists yet, T26's job),
+# so §14.0's normative gate -- a landed bridge alone must never let the
+# analyzer construct an ungated volume `WILL_FAIL` -- is respected by
+# construction, not by restraint.
 # ---------------------------------------------------------------------------
 
 
@@ -1737,6 +1751,31 @@ def _volume_direction(method: ast.FunctionDef | ast.AsyncFunctionDef, anchored_f
 _VOLUME_BRIDGE_SHAPE_RE = re.compile(r"^(\w+)\.(\w+)\.(\w+)\.(\w+)$")
 
 
+def _caller_scope_for_expr(
+    expr: str, dropped_calls: tuple[DroppedCall, ...]
+) -> tuple[list[str] | None, int | None]:
+    """P10 (§14.0.2, T25): `(caller_scope, caller_lineno)` for the ONE
+    `DroppedCall` record in `dropped_calls` whose `expr` equals `expr`,
+    read verbatim (nearest-first, polarity preserved) off that record's own
+    `scope_trail`/`lineno`.
+
+    **Fail-closed** to `(None, None)` -- normative box's own words -- when
+    zero or more than one record share this `expr` in the same method (an
+    ambiguous attachment is not a safer-but-wrong one; it is `null`), or
+    when the single matching record predates the schema migration
+    (`lineno is None`, produced by `_dropped_call_from_any`'s bare-`str`
+    degrade path). Disjoint from the guard's own callee-sourced
+    `scope_trail`, which this function never reads or writes.
+    """
+    matches = [dropped for dropped in dropped_calls if dropped.expr == expr]
+    if len(matches) != 1:
+        return None, None
+    (only,) = matches
+    if only.lineno is None:
+        return None, None
+    return list(only.scope_trail), only.lineno
+
+
 def compute_volume_bridge(
     entry: Qualkey,
     index: dict[Qualkey, SurveyRecord],
@@ -1786,7 +1825,21 @@ def compute_volume_bridge(
     b1_bindings = for_over_comprehension_output(method_node, p8_matches)
 
     volume_guards: list[dict[str, Any]] = []
-    for expr in k_rec.dropped_calls:
+    # (260903, T25) `dropped_calls` entries are `DroppedCall` records, and
+    # the survey now preserves multiplicity (the same `expr` can appear
+    # more than once, at different scopes) -- match on the DISTINCT `expr`s,
+    # first-seen order, so a duplicate does not manufacture a second
+    # `volume_guards` entry for the same bridge match (that duplication
+    # would itself be exactly the ambiguity `_caller_scope_for_expr` fails
+    # closed on, attached to a guard nothing else distinguishes).
+    seen_exprs: list[str] = []
+    seen_exprs_set: set[str] = set()
+    for dropped in k_rec.dropped_calls:
+        if dropped.expr not in seen_exprs_set:
+            seen_exprs_set.add(dropped.expr)
+            seen_exprs.append(dropped.expr)
+
+    for expr in seen_exprs:
         m = _VOLUME_BRIDGE_SHAPE_RE.match(expr)
         if m is None:
             continue
@@ -1845,6 +1898,8 @@ def compute_volume_bridge(
                 if not is_local:
                     amount_param = zip_name
 
+        caller_scope, caller_lineno = _caller_scope_for_expr(expr, k_rec.dropped_calls)
+
         method_contract = derive_contract(tracker_module, f"{tracker_class}.{method}", index, stamp=stamp)
         for guard in method_contract.guards:
             guard_json: dict[str, Any] = {
@@ -1862,16 +1917,120 @@ def compute_volume_bridge(
                 "cell_param": cell_param,
                 "amount_param": amount_param,
                 "direction": direction,
-                # P10's caller_scope/caller_lineno (§14.0.2) are T25's job --
-                # the survey's dropped_calls is still a bare list[str], so
-                # there is nothing to attach yet (§14.0's own gate).
-                "caller_scope": None,
-                "caller_lineno": None,
+                # P10 (§14.0.2, T25): attached from K's own dropped_calls
+                # record for this `expr`, additively alongside the guard's
+                # own callee-sourced `scope_trail` above (never modified --
+                # the two facts are kept apart, per the normative box).
+                "caller_scope": caller_scope,
+                "caller_lineno": caller_lineno,
             }
             if binding.for_span is not None:
                 guard_json["for_span"] = list(binding.for_span)
             volume_guards.append(guard_json)
     return volume_guards
+
+
+# ---------------------------------------------------------------------------
+# §14.6 -- the hypothesis gate: the generalised conditional-guard rule and
+# R1, its one structural admission (T25). Pure, importable functions with
+# no dependency on `check/` -- T26/T27 import `volume_guard_is_unconditional`
+# directly rather than re-implementing the recognition test a second time;
+# placed here (not a new `check/volumescope.py`) because T25's own file
+# scope only touches `derive/`, and this rule is a property of the data
+# `compute_volume_bridge` above already produces, not of the interval
+# domain T26 builds.
+# ---------------------------------------------------------------------------
+
+#: A bare zero-argument call entry, e.g. `"if does_volume_tracking()"` --
+#: never matches `"else of: if does_volume_tracking()"` (the `"else of: "`
+#: prefix means the whole string does not start with `"if "` at position 0)
+#: and never matches an entry with an argument, an attribute test, or a
+#: comparison (the `\(\)` anchors on ZERO arguments).
+_HYPOTHESIS_ENTRY_RE = re.compile(r"^if (\w+)\(\)$")
+
+
+def _caller_scope_entry_recognized(
+    entry: str,
+    *,
+    is_outermost_for: bool,
+    for_span: tuple[int, int] | None,
+    caller_lineno: int | None,
+    env: frozenset[str],
+) -> bool:
+    """One `caller_scope` entry is recognised as satisfied in exactly two
+    ways (§14.6's normative box), and no others:
+
+    1. **By hypothesis.** `entry` is a bare zero-argument call `f()` --
+       `"if f()"` -- whose callee name `f` is a member of `env`. An
+       `"else of: if f()"` entry (a negated enclosure) never matches this
+       regex (it does not start with `"if "`) and is therefore never
+       recognised this way, under any `env`, per the normative box.
+    2. **By structure -- R1.** `entry` is the B1-bound `ast.For` statement
+       for this guard, identified by POSITION, never by text: the caller
+       has already established `is_outermost_for` (this is the outermost
+       `"for "`-prefixed entry in the guard's own nearest-first
+       `caller_scope`), and `for_span`/`caller_lineno` are both present and
+       `for_span[0] <= caller_lineno <= for_span[1]`.
+
+    Everything else -- a second `for` header (not the outermost one, or
+    outside `for_span`), any `while`, any `async for`, an attribute test, a
+    comparison, a `UnaryOp`, a call with arguments, an `"else of: if …"`
+    entry, `for_span` absent, `caller_lineno` absent, an unparseable
+    string -- returns False.
+    """
+    hypothesis_match = _HYPOTHESIS_ENTRY_RE.match(entry)
+    if hypothesis_match is not None and hypothesis_match.group(1) in env:
+        return True
+    if (
+        is_outermost_for
+        and entry.startswith("for ")
+        and for_span is not None
+        and caller_lineno is not None
+        and for_span[0] <= caller_lineno <= for_span[1]
+    ):
+        return True
+    return False
+
+
+def volume_guard_is_unconditional(
+    caller_scope: list[str] | None,
+    caller_lineno: int | None,
+    for_span: tuple[int, int] | list[int] | None,
+    env: frozenset[str],
+) -> bool:
+    """§14.6's normative conditional-guard rule. A volume guard is
+    UNCONDITIONAL -- i.e. may emit `WILL_FAIL` -- iff EVERY entry of its
+    `caller_scope` (nearest-first, as P10 attaches it) is recognised as
+    satisfied by `_caller_scope_entry_recognized`.
+
+    **Fail-closed on `caller_scope is None`** (P10's own attachment
+    failure, §14.0.2) -- a `null` caller scope is treated as containing an
+    unrecognised conjunct, never as an empty (vacuously satisfied) one.
+
+    The "outermost `for` entry" that R1 may recognise is computed ONCE
+    here, over the whole nearest-first list (the LAST `"for "`-prefixed
+    entry, since nearest-first means index 0 is innermost) -- a second,
+    non-outermost `for` entry is never recognised by R1 even when
+    `for_span` happens to contain `caller_lineno`, because R1 identifies a
+    NODE (the specific `ast.For` B1 bound `<name>` over), not a shape, and
+    this guard's `for_span` names only that one node.
+    """
+    if caller_scope is None:
+        return False
+    span = (for_span[0], for_span[1]) if for_span is not None else None
+    for_indices = [i for i, entry in enumerate(caller_scope) if entry.startswith("for ")]
+    outermost_for_index = max(for_indices) if for_indices else None
+    for i, entry in enumerate(caller_scope):
+        recognized = _caller_scope_entry_recognized(
+            entry,
+            is_outermost_for=(outermost_for_index is not None and i == outermost_for_index),
+            for_span=span,
+            caller_lineno=caller_lineno,
+            env=env,
+        )
+        if not recognized:
+            return False
+    return True
 
 
 # ---------------------------------------------------------------------------

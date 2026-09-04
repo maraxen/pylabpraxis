@@ -53695,8 +53695,12 @@
       "volume_guards": [
         {
           "amount_param": "vols",
-          "caller_lineno": null,
-          "caller_scope": null,
+          "caller_lineno": 1034,
+          "caller_scope": [
+            "if not op.resource.tracker.is_disabled",
+            "if does_volume_tracking()",
+            "for op in aspirations"
+          ],
           "cell_param": "resources",
           "condition": "volume - self.get_used_volume() > 1e-06",
           "direction": "decreasing",
@@ -53722,8 +53726,11 @@
         },
         {
           "amount_param": "vols",
-          "caller_lineno": null,
-          "caller_scope": null,
+          "caller_lineno": 1035,
+          "caller_scope": [
+            "if does_volume_tracking()",
+            "for op in aspirations"
+          ],
           "cell_param": {
             "local": true,
             "name": "tips"
@@ -53960,40 +53967,6 @@
           ],
           "site": {
             "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
-            "lineno": 90,
-            "qualname": "TipTracker.add_tip"
-          },
-          "via": "self.head[channel].add_tip"
-        },
-        {
-          "condition": "self._pending_tip is not None",
-          "depth": 1,
-          "free_vars": [
-            "self"
-          ],
-          "kind": "raise_guard",
-          "raises": "HasTipError",
-          "scope_trail": [
-            "if self._pending_tip is not None"
-          ],
-          "site": {
-            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
-            "lineno": 92,
-            "qualname": "TipTracker.add_tip"
-          },
-          "via": "self.head[channel].add_tip"
-        },
-        {
-          "condition": "self.is_disabled",
-          "depth": 1,
-          "free_vars": [],
-          "kind": "raise_guard",
-          "raises": "RuntimeError",
-          "scope_trail": [
-            "if self.is_disabled"
-          ],
-          "site": {
-            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
             "lineno": 103,
             "qualname": "TipTracker.remove_tip"
           },
@@ -54016,6 +53989,40 @@
             "qualname": "TipTracker.remove_tip"
           },
           "via": "self.head[channel].remove_tip"
+        },
+        {
+          "condition": "self.is_disabled",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 90,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self._pending_tip is not None",
+          "depth": 1,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "HasTipError",
+          "scope_trail": [
+            "if self._pending_tip is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 92,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
         }
       ],
       "gaps": [],
@@ -54988,8 +54995,12 @@
       "volume_guards": [
         {
           "amount_param": "vols",
-          "caller_lineno": null,
-          "caller_scope": null,
+          "caller_lineno": 1234,
+          "caller_scope": [
+            "if not op.resource.tracker.is_disabled",
+            "if does_volume_tracking()",
+            "for op in dispenses"
+          ],
           "cell_param": "resources",
           "condition": "volume - self.get_free_volume() > 1e-06",
           "direction": "increasing",
@@ -55015,8 +55026,11 @@
         },
         {
           "amount_param": "vols",
-          "caller_lineno": null,
-          "caller_scope": null,
+          "caller_lineno": 1235,
+          "caller_scope": [
+            "if does_volume_tracking()",
+            "for op in dispenses"
+          ],
           "cell_param": {
             "local": true,
             "name": "tips"
@@ -58814,40 +58828,6 @@
           ],
           "site": {
             "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
-            "lineno": 90,
-            "qualname": "TipTracker.add_tip"
-          },
-          "via": "self.head[channel].add_tip"
-        },
-        {
-          "condition": "self._pending_tip is not None",
-          "depth": 0,
-          "free_vars": [
-            "self"
-          ],
-          "kind": "raise_guard",
-          "raises": "HasTipError",
-          "scope_trail": [
-            "if self._pending_tip is not None"
-          ],
-          "site": {
-            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
-            "lineno": 92,
-            "qualname": "TipTracker.add_tip"
-          },
-          "via": "self.head[channel].add_tip"
-        },
-        {
-          "condition": "self.is_disabled",
-          "depth": 0,
-          "free_vars": [],
-          "kind": "raise_guard",
-          "raises": "RuntimeError",
-          "scope_trail": [
-            "if self.is_disabled"
-          ],
-          "site": {
-            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
             "lineno": 103,
             "qualname": "TipTracker.remove_tip"
           },
@@ -58870,6 +58850,40 @@
             "qualname": "TipTracker.remove_tip"
           },
           "via": "self.head[channel].remove_tip"
+        },
+        {
+          "condition": "self.is_disabled",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 90,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self._pending_tip is not None",
+          "depth": 0,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "HasTipError",
+          "scope_trail": [
+            "if self._pending_tip is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+            "lineno": 92,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
         }
       ],
       "gaps": [],
@@ -168290,14 +168304,14 @@
     "praxis": {
       "branch": "coxswain-p2-pipeline",
       "dirty": true,
-      "dirty_content_id": "8eafd82aa8ba7597485e48d67f7e7ad71ca1f8f3b43f8a9fa22309a932d3f9ad",
-      "hash": "7b1913cd2fc6e0c577bc6d6e23f8cce3fda2ef82",
+      "dirty_content_id": "5fd4e359c104ee0f07aa0b2517b9e9e2b7aa53bcabfc515c00704702699d78ac",
+      "hash": "2e50e613364fa91483bfc740c7ac3cfec02ac106",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-04T05:27:21.322408+00:00",
+    "stamped_at": "2026-09-04T05:40:45.828669+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   }
