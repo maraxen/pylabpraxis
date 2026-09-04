@@ -184,7 +184,7 @@ fail-closed direction as AC-10.7 and AC-11.12, and pinned here by AC-12.2's thir
 
 **Provenance.** Two records, both existing artifacts, neither new:
 
-- The **gap ledger's** `tip_state` block (`plr-sema/src/plr_sema/derive/__main__.py:296-314`, built by
+- The **gap ledger's** `tip_state` block (`plr-sema/src/plr_sema/derive/__main__.py:323-341`, built by
   `compute_tip_families`) gains an `entry_reset` entry per anchored receiver class, alongside
   `tipstate_anchor`. Its value is the derived `{method, post}` pair, or the string `"absent"` /
   `"ambiguous"` when P5 emitted nothing and why. This is the visible surface AC-10.10 established for
@@ -746,7 +746,7 @@ check.
 > containing `for`, `while`, `if`/`elif`/`else` and nesting, each with both tip outcomes represented
 > (a loop that fails at iteration 2; a loop that drops before re-picking and runs clean; a branch
 > where one arm picks up and the other does not). Ground truth is obtained by **executing the source**
-> against the verifier's own chatterbox deck — `build_setup` (`training/verify/deck.py:354`) under the
+> against the verifier's own chatterbox deck — `build_setup` (`training/verify/deck.py:368`) under the
 > STRICT + tip/volume-tracking configuration `verify` establishes
 > (`training/verify/verifier.py:104-116`) — recording, per raise, the **operation and the iteration**
 > at which it happened. The static side runs the same source through §12.4.1's runner, `lower_graph`,

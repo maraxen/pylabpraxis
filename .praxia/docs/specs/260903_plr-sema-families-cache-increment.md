@@ -454,7 +454,7 @@ and AC-13.1 asserts the `resource.*` case directly so the correction cannot regr
 `requires-python`, main spec §1.1) and is a fact about **Python**, not about PLR — so it cannot go
 stale when PLR changes, which is the `breaks_when` question §9.1 makes every hand-maintained row
 answer. The same is true of `dir(dict)`. **It is a fact about a specific Python, though**, which is why
-the gap ledger's stamp records `derive_python_version` (`plr-sema/data/gap_ledger.json:38`, `"3.14.6"`
+the gap ledger's stamp records `derive_python_version` (`plr-sema/data/gap_ledger.json:83`, `"3.14.6"`
 at the 50063d52 run): the same derivation on a different interpreter can select a different set, and
 that is a provenance fact, not a bug.
 
@@ -485,7 +485,7 @@ re-running this must reproduce them, not re-derive them from scratch:
 - **Newly admitted: `logger.debug` and `logger.warning`, +3 entries whole-surface.** Both are visible
   in the shipped ledger (`plr-sema/data/gap_ledger.json:119` and `:139`), which is the published
   evidence that the typed prefix list is gone and nothing silently replaced it.
-- **The interpreter is stamped.** `derive_python_version` (`plr-sema/data/gap_ledger.json:38`) joins
+- **The interpreter is stamped.** `derive_python_version` (`plr-sema/data/gap_ledger.json:83`) joins
   the existing `plr`/`praxis` provenance in the ledger's stamp block (`:37-59`), so a ledger diff
   caused by a Python upgrade is attributable rather than mysterious.
 
@@ -783,7 +783,7 @@ a stub, the stub-defeating half is named.
   **> 0** and including `logger.debug` and `logger.warning`
   (`plr-sema/data/gap_ledger.json:119`, `:139`). (v) `plr-sema/data/derived_contracts.json` is
   **byte-identical** before and after, and the ledger's stamp carries `derive_python_version`
-  (`plr-sema/data/gap_ledger.json:38`). (ii) and (v) are the stub-defeating halves: a name-coincidence
+  (`plr-sema/data/gap_ledger.json:83`). (ii) and (v) are the stub-defeating halves: a name-coincidence
   rule passes (i) and fails (ii), and a filter that leaked into the derivation passes (i)–(iv) and
   fails (v).
 - **AC-13.2 (the deletion is real and the registry does not grow).** An AST scan of
@@ -1237,4 +1237,4 @@ became AC-13.10).
 | 5 | **O6** | CONCEDE | `_is_inert_dropped_receiver_call` gains the record's `file` and resolves aliases **per file**; both call sites (`derive/__init__.py:940`, `:1011`) pass it. **Plus a second correction found in implementation (50063d52) that neither report raised:** clause 1 is **import-resolved only** — a head coinciding with a stdlib module name but not bound by that file's imports is **not** inert, because the first implementation wrongly filtered 280 whole-surface `resource.*` calls. §13.4.3 records the implementation facts (`derived_contracts.json` byte-identical, `logger.debug`/`logger.warning` newly admitted, `derive_python_version` stamped); AC-13.1 grows to five sub-assertions with the `resource.*` case as a stub-defeater | §13.4.2, §13.4.3, §13.9 #4883, AC-13.1, AC-13.2 |
 | 6 | — | user decision | Registry arithmetic reduced to what ships: **HM-25 `declared` 5 → 6 for P9 alone**; HM-24 stays **1**; `REASON_VOCABULARY` stays **8 of 12**; rows 24/24, headroom 0. Increment 5 carries HM-24 1 → 2, HM-25 6 → 8 and the two volume reasons. Increment 3 §12.1.2's "cap conversation" wording corrected by a **bracketed note in §13.7**, not by editing that document | §13.7, §13.0's table |
 | 7 | — | round-1 adjudication | §13.13 rewritten from six open questions to six dispositions: Q1 **decided** by the user with the mechanical claim verified against both ratchet tests; Q2 **resolved against** the draft's sequencing argument (`ir_version` is already a key component); Q3 and Q6 **moved** to increment 5; Q4 **kept, reframed** as a landmine regression test per the round's own recommendation; Q5 **kept as specified** | §13.13, §13.1.3, §13.9 #4881a |
-| — | housekeeping | — | `status` → `reviewed-round-1`; frontmatter `description` rewritten around what ships; `sources` extended with both round-1 audit files, `plr-sema/data/gap_ledger.json:28-60,2585`, `outputs/plr-sema/oracle_replay_260903_4950.json` and the PLR/analyzer ranges read to verify the remediation; §13.5.4's gate **rescaled from an absolute to a rate** (≥ 91%, i.e. ≥ 176 of 193 at `6e34be9b`) after #4950 moved the denominators 186 → 250 bases and 101 → 193 raised rows, with the post-#4950 numbers flagged as **not in any committed artifact** and required to be re-measured; §13.1.3's blocker ids renamed B1–B4 → L1–L4 to stop colliding with increment 5's B1/B2; T23 extended to lint increment 5 as well | frontmatter, §13.1.3, §13.5.4, §13.9 T23, References |
+| — | housekeeping | — | `status` → `reviewed-round-1`; frontmatter `description` rewritten around what ships; `sources` extended with both round-1 audit files, the gap ledger (anchors in `sources`), `outputs/plr-sema/oracle_replay_260903_4950.json` and the PLR/analyzer ranges read to verify the remediation; §13.5.4's gate **rescaled from an absolute to a rate** (≥ 91%, i.e. ≥ 176 of 193 at `6e34be9b`) after #4950 moved the denominators 186 → 250 bases and 101 → 193 raised rows, with the post-#4950 numbers flagged as **not in any committed artifact** and required to be re-measured; §13.1.3's blocker ids renamed B1–B4 → L1–L4 to stop colliding with increment 5's B1/B2; T23 extended to lint increment 5 as well | frontmatter, §13.1.3, §13.5.4, §13.9 T23, References |

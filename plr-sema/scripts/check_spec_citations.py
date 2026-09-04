@@ -62,7 +62,7 @@ CLAUSE_BOUNDARY_RE = re.compile(r"(?:\. |; | — | -- |\) |\| )")
 
 #: Directories never searched when resolving a bare basename.
 SKIP_DIRS = frozenset(
-    {".git", ".venv", "node_modules", "__pycache__", "target", ".praxia/subagent_outputs", ".mypy_cache", ".ruff_cache", ".pytest_cache"}
+    {".git", ".claude", ".venv", "node_modules", "__pycache__", "target", ".praxia/subagent_outputs", ".mypy_cache", ".ruff_cache", ".pytest_cache"}
 )
 #: When a bare basename matches several files, the first root in this list
 #: that contains exactly one match wins. This is lint configuration for one
