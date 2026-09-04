@@ -1,0 +1,196 @@
+---
+title: 'plr-sema sprint 127 plan: the predicate language (increment 6, deferred row (c)) measured by the UNKNOWN ledger'
+description: 'Sprint plan for 260904_sema-predicates: Band B0 the UNKNOWN ledger (root-cause clusters on the frozen tier-1 benchmark, deferred (f) shape) as the instrument; Band A increment 6 spec (deferred row (c), the predicate language) draft + adversarial round 1; Band B the derive-side parsed predicate and local-binding idioms with published measured sets as the gate; Band C the three-valued evaluator, reason refinements, tier-1 re-measure and ledger delta; Band D measurement debts (check-only elapsed for #4923, tips_dirty precision cost). Headline target: the first joined SAFE on a real executed operation. Decision hooks, baselines, exclusions.'
+status: active
+task_id: 260904_sema-predicates
+date: '260904'
+sprint: '127'
+backlog_ids: '4976,4977,4978,4979,4981,4982'
+---
+# plr-sema sprint 127 plan: the predicate language (increment 6, deferred row (c)) measured by the UNKNOWN ledger
+
+> Task id `260904_sema-predicates`. Spine: a **new** spec increment,
+> `.praxia/docs/specs/260904_plr-sema-predicate-increment.md` (increment 6, spec_version 16), to be
+> authored in band A from band B0's ledger. It takes the main spec's deferred row (c) — "the predicate
+> language turning guard `condition` + `mentions_params` into a checkable predicate", which §7 carries
+> as opaque strings "precisely so this can land later without reshaping the pipeline"
+> (`260901_plr-sema-pre-corpus-spec.md:2518`, boundary table `:2534`). Planned at HEAD `7fc7271b` on
+> `coxswain-p2-pipeline`, PLR pin `dd79c4c89`, sprint 123 `260903_sema-volume` closed and pushed.
+
+## 0. Why this increment, and not the volume follow-ups
+
+Sprint 123 closed with every oracle tier at 0 unsound and the first volume `WILL_FAIL` — and with the
+tier-1 replay reporting **`unknown_rate` 1.0 for every one of the ten methods**
+(`outputs/plr-sema/oracle_replay_260904_inc5.json`, `unknown_rate_by_method`): on all 548 executed real
+operations the per-operation joined verdict is `UNKNOWN`. The analyzer has never said anything definite
+about a real program. The memory's follow-up candidates from sprint 123 (well-side `is_disabled`
+discharge, capacity operand, `delegates_to` volume propagation) do not move that number: the corpus
+never seeds a well or disables a tracker (0 of 1523 sidecar rows mention `set_volume`/`set_liquids`/
+`disable_volume_trackers`), so every volume cell is `TOP` at entry on real rows regardless, and
+increment 5 §14.6 records why the `is_disabled` discharge is closed without new facts.
+
+**The planning-time probe** (ephemeral, `$TMPDIR/probe/unknown_reason_probe.py`, a `check_ir` wrapper
+around `oracle_replay.main` over the first 150 corpus rows — reproduced as a tracked script by band B0,
+which is the citable version): 129 executed operations, 1,155 findings —
+
+| finding (verdict, reason) | count |
+|---|---|
+| `unknown` / `guard_predicate_unparsed` | 936 |
+| `safe` (tip typestate: `tip_tracker.py:65`/`:92`, `liquid_handler.py:535`) | 144 |
+| `unknown` / `volume_state_unknown` | 75 |
+
+Per operation, the set of reasons blocking the join is `{guard_predicate_unparsed}` on 84 ops and
+`{guard_predicate_unparsed, volume_state_unknown}` on the other 45. **One reason blocks every
+operation**, and it is the reason `check/__init__.py:292-313` emits for *every* guard because "no
+predicate parser exists yet" (`:60`). That is deferred row (c), due now.
+
+**Where the blocked guards sit** (probe, top sites; `d1` = inlined from a delegate):
+
+| PLR site | guard (`condition`) | count | planning-time tier (see §2) |
+|---|---|---|---|
+| `liquid_handler.py:375` d1 `_check_args` | `len(missing) > 0` — backend signature vs kwargs | 91 | (ii) backend |
+| `:383` d1 `_check_args` | `strictness == Strictness.STRICT` | 91 | (ii) env, process-global like `does_volume_tracking` |
+| `:409` d1 `_make_sure_channels_exist` | `not len(invalid_channels) == 0`, `invalid_channels = [c for c in channels if c not in self.head]` | 76 | (ii) head channel count |
+| `:116`/`:117` d1 `_check_no_lid` | `lidded is resource` / enclosing-lid walk | 53+53 | (ii) topology (increment 4 §13.1: no lid state field) |
+| `:875` d1 `_check_containers` | `len(not_containers) > 0`, `[r for r in resources if not isinstance(r, Container)]` | 53 | (i) syntactic |
+| `:321` d1 `_assert_resources_exist` | `not resource_from_deck == resource` | 38 | (ii) deck membership |
+| `:498` `pick_up_tips` | `len(not_tip_spots) > 0`, `[ts for ts in tip_spots if not isinstance(ts, TipSpot)]` | 38 | (i) |
+| `:502` / `:959` / `:1153` | `len(set(use_channels)) == len(use_channels)` (assert), `use_channels = use_channels or … or list(range(len(…)))` | 38 each | (i) literal or default |
+| `:514` `pick_up_tips` | `not all(self.backend.can_pick_up_tip(channel, tip) …)` | 38 | (ii) backend |
+| `:522` | `len(tip_spots) == len(offsets) == len(use_channels)`, `offsets = offsets or [Coordinate.zero()] * len(tip_spots)` | 38 | (i) |
+| `:990` / `:1202` | `len(p) != len(use_channels)` | 38 / 23 | (i) — V0 clause (c) already decides this conjunct for the volume bridge |
+| `:576` / `:1067` / `:1153`+ | `error is not None` — the backend's own raise, re-raised | 38 / 38 / 23 | (iii) opaque backend outcome |
+| `:191` d1 `setup` | `self.setup_finished` | 38 | (ii) — the scaffolding `setup()`'s own guard reaching real ops via inlining; band B0 must say why it lands on real op ids |
+
+`LiquidHandler.pick_up_tips` carries 10 guards / 0 gaps at this pin; `aspirate` 9 guards
+(`plr-sema/data/derived_contracts.json`). Tip typestate already evaluates `:535`; volume evaluates
+`:1034/:1035/:1234/:1235`.
+
+## 1. Composition
+
+| Band | Item | What | Model | Depends on |
+|---|---|---|---|---|
+| B0 — instrument | **#4976** | `plr-sema/eval/unknown_ledger.py` (bathos sidecar) over the sidecar-gated tier-1 executed rows at pin `dd79c4c89`: clusters keyed `(reason, PLR site, condition text)` with finding count, ops blocked, per-method share — the "absolute count of `UNKNOWN` root causes, clusters not raw findings, on a named frozen benchmark at a fixed pin" shape the main spec's deferred row (f) settled. `outputs/plr-sema/unknown_ledger_260904_before.json`. No analyzer change. | Sonnet | — |
+| A — spec | **#4977** | Increment 6 draft (Opus, `praxia:specification-specialist`) from the ledger; adversarial round 1 (challenger + defender, Opus, no write tool — orchestrator persists `.praxia/docs/audits/260904_plr-sema-predicate-round1-{challenger,defender}.md`); remediation → `reviewed-round-1`. Must dispose Q1–Q4 (§3). | Opus | #4976 |
+| B — gate | **#4978** | Derive side: `InlinedGuard.predicate` (typed mini-AST; `condition` retained as source of truth per the boundary table) and the **local-binding idiom** — a guard's free local bound at statement position in the same body by `x = [e for e in <param> if not isinstance(e, T)]` or `x = <param> or <default>` (the pass increment 4 §13.12 named "resolving a local's type from its assignment" and declined; scoped here to the ledger's shapes, fail-closed on every other shape). Every selection **measured and published** (`outputs/plr-sema/t30_measured_260904.json`): of the 5,180 guards, how many parse non-opaque; how many free locals bind; per-tier counts against the ledger's clusters. **Go/no-go lives here (§2).** | Sonnet | #4977 |
+| C — machinery + oracle | **#4979** | `check/predicate.py`: Kleene evaluation against the IR call (literal kwargs, `RESOURCE` `type`/`element_type`/`grid`, contract defaults) and the tip/volume walks; F ⇒ `SAFE`, T under a `raise_guard` ⇒ `WILL_FAIL` only if unconditional (increment 5 §14.6's rule generalised), ½ ⇒ the finest applicable reason. `REASON_VOCABULARY` 10 → ≤ 12 (HM-14 cap 12). Tier 1 re-run (0 unsound is the gate — a `SAFE` on an op that raised is the failure this increment introduces for the first time); m1/m2/v1/tier-2b non-regression; ledger re-run → `unknown_ledger_260904_after.json`; `SPEC_INCREMENT_6` in the lint; implementation record. | Sonnet / Haiku (lint) | #4978 |
+| C — conditional | **#4981** | Tier (ii): env members (strictness) and an **observation record** (backend class + signature, deck membership, head channel count, lid topology) — the harness already takes `setup.snapshot()` *before* execution (`training/verify/verifier.py:118-119`, `deck.py` `snapshot`: topology + `free_volume` per tracked object) and returns `backend` (`verifier.py:192`). **Do not start until round 1 disposes it** (§3 Q2). If it ships here, it is a cache-key component and fail-closed by default. | Sonnet | #4977, round-1 disposition |
+| D — debts, parallel | **#4982** | (1) check-only elapsed field in `oracle_replay.py` — increment 4 §13.12.1's criterion (a) for #4923, ~5 lines, the report has no timing field today; (2) the `tips_dirty` precision cost on tiers 1/2b (cells widened by the structural rule vs unseeded `TOP`; findings turned from definite to `volume_state_unknown`) → `outputs/plr-sema/tips_dirty_cost_260904.json`. No analyzer change. | Haiku (1) / Sonnet (2) | — |
+
+Order: B0 → A → B → C serially (each is the next one's premise; A cannot size the grammar without
+B0's clusters). D runs in parallel with B0 from the first dispatch, in a worktree — it touches
+`oracle_replay.py`, which B0's new script only imports.
+
+## 2. The go/no-go gate (band B) — restated after the planning-time tiering
+
+The three decidability tiers the spec must use:
+
+- **(i) syntactic** — decided from the call's literal kwargs, the contract's defaults, and `RESOURCE`
+  operands (declared/element type, grid). No hypothesis.
+- **(ii) environment / observation** — reads state outside the extracted graph: a process-global
+  (`get_strictness()`, the `does_volume_tracking` shape → an `env` member observed inside `verify()`'s
+  window), the backend class (`backend_name`, its method bodies AST-derivable), the deck (membership,
+  lids, channel count). Decidable only under a recorded hypothesis or an observation from the world.
+- **(iii) opaque** — the backend's own raise re-raised (`error is not None`). Never decided from the
+  PLR layer.
+
+**Planning-time inspection already shows tier (i) alone cannot clear a whole operation:** of
+`pick_up_tips`'s ten guards, (i) covers `:498/:502/:522`, tip typestate covers `:535`, and the other
+six are (ii) `:514/:375/:383/:409/:321` and (iii) `:576`. So the gate is **not** "tier (i) clears an
+op". It is:
+
+- **GO** if, after B's parsed predicates and local-binding idioms, the published per-op residual on the
+  frozen benchmark is **exactly tiers (ii) and (iii)** for at least one executed real operation — i.e.
+  every syntactic guard on it parses and binds, and nothing unparsed remains that is not observation-
+  or backend-dependent. Then C ships (i) + the finer reasons, and whether the first joined `SAFE`
+  lands this sprint is decided by Q1/Q2 (below), not by derivation.
+- **NO-GO** if some tier-(i) guard on every candidate op still fails to parse or bind after the
+  idioms land. Publish the counts and the structural reason in the spec's implementation record, keep
+  the derive code (it is a strict information gain on the contract table either way), and bring the
+  decision to the user before the evaluator.
+
+## 3. Decision hooks — the round must dispose, and some stop for the user
+
+1. **Q1 — what a joined `SAFE` means for an operation with a tier-(iii) guard.** Every liquid-handling
+   op carries `error is not None`. A `SAFE` finding on it would claim the backend did not raise —
+   which is A-COMPLETES (increment 1 §10.7, `260902_plr-sema-tip-typestate-increment.md:752`) applied
+   to the *current* op, not a PLR-side precondition. Options the spec must argue: (a) a **scoped**
+   `SAFE` — the verdict is over the PLR precondition layer and backend outcomes are excluded by
+   failure category (§4's `FAILURE_CATEGORIES`), recorded as a `SoundnessScope`-style annotation
+   (main spec `:103`, `:3330`), so the join can be `SAFE` with the backend guard carrying its own finer
+   reason outside the join; or (b) never `SAFE` on such an op — in which case the headline is
+   unreachable by construction and the sprint's deliverable is the ledger delta only. **If the round
+   lands on (b), stop and put it to the user**: it decides whether "first definite verdict on a real
+   program" is a goal of this analyzer at all.
+2. **Q2 — does tier (ii) ship in increment 6 or as increment 7?** `strictness` is the exact
+   `does_volume_tracking` shape and costs one `env` member; backend/deck/channels need an observation
+   record and a cache-key extension. The legitimacy argument must be stated against increment 5
+   §14.6's two failed `is_disabled` discharges (an observation taken from the world is not a
+   quantified claim, and is not "the graph is the whole world"). Round's call; #4981 follows it.
+3. **`REASON_VOCABULARY` 10 → 12 is the ceiling** (HM-14, cap 12). If the grammar needs a 13th member
+   the cap conversation is the user's (§9.4 anti-gaming), not the sprint's.
+4. **Registry headroom is 0** (`live_rows() == 24 == BUDGET_CAP`; HM-24 3, HM-25 8 as approved
+   260904). The local-binding idiom is a shape match with a silent failure mode — if the round puts it
+   on HM-24 (ceiling 3 → 4) or HM-25 (8 → 9), that is a per-row ceiling spend and a **user decision
+   before band B spends it**, exactly as sprint 123's Q2.
+5. **#4923 re-evaluation** once D publishes the check-only elapsed: increment 4 §13.12.1's threshold is
+   ~60 s check-only for a whole-corpus re-check; record the number against it in the sprint outcome.
+   The decision stays NO-GO unless the number exceeds the threshold *and* the user wants it.
+6. **#4924 stays NO-GO** (increment 4 §13.12.2): its criterion is the capacity operand, which this
+   sprint does not touch.
+
+## 4. Baselines that must hold at close
+
+| Tier | Baseline (sprint 123 close) | Where |
+|---|---|---|
+| 1 sidecar-gated replay | 343 executed / 548 ops, `rows_setup_error` 0, crosscheck 191/191 agreement 1.0, **0 unsound**, `unknown_rate` 1.0 (the number this sprint exists to move) | `outputs/plr-sema/oracle_replay_260904_inc5.json` |
+| 2b executed regions | 16 fixtures, `region_unsound` 0, `region_will_fail_fired` 7, `volume_will_fail_fired` 3 | `outputs/plr-sema/tier2b_260904_inc5.json` |
+| 3 tip mutants | m1 199/199, m2 289/289, 0 unsound | `outputs/plr-sema/tip_mutants_260904_inc5.json` |
+| 3 volume mutants | v1 67/67 `WILL_FAIL` at the raised index, 0 unsound | `outputs/plr-sema/volume_mutants_260904_inc5.json` |
+| registry | rows 24/24 (cap 24), HM-24 3, HM-25 8, `REASON_VOCABULARY` 10/12 | `test_hand_maintained_ratchet.py` |
+| spec lint | 24 passed, six specs 0 failing citations | `plr-sema/tests/test_spec_lint.py` |
+
+Tier-1 replay is always run with `--sidecar training/assemble/out/corpus_p25_sidecar.jsonl
+--crosscheck training/out/corpus_p23_floor.jsonl --crosscheck training/overlay_gen/out/overlay_full.jsonl`.
+The one number allowed to move is `unknown_rate` (down) — and only with `unsound` staying 0. A `SAFE`
+that raised is the failure this increment makes possible for the first time; the oracle is the fence.
+
+## 5. Explicitly out
+
+- **The volume follow-ups from sprint 123** — well-side `is_disabled` discharge (closed by increment 5
+  §14.6 without new facts; Q2's observation record is the only legitimate re-opening path),
+  capacity operand on `RESOURCE` (§14.15; corpus wells are `TOP` at entry regardless), `delegates_to`
+  volume propagation / transfer v2 mutant (§14.15).
+- **#4923 / #4924** — decision hooks only (§3.5–3.6), no implementation.
+- **A `pred`-aware `BRANCH`** (increment 3 §12.3.6 B2, `260903_plr-sema-real-programs-increment.md:673,1231`)
+  — the same evaluator would serve it, and it is the natural increment 7 *alongside* tier (ii); not
+  this sprint.
+- **Lid verdicts** — increment 4 §13.1's disposition stands; `_check_no_lid` is tier (ii) and lands, if
+  at all, under #4981's topology observation, not as a lid family.
+- **A general dataflow pass over PLR method bodies.** The local-binding idiom is two statement shapes,
+  fail-closed. Anything wider is a new increment.
+- **#4956** P2.6e label-conflict audit — Coxswain track, user's call. REPL P0–P7, Coxswain W0–W6 —
+  other track.
+
+## 6. Dispatch conventions (unchanged from sprints 121–123)
+
+- Fixer briefs mandate: `uv run python` never bare python; per-file pytest only (the jax-mem-guard
+  blocks any path ending in `/tests`); path-scoped `git add`; **no background Bash, no monitors**;
+  foreground with timeout; final line `COMMIT: <full sha>`; trailers `Co-Authored-By: Claude Fable 5.1
+  <noreply@anthropic.com>` + `Claude-Session: https://claude.ai/code/session_01QgK1DBdBsTFJou6ML91sNT`.
+- Full per-file set before closing a band: `test_derive`, `test_check_graph`, `test_wire_fuzz`,
+  `test_verdict` (the §3.3 reason scan), `test_hand_maintained_ratchet`, `test_cache`,
+  `test_tip_typestate`, `test_oracle_replay`, `test_spec_lint`.
+- Spec author / challenger / defender have no Bash; the orchestrator persists their reports and runs
+  `test_spec_lint` itself after every spec edit; `check_spec_citations.py` skips `.claude/`.
+- Diagnostic and measurement rows go to Sonnet, never Haiku (sprint 121 lesson); demand per-cluster
+  root causes, never a bare PASS.
+- Never touch the other session's dirty entries; `outputs/plr-sema` is gitignored (force-add reports);
+  `git push` needs the sandbox off.
+
+## 7. Estimate
+
+B0 ~150 lines + a report; A a draft the size of increment 5 plus a round (the largest single cost —
+increment 5's round took most of a day); B ~400 (parser + two idioms + measured sets); C ~450
+(evaluator + reasons + oracle re-measure + ledger delta); #4981 ~300 if admitted; D ~60. Two days if
+tier (ii) ships, a day and a half if the round defers it.
