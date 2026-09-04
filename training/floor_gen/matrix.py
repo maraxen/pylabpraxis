@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
 
-from coxswain.plr.param_namespace import ParamKind, PARAM_NAMESPACE, params_of, symbolic_slots
+from coxswain.plr.param_namespace import PARAM_NAMESPACE, params_of, symbolic_slots
 from coxswain.plr.tool_schema import PHASE2_TOOL_NAMES, TOOL_SCHEMA
 
 from floor_gen.versions import AMBIGUITY_CLASSES, MATRIX_VERSION
@@ -101,7 +101,8 @@ def committed_matrix_path() -> Path:
 
 def load_matrix(path: Path | None = None) -> AmbiguityMatrix:
     """Load + fully validate the committed matrix. Loud on any drift between
-    the committed data and the live canonical tables."""
+    the committed data and the live canonical tables.
+    """
     matrix_path = path if path is not None else _MATRIX_PATH
     raw = json.loads(matrix_path.read_text(encoding="utf-8"))
     version = str(raw.get("matrix_version", ""))

@@ -32,15 +32,14 @@ from typing import Any
 from coxswain.plr.param_namespace import params_of
 from coxswain.plr.slot_derivation import derive_call_gaps
 from coxswain.plr.tool_schema import PHASE2_TOOL_NAMES
-
+from floor_gen.matrix import committed_matrix_path, load_matrix
+from overlay_gen.normalize import normalize_utterance
 from praxis_training.golden_build.corpus import (
     DECLARED_ARRAY_PARAMS,
     DEVELOPER_SCAFFOLD,
 )
-from overlay_gen.normalize import normalize_utterance
 
 from assemble.pin import PIN_REL, load_pin, native_digest
-from floor_gen.matrix import committed_matrix_path, load_matrix
 
 from .scaffold import (
     SCAFFOLD_TEMPLATE_NAME,
@@ -302,7 +301,8 @@ def load_natural() -> list[dict[str, Any]]:
     """Natural-phrasing floor variants (floor_gen/natural.py). Same intent as
     the base row (out-of-surface rows: no calls, the base clarification as the
     assistant text); provenance coverage_natural; lineage carries
-    base_record_id so assign_splits can route the variant by its base's split."""
+    base_record_id so assign_splits can route the variant by its base's split.
+    """
     path = REPO_ROOT / NATURAL_CORPUS_REL
     if not path.exists():
         return []
@@ -381,7 +381,8 @@ def load_overlay() -> list[dict[str, Any]]:
 def validate_and_normalize(record: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
     """Returns (normalized_calls, exclusion_reasons). Non-empty reasons => the
     RECORD is excluded whole: a half-supervised utterance would be junk, and
-    this corpus pads with nothing."""
+    this corpus pads with nothing.
+    """
     rid = record["record_id"]
     reasons: list[str] = []
     normalized: list[dict[str, Any]] = []
@@ -470,7 +471,8 @@ def assign_splits_pinned(records: list[dict[str, Any]], pin: dict[str, Any]) -> 
     excluded); golden must all be pinned; natural variants follow their base
     row (eval base -> probe, never eval); 0.1.6: rows of APPENDED matrix cells
     with example index >= NEAR_PROBE_INDEX_MIN -> probe_near; everything else
-    -> train."""
+    -> train.
+    """
     pinned = set(pin["rows"])
     appended = appended_matrix_cells()
     present = {r["record_id"] for r in records}
@@ -507,7 +509,8 @@ def assign_splits(records: list[dict[str, Any]]) -> dict[str, set[str]]:
     """PRE-0.1.4 rule (kept for reference / the pin's provenance): golden ->
     eval unconditionally; synthetic strata keyed (provenance, class, verb),
     sorted by record_id; LAST k go eval where k = min(n-1, floor(n*EVAL_FRACTION)),
-    bumped to >=1 once n >= MIN_STRATUM_FOR_EVAL."""
+    bumped to >=1 once n >= MIN_STRATUM_FOR_EVAL.
+    """
     by_split: dict[str, set[str]] = {"train": set(), "eval": set()}
     strata: dict[tuple[str, str, str], list[str]] = defaultdict(list)
     for r in records:
@@ -536,7 +539,8 @@ def assign_splits(records: list[dict[str, Any]]) -> dict[str, set[str]]:
 
 def render_native_row(record: dict[str, Any], split: str, tools: list[dict]) -> dict:
     """FunctionGemma-native row: keys EXACTLY {metadata, tools, messages};
-    developer turn byte-matches the committed scaffold template."""
+    developer turn byte-matches the committed scaffold template.
+    """
     messages: list[dict] = [
         {"role": "developer", "content": scaffold_template_text()},
         {"role": "user", "content": record["utterance"]},

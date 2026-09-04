@@ -45,7 +45,8 @@ LABELS = {"baseline": "baseline v2", "prev": "A2 (P2.6b, corpus 0.1.4)",
 
 def near_probe_check(control: Mapping[str, Any] | None, new: Mapping[str, Any] | None) -> dict[str, Any] | None:
     """P4 on the near-surface probe: exact match there IS abstention (every row
-    is an nl_clarification target)."""
+    is an nl_clarification target).
+    """
     if control is None or new is None:
         return None
     c = control["exact_match_accuracy"]
