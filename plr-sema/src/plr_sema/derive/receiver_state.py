@@ -87,6 +87,19 @@ __all__ = [
     "reset_rule_candidates",
     "compute_delegate_channel_bindings",
     "lid_typestate_anchor_evidence",
+    # 260903 (spec 260903_plr-sema-volume-increment.md §14.0.1/§14.4, T24,
+    # backlog #4958): the volume bridge derivation -- B1, B2, P1c, P7, P8
+    # and the extended four-segment bridge.
+    "compute_volume_state_exceptions",
+    "build_plr_class_index",
+    "VolumeAnchor",
+    "compute_volume_anchors",
+    "dataclass_field_annotations",
+    "constructor_call_writes",
+    "bridge_type_map",
+    "operand_pairing_idiom",
+    "for_over_comprehension_output",
+    "compute_volume_bridge",
 ]
 
 #: §10.2.5's second conjunct: the taxonomy module path that narrows the
@@ -114,6 +127,29 @@ def compute_tip_state_exceptions(taxonomy_classes: list[dict[str, Any]]) -> tupl
             c["name"]
             for c in taxonomy_classes
             if c.get("category") == "tip_state" and c.get("module") == TIP_STATE_EXCEPTION_MODULE
+        )
+    )
+
+
+def compute_volume_state_exceptions(taxonomy_classes: list[dict[str, Any]]) -> tuple[str, ...]:
+    """260903 (spec §14.1 fact 2, T24): the SAME two-conjunct filter as
+    `compute_tip_state_exceptions`, over `category == "volume_state"`
+    instead of `"tip_state"`, against the SAME module path
+    (`TIP_STATE_EXCEPTION_MODULE` -- both categories' exception classes live
+    in `pylabrobot.resources.errors`, so this reuses the one sanctioned
+    literal rather than typing a second copy of it). The unfiltered
+    `category == "volume_state"` set has 4 members at the pin
+    (`TooLittleLiquidError`, `TooLittleVolumeError`, `BlowOutVolumeError`,
+    `LiquidLevelError`); the module conjunct narrows to 2, excluding
+    `BlowOutVolumeError` (module `pylabrobot.liquid_handling.liquid_handler`)
+    and `LiquidLevelError` (a Hamilton backend class) -- neither name is
+    typed here, both are read off the taxonomy JSON.
+    """
+    return tuple(
+        sorted(
+            c["name"]
+            for c in taxonomy_classes
+            if c.get("category") == "volume_state" and c.get("module") == TIP_STATE_EXCEPTION_MODULE
         )
     )
 
@@ -1156,6 +1192,686 @@ def compute_tip_families(
         tip_requiring=tuple(sorted(requiring)),
         tip_dropping=tuple(sorted(dropping)),
     )
+
+
+# ---------------------------------------------------------------------------
+# The volume family (spec 260903_plr-sema-volume-increment.md §14.0.1/§14.4,
+# T24, backlog #4958). B1, B2 and P1c feed a BRIDGE-ONLY map --
+# `derive_receiver_states` above is UNTOUCHED (AC-14.1(iii)): none of the
+# functions in this section are called from it, and its own receiver-
+# selection input at `derive_receiver_states`'s own `_annotated_attributes`
+# call remains that function's result and nothing else.
+#
+# **What T24 ships and what it does not (§14.0's own gate).** This section
+# builds `volume_guards` -- via/cell_param/amount_param/direction/for_span
+# -- but attaches NO `caller_scope`/`caller_lineno` (P10, T25's job: the
+# survey's `dropped_calls` is still a bare `list[str]` until T25 migrates
+# it, so there is no scope/lineno to attach yet) and constructs no
+# `Finding`. §14.0's normative gate is explicit that a landed T24 alone,
+# wired into `check/`, would let the analyzer construct an ungated volume
+# `WILL_FAIL` -- T24 does not wire anything into `check/` at all (no
+# `check/volumestate.py` exists yet, T26's job), so that gate is respected
+# by construction, not by restraint.
+# ---------------------------------------------------------------------------
+
+
+def build_plr_class_index(plr_pkg_root: Path) -> tuple[dict[str, ast.ClassDef], dict[str, str]]:
+    """The same "P1 class index" (every top-level class across the whole PLR
+    source tree, first definition wins) `derive_receiver_states` builds
+    internally for itself -- duplicated here, not imported from it, exactly
+    as `tests/test_derive.py::_class_index_from_root` already duplicates it
+    for its own AC-12.1 tests. Two independent copies of a ~15-line loop
+    over already-public helpers is the DELIBERATE choice AC-14.1(iii) forces:
+    `derive_receiver_states`'s own body must stay untouched, so the volume
+    family's whole-tree scan cannot be threaded through it.
+
+    Returns `(class_nodes, class_modules)`: the class index P1c/P7 need to
+    resolve a bridged constructor call's callee and a tracker method's own
+    module (for `derive_contract`'s `(module, qualname)` key), respectively.
+    """
+    class_nodes: dict[str, ast.ClassDef] = {}
+    class_modules: dict[str, str] = {}
+    for file in _iter_plr_source_files(plr_pkg_root):
+        try:
+            source = file.read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=str(file))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        module = _module_name_for_plr_file(file, plr_pkg_root)
+        for top in ast.iter_child_nodes(tree):
+            if isinstance(top, ast.ClassDef):
+                class_nodes.setdefault(top.name, top)
+                class_modules.setdefault(top.name, module)
+    return class_nodes, class_modules
+
+
+# ---------------------------------------------------------------------------
+# B2 (§14.0.1, round-1 O9) -- dataclass class-level field annotations, into
+# the bridge-only map. NOT a branch of `_annotated_attributes` (§10.2.1's P1a
+# stays self-attr-only, unmodified) -- see the normative box's own
+# "first-writer-wins would displace an existing P1a selection" argument.
+# ---------------------------------------------------------------------------
+
+
+def dataclass_field_annotations(class_node: ast.ClassDef) -> dict[str, str]:
+    """B2: every `<name>: <annotation>` `AnnAssign` that is a DIRECT
+    statement of `class_node.body` (never `ast.walk` -- a method-body
+    `self.x: T` must not enter this map, that is P1a's job) whose target is
+    a bare `ast.Name` (never `self.<name>` -- that shape is P1a's,
+    `_is_self_attr` rejects it here by construction since we never call it).
+    First occurrence wins (deterministic), same convention as P1a.
+    """
+    out: dict[str, str] = {}
+    for stmt in class_node.body:
+        if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+            unwrapped = _unwrap_annotation(stmt.annotation)
+            if unwrapped is not None:
+                out.setdefault(stmt.target.id, unwrapped)
+    return out
+
+
+# ---------------------------------------------------------------------------
+# P1c (§14.0.1, round-1 O2) -- constructor-call typing through an
+# unannotated write, over EVERY method of the class (not just `__init__` --
+# `Tip.tracker` is written in `__post_init__`). Fail-closed over the UNION
+# of writes to a name anywhere in the class.
+# ---------------------------------------------------------------------------
+
+
+def constructor_call_writes(class_node: ast.ClassDef, class_index: dict[str, ast.ClassDef]) -> dict[str, str]:
+    """P1c: for class `class_node`, walks EVERY `ast.FunctionDef`/
+    `ast.AsyncFunctionDef` child (never singled out to `__init__`) and
+    every `self.<name> = <value>` write anywhere in each (mirrors P1b's own
+    `ast.walk`, `_attribute_writers`). A write's `value` is classified as
+    `("ctor", <Callee>)` when it is a bare `ast.Call` to an `ast.Name` that
+    is a key of `class_index` (the WHOLE-PLR class index P1 builds, not
+    just receiver classes -- the same conjunct-1 test §12.1.2's
+    `_is_fresh_only_construction` already uses), else `("other", None)`.
+
+    Fail-closed over the UNION of writes (round-1 O2): a name whose distinct
+    write-descriptor set has size != 1 anywhere in the class records
+    nothing -- this covers "two different constructors", "written both by a
+    constructor call and by something else", and "never written by a
+    constructor call at all" in one rule, deliberately not just the first
+    of those (a name written twice by the identical constructor call is NOT
+    penalised: two methods that agree are not "two different constructors").
+    """
+    per_name: dict[str, set[tuple[str, str | None]]] = {}
+    for member in ast.iter_child_nodes(class_node):
+        if not isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for node in ast.walk(member):
+            if not (isinstance(node, ast.Assign) and len(node.targets) == 1):
+                continue
+            target = node.targets[0]
+            if not _is_self_attr(target):
+                continue
+            value = node.value
+            if isinstance(value, ast.Call) and isinstance(value.func, ast.Name) and value.func.id in class_index:
+                descriptor: tuple[str, str | None] = ("ctor", value.func.id)
+            else:
+                descriptor = ("other", None)
+            per_name.setdefault(target.attr, set()).add(descriptor)  # type: ignore[union-attr]
+    out: dict[str, str] = {}
+    for name, descriptors in per_name.items():
+        if len(descriptors) != 1:
+            continue  # fail-closed: conflicting writes anywhere in the class.
+        (kind, callee) = next(iter(descriptors))
+        if kind == "ctor":
+            out[name] = callee  # type: ignore[assignment]
+    return out
+
+
+def bridge_type_map(class_node: ast.ClassDef, class_index: dict[str, ast.ClassDef]) -> dict[str, str]:
+    """The bridge-only map B2 and P1c both feed (§14.0.1): B2's dataclass
+    field annotations, overlaid by P1c's constructor-call writes. "P1c is
+    consulted only after B2: an annotated field always wins" -- P1c's
+    result is the base, B2's overlays it, so a name B2 admits always wins a
+    collision (none is expected at this pin: B2 types dataclass fields on
+    the operation classes, P1c types constructor-written attributes on the
+    resource classes, and the two populations do not overlap).
+    """
+    p1c = constructor_call_writes(class_node, class_index)
+    b2 = dataclass_field_annotations(class_node)
+    return {**p1c, **b2}
+
+
+# ---------------------------------------------------------------------------
+# P8 (§14.4) -- the operand-pairing idiom, extended to also record the
+# comprehension's own assignment target (what B1 binds a `for` loop
+# against).
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class _ComprehensionBinding:
+    """One P8 match: `assign_target = [O(k=a_i, ...) for ..., a_i, ... in
+    zip(..., param_i, ...)]`. `pairings` maps a keyword `k` of `O` to
+    `(zip_name, is_local)` -- `zip_name` is the `ai` name at the matching
+    zip position, and `is_local` is true when `ai` is NOT a parameter of
+    the enclosing method (P8's "local pairing", round-1 D1)."""
+
+    element_class: str
+    pairings: dict[str, tuple[str, bool]]
+    lineno: int
+
+
+def operand_pairing_idiom(method: ast.FunctionDef | ast.AsyncFunctionDef) -> dict[str, _ComprehensionBinding]:
+    """P8: every `<target> = [O(k1=a1, ...) for a1, ... in zip(p1, ...)]` (or
+    `GeneratorExp`) assignment in `method`'s body, keyed by `<target>`'s own
+    name (`assign_target`, e.g. `"aspirations"`) -- what B1 binds a `for`
+    loop's `iter` against. Matches a single-target `ast.Assign` to a bare
+    `ast.Name` whose value is a `ListComp`/`GeneratorExp` with exactly one,
+    non-async, filter-free generator over `zip(p1, ..., pn)`, whose element
+    is an `ast.Call` to a bare `ast.Name` class `O` with keyword arguments.
+    Each keyword `k` whose value is one of the comprehension's own bound
+    names is recorded, paired to the zip position's own argument `pi` --
+    ONLY when `pi` is itself an `ast.Name`.
+
+    **Measured deviation from the spec's literal text (§14.4's own P8 box:
+    "zip(a1, …, an) where each ai is an ast.Name").** At the pin,
+    `LiquidHandler.aspirate`/`dispense`'s own `zip(...)` call's LAST
+    argument is `mix or [None] * len(use_channels)` (`liquid_handler.py
+    :1026`/`:1226`) -- an `ast.BoolOp`, not a bare `ast.Name`. A whole-zip-
+    call precondition ("every ai is a Name") would make P8 never match
+    either method's real comprehension at all, which would silently empty
+    the ENTIRE volume family (the exact G1 gap §14.0 exists to close).
+    Reading "each ai is an ast.Name" as a PER-KEYWORD precondition instead
+    -- record `(O.k -> ai)` only for the keywords whose own zip position IS
+    a bare Name, and simply do not pair a keyword whose position is some
+    other expression (here, `mix`) -- is measured to be the only reading
+    under which the bridge fires at all, and is what this function
+    implements; the `mix` keyword's pairing is one the AC never needs
+    (neither guard's `cell_param`/`amount_param` is `mix`), so nothing this
+    increment ships depends on the relaxed case being wrong.
+    """
+    param_names = {a.arg for a in method.args.args} | {a.arg for a in method.args.kwonlyargs}
+    out: dict[str, _ComprehensionBinding] = {}
+    for node in ast.walk(method):
+        if not (isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)):
+            continue
+        comp = node.value
+        if not isinstance(comp, (ast.ListComp, ast.GeneratorExp)):
+            continue
+        if len(comp.generators) != 1:
+            continue
+        gen = comp.generators[0]
+        if gen.ifs or gen.is_async:
+            continue
+        iter_call = gen.iter
+        if not (
+            isinstance(iter_call, ast.Call) and isinstance(iter_call.func, ast.Name) and iter_call.func.id == "zip"
+        ):
+            continue
+        if not iter_call.args:
+            continue
+        zip_args = iter_call.args
+
+        target = gen.target
+        if isinstance(target, ast.Tuple):
+            if len(target.elts) != len(zip_args) or not all(isinstance(e, ast.Name) for e in target.elts):
+                continue
+            target_names = [e.id for e in target.elts]  # type: ignore[union-attr]
+        elif isinstance(target, ast.Name):
+            if len(zip_args) != 1:
+                continue
+            target_names = [target.id]
+        else:
+            continue
+
+        elt = comp.elt
+        if not (isinstance(elt, ast.Call) and isinstance(elt.func, ast.Name)):
+            continue
+        element_class = elt.func.id
+
+        pairings: dict[str, tuple[str, bool]] = {}
+        for kw in elt.keywords:
+            if kw.arg is None or not isinstance(kw.value, ast.Name):
+                continue
+            if kw.value.id not in target_names:
+                continue
+            zip_arg = zip_args[target_names.index(kw.value.id)]
+            if not isinstance(zip_arg, ast.Name):
+                continue  # this zip position is not a bare Name -- skip this keyword only.
+            pairings[kw.arg] = (zip_arg.id, zip_arg.id not in param_names)
+
+        out.setdefault(node.targets[0].id, _ComprehensionBinding(  # type: ignore[union-attr]
+            element_class=element_class, pairings=pairings, lineno=node.lineno
+        ))
+    return out
+
+
+# ---------------------------------------------------------------------------
+# B1 (§14.0.1) -- for-loop-over-comprehension-output binding, at depth 0 in
+# the method body (excluding nested function/lambda defs), with the two
+# fail-closed cases: a tuple `for` target, and more than one `ast.For` over
+# the same P8-produced name.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class B1Binding:
+    """One B1 binding: `<name> : <element_class>`, plus the binding
+    `ast.For` node's own `for_span` (`[lineno, end_lineno]`, §14.6's R1
+    position-containment key) and the P8 assignment target it was bound
+    against (`source_name`, e.g. `"aspirations"` -- what `operand_pairing_
+    idiom`'s own map is keyed on, so a bridge match can look its pairings
+    back up)."""
+
+    element_class: str
+    for_span: tuple[int, int]
+    source_name: str
+
+
+def for_over_comprehension_output(
+    method: ast.FunctionDef | ast.AsyncFunctionDef, p8_matches: dict[str, _ComprehensionBinding]
+) -> dict[str, B1Binding]:
+    """B1: every `for <name> in <p8_target>:` at depth 0 in `method`'s body
+    (recurses through `If`/`For`/`While`/`Try`/`With` bodies -- depth 0
+    means "not inside a nested function/lambda def", not "top-level
+    statement only" -- but never descends into an `ast.FunctionDef`/
+    `ast.AsyncFunctionDef`/`ast.Lambda`, which this walker simply never
+    visits). Binds `<name> : p8_matches[<p8_target>].element_class`.
+
+    Fail-closed (two cases, §14.0.1's own box): if more than one depth-0
+    `ast.For` iterates the SAME `<p8_target>` name, or the (single) such
+    `ast.For`'s target is a tuple rather than a bare `ast.Name`, B1 binds
+    nothing for that name. An `ast.AsyncFor` is never recognised (B1 is
+    stated over `ast.For` only) and is simply never collected as a
+    candidate -- so it neither binds nor poisons another name's count.
+    """
+    candidates: dict[str, list[ast.For]] = {}
+
+    def _walk(stmts: list[ast.stmt]) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, ast.For):
+                if isinstance(stmt.iter, ast.Name) and stmt.iter.id in p8_matches:
+                    candidates.setdefault(stmt.iter.id, []).append(stmt)
+                _walk(stmt.body)
+                _walk(stmt.orelse)
+            elif isinstance(stmt, ast.If):
+                _walk(stmt.body)
+                _walk(stmt.orelse)
+            elif isinstance(stmt, ast.Try):
+                _walk(stmt.body)
+                _walk(stmt.orelse)
+                _walk(stmt.finalbody)
+                for handler in stmt.handlers:
+                    _walk(handler.body)
+            elif isinstance(stmt, (ast.With, ast.AsyncWith)):
+                _walk(stmt.body)
+            elif isinstance(stmt, ast.While):
+                _walk(stmt.body)
+                _walk(stmt.orelse)
+            # ast.AsyncFor, ast.FunctionDef, ast.AsyncFunctionDef and every
+            # other statement kind: not descended into (AsyncFor is not an
+            # ast.For B1 recognises; the two def kinds are the "excluding
+            # nested function definitions" clause; everything else has no
+            # nested statement list worth walking for this idiom).
+
+    _walk(method.body)
+
+    out: dict[str, B1Binding] = {}
+    for source_name, fors in candidates.items():
+        if len(fors) != 1:
+            continue  # fail-closed: more than one ast.For over this name.
+        for_node = fors[0]
+        if not isinstance(for_node.target, ast.Name):
+            continue  # fail-closed: tuple target.
+        binding = p8_matches[source_name]
+        assert for_node.end_lineno is not None
+        out[for_node.target.id] = B1Binding(
+            element_class=binding.element_class,
+            for_span=(for_node.lineno, for_node.end_lineno),
+            source_name=source_name,
+        )
+    return out
+
+
+# ---------------------------------------------------------------------------
+# P7 (§14.4) -- the volume anchor: a class `C`'s used-volume/free-volume
+# accessor pair and the P7-anchored field the AugAssign direction rule
+# (below) reads. Fail-closed: zero or ambiguous candidates emit nothing.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class VolumeAnchor:
+    used_volume_accessor: str
+    free_volume_accessor: str
+    anchored_field: str
+
+
+def _init_written_fields(class_node: ast.ClassDef) -> frozenset[str]:
+    """Every `self.<name>` written in `class_node.__init__`, by either
+    `ast.Assign` or `ast.AnnAssign` (`VolumeTracker.__init__`'s own
+    `self._callback: Optional[...] = None` is the `AnnAssign` case; P1b's
+    `_attribute_writers` is `ast.Assign`-only and is not reused here for
+    that reason -- same "P1c does not inherit P1b's narrower shape"
+    argument the module docstring already makes for the writer-index
+    precedent, applied one level up)."""
+    for member in ast.iter_child_nodes(class_node):
+        if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)) and member.name == "__init__":
+            names: set[str] = set()
+            for node in ast.walk(member):
+                if isinstance(node, ast.Assign):
+                    for target in node.targets:
+                        if _is_self_attr(target):
+                            names.add(target.attr)  # type: ignore[union-attr]
+                elif isinstance(node, ast.AnnAssign) and node.value is not None and _is_self_attr(node.target):
+                    names.add(node.target.attr)  # type: ignore[union-attr]
+            return frozenset(names)
+    return frozenset()
+
+
+def _raise_exception_name(raise_node: ast.Raise) -> str | None:
+    exc = raise_node.exc
+    if isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name):
+        return exc.func.id
+    if isinstance(exc, ast.Name):
+        return exc.id
+    return None
+
+
+def _volume_anchor(class_node: ast.ClassDef, volume_state_exceptions: frozenset[str]) -> VolumeAnchor | None:
+    """P7's fail-closed anchor test for one class.
+
+    **Candidate accessors** (conjunct 1): a zero-argument (`self` only)
+    method whose body is a single `ast.Return` of a non-`None` expression
+    that mentions >=1 `self.<F>` for `<F>` in `class_node.__init__`'s own
+    written fields (`_init_written_fields`). `bare_field` is recorded when
+    the WHOLE return expression is exactly `self.<F>` (nothing else) --
+    `get_used_volume`'s `return self.pending_volume` qualifies;
+    `get_free_volume`'s `return self.max_volume - self.get_used_volume()`
+    is a candidate accessor (it mentions `self.max_volume`) but is NOT a
+    bare-field one.
+
+    **Raise guards** (conjunct 2): for every method (own params excluding
+    `self`), every `ast.If` with an `ast.Compare` test whose (possibly
+    nested) body contains an `ast.Raise` of a class in
+    `volume_state_exceptions`, AND whose test mentions >=1 candidate
+    accessor call (`self.<accessor>()`) AND >=1 of the method's own
+    parameter names. Each such accessor is recorded as "referenced".
+
+    **The used/free split, derived without naming either exception class**
+    (AC-14.2(iii) forbids `"TooLittleLiquidError"`/`"TooLittleVolumeError"`
+    as literals here): the used-volume accessor is the UNIQUE referenced
+    accessor with a `bare_field` (the "direct" accessor); the free-volume
+    accessor is the unique OTHER referenced accessor. Ambiguity (not
+    exactly one of either) or zero referenced accessors at all fails
+    closed, returning `None` -- the same "zero or >=1 ambiguous candidate"
+    discipline §14.4's own box states for the used-volume half, extended
+    symmetrically to the free-volume half (undisclosed by the letter of the
+    box, but the same soundness argument: an ambiguous free-volume accessor
+    is exactly as dangerous to the direction rule as an ambiguous
+    used-volume one, and this class does not trip it at the pin either way,
+    §14.4's own measured expectation).
+    """
+    init_fields = _init_written_fields(class_node)
+    accessor_bare_field: dict[str, str | None] = {}
+    for member in ast.iter_child_nodes(class_node):
+        if not isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        args = member.args
+        if args.vararg or args.kwarg or args.kwonlyargs or args.posonlyargs or args.defaults:
+            continue
+        if len(args.args) != 1 or args.args[0].arg != "self":
+            continue
+        body = [s for s in member.body if not _is_docstring_stmt(s)]
+        if len(body) != 1 or not isinstance(body[0], ast.Return) or body[0].value is None:
+            continue
+        value = body[0].value
+        referenced_fields = {
+            node.attr  # type: ignore[union-attr]
+            for node in ast.walk(value)
+            if _is_self_attr(node) and node.attr in init_fields  # type: ignore[union-attr]
+        }
+        if not referenced_fields:
+            continue
+        bare_field = value.attr if (_is_self_attr(value) and value.attr in init_fields) else None  # type: ignore[union-attr]
+        accessor_bare_field[member.name] = bare_field
+
+    referenced: dict[str, set[str]] = {}
+    for member in ast.iter_child_nodes(class_node):
+        if not isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        own_params = {a.arg for a in member.args.args if a.arg != "self"}
+        for node in ast.walk(member):
+            if not (isinstance(node, ast.If) and isinstance(node.test, ast.Compare)):
+                continue
+            raise_names = {_raise_exception_name(s) for s in ast.walk(node) if isinstance(s, ast.Raise)}
+            raise_names.discard(None)
+            if not (raise_names & volume_state_exceptions):
+                continue
+            accessor_calls = {
+                n.func.attr  # type: ignore[union-attr]
+                for n in ast.walk(node.test)
+                if isinstance(n, ast.Call)
+                and _is_self_attr(n.func)  # type: ignore[arg-type]
+                and n.func.attr in accessor_bare_field  # type: ignore[union-attr]
+            }
+            param_refs = {n.id for n in ast.walk(node.test) if isinstance(n, ast.Name) and n.id in own_params}
+            if not accessor_calls or not param_refs:
+                continue
+            for accessor in accessor_calls:
+                referenced.setdefault(accessor, set()).update(raise_names & volume_state_exceptions)
+
+    direct = {a for a in referenced if accessor_bare_field.get(a) is not None}
+    if len(direct) != 1:
+        return None
+    used_volume_accessor = next(iter(direct))
+    anchored_field = accessor_bare_field[used_volume_accessor]
+    if anchored_field is None:
+        return None
+    other = {a for a in referenced if a != used_volume_accessor}
+    if len(other) != 1:
+        return None
+    free_volume_accessor = next(iter(other))
+    return VolumeAnchor(
+        used_volume_accessor=used_volume_accessor,
+        free_volume_accessor=free_volume_accessor,
+        anchored_field=anchored_field,
+    )
+
+
+def compute_volume_anchors(
+    class_nodes: dict[str, ast.ClassDef], volume_state_exceptions: frozenset[str]
+) -> dict[str, VolumeAnchor]:
+    """P7 run over every class in the whole-tree index: `{class_name:
+    VolumeAnchor}` for every class that is not fail-closed. Measured at the
+    pin: `{"VolumeTracker": VolumeAnchor(used_volume_accessor=
+    "get_used_volume", free_volume_accessor="get_free_volume",
+    anchored_field="pending_volume")}` -- published by the T24 fixer, not
+    assumed here.
+    """
+    out: dict[str, VolumeAnchor] = {}
+    for name, node in class_nodes.items():
+        anchor = _volume_anchor(node, volume_state_exceptions)
+        if anchor is not None:
+            out[name] = anchor
+    return out
+
+
+def _volume_direction(method: ast.FunctionDef | ast.AsyncFunctionDef, anchored_field: str) -> str | None:
+    """The `ast.AugAssign` direction rule (§14.4, round-1 O10): the sign of
+    `method`'s `ast.AugAssign` on `self.<anchored_field>` -- `ast.Sub` is
+    `"decreasing"`, `ast.Add` is `"increasing"`. No such write, writes of
+    both signs, or a write with any other operator: `None` (carries the
+    guard, no transfer -- V2, T26's job, applies no update)."""
+    signs: set[str] = set()
+    for node in ast.walk(method):
+        if isinstance(node, ast.AugAssign) and _is_self_attr(node.target, anchored_field):
+            if isinstance(node.op, ast.Sub):
+                signs.add("decreasing")
+            elif isinstance(node.op, ast.Add):
+                signs.add("increasing")
+            else:
+                signs.add("other")
+    if len(signs) == 1:
+        (only,) = signs
+        return only if only in ("decreasing", "increasing") else None
+    return None
+
+
+# ---------------------------------------------------------------------------
+# The extended four-segment volume bridge (§14.4, a second HM-24 pattern):
+# `<name>.<field>.<attr>.<method>`, `<name>` bound by B1 (the only source
+# exercised at this pin -- see the module note below), `<field>` typed by
+# the bridge-only map to a class `C1`, `<attr>` typed by `C1`'s OWN
+# bridge-only map to a P7-anchored class `C`, `f"{C}.{method}"` a real
+# contract entry. Attaches every guard of `C.<method>` to `K` as a volume
+# guard.
+#
+# **Scope note.** §14.4's own box says `<name>` may be bound "either by a
+# P8 comprehension target or by §14.0.1's B1" -- the first alternative
+# (`<name>` itself one of P8's own zip-bound names, e.g. `r`/`v`/`o`) is
+# NOT exercised anywhere at this pin (`op`, the only `<name>` any real
+# `dropped_calls` entry uses, is B1-bound, never a bare zip target -- G1's
+# own finding). This module implements the B1 path only; a direct
+# P8-comprehension-target `<name>` resolver is not built, since there is no
+# real match to measure it against and no AC exercises it. Documented here
+# rather than silently narrowed, per T24's own "publish what you measured,
+# do not reconcile to the document" instruction.
+# ---------------------------------------------------------------------------
+
+_VOLUME_BRIDGE_SHAPE_RE = re.compile(r"^(\w+)\.(\w+)\.(\w+)\.(\w+)$")
+
+
+def compute_volume_bridge(
+    entry: Qualkey,
+    index: dict[Qualkey, SurveyRecord],
+    *,
+    receiver_node: ast.ClassDef,
+    class_index: dict[str, ast.ClassDef],
+    class_modules: dict[str, str],
+    volume_anchors: dict[str, VolumeAnchor],
+    stamp: Any,
+) -> list[dict[str, Any]]:
+    """§14.4's extended bridge, for one contract entry `K = entry`.
+
+    Looks up `K`'s own method node in `receiver_node` (K's receiver class),
+    runs P8 (`operand_pairing_idiom`) and B1 (`for_over_comprehension_
+    output`) over it, then matches `K`'s own SurveyRecord's `dropped_calls`
+    (depth 0 -- K's own body, no `delegates_to` closure walk; §14.4's box:
+    "reached at depth 0 in K's own body") against the four-segment shape.
+
+    For each match: `<field>` is looked up in the B1-bound element class's
+    `bridge_type_map` (B2/P1c); `<attr>` is looked up in THAT class's own
+    `bridge_type_map`; the resolved tracker class must be a P7 anchor and
+    `f"{tracker_class}.{method}"` a real index entry. `cell_param` is P8's
+    pairing for `<field>` (a bare kwarg-name string for a parameter
+    pairing, or `{"local": True, "name": <zip_name>}` for a local one --
+    round-1 D1); `amount_param` is P8's pairing for the tracker method's
+    own non-`self` parameter name (the guard's own free variable), read off
+    `<name>`'s SAME comprehension (`operand_pairing_idiom`'s `source_name`
+    keys both lookups, so the two pairings can never come from different
+    comprehensions). `direction` is `_volume_direction` on the tracker
+    method against `VolumeAnchor.anchored_field`. `for_span` is attached
+    when the `<name>` binding came through B1 (always, at this pin -- see
+    the module note above).
+    """
+    k_rec = index.get(entry)
+    if k_rec is None:
+        return []
+    method_name = entry[1].rsplit(".", 1)[-1]
+    method_node: ast.FunctionDef | ast.AsyncFunctionDef | None = None
+    for member in ast.iter_child_nodes(receiver_node):
+        if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)) and member.name == method_name:
+            method_node = member
+            break
+    if method_node is None:
+        return []
+
+    p8_matches = operand_pairing_idiom(method_node)
+    b1_bindings = for_over_comprehension_output(method_node, p8_matches)
+
+    volume_guards: list[dict[str, Any]] = []
+    for expr in k_rec.dropped_calls:
+        m = _VOLUME_BRIDGE_SHAPE_RE.match(expr)
+        if m is None:
+            continue
+        name, field, attr, method = m.groups()
+
+        binding = b1_bindings.get(name)
+        if binding is None:
+            continue  # <name> not B1-bound (the direct-P8-target path is not implemented -- see module note).
+
+        element_node = class_index.get(binding.element_class)
+        if element_node is None:
+            continue
+        field_type = bridge_type_map(element_node, class_index).get(field)
+        if field_type is None:
+            continue
+        field_class_node = class_index.get(field_type)
+        if field_class_node is None:
+            continue
+        tracker_class = bridge_type_map(field_class_node, class_index).get(attr)
+        if tracker_class is None:
+            continue
+
+        anchor = volume_anchors.get(tracker_class)
+        if anchor is None:
+            continue
+        tracker_module = class_modules.get(tracker_class)
+        if tracker_module is None:
+            continue
+        c_key: Qualkey = (tracker_module, f"{tracker_class}.{method}")
+        if c_key not in index:
+            continue
+
+        tracker_class_node = class_index.get(tracker_class)
+        tracker_method_node = None
+        if tracker_class_node is not None:
+            for tmember in ast.iter_child_nodes(tracker_class_node):
+                if isinstance(tmember, (ast.FunctionDef, ast.AsyncFunctionDef)) and tmember.name == method:
+                    tracker_method_node = tmember
+                    break
+
+        direction = (
+            _volume_direction(tracker_method_node, anchor.anchored_field) if tracker_method_node is not None else None
+        )
+
+        pairing = p8_matches.get(binding.source_name)
+        cell_param: Any = None
+        if pairing is not None and field in pairing.pairings:
+            zip_name, is_local = pairing.pairings[field]
+            cell_param = {"local": True, "name": zip_name} if is_local else zip_name
+
+        amount_param: str | None = None
+        if pairing is not None and tracker_method_node is not None:
+            guard_params = [a.arg for a in tracker_method_node.args.args if a.arg != "self"]
+            if len(guard_params) == 1 and guard_params[0] in pairing.pairings:
+                zip_name, is_local = pairing.pairings[guard_params[0]]
+                if not is_local:
+                    amount_param = zip_name
+
+        method_contract = derive_contract(tracker_module, f"{tracker_class}.{method}", index, stamp=stamp)
+        for guard in method_contract.guards:
+            guard_json: dict[str, Any] = {
+                "condition": guard.condition,
+                "kind": guard.kind,
+                "raises": guard.raises,
+                "free_vars": list(guard.free_vars),
+                "scope_trail": list(guard.scope_trail),
+                "site": {
+                    "file": guard.site.file,
+                    "lineno": guard.site.lineno,
+                    "qualname": guard.site.qualname,
+                },
+                "via": expr,
+                "cell_param": cell_param,
+                "amount_param": amount_param,
+                "direction": direction,
+                # P10's caller_scope/caller_lineno (§14.0.2) are T25's job --
+                # the survey's dropped_calls is still a bare list[str], so
+                # there is nothing to attach yet (§14.0's own gate).
+                "caller_scope": None,
+                "caller_lineno": None,
+            }
+            if binding.for_span is not None:
+                guard_json["for_span"] = list(binding.for_span)
+            volume_guards.append(guard_json)
+    return volume_guards
 
 
 # ---------------------------------------------------------------------------

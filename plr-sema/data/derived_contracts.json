@@ -53691,6 +53691,65 @@
         "spread",
         "mix",
         "backend_kwargs"
+      ],
+      "volume_guards": [
+        {
+          "amount_param": "vols",
+          "caller_lineno": null,
+          "caller_scope": null,
+          "cell_param": "resources",
+          "condition": "volume - self.get_used_volume() > 1e-06",
+          "direction": "decreasing",
+          "for_span": [
+            1031,
+            1035
+          ],
+          "free_vars": [
+            "self",
+            "volume"
+          ],
+          "kind": "raise_guard",
+          "raises": "TooLittleLiquidError",
+          "scope_trail": [
+            "if volume - self.get_used_volume() > 1e-06"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+            "lineno": 92,
+            "qualname": "VolumeTracker.remove_liquid"
+          },
+          "via": "op.resource.tracker.remove_liquid"
+        },
+        {
+          "amount_param": "vols",
+          "caller_lineno": null,
+          "caller_scope": null,
+          "cell_param": {
+            "local": true,
+            "name": "tips"
+          },
+          "condition": "volume - self.get_free_volume() > 1e-06",
+          "direction": "increasing",
+          "for_span": [
+            1031,
+            1035
+          ],
+          "free_vars": [
+            "self",
+            "volume"
+          ],
+          "kind": "raise_guard",
+          "raises": "TooLittleVolumeError",
+          "scope_trail": [
+            "if volume - self.get_free_volume() > 1e-06"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+            "lineno": 105,
+            "qualname": "VolumeTracker.add_liquid"
+          },
+          "via": "op.tip.tracker.add_liquid"
+        }
       ]
     },
     "LiquidHandler.aspirate96": {
@@ -54925,6 +54984,65 @@
         "spread",
         "mix",
         "backend_kwargs"
+      ],
+      "volume_guards": [
+        {
+          "amount_param": "vols",
+          "caller_lineno": null,
+          "caller_scope": null,
+          "cell_param": "resources",
+          "condition": "volume - self.get_free_volume() > 1e-06",
+          "direction": "increasing",
+          "for_span": [
+            1231,
+            1235
+          ],
+          "free_vars": [
+            "self",
+            "volume"
+          ],
+          "kind": "raise_guard",
+          "raises": "TooLittleVolumeError",
+          "scope_trail": [
+            "if volume - self.get_free_volume() > 1e-06"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+            "lineno": 105,
+            "qualname": "VolumeTracker.add_liquid"
+          },
+          "via": "op.resource.tracker.add_liquid"
+        },
+        {
+          "amount_param": "vols",
+          "caller_lineno": null,
+          "caller_scope": null,
+          "cell_param": {
+            "local": true,
+            "name": "tips"
+          },
+          "condition": "volume - self.get_used_volume() > 1e-06",
+          "direction": "decreasing",
+          "for_span": [
+            1231,
+            1235
+          ],
+          "free_vars": [
+            "self",
+            "volume"
+          ],
+          "kind": "raise_guard",
+          "raises": "TooLittleLiquidError",
+          "scope_trail": [
+            "if volume - self.get_used_volume() > 1e-06"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+            "lineno": 92,
+            "qualname": "VolumeTracker.remove_liquid"
+          },
+          "via": "op.tip.tracker.remove_liquid"
+        }
       ]
     },
     "LiquidHandler.dispense96": {
@@ -168172,14 +168290,14 @@
     "praxis": {
       "branch": "coxswain-p2-pipeline",
       "dirty": true,
-      "dirty_content_id": "392abf91b50d1922843811afc2babad4de76053b95450de5471d9f6ea8f081c7",
-      "hash": "995b4948faefa0a80a026939d1320416f8f23489",
+      "dirty_content_id": "8eafd82aa8ba7597485e48d67f7e7ad71ca1f8f3b43f8a9fa22309a932d3f9ad",
+      "hash": "7b1913cd2fc6e0c577bc6d6e23f8cce3fda2ef82",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-03T21:08:49.500931+00:00",
+    "stamped_at": "2026-09-04T05:27:21.322408+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   }

@@ -36,6 +36,7 @@ same way, into DIFFERENT output paths so both coexist on disk:
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import sys
 from pathlib import Path
@@ -58,8 +59,13 @@ from plr_sema.derive import (
 )
 from plr_sema.derive.receiver_state import (
     ReceiverState,
+    VolumeAnchor,
+    build_plr_class_index,
     compute_channel_bridge,
     compute_tip_families,
+    compute_volume_anchors,
+    compute_volume_bridge,
+    compute_volume_state_exceptions,
     derive_receiver_states,
     lid_typestate_anchor_evidence,
     receiver_state_to_json,
@@ -88,6 +94,9 @@ def build_derived_contracts_payload(
     stamp: Any,
     *,
     receiver_states: dict[str, ReceiverState] | None = None,
+    volume_class_index: dict[str, ast.ClassDef] | None = None,
+    volume_class_modules: dict[str, str] | None = None,
+    volume_anchors: dict[str, VolumeAnchor] | None = None,
 ) -> dict[str, Any]:
     """AC-7.2 (260901 T11): derive a contract for every record the survey
     indexed -- the WHOLE analyzed PLR surface (4,770 methods across 345
@@ -134,6 +143,16 @@ def build_derived_contracts_payload(
     unique_records = build_unique_index(records)
     contract_keys = build_contract_keys(records)
     receiver_states = receiver_states or {}
+    # 260903 (spec 260903_plr-sema-volume-increment.md §14.0.1/§14.4, T24,
+    # backlog #4958): the volume bridge's own whole-tree class index --
+    # INDEPENDENT of `receiver_states` (built by `derive_receiver_states`,
+    # which stays untouched, AC-14.1(iii)). `{}`/`None` (the default) when
+    # the caller does not supply them -- fail closed to today's table, no
+    # `volume_guards` key on any entry, same degrade discipline
+    # `channel_guards`/`channel_effect` already use.
+    volume_class_index = volume_class_index or {}
+    volume_class_modules = volume_class_modules or {}
+    volume_anchors = volume_anchors or {}
     contracts: dict[str, Any] = {}
     for record_key in sorted(unique_records):
         rec = unique_records[record_key]
@@ -174,6 +193,22 @@ def build_derived_contracts_payload(
                 entry["channel_guards"] = channel_guards
             if channel_effect is not None:
                 entry["channel_effect"] = channel_effect
+        # 260903 (spec §14.4, T24): additive `volume_guards`, present only
+        # on entries whose receiver class has a node in the volume family's
+        # own whole-tree class index. Depth 0 only (K's own body) -- no
+        # `delegates_to` closure walk, unlike `channel_guards` above.
+        if rec.class_name is not None and rec.class_name in volume_class_index:
+            volume_guards = compute_volume_bridge(
+                (rec.module, rec.qualname),
+                index,
+                receiver_node=volume_class_index[rec.class_name],
+                class_index=volume_class_index,
+                class_modules=volume_class_modules,
+                volume_anchors=volume_anchors,
+                stamp=stamp,
+            )
+            if volume_guards:
+                entry["volume_guards"] = volume_guards
         contracts[out_key] = entry
     return {
         "schema_version": SCHEMA_VERSION,
@@ -270,12 +305,33 @@ def main(argv: list[str] | None = None) -> int:
     stamp = survey_stamp(surface)
 
     receiver_states: dict[str, ReceiverState] = {}
+    # 260903 (spec §14.4, T24): the volume family's own whole-tree class
+    # index and P7 anchors, built alongside `receiver_states` under the
+    # SAME `--taxonomy-json` gate (P7's used-volume/free-volume accessor
+    # split needs the taxonomy's `volume_state` category, exactly as
+    # `derive_receiver_states` needs `tip_state`) -- but from
+    # `build_plr_class_index`, NOT from `derive_receiver_states` (which
+    # stays untouched, AC-14.1(iii)).
+    volume_class_index: dict[str, ast.ClassDef] = {}
+    volume_class_modules: dict[str, str] = {}
+    volume_anchors: dict[str, VolumeAnchor] = {}
     if args.taxonomy_json is not None:
         taxonomy_payload = json.loads(args.taxonomy_json.read_text(encoding="utf-8"))
         receiver_states = derive_receiver_states(surface_tree, records, taxonomy_payload["classes"])
+        volume_class_index, volume_class_modules = build_plr_class_index(surface_tree)
+        volume_state_exceptions = frozenset(compute_volume_state_exceptions(taxonomy_payload["classes"]))
+        volume_anchors = compute_volume_anchors(volume_class_index, volume_state_exceptions)
 
     if args.out is not None:
-        payload = build_derived_contracts_payload(records, index, stamp, receiver_states=receiver_states)
+        payload = build_derived_contracts_payload(
+            records,
+            index,
+            stamp,
+            receiver_states=receiver_states,
+            volume_class_index=volume_class_index,
+            volume_class_modules=volume_class_modules,
+            volume_anchors=volume_anchors,
+        )
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"wrote {args.out}", file=sys.stderr)

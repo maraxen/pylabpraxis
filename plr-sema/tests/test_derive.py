@@ -45,8 +45,16 @@ from plr_sema.derive import (
 )
 from plr_sema.derive.__main__ import build_derived_contracts_payload
 from plr_sema.derive.receiver_state import (
+    build_plr_class_index,
     compute_delegate_channel_bindings,
+    compute_volume_anchors,
+    compute_volume_bridge,
+    compute_volume_state_exceptions,
+    constructor_call_writes,
+    dataclass_field_annotations,
     derive_receiver_states,
+    for_over_comprehension_output,
+    operand_pairing_idiom,
     reset_rule_candidates,
 )
 
@@ -1302,3 +1310,494 @@ def test_ac_13_3_no_lidstate_no_receiver_state_entry_no_reason_vocabulary_member
 
     assert len(REASON_VOCABULARY) == 8
     assert not any("lid" in reason.lower() for reason in REASON_VOCABULARY)
+
+
+# ---------------------------------------------------------------------------
+# T24 (spec 260903_plr-sema-volume-increment.md §14.0.1/§14.4, backlog
+# #4958) -- the volume bridge derivation: B1, B2, P1c, P7, P8, and the
+# extended four-segment bridge. AC-14.1, AC-14.2. Every selection below is
+# MEASURED against real PLR at the pin, not asserted from the spec's own
+# worked example -- see `outputs/plr-sema/t24_measured_260904.json` for the
+# full published sets.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def volume_class_index() -> tuple[dict[str, ast.ClassDef], dict[str, str]]:
+    return build_plr_class_index(default_plr_pkg_root())
+
+
+@pytest.fixture(scope="module")
+def volume_taxonomy_classes() -> list[dict]:
+    return json.loads(TAXONOMY_JSON.read_text(encoding="utf-8"))["classes"]
+
+
+def test_ac_14_1_i_b1_binds_op_over_whole_surface(
+    volume_class_index: tuple[dict[str, ast.ClassDef], dict[str, str]],
+) -> None:
+    """AC-14.1(i): the complete set of `(K, name, element_class, for_span)`
+    B1 binds over `LiquidHandler` has >= 2 entries and includes `aspirate`
+    (`op : SingleChannelAspiration`, `for_span == (1031, 1035)`) and
+    `dispense` (`op : SingleChannelDispense`, `for_span == (1231, 1235)`) --
+    the two the spec's own worked example names. Published over the whole
+    class, not just those two methods, per T24's "publish the complete set"
+    instruction.
+    """
+    class_nodes, _modules = volume_class_index
+    lh = class_nodes["LiquidHandler"]
+
+    tuples: list[tuple[str, str, str, tuple[int, int]]] = []
+    for member in ast.iter_child_nodes(lh):
+        if not isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        p8 = operand_pairing_idiom(member)
+        if not p8:
+            continue
+        for bound_name, binding in for_over_comprehension_output(member, p8).items():
+            tuples.append((member.name, bound_name, binding.element_class, binding.for_span))
+
+    assert len(tuples) >= 2
+    by_method = {t[0]: t for t in tuples}
+    assert by_method["aspirate"] == ("aspirate", "op", "SingleChannelAspiration", (1031, 1035))
+    assert by_method["dispense"] == ("dispense", "op", "SingleChannelDispense", (1231, 1235))
+
+
+_B1_TUPLE_TARGET_SOURCE = '''
+class R:
+    def method(self, resources, vols):
+        aspirations = [O(resource=r, volume=v) for r, v in zip(resources, vols)]
+        for op, extra in aspirations:
+            pass
+'''
+
+
+def test_ac_14_1_i_b1_tuple_target_fails_closed() -> None:
+    """AC-14.1(i)'s first fail-closed case: the `ast.For` target is a tuple
+    (`for op, extra in aspirations:`) rather than a single `ast.Name` -- B1
+    binds nothing, even though P8 itself matched `aspirations` cleanly."""
+    tree = ast.parse(_B1_TUPLE_TARGET_SOURCE)
+    (cls,) = [n for n in ast.iter_child_nodes(tree) if isinstance(n, ast.ClassDef)]
+    method = next(m for m in ast.iter_child_nodes(cls) if isinstance(m, ast.FunctionDef))
+    p8 = operand_pairing_idiom(method)
+    assert "aspirations" in p8
+    assert for_over_comprehension_output(method, p8) == {}
+
+
+_B1_TWO_LOOPS_SOURCE = '''
+class R:
+    def method(self, resources, vols):
+        aspirations = [O(resource=r, volume=v) for r, v in zip(resources, vols)]
+        for op in aspirations:
+            pass
+        for op2 in aspirations:
+            pass
+'''
+
+
+def test_ac_14_1_i_b1_two_loops_over_one_list_fails_closed() -> None:
+    """AC-14.1(i)'s second fail-closed case (spec §14.0.1's own text): two
+    depth-0 `ast.For` statements iterate the SAME P8-produced name -- B1
+    binds nothing for either, since picking one would be §10.5 rule 1's
+    "two views of one fact" case."""
+    tree = ast.parse(_B1_TWO_LOOPS_SOURCE)
+    (cls,) = [n for n in ast.iter_child_nodes(tree) if isinstance(n, ast.ClassDef)]
+    method = next(m for m in ast.iter_child_nodes(cls) if isinstance(m, ast.FunctionDef))
+    p8 = operand_pairing_idiom(method)
+    assert "aspirations" in p8
+    assert for_over_comprehension_output(method, p8) == {}
+
+
+def test_ac_14_1_ii_b2_dataclass_field_annotations(
+    volume_class_index: tuple[dict[str, ast.ClassDef], dict[str, str]],
+) -> None:
+    """AC-14.1(ii): B2's selection over `SingleChannelAspiration` and
+    `SingleChannelDispense` (`standard.py:53-56`/`:63-72`) -- >= 8
+    attributes over >= 2 classes, with `.resource -> Container`,
+    `.tip -> Tip`, `.volume -> float` on both."""
+    class_nodes, _modules = volume_class_index
+    aspiration = dataclass_field_annotations(class_nodes["SingleChannelAspiration"])
+    dispense = dataclass_field_annotations(class_nodes["SingleChannelDispense"])
+
+    for fields in (aspiration, dispense):
+        assert fields["resource"] == "Container"
+        assert fields["tip"] == "Tip"
+        assert fields["volume"] == "float"
+
+    assert len(aspiration) + len(dispense) >= 8
+
+
+def test_ac_14_1_iii_volume_passes_do_not_disturb_receiver_state(
+    survey_records: list[SurveyRecord],
+    survey_index: dict[tuple[str, str], SurveyRecord],
+    real_stamp: SurveyStamp,
+    volume_taxonomy_classes: list[dict],
+    volume_class_index: tuple[dict[str, ast.ClassDef], dict[str, str]],
+) -> None:
+    """AC-14.1(iii): B2/P1c disturb no existing selection. `derive_receiver_
+    states`'s own body is never called by anything in this section (a
+    static fact, not tested here); what IS tested is the OBSERVABLE
+    consequence -- the SAME `receiver_states` run through
+    `build_derived_contracts_payload` with and without the volume-bridge
+    keyword arguments produces a byte-identical `receiver_state` block, and
+    every contract entry's `guards`/`gaps`/`params`/`channel_guards`/
+    `channel_effect` keys are unaffected too (only the additive
+    `volume_guards` key differs). `LiquidHandler`'s own `channel_attr`/
+    `tracker_class` stay `"head"`/`"TipTracker"`.
+    """
+    class_nodes, class_modules = volume_class_index
+    receiver_states = derive_receiver_states(None, survey_records, volume_taxonomy_classes)
+    volume_state_exceptions = frozenset(compute_volume_state_exceptions(volume_taxonomy_classes))
+    anchors = compute_volume_anchors(class_nodes, volume_state_exceptions)
+
+    without_volume = build_derived_contracts_payload(
+        survey_records, survey_index, real_stamp, receiver_states=receiver_states
+    )
+    with_volume = build_derived_contracts_payload(
+        survey_records,
+        survey_index,
+        real_stamp,
+        receiver_states=receiver_states,
+        volume_class_index=class_nodes,
+        volume_class_modules=class_modules,
+        volume_anchors=anchors,
+    )
+
+    assert without_volume["receiver_state"] == with_volume["receiver_state"]
+    assert with_volume["receiver_state"]["LiquidHandler"]["channel_attr"] == "head"
+    assert with_volume["receiver_state"]["LiquidHandler"]["tracker_class"] == "TipTracker"
+
+    for key, entry in with_volume["contracts"].items():
+        without_volume_guards = {k: v for k, v in entry.items() if k != "volume_guards"}
+        assert without_volume_guards == without_volume["contracts"][key], (
+            f"{key}: a non-volume_guards key changed when volume-bridge args were passed"
+        )
+
+
+def test_ac_14_1_iv_p1c_matches_real_plr(
+    volume_class_index: tuple[dict[str, ast.ClassDef], dict[str, str]],
+) -> None:
+    """AC-14.1(iv): P1c yields `Container.tracker -> VolumeTracker`
+    (`container.py:85`) and `Tip.tracker -> VolumeTracker` (`tip.py:45`,
+    written in `__post_init__`, `tip.py:32`) -- the stub-defeating half,
+    since an `__init__`-only pass would find the `Container` half and miss
+    `Tip` entirely. The whole-surface selection (every class's own P1c map,
+    unioned) has >= 3 entries."""
+    class_nodes, _modules = volume_class_index
+    assert constructor_call_writes(class_nodes["Container"], class_nodes) == {"tracker": "VolumeTracker"}
+    assert constructor_call_writes(class_nodes["Tip"], class_nodes) == {"tracker": "VolumeTracker"}
+
+    whole_surface: list[tuple[str, str, str]] = []
+    for name, node in class_nodes.items():
+        for attr, callee in constructor_call_writes(node, class_nodes).items():
+            whole_surface.append((name, attr, callee))
+    assert len(whole_surface) >= 3
+    assert ("Container", "tracker", "VolumeTracker") in whole_surface
+    assert ("Tip", "tracker", "VolumeTracker") in whole_surface
+
+
+_P1C_CONFLICT_SOURCE = '''
+class Other:
+    pass
+
+class Another:
+    pass
+
+class R:
+    def a(self):
+        self.tracker = Other()
+
+    def b(self):
+        self.tracker = Another()
+'''
+
+
+def test_ac_14_1_iv_p1c_two_different_constructors_fails_closed() -> None:
+    """AC-14.1(iv)'s stub-defeating half: two DIFFERENT methods of the same
+    class write `self.tracker` to two DIFFERENT constructor calls -- P1c
+    records nothing for `tracker`, over the union of writes (round-1 O2),
+    not just within one method."""
+    tree = ast.parse(_P1C_CONFLICT_SOURCE)
+    classes = {n.name: n for n in ast.iter_child_nodes(tree) if isinstance(n, ast.ClassDef)}
+    assert constructor_call_writes(classes["R"], classes) == {}
+
+
+def test_ac_14_2_i_volume_bridge_matches_aspirate_and_dispense(
+    survey_records: list[SurveyRecord],
+    survey_index: dict[tuple[str, str], SurveyRecord],
+    real_stamp: SurveyStamp,
+    volume_taxonomy_classes: list[dict],
+    volume_class_index: tuple[dict[str, ast.ClassDef], dict[str, str]],
+) -> None:
+    """AC-14.2(i): `contracts["LiquidHandler.aspirate"]["volume_guards"]`
+    has exactly two entries -- `TooLittleLiquidError` via
+    `op.resource.tracker.remove_liquid`, `cell_param == "resources"`,
+    `amount_param == "vols"`, direction *decreasing*; `TooLittleVolumeError`
+    via `op.tip.tracker.add_liquid`, a LOCAL `cell_param`, direction
+    *increasing*. `dispense` carries the mirror pair, including
+    `via == "op.tip.tracker.remove_liquid"` with direction *decreasing* --
+    the guard this increment exists to decide (§14.0.2's disposition table
+    row 4) -- sited at `VolumeTracker.remove_liquid:92`, with a `for_span`
+    covering the B1-bound `for op in dispenses:` loop.
+    """
+    class_nodes, class_modules = volume_class_index
+    volume_state_exceptions = frozenset(compute_volume_state_exceptions(volume_taxonomy_classes))
+    anchors = compute_volume_anchors(class_nodes, volume_state_exceptions)
+
+    payload = build_derived_contracts_payload(
+        survey_records,
+        survey_index,
+        real_stamp,
+        volume_class_index=class_nodes,
+        volume_class_modules=class_modules,
+        volume_anchors=anchors,
+    )
+    contracts = payload["contracts"]
+
+    aspirate_guards = contracts["LiquidHandler.aspirate"]["volume_guards"]
+    assert len(aspirate_guards) == 2
+    by_raises = {g["raises"]: g for g in aspirate_guards}
+
+    liquid = by_raises["TooLittleLiquidError"]
+    assert liquid["via"] == "op.resource.tracker.remove_liquid"
+    assert liquid["cell_param"] == "resources"
+    assert liquid["amount_param"] == "vols"
+    assert liquid["direction"] == "decreasing"
+    assert liquid["for_span"] == [1031, 1035]
+
+    volume = by_raises["TooLittleVolumeError"]
+    assert volume["via"] == "op.tip.tracker.add_liquid"
+    assert isinstance(volume["cell_param"], dict) and volume["cell_param"]["local"] is True
+    assert volume["direction"] == "increasing"
+
+    dispense_guards = contracts["LiquidHandler.dispense"]["volume_guards"]
+    assert len(dispense_guards) == 2
+    by_raises_d = {g["raises"]: g for g in dispense_guards}
+
+    tip_side = by_raises_d["TooLittleLiquidError"]
+    assert tip_side["via"] == "op.tip.tracker.remove_liquid"
+    assert tip_side["direction"] == "decreasing"
+    assert tip_side["for_span"] == [1231, 1235]
+    assert tip_side["site"]["qualname"] == "VolumeTracker.remove_liquid"
+    assert tip_side["site"]["lineno"] == 92
+    assert isinstance(tip_side["cell_param"], dict) and tip_side["cell_param"]["local"] is True
+
+    well_side = by_raises_d["TooLittleVolumeError"]
+    assert well_side["via"] == "op.resource.tracker.add_liquid"
+    assert well_side["cell_param"] == "resources"
+    assert well_side["direction"] == "increasing"
+
+    # Only aspirate/dispense have a real four-segment match at this pin --
+    # transfer/aspirate96/dispense96 do not (§14.9's own withdrawal of v2).
+    with_guards = {k for k, e in contracts.items() if e.get("volume_guards")}
+    assert with_guards == {"LiquidHandler.aspirate", "LiquidHandler.dispense"}
+
+
+def test_ac_14_2_ii_volume_state_taxonomy_filter(volume_taxonomy_classes: list[dict]) -> None:
+    """AC-14.2(ii): the unfiltered `category == "volume_state"` set has 4
+    members; the module conjunct narrows it to exactly
+    `{TooLittleLiquidError, TooLittleVolumeError}`."""
+    unfiltered = {c["name"] for c in volume_taxonomy_classes if c.get("category") == "volume_state"}
+    assert len(unfiltered) == 4
+    assert set(compute_volume_state_exceptions(volume_taxonomy_classes)) == {
+        "TooLittleLiquidError",
+        "TooLittleVolumeError",
+    }
+
+
+_VOLUME_FORBIDDEN_LITERALS = frozenset(
+    {
+        "get_used_volume",
+        "get_free_volume",
+        "pending_volume",
+        "tracker",
+        "op",
+        "TooLittleLiquidError",
+        "TooLittleVolumeError",
+        "resources",
+        "vols",
+    }
+)
+#: AC-14.2(iv)'s narrowed re-check: the three names the draft's whole-`src/`
+#: scope would have been red on unmodified (§14.2(iii)'s own note -- `"op"`
+#: is the IR's opcode tag, `"resources"` is the graph payload's own key).
+_VOLUME_NARROWED_LITERALS = frozenset({"tracker", "op", "resources"})
+
+_VOLUME_SCAN_MODULES = (
+    REPO_ROOT / "plr-sema" / "src" / "plr_sema" / "derive" / "receiver_state.py",
+    # 260903 T24: check/volumestate.py is T26's deliverable and does not
+    # exist yet -- the scan must tolerate an absent file (see below).
+    REPO_ROOT / "plr-sema" / "src" / "plr_sema" / "check" / "volumestate.py",
+)
+
+
+def _volume_docstring_constant_ids(tree: ast.AST) -> set[int]:
+    ids: set[int] = set()
+    for node in ast.walk(tree):
+        body = getattr(node, "body", None)
+        if isinstance(body, list) and body:
+            first = body[0]
+            if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and isinstance(
+                first.value.value, str
+            ):
+                ids.add(id(first.value))
+    return ids
+
+
+def _scan_volume_forbidden_literals(source: str, filename: str, forbidden: frozenset[str]) -> list[str]:
+    tree = ast.parse(source, filename=filename)
+    docstring_ids = _volume_docstring_constant_ids(tree)
+    offenders: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value in forbidden:
+            if id(node) in docstring_ids:
+                continue
+            offenders.append(f"{filename}:{node.lineno}: {node.value!r}")
+    return offenders
+
+
+def test_ac_14_2_iii_iv_no_hand_typed_volume_names_ast_scan() -> None:
+    """AC-14.2(iii): an AST literal scan (not grep, so docstrings are
+    excluded -- same mechanism as `test_ac_10_9_no_hand_typed_plr_names_ast_
+    scan`) of `plr_sema/derive/receiver_state.py` and the not-yet-existing
+    `plr_sema/check/volumestate.py` finds none of the nine forbidden names
+    as a real `ast.Constant` string. AC-14.2(iv): the narrowed three-name
+    re-check over the SAME two-file scope still forbids all three -- the
+    gate keeps its content, it is not vacuous just because it tolerates a
+    missing file.
+    """
+    all_offenders: list[str] = []
+    narrowed_offenders: list[str] = []
+    for path in _VOLUME_SCAN_MODULES:
+        if not path.exists():
+            continue
+        source = path.read_text(encoding="utf-8")
+        all_offenders.extend(_scan_volume_forbidden_literals(source, str(path), _VOLUME_FORBIDDEN_LITERALS))
+        narrowed_offenders.extend(_scan_volume_forbidden_literals(source, str(path), _VOLUME_NARROWED_LITERALS))
+
+    assert all_offenders == [], f"hand-typed volume-family name(s) found: {all_offenders}"
+    assert narrowed_offenders == [], f"narrowed scan found: {narrowed_offenders}"
+
+
+def test_ac_14_2_bridge_absent_when_volume_args_omitted(
+    survey_records: list[SurveyRecord],
+    survey_index: dict[tuple[str, str], SurveyRecord],
+    real_stamp: SurveyStamp,
+) -> None:
+    """Degrade discipline (§14.11's wire-format note): a caller that does
+    not pass the volume-bridge keyword arguments (the pre-T24 call shape)
+    gets a table with no `volume_guards` key anywhere -- `.get()` with an
+    empty default degrades to today's behaviour exactly."""
+    payload = build_derived_contracts_payload(survey_records, survey_index, real_stamp)
+    assert not any("volume_guards" in entry for entry in payload["contracts"].values())
+
+
+def test_compute_volume_bridge_direct_on_synthetic_receiver() -> None:
+    """`compute_volume_bridge` itself, exercised directly against a
+    synthetic receiver + tracker pair -- at a level BELOW the whole survey
+    pipeline, mirroring this file's own module-docstring convention (`test_
+    ac_13_15_i_five_negative_fixtures_all_widen` does the same for the
+    channel bridge). Confirms the mechanic end-to-end: B1 binds `op`, P8
+    pairs `resource -> resources`/`volume -> vols`, P1c types
+    `Widget.tracker -> Tracker`, P7 anchors `Tracker`, and the bridge
+    attaches `Tracker.spend`'s one guard with `direction == "decreasing"`.
+    """
+    source = '''
+class Op:
+    resource: "Widget"
+    volume: float
+
+class Widget:
+    def __init__(self):
+        self.tracker = Tracker(cap=1.0)
+
+class Tracker:
+    def __init__(self, cap):
+        self.cap = cap
+        self.used = 0.0
+
+    def get_used(self):
+        return self.used
+
+    def get_free(self):
+        return self.cap - self.get_used()
+
+    def spend(self, volume):
+        if volume - self.get_used() > 1e-6:
+            raise TooLittleError("nope")
+        self.used -= volume
+
+    def fill(self, volume):
+        if volume - self.get_free() > 1e-6:
+            raise TooMuchError("nope")
+        self.used += volume
+
+class R:
+    def method(self, resources, vols):
+        ops = [Op(resource=r, volume=v) for r, v in zip(resources, vols)]
+        for op in ops:
+            op.resource.tracker.spend(op.volume)
+'''
+    tree = ast.parse(source)
+    class_nodes = {n.name: n for n in ast.iter_child_nodes(tree) if isinstance(n, ast.ClassDef)}
+    class_modules = {name: "synthetic" for name in class_nodes}
+    volume_state_exceptions = frozenset({"TooLittleError", "TooMuchError"})
+    anchors = compute_volume_anchors(class_nodes, volume_state_exceptions)
+    assert "Tracker" in anchors
+    assert anchors["Tracker"].used_volume_accessor == "get_used"
+    assert anchors["Tracker"].free_volume_accessor == "get_free"
+    assert anchors["Tracker"].anchored_field == "used"
+
+    survey_records = [
+        SurveyRecord(
+            qualname="R.method",
+            class_name="R",
+            module="synthetic",
+            file="<synthetic>",
+            lineno=1,
+            params=("self", "resources", "vols"),
+            findings=(),
+            delegates_to=(),
+            unresolved_calls=(),
+            dropped_calls=("op.resource.tracker.spend",),
+        ),
+        SurveyRecord(
+            qualname="Tracker.spend",
+            class_name="Tracker",
+            module="synthetic",
+            file="<synthetic>",
+            lineno=1,
+            params=("self", "volume"),
+            findings=(
+                SurveyFinding(
+                    kind="raise_guard",
+                    condition="volume - self.get_used() > 1e-06",
+                    raises="TooLittleError",
+                    scope_trail=("if volume - self.get_used() > 1e-06",),
+                    mentions_params=("self", "volume"),
+                    lineno=1,
+                ),
+            ),
+            delegates_to=(),
+            unresolved_calls=(),
+            dropped_calls=(),
+        ),
+    ]
+    index = build_index(survey_records)
+    stamp = survey_stamp()
+    guards = compute_volume_bridge(
+        ("synthetic", "R.method"),
+        index,
+        receiver_node=class_nodes["R"],
+        class_index=class_nodes,
+        class_modules=class_modules,
+        volume_anchors=anchors,
+        stamp=stamp,
+    )
+    assert len(guards) == 1
+    (guard,) = guards
+    assert guard["via"] == "op.resource.tracker.spend"
+    assert guard["raises"] == "TooLittleError"
+    assert guard["cell_param"] == "resources"
+    assert guard["amount_param"] == "vols"
+    assert guard["direction"] == "decreasing"
+    assert guard["for_span"][0] <= guard["for_span"][1]
