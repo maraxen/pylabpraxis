@@ -89,8 +89,11 @@ def load_chatterbox_runner():
 class DeckLayout:
     """Declarative tiny-deck description for one verification."""
 
-    #: name -> resource kind ("Plate", "Trough", ...). "TipRack" aliases the
-    #: factory-built default rack named "tip_rack".
+    #: name -> resource kind ("Plate", "Trough", ...). The FIRST "TipRack"
+    #: entry aliases the factory-built default rack named "tip_rack"; any
+    #: further "TipRack" entries get their own physically distinct rack
+    #: (#4952 -- they used to all alias the single factory rack regardless
+    #: of key, which lost every name but the first).
     resources: dict[str, str] = field(default_factory=dict)
     #: "<name>.<well>" -> initial uL seeded via tracker.set_volume().
     seed_volumes: dict[str, float] = field(default_factory=dict)
@@ -164,9 +167,11 @@ def _prefix_classification(name: str) -> tuple[str, str]:
     """The ORIGINAL (pre-#4950) name-prefix rule, kept as the fallback for
     names with no usable usage evidence and as the recorded behaviour for a
     tip/container conflict (see :func:`infer_layout`).  Returns (layout_key,
-    kind); the key is "tip_rack" for TipRack entries since build_setup
-    aliases every TipRack-kind entry onto the single factory-built rack
-    regardless of key.
+    kind); the key is always "tip_rack" for TipRack entries produced HERE
+    (the prefix rule never had a way to tell two "tip*"-prefixed names
+    apart, so it keeps collapsing them onto the single factory-built rack
+    -- unlike the usage-based branch in :func:`infer_layout`, which #4952
+    fixed to keep each tip-typed base's own name).
     """
     if name in ("tip_rack",) or name.startswith("tip"):
         return "tip_rack", "TipRack"
@@ -254,15 +259,21 @@ def infer_layout(calls: Sequence[Mapping[str, Any]],
     """Derive a minimal DeckLayout from a call sequence.
 
     Type is inferred from USAGE first (#4950): a name referenced as a
-    pick_up_tips/drop_tips/discard_tips tip-spot target becomes TipRack; a
-    name referenced (bare, no well address) as an aspirate/dispense/transfer
-    container becomes Trough (needs its own tracker); a name referenced with
-    a well address stays a Plate. A name used BOTH as a tip target and a
-    container/well target is a conflict -- today's name-prefix rule is kept
-    verbatim for it (a UserWarning records why) rather than guessing.  Names
-    with no usage evidence (unknown tools, resource_type "resource"/"lid"
-    refs already owned by an explicit DeckLayout.holders, or refs outside a
-    known tool's canonical param table) fall back to the same prefix rule.
+    pick_up_tips/drop_tips/discard_tips tip-spot target becomes TipRack,
+    UNDER ITS OWN NAME (#4952 -- these used to all collapse onto a single
+    "tip_rack" key, so every base but one lost its name and grounding a
+    call that referenced it by name raised GroundingError; build_setup now
+    gives every tip-typed base its own physically distinct rack, aliasing
+    only the first onto the factory default); a name referenced (bare, no
+    well address) as an aspirate/dispense/transfer container becomes Trough
+    (needs its own tracker); a name referenced with a well address stays a
+    Plate. A name used BOTH as a tip target and a container/well target is a
+    conflict -- today's name-prefix rule is kept verbatim for it (a
+    UserWarning records why) rather than guessing, so IT still collapses
+    onto "tip_rack" when prefix-classified as one. Names with no usage
+    evidence (unknown tools, resource_type "resource"/"lid" refs already
+    owned by an explicit DeckLayout.holders, or refs outside a known tool's
+    canonical param table) fall back to the same prefix rule.
 
     Names in ``exclude`` (typically explicit-layout resources/holders) are
     skipped so an explicit DeckLayout fully owns them.
@@ -291,7 +302,10 @@ def infer_layout(calls: Sequence[Mapping[str, Any]],
                     key, kind = _prefix_classification(name)
                     resources.setdefault(key, kind)
                 elif info is not None and info["tip"]:
-                    resources.setdefault("tip_rack", "TipRack")
+                    # #4952: keep the base's OWN name (build_setup gives it
+                    # a physically distinct rack) instead of collapsing
+                    # every tip-typed base onto a single "tip_rack" key.
+                    resources.setdefault(name, "TipRack")
                 elif info is not None and info["container_bare"] and not info["container_dotted"]:
                     resources.setdefault(name, "Trough")
                 else:
@@ -358,22 +372,34 @@ def build_setup(
     """Build machine + deck via DeckFactory.create_setup, then extend.
 
     Extension covers what the shared factory deliberately does not know
-    about: named parking holders and seeded starting volumes.
+    about: a physically distinct rack per tip-typed base beyond the
+    factory default, Trough placement on a free rail instead of the
+    factory's single hardcoded rails=21 (#4952 -- both left over from
+    #4950), named parking holders, and seeded starting volumes.
     """
     runner = load_chatterbox_runner()
 
-    # TipRack entries alias the factory default; drop them from resource_needs
-    # so create_setup does not double-place a rack.
+    # TipRack and Trough entries are placed by THIS function (below), not
+    # DeckFactory.create_setup:
+    #  * TipRack -- every tip-typed base needs its OWN named rack (#4952:
+    #    they used to all alias the single factory-built "tip_rack",
+    #    losing every other base's name and turning any later reference to
+    #    it into a GroundingError).
+    #  * Trough -- the factory always places a Trough at the same
+    #    hardcoded rails=21, which collides the moment a call sequence
+    #    names more than one bare container.
+    # Everything else still goes through create_setup's `needs` path
+    # unchanged.
     needs: dict[str, str] = {}
-    has_tips = False
+    tip_names: list[str] = []
+    trough_names: list[str] = []
     for res_name, kind in layout.resources.items():
         if kind == "TipRack":
-            has_tips = True
-            continue
-        needs[res_name] = kind
-    if not has_tips:
-        # Pipetting calls need SOME rack; factory always builds one anyway.
-        has_tips = True
+            tip_names.append(res_name)
+        elif kind == "Trough":
+            trough_names.append(res_name)
+        else:
+            needs[res_name] = kind
 
     setup = runner.DeckFactory().create_setup(backend_name, needs)
 
@@ -383,33 +409,76 @@ def build_setup(
         backend_name=backend_name,
         runner_module=runner,
     )
-    handle.resources["tip_rack"] = setup["tip_rack"]
-    for res_name in needs:
-        handle.resources[res_name] = setup[res_name]
-
-    # Parking holders for move-verb destinations. Rails footprints depend on
-    # what DeckFactory already placed, so walk candidates until one fits.
     deck = handle.deck
+
+    # Factory always builds exactly one physical rack, named "tip_rack" --
+    # pipetting calls need SOME rack even when infer_layout found no tip
+    # usage at all. Keep "tip_rack" available as a key regardless of
+    # whether any tip-typed base happened to be named that.
+    handle.resources["tip_rack"] = setup["tip_rack"]
+
+    # Shared free-rail scan for everything build_setup places directly
+    # (extra tip racks, troughs, parking holders): rails 1-2 (tip carrier)
+    # and ~9-13 (plate carrier) are already taken by DeckFactory. Walk
+    # candidates forward and let a ValueError (occupied / doesn't fit)
+    # skip to the next one.
     candidates = [r for r in range(1, 28)]
     used_rail = 0
-    for holder_name in layout.holders:
-        holder = ResourceHolder(
-            name=holder_name, size_x=127.76, size_y=85.48, size_z=14.5
-        )
+
+    def _place_on_free_rail(resource: Any, label: str) -> None:
+        nonlocal used_rail
         placed = False
         last_err: Exception | None = None
         for rails in candidates[used_rail:]:
             try:
-                deck.assign_child_resource(holder, rails=rails)
+                deck.assign_child_resource(resource, rails=rails)
                 used_rail = candidates.index(rails) + 1
                 placed = True
                 break
-            except ValueError as e:  # location occupied -> next candidate
+            except ValueError as e:  # occupied / doesn't fit -> next candidate
                 last_err = e
         if not placed:
-            raise RuntimeError(
-                f"no free rails for parking holder {holder_name!r}: {last_err}"
-            )
+            raise RuntimeError(f"no free rails for {label}: {last_err}")
+
+    for i, res_name in enumerate(tip_names):
+        if i == 0:
+            # First tip-typed base aliases the factory-built rack -- keeps
+            # existing callers / frozen P2.x behaviour unchanged for the
+            # common single-rack case.
+            handle.resources[res_name] = setup["tip_rack"]
+            continue
+        if deck.has_resource(res_name):
+            # e.g. "trash": STARLetDeck already places a built-in Trash
+            # resource under this exact name (with_trash=True default).
+            # Vendored drop_tips() accepts a Trash directly (param_namespace
+            # drop_tips.destination: Sequence[Union[TipSpot, Trash]]), so
+            # reuse the deck's own resource instead of trying to place a
+            # second, duplicate-named one (which raises
+            # "Resource with name 'trash' already defined.").
+            handle.resources[res_name] = deck.get_resource(res_name)
+            continue
+        rack = runner.resolve_resource(res_name, "TipRack")
+        _place_on_free_rail(rack, f"tip rack {res_name!r}")
+        handle.resources[res_name] = rack
+
+    for res_name in trough_names:
+        if deck.has_resource(res_name):
+            handle.resources[res_name] = deck.get_resource(res_name)
+            continue
+        trough = runner.resolve_resource(res_name, "Trough")
+        _place_on_free_rail(trough, f"trough {res_name!r}")
+        handle.resources[res_name] = trough
+
+    for res_name in needs:
+        handle.resources[res_name] = setup[res_name]
+
+    # Parking holders for move-verb destinations, on the SAME free-rail
+    # scan so they never collide with the extra tip racks/troughs above.
+    for holder_name in layout.holders:
+        holder = ResourceHolder(
+            name=holder_name, size_x=127.76, size_y=85.48, size_z=14.5
+        )
+        _place_on_free_rail(holder, f"parking holder {holder_name!r}")
         handle.resources[holder_name] = holder
 
     # Seed volumes AFTER all assignment (trackers exist from construction).

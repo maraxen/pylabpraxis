@@ -42,15 +42,27 @@ def test_filter_tip_box_used_as_pickup_target_becomes_tiprack():
         }
     ]
     layout = infer_layout(calls)
-    # TipRack-kind entries collapse onto the single factory rack key,
-    # exactly like the original "tip*"-prefix path (build_setup aliases
-    # every TipRack-kind entry onto "tip_rack" regardless of name).
-    assert layout.resources == {"tip_rack": "TipRack"}
+    # #4952: each distinct bare name keeps ITS OWN key -- these are four
+    # separately-spelled bare refs (no "." separator, so each is its own
+    # base name to ground_ref), and collapsing them onto a single
+    # "tip_rack" key used to leave three of the four ungroundable
+    # (GroundingError: resource '...' not on deck). build_setup aliases
+    # only the FIRST onto the factory-built rack; the rest get their own
+    # physically distinct rack (see test_infer_layout's sibling assertions
+    # in test_deck_build_setup.py for the build_setup-side behavior).
+    assert layout.resources == {
+        "filter_tip_box_D1": "TipRack",
+        "filter_tip_box_D2": "TipRack",
+        "filter_tip_box_D3": "TipRack",
+        "filter_tip_box_D4": "TipRack",
+    }
 
     # Same base, but already normalised to dotted "name.well" form (the
     # shape #4939's loader-side rewrite produces) -- usage evidence still
     # wins over the prefix rule (which would've defaulted to Plate here
-    # too, since "filter_tip_box" doesn't start with "tip").
+    # too, since "filter_tip_box" doesn't start with "tip"), and here all
+    # four refs share the SAME base name, so infer_layout naturally
+    # collapses them onto one key via plain dict setdefault.
     dotted_calls = [
         {
             "name": "pick_up_tips",
@@ -64,7 +76,7 @@ def test_filter_tip_box_used_as_pickup_target_becomes_tiprack():
             },
         }
     ]
-    assert infer_layout(dotted_calls).resources == {"tip_rack": "TipRack"}
+    assert infer_layout(dotted_calls).resources == {"filter_tip_box": "TipRack"}
 
 
 def test_bare_aspirate_source_becomes_trough_not_plate():
