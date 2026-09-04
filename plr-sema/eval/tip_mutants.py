@@ -53,7 +53,7 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "eval"))
@@ -168,11 +168,34 @@ _MUTATORS = {"m1_remove_pickup": make_m1_remove_pickup, "m2_duplicate_pickup": m
 
 
 def run_one_mutant(
-    base_id: str, mutant_class: str, example: dict[str, Any], contracts_json: str, param_names: Any
+    base_id: str,
+    mutant_class: str,
+    example: dict[str, Any],
+    contracts_json: str,
+    param_names: Any,
+    mutator: Callable[[dict[str, Any]], dict[str, Any] | None],
+    expected_exc: str,
 ) -> MutantResult:
-    mutant = _MUTATORS[mutant_class](example)
+    """Shared shape for every mutant class this module and `volume_mutants.
+    py` generate (spec 260903 §14.9): `mutator`/`expected_exc` are passed in
+    by the caller rather than read off this module's own `_MUTATORS`/
+    `_EXPECTED_EXC` globals, so a second module (`volume_mutants.py`'s
+    `v1_overdraw_dispense`) can reuse this function's shape verbatim without
+    importing this module's tip-specific mutator table. The refactor moves
+    no m1/m2 semantics -- `main`'s own call sites below still read
+    `_MUTATORS`/`_EXPECTED_EXC`, just as arguments now instead of as a
+    module-global lookup inside this function.
+
+    The static side runs under the runtime's OWN observed `env` (260903
+    T27/T28, backlog #4959/#4960): `rt.volume_tracking_observed`, read from
+    inside the window `verify()` turned tracking on in, is threaded into
+    `oc.run_static_calls` so the analyzer's hypothesis matches what the
+    simulator actually asserted -- never a separate, potentially stale,
+    process-wide read.
+    """
+    mutant = mutator(example)
     if mutant is None:
-        return MutantResult(base_id, mutant_class, False, "no pick_up_tips call", None, False, None, None, False, False)
+        return MutantResult(base_id, mutant_class, False, "mutation could not be constructed", None, False, None, None, False, False)
 
     try:
         rt = oc.run_runtime(mutant)
@@ -181,11 +204,13 @@ def run_one_mutant(
 
     exc_class = rt.exc_class
     raising_index = rt.failing_index
-    expected = _EXPECTED_EXC[mutant_class]
-    raised_as_expected = exc_class == expected
+    raised_as_expected = exc_class == expected_exc
 
     try:
-        st, _not_planned = oc.run_static_calls(mutant, rt.plr_kwargs, contracts_json, param_names=param_names)
+        st, _not_planned = oc.run_static_calls(
+            mutant, rt.plr_kwargs, contracts_json, param_names=param_names,
+            volume_tracking_observed=rt.volume_tracking_observed,
+        )
     except Exception as e:
         return MutantResult(
             base_id, mutant_class, True, f"static:{e}", exc_class, raised_as_expected, raising_index, None, False, False
@@ -320,7 +345,12 @@ def main(argv: list[str] | None = None) -> int:
     results: list[MutantResult] = []
     for base_id, example in bases:
         for mutant_class in ("m1_remove_pickup", "m2_duplicate_pickup"):
-            results.append(run_one_mutant(base_id, mutant_class, example, contracts_json, param_names))
+            results.append(
+                run_one_mutant(
+                    base_id, mutant_class, example, contracts_json, param_names,
+                    _MUTATORS[mutant_class], _EXPECTED_EXC[mutant_class],
+                )
+            )
 
     by_class: dict[str, list[MutantResult]] = {"m1_remove_pickup": [], "m2_duplicate_pickup": []}
     for r in results:

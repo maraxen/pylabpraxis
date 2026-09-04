@@ -494,6 +494,28 @@ class FixtureOutcome:
     n_findings: int = 0
 
 
+def _volume_slice_summary(outcomes: list[FixtureOutcome]) -> dict[str, int]:
+    """260903 (spec §14.9/§14.13 T28, volume increment 5, backlog #4960):
+    `{volume_fixtures, volume_unsound, volume_will_fail_fired}` -- a NAMED
+    SLICE of `region_fixtures`/`region_unsound`/`region_will_fail_fired`
+    restricted to the `volume_*` fixtures, additive to (not a second run
+    over) the totals `main` already computes over every outcome. Sliced by
+    filename prefix, the same discrimination `_shape_of` already uses for
+    its own prefix table, rather than a second AST/contract scan -- these
+    are this module's OWN fixtures, so the prefix is a fact about the file
+    the module itself wrote, not a guess about fixture content. A standalone
+    function (rather than inlined in `main`) so it is testable directly
+    against synthetic `FixtureOutcome`s, with no subprocess extraction and
+    no chatterbox execution.
+    """
+    volume_outcomes = [o for o in outcomes if o.name.startswith("volume_")]
+    return {
+        "volume_fixtures": len(volume_outcomes),
+        "volume_unsound": sum(len(o.unsound_rows) for o in volume_outcomes),
+        "volume_will_fail_fired": sum(1 for o in volume_outcomes if o.will_fail_at_raised),
+    }
+
+
 def _trip_agreement(
     proved_trips: dict[str, tuple[int, tuple[str, ...]]],
     join_map: dict[tuple[str, int], str],
@@ -658,6 +680,10 @@ def main(argv: list[str] | None = None) -> int:
 
     region_unsound = sum(len(o.unsound_rows) for o in outcomes)
     region_will_fail_fired = sum(1 for o in outcomes if o.will_fail_at_raised)
+    volume_slice = _volume_slice_summary(outcomes)
+    volume_fixtures = volume_slice["volume_fixtures"]
+    volume_unsound = volume_slice["volume_unsound"]
+    volume_will_fail_fired = volume_slice["volume_will_fail_fired"]
     shapes_with_will_fail = {o.shape for o in outcomes if o.will_fail_at_raised}
     per_shape_coverage = {
         shape: (shape in shapes_with_will_fail)
@@ -691,6 +717,13 @@ def main(argv: list[str] | None = None) -> int:
         "region_harness_errors": len(harness_errors),
         "region_uncovered_keys": sum(len(o.uncovered_keys) for o in outcomes),
         "elapsed_seconds": elapsed,
+        # 260903 (spec §14.9/§14.13 T28, volume increment 5, backlog #4960):
+        # the `volume_*` fixture slice's own counts -- see the comment above
+        # this dict's construction for why these are a slice, not a second
+        # total.
+        "volume_fixtures": volume_fixtures,
+        "volume_unsound": volume_unsound,
+        "volume_will_fail_fired": volume_will_fail_fired,
     }
 
     report = {
@@ -728,9 +761,11 @@ def main(argv: list[str] | None = None) -> int:
 
     log.info(
         "summary: fixtures=%d region_unsound=%d region_will_fail_fired=%d "
-        "per_shape=%s trip_mismatches=%d harness_errors=%d elapsed=%.1fs",
+        "per_shape=%s trip_mismatches=%d harness_errors=%d elapsed=%.1fs "
+        "volume_fixtures=%d volume_unsound=%d volume_will_fail_fired=%d",
         len(outcomes), region_unsound, region_will_fail_fired, per_shape_coverage,
         len(trip_mismatches), len(harness_errors), elapsed,
+        volume_fixtures, volume_unsound, volume_will_fail_fired,
     )
 
     # AC-12.17: zero unsound rows, at least one WILL_FAIL-at-raised-key

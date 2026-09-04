@@ -993,3 +993,164 @@ class TestByteIdentityInvariant:
 
         after = self._hashes(self._tracked_files())
         assert after == before
+
+
+class TestVolumeMutantWiring:
+    """T28 (spec 260903 §14.9, `260903_plr-sema-volume-increment.md`,
+    backlog #4960): the shared `run_one_mutant` refactor (mutator/
+    expected-exception as arguments, not module globals) and
+    `volume_mutants.py`'s own `v1_overdraw_dispense` mutator. Fast,
+    in-memory, single-example -- no corpus scan (§14.13 T28's own
+    ``uv run pytest ... -q`` gate line names this file precisely because it
+    must stay fast).
+    """
+
+    def _base_example(self) -> dict:
+        payload = json.loads((EXAMPLES_DIR / "aspirate_dispense_drop.json").read_text(encoding="utf-8"))
+        return {
+            "call_sequence": payload["call_sequence"],
+            "intent_record": payload["intent_record"],
+            "deck_layout": payload["deck_layout"],
+        }
+
+    def test_run_one_mutant_is_the_same_function_object_in_both_modules(self) -> None:
+        """`volume_mutants.py` reuses `tip_mutants.run_one_mutant` verbatim
+        rather than re-implementing the runtime-then-static harness --
+        the refactor's whole point (§14.9's normative paragraph).
+        """
+        import tip_mutants
+        import volume_mutants
+
+        assert volume_mutants.run_one_mutant is tip_mutants.run_one_mutant
+        assert volume_mutants.MutantResult is tip_mutants.MutantResult
+
+    def test_make_v1_overdraw_dispense_mutates_only_the_last_dispense_volume(self) -> None:
+        import volume_mutants
+
+        example = self._base_example()
+        mutant = volume_mutants.make_v1_overdraw_dispense(example)
+        assert mutant is not None
+
+        dispense_idx = next(
+            i for i, c in enumerate(example["call_sequence"]) if c["name"] == "dispense"
+        )
+        orig_volume = example["call_sequence"][dispense_idx]["params"]["volume_ul"]
+        mut_volume = mutant["call_sequence"][dispense_idx]["params"]["volume_ul"]
+        assert mut_volume > orig_volume
+
+        # every other call, and the deck layout/seeds, are carried
+        # unchanged -- §14.9's own argument for why the state a mutant
+        # over-draws against must come from the UNMUTATED call.
+        for i, call in enumerate(example["call_sequence"]):
+            if i != dispense_idx:
+                assert mutant["call_sequence"][i] == call
+        assert mutant["deck_layout"] == example["deck_layout"]
+
+    def test_make_v1_overdraw_dispense_none_without_a_dispense_call(self) -> None:
+        import volume_mutants
+
+        example = self._base_example()
+        example["call_sequence"] = [c for c in example["call_sequence"] if c["name"] != "dispense"]
+        assert volume_mutants.make_v1_overdraw_dispense(example) is None
+
+    def test_v1_overdraw_dispense_fires_will_fail_at_the_raised_index(self) -> None:
+        """End-to-end over ONE synthetic example (not the corpus): the
+        mutated dispense raises `TooLittleLiquidError`, and the static side
+        -- run under the runtime's OWN observed `env` (T27/T28) -- reports
+        `WILL_FAIL` at that exact index, with neither unsoundness flag set.
+        """
+        import volume_mutants
+
+        example = self._base_example()
+        contracts_json = CONTRACTS_PATH.read_text(encoding="utf-8")
+        param_names = param_names_from_contracts(contracts_json)
+
+        result = volume_mutants.run_one_mutant(
+            "ex_aspirate_dispense",
+            "v1_overdraw_dispense",
+            example,
+            contracts_json,
+            param_names,
+            volume_mutants.make_v1_overdraw_dispense,
+            volume_mutants._EXPECTED_EXC["v1_overdraw_dispense"],
+        )
+
+        assert result.ran, result.error
+        assert result.error is None, result.error
+        assert result.raised_as_expected, (result.raised_exc_class, result.error)
+        assert result.static_verdict_at_index == "will_fail", result
+        assert not result.unsound_safe
+        assert not result.unsound_will_fail_elsewhere
+
+
+class TestTier2bVolumeSidecarFields:
+    """T28 (spec 260903 §14.9/§14.13, backlog #4960): `region_oracle
+    ._volume_slice_summary`'s sidecar computation -- `volume_fixtures`/
+    `volume_unsound`/`volume_will_fail_fired` are a NAMED SLICE of the
+    `region_*` totals restricted to `volume_*`-prefixed fixtures. Tested
+    against synthetic `FixtureOutcome`s, never a real fixture run (no
+    subprocess extraction, no chatterbox execution) -- fast.
+    """
+
+    def _outcome(self, name: str, *, will_fail_at_raised: bool, n_unsound: int = 0):
+        import region_oracle
+
+        unsound_rows = [
+            region_oracle.UnsoundRow(name, "dispense", 1, 1, "op_0", "ran_ok", "will_fail")
+            for _ in range(n_unsound)
+        ]
+        return region_oracle.FixtureOutcome(
+            name=name, shape=region_oracle._shape_of(name), status="compared",
+            will_fail_at_raised=will_fail_at_raised, unsound_rows=unsound_rows,
+        )
+
+    def test_slice_counts_only_volume_prefixed_fixtures(self) -> None:
+        import region_oracle
+
+        outcomes = [
+            self._outcome("volume_straightline", will_fail_at_raised=True),
+            self._outcome("volume_second_iteration", will_fail_at_raised=True),
+            self._outcome("volume_collective_exhaustion", will_fail_at_raised=True),
+            self._outcome("volume_retip", will_fail_at_raised=False),  # UNKNOWN, not WILL_FAIL
+            self._outcome("for_pickup_no_drop_raises", will_fail_at_raised=True),  # NOT a volume_* fixture
+        ]
+        summary = region_oracle._volume_slice_summary(outcomes)
+        assert summary == {"volume_fixtures": 4, "volume_unsound": 0, "volume_will_fail_fired": 3}
+
+    def test_slice_propagates_unsound_rows(self) -> None:
+        import region_oracle
+
+        outcomes = [
+            self._outcome("volume_straightline", will_fail_at_raised=True, n_unsound=2),
+            self._outcome("straightline_clean", will_fail_at_raised=False, n_unsound=5),  # NOT volume_*
+        ]
+        summary = region_oracle._volume_slice_summary(outcomes)
+        assert summary["volume_fixtures"] == 1
+        assert summary["volume_unsound"] == 2  # the non-volume_* fixture's 5 are excluded
+        assert summary["volume_will_fail_fired"] == 1
+
+    def test_empty_outcomes_yield_zeroed_slice(self) -> None:
+        import region_oracle
+
+        assert region_oracle._volume_slice_summary([]) == {
+            "volume_fixtures": 0, "volume_unsound": 0, "volume_will_fail_fired": 0,
+        }
+
+
+class TestTier2ExtractorSidecarSchema:
+    """T28 (spec 260903 §14.13): `tier2_extractor.bth.toml`'s
+    `[result_schema]` carries the three new volume sidecar fields.
+    """
+
+    def test_bth_toml_declares_volume_sidecar_fields(self) -> None:
+        try:
+            import tomllib
+        except ModuleNotFoundError:  # pragma: no cover - py<3.11 fallback
+            import tomli as tomllib  # type: ignore[no-redef]
+
+        toml_path = REPO_ROOT / "plr-sema" / "eval" / "tier2_extractor.bth.toml"
+        payload = tomllib.loads(toml_path.read_text(encoding="utf-8"))
+        schema = payload["result_schema"]
+        assert schema["volume_fixtures"] == "int"
+        assert schema["volume_unsound"] == "int"
+        assert schema["volume_will_fail_fired"] == "int"

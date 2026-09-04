@@ -52,3 +52,11 @@ rows_normalised = "int"
 region_trip_mismatches = "int"
 region_harness_errors = "int"
 region_uncovered_keys = "int"
+# Additive, volume-family-specific fields (spec 260903 §14.9/§14.13 T28,
+# increment 5, backlog #4960): a NAMED SLICE of region_fixtures/
+# region_unsound/region_will_fail_fired restricted to the `volume_*`
+# fixtures -- see region_oracle.py's own summary_flat construction for why
+# this is a slice, not a second harness total.
+volume_fixtures = "int"
+volume_unsound = "int"
+volume_will_fail_fired = "int"
