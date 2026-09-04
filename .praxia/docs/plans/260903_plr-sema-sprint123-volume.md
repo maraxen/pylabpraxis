@@ -98,3 +98,29 @@ rows up, crosscheck unchanged).
 Spec rows: T24 ~420, T25 ~230, T26 ~360, T27 ~200, T28 ~430, T29 ~15, #4881a ~120; #4952 ~150.
 Sprint 122 delivered a comparable set (5 rows + a spec round) in one day; band B's measurement
 discipline and the round make this one closer to a day and a half.
+
+## 8. Outcome (260904)
+
+**Go/no-go result: GO.** Band B (T24/T25) published all four measured sets and `caller_scope`s per
+§14.0's gate — the extended bridge binds `remove_liquid`/`add_liquid` guards on real PLR
+(`liquid_handler.py:1031-1235`), so `GATE = GO` per T25's own recorded result, and band C proceeded.
+
+| Band | Item | Commit(s) | Numbers |
+|---|---|---|---|
+| A — spec | #4962 | `5458f24b` + `c5f6068f` (round-1 audits), `7b1913cd` (remediation, `reviewed-round-1`, spec_version 14) | Challenger O1–O14, defender's twelve-item ordered list, all applied; deliverable narrowed to "a definite `WILL_FAIL` on a tip over-draw, `SAFE`/`UNKNOWN` on every well" |
+| B — gate | #4958 | T24 `2e50e613`, T25 `5582ae08` | B1 2 tuples; B2 100 classes/467 attrs; P1c 45 classes/67 entries; four `caller_scope`s published matching §14.0.2's disposition table; survey regeneration 4770 records unchanged, dropped entries 4717 → 5769 with multiplicity, 0 non-additive diffs |
+| C — machinery | #4959 | T26 `92776b8e`, T27 `96234d90` | First volume `WILL_FAIL` at `PlrSite(volume_tracker.py, 92, VolumeTracker.remove_liquid)`; `REASON_VOCABULARY` 8 → 10; HM-24 `declared` 1 → 3 (user-approved 260904, not the originally planned 1 → 2), HM-25 `declared` 6 → 8; `live_rows() == 24 == BUDGET_CAP` |
+| C — oracle | #4960 | T28 `c67fc230`; T29 (this docs-close pass) | v1 67/67 raised, 67/67 `WILL_FAIL` at raised index, 0 unsound; m1 199/199, m2 289/289, 0 unsound (non-regression held); tier-2b 16 fixtures, `region_unsound` 0, `region_will_fail_fired` 7; tier 1 unsound 0, `rows_executed` 343, `setup_error` 0; lint id renamed `increment-5-volume-deferred` → `increment-5-volume`, citations re-anchored, `test_spec_lint.py -q` 24 passed |
+| D — carried | #4963 | `7761af22` | `#4881a` null-condition landmine regression test + lid gap-ledger block landed; recorded in increment 4 §13.14 this pass (it was never added when the commit landed in sprint 122) |
+| D — carried | #4952 | `717d16af` | `build_setup`: tier 1 343 executed / 548 ops, `setup_error` 0 (was 12) |
+| umbrella | #4881 | closed by #4960 landing | volume family shipped; lid family (#4881, first half) stays not-adopted per increment 4 §13.1 |
+
+**Registry arithmetic actually spent** (vs this plan's §1 estimate of HM-24 1 → 2): **HM-24 1 → 3**,
+not 1 → 2 — the defender's O12 adjudication (band A, round 1) moved B1 from HM-25 to HM-24 on the
+registry's own silent-versus-loud criterion before band B started, so the plan's §1/§4 HM-24 figure
+was superseded before it was spent. HM-25 landed exactly as planned, 6 → 8. Both approved by the user
+260904 (§14.16 Q2). Tier-1 baseline moved from this plan's §4 table (331/528/12 setup_error) to
+343/548/0 setup_error via #4952 (band D), as §4 anticipated.
+
+Full per-row detail, including divergences from each task row's own spec expectation and why each is
+acceptable, is in `260903_plr-sema-volume-increment.md` §14.17.

@@ -463,7 +463,7 @@ sha1/sha256 buys nothing.
 **Excluding `protocol_fqn` is a deliberate, attackable choice.** Two protocols with identical bodies
 and different names hash identically, which is what makes the hash a *program* identity and the cache
 useful across renames. Its consequence is that a cached artifact must not be an `AnalysisReport`,
-whose `protocol_fqn` field (`plr-sema/src/plr_sema/verdict.py:236`) would then be wrong for the second protocol.
+whose `protocol_fqn` field (`plr-sema/src/plr_sema/verdict.py:250`) would then be wrong for the second protocol.
 **Design position:** #4922 caches the `Finding` tuple, and the caller reassembles the report with its
 own `protocol_fqn` and its own `stamp`. This is recorded as open question Q3 (§11.12) because it
 constrains #4922's interface, and a reviewer may prefer the opposite trade.
@@ -477,7 +477,7 @@ cache_key = (bytecode_hash, contracts_sha, surface_identity, ir_version)
 | component | where it already exists |
 |---|---|
 | `bytecode_hash` | defined here (§11.3.2) |
-| `contracts_sha` | `sha256` of the `contracts_json` **string `check_graph` is already handed** (`plr-sema/src/plr_sema/check/__init__.py:713-732`) — no artifact change, no new field, computable in-band today |
+| `contracts_sha` | `sha256` of the `contracts_json` **string `check_graph` is already handed** (`plr-sema/src/plr_sema/check/ir.py:917-950`) — no artifact change, no new field, computable in-band today |
 | `surface_identity` | `(stamp.surface, stamp.surface_pin or stamp.plr.hash, stamp.plr.dirty_content_id)` — all four already on `SurveyStamp` (`_provenance/stamp.py:77-103`, `surface`/`surface_pin` at `:96-103`) and already reconstructed by `_stamp_from_dict` (`plr-sema/src/plr_sema/check/__init__.py:156-171`). `Surface.pin` exists precisely because a non-git extraction cannot answer "what commit is this" (`stamp.py:51-67`), which is why the key falls back to `plr.hash` rather than requiring one form |
 | `ir_version` | `plr_sema.check.ir.IR_VERSION` (§11.1.1) |
 
@@ -501,7 +501,7 @@ def check_graph(graph_json: str, contracts_json: str) -> AnalysisReport      # u
 ```
 
 `check_graph` keeps its signature, its docstring's promises (no `libcst`, no `pylabrobot`, never
-shells out) and its telemetry emission (`_check`, `plr-sema/src/plr_sema/check/__init__.py:686-710`). Its body becomes:
+shells out) and its telemetry emission (`_check`, `plr-sema/src/plr_sema/check/__init__.py:748-776`). Its body becomes:
 `json.loads` both inputs → build `param_names` from the contract table → `lower_graph` →
 `check_ir` → relabel (§11.4.3) → `join` (`verdict.py:244-253`) → `AnalysisReport`. **Every existing
 acceptance criterion that names `check_graph` continues to name `check_graph`**; AC-6.1 through
@@ -655,7 +655,7 @@ and this increment does not need one. Every fact it relies on is derived:
 | what could have been typed | what it is instead |
 |---|---|
 | a tool→PLR parameter name map | `PlanResult.kwargs` at runtime — written by `plan_call`'s `bind` from `spec.plr_arg` (`dispatcher.py:117-135`). `PARAM_NAMESPACE` is hand-maintained, but it is **coxswain's** table, consumed across the boundary and never copied into `plr_sema` — the same relationship HM-9 records for `SUPPORTED_TOOLS`. A copy would need a row; there is no copy |
-| a per-method PLR parameter list | `SurveyRecord.params` (`derive/__init__.py:149`), already surveyed by `_function_params` (`survey_plr_preconditions.py:267-274`), shipped as an additive `params` key (§11.2.4) |
+| a per-method PLR parameter list | `SurveyRecord.params` (`derive/__init__.py:171`), already surveyed by `_function_params` (`survey_plr_preconditions.py:303-310`), shipped as an additive `params` key (§11.2.4) |
 | a `WIDEN` reason vocabulary | upstream field names, checked by set-inclusion against `model_fields` (§11.1.5, AC-11.8) |
 | an opcode↔field mapping table | it *is* the disposition table, and the disposition table is checked exhaustive against `model_fields` (AC-11.1) rather than maintained against a memory of what upstream looks like |
 
@@ -880,7 +880,7 @@ rule, the E1–E5 transfer functions and every soundness argument stand exactly 
   (call.get("params") or {}).items()}` — the tool-named path — has no
   successor: a row whose call was never planned produces no `CALL` at all rather than a
   tool-named one, and is counted as `not_planned` in the report. `run_static`
-  and `compare` (`plr-sema/eval/oracle_common.py:569-587`), including the `unsound`
+  and `compare` (`plr-sema/eval/oracle_common.py:592-611`), including the `unsound`
   predicate, are unchanged — they read verdicts, not arguments.
 - **Tier 2** (`#4880`) renders each call sequence to Python source, extracts with
   `computation_graph_extractor` out of process, and lowers **the same way** with `lower_graph`. The

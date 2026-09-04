@@ -158,7 +158,7 @@ run, `uv run --package plr-sema`) and `plr-sema/tests/test_wire_fuzz.py`
 |---|---|---|---|
 | 1 corpus replay | #4879 | **re-baselined 260903** (#4944 85fe6eb5) | regenerated corpus (assembly 0.1.5, 900 → 1427 rows) replayed without `--sidecar`; 297 spurious totality violations fixed with a new `rows_setup_error` bucket (13 rows) and content-digest `record_id`s: 330 executed / 525 ops / 191 exact join / agreement 1.0 / 0 unsound / 0 totality (`outputs/plr-sema/oracle_replay_260903_rebaseline.json`). Like-for-like vs the 260902 baseline on the 728 shared rows: 216/341/0/0. Residual: of the 40 golden rows once thought unparseable, only 1 of 16 underscore-shaped refs meets AC-12.19's declared-base gate (#4939 b35bc338) — they executed and raised inside the verifier, not a parse failure. |
 | 2 through the extractor | #4880 | **done** — 2a #4880 12bc591a, 2b T21 88f01fdb | 2a (bytecode differential): 330 rows compared, extractor-cause divergences 0, renderer 122, grammar 0, reset 0, 235 agreeing, directional 208/210 (`RESOURCE` declarations and `WIDEN(depends_on_params)` excluded, structural asymmetries). 2b (executed region fixtures): 11 fixtures (`for`/`while`/`if` ×2, nested, `range(0)`, `continue`, `break`, straight-line), `region_unsound = 0`, `region_will_fail_fired = 3`, trip mismatches 0. **Caveat:** the tier-2b join was specified as `(method, lineno)` but `OperationNode.line_number` is 0 at every call site (`_current_line` never reassigned past its `__init__` default, predates #4932) — the join degrades to method-only, guarded by a one-call-site-per-method fixture constraint + `DuplicateCallSiteError`; praxis-side fix tracked as backlog #4948. See spec §12.13. |
-| 3 mutation / metamorphic | #4881 | **tip family done** (#4938 b39020cd + f1cecd0e); volume/lid families still open | on the regenerated corpus: m1 (remove `pick_up_tips` → `NoTipError`) **84/101** WILL_FAIL at the raised index (was 1/55), 17 UNKNOWN, 0 unsound; m2 (duplicate → `HasTipError`) **190/190**; tier 1 byte-identical to the rebaseline. The 91% bar (50/55) is NOT met at 83% — all 17 misses collapse to a lone `transfer` call whose derived guard is `guard_predicate_unparsed` (follow-up #4946). No tuning applied. Volume and lid families remain unstarted under #4881. |
+| 3 mutation / metamorphic | #4881 | **tip family + VOLUME family done** (v1 67/67) — tip family #4938 b39020cd + f1cecd0e, up to m1 193/193/m2 254/254 by #4946; volume family T28 `c67fc230` (sprint 123, 260904); lid family still open (not adopted, increment 4 §13.1) | tip family, current: m1 193/193 WILL_FAIL at the raised index, m2 254/254, 0 unsound (#4946, 260903). Volume family, new (260904): v1 (`v1_overdraw_dispense`, sited on `dispense`'s `op.tip.tracker.remove_liquid`) **67/67** raised, 67/67 `WILL_FAIL` at the raised index, 0 unsound; m1/m2 non-regression held at 199/199 and 289/289 (corpus grew to 1523 rows) over the same refactored `run_one_mutant`. Tier-2b volume: 4 new fixtures (straight-line, second-iteration, collective-exhaustion, retip) under `plr-sema/eval/fixtures/regions/volume_*.py`, `region_will_fail_fired` 7 total (4 tip + 3 volume), `region_unsound` 0. v2 (`v2_overdraw_transfer`) WITHDRAWN — `transfer` has no volume-guard derivation path (spec §14.9, round-1 O11). Lid family remains not adopted per increment 4 §13.1 (four structural blockers, none derivable). |
 | 4 wire-format fuzz | #4882 | **done** (b81a93f8) | 8 properties × 150 examples; malformed-payload classes pinned; found a duplicate-operation-id totality bug in step 0 during development |
 
 **260903 (sprint 121 close):** tier 1 re-baselined, tier 2 (2a+2b) done, tier 3's tip family done —
@@ -173,6 +173,19 @@ method-only degradation §12.13's caveat recorded (#4948), fires 4 findings, 0 u
 family: m1 193/193 WILL_FAIL at the raised index, m2 254/254, 0 unsound (#4946, up from 84/101 at the
 sprint-121 baseline). Volume and lid mutation families remain deferred, now explicitly to increment 5
 (`.praxia/docs/specs/260903_plr-sema-volume-increment.md`) rather than open-ended under #4881.
+
+**260904 (sprint 123 close):** tier 1 343 executed / 548 ops after #4952 (`build_setup` limits: one
+TipRack per tip-typed base, free-rail iterator for Troughs, skip auto trash when declared;
+`rows_setup_error` 12 → 0). Tier 3's volume family lands (T24–T28, `.praxia/docs/specs/260903_plr-sema-volume-increment.md`
+§14.17 has the per-row implementation record): the bridge derives on real PLR (`liquid_handler.py:1031-1235`),
+the caller-scope threading and R1's position-containment recognition close the soundness gap increment
+4's round 1 found, and the interval domain (V0–V5) ships with the tip-cell lifecycle (V5) and region
+widening (V4). Registry: HM-24 `declared` 1 → 3, HM-25 `declared` 6 → 8, `REASON_VOCABULARY` 8 → 10,
+`live_rows() == 24 == BUDGET_CAP` — approved by the user 260904. Real-row diagnostic scan (591 rows):
+`safe` 66, `volume_state_unknown` 340, `WILL_FAIL` 0, `volume_tracking_unasserted` 0 at this pin (the
+family is firable, per the user's 260903 "build it if it is firable" resolution, but the corpus does
+not currently trip the `does_volume_tracking()` hypothesis on any row). Tier 2/2a/2b unchanged from
+sprint 122.
 
 The adapter this plan described (`adapt_graph`) is retired: tier 1 lowers call sequences with
 `lower_calls` over `PlanResult.kwargs` (SEMA-IR §11.2.2), so the tool-vs-PLR parameter-name defect
