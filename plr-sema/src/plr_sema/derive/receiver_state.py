@@ -86,6 +86,7 @@ __all__ = [
     "compute_tip_families",
     "reset_rule_candidates",
     "compute_delegate_channel_bindings",
+    "lid_typestate_anchor_evidence",
 ]
 
 #: §10.2.5's second conjunct: the taxonomy module path that narrows the
@@ -1155,3 +1156,96 @@ def compute_tip_families(
         tip_requiring=tuple(sorted(requiring)),
         tip_dropping=tuple(sorted(dropping)),
     )
+
+
+# ---------------------------------------------------------------------------
+# The lid family (spec 260903 §13.1, backlog #4881a) -- NOT a fifth pass,
+# and NOT a receiver-state producer. §13.1's normative disposition is that
+# the lid family is "specified and not adopted": no `LidState`, no
+# `ReceiverState` entry for a lid-carrying class, no `Finding` of any
+# verdict. `lid_typestate_anchor_evidence` below exists ONLY to publish,
+# in the gap ledger, WHY P2's real anchor rule (`_typestate_anchor`) does
+# not fire for `Liddable` (AC-13.3) -- it re-runs that same rule, plus
+# P1b's own writer scan (`_attribute_writers`), against the class the
+# caller names; it invents no rule of its own and is called from nowhere
+# in `derive_receiver_states`'s own path.
+# ---------------------------------------------------------------------------
+
+
+def _none_check_body_shape(member: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[str, str] | None:
+    """The body-shape half of `_typestate_anchor`'s test (`return self.<F>
+    is/is not None`), WITHOUT its `@property` decorator gate. Used only to
+    publish which methods match the shape regardless of decoration, so an
+    "absent" P2 anchor is diagnosable (a same-shaped candidate existed but
+    was not a `@property`) rather than a bare negative.
+    """
+    body = [s for s in member.body if not _is_docstring_stmt(s)]
+    if len(body) != 1:
+        return None
+    stmt = body[0]
+    if not (isinstance(stmt, ast.Return) and isinstance(stmt.value, ast.Compare)):
+        return None
+    cmp = stmt.value
+    if len(cmp.ops) != 1 or len(cmp.comparators) != 1:
+        return None
+    op = cmp.ops[0]
+    if not isinstance(op, (ast.Is, ast.IsNot)):
+        return None
+    right = cmp.comparators[0]
+    if not (isinstance(right, ast.Constant) and right.value is None):
+        return None
+    if not _is_self_attr(cmp.left):
+        return None
+    true_when = "not_none" if isinstance(op, ast.IsNot) else "is_none"
+    return (cmp.left.attr, true_when)  # type: ignore[union-attr]
+
+
+def lid_typestate_anchor_evidence(plr_pkg_root: Path, class_name: str = "Liddable") -> dict[str, Any] | None:
+    """§13.1's diagnostic-only evidence for the gap ledger's `lid_state`
+    block (AC-13.3). Walks `plr_pkg_root` once (the same whole-tree scan
+    `derive_receiver_states` uses) looking for the first top-level class
+    named `class_name`, then reports:
+
+    * ``anchor`` -- the field P2's real `_typestate_anchor` rule finds, or
+      the literal string ``"absent"`` when it finds zero or more than one
+      candidate `@property` (§10.2.2's fail-closed rule, unmodified here).
+    * ``anchor_candidates`` -- every method (decorated `@property` or not)
+      whose BODY matches the anchor shape, so an "absent" verdict is
+      diagnosable rather than a bare negative.
+    * ``state_fields`` -- P1b's own `_attribute_writers` scan of the class,
+      i.e. every `self.<name> = ...` write found anywhere in its body.
+
+    Returns ``None`` if `class_name` is not found anywhere under
+    `plr_pkg_root` -- fail closed, the same discipline P2 itself uses,
+    rather than publishing evidence about a class that does not exist at
+    this pin.
+    """
+    class_node: ast.ClassDef | None = None
+    for file in _iter_plr_source_files(plr_pkg_root):
+        try:
+            source = file.read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=str(file))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        for top in ast.iter_child_nodes(tree):
+            if isinstance(top, ast.ClassDef) and top.name == class_name:
+                class_node = top
+                break
+        if class_node is not None:
+            break
+    if class_node is None:
+        return None
+
+    anchor = _typestate_anchor(class_node)
+    body_shape_candidates = sorted(
+        member.name
+        for member in ast.iter_child_nodes(class_node)
+        if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and _none_check_body_shape(member) is not None
+    )
+    state_fields = sorted(_attribute_writers(class_node, class_name).keys())
+    return {
+        "anchor": "absent" if anchor is None else anchor[0],
+        "anchor_candidates": body_shape_candidates,
+        "state_fields": state_fields,
+    }

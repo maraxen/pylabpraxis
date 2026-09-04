@@ -20,6 +20,7 @@ lookup` below for the direct confirmation.
 
 from __future__ import annotations
 
+import copy
 import json
 import subprocess
 import sys
@@ -390,3 +391,110 @@ def test_dead_loop_body_excluded_from_findings_and_obliged(contracts_json: str) 
     assert finding_ids == obliged, "AC-6.4 amended: {f.operation_id} == OBLIGED(graph)"
     assert len(report.findings) >= len(obliged), "AC-7.2 amended: len(findings) >= len(OBLIGED(graph))"
     assert finding_ids == {"op_1", "op_4"}
+
+
+# ---------------------------------------------------------------------------
+# Spec 260903 §13.1/§13.9, backlog #4881a -- AC-13.3/AC-13.4. The lid
+# family is specified and NOT adopted: `_check_no_lid`'s two guards are
+# already inlined (depth 1) into `LiquidHandler.aspirate`'s contract entry
+# (they were there before this task; nothing in `plr_sema.derive`/
+# `plr_sema.check` was changed to construct a lid Finding), and the
+# checker's existing, guard-agnostic `guard_predicate_unparsed` emission
+# (`plr_sema.check._finding_from_guard`) already treats BOTH uniformly as
+# UNKNOWN -- this is a REGRESSION test that that stays true, most of all
+# for the `:117` guard's `condition: null` (the landmine, §13.1.3's own
+# disclosure): a future evaluator that read `null` as "raises
+# unconditionally" would manufacture `WILL_FAIL` on every one of the six
+# `LiquidHandler` methods `_check_no_lid` reaches, for programs that run
+# clean.
+# ---------------------------------------------------------------------------
+
+LIDDED_PLATE_ASPIRATE_FIXTURE = PLR_SEMA_ROOT / "tests" / "fixtures" / "lidded_plate_aspirate_graph.json"
+
+# The two `_check_no_lid` guard sites (§13.1.1): `:116` is the self-lidded
+# raise (`condition == "lidded is resource"`), `:117` is the
+# ancestor-lidded raise -- the `condition: null` landmine.
+_LID_GUARD_LINENOS = (116, 117)
+
+
+def test_lid_family_emits_nothing(contracts_json: str) -> None:
+    """AC-13.4, first half: for `setup()` then `aspirate(use_channels=[0])`
+    on a (nominally lidded, per the fixture's own name) plate, zero
+    findings carry a `plr_site` at `liquid_handler.py:116`/`:117` with a
+    verdict other than `Verdict.UNKNOWN` -- i.e. the lid family never
+    promotes either guard to `SAFE` or `WILL_FAIL`. Also asserts no
+    `Finding.reason` contains "lid" anywhere in `report.findings` --
+    `REASON_VOCABULARY` has no lid-related member (§13.1's normative
+    disposition; the row spends none), so this can never pass by
+    coincidence of vocabulary shape.
+    """
+    graph_json = LIDDED_PLATE_ASPIRATE_FIXTURE.read_text(encoding="utf-8")
+    report = check_graph(graph_json, contracts_json)
+
+    assert len(report.findings) >= 1
+    for finding in report.findings:
+        assert "lid" not in finding.reason.lower(), (
+            f"a lid-related reason was constructed: {finding.reason!r} (op {finding.operation_id})"
+        )
+        site = finding.plr_site
+        if site is not None and site.file.endswith("liquid_handler.py") and site.lineno in _LID_GUARD_LINENOS:
+            assert finding.verdict is Verdict.UNKNOWN, (
+                f"a lid guard at liquid_handler.py:{site.lineno} was promoted to {finding.verdict!r}"
+            )
+
+
+def test_lid_family_findings_identical_to_graph_without_the_plate(contracts_json: str) -> None:
+    """AC-13.4, corroborating: the wire format cannot represent a lid at
+    all (§13.1.2/L3 -- `RESOURCE`'s only structural operand is
+    `parents: tuple[str, ...]`, an upward, type-only chain with no
+    children field). So mentioning the (nominally lidded) plate at all,
+    versus not mentioning it, must be INVISIBLE to `check_graph` --
+    stripping the plate resource and its `aspirate` argument reference
+    from the fixture payload must not change a single emitted `Finding`.
+    An implementation that somehow keyed a Finding off the plate's
+    presence would fail this, even though nothing in §13.1 authorizes one
+    to exist.
+    """
+    graph_json = LIDDED_PLATE_ASPIRATE_FIXTURE.read_text(encoding="utf-8")
+    with_plate = json.loads(graph_json)
+    without_plate = copy.deepcopy(with_plate)
+    del without_plate["resources"]["plate"]
+    del without_plate["operations"][1]["arguments"]["resource"]
+    without_plate["resource_types"] = ["LiquidHandler"]
+
+    report_with = check_graph(graph_json, contracts_json)
+    report_without = check_graph(json.dumps(without_plate), contracts_json)
+
+    assert report_with.findings == report_without.findings
+    assert report_with.verdict == report_without.verdict
+
+
+def test_lid_family_null_condition_guard_is_unknown_not_will_fail(contracts_json: str) -> None:
+    """AC-13.4, second half -- the stub-defeating one: the Finding for the
+    `:117` guard (whose derived `condition` is `null`) is
+    `Verdict.UNKNOWN` with `reason == "guard_predicate_unparsed"`, NOT
+    `Verdict.WILL_FAIL`. `null` reads, on its face, as "raises
+    unconditionally"; it is not -- `:117`'s raise is reachable only when
+    the early `return` at `liquid_handler.py:113-114` did not fire, and
+    the precondition survey's `scope_trail` does not model early returns
+    (§13.1.3), so no evaluator today or in this fixture can construct that
+    fact. An evaluator that treated a `null` condition as "always true"
+    would emit `WILL_FAIL` here and fail this assertion.
+    """
+    graph_json = LIDDED_PLATE_ASPIRATE_FIXTURE.read_text(encoding="utf-8")
+    report = check_graph(graph_json, contracts_json)
+
+    null_condition_findings = [
+        f
+        for f in report.findings
+        if f.plr_site is not None
+        and f.plr_site.file.endswith("liquid_handler.py")
+        and f.plr_site.lineno == 117
+    ]
+    assert len(null_condition_findings) == 1, (
+        f"expected exactly one Finding for the :117 null-condition guard, got {null_condition_findings!r}"
+    )
+    finding = null_condition_findings[0]
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_predicate_unparsed"
+    assert finding.verdict is not Verdict.WILL_FAIL

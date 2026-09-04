@@ -1208,3 +1208,97 @@ def test_ac_13_15_i_rule_2_explicit_binds_exact_channels() -> None:
     assert arity["channels"] == [0, 1, 2]
     assert arity["rule"] == "arity_default"
     assert arity["delegate"] == "helper"
+
+
+# ---------------------------------------------------------------------------
+# AC-13.3 (spec 260903 §13.1, backlog #4881a) -- the lid facts are DERIVED
+# and published, and nothing is claimed from them. Asserted against the
+# SHIPPED `plr-sema/data/gap_ledger.json` (not a fixture), because §13.1's
+# whole argument is about real PLR at this pin (AC-13.3's own text).
+# ---------------------------------------------------------------------------
+
+GAP_LEDGER_JSON_PATH = REPO_ROOT / "plr-sema" / "data" / "gap_ledger.json"
+
+
+def test_ac_13_3_lid_state_block_is_published_in_shipped_ledger() -> None:
+    """The shipped gap ledger carries a `lid_state` block naming, for
+    `Liddable`: the P2 anchor as `"absent"` (`has_lid` is a plain method,
+    `lid.py:71-72` -- no decorator; the `@property` at `:74` belongs to
+    `lid`, not `has_lid`), `has_lid` itself as the one body-shape candidate
+    P2's decorator gate rejected, zero state fields (`lid` is computed from
+    `self.children` on every read, `lid.py:74-77` -- nothing for
+    `_attribute_writers` to see), and the two `_check_no_lid`-derived guard
+    conditions with their `raises` -- `"lidded is resource"`/`ValueError`
+    at `:116` and `null`/`ValueError` at `:117`.
+    """
+    ledger = json.loads(GAP_LEDGER_JSON_PATH.read_text(encoding="utf-8"))
+    lid_state = ledger["lid_state"]["Liddable"]
+
+    assert lid_state["anchor"] == "absent"
+    assert lid_state["anchor_candidates"] == ["has_lid"]
+    assert lid_state["state_fields"] == []
+
+    guards = lid_state["check_no_lid_guards"]
+    assert len(guards) == 2
+    by_lineno = {g["site"]["lineno"]: g for g in guards}
+    assert set(by_lineno) == {116, 117}
+    assert by_lineno[116]["condition"] == "lidded is resource"
+    assert by_lineno[116]["raises"] == "ValueError"
+    assert by_lineno[116]["site"]["qualname"] == "_check_no_lid"
+    assert by_lineno[116]["site"]["file"].endswith("liquid_handling/liquid_handler.py")
+    assert by_lineno[117]["condition"] is None
+    assert by_lineno[117]["raises"] == "ValueError"
+    assert by_lineno[117]["site"]["qualname"] == "_check_no_lid"
+
+
+def test_ac_13_3_lid_state_evidence_is_derived_not_hand_typed() -> None:
+    """Stub-defeating half: `lid_typestate_anchor_evidence`, called fresh
+    against `default_plr_pkg_root()`, reproduces EXACTLY what the shipped
+    ledger's `lid_state` block records (short of the `check_no_lid_guards`
+    key, which that function does not compute) -- so a hand-typed ledger
+    block that happened to match today's PLR pin, rather than a genuinely
+    re-run P2 anchor rule, would be caught the moment `Liddable` changes
+    shape. Also confirms `Liddable.has_lid` is found via the REAL
+    `_typestate_anchor` fail-closed rule (no `@property` decorator ->
+    `None`), not a bespoke lid-specific check.
+    """
+    from plr_sema.derive.receiver_state import lid_typestate_anchor_evidence
+
+    fresh = lid_typestate_anchor_evidence(default_plr_pkg_root())
+    assert fresh is not None
+
+    ledger = json.loads(GAP_LEDGER_JSON_PATH.read_text(encoding="utf-8"))
+    shipped = ledger["lid_state"]["Liddable"]
+
+    assert fresh["anchor"] == shipped["anchor"] == "absent"
+    assert fresh["anchor_candidates"] == shipped["anchor_candidates"] == ["has_lid"]
+    assert fresh["state_fields"] == shipped["state_fields"] == []
+
+
+def test_ac_13_3_no_lidstate_no_receiver_state_entry_no_reason_vocabulary_member() -> None:
+    """§13.1's normative disposition, machine-checked: no `LidState` class
+    exists anywhere in `plr_sema`; the shipped `receiver_state` block
+    (keyed by receiver CLASS, e.g. `LiquidHandler`) carries no `Liddable`
+    entry -- the lid ledger block lives ONLY under the separate top-level
+    `lid_state` key, never inside `receiver_state`; and `REASON_VOCABULARY`
+    gains no lid-related member (still exactly 8, per §13.7/§13.13 item 6).
+    """
+    import plr_sema
+
+    src_root = Path(plr_sema.__file__).resolve().parent
+    for py_file in src_root.rglob("*.py"):
+        tree = ast.parse(py_file.read_text(encoding="utf-8"), filename=str(py_file))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                assert node.name != "LidState", f"a LidState class was constructed at {py_file}:{node.lineno}"
+
+    ledger = json.loads(GAP_LEDGER_JSON_PATH.read_text(encoding="utf-8"))
+    assert "Liddable" not in ledger.get("receiver_state", {})
+
+    contracts = json.loads((REPO_ROOT / "plr-sema" / "data" / "derived_contracts.json").read_text(encoding="utf-8"))
+    assert "Liddable" not in contracts.get("receiver_state", {})
+
+    from plr_sema.verdict import REASON_VOCABULARY
+
+    assert len(REASON_VOCABULARY) == 8
+    assert not any("lid" in reason.lower() for reason in REASON_VOCABULARY)

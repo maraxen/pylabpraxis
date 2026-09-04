@@ -33,6 +33,51 @@
     "all_records": 12,
     "finding_bearing_records": 8
   },
+  "lid_state": {
+    "Liddable": {
+      "anchor": "absent",
+      "anchor_candidates": [
+        "has_lid"
+      ],
+      "check_no_lid_guards": [
+        {
+          "condition": "lidded is resource",
+          "depth": 0,
+          "free_vars": [
+            "action",
+            "resource"
+          ],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [
+            "if lidded is resource"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 116,
+            "qualname": "_check_no_lid"
+          }
+        },
+        {
+          "condition": null,
+          "depth": 0,
+          "free_vars": [
+            "action",
+            "resource"
+          ],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 117,
+            "qualname": "_check_no_lid"
+          }
+        }
+      ],
+      "state_fields": []
+    }
+  },
   "schema_version": 1,
   "stamp": {
     "derive_python_version": "3.14.6",
@@ -47,14 +92,14 @@
     "praxis": {
       "branch": "coxswain-p2-pipeline",
       "dirty": true,
-      "dirty_content_id": "392abf91b50d1922843811afc2babad4de76053b95450de5471d9f6ea8f081c7",
-      "hash": "995b4948faefa0a80a026939d1320416f8f23489",
+      "dirty_content_id": "df9278008512441a8b9cd0409c950cb10049fdd5794ad903e59112b7b1c0b61b",
+      "hash": "e34412726a011b3cd11c816fcf9906c249594c80",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-03T21:08:49.500931+00:00",
+    "stamped_at": "2026-09-04T04:08:08.388832+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   },

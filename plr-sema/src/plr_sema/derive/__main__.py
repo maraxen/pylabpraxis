@@ -61,6 +61,7 @@ from plr_sema.derive.receiver_state import (
     compute_channel_bridge,
     compute_tip_families,
     derive_receiver_states,
+    lid_typestate_anchor_evidence,
     receiver_state_to_json,
 )
 
@@ -294,6 +295,32 @@ def main(argv: list[str] | None = None) -> int:
         ledger = build_gap_ledger(
             index, records, dropped_receiver_counts=dropped_receiver_counts, stamp=stamp
         )
+        # 260903 (spec §13.1/§13.9, backlog #4881a): the lid family's
+        # ledger-only block. Independent of --taxonomy-json / receiver_states
+        # -- the lid family is specified and NOT adopted (§13.1's normative
+        # disposition), so this never touches `receiver_states`, never
+        # constructs a `LidState` or a `ReceiverState`, and never derives a
+        # Finding. `Liddable`'s anchor/state-field evidence comes from
+        # `lid_typestate_anchor_evidence` (re-running P2's real rule, not a
+        # new one); the two `_check_no_lid` guard conditions come from the
+        # SAME `derive_contract` closure `--out` uses, run just for that one
+        # entry point so `--gap-ledger` alone (no `--out`) still works.
+        lid_anchor_evidence = lid_typestate_anchor_evidence(surface_tree)
+        if lid_anchor_evidence is not None:
+            lid_module = next(
+                (rec.module for rec in records if rec.class_name is None and rec.qualname == "_check_no_lid"),
+                None,
+            )
+            check_no_lid_guards: list[dict[str, Any]] = []
+            if lid_module is not None:
+                check_no_lid_contract = derive_contract(lid_module, "_check_no_lid", index, stamp=stamp)
+                check_no_lid_guards = [_guard_to_json(g) for g in check_no_lid_contract.guards]
+            ledger["lid_state"] = {
+                "Liddable": {
+                    **lid_anchor_evidence,
+                    "check_no_lid_guards": check_no_lid_guards,
+                }
+            }
         if receiver_states:
             # 260902 (spec §10.2/AC-10.10): the tip_state ledger block --
             # per anchored receiver class, its derived method families and
