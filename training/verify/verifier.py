@@ -100,6 +100,14 @@ async def verify(
     setup: SetupHandle | None = None
     before: dict[str, Any] | None = None
     after: dict[str, Any] | None = None
+    # 260903 (spec §14.6, volume increment 5, round-1 O5, T27, backlog
+    # #4959): the volume family's hypothesis (`env`'s "does_volume_tracking"
+    # member) must be OBSERVED from inside the window that actually turns
+    # tracking on -- never from outside it (a process-wide call after this
+    # function returns races the `finally` restore below). Additive result
+    # key, default False (unobserved: the deck_build failure path below
+    # never reaches the `set_volume_tracking(True)` call).
+    volume_tracking_observed = False
 
     old_strictness = get_strictness()
     old_volume_tracking = _current_volume_tracking()
@@ -113,6 +121,11 @@ async def verify(
         set_strictness(Strictness.STRICT if strict else Strictness.WARN)
         set_volume_tracking(True)
         set_tip_tracking(True)
+        # Observed HERE, inside the window `set_volume_tracking(True)` just
+        # opened and the `finally` below will close -- not after `verify`
+        # returns, which is what a process-wide call from outside this
+        # function would race (§14.6's normative box).
+        volume_tracking_observed = _current_volume_tracking()
 
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
@@ -145,6 +158,7 @@ async def verify(
                 "backend": backend,
                 "record_id": intent_record.get("record_id")
                 if isinstance(intent_record, Mapping) else None,
+                "volume_tracking_observed": volume_tracking_observed,
             }
     finally:
         set_strictness(old_strictness)
@@ -177,6 +191,12 @@ async def verify(
         "elapsed_ms": (time.monotonic() - t0) * 1000,
         "backend": backend,
         "record_id": intent_record.get("record_id") if isinstance(intent_record, Mapping) else None,
+        # 260903 (spec §14.6, volume increment 5, round-1 O5, T27): the
+        # `does_volume_tracking()` hypothesis, observed from INSIDE the
+        # window `set_volume_tracking(True)` opened above -- the harness
+        # reads this field to build `env`, never calling the tracking
+        # callable itself from outside this function.
+        "volume_tracking_observed": volume_tracking_observed,
     }
 
 

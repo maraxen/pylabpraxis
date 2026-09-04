@@ -302,6 +302,13 @@ class RuntimeOutcome:
     #: renderer's only source of truth for what type to annotate a rendered
     #: protocol's resource parameters with.
     resource_types: dict[str, str] = dataclasses.field(default_factory=dict)
+    #: 260903 (spec §14.6, volume increment 5, round-1 O5, T27, backlog
+    #: #4959): the volume family's hypothesis, read off `verify()`'s own
+    #: additive result key -- observed from INSIDE the window that turned
+    #: tracking on, never by a separate process-wide call after the fact.
+    #: `False` when `run_runtime` never reached `verify()`'s success path
+    #: (a harness-level exception -- `result` is never built in that case).
+    volume_tracking_observed: bool = False
 
 
 def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
@@ -339,7 +346,8 @@ def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
     exc_class = error.split(":", 1)[0].strip() if error else None
     failing = planned[-1] if (error and planned) else None
     return RuntimeOutcome(
-        error, exc_class, failing, planned, bool(result.get("passed")), plr_kwargs, resource_types
+        error, exc_class, failing, planned, bool(result.get("passed")), plr_kwargs, resource_types,
+        bool(result.get("volume_tracking_observed")),
     )
 
 
@@ -497,6 +505,7 @@ def run_static_calls(
     contracts_json: str,
     *,
     param_names: dict[str, tuple[str, ...]] | None = None,
+    volume_tracking_observed: bool = False,
 ) -> tuple[dict[str, dict[str, Any]], list[int]]:
     """The ``lower_calls`` path (§11.2.2/§11.10 tier 1) -- ``adapt_graph``'s
     replacement. Lowers ``example["call_sequence"]``'s PLANNED subset
@@ -519,6 +528,16 @@ def run_static_calls(
     ``st[f"op_{i}"]`` for every ``i`` in ``call_sequence``, never
     KeyErrors), and the caller is expected to report ``not_planned_indices``
     separately (§11.10: "counted as ``not_planned`` in the report").
+
+    ``volume_tracking_observed`` (spec 260903 §14.6/§14.11, volume
+    increment 5, round-1 O5, T27, backlog #4959): the caller's own in-window
+    observation (:attr:`RuntimeOutcome.volume_tracking_observed`, itself
+    read off ``verify()``'s additive result key) -- this function builds
+    ``env`` from it and passes ``env`` to :func:`plr_sema.check.check_ir`.
+    The NAME comes from the ``does_volume_tracking`` callable's own
+    ``__name__``, never a typed string constant. Defaulting to `False`
+    reproduces every pre-T27 caller's behaviour exactly (``env=frozenset()``
+    is ``check_ir``'s own default).
     """
     sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "src"))
     from plr_sema.check import check_ir
@@ -535,8 +554,12 @@ def run_static_calls(
     # produces, for a reason that has nothing to do with argument naming.
     receiver_states = contracts_payload.get("receiver_state", {})
 
+    from pylabrobot.resources.volume_tracker import does_volume_tracking
+
+    env = frozenset({does_volume_tracking.__name__}) if volume_tracking_observed else frozenset()
+
     bc, not_planned = lower_row_calls(example, plr_kwargs, resources=resources, param_names=param_names)
-    raw_findings = check_ir(bc, contracts, receiver_states)
+    raw_findings = check_ir(bc, contracts, receiver_states, env=env)
 
     planned_indices = [i for i in range(len(example["call_sequence"])) if i not in set(not_planned)]
     origin = bc.sideband.get("origin", {})

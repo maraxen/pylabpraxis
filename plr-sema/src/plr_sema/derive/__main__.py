@@ -209,6 +209,31 @@ def build_derived_contracts_payload(
             )
             if volume_guards:
                 entry["volume_guards"] = volume_guards
+        # 260903 (spec §14.4/§14.8, T27, backlog #4959): P7's `setter`
+        # field, published as an additive `"is_volume_setter": true` key ON
+        # THIS CONTRACT ENTRY -- specifically NOT under the top-level
+        # `receiver_state` block, and specifically NOT merged into
+        # `receiver_states[rec.class_name]`: `check/tipstate.py`'s own
+        # `evaluate_call` (§10.4's E5) treats ANY non-`None` receiver_state
+        # it is handed as a FULL tip-typestate `ReceiverState` dict and
+        # indexes `receiver_state["channel_attr"]` unconditionally (no
+        # `.get()`) -- both families read `receiver_states.get(call
+        # .receiver_type)` off the SAME dict (`check/__init__.py`'s
+        # `_evaluate_call`), so a `{"setter": ...}`-only block keyed under
+        # `VolumeTracker` there would reach tipstate too and raise
+        # `KeyError` the first time a `VolumeTracker.*` call is evaluated
+        # (caught by this file's own gate run, not left for a reviewer to
+        # find). The per-contract-entry key sidesteps that shared-dict
+        # collision entirely: `check/volumestate.py`'s `_apply_seed` reads
+        # `contract.get("is_volume_setter")` off the SAME `contract` dict
+        # `evaluate_call` already receives, no new plumbing needed.
+        if (
+            rec.class_name is not None
+            and rec.class_name in volume_anchors
+            and volume_anchors[rec.class_name].setter is not None
+            and rec.qualname.rsplit(".", 1)[-1] == volume_anchors[rec.class_name].setter
+        ):
+            entry["is_volume_setter"] = True
         contracts[out_key] = entry
     return {
         "schema_version": SCHEMA_VERSION,

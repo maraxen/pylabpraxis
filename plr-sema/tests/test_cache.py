@@ -264,6 +264,89 @@ def test_key_changes_on_env() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 260903 T27 (spec §14.6/§14.13, backlog #4959) -- AC-14.7's cache clause:
+# `env` now reaches the `cache_key` call `check_graph` makes (T26 built the
+# key-level `env` component and deliberately did NOT thread it into that
+# call, per that call site's own T26-era comment). A hit under one `env`
+# must never be served under another, and the default `env` must not
+# invalidate anything a pre-T27 caller already wrote.
+# ---------------------------------------------------------------------------
+
+
+def test_env_partitions_the_cache(
+    tmp_path: Path, contracts_json: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AC-14.7's cache clause: the SAME graph under two different `env`s
+    produces two DISTINCT `cache_key` entries and the second call is a
+    MISS (recomputes under its own `env`), not a HIT (silently returns the
+    first `env`'s findings) -- `check_ir`'s own call-count and observed
+    `env` argument are the stub-defeating proof, not just the file count.
+    Repeating the FIRST `env` afterwards must be a HIT again, and the
+    default-`env` entry's on-disk path must be byte-identical to the path
+    a pre-T27 caller (one that never passes `env=` to `ir.cache_key` at
+    all) would have computed -- i.e. this change partitions the cache by
+    hypothesis, it does not invalidate what is already there (§14.14 item
+    6).
+    """
+    graph_json = _graph_json("simple_transfer_graph")
+    store = CacheStore(root=tmp_path / "cache")
+
+    import plr_sema.check as check_mod
+
+    observed_envs: list[frozenset[str]] = []
+    original_check_ir = check_mod.check_ir
+
+    def counting_check_ir(*args, **kwargs):
+        observed_envs.append(kwargs.get("env", frozenset()))
+        return original_check_ir(*args, **kwargs)
+
+    monkeypatch.setattr(check_mod, "check_ir", counting_check_ir)
+
+    nonempty_env = frozenset({"does_volume_tracking"})
+
+    report_default = check_graph(graph_json, contracts_json, cache=store)
+    report_nonempty = check_graph(graph_json, contracts_json, cache=store, env=nonempty_env)
+
+    assert len(observed_envs) == 2, (
+        f"a different env must be a cache MISS, not a HIT -- check_ir ran "
+        f"{len(observed_envs)} time(s), expected 2"
+    )
+    assert observed_envs == [frozenset(), nonempty_env]
+
+    entries = sorted(store.root.glob("*.json"))
+    assert len(entries) == 2, f"expected two distinct cache entries (one per env), got: {entries}"
+
+    # Repeating the FIRST env is a HIT (no third check_ir call) -- proves
+    # the miss above was about env specifically, not "every call misses".
+    report_default_again = check_graph(graph_json, contracts_json, cache=store)
+    assert len(observed_envs) == 2, "repeating the first env must be a cache HIT"
+    assert report_default_again.findings == report_default.findings
+    assert report_nonempty.findings is not None  # sanity: the second call did complete
+
+    # The default-env entry's own on-disk path is BYTE-IDENTICAL to the
+    # path a pre-T27 caller -- one that never passes env= to cache_key at
+    # all -- would compute, so no cache entry written before this
+    # increment is invalidated by this change.
+    from plr_sema.check import _stamp_from_dict
+
+    contracts_payload = json.loads(contracts_json)
+    param_names = _build_param_names(contracts_payload.get("contracts", {}))
+    bytecode = ir.lower_graph(json.loads(graph_json), param_names=param_names)
+    bc_hash = ir.bytecode_hash(bytecode)
+    stamp = _stamp_from_dict(contracts_payload["stamp"])
+
+    pre_t27_key = ir.cache_key(bc_hash, contracts_json, stamp)  # no env= kwarg at all
+    post_t27_default_key = ir.cache_key(bc_hash, contracts_json, stamp, env=frozenset())
+    assert pre_t27_key == post_t27_default_key, "the default env component must still be the empty set"
+
+    pre_t27_path = store._path_for(canonical_key(pre_t27_key))
+    assert pre_t27_path in entries, (
+        "the default-env check_graph(cache=store) entry must live at the "
+        "SAME path a pre-T27 (no env=) cache_key call would compute"
+    )
+
+
+# ---------------------------------------------------------------------------
 # AC-13.8 (task-row numbering; spec document's own AC-13.7) -- targeted
 # invalidation deletes what changed and only what changed.
 # ---------------------------------------------------------------------------

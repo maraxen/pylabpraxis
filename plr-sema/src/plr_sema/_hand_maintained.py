@@ -243,22 +243,58 @@ def _measure_hm21() -> int:
 
 def _measure_hm24() -> int:
     """260902 (spec §10.8/§10.10 Q7, tip typestate increment, user decision
-    SPLIT): HM-24 is the channel-receiver bridge pattern ALONE (pattern 1
-    of the original 6 -- §10.2.5's `self.<attr>[<name>].<method>` shape,
-    the one whose failure mode is a SILENT family collapse rather than a
-    loud exact-count test failure). One module-level regex constant,
-    `plr_sema.derive.receiver_state._BRIDGE_SHAPE_RE`; importing it proves
-    it still exists (fails loudly, ImportError, if deleted), and the
-    3-group assertion catches a structural reshape (e.g. dropping the
-    `<name>` capture group) that a bare existence check would miss.
+    SPLIT): HM-24 started as the channel-receiver bridge pattern ALONE
+    (pattern 1 of the original 6 -- §10.2.5's `self.<attr>[<name>].<method>`
+    shape, the one whose failure mode is a SILENT family collapse rather
+    than a loud exact-count test failure). 260903 (spec §14.0.1/§14.11,
+    volume increment 5, round-1 O12, user-approved 260904): TWO more
+    patterns join it, both silent-collapse by the SAME registry criterion
+    -- (b) the volume bridge shape `<name>.<field>.<attr>.<method>` (§14.4)
+    and (c) B1's for-loop-over-a-P8-comprehension's-output-list binding
+    (§14.0.1). B1 is here and not on HM-25 because its `ast.For` node is
+    load-bearing for R1's SOUNDNESS (§14.6), not merely precision -- a
+    silent failure there silently empties the whole bridged-guard family,
+    same direction as pattern (a)'s own collapse.
+
+    Each pattern is asserted the way the original one is: (a) the
+    module-level regex `plr_sema.derive.receiver_state._BRIDGE_SHAPE_RE`,
+    group-count checked; (b) `_VOLUME_BRIDGE_SHAPE_RE`, group-count
+    checked; (c) `for_over_comprehension_output`, exercised against a
+    minimal synthetic method AST (not just imported) -- a bare existence
+    check would miss a reshape of either regex's capture groups or of B1's
+    own binding shape.
     """
-    from plr_sema.derive.receiver_state import _BRIDGE_SHAPE_RE
+    import ast
+
+    from plr_sema.derive.receiver_state import (
+        _BRIDGE_SHAPE_RE,
+        _VOLUME_BRIDGE_SHAPE_RE,
+        _ComprehensionBinding,
+        for_over_comprehension_output,
+    )
 
     assert _BRIDGE_SHAPE_RE.groups == 3, (
-        f"HM-24's bridge-shape pattern changed group count: {_BRIDGE_SHAPE_RE.groups} != 3 "
+        f"HM-24's tip-bridge-shape pattern changed group count: {_BRIDGE_SHAPE_RE.groups} != 3 "
         f"(attr, name, method) -- update this row's `what`/`breaks_when` before bumping the measure"
     )
-    return 1
+    assert _VOLUME_BRIDGE_SHAPE_RE.groups == 4, (
+        f"HM-24's volume-bridge-shape pattern changed group count: "
+        f"{_VOLUME_BRIDGE_SHAPE_RE.groups} != 4 (name, field, attr, method) -- "
+        f"update this row's `what`/`breaks_when` before bumping the measure"
+    )
+
+    # B1: a minimal synthetic `def m(self): for op in items: ...` over a
+    # fake P8 match on `items`, proving the depth-0-for-over-a-P8-target
+    # shape still binds `op` -- not merely that the function still imports.
+    method_node = ast.parse("def m(self):\n    for op in items:\n        pass\n").body[0]
+    assert isinstance(method_node, ast.FunctionDef)
+    p8_matches = {"items": _ComprehensionBinding(element_class="Widget", pairings={}, lineno=1)}
+    b1_bindings = for_over_comprehension_output(method_node, p8_matches)
+    assert b1_bindings.keys() == {"op"} and b1_bindings["op"].element_class == "Widget", (
+        f"HM-24's B1 matcher changed its binding shape: {b1_bindings!r} -- "
+        f"update this row's `what`/`breaks_when` before bumping the measure"
+    )
+    return 3
 
 
 def _measure_hm25() -> int:
@@ -272,20 +308,37 @@ def _measure_hm25() -> int:
     own delegate-call channel-argument shape (the ordered explicit/
     arity-default/disabler-poisoning/widen rule set), whose failure
     AC-13.15's gate (tier 3's m1 class) catches loudly the same way.
-    Measured by importing the six symbols that implement these patterns
-    (three in `derive/receiver_state.py`: P2, P3a, P9; three atom-kind
-    branches inside `check/tipstate.py`'s shared parser, proven live via
-    `TipState`'s two atom-bearing members plus the bool-view branch) --
-    fails loudly, ImportError/AttributeError, if any is deleted.
+    260903 (spec §14.4/§14.11, volume increment 5, round-1, user-approved
+    260904): TWO more join it, both loud-failure by the same registry
+    criterion -- P7's accessor-anchor shape (the used-/free-volume accessor
+    pair plus the `ast.AugAssign` direction rule, §14.4) and P8's
+    zip-comprehension operand-pairing idiom (§14.4), whose failures
+    AC-14.1/AC-14.2's exact-count assertions on the shipped `aspirate`/
+    `dispense` bridge catch loudly, exactly the way AC-10.1 through
+    AC-10.3 catch P2/P3a's.
+
+    Measured by importing the eight symbols that implement these patterns
+    (five in `derive/receiver_state.py`: P2, P3a, P9, P7, P8; three
+    atom-kind branches inside `check/tipstate.py`'s shared parser, proven
+    live via `TipState`'s two atom-bearing members plus the bool-view
+    branch) -- fails loudly, ImportError/AttributeError, if any is deleted.
     """
     from plr_sema.check.tipstate import TipState, atom_truth
     from plr_sema.derive.receiver_state import (
         _channel_default_idiom,
         _typestate_anchor,
+        _volume_anchor,
         compute_delegate_channel_bindings,
+        operand_pairing_idiom,
     )
 
-    shape_matchers = (_typestate_anchor, _channel_default_idiom, compute_delegate_channel_bindings)  # P2, P3a, P9
+    shape_matchers = (
+        _typestate_anchor,  # P2
+        _channel_default_idiom,  # P3a
+        compute_delegate_channel_bindings,  # P9
+        _volume_anchor,  # P7
+        operand_pairing_idiom,  # P8
+    )
     # atom_truth's three productions: BoolView, NullCheck(is_none=True),
     # NullCheck(is_none=False) -- proven live by actually exercising all
     # three against TipState.HAS_TIP (any concrete, non-Top state suffices
@@ -788,44 +841,66 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
     HandMaintainedSurface(
         id="HM-24",
         what=(
-            "tip-typestate channel-receiver bridge shape (spec §10.2.5, "
-            "260902 tip typestate increment): the pattern "
-            "`self.<attr>[<name>].<method>` matched against every "
-            "SurveyRecord.dropped_calls entry, "
-            "`plr_sema.derive.receiver_state._BRIDGE_SHAPE_RE`. Split out "
-            "of the original single 6-pattern HM-24 per the user's 260902 "
-            "Q7 decision (option B): its failure mode differs materially "
-            "from the other five patterns (HM-25) -- a silent family "
-            "collapse, not a loud exact-count assertion failure."
+            "SILENT-collapse syntactic patterns over how PLR is written, "
+            "grouped by the registry's own silent-vs-loud criterion (see "
+            "`why_not_derived`/`breaks_when` below): (a) the tip-typestate "
+            "channel-receiver bridge shape (spec §10.2.5, 260902 tip "
+            "typestate increment) -- `self.<attr>[<name>].<method>` "
+            "matched against every SurveyRecord.dropped_calls entry, "
+            "`plr_sema.derive.receiver_state._BRIDGE_SHAPE_RE`; (b) the "
+            "volume bridge shape (spec §14.4, 260903 volume increment 5) "
+            "-- `<name>.<field>.<attr>.<method>`, "
+            "`_VOLUME_BRIDGE_SHAPE_RE`; and (c) B1's for-loop-over-a-P8-"
+            "comprehension's-output-list binding (spec §14.0.1), "
+            "`for_over_comprehension_output`. Split out of the original "
+            "single 6-pattern HM-24 per the user's 260902 Q7 decision "
+            "(option B); (b) and (c) added 260903 (round-1 O12, "
+            "user-approved 260904) -- B1 sits here rather than on HM-25 "
+            "because R1 (§14.6) makes its `ast.For` node load-bearing for "
+            "SOUNDNESS, sharpening rather than weakening the silent-"
+            "collapse argument."
         ),
         metric="patterns",
-        declared=1,
+        declared=3,
         status="CAPPED",
         why_not_derived=(
-            "A syntactic pattern over how PLR is WRITTEN (a specific "
-            "attribute-indexing-then-method-call shape), not a fact PLR "
-            "records anywhere about itself -- same argument HM-3 makes for "
+            "Syntactic patterns over how PLR is WRITTEN (a specific "
+            "attribute-indexing-then-method-call shape; a four-segment "
+            "attribute-chain call shape; a for-loop-target-over-a-known-"
+            "comprehension-output-list shape), not facts PLR records "
+            "anywhere about itself -- same argument HM-3 makes for "
             "validator-name prefixes."
         ),
         breaks_when=(
-            "PLR renames `self.head[c]` to a method accessor "
+            "(a) PLR renames `self.head[c]` to a method accessor "
             "(`self.channel(c)`), or otherwise stops writing the channel "
-            "bridge in this subscript-then-attribute-call shape. Fails "
-            "CLOSED: the pattern stops matching, `channel_guards`/"
-            "`channel_effect` go empty for the affected receiver class, "
-            "the tip-requiring/tip-loading families silently empty (only "
-            "AC-10.10's own non-empty assertion catches this), and every "
-            "verdict for that class reverts to UNKNOWN -- it cannot "
-            "produce a wrong verdict, only fewer of them."
+            "bridge in this subscript-then-attribute-call shape: "
+            "`channel_guards`/`channel_effect` go empty for the affected "
+            "receiver class and the tip-requiring/tip-loading families "
+            "silently empty. (b) PLR restructures the volume bridge's "
+            "four-segment chain (e.g. an intermediate helper method "
+            "instead of a bare attribute hop): `volume_guards` goes empty "
+            "for the affected contract entry. (c) PLR rewrites "
+            "`aspirate`/`dispense`'s `for op in aspirations:` as, e.g., a "
+            "TUPLE `for`-target (`for i, op in enumerate(aspirations):`) -- "
+            "B1's own fail-closed clause silently disables the family for "
+            "that binding, exactly the tuple-target case §14.0.1's box "
+            "already treats as fail-closed. Fails CLOSED in all three "
+            "cases: the pattern stops matching, the affected guard set "
+            "goes empty (only AC-10.10's/AC-14.1's own non-empty "
+            "assertions catch this), and every verdict for that class/"
+            "guard reverts to UNKNOWN -- it cannot produce a wrong "
+            "verdict, only fewer of them."
         ),
         measure="plr_sema._hand_maintained:_measure_hm24",
     ),
     HandMaintainedSurface(
         id="HM-25",
         what=(
-            "tip-typestate front-end syntactic patterns (spec "
-            "§10.2.2/§10.2.3/§10.3.1, 260902 tip typestate increment, plus "
-            "§13.5.2, 260903 P9/backlog #4946): the typestate-anchor "
+            "LOUD-failure front-end syntactic patterns (see "
+            "`why_not_derived`/`breaks_when` below): tip-typestate ones "
+            "(spec §10.2.2/§10.2.3/§10.3.1, 260902 tip typestate increment, "
+            "plus §13.5.2, 260903 P9/backlog #4946) -- the typestate-anchor "
             "property shape (`return self.<F> is/is not None`, P2), the "
             "channel-default idiom (`<p> = <p> or self.<x> or "
             "list(range(len(<q>)))`, P3a), the three atom productions "
@@ -835,29 +910,44 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "`self.<delegate>(...)` call site holding an int-constant "
             "display, or a display in the delegate's own P3a parameter, "
             "ordered explicit > arity-default > (check-time) disabler "
-            "poisoning > widen. Split out of the original single "
-            "6-pattern HM-24 per the user's 260902 Q7 decision (option B)."
+            "poisoning > widen -- PLUS, 260903 (spec §14.4, volume "
+            "increment 5, round-1, user-approved 260904), the volume "
+            "family's own two: P7's accessor-anchor shape (a zero-argument "
+            "`return self.<F>` accessor pair, referenced by a raise guard "
+            "in the two-conjunct `volume_state` taxonomy, plus the "
+            "`ast.AugAssign` direction rule on the anchored field) and P8's "
+            "zip-comprehension operand-pairing idiom (an `ast.ListComp`/"
+            "`GeneratorExp` over a `zip(...)`-bound element call). Split "
+            "out of the original single 6-pattern HM-24 per the user's "
+            "260902 Q7 decision (option B); P7/P8 added 260903."
         ),
         metric="patterns",
-        declared=6,
+        declared=8,
         status="CAPPED",
         why_not_derived=(
             "Syntactic patterns over how PLR/its own analyzer is written "
             "(a property-body shape, two argument-default idioms, three "
-            "condition-string grammars), not facts PLR records anywhere "
-            "-- same argument HM-3/HM-24 make."
+            "condition-string grammars, an accessor-pair-plus-AugAssign-"
+            "sign shape, a zip-comprehension shape), not facts PLR records "
+            "anywhere -- same argument HM-3/HM-24 make."
         ),
         breaks_when=(
             "PLR stops writing the `has_tip`-style boolean-view property "
             "in the single-return-Compare shape P2 matches, drops the "
             "`or list(range(len(...)))` idiom P3a matches, a guard "
             "condition stops parsing under one of the three atom "
-            "productions, or PLR stops passing a delegate's channel "
-            "literally at the call site (P9, e.g. `transfer` computes "
-            "`use_channels` into a local first). Fails LOUDLY here (unlike "
-            "HM-24): AC-10.1/AC-10.2/AC-10.3/AC-13.15(iv)'s exact-count/"
-            "gate assertions on the shipped fixtures go red; P9 itself "
-            "fails CLOSED (`bound_channels` reverts to `⊤`), never wrong."
+            "productions, PLR stops passing a delegate's channel literally "
+            "at the call site (P9, e.g. `transfer` computes `use_channels` "
+            "into a local first), the volume accessor pair stops matching "
+            "P7's zero-argument-return shape (or the `AugAssign` sign on "
+            "the anchored field goes ambiguous), or `aspirate`/`dispense` "
+            "stop building their operand lists via a `zip(...)`-bound "
+            "comprehension (P8). Fails LOUDLY here (unlike HM-24): "
+            "AC-10.1/AC-10.2/AC-10.3/AC-13.15(iv)/AC-14.1/AC-14.2's exact-"
+            "count/gate assertions on the shipped fixtures go red; P9/P7/P8 "
+            "themselves fail CLOSED (`bound_channels` reverts to `⊤`; the "
+            "volume family disables for the affected class/method), never "
+            "wrong."
         ),
         measure="plr_sema._hand_maintained:_measure_hm25",
     ),

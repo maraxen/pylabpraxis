@@ -1554,6 +1554,15 @@ class VolumeAnchor:
     used_volume_accessor: str
     free_volume_accessor: str
     anchored_field: str
+    #: 260903 T27 (spec §14.6/§14.8, round-1 defender's `_apply_seed`
+    #: residue): the unique method that unconditionally writes
+    #: `anchored_field` from a bare parameter at statement position --
+    #: `None` when zero or more than one candidate exists (fail-closed,
+    #: same discipline as the accessor pair above). Published so
+    #: `check/volumestate.py`'s seed recognition can read "is this call the
+    #: class's own setter" off the derived table instead of hard-typing
+    #: `"VolumeTracker"`/`"set_volume"`.
+    setter: str | None
 
 
 def _init_written_fields(class_node: ast.ClassDef) -> frozenset[str]:
@@ -1681,11 +1690,63 @@ def _volume_anchor(class_node: ast.ClassDef, volume_state_exceptions: frozenset[
     if len(other) != 1:
         return None
     free_volume_accessor = next(iter(other))
+    setter = _volume_setter(class_node, anchored_field)
     return VolumeAnchor(
         used_volume_accessor=used_volume_accessor,
         free_volume_accessor=free_volume_accessor,
         anchored_field=anchored_field,
+        setter=setter,
     )
+
+
+def _volume_setter(class_node: ast.ClassDef, anchored_field: str) -> str | None:
+    """260903 T27 (spec §14.8, round-1 defender's `_apply_seed` residue):
+    the unique method of `class_node`, over exactly one non-`self`
+    parameter `<p>`, whose body contains -- as a DIRECT (depth-0, i.e.
+    unconditional: not nested inside any `If`/`For`/`While`/`Try`)
+    statement -- an `ast.Assign` whose sole target is `self.<anchored_field>`
+    and whose value is the bare `ast.Name(<p>)`. Two or more `Assign`
+    targets on one statement (`self.a = self.b = p`) do not qualify --
+    "sole target" is part of the shape, not a simplification.
+
+    **Measured expectation:** `VolumeTracker.set_volume` (`volume_tracker
+    .py:66-72`) -- `def set_volume(self, volume): self.volume = volume;
+    self.pending_volume = volume; ...` -- has exactly one parameter
+    (`volume`) and a depth-0 `self.pending_volume = volume` (the anchored
+    field is `pending_volume`, §14.4's measured expectation). No other
+    method of `VolumeTracker` has both a single parameter and a depth-0
+    assignment of `pending_volume` from it: `remove_liquid`/`add_liquid`
+    write it via `ast.AugAssign` (`-=`/`+=`, not `Assign`, and not from a
+    bare copy of their own parameter), `__init__` takes three parameters,
+    and `set_liquids` never assigns `pending_volume` directly at all (it
+    delegates to `set_volume`). Fail-closed: zero or >=2 candidates return
+    `None`, same discipline as the accessor pair above.
+    """
+    candidates: set[str] = set()
+    for member in ast.iter_child_nodes(class_node):
+        if not isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        args = member.args
+        if args.vararg or args.kwarg or args.kwonlyargs or args.posonlyargs:
+            continue
+        params = [a.arg for a in args.args if a.arg != "self"]
+        if len(params) != 1:
+            continue
+        (param,) = params
+        body = [s for s in member.body if not _is_docstring_stmt(s)]
+        writes_from_param = any(
+            isinstance(stmt, ast.Assign)
+            and len(stmt.targets) == 1
+            and _is_self_attr(stmt.targets[0], anchored_field)
+            and isinstance(stmt.value, ast.Name)
+            and stmt.value.id == param
+            for stmt in body
+        )
+        if writes_from_param:
+            candidates.add(member.name)
+    if len(candidates) != 1:
+        return None
+    return next(iter(candidates))
 
 
 def compute_volume_anchors(
@@ -1695,8 +1756,8 @@ def compute_volume_anchors(
     VolumeAnchor}` for every class that is not fail-closed. Measured at the
     pin: `{"VolumeTracker": VolumeAnchor(used_volume_accessor=
     "get_used_volume", free_volume_accessor="get_free_volume",
-    anchored_field="pending_volume")}` -- published by the T24 fixer, not
-    assumed here.
+    anchored_field="pending_volume", setter="set_volume")}` -- published by
+    the T24/T27 fixers, not assumed here.
     """
     out: dict[str, VolumeAnchor] = {}
     for name, node in class_nodes.items():

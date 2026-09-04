@@ -92,14 +92,14 @@
     "praxis": {
       "branch": "coxswain-p2-pipeline",
       "dirty": true,
-      "dirty_content_id": "5fd4e359c104ee0f07aa0b2517b9e9e2b7aa53bcabfc515c00704702699d78ac",
-      "hash": "2e50e613364fa91483bfc740c7ac3cfec02ac106",
+      "dirty_content_id": "e93da113160a7cd67dd447cb62ed31a326791514155ec098d4f09db571e1d79e",
+      "hash": "92776b8e1f5f962b63d06f746a12bbb89bcf679c",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-04T05:40:45.828669+00:00",
+    "stamped_at": "2026-09-04T14:03:32.240106+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   },

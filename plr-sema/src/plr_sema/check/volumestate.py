@@ -39,33 +39,48 @@ hand_typed_volume_names_ast_scan` enforces this for this file specifically,
 same mechanism as `plr_sema.check.ir`'s AC-11.8 scan and `check.tipstate`'s
 AC-10.9 scan.
 
-**The seed CALL (§14.8) is a second disclosed exception, of a different
-kind -- it hand-types a WIRE CONVENTION, not a PLR fact.** §14.8's
-normative box specifies the seed's wire shape VERBATIM:
-`{"receiver": ..., "receiver_type": "VolumeTracker", "method": "set_volume",
-"kwargs": {"volume": <Lit>}}`. Nothing in the derived contract table marks
-`VolumeTracker.set_volume` as "the setter" (P7's own accessor pass, which
-selects it, publishes no such marker for `check/` to read -- §14.8's own
-words, "not named in our source", describe the DERIVE-time selection, not
-a `check/`-readable fact). Recognising this exact receiver_type/method
-pair is therefore the same status as the IR's own `"op"`/opcode-tag
-vocabulary -- which AC-14.2(iii)'s narrowed re-check excludes for the
-identical reason (wire/IR vocabulary, not hand-typed PLR knowledge) -- not
-a guess about which PLR method sets a tracker's volume.
+**The seed CALL (§14.8)'s wire shape is still hand-typed; the receiver/
+method PAIR is not (260903 T27).** §14.8's normative box specifies the
+seed's wire shape VERBATIM: `{"receiver": ..., "receiver_type":
+"VolumeTracker", "method": "set_volume", "kwargs": {"volume": <Lit>}}`.
+That shape -- and the `"volume"` kwarg name -- is a WIRE CONVENTION this
+module still writes down (same status as the IR's own opcode-tag
+vocabulary, which AC-14.2(iii)'s narrowed re-check excludes for the
+identical reason). What T24 hand-typed IN ADDITION -- `call.receiver_type
+!= "VolumeTracker" or call.method != "set_volume"` as a literal pair in
+`_apply_seed` -- is a PLR fact ("which class, which method sets a
+tracker's volume"), and that residue is gone: P7 (`derive.receiver_state
+._volume_setter`) now publishes an additive `"is_volume_setter": true` key
+on the SETTER METHOD'S OWN contract entry (`derive.__main__
+.build_derived_contracts_payload`, deliberately NOT under the shared
+`receiver_state` block `tipstate.evaluate_call` also reads and indexes
+unconditionally -- see `_apply_seed`'s own docstring for why that would
+have raised `KeyError`), and `_apply_seed` reads `contract.get(
+"is_volume_setter")` off the SAME `contract` dict `evaluate_call` already
+receives -- no `"VolumeTracker"`/`"set_volume"` literal anywhere in this
+file (AC-14.2(iii)'s forbidden list is extended with both strings by
+`test_derive.py` so the residue cannot return unnoticed).
 
-**V5's third bullet -- "unmodelled tip movement" -- is a disclosed,
-best-effort exception to the no-hand-typed-fact rule.** §14.5's V5 names
-three PLR method shapes (`move_resource`/`move_plate` over a tip rack, a
-`stamp`, any 96-head operation) that move a mounted tip without giving the
-tip family a modelled effect at all -- there is no derived contract field
-that flags "this method moves a tip" (unlike `channel_effect`, which *is*
-derived and drives the first two V5 bullets below). None of these method
-names is on AC-14.2(iii)'s forbidden-literal list, and the spec names them
-directly, so this module hand-types a small closed set
-(`_UNMODELLED_TIP_MOVEMENT_METHODS`) plus a `"96"`-suffix heuristic for the
-96-head family, rather than leaving the third bullet unimplemented. No
-shipped fixture exercises this branch; it is included because the spec
-requires it, disclosed here so a reviewer can find it without a diff.
+**V5's third bullet -- "unmodelled tip movement" -- is derived, not
+hand-typed (260903 T27).** §14.5's V5 names three PLR method shapes
+(`move_resource`/`move_plate` over a tip rack, a `stamp`, any 96-head
+operation) that move a mounted tip without giving the tip family a
+modelled effect at all -- there is no derived contract field that flags
+"this method moves a tip" the way `channel_effect` flags the first two V5
+bullets, and `derive.receiver_state.compute_tip_families` classifies a
+method off a tip-state `raise_guard`/`channel_effect`, neither of which
+these three methods have (that absence IS why they are "unmodelled"). With
+no published classification to fall back to, and no resource-TYPE operand
+reachable from a `CALL`'s own kwargs at this IR version (`ir.Ref` carries
+only `slot`/`cell`, §11.1.2 -- the tip-rack-type branch never applies), the
+fail-closed fallback is structural: any call the VOLUME family has not
+already modelled itself (`contract.get("volume_guards")` empty -- this is
+what keeps `aspirate`/`dispense` out, since despite having no
+`channel_effect` either they ARE modelled, and neither moves a mounted
+tip) that references `>=1` resource in its own kwargs sets `tips_dirty`.
+No shipped fixture exercises this branch; it is included because the spec
+requires it, and its structure -- not a name list -- is disclosed here so
+a reviewer can find it without a diff.
 """
 
 from __future__ import annotations
@@ -458,15 +473,54 @@ def _evaluate_guard(
 # §14.5 V5 -- the tip-cell lifecycle.
 # ---------------------------------------------------------------------------
 
-#: See the module docstring's disclosed-exception note: these three method
-#: shapes (plus the "96"-suffix heuristic below) are not on
-#: AC-14.2(iii)'s forbidden list and are named directly by §14.5's V5
-#: third bullet, which has no derived contract field to read instead.
-_UNMODELLED_TIP_MOVEMENT_METHODS = frozenset({"move_resource", "move_plate", "stamp"})
+def _mentions_a_resource(value: ir.Value | None) -> bool:
+    """True iff `value` resolves `>=1` `ir.Ref` -- a bare `Ref`, or a `Seq`
+    containing one at any position (a partially-resolved list still names
+    a resource where it has a `Ref` element). `ir.Top`/a non-resource `Lit`
+    are both `False`.
+    """
+    if isinstance(value, ir.Ref):
+        return True
+    if isinstance(value, ir.Seq):
+        return any(_mentions_a_resource(item) for item in value.items)
+    return False
 
 
-def _is_unmodelled_tip_movement(method: str) -> bool:
-    return method in _UNMODELLED_TIP_MOVEMENT_METHODS or method.endswith("96")
+def _is_unmodelled_tip_movement(call: ir.Call, contract: dict[str, Any]) -> bool:
+    """260903 T27 (spec §14.5 V5's third bullet, round-1 defender's
+    `_UNMODELLED_TIP_MOVEMENT_METHODS` residue): un-hand-typed by falling
+    back through the tip family's OWN classification, in the order the
+    task names.
+
+    1. Nothing published covers `move_resource`/`move_plate`/`stamp` at
+       all: `derive.receiver_state.compute_tip_families` only classifies a
+       method as `tip_loading`/`tip_requiring`/`tip_dropping` off a
+       tip-state `raise_guard` or a `channel_effect` -- and having NEITHER
+       is exactly why this call reached this branch (`_apply_v5` only
+       calls this helper when `contract.get("channel_effect") is None`).
+       There is therefore no published tip-family fact this function could
+       read instead for these three methods specifically.
+    2. The tip-rack-resource-type fallback the spec's normative box also
+       licenses never applies at this IR version: a `CALL.kwargs` value is
+       an `ir.Ref`/`ir.Seq`/`ir.Lit`/`ir.Top` (§11.1.2) -- a `Ref` carries
+       only `slot`/`cell`, never a resource TYPE, and nothing threads the
+       bytecode's own `RESOURCE` type declarations into this per-call
+       evaluation. So "the graph carries that type" is false here by
+       construction, not by omission.
+    3. The remaining, most-conservative fallback: any call the VOLUME
+       family has not already modelled itself (`contract.get(
+       "volume_guards")` empty -- this is what keeps `aspirate`/`dispense`
+       OUT of this branch despite having no `channel_effect` either: they
+       ARE modelled, by the volume bridge, and neither one moves a mounted
+       tip, which is exactly why AC-14.5(e)'s retip fixture needs
+       `tips_dirty` to stay false across an aspirate/dispense pair) that
+       references `>=1` resource in its own kwargs sets `tips_dirty` --
+       fail-closed, same "assume dirty" direction as the channels-`None`
+       branch just above this one in `_apply_v5`.
+    """
+    if contract.get("volume_guards"):
+        return False
+    return any(_mentions_a_resource(v) for v in call.kwargs.values())
 
 
 def _apply_v5(
@@ -489,7 +543,7 @@ def _apply_v5(
     """
     effect = contract.get("channel_effect")
     if effect is None:
-        if _is_unmodelled_tip_movement(call.method):
+        if _is_unmodelled_tip_movement(call, contract):
             walk.tips_dirty = True
         return
     channels = None if poisoned else tipstate.channels_for_call(call, channel_default_param, channel_kwarg)
@@ -507,14 +561,25 @@ def _apply_v5(
         walk.drop(("tip", c))
 
 
-def _apply_seed(call: ir.Call, walk: VolumeWalk) -> None:
+def _apply_seed(call: ir.Call, walk: VolumeWalk, contract: dict[str, Any]) -> None:
     """§14.8's seeding convention (see the module docstring's disclosed-
-    exception note): a `VolumeTracker.set_volume` CALL sets the addressed
-    CONTAINER cell's interval to the exact literal, `[v, v]` -- seeding is
-    the one place a volume arrives as GROUND TRUTH, not as an over-
+    exception note): a CALL sets the addressed CONTAINER cell's interval to
+    the exact literal, `[v, v]`, iff `contract.get("is_volume_setter")` is
+    true -- an additive key `derive.__main__.build_derived_contracts_payload`
+    publishes on THIS CALL's own contract entry (the SAME `contract` dict
+    `evaluate_call` already receives) iff `call.receiver_type` is P7's
+    anchored class AND `call.method` equals that class's published
+    `setter`. No `"VolumeTracker"`/`"set_volume"` literal (260903 T27,
+    round-1 defender's `_apply_seed` residue) -- deliberately NOT read off
+    `receiver_state` (the `receiver_states.get(call.receiver_type)` lookup
+    `check/__init__.py` also hands to `tipstate.evaluate_call`, which
+    indexes `receiver_state["channel_attr"]` unconditionally whenever it is
+    non-`None`; a `{"setter": ...}`-only block keyed under the SAME shared
+    dict would reach that indexing and raise `KeyError`) -- seeding is the
+    one place a volume arrives as GROUND TRUTH, not as an over-
     approximation built from a guard's transfer function.
     """
-    if call.receiver_type != "VolumeTracker" or call.method != "set_volume":
+    if not contract.get("is_volume_setter"):
         return
     value = call.kwargs.get("volume")
     if isinstance(value, ir.Lit) and isinstance(value.v, (int, float)) and not isinstance(value.v, bool):
@@ -552,7 +617,7 @@ def evaluate_call(
         )
 
     _apply_v5(call, contract, walk, channel_default_param, channel_kwarg, poisoned=poisoned)
-    _apply_seed(call, walk)
+    _apply_seed(call, walk, contract)
 
     return tuple(findings)
 

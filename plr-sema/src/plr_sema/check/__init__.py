@@ -831,14 +831,18 @@ def check_graph(
     receiver_states = contracts_payload.get("receiver_state", {})
     stamp = _stamp_from_dict(contracts_payload["stamp"])
     bc_hash = ir.bytecode_hash(bytecode)
-    # 260903 (spec §14.13 T26 scope note): `env` is deliberately NOT
-    # threaded into this `cache_key` call yet, even though `cache_key`
-    # itself already accepts an `env` parameter (#4922, §11.3.3's fifth
-    # component) -- doing so, and making a cache entry vary by hypothesis,
-    # is T27's job (§14.6's normative box). Until then a cache HIT here can
-    # return findings computed under a DIFFERENT `env` than this call's own
-    # -- a known, disclosed gap, not an oversight; see T26's task report.
-    key = ir.cache_key(bc_hash, contracts_json, stamp)
+    # 260903 (spec §14.6/§14.13 T27, backlog #4959): `env` is now threaded
+    # into `cache_key` -- a cache entry is keyed by the HYPOTHESIS it was
+    # computed under (`cache_key`'s fifth component, #4922's §11.3.3), not
+    # just by bytecode/contracts/surface_identity/ir_version. A hit under
+    # one `env` is therefore never served under another (AC-14.7's cache
+    # clause): the default `env=frozenset()` reproduces every pre-T27 key
+    # byte-for-byte (`tuple(sorted(frozenset()))  == ()`, unchanged from
+    # #4922's own default), so no existing cache entry is invalidated by
+    # this change -- it only PARTITIONS future entries that pass a
+    # non-empty `env`, exactly as `ir.cache_key`'s own docstring and
+    # §14.14 item 6 already describe.
+    key = ir.cache_key(bc_hash, contracts_json, stamp, env=env)
 
     raw_findings = cache.get(key)
     if raw_findings is None:

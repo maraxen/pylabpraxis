@@ -1451,8 +1451,9 @@ def test_ac_14_1_iii_volume_passes_do_not_disturb_receiver_state(
     keyword arguments produces a byte-identical `receiver_state` block, and
     every contract entry's `guards`/`gaps`/`params`/`channel_guards`/
     `channel_effect` keys are unaffected too (only the additive
-    `volume_guards` key differs). `LiquidHandler`'s own `channel_attr`/
-    `tracker_class` stay `"head"`/`"TipTracker"`.
+    `volume_guards` key, and 260903 T27's additive `is_volume_setter` key on
+    the setter method's own entry, differ). `LiquidHandler`'s own
+    `channel_attr`/`tracker_class` stay `"head"`/`"TipTracker"`.
     """
     class_nodes, class_modules = volume_class_index
     receiver_states = derive_receiver_states(None, survey_records, volume_taxonomy_classes)
@@ -1477,9 +1478,11 @@ def test_ac_14_1_iii_volume_passes_do_not_disturb_receiver_state(
     assert with_volume["receiver_state"]["LiquidHandler"]["tracker_class"] == "TipTracker"
 
     for key, entry in with_volume["contracts"].items():
-        without_volume_guards = {k: v for k, v in entry.items() if k != "volume_guards"}
+        without_volume_guards = {
+            k: v for k, v in entry.items() if k not in ("volume_guards", "is_volume_setter")
+        }
         assert without_volume_guards == without_volume["contracts"][key], (
-            f"{key}: a non-volume_guards key changed when volume-bridge args were passed"
+            f"{key}: a non-volume_guards/is_volume_setter key changed when volume-bridge args were passed"
         )
 
 
@@ -1625,6 +1628,13 @@ _VOLUME_FORBIDDEN_LITERALS = frozenset(
         "TooLittleVolumeError",
         "resources",
         "vols",
+        # 260903 T27 (spec §14.8, backlog #4959): the `_apply_seed` residue
+        # -- the receiver_type/method PAIR that used to be typed as a
+        # literal string in `check/volumestate.py`, before P7's published
+        # `setter` field replaced it (AC-14.8's item 5). Extended here so
+        # the residue cannot return unnoticed.
+        "VolumeTracker",
+        "set_volume",
     }
 )
 #: AC-14.2(iv)'s narrowed re-check: the three names the draft's whole-`src/`
@@ -1669,7 +1679,7 @@ def test_ac_14_2_iii_iv_no_hand_typed_volume_names_ast_scan() -> None:
     """AC-14.2(iii): an AST literal scan (not grep, so docstrings are
     excluded -- same mechanism as `test_ac_10_9_no_hand_typed_plr_names_ast_
     scan`) of `plr_sema/derive/receiver_state.py` and the not-yet-existing
-    `plr_sema/check/volumestate.py` finds none of the nine forbidden names
+    `plr_sema/check/volumestate.py` finds none of the eleven forbidden names
     as a real `ast.Constant` string. AC-14.2(iv): the narrowed three-name
     re-check over the SAME two-file scope still forbids all three -- the
     gate keeps its content, it is not vacuous just because it tolerates a

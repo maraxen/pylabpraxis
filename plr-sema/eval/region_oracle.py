@@ -353,12 +353,13 @@ def _verdict_at(static: StaticVerdicts, join_fn, op_id: str, iteration: int):
 
 def _static_report(
     payload: dict[str, Any], contracts_payload: dict[str, Any], param_names, ir_mod, check_mod,
+    *, env: frozenset[str] = frozenset(),
 ):
     injected = _inject_setup_op(payload)
     bytecode = ir_mod.lower_graph(injected, param_names=param_names)
     contracts = contracts_payload.get("contracts", {})
     receiver_states = contracts_payload.get("receiver_state", {})
-    raw_findings = check_mod.check_ir(bytecode, contracts, receiver_states)
+    raw_findings = check_mod.check_ir(bytecode, contracts, receiver_states, env=env)
     findings = ir_mod.relabel_findings(raw_findings, bytecode.sideband.get("origin", {}))
     join_map = _build_join_map(bytecode, ir_mod)
     static = _group_static_findings(findings)
@@ -397,22 +398,41 @@ def _load_fixture_module(path: Path):
 
 async def _run_fixture_execution(
     protocol_fn, layout_dict: dict[str, Any], supported_tools,
-) -> tuple[list[VisitRecord], str | None]:
+) -> tuple[list[VisitRecord], str | None, bool]:
+    """Returns ``(records, raised, volume_tracking_observed)``. 260903
+    (spec §14.6, volume increment 5, round-1 O5, T27, backlog #4959): the
+    third element is the `does_volume_tracking()` hypothesis, observed from
+    INSIDE the window `set_volume_tracking(True)` opens below -- never from
+    outside it, which is what a later process-wide observation would have
+    raced (the very non-determinism O5 found: the OLD `finally` below
+    restored strictness only, so the tracking flags leaked and a
+    process-wide read after the first fixture returned `True` regardless of
+    which env this fixture's OWN static side should get). The `finally` now
+    restores the tracking flags it sets, closing that leak.
+    """
     from pylabrobot.liquid_handling.strictness import Strictness, get_strictness, set_strictness
     from pylabrobot.resources import set_tip_tracking, set_volume_tracking
+    from pylabrobot.resources.tip_tracker import does_tip_tracking
+    from pylabrobot.resources.volume_tracker import does_volume_tracking
     from verify.deck import DeckLayout, build_setup
 
     layout = DeckLayout(**layout_dict) if layout_dict else DeckLayout()
     setup = build_setup("LiquidHandlerChatterboxBackend", layout)
 
     old_strictness = get_strictness()
+    old_volume_tracking = does_volume_tracking()
+    old_tip_tracking = does_tip_tracking()
     recorder = RegionRecorder(setup.machine, supported_tools)
     raised: str | None = None
+    volume_tracking_observed = False
     buf = io.StringIO()
     try:
         set_strictness(Strictness.STRICT)
         set_volume_tracking(True)
         set_tip_tracking(True)
+        # Observed HERE, inside the window this try just opened -- see the
+        # docstring above.
+        volume_tracking_observed = does_volume_tracking()
         with contextlib.redirect_stdout(buf):
             await setup.machine.setup()
             recorder.install()
@@ -435,8 +455,10 @@ async def _run_fixture_execution(
                     await setup.machine.stop()
     finally:
         set_strictness(old_strictness)
+        set_volume_tracking(old_volume_tracking)
+        set_tip_tracking(old_tip_tracking)
 
-    return recorder.records, raised
+    return recorder.records, raised, volume_tracking_observed
 
 
 # ---------------------------------------------------------------------------
@@ -512,7 +534,7 @@ def run_fixture(
     protocol_fn = module.protocol
 
     try:
-        records, raised = asyncio.run(
+        records, raised, volume_tracking_observed = asyncio.run(
             _run_fixture_execution(protocol_fn, layout_dict, supported_tools)
         )
     except Exception as e:  # pragma: no cover - defensive, a harness-level failure
@@ -523,9 +545,16 @@ def run_fixture(
     except Exception as e:
         return FixtureOutcome(name, shape, "harness_error", detail=f"extract:{e}")
 
+    # 260903 (spec §14.6/§14.11, volume increment 5, T27): `env`, built from
+    # the executed side's OWN in-window observation above -- the NAME comes
+    # from the callable's `__name__`, never a typed string.
+    from pylabrobot.resources.volume_tracker import does_volume_tracking
+
+    env = frozenset({does_volume_tracking.__name__}) if volume_tracking_observed else frozenset()
+
     try:
         bytecode, findings, join_map, static, proved_trips = _static_report(
-            payload, contracts_payload, param_names, ir_mod, check_mod,
+            payload, contracts_payload, param_names, ir_mod, check_mod, env=env,
         )
     except DuplicateCallSiteError as e:
         return FixtureOutcome(name, shape, "harness_error", detail=f"duplicate_call_site:{e}")
