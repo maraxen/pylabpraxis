@@ -104,3 +104,28 @@ manifest `training/out/p26d/A/train_manifest.json`; reports `training/eval/repor
 `260903_p26d_probe_A4.json`, `260903_p26d_near_{A3,A4}.json` with generation dumps under
 `training/eval/outputs/`; checkpoint uncommitted at `outputs/p26d/A/checkpoint` (sha256 in the
 manifest). bathos run tagged `arm:A4`, reproduces `1387da1c-3b4c-4204-be9c-c23b7044ec69`.
+
+### 5.1 Pre-submission record (260903, after generation + assembly, BEFORE training)
+
+Matrix v3 (`d413cada`), rows (`2cef646f`: 120/120 accepted, 805 floor rows, 685 record ids
+unchanged), assembly 0.1.6 (`fc52d75d`: 1523 rows, eval 228 = pin, train 1295, natural probe
+122, near-surface probe 24, cross-split duplicates 41, exclusions 12). Trainer `--dry-run`
+(arm A, seed 0, recipe 0.1.0): train rows 1295, dedup dropped 95 (four of the 120 new rows
+collapse on normalized utterance), selected 1200 (clean 382 / missing-slot 265 /
+ambiguous-referent 216 / out-of-surface 337), negative fraction 0.682; expected ≈ 600
+optimizer steps (A3: 560).
+
+**Local CPU pre-check on the 24-row near-surface probe** (baseline_eval CLI, cpu, the
+committed checkpoints; reports `training/eval/reports/260903_p26d_near_{A3,A2}_local.json`,
+dumps under `training/eval/outputs/`):
+
+| checkpoint | abstain exact | tripwire (rows with a call) | misses by cell |
+|---|---|---|---|
+| A3 (control) | 12/24 = 0.500 | 12 | tip_inventory 3, deck_display 4, sample_value_query 2, consumables 1, scheduling 1, run_status 1 |
+| A2 | 12/24 = 0.500 | 12 | identical cell profile |
+
+The control is far from the 0.90 ceiling, so **P4 is live** (needs A4 ≥ 0.60). The misses have
+the golden tripwire shape: "how many tips are left" → `pick_up_tips` / `drop_tips` /
+`discard_tips`; "show me the deck" → `move_resource{resource: the deck layout}` /
+`pick_up_tips{}`; "what is the absorbance of well C4" → `read_absorbance{at:[C4]}`. This is the
+first probe on which the existing checkpoints are NOT at ceiling (lesson 485 applied).
