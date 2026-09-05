@@ -68,6 +68,7 @@ import collections
 import dataclasses
 import json
 import logging
+import time
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "eval"))
@@ -189,6 +190,14 @@ class RowResult:
     #: bucket -- the rewrite can happen before a LATER precondition-plan
     #: skip.
     normalized_refs: list[str] = dataclasses.field(default_factory=list)
+    #: #4982 D1 (increment 4 §13.12.1's criterion (a) for #4923): elapsed
+    #: seconds for the static-check path only (``run_static_calls``), and
+    #: separately for the runtime simulator path (``run_runtime``). Zero on
+    #: rows that never reach the corresponding call (no_call/skip/parse
+    #: error/setup error). Additive fields -- no other RowResult field's
+    #: meaning changes.
+    check_elapsed_s: float = 0.0
+    runtime_elapsed_s: float = 0.0
 
 
 def run_row(
@@ -314,6 +323,7 @@ def run_row(
     }
 
     # Runtime
+    _rt_start = time.perf_counter()
     try:
         rt = run_runtime(example)
     except Exception as e:
@@ -325,6 +335,7 @@ def run_row(
             planned_indices=[],
             passed=False,
         )
+    runtime_elapsed_s = time.perf_counter() - _rt_start
 
     # Map runtime outcome to string
     if rt.error is None:
@@ -342,6 +353,8 @@ def run_row(
     n_findings = 0
     tool_params_dict = {}
     not_planned_indices: list[int] = []
+    check_elapsed_s = 0.0
+    _check_start = time.perf_counter()
     try:
         param_names = param_names_from_contracts(contracts_json)
         st, not_planned_indices = run_static_calls(example, rt.plr_kwargs, contracts_json, param_names=param_names)
@@ -356,6 +369,8 @@ def run_row(
         log.warning("Static analysis failed for %s: %s", record_id, e)
         check_graph_raised = True
         check_graph_exception = f"{type(e).__name__}: {e}"
+    finally:
+        check_elapsed_s = time.perf_counter() - _check_start
 
     # Compare (only if both runtime and static succeeded)
     compare_rows = []
@@ -395,10 +410,13 @@ def run_row(
         tool_params=tool_params_dict,
         not_planned_indices=not_planned_indices,
         normalized_refs=intent_record.get("normalized_refs", []),
+        check_elapsed_s=check_elapsed_s,
+        runtime_elapsed_s=runtime_elapsed_s,
     )
 
 
 def main(argv: list[str] | None = None) -> int:
+    _wall_start = time.perf_counter()
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--corpus", type=str, action="append", required=True,
                     help="corpus JSONL file (repeatable)")
@@ -750,6 +768,20 @@ def main(argv: list[str] | None = None) -> int:
         crosscheck_result["agree"] / cc_joined if cc_joined > 0 else 0.0
     )
 
+    # #4982 D1 (increment 4 §13.12.1's criterion (a) for #4923): timing.
+    # check_only_elapsed_s sums RowResult.check_elapsed_s over ALL rows in
+    # `results` -- only rows that reached the static-check branch of
+    # run_row (no_call_reason and skip_reason both None, i.e. the union of
+    # analyzable_results and setup_error_results) carry a nonzero value, so
+    # this is exactly the check-only cost actually spent, whether or not
+    # the row was later excluded from the analyzable aggregates above.
+    # runtime_elapsed_s is the same sum for the simulator path.
+    # wall_elapsed_s is main()'s own elapsed time (arg parsing through the
+    # point the report is assembled, i.e. everything except writing it).
+    check_only_elapsed_s = sum(r.check_elapsed_s for r in results)
+    runtime_elapsed_s_total = sum(r.runtime_elapsed_s for r in results)
+    wall_elapsed_s = time.perf_counter() - _wall_start
+
     # Flat summary for bathos/BTH_RESULTS_PATH (key names match the
     # validated sidecar's result_schema; do not rename rows_total/
     # operations_executed -- oracle_replay.bth.toml's summary_flat mapping
@@ -771,11 +803,15 @@ def main(argv: list[str] | None = None) -> int:
         "crosscheck_joined_exact": crosscheck_result["joined_exact"],
         "crosscheck_joined_content_fallback": crosscheck_result["joined_content_fallback"],
         "crosscheck_agreement": cc_agreement_rate,
+        "check_only_elapsed_s": check_only_elapsed_s,
     }
 
     # Build report
     report = {
         "summary_flat": summary_flat,
+        "check_only_elapsed_s": check_only_elapsed_s,
+        "runtime_elapsed_s": runtime_elapsed_s_total,
+        "wall_elapsed_s": wall_elapsed_s,
         "denominators": {
             "rows_total": n_rows_total,
             "rows_no_call": n_rows_no_call,
@@ -853,7 +889,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Log summary
     log.info(
-        "summary: rows_total=%d no_call=%d parse_error=%d normalised=%d skipped=%d setup_error=%d executed=%d ops=%d unsound=%d check_graph_exc=%d totality_vio=%d unknown_rate=%.3f crosscheck_joined=%d (exact=%d fallback=%d) agree=%.3f",
+        "summary: rows_total=%d no_call=%d parse_error=%d normalised=%d skipped=%d setup_error=%d executed=%d ops=%d unsound=%d check_graph_exc=%d totality_vio=%d unknown_rate=%.3f crosscheck_joined=%d (exact=%d fallback=%d) agree=%.3f check_only_elapsed_s=%.3f runtime_elapsed_s=%.3f wall_elapsed_s=%.3f",
         n_rows_total,
         n_rows_no_call,
         n_rows_parse_error,
@@ -870,6 +906,9 @@ def main(argv: list[str] | None = None) -> int:
         crosscheck_result["joined_exact"],
         crosscheck_result["joined_content_fallback"],
         cc_agreement_rate,
+        check_only_elapsed_s,
+        runtime_elapsed_s_total,
+        wall_elapsed_s,
     )
 
     return 1 if n_unsound > 0 or n_check_graph_exceptions > 0 else 0

@@ -36,3 +36,9 @@ crosscheck_agreement = "float"
 # planned are now bucketed separately (rows_setup_error, oracle_replay.py's
 # summary_flat) rather than folded into totality/unsound/unknown_rate.
 rows_setup_error = "int"
+# #4982 D1 (increment 4 §13.12.1's criterion (a) for #4923): check-only
+# elapsed seconds (run_static_calls only, excludes the runtime simulator
+# and the extractor subprocess), summed over every row that reached the
+# static-check branch of run_row. Compared against the ~60s whole-corpus
+# threshold §13.12.1 names as the incremental-re-check go/no-go criterion.
+check_only_elapsed_s = "float"
