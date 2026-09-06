@@ -45,9 +45,16 @@ from plr_sema.derive import (
     scan_dropped_receiver_calls_in_source,
 )
 from plr_sema.derive.__main__ import build_derived_contracts_payload, _guard_to_json
+from plr_sema.derive.bindings import (
+    compute_all_local_bindings,
+    compute_local_bindings_for_guard,
+    free_var_names,
+    param_defaults_from_function,
+)
 from plr_sema.derive.predicate_ast import Opaque, TRUE, parse as parse_predicate
 from plr_sema.derive.receiver_state import (
     build_plr_class_index,
+    build_plr_function_index,
     compute_delegate_channel_bindings,
     compute_volume_anchors,
     compute_volume_bridge,
@@ -79,6 +86,15 @@ def survey_records() -> list[SurveyRecord]:
 @pytest.fixture(scope="module")
 def survey_index(survey_records: list[SurveyRecord]) -> dict[tuple[str, str], SurveyRecord]:
     return build_index(survey_records)
+
+
+@pytest.fixture(scope="module")
+def plr_function_index():
+    """260904 (T30b): the real whole-tree `(module, qualname, lineno) -> AST
+    node` index, module-scoped -- built once per test-module run rather
+    than once per test (`build_plr_function_index` walks all 4770-plus
+    functions across the whole vendored PLR tree)."""
+    return build_plr_function_index(default_plr_pkg_root())
 
 
 # ---------------------------------------------------------------------------
@@ -2134,3 +2150,418 @@ def test_guard_predicate_unparsed_reason_tolerates_a_record_missing_predicate() 
     finding_without = _finding_from_guard("op-1", without_predicate)
 
     assert finding_with == finding_without
+
+
+# ---------------------------------------------------------------------------
+# T30b (spec 260904 §15.3/§15.4 D1, T30b, increment 6): param_defaults and
+# the alpha/beta local-binding idioms.
+# ---------------------------------------------------------------------------
+
+
+def _func_node(source: str) -> ast.FunctionDef:
+    """Parse ONE synthetic function/method definition and return its own
+    AST node -- the same shape `build_plr_function_index` would hand
+    `compute_local_bindings_for_guard`/`param_defaults_from_function`, but
+    without touching the filesystem (mirrors
+    `scan_dropped_receiver_calls_in_source`'s own convention above)."""
+    tree = ast.parse(source)
+    (node,) = tree.body
+    assert isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    return node
+
+
+# ---- param_defaults (D1) --------------------------------------------------
+
+
+def test_param_defaults_restricted_to_constants() -> None:
+    node = _func_node(
+        "def f(self, a, b=None, c=3, d='x', e=1.5, f=True, g=[], h=SOME_CALL(), i=OTHER, *, j=None, k=NAME_DEFAULT):\n"
+        "    pass\n"
+    )
+    defaults = param_defaults_from_function(node)
+    assert defaults == {"b": None, "c": 3, "d": "x", "e": 1.5, "f": True, "j": None}
+    # g/h/i/k are non-Constant (list display, call, bare name) -- OMITTED,
+    # never guessed (fail-closed), and `a`/`self` have no default at all.
+    assert "g" not in defaults and "h" not in defaults and "i" not in defaults and "k" not in defaults
+    assert "a" not in defaults and "self" not in defaults
+
+
+def test_param_defaults_real_transfer_and_pick_up_tips(plr_function_index) -> None:
+    """Task brief's own named assertion: `LiquidHandler.transfer` gets
+    `target_vols`/`ratios`/`source_vol` -> `None`, and `pick_up_tips` gets
+    `offsets`/`use_channels` -> `None` -- read from the REAL vendored PLR
+    source at the pinned submodule commit."""
+    key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.transfer")
+    lineno = next(ln for (mod, qn, ln) in plr_function_index if (mod, qn) == key)
+    node = plr_function_index[(*key, lineno)]
+    defaults = param_defaults_from_function(node)
+    assert defaults["target_vols"] is None
+    assert defaults["ratios"] is None
+    assert defaults["source_vol"] is None
+
+    key2 = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
+    lineno2 = next(ln for (mod, qn, ln) in plr_function_index if (mod, qn) == key2)
+    node2 = plr_function_index[(*key2, lineno2)]
+    defaults2 = param_defaults_from_function(node2)
+    assert defaults2["offsets"] is None
+    assert defaults2["use_channels"] is None
+
+
+# ---- free_var_names --------------------------------------------------------
+
+
+def test_free_var_names_walks_predicate_and_term_positions() -> None:
+    # `self.head.has_tip` is an Attr-chain TERM (Attr(Attr(Var(self), head),
+    # has_tip)), walked all the way down to its root Var -- exercising the
+    # Attr branch, not just the top-level Cmp/BoolOp dispatch a shallower
+    # test would.
+    pred = parse_predicate("len(not_tip_spots) > 0 and self.head.has_tip == other")
+    assert free_var_names(pred) == {"not_tip_spots", "self", "other"}
+
+
+# ---- alpha/beta AC-15.2 fixtures (synthetic, one per named shape) --------
+
+
+def test_alpha_binds_filtered_comprehension() -> None:
+    node = _func_node(
+        "def m(self, tip_spots):\n"
+        "    not_tip_spots = [ts for ts in tip_spots if not isinstance(ts, TipSpot)]\n"
+        "    if len(not_tip_spots) > 0:\n"
+        "        raise TypeError('x')\n"
+    )
+    pred = parse_predicate("len(not_tip_spots) > 0")
+    bindings = compute_local_bindings_for_guard(node, pred, guard_lineno=4)
+    assert bindings == (
+        {
+            "idiom": "alpha",
+            "x": "not_tip_spots",
+            "iter": "tip_spots",
+            "pred": {
+                "node": "Not",
+                "predicate": {"node": "IsInstance", "term": {"node": "Var", "name": "ts"}, "types": ["TipSpot"]},
+            },
+        },
+    )
+
+
+def test_alpha_admits_tuple_type_form() -> None:
+    node = _func_node(
+        "def m(self, tip_spots):\n"
+        "    not_tip_spots = [ts for ts in tip_spots if not isinstance(ts, (TipSpot, Trash))]\n"
+        "    if len(not_tip_spots) > 0:\n"
+        "        raise TypeError('x')\n"
+    )
+    pred = parse_predicate("len(not_tip_spots) > 0")
+    (binding,) = compute_local_bindings_for_guard(node, pred, guard_lineno=4)
+    assert binding["pred"]["predicate"]["types"] == ["TipSpot", "Trash"]
+
+
+def test_beta_binds_length_range_shape() -> None:
+    node = _func_node(
+        "def m(self, tip_spots, use_channels=None):\n"
+        "    use_channels = use_channels or list(range(len(tip_spots)))\n"
+        "    assert len(use_channels) == len(tip_spots)\n"
+    )
+    pred = parse_predicate("len(use_channels) == len(tip_spots)")
+    bindings = compute_local_bindings_for_guard(node, pred, guard_lineno=3)
+    assert bindings == (
+        {"idiom": "beta", "x": "use_channels", "param": "tip_spots", "default_shape": "range"},
+    )
+
+
+def test_beta_binds_length_repeat_shape() -> None:
+    node = _func_node(
+        "def m(self, tip_spots, offsets=None):\n"
+        "    offsets = offsets or [Coordinate.zero()] * len(tip_spots)\n"
+        "    assert len(tip_spots) == len(offsets)\n"
+    )
+    pred = parse_predicate("len(tip_spots) == len(offsets)")
+    (binding,) = compute_local_bindings_for_guard(node, pred, guard_lineno=3)
+    assert binding == {"idiom": "beta", "x": "offsets", "param": "tip_spots", "default_shape": "repeat"}
+
+
+# -- five AC-15.2 fail-closed fixtures, one apiece --------------------------
+
+
+def test_fail_closed_second_write_to_x_binds_nothing() -> None:
+    node = _func_node(
+        "def m(self, tip_spots):\n"
+        "    not_tip_spots = [ts for ts in tip_spots if not isinstance(ts, TipSpot)]\n"
+        "    not_tip_spots = list(not_tip_spots)\n"
+        "    if len(not_tip_spots) > 0:\n"
+        "        raise TypeError('x')\n"
+    )
+    pred = parse_predicate("len(not_tip_spots) > 0")
+    assert compute_local_bindings_for_guard(node, pred, guard_lineno=5) == ()
+
+
+def test_fail_closed_assignment_in_sibling_branch_binds_nothing() -> None:
+    node = _func_node(
+        "def m(self, tip_spots, flag):\n"
+        "    if flag:\n"
+        "        not_tip_spots = [ts for ts in tip_spots if not isinstance(ts, TipSpot)]\n"
+        "    if len(not_tip_spots) > 0:\n"
+        "        raise TypeError('x')\n"
+    )
+    pred = parse_predicate("len(not_tip_spots) > 0")
+    assert compute_local_bindings_for_guard(node, pred, guard_lineno=4) == ()
+
+
+def test_fail_closed_three_operand_or_chain_declines_beta() -> None:
+    node = _func_node(
+        "def m(self, tip_spots, use_channels=None):\n"
+        "    use_channels = use_channels or self._default_use_channels or list(range(len(tip_spots)))\n"
+        "    assert len(use_channels) == len(tip_spots)\n"
+    )
+    pred = parse_predicate("len(use_channels) == len(tip_spots)")
+    assert compute_local_bindings_for_guard(node, pred, guard_lineno=3) == ()
+
+
+def test_fail_closed_assignment_after_guard_binds_nothing() -> None:
+    node = _func_node(
+        "def m(self, tip_spots):\n"
+        "    if len(not_tip_spots) > 0:\n"
+        "        raise TypeError('x')\n"
+        "    not_tip_spots = [ts for ts in tip_spots if not isinstance(ts, TipSpot)]\n"
+    )
+    pred = parse_predicate("len(not_tip_spots) > 0")
+    assert compute_local_bindings_for_guard(node, pred, guard_lineno=2) == ()
+
+
+def test_fail_closed_for_header_targeting_x_binds_nothing() -> None:
+    node = _func_node(
+        "def m(self, tip_spots, items):\n"
+        "    not_tip_spots = [ts for ts in tip_spots if not isinstance(ts, TipSpot)]\n"
+        "    for not_tip_spots in items:\n"
+        "        if len(not_tip_spots) > 0:\n"
+        "            raise TypeError('x')\n"
+    )
+    pred = parse_predicate("len(not_tip_spots) > 0")
+    assert compute_local_bindings_for_guard(node, pred, guard_lineno=4) == ()
+
+
+# -- round-1 fixtures: beta-preserving rebinding, iterand single-write ------
+
+
+def test_beta_preserving_rebinding_survives() -> None:
+    node = _func_node(
+        "def m(self, tip_spots, x=None):\n"
+        "    x = x or list(range(len(tip_spots)))\n"
+        "    x = [f(e) for e in x]\n"
+        "    assert len(x) == len(tip_spots)\n"
+    )
+    pred = parse_predicate("len(x) == len(tip_spots)")
+    (binding,) = compute_local_bindings_for_guard(node, pred, guard_lineno=4)
+    assert binding == {"idiom": "beta", "x": "x", "param": "tip_spots", "default_shape": "range"}
+
+
+def test_zip_rebinding_does_not_preserve_beta() -> None:
+    node = _func_node(
+        "def m(self, tip_spots, y, x=None):\n"
+        "    x = x or list(range(len(tip_spots)))\n"
+        "    x = [f(a, b) for a, b in zip(y, x)]\n"
+        "    assert len(x) == len(tip_spots)\n"
+    )
+    pred = parse_predicate("len(x) == len(tip_spots)")
+    assert compute_local_bindings_for_guard(node, pred, guard_lineno=4) == ()
+
+
+def test_second_write_to_alpha_iterand_binds_nothing() -> None:
+    """TWO explicit writes to the iterand (not one -- see
+    `test_one_write_to_beta_iterand_before_binding_is_tolerated`'s own
+    docstring for why exactly one is tolerated) is what round-1's own "a
+    second write to alpha's iter name binds nothing" fixture means."""
+    node = _func_node(
+        "def m(self, tip_spots):\n"
+        "    not_tip_spots = [ts for ts in tip_spots if not isinstance(ts, TipSpot)]\n"
+        "    tip_spots = list(tip_spots)\n"
+        "    tip_spots = list(tip_spots)\n"
+        "    if len(not_tip_spots) > 0:\n"
+        "        raise TypeError('x')\n"
+    )
+    pred = parse_predicate("len(not_tip_spots) > 0")
+    assert compute_local_bindings_for_guard(node, pred, guard_lineno=5) == ()
+
+
+def test_one_write_to_beta_iterand_before_binding_is_tolerated() -> None:
+    """Empirical grounding for the ">1" iterand threshold (see
+    `bindings._shape_and_single_write_ok`'s own comment): `aspirate`'s real
+    beta population rebinds its OWN iterand (`use_channels`) exactly once,
+    BEFORE the beta assignment -- this must still bind."""
+    node = _func_node(
+        "def m(self, resources, use_channels=None, flow_rates=None):\n"
+        "    use_channels = use_channels or list(range(len(resources)))\n"
+        "    flow_rates = flow_rates or [None] * len(use_channels)\n"
+        "    assert len(flow_rates) == 5\n"
+    )
+    # Predicate mentions ONLY `flow_rates` -- `use_channels` is a
+    # perfectly valid SEPARATE beta binding of its own (over `resources`),
+    # which would be a distinct assertion; keeping this fixture to one
+    # free name isolates the property under test (the iterand's own
+    # single-explicit-write tolerance).
+    pred = parse_predicate("len(flow_rates) == 5")
+    (binding,) = compute_local_bindings_for_guard(node, pred, guard_lineno=4)
+    assert binding == {"idiom": "beta", "x": "flow_rates", "param": "use_channels", "default_shape": "repeat"}
+
+
+def test_two_writes_to_beta_iterand_binds_nothing() -> None:
+    node = _func_node(
+        "def m(self, resources, use_channels=None, flow_rates=None):\n"
+        "    use_channels = use_channels or list(range(len(resources)))\n"
+        "    flow_rates = flow_rates or [None] * len(use_channels)\n"
+        "    use_channels = list(use_channels)\n"
+        "    assert len(flow_rates) == len(use_channels)\n"
+    )
+    pred = parse_predicate("len(flow_rates) == len(use_channels)")
+    assert compute_local_bindings_for_guard(node, pred, guard_lineno=5) == ()
+
+
+# -- nested-Opaque binding (invalid_channels) -------------------------------
+
+
+def test_alpha_binds_even_when_inner_filter_is_opaque() -> None:
+    """The `if` clause `c not in self.head` parses to `Opaque` -- alpha
+    still binds the TERM (a binding rule, not a decision rule, §15.3's own
+    'that asymmetry is the point')."""
+    node = _func_node(
+        "def m(self, channels):\n"
+        "    invalid_channels = [c for c in channels if c not in self.head]\n"
+        "    if not len(invalid_channels) == 0:\n"
+        "        raise ValueError('x')\n"
+    )
+    pred = parse_predicate("not len(invalid_channels) == 0")
+    (binding,) = compute_local_bindings_for_guard(node, pred, guard_lineno=3)
+    assert binding["idiom"] == "alpha"
+    assert binding["pred"] == {"node": "Opaque", "text": "c not in self.head"}
+
+
+# ---- the measured population against the real, pinned PLR surface --------
+
+
+def test_real_alpha_population_meets_ac_15_2_floor(plr_function_index) -> None:
+    """AC-15.2's floor: >= 3 alpha entries, naming pick_up_tips (:496 in
+    the guard-independent catalog's own function-start-relative numbering
+    -- checked here by CONDITION shape, not by a hardcoded lineno, since
+    `compute_all_local_bindings` is keyed by function, not by guard site),
+    drop_tips, and `_check_containers` by name."""
+    seen: dict[str, list[dict]] = {}
+    for (module, qualname, _lineno), node in plr_function_index.items():
+        if module != "pylabrobot.liquid_handling.liquid_handler":
+            continue
+        for b in compute_all_local_bindings(node):
+            if b["idiom"] == "alpha":
+                seen.setdefault(qualname, []).append(b)
+
+    assert len(sum(seen.values(), [])) >= 3
+    assert seen["LiquidHandler.pick_up_tips"][0]["x"] == "not_tip_spots"
+    assert seen["LiquidHandler.drop_tips"][0]["x"] == "not_tip_spots"
+    assert seen["LiquidHandler._check_containers"][0]["x"] == "not_containers"
+    # :407's invalid_channels -- alpha binds it WITH an Opaque inner filter.
+    assert seen["LiquidHandler._make_sure_channels_exist"][0]["pred"]["node"] == "Opaque"
+
+
+def test_real_beta_population_meets_ac_15_2_floor(plr_function_index) -> None:
+    """AC-15.2's floor: >= 6 beta entries; this pin's measured population is
+    published in the T30b commit report (>= 8, incl. all named sites --
+    see the module docstring's own reasoning for why the catalog is wider
+    than any one guard's `bindings`)."""
+    beta: list[tuple[str, dict]] = []
+    for (module, qualname, _lineno), node in plr_function_index.items():
+        if module != "pylabrobot.liquid_handling.liquid_handler":
+            continue
+        for b in compute_all_local_bindings(node):
+            if b["idiom"] == "beta":
+                beta.append((qualname, b))
+
+    assert len(beta) >= 6
+    by_qual = {}
+    for qualname, b in beta:
+        by_qual.setdefault(qualname, []).append(b["x"])
+    assert "offsets" in by_qual["LiquidHandler.pick_up_tips"]
+    assert "offsets" in by_qual["LiquidHandler.drop_tips"]
+    assert {"flow_rates", "liquid_height", "blow_out_air_volume"} <= set(by_qual["LiquidHandler.aspirate"])
+    assert {"flow_rates", "liquid_height", "blow_out_air_volume"} <= set(by_qual["LiquidHandler.dispense"])
+    # offsets at aspirate/dispense's own beta-shaped :962/:1156 is EXCLUDED
+    # -- its second write is a `zip(...)` rebind, which does not preserve.
+    assert "offsets" not in by_qual.get("LiquidHandler.aspirate", ())
+    assert "offsets" not in by_qual.get("LiquidHandler.dispense", ())
+
+
+def test_derive_contract_populates_bindings_from_function_index(
+    survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index
+) -> None:
+    contract = derive_contract(
+        "pylabrobot.liquid_handling.liquid_handler",
+        "LiquidHandler.pick_up_tips",
+        survey_index,
+        function_index=plr_function_index,
+    )
+    by_lineno = {g.site.lineno: g for g in contract.guards}
+    assert by_lineno[498].bindings[0]["idiom"] == "alpha"
+    assert by_lineno[498].bindings[0]["x"] == "not_tip_spots"
+    assert by_lineno[522].bindings[0]["idiom"] == "beta"
+    assert by_lineno[522].bindings[0]["x"] == "offsets"
+    assert by_lineno[409].bindings[0]["idiom"] == "alpha"  # depth-1 guard, own delegate body
+    # a guard with no binding-eligible free names (e.g. the backend-can-
+    # pick-up-tip guard) still has an explicit empty tuple, never a crash.
+    assert by_lineno[514].bindings == ()
+
+
+def test_derive_contract_without_function_index_leaves_bindings_empty(
+    survey_index: dict[tuple[str, str], SurveyRecord],
+) -> None:
+    """Backward compatibility: every pre-T30b caller of `derive_contract`
+    (no `function_index=`) gets `bindings == ()` on every guard -- the
+    default-off half of the additive contract."""
+    contract = derive_contract(
+        "pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips", survey_index
+    )
+    assert all(g.bindings == () for g in contract.guards)
+
+
+def test_guard_to_json_emits_bindings_key(
+    survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index
+) -> None:
+    contract = derive_contract(
+        "pylabrobot.liquid_handling.liquid_handler",
+        "LiquidHandler.pick_up_tips",
+        survey_index,
+        function_index=plr_function_index,
+    )
+    (guard_498,) = [g for g in contract.guards if g.site.lineno == 498]
+    payload = _guard_to_json(guard_498)
+    assert payload["bindings"] == [
+        {
+            "idiom": "alpha",
+            "x": "not_tip_spots",
+            "iter": "tip_spots",
+            "pred": {
+                "node": "Not",
+                "predicate": {"node": "IsInstance", "term": {"node": "Var", "name": "ts"}, "types": ["TipSpot"]},
+            },
+        }
+    ]
+
+
+def test_build_derived_contracts_payload_adds_param_defaults(
+    survey_records: list[SurveyRecord],
+    survey_index: dict[tuple[str, str], SurveyRecord],
+    plr_function_index,
+) -> None:
+    stamp = survey_stamp()
+    payload = build_derived_contracts_payload(survey_records, survey_index, stamp, function_index=plr_function_index)
+    contracts = payload["contracts"]
+    key = next(k for k in contracts if k.startswith("LiquidHandler.transfer"))
+    assert contracts[key]["param_defaults"]["target_vols"] is None
+    assert contracts[key]["param_defaults"]["ratios"] is None
+    assert contracts[key]["param_defaults"]["source_vol"] is None
+
+
+def test_build_derived_contracts_payload_omits_param_defaults_without_function_index(
+    survey_records: list[SurveyRecord], survey_index: dict[tuple[str, str], SurveyRecord]
+) -> None:
+    stamp = survey_stamp()
+    payload = build_derived_contracts_payload(survey_records, survey_index, stamp)
+    contracts = payload["contracts"]
+    key = next(k for k in contracts if k.startswith("LiquidHandler.transfer"))
+    assert "param_defaults" not in contracts[key]

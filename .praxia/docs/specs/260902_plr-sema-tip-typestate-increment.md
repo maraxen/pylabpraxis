@@ -179,7 +179,7 @@ performs no AST work — main spec §6.2's packaging fact is untouched.
 The existing derivation (`plr-sema/src/plr_sema/derive/__init__.py:446-492`) already gives us guards
 with polarity (`InlinedGuard.kind`, `:406-432`), the raising class (`InlinedGuard.raises`), the
 defining site, and depth. It throws away one field that this increment needs:
-`SurveyRecord.dropped_calls` (`derive/__init__.py:175-193`) — the receiver-qualified call expressions
+`SurveyRecord.dropped_calls` (`derive/__init__.py:176-194`) — the receiver-qualified call expressions
 the survey drops for every non-`self.<name>` attribute receiver. `derive_contract` never reads it.
 
 ### 10.2.1 P1 — receiver-attribute typing (research c-e's rule R3)
@@ -1203,7 +1203,7 @@ therefore gates totality and non-regression only, and requires the replay to rep
 real directional gate and is `#4888`'s own gate, not a downstream one (see the task row). One thing
 the round-1 draft got wrong in the challenger's favour and against its own: option (a) does **not**
 require hand-typing a tool→PLR name map — `run_runtime` already harvests PLR-named kwargs from the
-verifier's `plan_call` (wrapped by `recording_plan_call`, `plr-sema/eval/oracle_common.py:312-324`) and `adapt_graph` already
+verifier's `plan_call` (wrapped by `recording_plan_call`, `plr-sema/eval/oracle_common.py:404-415`) and `adapt_graph` already
 accepts them (`:94`, `:118-125`). Option (a) is therefore cheaper than the draft claimed and is the
 natural follow-up; (c) is chosen for *this* increment because it does not make `#4888` depend on a
 change to `#4879`'s harness. The corollary for the oracle plan — that a tier-1/tier-2 divergence is

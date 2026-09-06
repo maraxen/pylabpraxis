@@ -1259,6 +1259,55 @@ def build_plr_class_index(plr_pkg_root: Path) -> tuple[dict[str, ast.ClassDef], 
     return class_nodes, class_modules
 
 
+#: (module, qualname, lineno) -> the function/method's own AST node -- the
+#: SAME triple `SurveyRecord.module`/`.qualname`/`.lineno` carry, verified
+#: against the real survey artifact (260904 T30b): `_record_from_dict`'s
+#: `lineno` is `node.lineno` for the exact FunctionDef/AsyncFunctionDef the
+#: survey walked (`scripts/survey_plr_preconditions.py`'s own
+#: `FunctionPreconditions(..., lineno=node.lineno, ...)`), so this index's
+#: key is a direct, collision-safe lookup for "the AST node that produced
+#: this SurveyRecord" -- no name-only ambiguity (getter/setter pairs, two
+#: same-named module-level functions in different modules) survives keying
+#: on the triple.
+FunctionIndex = dict[tuple[str, str, int], ast.FunctionDef | ast.AsyncFunctionDef]
+
+
+def build_plr_function_index(plr_pkg_root: Path) -> FunctionIndex:
+    """260904 (spec §15.3/§15.4 D1, T30b): a THIRD independent whole-tree
+    AST pass (same deliberate-duplication precedent as
+    `build_plr_class_index` alongside `derive_receiver_states`'s own
+    internal class-index loop, and `plr_sema.derive.__init__`'s own D3
+    pass) -- covers what neither of those two build: MODULE-LEVEL
+    functions (`_check_no_lid` has no enclosing class at all) alongside
+    every class method, keyed the way `bindings.compute_local_bindings_for_guard`
+    and `bindings.param_defaults_from_function` need to look a `SurveyRecord`
+    up by its own `(module, qualname, lineno)`.
+
+    First-definition-wins on a KEY collision (should not occur -- the key
+    includes `lineno`, so two module-level functions sharing a name in the
+    same file, or a getter/setter pair, differ in `lineno` and get distinct
+    keys; a real collision would mean two functions literally starting on
+    the same line of the same file, which is not writable Python).
+    """
+    out: FunctionIndex = {}
+    for file in _iter_plr_source_files(plr_pkg_root):
+        try:
+            source = file.read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=str(file))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        module = _module_name_for_plr_file(file, plr_pkg_root)
+        for top in ast.iter_child_nodes(tree):
+            if isinstance(top, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                out.setdefault((module, top.name, top.lineno), top)
+            elif isinstance(top, ast.ClassDef):
+                for member in ast.iter_child_nodes(top):
+                    if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        qualname = f"{top.name}.{member.name}"
+                        out.setdefault((module, qualname, member.lineno), member)
+    return out
+
+
 # ---------------------------------------------------------------------------
 # B2 (§14.0.1, round-1 O9) -- dataclass class-level field annotations, into
 # the bridge-only map. NOT a branch of `_annotated_attributes` (§10.2.1's P1a

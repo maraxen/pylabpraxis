@@ -1154,3 +1154,111 @@ class TestTier2ExtractorSidecarSchema:
         assert schema["volume_fixtures"] == "int"
         assert schema["volume_unsound"] == "int"
         assert schema["volume_will_fail_fired"] == "int"
+
+
+class TestO1ElementTypes:
+    """260904 (spec §15.4, O1, T30b): the operand observation. Default-off
+    byte-identical unless a caller opts in; the new per-element walk; the
+    heterogeneous-parent fail-closed rule (C11b).
+    """
+
+    def test_element_types_from_kwargs_singleton_parent(self):
+        from pylabrobot.resources import Coordinate, Resource, Well
+
+        from oracle_common import element_type_singletons, element_types_from_kwargs
+
+        tip_rack = Resource(name="tip_rack", size_x=10, size_y=10, size_z=10)
+        a1 = Well(name="A1", size_x=1, size_y=1, size_z=1)
+        b1 = Well(name="B1", size_x=1, size_y=1, size_z=1)
+        tip_rack.assign_child_resource(a1, location=Coordinate(0, 0, 0))
+        tip_rack.assign_child_resource(b1, location=Coordinate(0, 1, 0))
+
+        raw = element_types_from_kwargs({"tip_spots": [a1, b1]})
+        assert raw == {"tip_rack": {"Well"}}
+        assert element_type_singletons(raw) == {"tip_rack": "Well"}
+
+    def test_element_types_from_kwargs_heterogeneous_parent_is_none(self):
+        """C11b's fail-closed rule: a parent whose children span more than
+        one generic class reduces to `element_type: None`, never
+        first-element-wins."""
+        from pylabrobot.resources import Container, Coordinate, Resource, Well
+
+        from oracle_common import element_type_singletons, element_types_from_kwargs
+
+        deck = Resource(name="deck", size_x=100, size_y=100, size_z=100)
+        container = Container(name="container", size_x=10, size_y=10, size_z=10)
+        well = Well(name="A1", size_x=1, size_y=1, size_z=1)
+        deck.assign_child_resource(container, location=Coordinate(0, 0, 0))
+        deck.assign_child_resource(well, location=Coordinate(20, 0, 0))
+
+        raw = element_types_from_kwargs({"resources": [container, well]})
+        assert raw == {"deck": {"Container", "Well"}}
+        assert element_type_singletons(raw) == {"deck": None}
+
+    def test_element_types_from_kwargs_no_parent_contributes_nothing(self):
+        from pylabrobot.resources import Resource
+
+        from oracle_common import element_types_from_kwargs
+
+        top = Resource(name="tip_rack", size_x=10, size_y=10, size_z=10)
+        assert element_types_from_kwargs({"tip_spots": [top]}) == {}
+
+    def test_resources_from_example_threads_resource_and_element_type(self):
+        example = {"deck_layout": {"resources": {"tip_rack": "TipRack"}}}
+        resources = resources_from_example(
+            example,
+            resource_types={"tip_rack": "TipRack", "extra": "Plate"},
+            element_types={"tip_rack": "TipSpot"},
+        )
+        assert resources["tip_rack"]["type"] == "TipRack"
+        assert resources["tip_rack"]["element_type"] == "TipSpot"
+        assert resources["extra"]["type"] == "Plate"
+        assert "element_type" not in resources["extra"]
+
+    def test_resources_from_example_default_off_unchanged(self):
+        example = {"deck_layout": {"resources": {"tip_rack": "TipRack"}}}
+        assert resources_from_example(example) == resources_from_example(
+            example, resource_types=None, element_types=None
+        )
+
+    def test_run_static_calls_observe_element_types_default_off_byte_identical(self):
+        """The default-off switch (§15.4, O1): passing `resource_types`/
+        `element_types` alongside `observe_element_types=False` (the
+        default) must be IGNORED -- byte-identical to a caller that never
+        knew the parameters existed at all."""
+        example = {
+            "call_sequence": [
+                {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1"]}},
+            ],
+            "deck_layout": {"resources": {"tip_rack": "TipRack"}},
+        }
+        plr_kwargs = {
+            0: {
+                "tip_spots": {"k": "seq", "items": [{"k": "ref", "name": "tip_rack", "cell": "A1"}]},
+                "use_channels": {"k": "seq", "items": [{"k": "lit", "v": 0}]},
+            },
+        }
+        contracts_json = json.dumps(
+            {
+                "contracts": {
+                    "LiquidHandler.pick_up_tips": {
+                        "guards": [],
+                        "gaps": [],
+                        "params": ["tip_spots", "use_channels"],
+                    }
+                }
+            }
+        )
+        param_names = param_names_from_contracts(contracts_json)
+
+        baseline = run_static_calls(example, plr_kwargs, contracts_json, param_names=param_names)
+        with_ignored_data = run_static_calls(
+            example,
+            plr_kwargs,
+            contracts_json,
+            param_names=param_names,
+            observe_element_types=False,
+            resource_types={"tip_rack": "SomethingElse"},
+            element_types={"tip_rack": "TipSpot"},
+        )
+        assert baseline == with_ignored_data

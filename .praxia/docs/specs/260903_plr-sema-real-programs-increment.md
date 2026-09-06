@@ -184,7 +184,7 @@ fail-closed direction as AC-10.7 and AC-11.12, and pinned here by AC-12.2's thir
 
 **Provenance.** Two records, both existing artifacts, neither new:
 
-- The **gap ledger's** `tip_state` block (`plr-sema/src/plr_sema/derive/__main__.py:331-349`, built by
+- The **gap ledger's** `tip_state` block (`plr-sema/src/plr_sema/derive/__main__.py:481-499`, built by
   `compute_tip_families`) gains an `entry_reset` entry per anchored receiver class, alongside
   `tipstate_anchor`. Its value is the derived `{method, post}` pair, or the string `"absent"` /
   `"ambiguous"` when P5 emitted nothing and why. This is the visible surface AC-10.10 established for
@@ -818,7 +818,7 @@ The tier-1 replay loses 40 golden rows to unparseable underscore references such
 268 rows executed, 426 operations, 0 unsound, 189 of 189 crosscheck agreement
 (`outputs/plr-sema/oracle_replay_260902.json:2-17`).
 
-> **Normative.** `row_to_verifier_inputs` (`plr-sema/eval/oracle_common.py:903-911`) normalises a
+> **Normative.** `row_to_verifier_inputs` (`plr-sema/eval/oracle_common.py:1021-1029`) normalises a
 > reference of the form `<base>_<Row><Col>` to `<base>.<Row><Col>` **if and only if `<base>` is a
 > declared resource of the row's own deck layout** — the layout it has already computed, not a name
 > pattern. `<Row>` is a single `A`–`H`, `<Col>` one or two digits, matching the regex shape

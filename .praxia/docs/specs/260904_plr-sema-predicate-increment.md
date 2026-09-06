@@ -92,7 +92,7 @@ of which `guard_predicate_unparsed` 5,656 / `volume_state_unknown` 194 / `unreso
 the bare delegate name `_state_updated`, with `n_findings` 186 over `n_ops_blocked` **93** and a
 `per_method` breakdown that now sums to 93
 (`outputs/plr-sema/unknown_ledger_260904_before.json:1123-1134`), i.e. the transitive `delegates_to`
-closure hit an `unresolved_calls` entry (`plr-sema/src/plr_sema/derive/__init__.py:552-553`). That is
+closure hit an `unresolved_calls` entry (`plr-sema/src/plr_sema/derive/__init__.py:581-582`). That is
 deferred row (e) (`.praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md:2520`), which no predicate
 grammar touches. Every `move_*` operation therefore keeps a residual this increment cannot move, and
 `move_resource`/`move_lid`/`move_plate` are excluded from §15.9's candidate list by construction.
@@ -1236,7 +1236,7 @@ Under Q2-defer, `strictness` never enters `env`.
 
 > **Normative.** `outputs/plr-sema/t30_measured_260904.json` publishes, computed over the whole
 > `plr-sema/data/derived_contracts.json` and over the frozen benchmark's own lowered IR calls (via
-> `lower_row_calls`, `plr-sema/eval/oracle_common.py:476-496`, with no analyzer change and no
+> `lower_row_calls`, `plr-sema/eval/oracle_common.py:551-571`, with no analyzer change and no
 > `check_ir` invocation):
 >
 > 1. **Parse coverage.** Of all guards in the contract table: the count parsing to a non-`Opaque`
@@ -1495,7 +1495,7 @@ nothing".
   depth-0 empty-trail guard in a `K` containing an earlier `ast.Try`. Separately: **a tier-(iii) guard
   emits exactly one `Finding`, `Verdict.UNKNOWN`, `reason == "guard_env_dependent"`**, and contributes
   its `site` to `AnalysisReport.scope.excludes_sites`; tier (iii) is asserted to be selected by
-  `guard.is_dynamic_raise` (`plr-sema/src/plr_sema/derive/__init__.py:489-493`) and **not** by any site
+  `guard.is_dynamic_raise` (`plr-sema/src/plr_sema/derive/__init__.py:501-505`) and **not** by any site
   list or condition-text match; `join`'s input multiset **is** asserted to contain it; and
   `check_graph`'s two-positional-argument call form returns a report whose `schema_version` is still 1.
   The `else of:` case, the `:117` case and the depth-1 case are the stub-defeating halves.

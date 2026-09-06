@@ -313,8 +313,8 @@ a `Resource` with a parent → `Ref(slot_of(parent), obj.name)`; a top-level `Re
 `Ref(slot_of(obj), None)`; a `list` → `Seq`; a JSON scalar → `Lit`; anything else → `Top`.
 
 The kwargs come from `PlanResult.kwargs` (`dispatcher.py:54-64`), which `run_runtime` already
-harvests through its `recording_plan_call` wrapper (`plr-sema/eval/oracle_common.py:334-346`) and carries out on
-`RuntimeOutcome.plr_kwargs` (`plr-sema/eval/oracle_common.py:321`). **Those kwargs are PLR-named by
+harvests through its `recording_plan_call` wrapper (`plr-sema/eval/oracle_common.py:404-415`) and carries out on
+`RuntimeOutcome.plr_kwargs` (`plr-sema/eval/oracle_common.py:374`). **Those kwargs are PLR-named by
 construction**: `plan_call` (`dispatcher.py:92-101`) writes `kwargs[spec.plr_arg]` inside its `bind`
 closure (`dispatcher.py:117-135`), and `spec.plr_arg` is `ParamSpec`'s "vendored kwarg name" field
 (`param_namespace.py:81-99`, `:88`). For `pick_up_tips` the single row is
@@ -655,7 +655,7 @@ and this increment does not need one. Every fact it relies on is derived:
 | what could have been typed | what it is instead |
 |---|---|
 | a tool→PLR parameter name map | `PlanResult.kwargs` at runtime — written by `plan_call`'s `bind` from `spec.plr_arg` (`dispatcher.py:117-135`). `PARAM_NAMESPACE` is hand-maintained, but it is **coxswain's** table, consumed across the boundary and never copied into `plr_sema` — the same relationship HM-9 records for `SUPPORTED_TOOLS`. A copy would need a row; there is no copy |
-| a per-method PLR parameter list | `SurveyRecord.params` (`derive/__init__.py:172`), already surveyed by `_function_params` (`survey_plr_preconditions.py:303-310`), shipped as an additive `params` key (§11.2.4) |
+| a per-method PLR parameter list | `SurveyRecord.params` (`derive/__init__.py:173`), already surveyed by `_function_params` (`survey_plr_preconditions.py:303-310`), shipped as an additive `params` key (§11.2.4) |
 | a `WIDEN` reason vocabulary | upstream field names, checked by set-inclusion against `model_fields` (§11.1.5, AC-11.8) |
 | an opcode↔field mapping table | it *is* the disposition table, and the disposition table is checked exhaustive against `model_fields` (AC-11.1) rather than maintained against a memory of what upstream looks like |
 

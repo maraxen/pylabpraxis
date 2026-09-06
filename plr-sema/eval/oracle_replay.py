@@ -209,10 +209,19 @@ def run_row(
     ambiguity_class: str | None = None,
     sidecar_record_id: str | None = None,
     provenance: str | None = None,
+    observe_element_types: bool = False,
 ) -> RowResult:
     """Process one corpus row: runtime + static + compare.
 
     Catch exceptions and record them, don't crash the harness.
+
+    ``observe_element_types`` (spec 260904 §15.4, O1, T30b): pass-through
+    to :func:`oracle_common.run_static_calls`'s own default-off switch.
+    ``False`` (the default) reproduces every pre-T30b caller's exact
+    behaviour -- this row's ``rt.resource_types``/``rt.element_types`` are
+    computed either way (``run_runtime`` always collects them, O1's cost
+    there is unconditional) but are only ever THREADED into the static
+    path when this flag is set.
     """
     # Parse row into verifier inputs
     try:
@@ -357,7 +366,15 @@ def run_row(
     _check_start = time.perf_counter()
     try:
         param_names = param_names_from_contracts(contracts_json)
-        st, not_planned_indices = run_static_calls(example, rt.plr_kwargs, contracts_json, param_names=param_names)
+        st, not_planned_indices = run_static_calls(
+            example,
+            rt.plr_kwargs,
+            contracts_json,
+            param_names=param_names,
+            observe_element_types=observe_element_types,
+            resource_types=rt.resource_types,
+            element_types=rt.element_types,
+        )
         static_verdicts = {oid: sdata["verdict"] for oid, sdata in st.items()}
         n_findings = sum(sdata["n_findings"] for sdata in st.values())
         # Capture PLR-named kwargs (IR value JSON) for per-row record --

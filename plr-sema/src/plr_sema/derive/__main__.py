@@ -57,11 +57,14 @@ from plr_sema.derive import (
     load_survey,
     scan_dropped_receiver_calls,
 )
+from plr_sema.derive.bindings import param_defaults_from_function
 from plr_sema.derive.predicate_ast import to_json as predicate_to_json
 from plr_sema.derive.receiver_state import (
+    FunctionIndex,
     ReceiverState,
     VolumeAnchor,
     build_plr_class_index,
+    build_plr_function_index,
     compute_channel_bridge,
     compute_tip_families,
     compute_volume_anchors,
@@ -80,7 +83,7 @@ def _guard_to_json(guard: InlinedGuard) -> dict[str, Any]:
     # dict-based `.get("predicate")` consumer, or an un-regenerated
     # artifact) degrades to not having it at all -- no consumer reads it
     # yet (T31 is the evaluator).
-    return {
+    payload: dict[str, Any] = {
         "condition": guard.condition,
         "predicate": predicate_to_json(guard.predicate),
         "scope_trail": list(guard.scope_trail),
@@ -94,6 +97,14 @@ def _guard_to_json(guard: InlinedGuard) -> dict[str, Any]:
         },
         "depth": guard.depth,
     }
+    # 260904 (spec §15.3, T30b): additive `bindings` -- the alpha/beta
+    # local-binding idiom matches for this guard's own free names. `[]`
+    # (key still present) when the guard has none, distinguishing "computed,
+    # found nothing" from "an un-regenerated pre-T30b artifact never had the
+    # key at all" (the latter a reader tolerates via `.get("bindings", ())`,
+    # same additive-field discipline as `predicate` in T30a).
+    payload["bindings"] = [dict(b) for b in guard.bindings]
+    return payload
 
 
 def build_derived_contracts_payload(
@@ -105,6 +116,7 @@ def build_derived_contracts_payload(
     volume_class_index: dict[str, ast.ClassDef] | None = None,
     volume_class_modules: dict[str, str] | None = None,
     volume_anchors: dict[str, VolumeAnchor] | None = None,
+    function_index: FunctionIndex | None = None,
 ) -> dict[str, Any]:
     """AC-7.2 (260901 T11): derive a contract for every record the survey
     indexed -- the WHOLE analyzed PLR surface (4,770 methods across 345
@@ -164,7 +176,7 @@ def build_derived_contracts_payload(
     contracts: dict[str, Any] = {}
     for record_key in sorted(unique_records):
         rec = unique_records[record_key]
-        contract = derive_contract(rec.module, rec.qualname, index, stamp=stamp)
+        contract = derive_contract(rec.module, rec.qualname, index, stamp=stamp, function_index=function_index)
         out_key = contract_keys[record_key]
         assert out_key not in contracts, (
             f"contract key collision building payload: {out_key!r} "
@@ -186,6 +198,22 @@ def build_derived_contracts_payload(
             # "trust nothing" rather than raising (AC-11.12).
             "params": list(rec.params),
         }
+        # 260904 (spec §15.4 E-CALL(2), D1, T30b): additive `param_defaults`
+        # -- {param: <JSON literal>}, read from THIS entry point's OWN
+        # `ast.arguments` (never a delegate's -- E-CALL(depth) forbids a
+        # depth->=1 guard from consulting it at all, so it is only ever
+        # meaningful for the entry point itself). Omitted entirely (no key)
+        # when `function_index` was not supplied, or when the function has
+        # no constant-valued defaults -- same fail-closed, additive-field
+        # discipline as `channel_guards`/`volume_guards` above: an
+        # un-regenerated table simply lacks the key, and a reader using
+        # `.get("param_defaults", {})` sees "no defaults known", not a crash.
+        if function_index is not None:
+            K = function_index.get((rec.module, rec.qualname, rec.lineno))
+            if K is not None:
+                defaults = param_defaults_from_function(K)
+                if defaults:
+                    entry["param_defaults"] = defaults
         # 260902 (spec §10.2.5, tip typestate increment): additive
         # `channel_guards`/`channel_effect` keys, present ONLY on entries
         # whose receiver class (`rec.class_name`) has a derived
@@ -338,6 +366,12 @@ def main(argv: list[str] | None = None) -> int:
     stamp = survey_stamp(surface)
 
     receiver_states: dict[str, ReceiverState] = {}
+    # 260904 (spec §15.3/§15.4 D1, T30b): the alpha/beta idioms' and
+    # param_defaults' own whole-tree function index -- built UNCONDITIONALLY
+    # (unlike receiver_states/volume_class_index below, which need
+    # --taxonomy-json), since neither idiom resolution nor param_defaults
+    # depends on the tip/volume taxonomy at all.
+    function_index: FunctionIndex = build_plr_function_index(surface_tree)
     # 260903 (spec §14.4, T24): the volume family's own whole-tree class
     # index and P7 anchors, built alongside `receiver_states` under the
     # SAME `--taxonomy-json` gate (P7's used-volume/free-volume accessor
@@ -364,6 +398,7 @@ def main(argv: list[str] | None = None) -> int:
             volume_class_index=volume_class_index,
             volume_class_modules=volume_class_modules,
             volume_anchors=volume_anchors,
+            function_index=function_index,
         )
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")

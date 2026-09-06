@@ -53,6 +53,7 @@ from typing import Any
 
 from plr_sema._provenance import SurveyStamp, survey_stamp
 from plr_sema.check._supported_tools import SUPPORTED_TOOLS
+from plr_sema.derive.bindings import compute_local_bindings_for_guard
 from plr_sema.derive.predicate_ast import Predicate, parse as parse_predicate
 from plr_sema.telemetry import FAILURE_CATEGORIES
 from plr_sema.verdict import PlrSite
@@ -475,6 +476,16 @@ class InlinedGuard:
     bindings are T30b): a guard whose condition names a local bound by an
     earlier statement in its own method parses to a plain ``Var``, exactly
     as unresolved as it is today.
+
+    ``bindings`` (260904, T30b, additive): the complete set of alpha/beta
+    local-binding idiom matches (§15.3) for this guard's own free ``Var``
+    names, computed against ``K`` -- the function/method that ACTUALLY
+    defines this guard (``site``'s own file/line, which for a depth->=1
+    guard is the delegate's own body, never the entry point's). ``()`` when
+    no ``function_index`` was supplied to ``derive_contract`` (fail closed
+    to "no binding known", identical to every guard's behaviour before this
+    field existed) or when no free name binds. See
+    ``plr_sema.derive.bindings`` for the JSON shape of one entry.
     """
 
     condition: str | None
@@ -485,6 +496,7 @@ class InlinedGuard:
     free_vars: tuple[str, ...]
     site: PlrSite  # the DEFINING site -- the delegate's own file/line, never the entry point's
     depth: int  # 0 = own body, >0 = inlined from a delegate
+    bindings: tuple[dict[str, Any], ...] = ()
 
     @property
     def is_dynamic_raise(self) -> bool:
@@ -510,6 +522,7 @@ def derive_contract(
     index: dict[Qualkey, SurveyRecord],
     *,
     stamp: SurveyStamp | None = None,
+    function_index: dict[tuple[str, str, int], ast.AST] | None = None,
 ) -> DerivedContract:
     """Transitive-closure contract derivation (§7.2). Totality (AC-7.2):
     NEVER raises, regardless of whether ``(module, qualname)`` is present in
@@ -524,6 +537,16 @@ def derive_contract(
       * gap-recording, never gap-hiding (every ``unresolved_calls`` entry
         and every unresolvable delegate reached during the closure becomes
         a recorded gap)
+
+    ``function_index`` (260904, T30b, additive, default ``None``):
+    ``receiver_state.build_plr_function_index``'s whole-tree ``(module,
+    qualname, lineno) -> AST node`` map. When supplied, each emitted
+    ``InlinedGuard.bindings`` is populated by looking up the guard's OWN
+    defining record ``rec`` (``_walk_closure``'s own loop variable -- the
+    record at the ACTUAL closure depth, never the entry point's) in it and
+    running ``bindings.compute_local_bindings_for_guard`` against the real
+    function body. Omitting it (the default) reproduces T30a's exact
+    behaviour: every guard's ``bindings`` is ``()``.
     """
     if stamp is None:
         stamp = survey_stamp()
@@ -533,17 +556,23 @@ def derive_contract(
         if rec is None:
             gaps.append(("no_contract_derived", key[1]))
             continue
+        K = None if function_index is None else function_index.get((rec.module, rec.qualname, rec.lineno))
         for finding in rec.findings:
+            predicate = parse_predicate(finding.condition)
+            bindings: tuple[dict[str, Any], ...] = ()
+            if K is not None:
+                bindings = compute_local_bindings_for_guard(K, predicate, finding.lineno)
             guards.append(
                 InlinedGuard(
                     condition=finding.condition,
-                    predicate=parse_predicate(finding.condition),
+                    predicate=predicate,
                     scope_trail=finding.scope_trail,
                     raises=finding.raises,
                     kind=finding.kind,
                     free_vars=finding.mentions_params,
                     site=PlrSite(file=rec.file, lineno=finding.lineno, qualname=rec.qualname),
                     depth=depth,
+                    bindings=bindings,
                 )
             )
         for name in rec.delegates_to:

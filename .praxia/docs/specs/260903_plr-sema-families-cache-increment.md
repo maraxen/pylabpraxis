@@ -394,7 +394,7 @@ after the stamp's pin is perturbed must miss.
 
 ### 13.4.1 What is there today
 
-`_is_inert_dropped_receiver_call` (`plr-sema/src/plr_sema/derive/__init__.py:1013-1051`) is a
+`_is_inert_dropped_receiver_call` (`plr-sema/src/plr_sema/derive/__init__.py:1058-1096`) is a
 three-clause predicate over a full receiver-qualified call expression:
 
 1. the head — text before the first `.` — is in `_INERT_RECEIVER_PREFIXES`, a hand-typed frozenset of

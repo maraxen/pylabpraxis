@@ -274,6 +274,59 @@ def resource_type_of(obj: Any) -> tuple[str, str] | None:
     return name, _generic_plr_type_name(target)
 
 
+def element_types_from_kwargs(kwargs: Mapping[str, Any]) -> dict[str, set[str]]:
+    """O1's new element walk (spec 260904 §15.4, T30b) -- run ALONGSIDE
+    :func:`resource_types_from_kwargs`, never replacing it. Records, per
+    PARENT resource name, the RAW set of ``_generic_plr_type_name`` of each
+    contained ELEMENT'S OWN class -- the opposite of
+    :func:`resource_type_of`'s parent-wins rule, which discards exactly
+    this information. An object with NO parent contributes nothing here:
+    it has no ambiguity for ``element_type`` to resolve, since
+    :func:`resource_types_from_kwargs` already names its own concrete class
+    directly under its own name.
+
+    Returns the RAW per-parent sets (not yet reduced to a singleton-or-
+    ``None`` decision) so a caller can inspect heterogeneity directly; see
+    :func:`element_type_singletons` for the fail-closed reduction (§15.4's
+    heterogeneous-parent rule, C11b).
+    """
+    out: dict[str, set[str]] = {}
+    try:
+        from pylabrobot.resources import Resource as _PLRResource
+    except ImportError:  # pragma: no cover - pylabrobot always installed in eval/'s env
+        return out
+
+    def walk(v: Any) -> None:
+        if isinstance(v, (list, tuple)):
+            for item in v:
+                walk(item)
+            return
+        if not isinstance(v, _PLRResource):
+            return
+        parent = getattr(v, "parent", None)
+        if parent is None:
+            return  # no parent -> no ambiguity for element_type to resolve.
+        parent_name = getattr(parent, "name", None)
+        if parent_name is None:
+            return
+        out.setdefault(parent_name, set()).add(_generic_plr_type_name(v))
+
+    for v in kwargs.values():
+        walk(v)
+    return out
+
+
+def element_type_singletons(element_sets: Mapping[str, set[str]]) -> dict[str, str | None]:
+    """The heterogeneous-parent rule (§15.4, C11b): ``element_type`` is the
+    SET's single member iff it is a singleton, ``None`` (fail-closed)
+    otherwise -- including an EMPTY set, which cannot occur from
+    :func:`element_types_from_kwargs`'s own construction (a key is only
+    ever ``setdefault``'d alongside an element) but is handled the same way
+    defensively.
+    """
+    return {name: (next(iter(s)) if len(s) == 1 else None) for name, s in element_sets.items()}
+
+
 def resource_types_from_kwargs(kwargs: Mapping[str, Any]) -> dict[str, str]:
     """Walk one call's RAW (pre-:func:`ir_value_of`) ``PlanResult.kwargs``
     values -- scalars, ``Resource``s, and lists/tuples thereof -- and return
@@ -324,6 +377,15 @@ class RuntimeOutcome:
     #: renderer's only source of truth for what type to annotate a rendered
     #: protocol's resource parameters with.
     resource_types: dict[str, str] = dataclasses.field(default_factory=dict)
+    #: 260904 (spec §15.4, O1, T30b): {parent_resource_name: element_type
+    #: or None}, merged across every planned call's RAW kwargs
+    #: (:func:`element_types_from_kwargs`, reduced per parent by
+    #: :func:`element_type_singletons`) -- the "the SET is a singleton"
+    #: fail-closed rule, C11b, applied ACROSS the whole row (a parent seen
+    #: with a homogeneous element set on one call and a heterogeneous one
+    #: on another degrades to `None`, never silently overwritten back to a
+    #: single class -- see `run_runtime`'s own accumulation below).
+    element_types: dict[str, str | None] = dataclasses.field(default_factory=dict)
     #: 260903 (spec §14.6, volume increment 5, round-1 O5, T27, backlog
     #: #4959): the volume family's hypothesis, read off `verify()`'s own
     #: additive result key -- observed from INSIDE the window that turned
@@ -338,6 +400,7 @@ def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
     planned: list[int] = []
     plr_kwargs: dict[int, dict[str, Any]] = {}
     resource_types: dict[str, str] = {}
+    element_sets: dict[str, set[str]] = {}
     real_plan_call = verifier.plan_call
 
     def recording_plan_call(call, index, setup, *, strict):
@@ -348,6 +411,8 @@ def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
         if hasattr(plan_result, "kwargs"):
             plr_kwargs[index] = {k: ir_value_of(v) for k, v in plan_result.kwargs.items()}
             resource_types.update(resource_types_from_kwargs(plan_result.kwargs))
+            for parent_name, classes in element_types_from_kwargs(plan_result.kwargs).items():
+                element_sets.setdefault(parent_name, set()).update(classes)
         return plan_result
 
     verifier.plan_call = recording_plan_call
@@ -369,6 +434,7 @@ def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
     failing = planned[-1] if (error and planned) else None
     return RuntimeOutcome(
         error, exc_class, failing, planned, bool(result.get("passed")), plr_kwargs, resource_types,
+        element_type_singletons(element_sets),
         bool(result.get("volume_tracking_observed")),
     )
 
@@ -394,12 +460,35 @@ def param_names_from_contracts(contracts_json: str) -> dict[str, tuple[str, ...]
     return {key: tuple(entry.get("params", ())) for key, entry in contracts.items() if entry.get("params")}
 
 
-def resources_from_example(example: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def resources_from_example(
+    example: dict[str, Any],
+    *,
+    resource_types: Mapping[str, str] | None = None,
+    element_types: Mapping[str, str | None] | None = None,
+) -> dict[str, dict[str, Any]]:
     """§11.2.2's ``resources`` parameter for :func:`plr_sema.check.ir.
     lower_calls`: a per-name RESOURCE declaration dict, built from
     ``deck_layout`` the same way ``adapt_graph`` (pre-260902) built its
     graph-payload ``resources`` -- the receiver (``lh``) plus every named
     ``deck_layout.resources`` entry.
+
+    ``resource_types``/``element_types`` (spec 260904 §15.4, O1, T30b):
+    OPTIONAL, additive, and OFF unless a caller explicitly passes them --
+    omitting both reproduces this function's exact pre-O1 output, byte for
+    byte (the default-off half of the switch; :func:`run_static_calls`'s
+    own ``observe_element_types`` flag is what decides whether a caller
+    ever does). When ``resource_types`` (:attr:`RuntimeOutcome.
+    resource_types`, the REAL runtime class observed from inside the
+    executed window -- §15.4's own "the type half is already computed"
+    box) is given, it OVERRIDES ``deck_layout``'s own (frequently wrong,
+    ``infer_layout()``-defaulted-to-``Plate``) type for any name it names,
+    and adds an entry for a name ``deck_layout`` never had at all. When
+    ``element_types`` (:attr:`RuntimeOutcome.element_types`, already
+    reduced to singleton-or-``None`` by :func:`element_type_singletons`)
+    is given, it threads a per-name ``element_type`` key into the SAME
+    declaration -- read straight through by ``plr_sema.check.ir.
+    lower_calls`` (``decl.get("element_type")``), no ``ir.py`` change
+    needed at all.
     """
     layout = example.get("deck_layout") or {}
     resources: dict[str, dict[str, Any]] = {
@@ -407,6 +496,16 @@ def resources_from_example(example: dict[str, Any]) -> dict[str, dict[str, Any]]
     }
     for name, typ in (layout.get("resources") or {}).items():
         resources[name] = {"type": typ, "is_container": False, "is_parameter": True, "parents": ("Deck",)}
+    if resource_types:
+        for name, cls in resource_types.items():
+            entry = resources.setdefault(
+                name, {"is_container": False, "is_parameter": True, "parents": ("Deck",)}
+            )
+            entry["type"] = cls
+    if element_types:
+        for name, cls in element_types.items():
+            if name in resources:
+                resources[name]["element_type"] = cls
     return resources
 
 
@@ -528,6 +627,9 @@ def run_static_calls(
     *,
     param_names: dict[str, tuple[str, ...]] | None = None,
     volume_tracking_observed: bool = False,
+    observe_element_types: bool = False,
+    resource_types: Mapping[str, str] | None = None,
+    element_types: Mapping[str, str | None] | None = None,
 ) -> tuple[dict[str, dict[str, Any]], list[int]]:
     """The ``lower_calls`` path (§11.2.2/§11.10 tier 1) -- ``adapt_graph``'s
     replacement. Lowers ``example["call_sequence"]``'s PLANNED subset
@@ -574,13 +676,29 @@ def run_static_calls(
     the ``setup_pcs`` filter below before ``findings`` even exists, not
     merely before this seam -- there is no code path in this function by
     which it could be relabelled onto a real call's ``op_<i>``.
+
+    ``observe_element_types``/``resource_types``/``element_types`` (spec
+    260904 §15.4, O1, T30b): the default-off switch. With
+    ``observe_element_types=False`` (the default), ``resources_from_example``
+    is called with neither optional argument and this function's behaviour
+    is BYTE-IDENTICAL to every pre-T30b caller's -- ``resource_types``/
+    ``element_types`` are accepted but ignored in that case, so a caller
+    may pass them unconditionally and flip the switch with one boolean.
+    With ``observe_element_types=True``, both are threaded into
+    ``resources_from_example`` (typically :attr:`RuntimeOutcome.
+    resource_types`/``.element_types`` from the SAME row's ``run_runtime``
+    call). T30b's own measurement script is the only caller that turns
+    this on; T32 is expected to be the first REPLAY caller that does.
     """
     sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "src"))
     from plr_sema.check import check_ir
     from plr_sema.check import ir as _ir
     from plr_sema.verdict import join
 
-    resources = resources_from_example(example)
+    if observe_element_types:
+        resources = resources_from_example(example, resource_types=resource_types, element_types=element_types)
+    else:
+        resources = resources_from_example(example)
     contracts_payload = json.loads(contracts_json)
     contracts = contracts_payload.get("contracts", {})
     # 260902 (spec §10, tip typestate increment): thread the additive
