@@ -194,3 +194,34 @@ B0 ~150 lines + a report; A a draft the size of increment 5 plus a round (the la
 increment 5's round took most of a day); B ~400 (parser + two idioms + measured sets); C ~450
 (evaluator + reasons + oracle re-measure + ledger delta); #4981 ~300 if admitted; D ~60. Two days if
 tier (ii) ships, a day and a half if the round defers it.
+
+## 8. Execution log and decision log (260905, orchestrator)
+
+**Landed on `coxswain-p2-pipeline`:** B0 `67194770` + fix `ca756bce` (ledger keys ops positionally; 12
+`record_id` collisions no longer merge ops; `consistency.ok == true`); D1 `55b84dc4` (check-only elapsed
+**35.8 s** vs the ~60 s #4923 threshold, runtime 51.8 s, wall 88.4 s, baseline 343/548/0 unsound held);
+D2 `f6a77baa` (`tips_dirty` cost: tier 1 **0** definite verdicts lost of 194 `volume_state_unknown`, tier
+2b **1** of 34 — the designed `volume_retip` counterexample); increment 6 draft `6407d92a`; round-1
+challenger `4d75b386` (C1–C18, six blockers) and defender `2fa228e8` (D1–D3, 18-item list); remediation
+`c9f4779e` (spec_version 17, `reviewed-round-1`, `SPEC_INCREMENT_6` enforced — lint 26 passed, 275
+citations 0 failing).
+
+**What round 1 changed about this plan.** §2's gate is restated **over reasons, not tiers** (C8): GO iff
+≥ 1 executed op carries zero `guard_predicate_unparsed` and zero `guard_operand_unknown` findings. §3
+Q1 resolved to (a) scoped `SAFE` but with the fence narrowing **deleted** (C3) and tier (iii) emitting
+`UNKNOWN`/`guard_env_dependent` + an `excludes_sites` annotation (C9); §3 Q2 resolved **DEFER** to
+increment 7 (#4981 = increment 7, not this sprint). The planning-time claim that `setup :191` reaches
+real ops was a probe artifact (ledger note 1). The ledger shows three reason-set combinations, not two
+(`{gpu}` 334, `{gpu, volume}` 117, `{gpu, unresolved_delegate}` 93 — all `move_*`, deferred row (e)).
+
+**Decisions pending the user before band B *spends* anything (defender §(2); band B's derive work
+proceeds meanwhile because it is an information gain either way and spends no ceiling):**
+
+| # | question | round-1 recommendation | status |
+|---|---|---|---|
+| 1 | Spend HM-25 `declared` 8 → 9 to file α+β (one entry; `live_rows()` stays 24/24)? If no, α/β ship unregistered and AC-15.7 asserts 8. | **yes** | pending |
+| 2 | Substitute the sprint headline: per-finding `SAFE` + a legible residual now; the first *joined* `SAFE` in increment 7 (needs tier (ii))? | **yes** | pending |
+| 3 | Adopt γ (bounded literal-display loop) this increment? Without it `aspirate`/`dispense` (117 ops) stay NO-GO and the gate rests on `pick_up_tips` alone. | **no** | pending |
+| 4 | Ship both new reasons, `REASON_VOCABULARY` 10 → 12 of cap 12 (exhausts HM-14 headroom)? Fallback: `guard_env_dependent` alone, 10 → 11. | **yes** | pending |
+
+**#4923 re-evaluation (§3.5):** check-only 35.8 s < 60 s threshold → NO-GO stands. **#4924:** NO-GO stands (§3.6).
