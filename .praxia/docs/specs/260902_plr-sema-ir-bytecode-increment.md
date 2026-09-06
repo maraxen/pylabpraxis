@@ -313,8 +313,8 @@ a `Resource` with a parent → `Ref(slot_of(parent), obj.name)`; a top-level `Re
 `Ref(slot_of(obj), None)`; a `list` → `Seq`; a JSON scalar → `Lit`; anything else → `Top`.
 
 The kwargs come from `PlanResult.kwargs` (`dispatcher.py:54-64`), which `run_runtime` already
-harvests through its `recording_plan_call` wrapper (`plr-sema/eval/oracle_common.py:312-324`) and carries out on
-`RuntimeOutcome.plr_kwargs` (`plr-sema/eval/oracle_common.py:299`). **Those kwargs are PLR-named by
+harvests through its `recording_plan_call` wrapper (`plr-sema/eval/oracle_common.py:334-346`) and carries out on
+`RuntimeOutcome.plr_kwargs` (`plr-sema/eval/oracle_common.py:321`). **Those kwargs are PLR-named by
 construction**: `plan_call` (`dispatcher.py:92-101`) writes `kwargs[spec.plr_arg]` inside its `bind`
 closure (`dispatcher.py:117-135`), and `spec.plr_arg` is `ParamSpec`'s "vendored kwarg name" field
 (`param_namespace.py:81-99`, `:88`). For `pick_up_tips` the single row is
@@ -880,7 +880,7 @@ rule, the E1–E5 transfer functions and every soundness argument stand exactly 
   (call.get("params") or {}).items()}` — the tool-named path — has no
   successor: a row whose call was never planned produces no `CALL` at all rather than a
   tool-named one, and is counted as `not_planned` in the report. `run_static`
-  and `compare` (`plr-sema/eval/oracle_common.py:592-611`), including the `unsound`
+  and `compare` (`plr-sema/eval/oracle_common.py:632-651`), including the `unsound`
   predicate, are unchanged — they read verdicts, not arguments.
 - **Tier 2** (`#4880`) renders each call sequence to Python source, extracts with
   `computation_graph_extractor` out of process, and lowers **the same way** with `lower_graph`. The

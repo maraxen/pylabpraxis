@@ -761,7 +761,7 @@ breaks if it is false" column forbids. That is a precision cost of exactly one d
 ## 14.8 Seeding, and why it reuses increment 3's scaffolding precedent
 
 An executed corpus row starts with wells that already contain liquid. The harness computes those
-seeds itself — `_precondition_plan` returns a `seed_volumes` dict (`plr-sema/eval/oracle_common.py:713-719`;
+seeds itself — `_precondition_plan` returns a `seed_volumes` dict (`plr-sema/eval/oracle_common.py:753-759`;
 the aspirate branch builds `dict(zip(sources, vols))` at `:755-762`) and `row_to_verifier_inputs` puts
 it in `deck_layout` at `:983-989`. **That dict is a harness artifact and is not in the extractor's
 graph**, so a `check_graph` on real extracted source sees no seeds and every cell is `TOP` at entry.

@@ -34,9 +34,31 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 log = logging.getLogger(__name__)
+
+#: (#4976, band B0, UNKNOWN ledger): an optional observer over
+#: :func:`run_static_calls`'s own per-row findings, installed by
+#: ``plr-sema/eval/unknown_ledger.py``. When set, ``run_static_calls`` calls
+#: ``FINDINGS_SINK(row_id, findings)`` once per invocation -- ``findings`` is
+#: the SAME relabelled, setup-pc-excluded tuple of real ``Finding`` objects
+#: (:class:`plr_sema.verdict.Finding`) that call collapses into its returned
+#: ``per_op`` summary immediately afterward, keyed by the row's own
+#: ``intent_record["record_id"]`` (the content-digest id every corpus row
+#: already carries, :func:`content_digest`) or ``""`` when ``example`` has
+#: no ``intent_record`` (a caller/test that builds a bare ``example`` dict,
+#: e.g. this module's own doctests and ``tests/test_oracle_replay.py``'s
+#: synthetic fixtures). Default is ``None`` (no observer): every existing
+#: caller of ``run_static_calls`` (``oracle_replay.py``, ``tip_mutants.py``,
+#: ``scripts/oracle_spike.py``, and this repo's own tests) is therefore
+#: byte-identical in behaviour and return value whether or not this module
+#: has ever been imported by the ledger -- this is purely an ADDITIVE
+#: observation seam, never a control-flow change, and it does not
+#: monkeypatch ``check_ir`` or anything else. See ``run_static_calls``'s own
+#: docstring for the exact point in its pipeline this fires.
+FindingsSink = Callable[[str, "tuple[Any, ...]"], None]
+FINDINGS_SINK: FindingsSink | None = None
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONTRACTS = REPO_ROOT / "plr-sema" / "data" / "derived_contracts.json"
@@ -538,6 +560,20 @@ def run_static_calls(
     ``__name__``, never a typed string constant. Defaulting to `False`
     reproduces every pre-T27 caller's behaviour exactly (``env=frozenset()``
     is ``check_ir``'s own default).
+
+    (#4976, band B0): immediately after ``findings`` is computed below --
+    already relabelled to real ``op_<i>`` ids and already stripped of every
+    finding whose PRE-relabel ``operation_id`` was a setup pc (the two lines
+    above this docstring's caller-visible effect) -- this function calls
+    :data:`FINDINGS_SINK` with ``(row_id, findings)`` iff a sink is
+    installed, where ``row_id`` is ``example.get("intent_record",
+    {}).get("record_id", "")``. This is why a setup-guard finding (e.g.
+    ``LiquidHandler.setup``'s own ``self.setup_finished`` raise-guard,
+    ``external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:191``)
+    can never reach the sink under a REAL op id: its Finding is excluded by
+    the ``setup_pcs`` filter below before ``findings`` even exists, not
+    merely before this seam -- there is no code path in this function by
+    which it could be relabelled onto a real call's ``op_<i>``.
     """
     sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "src"))
     from plr_sema.check import check_ir
@@ -569,6 +605,10 @@ def run_static_calls(
     }
     raw_findings = tuple(f for f in raw_findings if int(f.operation_id) not in setup_pcs)
     findings = _ir.relabel_findings(raw_findings, real_origin)
+
+    if FINDINGS_SINK is not None:
+        row_id = (example.get("intent_record") or {}).get("record_id", "") or ""
+        FINDINGS_SINK(row_id, findings)
 
     per_op: dict[str, list] = {f"op_{i}": [] for i in not_planned}
     for f in findings:
