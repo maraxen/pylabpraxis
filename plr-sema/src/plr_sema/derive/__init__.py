@@ -53,6 +53,7 @@ from typing import Any
 
 from plr_sema._provenance import SurveyStamp, survey_stamp
 from plr_sema.check._supported_tools import SUPPORTED_TOOLS
+from plr_sema.derive.predicate_ast import Predicate, parse as parse_predicate
 from plr_sema.telemetry import FAILURE_CATEGORIES
 from plr_sema.verdict import PlrSite
 
@@ -452,18 +453,32 @@ def _walk_closure(entry: Qualkey, index: dict[Qualkey, SurveyRecord]):
 @dataclass(frozen=True, slots=True)
 class InlinedGuard:
     """One precondition finding, inlined into an entry point's closure
-    (§7.2). ``condition``/``scope_trail`` are RAW STRINGS in v1 -- turning
-    them into checkable predicates is deferred item (c).
+    (§7.2). ``condition``/``scope_trail`` are RAW STRINGS -- turning them
+    into a checkable predicate was deferred item (c); increment 6 (spec
+    260904 §15.2, T30a) executes the boundary the main spec pre-declared
+    (`260901_plr-sema-pre-corpus-spec.md:2532`): ``predicate`` is additive,
+    ``condition`` stays and is the SOURCE OF TRUTH on the wire (nothing is
+    replaced -- ``derive/__main__.py``'s JSON writer emits both).
 
     ``kind`` carries guard polarity as a first-class field (C4, normative):
     ``"raise_guard"`` fires when ``condition`` evaluates TRUE
     (survey_plr_preconditions.py:198-199); ``"assert"`` fires when
     ``condition`` evaluates FALSE (:208). Folding this into ``condition``'s
     text would make the polarity permanently unrecoverable from the shipped
-    artifact.
+    artifact. (260904, T30a, G6: ``predicate`` is parsed from ``condition``
+    identically regardless of ``kind`` -- polarity is interpreted against it
+    by the evaluator, T31, never re-derived from the text.)
+
+    ``predicate`` is ``plr_sema.derive.predicate_ast.parse(condition)`` --
+    total, never ``None``, ``Opaque`` for anything the grammar (G0-G6) does
+    not recognise. It carries no idiom resolution (§15.3's alpha/beta local
+    bindings are T30b): a guard whose condition names a local bound by an
+    earlier statement in its own method parses to a plain ``Var``, exactly
+    as unresolved as it is today.
     """
 
     condition: str | None
+    predicate: Predicate
     scope_trail: tuple[str, ...]
     raises: str | None
     kind: str  # "raise_guard" | "assert"
@@ -522,6 +537,7 @@ def derive_contract(
             guards.append(
                 InlinedGuard(
                     condition=finding.condition,
+                    predicate=parse_predicate(finding.condition),
                     scope_trail=finding.scope_trail,
                     raises=finding.raises,
                     kind=finding.kind,

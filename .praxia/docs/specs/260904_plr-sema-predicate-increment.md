@@ -92,7 +92,7 @@ of which `guard_predicate_unparsed` 5,656 / `volume_state_unknown` 194 / `unreso
 the bare delegate name `_state_updated`, with `n_findings` 186 over `n_ops_blocked` **93** and a
 `per_method` breakdown that now sums to 93
 (`outputs/plr-sema/unknown_ledger_260904_before.json:1123-1134`), i.e. the transitive `delegates_to`
-closure hit an `unresolved_calls` entry (`plr-sema/src/plr_sema/derive/__init__.py:536-537`). That is
+closure hit an `unresolved_calls` entry (`plr-sema/src/plr_sema/derive/__init__.py:552-553`). That is
 deferred row (e) (`.praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md:2520`), which no predicate
 grammar touches. Every `move_*` operation therefore keeps a residual this increment cannot move, and
 `move_resource`/`move_lid`/`move_plate` are excluded from §15.9's candidate list by construction.
@@ -184,7 +184,7 @@ the resource — is out of scope and is named as such, per finding, by §15.7's 
 
 > **Normative (tier (iii) is DERIVED, at zero registry cost — round 1, C8).** A guard is tier (iii)
 > **iff** `guard.is_dynamic_raise` — the shipped property that tests `raises.startswith("<dynamic:")`
-> (`plr-sema/src/plr_sema/derive/__init__.py:474-478`), which the survey sets for a
+> (`plr-sema/src/plr_sema/derive/__init__.py:489-493`), which the survey sets for a
 > `raise <ast.Name>`, i.e. a re-raise of a locally-bound exception name
 > (`scripts/survey_plr_preconditions.py:231-240`). **No site list, no `condition` text match, no new
 > pattern, no registry row.** At this pin the rule selects exactly seven sites in
@@ -1495,7 +1495,7 @@ nothing".
   depth-0 empty-trail guard in a `K` containing an earlier `ast.Try`. Separately: **a tier-(iii) guard
   emits exactly one `Finding`, `Verdict.UNKNOWN`, `reason == "guard_env_dependent"`**, and contributes
   its `site` to `AnalysisReport.scope.excludes_sites`; tier (iii) is asserted to be selected by
-  `guard.is_dynamic_raise` (`plr-sema/src/plr_sema/derive/__init__.py:474-478`) and **not** by any site
+  `guard.is_dynamic_raise` (`plr-sema/src/plr_sema/derive/__init__.py:489-493`) and **not** by any site
   list or condition-text match; `join`'s input multiset **is** asserted to contain it; and
   `check_graph`'s two-positional-argument call form returns a report whose `schema_version` is still 1.
   The `else of:` case, the `:117` case and the depth-1 case are the stub-defeating halves.

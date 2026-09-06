@@ -44,7 +44,8 @@ from plr_sema.derive import (
     scan_dropped_receiver_calls,
     scan_dropped_receiver_calls_in_source,
 )
-from plr_sema.derive.__main__ import build_derived_contracts_payload
+from plr_sema.derive.__main__ import build_derived_contracts_payload, _guard_to_json
+from plr_sema.derive.predicate_ast import Opaque, TRUE, parse as parse_predicate
 from plr_sema.derive.receiver_state import (
     build_plr_class_index,
     compute_delegate_channel_bindings,
@@ -2036,3 +2037,100 @@ class R:
     assert guard["caller_scope"] == ["for op in ops"]
     assert guard["caller_lineno"] == 35
     assert guard["scope_trail"] == ["if volume - self.get_used() > 1e-06"]
+
+
+# ---------------------------------------------------------------------------
+# T30a (spec 260904 §15.2, increment 6): InlinedGuard.predicate -- additive,
+# populated at construction from predicate_ast.parse(finding.condition),
+# `condition` retained as the source of truth (main spec boundary row,
+# 260901_plr-sema-pre-corpus-spec.md:2532).
+# ---------------------------------------------------------------------------
+
+
+def test_inlined_guard_predicate_is_populated_and_condition_retained() -> None:
+    rec = _synthetic_record(
+        "Widget.frobnicate", class_name="Widget", findings=(_synthetic_finding(42),)
+    )
+    index = build_index([rec])
+
+    contract = derive_contract("synthetic.module", "Widget.frobnicate", index)
+
+    assert len(contract.guards) == 1
+    (guard,) = contract.guards
+    # `_synthetic_finding` always carries condition "x > 0" (see above).
+    assert guard.condition == "x > 0"
+    assert guard.predicate == parse_predicate("x > 0")
+    assert guard.predicate != Opaque("x > 0")
+
+
+def test_inlined_guard_predicate_is_true_for_unconditional_guard() -> None:
+    rec = SurveyRecord(
+        qualname="Widget.frobnicate",
+        class_name="Widget",
+        module="synthetic.module",
+        file="<synthetic>",
+        lineno=1,
+        params=("self",),
+        findings=(
+            SurveyFinding(
+                kind="raise_guard",
+                condition=None,
+                raises="ValueError",
+                scope_trail=(),
+                mentions_params=(),
+                lineno=7,
+            ),
+        ),
+        delegates_to=(),
+        unresolved_calls=(),
+    )
+    index = build_index([rec])
+
+    contract = derive_contract("synthetic.module", "Widget.frobnicate", index)
+
+    assert len(contract.guards) == 1
+    (guard,) = contract.guards
+    assert guard.condition is None
+    assert guard.predicate == TRUE()
+
+
+def test_guard_to_json_emits_predicate_alongside_condition() -> None:
+    rec = _synthetic_record(
+        "Widget.frobnicate", class_name="Widget", findings=(_synthetic_finding(42),)
+    )
+    index = build_index([rec])
+    contract = derive_contract("synthetic.module", "Widget.frobnicate", index)
+    (guard,) = contract.guards
+
+    guard_json = _guard_to_json(guard)
+
+    assert guard_json["condition"] == "x > 0"
+    assert "predicate" in guard_json
+    assert guard_json["predicate"]["node"] != "" and isinstance(guard_json["predicate"], dict)
+
+
+def test_guard_predicate_unparsed_reason_tolerates_a_record_missing_predicate() -> None:
+    """The 'reader accepts records without it' half of T30a's additive-field
+    contract: `plr_sema.check`'s existing guard-to-Finding path never reads
+    `guard["predicate"]` at all (only `condition`/`site`), so a guard dict
+    from an un-regenerated (pre-T30a) artifact -- one with no `predicate`
+    key whatsoever -- produces the IDENTICAL Finding as one that carries it.
+    """
+    from plr_sema.check import _finding_from_guard
+
+    rec = _synthetic_record(
+        "Widget.frobnicate", class_name="Widget", findings=(_synthetic_finding(42),)
+    )
+    index = build_index([rec])
+    contract = derive_contract("synthetic.module", "Widget.frobnicate", index)
+    (guard,) = contract.guards
+
+    with_predicate = _guard_to_json(guard)
+    without_predicate = dict(with_predicate)
+    del without_predicate["predicate"]
+    assert "predicate" not in without_predicate
+
+    finding_with = _finding_from_guard("op-1", with_predicate)
+    finding_without = _finding_from_guard("op-1", without_predicate)
+
+    assert finding_with == finding_without

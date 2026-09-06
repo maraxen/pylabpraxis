@@ -57,6 +57,7 @@ from plr_sema.derive import (
     load_survey,
     scan_dropped_receiver_calls,
 )
+from plr_sema.derive.predicate_ast import to_json as predicate_to_json
 from plr_sema.derive.receiver_state import (
     ReceiverState,
     VolumeAnchor,
@@ -73,8 +74,15 @@ from plr_sema.derive.receiver_state import (
 
 
 def _guard_to_json(guard: InlinedGuard) -> dict[str, Any]:
+    # 260904 (spec §15.2, T30a): additive `predicate` -- the mini-AST parsed
+    # from `condition`, which stays the source of truth on the wire
+    # (nothing is replaced). A reader that does not know this key (any
+    # dict-based `.get("predicate")` consumer, or an un-regenerated
+    # artifact) degrades to not having it at all -- no consumer reads it
+    # yet (T31 is the evaluator).
     return {
         "condition": guard.condition,
+        "predicate": predicate_to_json(guard.predicate),
         "scope_trail": list(guard.scope_trail),
         "raises": guard.raises,
         "kind": guard.kind,

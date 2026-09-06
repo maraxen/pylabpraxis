@@ -184,7 +184,7 @@ fail-closed direction as AC-10.7 and AC-11.12, and pinned here by AC-12.2's thir
 
 **Provenance.** Two records, both existing artifacts, neither new:
 
-- The **gap ledger's** `tip_state` block (`plr-sema/src/plr_sema/derive/__main__.py:323-341`, built by
+- The **gap ledger's** `tip_state` block (`plr-sema/src/plr_sema/derive/__main__.py:331-349`, built by
   `compute_tip_families`) gains an `entry_reset` entry per anchored receiver class, alongside
   `tipstate_anchor`. Its value is the derived `{method, post}` pair, or the string `"absent"` /
   `"ambiguous"` when P5 emitted nothing and why. This is the visible surface AC-10.10 established for

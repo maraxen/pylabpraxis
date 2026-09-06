@@ -25,6 +25,7 @@ import pytest
 
 from plr_sema._provenance import SurveyStamp, survey_stamp
 from plr_sema.derive import InlinedGuard, SurveyRecord, build_index
+from plr_sema.derive.predicate_ast import parse as parse_predicate
 from plr_sema.differential import (
     Disagreement,
     HandContract,
@@ -260,6 +261,7 @@ def _synthetic_guard(
 ) -> InlinedGuard:
     return InlinedGuard(
         condition=condition,
+        predicate=parse_predicate(condition),
         scope_trail=(),
         raises=raises,
         kind=kind,
