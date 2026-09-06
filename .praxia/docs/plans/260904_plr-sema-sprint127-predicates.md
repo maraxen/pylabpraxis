@@ -225,3 +225,36 @@ proceeds meanwhile because it is an information gain either way and spends no ce
 | 4 | Ship both new reasons, `REASON_VOCABULARY` 10 → 12 of cap 12 (exhausts HM-14 headroom)? Fallback: `guard_env_dependent` alone, 10 → 11. | **yes** | pending |
 
 **#4923 re-evaluation (§3.5):** check-only 35.8 s < 60 s threshold → NO-GO stands. **#4924:** NO-GO stands (§3.6).
+
+**Band B landed (260906):** T30a `58e5c3fc` (typed mini-AST, total `parse`, `InlinedGuard.predicate`,
+contract table regenerated: 7,528 guards, 6,295 parse non-`Opaque`, 1,233 `Opaque`, 925 nested-`Opaque`);
+T30b-1 `7c0fe59a` (`param_defaults`; α 5 / β 11 bindings vs the spec's predicted 4 / 8 — the extras are
+`_assert_positions_unique:294` and `transfer:1353` plus two `VantageBackend` β; O1 element types,
+default-off, 0 heterogeneous parents); T30b-2 `6cbbe442` (`t30_measure.py`: D2 `channels_for_call`
+non-`None` on every executed `pick_up_tips` op, `tip_spots` lowers as `ir.Seq` on all; name-coincidence
+exposure 936 depth≥1 occurrences; O1 delta 389 ops; `guard_operand_unknown` **0** everywhere with O1).
+
+**Gate (§2 restated, reason-based): NO-GO.** No executed op reaches zero `guard_predicate_unparsed`.
+`pick_up_tips`'s residual is `{decidable, guard_env_dependent, guard_predicate_unparsed}`; the two
+`guard_predicate_unparsed` members are `liquid_handler.py:409` (`invalid_channels = [c for c in channels
+if c not in self.head]` — α binds, the filter `c not in self.head` is `Opaque`, §15.7's nested-`Opaque`
+rule assigns `guard_predicate_unparsed`, while §15.9's prediction table said `guard_env_dependent`) and
+`:514` (`not all(self.backend.can_pick_up_tip(channel, tip) for channel, tip in zip(use_channels, tips))`
+— `zip(...)` is not a G1 `Term`, so `Opaque`). Both are expressions rooted at `self.` — the receiver's head
+and backend, tier (ii) by §15.1's definition — that the grammar cannot recognise as environment reads.
+Per §2 / spec §15.9: derive code kept (information gain), T31 NOT started, decision to the user.
+
+**Measurement caveat (T32 fix-up, not a gate factor):** `t30_measure.py` re-implements `run_row`'s
+skip/no_call gating and reports 923 ops (`pick_up_tips` 361) where the ledger's frozen population is 544
+(`pick_up_tips` 223); the per-site classification is population-independent, so the NO-GO stands, but
+the script must reuse `oracle_replay.run_row`'s own gating before any published delta.
+
+**Decision 5 for the user (the NO-GO):** (a) accept NO-GO — the sprint closes with the ledger, D, the
+spec, and the derive-side gains, no evaluator; or (b) amend the grammar narrowly (spec_version 18):
+an `EnvRef` leaf for an expression rooted at `self.` (attribute chain, optionally called with `Term`
+args) that the grammar *recognises* as an environment read, evaluates to ½, and carries
+`guard_env_dependent`, not `guard_predicate_unparsed`; plus `zip(<Term>, <Term>)` as a `Term` for
+`AllOf`/`AnyOf`. Under (b) `pick_up_tips`'s residual becomes `{decidable, guard_env_dependent}` ⇒ GO,
+and T31 proceeds. Anti-gaming check for (b): `EnvRef` is syntactically narrow (rooted at `self`), decides
+nothing, and its count is published under `guard_env_dependent`, which the gate already excludes from
+"converted". Orchestrator's recommendation: **(b)**, with a short adversarial pass on the amendment.
