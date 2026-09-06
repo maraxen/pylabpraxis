@@ -26,7 +26,7 @@ from plr_sema.verdict import Finding, PlrSite, Verdict, join
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "eval"))
 
 import oracle_common as oc  # noqa: E402
-from unknown_ledger import cluster_unknown_findings  # noqa: E402
+from unknown_ledger import _compute_consistency, cluster_unknown_findings  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -178,6 +178,112 @@ class TestClusterUnknownFindings:
         row_findings = [("rowA", (_unk("op_5", "guard_predicate_unparsed"),))]
         result = cluster_unknown_findings(row_findings, [[]])
         assert result["clusters"][0]["per_method"] == {"<unknown>": 1}
+
+
+class TestRowIdCollision:
+    """Band B0 fix (backlog #4976, round-1 challenger C12, 260905):
+    ``row_id`` is a content digest (``oracle_common.content_digest``) that
+    is documented to collide across a small fraction of corpus rows.
+    Two DIFFERENT rows sharing that digest, each with an op at the SAME
+    ``op_id``, must be counted as two DISTINCT ``ops_blocked`` entries --
+    the pre-fix ``(row_id, op_id)``-keyed set silently merged them into
+    one, undercounting ``n_ops_blocked``/``n_ops_sole_blocker`` by exactly
+    the collision count.
+    """
+
+    def test_two_rows_sharing_a_colliding_row_id_are_not_merged(self):
+        row_findings = [
+            ("corpus_p25:deadbeef", (_unk("op_0", "guard_predicate_unparsed"),)),
+            ("corpus_p25:deadbeef", (_unk("op_0", "guard_predicate_unparsed"),)),
+        ]
+        row_methods = [["move_plate"], ["move_lid"]]
+
+        result = cluster_unknown_findings(row_findings, row_methods)
+
+        assert result["n_ops_executed"] == 2
+        assert result["n_ops_unknown"] == 2
+        assert result["n_row_id_collisions"] == 1
+
+        assert len(result["collision_ops"]) == 1
+        collision = result["collision_ops"][0]
+        assert collision["row_idx"] == 1
+        assert collision["record_id"] == "corpus_p25:deadbeef"
+        assert collision["op_id"] == "op_0"
+        assert collision["method"] == "move_lid"
+        assert collision["reason_set"] == ["guard_predicate_unparsed"]
+        assert collision["verdict"] == "unknown"
+
+        assert result["n_clusters"] == 1
+        cluster = result["clusters"][0]
+        assert cluster["n_ops_blocked"] == 2  # NOT 1 -- the pre-fix defect
+        assert cluster["n_ops_sole_blocker"] == 2
+        assert cluster["per_method"] == {"move_lid": 1, "move_plate": 1}
+        assert sum(cluster["per_method"].values()) == cluster["n_ops_blocked"]
+
+        assert result["consistency"]["ok"] is True
+
+    def test_no_collisions_reported_when_row_ids_are_distinct(self):
+        row_findings = [
+            ("corpus_p25:aaaa", (_unk("op_0", "guard_predicate_unparsed"),)),
+            ("corpus_p25:bbbb", (_unk("op_0", "guard_predicate_unparsed"),)),
+        ]
+        result = cluster_unknown_findings(row_findings, [["aspirate"], ["dispense"]])
+        assert result["n_row_id_collisions"] == 0
+        assert result["collision_ops"] == []
+        assert result["clusters"][0]["n_ops_blocked"] == 2
+
+
+class TestConsistencyInvariant:
+    """Direct unit tests for :func:`_compute_consistency` (band B0 fix,
+    #4976 round-1 C12) plus a check that the real pipeline always produces
+    an ``ok`` consistency block for itself, given the cluster/histogram
+    populations are built from the same per-op loop.
+    """
+
+    def test_ok_on_a_normal_ledger_produced_by_the_real_pipeline(self):
+        row_findings = [
+            ("row0", (
+                _unk("op_0", "guard_predicate_unparsed", lineno=375, detail="len(missing) > 0"),
+                _unk("op_0", "volume_state_unknown", lineno=1034, qualname="LiquidHandler.aspirate",
+                     detail="<unconditional>"),
+            )),
+            ("row1", (
+                _unk("op_0", "guard_predicate_unparsed", lineno=375, detail="len(missing) > 0"),
+            )),
+        ]
+        result = cluster_unknown_findings(row_findings, [["aspirate"], ["aspirate"]])
+        consistency = result["consistency"]
+        assert consistency["ok"] is True
+        assert consistency["violations"] == []
+        assert consistency["sum_histogram_n_ops"] == result["n_ops_unknown"] == consistency["n_ops_unknown"]
+
+    def test_flags_histogram_sum_mismatch_against_n_ops_unknown(self):
+        histogram_list = [{"reason_set": ["r1"], "n_ops": 3}]
+        consistency = _compute_consistency([], histogram_list, n_ops_unknown=5)
+        assert consistency["ok"] is False
+        assert any("sum(per_op_reason_set_histogram.n_ops)" in v for v in consistency["violations"])
+
+    def test_flags_cluster_claiming_more_ops_than_its_reason_population(self):
+        # cluster claims 5 ops blocked for reason r1, but the histogram says
+        # only 3 UNKNOWN ops carried r1 at all -- structurally impossible.
+        cluster_list = [{
+            "reason": "r1", "plr_site": "<none>", "condition": "c",
+            "n_ops_blocked": 5, "per_method": {"m": 5},
+        }]
+        histogram_list = [{"reason_set": ["r1"], "n_ops": 3}]
+        consistency = _compute_consistency(cluster_list, histogram_list, n_ops_unknown=3)
+        assert consistency["ok"] is False
+        assert any("n_ops_with_reason" in v for v in consistency["violations"])
+
+    def test_flags_per_method_sum_not_matching_n_ops_blocked(self):
+        cluster_list = [{
+            "reason": "r1", "plr_site": "<none>", "condition": "c",
+            "n_ops_blocked": 4, "per_method": {"m": 3},
+        }]
+        histogram_list = [{"reason_set": ["r1"], "n_ops": 4}]
+        consistency = _compute_consistency(cluster_list, histogram_list, n_ops_unknown=4)
+        assert consistency["ok"] is False
+        assert any("sum(per_method)" in v for v in consistency["violations"])
 
 
 class TestFindingsSinkSeam:

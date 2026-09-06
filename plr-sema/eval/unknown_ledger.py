@@ -125,23 +125,37 @@ class ClusterAccumulator:
     site: str
     detail: str
     n_findings: int = 0
-    ops_blocked: set[tuple[str, str]] = dataclasses.field(default_factory=set)
-    sole_blocker_ops: set[tuple[str, str]] = dataclasses.field(default_factory=set)
+    ops_blocked: set[tuple[int, str]] = dataclasses.field(default_factory=set)
+    sole_blocker_ops: set[tuple[int, str]] = dataclasses.field(default_factory=set)
     per_method: collections.Counter = dataclasses.field(default_factory=collections.Counter)
-    example_ops: list[tuple[str, str]] = dataclasses.field(default_factory=list)
+    example_ops: list[tuple[int, str, str]] = dataclasses.field(default_factory=list)
 
-    def add(self, row_id: str, op_id: str, method: str) -> None:
-        key = (row_id, op_id)
+    def add(self, row_idx: int, row_id: str, op_id: str, method: str) -> None:
+        """Key by the POSITIONAL ``(row_idx, op_id)`` pair, never by
+        ``(row_id, op_id)``. ``row_id`` is a content digest
+        (``oracle_common.content_digest``, module docstring point 3) that
+        collides across a documented ~4% of corpus rows, so two DIFFERENT
+        ops belonging to two DIFFERENT rows can carry the identical
+        ``row_id`` -- deduping on that string silently merged such ops into
+        one ``ops_blocked`` entry, undercounting ``n_ops_blocked`` /
+        ``n_ops_sole_blocker`` by exactly the collision count (band B0 fix,
+        backlog #4976, round-1 challenger C12). ``row_idx`` is assigned by
+        ``enumerate`` over one ``build_ledger`` call's own ``row_findings``
+        and is therefore unique per row by construction, so this key cannot
+        collide the way ``row_id`` does. ``row_id`` is kept in
+        ``example_ops`` purely for human-readable display.
+        """
+        key = (row_idx, op_id)
         is_new_op = key not in self.ops_blocked
         self.n_findings += 1
         self.ops_blocked.add(key)
         if is_new_op:
             self.per_method[method] += 1
             if len(self.example_ops) < 5:
-                self.example_ops.append(key)
+                self.example_ops.append((row_idx, row_id, op_id))
 
-    def mark_sole_blocker(self, row_id: str, op_id: str) -> None:
-        self.sole_blocker_ops.add((row_id, op_id))
+    def mark_sole_blocker(self, row_idx: int, op_id: str) -> None:
+        self.sole_blocker_ops.add((row_idx, op_id))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -152,7 +166,9 @@ class ClusterAccumulator:
             "n_ops_blocked": len(self.ops_blocked),
             "n_ops_sole_blocker": len(self.sole_blocker_ops),
             "per_method": dict(sorted(self.per_method.items(), key=lambda kv: (-kv[1], kv[0]))),
-            "example_ops": [{"row_id": r, "op_id": o} for r, o in self.example_ops],
+            "example_ops": [
+                {"row_idx": i, "row_id": r, "op_id": o} for i, r, o in self.example_ops
+            ],
         }
 
 
@@ -178,10 +194,12 @@ def cluster_unknown_findings(
     Returns a dict with ``clusters`` (list, deterministically sorted by
     ``n_ops_blocked`` desc then the cluster key), ``per_op_reason_set_histogram``
     (a list of ``{"reason_set": [...], "n_ops": n}`` sorted the same way),
-    ``n_ops_executed`` (distinct ``(row_id, op_id)`` pairs seen at all,
+    ``n_ops_executed`` (distinct ``(row_idx, op_id)`` pairs seen at all,
     regardless of verdict), ``n_ops_unknown``, ``n_findings_total`` (UNKNOWN
     findings on UNKNOWN-verdict ops only), ``n_findings_by_reason``,
-    ``n_clusters``.
+    ``n_clusters``, ``n_row_id_collisions`` and ``collision_ops`` (band B0
+    fix, #4976 round-1 C12 -- see :meth:`ClusterAccumulator.add`), and
+    ``consistency`` (the invariant cross-checks from :func:`_compute_consistency`).
     """
     sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "src"))
     from plr_sema.verdict import Verdict, join
@@ -192,7 +210,13 @@ def cluster_unknown_findings(
     n_ops_executed = 0
     n_ops_unknown = 0
     n_findings_total = 0
-    all_op_keys: set[tuple[str, str]] = set()
+    all_op_keys: set[tuple[int, str]] = set()
+    # Content-digest collision bookkeeping (diagnostic only -- NOT used as a
+    # dedup key anywhere; see ClusterAccumulator.add's docstring). Keyed by
+    # the LEGACY, pre-fix (row_id, op_id) pair so a genuine collision --
+    # two different (row_idx, op_id) UNKNOWN ops sharing one row_id -- is
+    # detected and published instead of silently merged.
+    legacy_unknown_ops: dict[tuple[str, str], list[dict[str, Any]]] = collections.defaultdict(list)
 
     for row_idx, (row_id, findings) in enumerate(row_findings):
         methods = row_methods[row_idx] if row_idx < len(row_methods) else []
@@ -200,14 +224,13 @@ def cluster_unknown_findings(
         for f in findings:
             per_op[f.operation_id].append(f)
         for op_id, flist in per_op.items():
-            key = (row_id, op_id)
-            if key in all_op_keys:
-                # Defensive: a (row_id, op_id) pair should be unique within
-                # one row's own findings tuple (one entry per distinct
-                # operation_id already, via per_op above); guards against a
-                # row_id collision across two different rows silently
-                # merging two unrelated operations' finding sets.
-                log.warning("duplicate (row_id, op_id) %r -- row_id likely collided", key)
+            key = (row_idx, op_id)
+            # row_idx is unique per iteration of the outer loop and op_id is
+            # unique within one row's own per_op dict, so this positional
+            # key cannot collide by construction; a hit here would mean the
+            # row/op iteration itself is broken, not a content-digest
+            # collision (those are tracked below via legacy_unknown_ops).
+            assert key not in all_op_keys, f"positional (row_idx, op_id) key collided: {key!r}"
             all_op_keys.add(key)
             n_ops_executed += 1
             verdict = join(tuple(flist))
@@ -222,6 +245,29 @@ def cluster_unknown_findings(
             unknown_findings = [f for f in flist if f.verdict is Verdict.UNKNOWN]
             op_cluster_keys = {(f.reason, _site_key(f.plr_site), f.detail) for f in unknown_findings}
             sole = len(op_cluster_keys) == 1
+
+            legacy_key = (row_id, op_id)
+            occurrences = legacy_unknown_ops[legacy_key]
+            if occurrences:
+                log.debug(
+                    "row_id collision: legacy key %r already seen at row_idx=%s -- also "
+                    "row_idx=%d now (content-digest collision on an UNKNOWN op; NOT "
+                    "merged -- see n_row_id_collisions/collision_ops in the report)",
+                    legacy_key, [o["row_idx"] for o in occurrences], row_idx,
+                )
+            occurrences.append({
+                "row_idx": row_idx,
+                "record_id": row_id,
+                "op_id": op_id,
+                "method": method,
+                "reason_set": sorted({f.reason for f in unknown_findings}),
+                "findings": [
+                    {"reason": f.reason, "plr_site": _site_key(f.plr_site), "detail": f.detail}
+                    for f in unknown_findings
+                ],
+                "verdict": verdict.value,
+            })
+
             for f in unknown_findings:
                 n_findings_total += 1
                 n_findings_by_reason[f.reason] += 1
@@ -230,10 +276,31 @@ def cluster_unknown_findings(
                 if acc is None:
                     acc = ClusterAccumulator(reason=f.reason, site=ckey[1], detail=f.detail)
                     clusters[ckey] = acc
-                acc.add(row_id, op_id, method)
+                acc.add(row_idx, row_id, op_id, method)
                 if sole:
-                    acc.mark_sole_blocker(row_id, op_id)
+                    acc.mark_sole_blocker(row_idx, op_id)
             reason_set_histogram[tuple(sorted({f.reason for f in unknown_findings}))] += 1
+
+    # Every occurrence past the first, for a legacy key shared by >1
+    # row_idx, is one op that the pre-fix set-keyed ops_blocked would have
+    # silently folded into an earlier, unrelated op -- i.e. exactly the
+    # "12 duplicate (row_id, op_id) ... row_id likely collided" warnings
+    # the unfixed ledger logged on the frozen benchmark (#4976 round-1 C12).
+    collision_ops = [
+        occ
+        for occurrences in legacy_unknown_ops.values()
+        if len(occurrences) > 1
+        for occ in occurrences[1:]
+    ]
+    collision_ops.sort(key=lambda o: (o["row_idx"], o["op_id"]))
+    n_row_id_collisions = len(collision_ops)
+    if n_row_id_collisions:
+        log.info(
+            "n_row_id_collisions=%d UNKNOWN-verdict op(s) shared a content-digest row_id "
+            "with another row's op at the same op_id this run; positional keying keeps "
+            "every one of them a distinct ops_blocked entry (see collision_ops)",
+            n_row_id_collisions,
+        )
 
     cluster_list = [c.to_dict() for c in clusters.values()]
     cluster_list.sort(key=lambda c: (-c["n_ops_blocked"], c["reason"], c["plr_site"], c["condition"]))
@@ -243,6 +310,11 @@ def cluster_unknown_findings(
         for rs, n in sorted(reason_set_histogram.items(), key=lambda kv: (-kv[1], kv[0]))
     ]
 
+    consistency = _compute_consistency(cluster_list, histogram_list, n_ops_unknown)
+    if not consistency["ok"]:
+        for v in consistency["violations"]:
+            log.error("ledger consistency violation: %s", v)
+
     return {
         "clusters": cluster_list,
         "per_op_reason_set_histogram": histogram_list,
@@ -251,6 +323,87 @@ def cluster_unknown_findings(
         "n_findings_total": n_findings_total,
         "n_findings_by_reason": dict(sorted(n_findings_by_reason.items(), key=lambda kv: (-kv[1], kv[0]))),
         "n_clusters": len(cluster_list),
+        "n_row_id_collisions": n_row_id_collisions,
+        "collision_ops": collision_ops,
+        "consistency": consistency,
+    }
+
+
+def _compute_consistency(
+    cluster_list: list[dict[str, Any]],
+    histogram_list: list[dict[str, Any]],
+    n_ops_unknown: int,
+) -> dict[str, Any]:
+    """Cross-checks that must hold given clusters/histogram are built from
+    the SAME per-op UNKNOWN-verdict population (band B0, #4976 round-1
+    challenger C12): a violation means the clustering arithmetic itself has
+    drifted, not just one benchmark run's numbers.
+
+    Three invariants, each independent of the other two:
+
+    1. ``sum(histogram.n_ops) == n_ops_unknown`` -- the histogram counts one
+       entry per UNKNOWN op (keyed by reason SET, incremented directly in
+       the per-op loop, never through a row_id-keyed set) and must total
+       exactly the same population ``n_ops_unknown`` counts.
+    2. For every reason ``r``: no single ``(reason, site, detail)`` cluster
+       can claim more blocked ops than the number of UNKNOWN ops whose
+       reason set contains ``r`` at all (derived from the histogram) --
+       a cluster is a strict refinement of "ops carrying this reason", so
+       its ``n_ops_blocked`` can never exceed that coarser population.
+    3. Per cluster, ``sum(per_method.values()) == n_ops_blocked`` -- every
+       ``ops_blocked`` member is counted in exactly one ``per_method`` slot
+       (:meth:`ClusterAccumulator.add` increments ``per_method`` iff the op
+       is new to ``ops_blocked``).
+    """
+    violations: list[str] = []
+
+    sum_histogram_n_ops = sum(h["n_ops"] for h in histogram_list)
+    n_ops_executed_unknown = n_ops_unknown  # same population, named separately per spec
+    if not (sum_histogram_n_ops == n_ops_unknown == n_ops_executed_unknown):
+        violations.append(
+            f"sum(per_op_reason_set_histogram.n_ops)={sum_histogram_n_ops} != "
+            f"n_ops_unknown={n_ops_unknown} (!= n_ops_executed_unknown={n_ops_executed_unknown})"
+        )
+
+    n_ops_with_reason: collections.Counter = collections.Counter()
+    for h in histogram_list:
+        for r in h["reason_set"]:
+            n_ops_with_reason[r] += h["n_ops"]
+
+    max_cluster_n_ops_blocked: dict[str, int] = {}
+    for c in cluster_list:
+        r = c["reason"]
+        max_cluster_n_ops_blocked[r] = max(max_cluster_n_ops_blocked.get(r, 0), c["n_ops_blocked"])
+
+    per_reason: dict[str, dict[str, int]] = {}
+    for r, max_blocked in sorted(max_cluster_n_ops_blocked.items()):
+        n_with_reason = n_ops_with_reason.get(r, 0)
+        per_reason[r] = {
+            "max_cluster_n_ops_blocked": max_blocked,
+            "n_ops_with_reason": n_with_reason,
+        }
+        if max_blocked > n_with_reason:
+            violations.append(
+                f"reason={r!r}: max cluster n_ops_blocked={max_blocked} > "
+                f"n_ops_with_reason (from histogram)={n_with_reason}"
+            )
+
+    for c in cluster_list:
+        per_method_sum = sum(c["per_method"].values())
+        if per_method_sum != c["n_ops_blocked"]:
+            violations.append(
+                f"cluster reason={c['reason']!r} site={c['plr_site']!r} "
+                f"condition={c['condition']!r}: sum(per_method)={per_method_sum} != "
+                f"n_ops_blocked={c['n_ops_blocked']}"
+            )
+
+    return {
+        "ok": not violations,
+        "violations": violations,
+        "sum_histogram_n_ops": sum_histogram_n_ops,
+        "n_ops_unknown": n_ops_unknown,
+        "n_ops_executed_unknown": n_ops_executed_unknown,
+        "per_reason": per_reason,
     }
 
 
@@ -386,6 +539,21 @@ def build_ledger(
             f"check_graph_exceptions==0); unsound={unsound_baseline}, "
             f"unknown_rate={unknown_rate_baseline}."
         ),
+        (
+            f"band B0 fix (backlog #4976, round-1 challenger C12, 260905): "
+            f"ClusterAccumulator.ops_blocked/sole_blocker_ops are now keyed by the "
+            f"POSITIONAL (row_idx, op_id) pair, never by (row_id, op_id) -- row_id is a "
+            f"content digest (mismatches note above) that collides across a documented "
+            f"~4% of corpus rows, and deduping ops_blocked on that string silently merged "
+            f"two DIFFERENT ops from two DIFFERENT rows into one entry whenever they "
+            f"shared both a colliding row_id and an op_id. This run found "
+            f"n_row_id_collisions={clustered['n_row_id_collisions']} such UNKNOWN-verdict "
+            f"ops (full per-op reason/site list in collision_ops); the pre-fix ledger "
+            f"undercounted n_ops_blocked by exactly this many ops on every cluster any of "
+            f"them belonged to (observed 260904: the `:375 LiquidHandler._check_args` "
+            f"cluster read 532 instead of 544, and the sole `unresolved_delegate` cluster "
+            f"read 81 instead of 93 -- both off by exactly n_row_id_collisions)."
+        ),
     ]
 
     header = {
@@ -420,6 +588,9 @@ def build_ledger(
         "n_clusters": clustered["n_clusters"],
         "clusters": clustered["clusters"],
         "per_op_reason_set_histogram": clustered["per_op_reason_set_histogram"],
+        "n_row_id_collisions": clustered["n_row_id_collisions"],
+        "collision_ops": clustered["collision_ops"],
+        "consistency": clustered["consistency"],
         "notes": notes,
     }
     return report
@@ -489,6 +660,23 @@ def main(argv: list[str] | None = None) -> int:
             cl["reason"], cl["plr_site"], cl["n_findings"], cl["n_ops_blocked"],
             cl["n_ops_sole_blocker"], cl["condition"][:80],
         )
+
+    if report["n_row_id_collisions"]:
+        log.info(
+            "n_row_id_collisions=%d (see collision_ops in %s)",
+            report["n_row_id_collisions"], args.report,
+        )
+
+    consistency = report["consistency"]
+    if not consistency["ok"]:
+        for v in consistency["violations"]:
+            log.error("CONSISTENCY VIOLATION: %s", v)
+        log.error(
+            "ledger consistency check FAILED -- %d violation(s); report was still written "
+            "to %s for inspection, but this run's numbers are NOT trustworthy",
+            len(consistency["violations"]), args.report,
+        )
+        return 1
 
     return 0
 

@@ -15,8 +15,12 @@
     "crosscheck_joined": 191,
     "crosscheck_joined_exact": 191,
     "crosscheck_joined_content_fallback": 0,
-    "crosscheck_agreement": 1.0
+    "crosscheck_agreement": 1.0,
+    "check_only_elapsed_s": 17.966942311963066
   },
+  "check_only_elapsed_s": 17.966942311963066,
+  "runtime_elapsed_s": 25.63782309612725,
+  "wall_elapsed_s": 43.91574742703233,
   "denominators": {
     "rows_total": 1523,
     "rows_no_call": 394,
