@@ -1,8 +1,8 @@
 ---
 title: "plr-sema increment 6 — the predicate language: a three-valued grammar over guard conditions, measured by the UNKNOWN ledger"
-description: "Sixth post-corpus increment to the plr-sema pre-corpus specification, taking the main spec's deferred row (c), revised after adversarial round 1 (C1-C18 + D1-D3). What it ships, narrowed as round 1 forced: **per-finding SAFE on real executed operations plus a legible residual** -- NO joined SAFE this increment. Round-1 changes carried here: E-UNCOND gains clauses (4) no WILL_FAIL at depth >= 1, (5) a depth-0 empty scope_trail is not vacuously unconditional, (6) the raise_guard's own condition entry at scope_trail[0] is excluded from both scope tests; the tier-1 soundness fence is left UNMODIFIED (the exc_class -> site narrowing is deleted) and rows_excused_by_scope becomes a pure annotation; tier (iii) is DERIVED as guard.is_dynamic_raise and emits one Finding, UNKNOWN/guard_env_dependent, plus an excludes_sites annotation; the GO gate is restated over REASONS (zero guard_predicate_unparsed and zero guard_operand_unknown on >= 1 executed op) rather than over tiers, which would have been self-satisfying; E-TYPE is restated T iff is-or-subclass-of / F iff hierarchy-disjoint AND exact, with _generic_plr_type_name declarations normatively never exact; E-CALL gains param_defaults (D1), the beta truthiness interaction, the parameter-rebinding clause and the depth->=1 forbiddance; beta gains the length-preserving-rebinding exception (population 8, measured) and the iterand single-write clause; AC-15.8's >= 1,000 floor is replaced by n_findings_decided >= 223. Four decisions are stated as PENDING USER APPROVAL with this round's recommendation: HM-25 declared 8 -> 9 for alpha+beta (recommend yes), the headline substitution to increment 7 (recommend yes), gamma (recommend no, increment 7), and REASON_VOCABULARY 10 -> 12 of cap 12 (recommend yes, one-member fallback described). Ledger re-run under positional (row_idx, op_id) keying: 544 executed ops, unresolved_delegate cluster 93, :375/:383 at 544, consistency ok, n_row_id_collisions 12 all move_*."
+description: "Sixth post-corpus increment to the plr-sema pre-corpus specification, taking the main spec's deferred row (c), revised after adversarial round 1 (C1-C18 + D1-D3). What it ships, narrowed as round 1 forced: **per-finding SAFE on real executed operations plus a legible residual** -- NO joined SAFE this increment. Round-1 changes carried here: E-UNCOND gains clauses (4) no WILL_FAIL at depth >= 1, (5) a depth-0 empty scope_trail is not vacuously unconditional, (6) the raise_guard's own condition entry at scope_trail[0] is excluded from both scope tests; the tier-1 soundness fence is left UNMODIFIED (the exc_class -> site narrowing is deleted) and rows_excused_by_scope becomes a pure annotation; tier (iii) is DERIVED as guard.is_dynamic_raise and emits one Finding, UNKNOWN/guard_env_dependent, plus an excludes_sites annotation; the GO gate is restated over REASONS (zero guard_predicate_unparsed and zero guard_operand_unknown on >= 1 executed op) rather than over tiers, which would have been self-satisfying; E-TYPE is restated T iff is-or-subclass-of / F iff hierarchy-disjoint AND exact, with _generic_plr_type_name declarations normatively never exact; E-CALL gains param_defaults (D1), the beta truthiness interaction, the parameter-rebinding clause and the depth->=1 forbiddance; beta gains the length-preserving-rebinding exception (population 8, measured) and the iterand single-write clause; AC-15.8's >= 1,000 floor is replaced by n_findings_decided >= 223. Four decisions were left at round 1 as pending user approval with this round's recommendation (all four APPROVED 260907; see the amendment note below): HM-25 declared 8 -> 9 for alpha+beta (recommend yes), the headline substitution to increment 7 (recommend yes), gamma (recommend no, increment 7), and REASON_VOCABULARY 10 -> 12 of cap 12 (recommend yes, one-member fallback described). Ledger re-run under positional (row_idx, op_id) keying: 544 executed ops, unresolved_delegate cluster 93, :375/:383 at 544, consistency ok, n_row_id_collisions 12 all move_*. AMENDED 260907 (spec_version 18) after band B measured the gate NO-GO. All five sprint decisions are APPROVED by the user: HM-25 declared 8 -> 9 (AC-15.7 asserts 9), the headline substitution, gamma NOT adopted, REASON_VOCABULARY 10 -> 12, and this amendment itself. The amendment adds three productions to section 15.2: EnvRef(path, args) for an expression rooted at the literal name self (an attribute chain, optionally the callee of a call whose arguments all parse as Terms); Zip(items) as a Term usable as the seq of AllOf/AnyOf; and the membership comparators in/not in as Cmp ops. All three evaluate to half/top unconditionally (section 15.4 E-ENV) and carry guard_env_dependent rather than guard_predicate_unparsed when no Opaque node remains (section 15.7), which reconciles the section 15.7 / section 15.9 disagreement over line 409 that the measurement exposed. Re-predicted: pick_up_tips' two blockers (liquid_handler.py:409 and :514) both flip, giving {decidable, guard_env_dependent} = GO; every other candidate method's blocker is NOT self-rooted and does not flip (:657 rooted at a local, :116 an is-comparison with a non-None RHS, :2030 tuple displays, :2211 a BinOp, :2226 an is-comparison). Section 15.9 gains a published n_env_ref per cluster and per op, a top-10 EnvRef path list, a normative no-Var(self) invariant, and a T30c task row (grammar amendment, contract regeneration, the t30_measure population and family-dispatch fix-ups, re-measure) before T31."
 status: reviewed-round-1
-spec_version: 17
+spec_version: 18
 amends: 260901_plr-sema-pre-corpus-spec.md
 task_id: 260904_sema-predicates
 date: '260904'
@@ -29,7 +29,29 @@ sources: "Round-1 adversarial reports read in full and dispositioned in section 
 > it is the document's central finding: the sprint plan's headline target is unreachable in this
 > increment for a reason that has nothing to do with the grammar.
 >
-> **This is the round-1-revised text (spec_version 17).** Round 1 filed eighteen items; §15.16 records
+> **This is the round-1-revised text as AMENDED on 260907 (spec_version 18); `status` stays
+> `reviewed-round-1` until the amendment's own adversarial pass.** Band B landed T30a/T30b and the
+> reason-based gate measured **NO-GO** (§15.15's T30 row). The user then took all five open decisions
+> at once (`.praxia/docs/plans/260904_plr-sema-sprint127-predicates.md:262-265`): **(1) HM-25
+> `declared` 8 → 9 for α+β — APPROVED** (§15.8, AC-15.7 asserts 9); **(2) the headline substitution —
+> APPROVED** (§15.5); **(3) γ NOT adopted — CONFIRMED** (§15.13, §15.14 Q3); **(4) `REASON_VOCABULARY`
+> 10 → 12 of cap 12 — APPROVED** (§15.7); and **(5) the `EnvRef` grammar amendment — APPROVED**, which
+> is what spec_version 18 carries. Nothing in this document is "pending user approval" any more.
+>
+> **The amendment in one paragraph.** The two guards that held `pick_up_tips` back are both
+> expressions **rooted at the literal name `self`** — `c not in self.head` inside `:409`'s bound
+> comprehension and `self.backend.can_pick_up_tip(channel, tip)` under a `zip(...)` at `:514`
+> (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:405-409`, `:506-514`) — i.e. the
+> receiver's own head and backend, **tier (ii) by §15.1's definition**, which the grammar had no
+> production for and therefore charged to `guard_predicate_unparsed`, the reason reserved for *"the
+> grammar failed here"*. §15.2 G7/G8 add three productions — `EnvRef`, `Zip`, and the membership
+> comparators — that **recognise** an environment read without deciding one (§15.4 E-ENV: ½ as a
+> predicate, ⊤ as a term, unconditionally, in this increment), and §15.7 assigns them
+> `guard_env_dependent`. **The amendment cannot decide anything new by itself** (§15.9's anti-gaming
+> box); what it changes is which of the two existing reasons an already-undecided guard carries, and
+> therefore whether the gate can see the difference between a coverage gap and a missing observation.
+>
+> **Round 1 filed eighteen items; §15.16 records
 > the disposition of each C1–C18 and D1–D3. Four of them changed what the increment ships, not merely
 > how it is worded: the soundness fence is left **unmodified** (§15.5), tier (iii) emits an `UNKNOWN`
 > `Finding` rather than none (§15.5), the GO gate is stated over **reasons** rather than over tiers
@@ -37,12 +59,13 @@ sources: "Round-1 adversarial reports read in full and dispositioned in section 
 >
 > **Registry arithmetic this increment carries, with the one spend it now proposes.**
 > `REASON_VOCABULARY` **10 → 12 of cap 12** (`plr-sema/src/plr_sema/_hand_maintained.py:613-631`,
-> HM-14 `declared=12`), which **exhausts HM-14's headroom** — *proposed, pending user approval*
-> (§15.14 Q4; the one-member fallback is §15.7's). No registry **row** is added; `live_rows()` stays 24
+> HM-14 `declared=12`), which **exhausts HM-14's headroom** — **approved 260907**
+> (§15.14 Q4; the one-member fallback in §15.7 is dead). No registry **row** is added; `live_rows()` stays 24
 > against `BUDGET_CAP = 24` (`plr-sema/src/plr_sema/_hand_maintained.py:43`). §15.8's draft position
 > that **neither** HM-24 nor HM-25 should be spent **did not survive round 1**: α and β are filed on
-> **HM-25, `declared` 8 → 9** — *proposed, pending user approval before band B*, exactly as increment 5
-> carried "HM-24 1 → 2 planned" before the user approved 1 → 3.
+> **HM-25, `declared` 8 → 9** — **approved 260907**, exactly as increment 5
+> carried "HM-24 1 → 2 planned" before the user approved 1 → 3. **The 260907 grammar amendment adds
+> nothing to this arithmetic**: no row, no ceiling, no vocabulary member (§15.8).
 
 ---
 
@@ -152,7 +175,9 @@ operations carries both `_check_args` guards**, both of which are tier (ii). §1
 criterion — *"name one executed operation whose non-(iii) residual is empty"* — is therefore answered
 in the negative by measurement rather than by argument: there is no such operation.
 
-**The claim, stated as narrowly as increment 5 stated its own.** A joined `SAFE` on a real operation
+**The claim, stated as narrowly as increment 5 stated its own — and the user approved this narrowing
+on 260907** (§15.5's decision box, §15.14 Q7;
+`.praxia/docs/plans/260904_plr-sema-sprint127-predicates.md:262-265`). A joined `SAFE` on a real operation
 would claim that operation cannot fail. This increment **does not produce one** (§15.5), and the
 narrow claim it does support is: *for a guard whose condition parses to a non-`Opaque` predicate and
 whose every operand resolves from the IR call, the analyzer states whether that guard fires, and when
@@ -225,7 +250,16 @@ falsified by T30, per the box above.**
 each, e.g. `:498`'s cluster at `outputs/plr-sema/unknown_ledger_260904_before.json:217-227`) and the
 tenth is already evaluated. **Its predicted residual after §15.2–§15.4 is `{guard_env_dependent}`
 alone** — no `guard_predicate_unparsed`, no `guard_operand_unknown` — which is §15.9's restated GO
-condition. Note that all three of the guards the gate rests on (`:498`, `:502`, `:522`) sit at
+condition.
+
+> **Measured, then amended (260907).** T30 falsified that prediction: `:409` and `:514` carried
+> `guard_predicate_unparsed`, because their conditions read the receiver's head and backend through
+> shapes the grammar had no production for — `c not in self.head` and a `zip(...)` over
+> `self.backend.can_pick_up_tip(channel, tip)`. **Note that this table already tiered both (ii)**, so
+> the failure was never in the tiering; it was that a tier-(ii) *read* and a grammar *gap* were
+> indistinguishable in the reason vocabulary's output. §15.2 G7/G8 make them distinguishable and
+> §15.9's re-prediction table restores this row's `{guard_env_dependent}` — as a prediction for T30c
+> to falsify in turn, not as a restatement of the one that already failed. Note that all three of the guards the gate rests on (`:498`, `:502`, `:522`) sit at
 `depth == 0` in `pick_up_tips`'s own body
 (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:488-524`), so E-UNCOND(4)'s new
 `depth >= 1` forbiddance does not reach them; the five depth-1 guards (`:375`, `:383`, `:409`, `:321`
@@ -381,15 +415,26 @@ parameters are all `ast.Constant` `None` defaults at
 >             | Not(Predicate)
 >             | And(Predicate, …)          # Kleene: F if any F, T if all T, else ½
 >             | Or(Predicate, …)           # Kleene: T if any T, F if all F, else ½
->             | Cmp(Term, op, Term)        # op ∈ {==, !=, <, <=, >, >=}, CHAINED allowed
->             | Is(Term, None, negated)    # `x is None` / `x is not None`
->             | AllOf(Var, Predicate)      # all(<pred> for <v> in <seq>)
->             | AnyOf(Var, Predicate)      # any(<pred> for <v> in <seq>)
+>             | Cmp(Term, op, Term)        # op ∈ {==, !=, <, <=, >, >=, in, not in}, CHAINED allowed
+>             | Is(Term, negated)          # `x is None` / `x is not None`
+>             | AllOf(Term, Predicate)     # all(<pred> for <v> in <seq>)
+>             | AnyOf(Term, Predicate)     # any(<pred> for <v> in <seq>)
 >             | IsInstance(Term, (Type, …))
+>             | EnvRef(path, args)         # G7 — an environment read, in EITHER position
 >             | Opaque
 > Term      ::= Len(Term) | SetOf(Term) | Var(name) | Lit(json) | Attr(Term, name)
 >             | Filtered(Term, Predicate)  # the comprehension of §15.3(α), as a TERM
+>             | Zip(items)                 # G8 — `zip(<Term>, …)`, only as a <seq>
+>             | EnvRef(path, args)         # G7 — the same node, in term position
 > ```
+>
+> **Two of these lines were corrected against the shipped module rather than the draft's prose
+> (amendment, 260907).** `Is` has exactly two fields, `term` and `negated` — the RHS `None` is a
+> *precondition of the production*, not a field
+> (`plr-sema/src/plr_sema/derive/predicate_ast.py:251-259`) — and `AllOf`/`AnyOf`'s first field is a
+> general `Term`, not a `Var`, because G3 builds one directly out of a `Filtered` term's own `seq`
+> (`plr-sema/src/plr_sema/derive/predicate_ast.py:271-289`). The three new lines (`EnvRef`, `Zip`, the
+> widened `op` set) are the amendment's whole surface; every other line is unchanged.
 >
 > **Anything the walk does not recognise is `Opaque`.** `Opaque` evaluates to ½ under every state and
 > keeps the guard's existing `guard_predicate_unparsed` reason (§15.7) — so an unrecognised shape is
@@ -398,6 +443,96 @@ parameters are all `ast.Constant` `None` defaults at
 > `Opaque` for reason-assignment purposes too** — §15.7's normative nested-`Opaque` rule, added in
 > round 1 (C15) so the residual `guard_predicate_unparsed` count remains an honest coverage measure —
 > while still being **evaluated** under Kleene, so an `And` with an `F` conjunct still decides.
+
+> **Normative (G7, `EnvRef` — a RECOGNISED environment read; new in the 260907 amendment).** An
+> expression **rooted at the literal name `self`** parses to a single leaf
+> `EnvRef(path: tuple[str, ...], args: tuple[Term, ...] | None)`, admissible in **both** predicate and
+> term position, in exactly two shapes and no others:
+>
+> 1. **The attribute chain.** An `ast.Attribute` chain whose innermost value is `ast.Name("self")`:
+>    `self.head` → `EnvRef(("self", "head"), None)`; `self.backend` → `EnvRef(("self", "backend"),
+>    None)`; `self._resource_pickup.direction` → `EnvRef(("self", "_resource_pickup", "direction"),
+>    None)`. `args` is `None`, which is what distinguishes a read from a call of no arguments.
+> 2. **The call of such a chain.** An `ast.Call` whose `func` is shape (1) and whose arguments **all
+>    parse as `Term`s**, with no `keywords`, no `Starred`, and no argument containing `Var("self")`:
+>    `self.backend.can_pick_up_tip(channel, tip)` →
+>    `EnvRef(("self", "backend", "can_pick_up_tip"), (Var("channel"), Var("tip")))`;
+>    `self._check_96_head_fits_in_container(container)` →
+>    `EnvRef(("self", "_check_96_head_fits_in_container"), (Var("container"),))`;
+>    `self.get_used_volume()` → `EnvRef(("self", "get_used_volume"), ())`. **If any argument fails to
+>    parse as a `Term`, the whole call is `Opaque`** — there is no partial admission and no fallback.
+>
+> **`EnvRef` is not `Opaque`, and this is the entire point.** `contains_opaque`
+> (`plr-sema/src/plr_sema/derive/predicate_ast.py:566-593`) is **false** for an `EnvRef` node; a new
+> total sibling `contains_env_ref`, the same recursion collecting a different predicate, is **true**.
+> §15.7's reason rule reads exactly those two functions and nothing else.
+>
+> **Shape (1) SUBSUMES the `Attr(Var("self"), …)` chains the shipped walk already produces**
+> (`plr-sema/src/plr_sema/derive/predicate_ast.py:526-528`). This is a normalisation, not a new
+> admission: `self._resource_pickup is None` already parsed; after the amendment it parses to
+> `Is(EnvRef(…), negated=False)` instead of `Is(Attr(Var("self"), …), negated=False)`. **The reason it
+> carries changes for a defect-fixing reason, not a gate-chasing one** — see the `Var("self")`
+> invariant below and §15.9's re-prediction of `:1185`.
+>
+> **Normative (the `Var("self")` invariant).** **After the amendment no parsed predicate anywhere in
+> the contract table may contain a `Var` node whose `name` is `"self"`.** If `self` occurs in any
+> position other than as the root of an `EnvRef` path — subscripted (`self.head[channel]`), passed as
+> an argument (`f(self)`), or standing alone as an operand — the **smallest enclosing predicate
+> construction is `Opaque`**, fail-closed. This is a checkable invariant (AC-15.1, and the
+> `n_var_self` / `n_opaque_only_by_var_self` counts of §15.9 block (6)), and it closes a real defect: `self` is a parameter of every PLR method, so
+> a free `Var("self")` is indistinguishable from a resolvable parameter to any rule that asks *"is this
+> name a parameter of `K`?"* — which is exactly what T30's shipped classifier asks
+> (`plr-sema/eval/t30_measure.py:739-745`, `K_params`) and why `self.<x>` guards were being reported
+> `decidable_or_operand_dependent`.
+>
+> **The closed list of what is NOT an `EnvRef`.** Each of these stays `Opaque`, or stays whatever
+> non-env production already claims it; the list is exhaustive and a shape absent from it is by
+> definition not admitted:
+>
+> | shape | example at this pin | disposition |
+> |---|---|---|
+> | a call whose callee is not `self`-rooted | `get_capture_or_validation_active()`, `time.time()` (`outputs/plr-sema/t30_measured_260905.json:30-45`) | `Opaque` |
+> | `self` **subscripted** anywhere in the path | `self.head[channel].has_tip` (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:534`), `self._parse_scpi_response(res)['status']` (`outputs/plr-sema/t30_measured_260905.json:22-25`) | `Opaque` |
+> | `self` as an **argument** or bare operand | `f(self)` | `Opaque` (the `Var("self")` invariant) |
+> | an attribute chain rooted at a **parameter or local** | `resource.parent`, `tip.tracker`, `destination.direction` | unchanged: `Attr(Var(…), …)`, a `Term`, resolved or ⊤ by E-CALL |
+> | a call rooted at a parameter or local | `tip.tracker.get_used_volume()` (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:656-657`) | `Opaque` — the tip/volume families' business, not the grammar's |
+> | a `self`-rooted read inside an arithmetic `BinOp` | `volume - self.get_used_volume()` (`external/pylabrobot/pylabrobot/resources/volume_tracker.py:91`) | `Opaque` — a `BinOp` is not a `Term` in G1, before `EnvRef` is even reached |
+>
+> **The family-dispatch rule is unchanged and takes precedence over G7.** A guard the tip family
+> claims, or a `volume_guards` entry, is skipped by the predicate evaluator entirely (§15.2's dispatch
+> paragraph below), so `volume_tracker.py:92`/`:105` keep `volume_state_unknown` and **do not** become
+> `guard_env_dependent` — increment 5 keeps them. Two independent mechanisms give that answer here (the
+> dispatch rule, and the `BinOp` row above), which is deliberate: G7 is receiver-agnostic — it keys on
+> the literal name `self`, whatever class it belongs to — so the dispatch rule, not the grammar, is
+> what keeps family ownership stable.
+
+> **Normative (G8, `Zip` and the membership comparators; new in the 260907 amendment).** Two minimal
+> additions, each forced by one shipped condition and neither wider than that:
+>
+> 1. **`Zip(items: tuple[Term, ...])` is a `Term`.** `zip(<e₁>, …, <eₙ>)` with `n >= 2`, no `keywords`
+>    and no `Starred`, each `<eᵢ>` parsing as a `Term`, parses to `Zip`. It is admissible **only as the
+>    `seq` of an `AllOf`/`AnyOf`**; a `Zip` in any other position (in particular under `Len`, where its
+>    length is a `min` this increment does not model) makes the enclosing construction `Opaque`. When
+>    the comprehension's target is an `ast.Tuple`, every element must be a bare `ast.Name` and the
+>    tuple's arity must equal `n`, else `Opaque`; the correspondence is positional, `target[i] ↔
+>    items[i]`. As today, the bound names are recorded nowhere and appear inside the body as ordinary
+>    free `Var`s (`plr-sema/src/plr_sema/derive/predicate_ast.py:53-60`), so no node gains a field and
+>    the wire shape of `AllOf`/`AnyOf` is unchanged.
+> 2. **`Cmp` admits `in` and `not in`.** The op set becomes exactly
+>    `{==, !=, <, <=, >, >=, in, not in}`, i.e. `_CMP_OPS`
+>    (`plr-sema/src/plr_sema/derive/predicate_ast.py:298-305`) gains `ast.In` and `ast.NotIn` and
+>    nothing else. Chaining (G2) applies unchanged. **Neither operand is required to be an `EnvRef`** —
+>    the production is over `Term`s, as every other `Cmp` is — but the evaluator decides a membership
+>    `Cmp` **only** when the right operand resolves to a concrete `Seq` of `Lit`s and the left to a
+>    `Lit`; every other case is ½ (§15.4 E-ENV). At this pin no guard satisfies the deciding case, so
+>    the measured effect of this half is entirely *"one fewer `Opaque`"*.
+>
+> **`Zip` does NOT reopen §15.3's β exclusions.** α and β are shape tests over an `ast.Assign`
+> statement and both require a **bare `ast.Name`** iterand; `offsets = [c + o for c, o in
+> zip(center_offsets, offsets)]` at
+> `external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1004` is a non-match for that
+> reason and stays one. β's population stays **eight**, `offsets` at `:962`/`:1156` stays excluded, and
+> §15.3 is not edited by this amendment at all.
 
 > **Normative (G2, chained comparisons).** `ast.Compare` with `n` operators is `And` of `n` binary
 > `Cmp`s, with each middle operand evaluated once. `len(tip_spots) == len(offsets) == len(use_channels)`
@@ -671,6 +806,47 @@ rests the registry disposition on it.**
 > have resolved by name coincidence against the entry point's kwargs (§15.9 block (2)). The cost at
 > this pin is `:875` (`_check_containers`) and `:117` (`_check_no_lid`); the gate is untouched, because
 > `pick_up_tips`'s three deciding guards are all at depth 0.
+
+> **Normative (E-ENV, an `EnvRef` decides NOTHING in this increment — new in the 260907 amendment).**
+> An `EnvRef` node evaluates to **½ in predicate position and ⊤ in term position, unconditionally**,
+> under every state, for every path, with no exceptions and no lookup table. **No environment is read
+> in increment 6.** In particular: `env` gains no member (§15.8's `cache_key` paragraph is unchanged),
+> no observation record is consulted, and `EnvRef.path` is never matched against a list of known
+> attributes — a rule that matched paths would be a hand-maintained surface, which §15.8 argues this
+> production is not.
+>
+> Everything above it is ordinary Kleene: a `Cmp`, `Is`, `IsInstance`, `AllOf`, `AnyOf` or `Not`
+> containing an `EnvRef` is ½; `Len(EnvRef)` is ⊤ and so is `Len` of a `Zip`; an `And` with an `F`
+> conjunct is still `F` and an `Or` with a `T` disjunct is still `T`. A membership `Cmp` (`in` /
+> `not in`, G8) evaluates `T`/`F` **only** when its right operand resolves to a concrete `Seq` of
+> hashable `Lit`s and its left to a `Lit`; every other case, including every case with an `EnvRef`
+> operand, is ½.
+>
+> **The one consequence that must be stated before it is measured.** Because an amended predicate is
+> no longer `Opaque`, a *compound* whose non-env conjunct was already decidable can now short-circuit
+> to a definite value where the whole condition previously folded to ½ — `And(EnvRef, F) = F`. That is
+> Kleene, it is sound, and it is the same behaviour §15.2 G1 already specifies for a nested `Opaque`
+> node; but it is the amendment's **only** path to a new definite verdict, so §15.9 block (4) publishes
+> `n_decided_via_env_ref_shortcircuit` and this document predicts it is **0** at this pin (no cluster
+> in the ledger is an `And`/`Or` mixing an `EnvRef` with an independently decidable operand). A
+> non-zero value is not a failure — it is the number that must be inspected before T31's verdicts are
+> accepted.
+>
+> **Interaction with E-SCOPE and E-UNCOND, stated so the amendment cannot manufacture reachability.**
+> A scope entry containing an `EnvRef` evaluates ½: it never returns `F`, so E-SCOPE never turns it
+> into a `SAFE`, and it never evaluates `T`, so E-UNCOND way (1) is never satisfied by it and no
+> `WILL_FAIL` becomes newly permissible. Ways (2) and (3) are untouched — an `EnvRef` is not a bare
+> zero-argument call in `env` (way (2) tests the callee name against `env`, and `EnvRef` paths are
+> never entered into `env` in this increment) and it is not an `ast.For` node (way (3)).
+>
+> **Where an `EnvRef` first acquires a value: increment 7's tier (ii).** §15.6 defers the observation
+> record — backend class and signature, deck membership, head channel count, lid topology — to
+> increment 7, and T34 (§15.12) is the row that builds it. The amendment makes that increment's job
+> mechanically obvious rather than exploratory: tier (ii) is *"give `EnvRef` a lookup against an
+> observation returned from the executed window, and partition `cache_key` on it"*, over a population
+> §15.9 now publishes by path. `self.backend.can_pick_up_tip` is the one `EnvRef` on the gate candidate
+> that needs a backend **method body** rather than an observed value, which §15.6 already records as
+> the expensive half.
 
 > **Normative (E-TYPE, `RESOURCE` operands — restated in round 1, C4).** `IsInstance(t, (T₁ … Tₙ))`
 > where `t` resolves to a `Ref` is decided against the referenced `RESOURCE` instruction's declared
@@ -997,16 +1173,18 @@ increment's deliverable is the ledger delta alone.
 > (above), every operation carrying a re-raise is `UNKNOWN` *by construction*, independently of tier
 > (ii). The claim survives its own adversarial round.
 
-> **PENDING USER DECISION — the headline substitution. This round's recommendation: substitute.**
+> **APPROVED BY THE USER, 260907 — the headline is SUBSTITUTED** (recommendation was: substitute;
+> `.praxia/docs/plans/260904_plr-sema-sprint127-predicates.md:262-265`).
 > The question, in the plan's own stop-and-ask sense
 > (`.praxia/docs/plans/260904_plr-sema-sprint127-predicates.md:114-124` reserves that language for
 > option (b)): *is "the first definite verdict on a real program" this sprint's deliverable, or
 > increment 7's?* The honest answer this document can support is **increment 7's**, and the sprint's
 > own deliverable is per-finding `SAFE`, a `WILL_FAIL` on a decidable and reachable violation, and a
 > residual that names the missing observation per guard. That is a strictly smaller claim than the
-> plan's headline. **Nothing in band B is dispatched against the larger claim until the user answers.**
-> If the user declines the substitution, the sprint has no path to its headline that this document can
-> defend, and §15.6's Q2 recommendation would have to be reopened first.
+> plan's headline. **The user took that answer on 260907**, so band B's and T31's claims are bounded by
+> it: nothing in this sprint may be reported as a joined `SAFE` on a real operation, and the 260907
+> grammar amendment does not change that — an `EnvRef` is ½, so an operation carrying one is `UNKNOWN`
+> under `join` exactly as before (§15.4 E-ENV).
 
 ---
 
@@ -1068,7 +1246,7 @@ backend's *method body*, not just its signature.
 
 ## 15.7 Reasons
 
-> **Normative — PROPOSED, PENDING USER APPROVAL (§15.14 Q4). `REASON_VOCABULARY` 10 → 12, of cap 12**
+> **Normative — APPROVED BY THE USER 260907 (§15.14 Q4). `REASON_VOCABULARY` 10 → 12, of cap 12**
 > (`plr-sema/src/plr_sema/verdict.py:133-168` enumerates the current ten; HM-14 is `CAPPED` at
 > `declared=12`, `plr-sema/src/plr_sema/_hand_maintained.py:613-631`, so live 12 ≤ 12 and **no
 > `declared` edit is needed**). This exhausts HM-14's headroom, which is why it is the user's call and
@@ -1085,12 +1263,19 @@ backend's *method body*, not just its signature.
 >   `Return`/`Try`/`Raise` (E-UNCOND(5))**; **or the guard is a derived tier-(iii) re-raise** (§15.5).
 >   This is tiers (ii) **and** (iii) together, plus round 1's two new give-up points.
 >
-> **If the user declines, the fallback is one member, not zero.** Ship `guard_env_dependent` alone
+> **The one-member fallback is DEAD (the user approved two on 260907), and is kept only as the record
+> of what was offered.** It was: ship `guard_env_dependent` alone
 > (`REASON_VOCABULARY` 10 → 11, one slot of headroom kept) and let `guard_operand_unknown`'s
-> population fold into it. The cost is exactly the distinction that scopes increment 7 — *"the analyzer
-> needs one observation it could take"* versus *"the analyzer needs one value this call did not
-> carry"* — and, concretely, §15.9's GO gate would lose one of its two zero-conditions and would have
-> to be restated over `guard_predicate_unparsed` alone, which is a weaker gate.
+> population fold into it. The cost would have been exactly the distinction that scopes increment 7 —
+> *"the analyzer needs one observation it could take"* versus *"the analyzer needs one value this call
+> did not carry"* — and, concretely, §15.9's GO gate would have lost one of its two zero-conditions and
+> would have had to be restated over `guard_predicate_unparsed` alone, which is a weaker gate.
+>
+> **The 260907 amendment adds no member and needs none.** An `EnvRef` residual is precisely *"a free
+> name resolves to state outside the call"* — the first clause of `guard_env_dependent`'s own
+> definition above, of which `self.<x>` is the first example it names. What the amendment changes is
+> that the analyzer can now say so about a shape it previously could not read at all; the vocabulary
+> stays at the approved 12 and HM-14 stays at zero headroom.
 
 **Against increment 1 §10.8's criterion, which is the right instrument.** That section's argument for
 `channel_state_unknown` is that `guard_predicate_unparsed` means "could not be turned into a
@@ -1127,6 +1312,43 @@ concern, `.praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md:2429-2431`).
 > there are **384 such findings** (`outputs/plr-sema/unknown_ledger_260904_before.json:133-140`).
 > Under the rule they stay `guard_predicate_unparsed`, which is what makes the ledger delta a coverage
 > measure a reader can interpret rather than an overstatement.
+
+> **Normative (the `EnvRef` reason rule — new in the 260907 amendment; it AMENDS the worked example
+> immediately above).** Reason assignment for a guard the predicate evaluator owns is now a two-line
+> decision procedure over the two total predicate walks, in this order:
+>
+> 1. **`contains_opaque(predicate)` ⇒ `guard_predicate_unparsed`.** Unchanged. The nested-`Opaque`
+>    rule above is unchanged. Any `Opaque` node anywhere still means *"the grammar failed here"*.
+> 2. **Else `contains_env_ref(predicate)` and the guard is still undecided ⇒ `guard_env_dependent`.**
+>    The grammar **recognised** the read; what is missing is an observation, not a production. This is
+>    the same member §15.5 already assigns to a derived tier-(iii) re-raise and to an unestablished
+>    reachability, and it needs no new vocabulary slot: `REASON_VOCABULARY` stays at the approved 12.
+> 3. Otherwise the existing rules stand: an operand of *this call* is ⊤ ⇒ `guard_operand_unknown`; a
+>    free name resolving to nothing ⇒ `guard_env_dependent`; decided ⇒ `SAFE`/`WILL_FAIL` with no
+>    reason at all.
+>
+> **`:409` is the worked example, and the amendment moves it from clause (1) to clause (2).** Before
+> the amendment `invalid_channels = [c for c in channels if c not in self.head]`
+> (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:405-409`) bound its term under α
+> while its `if` clause parsed `Opaque` — twice over, once for the `not in` comparator and once for
+> `self.head` in predicate-operand position — so the nested-`Opaque` rule assigned
+> `guard_predicate_unparsed` to all **384** of its findings
+> (`outputs/plr-sema/t30_measured_260905.json:473-482`). After G7/G8 the filter parses to
+> `Cmp(Var("c"), "not in", EnvRef(("self", "head"), None))`, `contains_opaque` is false,
+> `contains_env_ref` is true, and the guard carries `guard_env_dependent`. **Nothing about the guard's
+> truth value changed**: it was ½ before and it is ½ now.
+>
+> **This resolves an internal inconsistency the measurement found, and the resolution is by rule
+> rather than by editing one table cell (§15.16 A1).** §15.9's prediction table said `:409` would carry
+> `guard_env_dependent`; §15.7's nested-`Opaque` rule, whose own worked example was that very site,
+> said `guard_predicate_unparsed`. Both statements were in spec_version 17 and they contradicted each
+> other; T30's measurement reported the second
+> (`outputs/plr-sema/t30_measured_260905.json:473-482`), correctly, because that is what the normative
+> text said. The amendment makes them agree **in the direction §15.7's own definition supports** — the
+> residual at `:409` names a missing observation (how many channels the head has), not a shape the
+> grammar cannot read — and it does so by adding the production that makes the second statement true,
+> not by relaxing the nested-`Opaque` rule, which is untouched and is still what fences the honest
+> coverage measure.
 - **A third member separating tier (iii) from tier (ii): rejected.** It would be a 13th and the cap
   conversation is the user's, not the sprint's
   (`.praxia/docs/plans/260904_plr-sema-sprint127-predicates.md:130-131`). The (ii)/(iii) distinction is
@@ -1157,15 +1379,16 @@ failure mode is a SILENT family collapse rather than a loud exact-count test fai
 (`plr-sema/src/plr_sema/_hand_maintained.py:841-896`), while HM-25's `breaks_when` records "Fails
 LOUDLY here (unlike HM-24)" (`plr-sema/src/plr_sema/_hand_maintained.py:934-951`).
 
-> **PENDING USER DECISION — HM-25 `declared` 8 → 9. This round's recommendation: spend it.** The
+> **APPROVED BY THE USER, 260907 — HM-25 `declared` 8 → 9** (recommendation was: spend it;
+> `.praxia/docs/plans/260904_plr-sema-sprint127-predicates.md:262-265`). The
 > draft's position was *"neither row"*; round 1 broke the leg it rested on and the position is
 > withdrawn. **α and β are filed as one HM-25 entry** — an "argument-default and filtered-comprehension
 > binding shapes" pattern — with `breaks_when` naming **AC-15.2's exact floor as the loud test**.
 > `live_rows()` stays 24 against `BUDGET_CAP = 24`
 > (`plr-sema/src/plr_sema/_hand_maintained.py:43`, `:957-961`); **no row is added**, so no cap
-> conversation is opened. **Nothing in band B is dispatched until the user answers.** If the user
-> declines, α and β ship **unregistered** against a criterion they demonstrably meet, and AC-15.7
-> asserts HM-25 `declared == 8`.
+> conversation is opened. AC-15.7 asserts HM-25 `declared == 9` unconditionally; the "if the user
+> declines, α and β ship unregistered at `declared == 8`" branch is **dead** and is retained only in
+> §15.14 Q5 as the record of what was asked.
 >
 > **Why HM-25 and not HM-24, which is what the challenger proposed.** The registry's criterion is
 > silent-versus-loud. (1) HM-24's harm is a *silent family collapse* —
@@ -1214,9 +1437,44 @@ LOUDLY here (unlike HM-24)" (`plr-sema/src/plr_sema/_hand_maintained.py:934-951`
 > E-CALL(depth) forbiddance repairs (b) — **but only because both were written down in this
 > revision**, and "reason 1 holds *given two new normative clauses*" is not the same claim as "reason 1
 > holds". **Hence the row.** The correct disposition is HM-25 8 → 9, a per-row ceiling spend the user
-> must approve before band B
-> (`.praxia/docs/plans/260904_plr-sema-sprint127-predicates.md:132-135`); AC-15.7 asserts HM-25
-> `declared == 9` and HM-24 `declared == 3` — the reverse of the draft's assertion.
+> had to approve before it was spent
+> (`.praxia/docs/plans/260904_plr-sema-sprint127-predicates.md:132-135`) **and did approve on 260907**;
+> AC-15.7 asserts HM-25 `declared == 9` and HM-24 `declared == 3` — the reverse of the draft's
+> assertion. **T31 is the row that spends it** (§15.12), which is why band B's derive work could and
+> did proceed first: it spends nothing.
+
+> **Normative (the amendment's own registry disposition: `EnvRef`, `Zip` and the membership
+> comparators add NO registry row and spend NO further ceiling; 260907).** The claim to be attacked is
+> that these are **grammar productions**, not hand-maintained surface, and the criterion is the one the
+> registry itself uses — *is this a pattern over how PLR happens to be written, whose silent
+> non-match would cost coverage no test would notice?*
+>
+> 1. **They are derived by the total `parse`, over Python syntax, not over PLR idiom.** `EnvRef`'s
+>    trigger is the language's own `self` convention plus `ast.Attribute`/`ast.Call`; `Zip`'s is the
+>    builtin `zip`; the comparators are `ast.In`/`ast.NotIn`. This is verbatim the argument §15.8
+>    reason 3 already makes for α and β and that increment 5 §14.11 accepted for B2 and P1c
+>    (`.praxia/docs/specs/260903_plr-sema-volume-increment.md:930-934`) — and it is **stronger** here,
+>    because α/β at least match an assignment *shape* PLR chose, while `EnvRef` matches a name the
+>    language reserves.
+> 2. **The failure mode is loud and already measured.** §15.9 block (1) publishes parse coverage per
+>    atom kind over the whole contract table — 2,805 distinct guard sites, 313 `Opaque` at the
+>    pre-amendment measurement (`outputs/plr-sema/t30_measured_260905.json:3-20`) — and blocks (3)/(4)
+>    now publish `n_env_ref` and the top-10 `EnvRef` paths. A PLR rewrite that moved these shapes
+>    breaks a published count, which is HM-25's own loud criterion
+>    (`plr-sema/src/plr_sema/_hand_maintained.py:945-948`), not HM-24's silent one.
+> 3. **There is no list to maintain.** The one design that *would* have created hand-maintained
+>    surface — matching `EnvRef.path` against a table of known receiver attributes — is forbidden
+>    outright by §15.4 E-ENV. A production that recognises a shape and returns ½ has nothing to go
+>    stale.
+>
+> **The fallback, stated in advance so the adversarial pass has a landing place rather than a veto.**
+> If the pass rejects the argument above, the remedy is **naming `EnvRef`/`Zip`/`in` inside the HM-25
+> entry α and β already spend** — the entry's `what` becomes "argument-default, filtered-comprehension
+> and environment-read recognition shapes" — which costs **no further ceiling**: HM-25 is already going
+> 8 → 9 by the user's approval, `live_rows()` stays 24 against `BUDGET_CAP = 24`
+> (`plr-sema/src/plr_sema/_hand_maintained.py:43`), and AC-15.7's assertions are unchanged. What the
+> fallback is **not** is a second row or a second ceiling spend; if a reviewer wants either, that is a
+> user decision and not this amendment's to take.
 
 **`cache_key` gains no component, and the whole cache goes cold anyway — round 1, C16.** Its `env`
 element already exists and is already the fifth (`plr-sema/src/plr_sema/check/ir.py:918-953`); this
@@ -1234,7 +1492,15 @@ Under Q2-defer, `strictness` never enters `env`.
 
 ## 15.9 Measured sets (band B, T30)
 
-> **Normative.** `outputs/plr-sema/t30_measured_260904.json` publishes, computed over the whole
+> **Normative (the report file names, corrected against what band B actually wrote; 260907).** The
+> first measurement is `outputs/plr-sema/t30_measured_260905.json` — the draft's text said
+> `t30_measured_260904.json` and no such file was written (§15.15's T30 row, divergence 3). The
+> amendment's re-measurement, produced by T30c after the grammar and the two fix-ups below land, is
+> **`outputs/plr-sema/t30_measured_260908.json`**, and the GO/NO-GO that decides whether T31 starts is
+> the one recorded **there**. Both files are kept; the delta between them is the amendment's own
+> evidence, and no number from the first is republished as if it were the second.
+
+> **Normative.** The measured report publishes, computed over the whole
 > `plr-sema/data/derived_contracts.json` and over the frozen benchmark's own lowered IR calls (via
 > `lower_row_calls`, `plr-sema/eval/oracle_common.py:551-571`, with no analyzer change and no
 > `check_ir` invocation):
@@ -1251,13 +1517,28 @@ Under Q2-defer, `strictness` never enters `env`.
 >    forbidden it (item 13), so the size of what is forgone is on the record.
 > 3. **Per ledger cluster** (all 54): the predicted tier, `parsed?`, `bound?`, and **the reason the
 >    guard ACTUALLY carries** after §15.7. §15.1's (i)/(ii) tiering is a prediction; this block is the
->    measurement, and any divergence between them is published rather than absorbed.
+>    measurement, and any divergence between them is published rather than absorbed. **Amendment
+>    additions**: `n_env_ref`, the number of `EnvRef` nodes in that cluster's parsed predicate, and
+>    `env_ref_paths`, the dotted paths themselves — so a reader can see exactly what the production
+>    absorbed, per site, without reading this document.
 > 4. **Per executed operation**: the residual **reason set**, plus the residual tier set as a published
 >    annotation, plus — separately — the count of guards on that operation that are `parsed but
 >    operand-unknown`, so a residual caused by a missing declared type is distinguishable from a
->    genuinely environmental one.
+>    genuinely environmental one. **Amendment additions**: `n_env_ref`, the number of guards on that
+>    operation whose predicate contains ≥ 1 `EnvRef`; and `n_decided_via_env_ref_shortcircuit`, the
+>    number of guards that reach a definite value only because an `EnvRef`-containing compound
+>    short-circuited (§15.4 E-ENV), predicted **0**.
 > 5. **The O1 delta**: (4) computed twice, with and without §15.4's operand observation. If the two
 >    differ by zero, O1 is not doing what §15.4 claims and the gate is re-opened.
+> 6. **The amendment's own surface (new, 260907).** Over the whole contract table: the **top-10
+>    `EnvRef` paths by occurrence** with their counts; `n_env_ref_guards` and `n_env_ref_nodes`;
+>    `n_zip`; `n_membership_cmp`; **`n_var_self`, asserted `== 0`** (§15.2's `Var("self")` invariant);
+>    and `n_opaque_only_by_var_self`, the guards that are `Opaque` *only* because that invariant fired,
+>    predicted **0** and published rather than assumed. Block (1)'s `top10_unparsed_shapes` is
+>    republished so the shapes the amendment did **not** absorb stay visible: at the pre-amendment
+>    measurement two of the ten are membership tests over a `self` chain and three are `self`-rooted
+>    but subscripted or arithmetic (`outputs/plr-sema/t30_measured_260905.json:21-62`), and the second
+>    group must still be `Opaque` afterwards.
 >
 > **Normative (the gate is stated over REASONS, not over tiers — round 1, C8).**
 >
@@ -1282,11 +1563,44 @@ Under Q2-defer, `strictness` never enters `env`.
 > every operation's residual is ⊆ {(ii), (iii)} trivially and the gate **always passes**. Reasons are
 > shipped (`plr-sema/src/plr_sema/verdict.py:133-168`), mechanical, and non-tautological: a guard
 > carries `guard_predicate_unparsed` iff the grammar failed on it, which is exactly the thing the gate
-> is trying to see. **The gate number must be computable from `t30_measured_260904.json` without
+> is trying to see. **The gate number must be computable from the measured JSON without
 > reading this document.**
 
-**Expected candidates and their expected residuals — this document's own prediction, to be falsified by
-the measurement and not assumed by it. Revised in round 1; every row moved.**
+> **Normative (the anti-gaming argument for `EnvRef`, stated because the gate's zero-condition is
+> exactly what the amendment relaxes; 260907).** The GO gate requires **zero**
+> `guard_predicate_unparsed` findings on some executed operation, and it requires that *because*
+> `guard_predicate_unparsed` is the reason that means "the grammar failed here". An amendment that
+> converts that reason into `guard_env_dependent` is, structurally, an amendment that makes the gate
+> easier to pass — so the burden is on this box, and the three-sentence form is:
+>
+> **`EnvRef` is syntactically narrow and has no fallback** — it fires only on an expression rooted at
+> the literal name `self`, in two enumerated shapes, with every argument required to parse as a `Term`
+> and a closed negative list (§15.2 G7) that keeps subscripts, arithmetic and non-`self` receivers
+> `Opaque`, so no arbitrary text can reach it. **`EnvRef` decides nothing** — E-ENV fixes it at ½/⊤
+> unconditionally, it can neither satisfy E-UNCOND nor produce an E-SCOPE `SAFE`, and the one residual
+> path to a new definite value (Kleene short-circuit over an *already decidable* conjunct) is itself
+> published as `n_decided_via_env_ref_shortcircuit` and predicted 0. **`EnvRef`'s count is published
+> and is excluded from every success measure** — per cluster, per operation and by path (blocks (3),
+> (4), (6)), under `guard_env_dependent`, which §15.10 and AC-15.8 already exclude from "converted"
+> and which the gated number `n_findings_decided` already ignores.
+>
+> **Two further properties make the relaxation checkable rather than trusted.** (a) The amendment
+> cannot move `n_findings_decided`: a reader who suspects the gate was bought rather than earned can
+> compare the two reports' `n_findings_decided` and `guard_env_dependent` counts and see that the
+> first is unchanged while the second absorbs exactly the flipped findings. (b) The amendment is
+> **falsifiable per site**: §15.9's re-prediction below names, for every candidate method, which
+> `guard_predicate_unparsed` members flip and which do not: of the **ten** blocker sites the
+> measurement named, exactly **five flip** (`:409`, `:514`, `:1778`, `:1940`, `:2055`) and **five do
+> not** (`:116`, `:657`, `:2030`, `:2211`, `:2226`). An `EnvRef` that had become a sink for arbitrary
+> opaque text would have flipped all ten.
+
+**Round 1's prediction table, kept as the record of what was predicted BEFORE band B measured — it was
+falsified on one row and that is what the amendment exists for.** The `pick_up_tips` row predicted
+`{guard_env_dependent}` ⇒ GO; the measurement returned the residual reason set
+`decidable+guard_env_dependent+guard_predicate_unparsed` on every `pick_up_tips` occurrence
+(`outputs/plr-sema/t30_measured_260905.json:1045-1051`), and the `gate` block records `go` false for
+both the with-O1 and the without-O1 computation
+(`outputs/plr-sema/t30_measured_260905.json:1149-1162`). Every other row's prediction held.
 
 | method | ops | predicted residual (reasons) | the guards that must clear, and how |
 |---|---|---|---|
@@ -1297,6 +1611,64 @@ the measurement and not assumed by it. Revised in round 1; every row moved.**
 | `drop_tips` / `discard_tips` | 65 | {`guard_predicate_unparsed`} — NO-GO | `:666` binds `tips` by loop-append and `:657` is a numeric `Cmp`; both fail closed (§15.1.2). `:647` is now `½` rather than a **false `WILL_FAIL`** (C4) |
 | `stamp` | 27 | {`guard_predicate_unparsed`} — NO-GO | `containers` is branch-bound (§15.1.4); `:1770`/`:1920` are `guard_env_dependent`, not false `WILL_FAIL` |
 | `move_resource` / `move_lid` / `move_plate` | 93 | out of scope — `unresolved_delegate` (§15.0) | `:2092` is derived (iii) |
+
+**The re-prediction under the 260907 amendment, per candidate method, with the measured blocker named
+and its disposition argued from its own syntax.** Operation counts are the ledger's frozen population
+(§15.0); `n_env_ref` is per operation, i.e. the number of that operation's guards whose predicate
+contains ≥ 1 `EnvRef` node. Every cell is a prediction for T30c to falsify.
+
+| method | ops | measured blocker(s) carrying `guard_predicate_unparsed` | flips? | re-predicted residual | expected `n_env_ref` |
+|---|---|---|---|---|---|
+| **`pick_up_tips`** | 223 | `:409` `not len(invalid_channels) == 0`, whose α-bound filter is `c not in self.head`; `:514` `not all(self.backend.can_pick_up_tip(channel, tip) for channel, tip in zip(use_channels, tips))` | **both** — G8's `not in` + G7 shape (1); G8's `Zip` + G7 shape (2) | **{`decidable`, `guard_env_dependent`} ⇒ GO** | **2** (one node each) |
+| `drop_tips` / `discard_tips` | 65 | `:657` `tip.tracker.get_used_volume() > 0 and (not allow_nonzero_volume)` (`outputs/plr-sema/t30_measured_260905.json:763-772`) | **no** — rooted at the local `tip`, not at `self`; the closed negative list's "call rooted at a parameter or local" row | {`decidable`, `guard_env_dependent`, `guard_predicate_unparsed`} — NO-GO | 1 (`:409`) |
+| `aspirate` | 77 | `:116` `lidded is resource` (`outputs/plr-sema/t30_measured_260905.json:543-552`) | **no** — an `is` comparison whose RHS is not the constant `None`, so it is not the `Is` production; no `self` anywhere in it | {…, `guard_predicate_unparsed`} — NO-GO | 1 (`:409`) |
+| `dispense` | 40 | `:116`, as `aspirate` | **no** | NO-GO | 1 (`:1185`, normalised) |
+| `transfer` | 19 | `:116`, inherited | **no** | NO-GO | ≥ 1 |
+| `stamp` | 27 | `:116`; `:2030` `(source.num_items_x, source.num_items_y) == (target.num_items_x, target.num_items_y)` (`outputs/plr-sema/t30_measured_260905.json:953-962`); `:1778`/`:1940` `not self._check_96_head_fits_in_container(container)` (`outputs/plr-sema/t30_measured_260905.json:873-882`) | `:1778`/`:1940` **flip**; `:116` and `:2030` do **not** — a tuple *display* is not a `Term` in G1 and the amendment adds none | NO-GO | 2–3 |
+| `move_resource` / `move_lid` / `move_plate` | 93 | `:2055` `self.setup_finished and (not self._resource_pickups)` (`outputs/plr-sema/t30_measured_260905.json:613-622`); `:2211` `resource_rotation_wrt_destination % 180 != 0`; `:2226` `destination.resource is not None and destination.resource is not resource` | `:2055` **flips** (two `EnvRef` leaves in predicate position — the shape the unamended walk had no production for); `:2211` does not (an arithmetic `BinOp` is not a `Term`); `:2226` does not (`is not resource`) | out of scope regardless — `unresolved_delegate` (§15.0) | 4–5 |
+
+**Three predictions in that table are about reasons that do NOT change, and they are the ones worth
+attacking first.** (1) `volume_tracker.py:92`/`:105` are the volume family's, by the dispatch rule
+(§15.2), and keep `volume_state_unknown` — the pre-amendment measurement reported
+`guard_predicate_unparsed` for them
+(`outputs/plr-sema/t30_measured_260905.json:733-742`), which is the family-dispatch fix-up below, not
+an amendment effect; either way they are not one of the gate's two zero-conditions, so
+`aspirate`/`dispense` are blocked by `:116` alone. (2) `:1185`'s `self._blow_out_air_volume is None`
+already parsed and was reported `decidable_or_operand_dependent`
+(`outputs/plr-sema/t30_measured_260905.json:803-812`); under G7 it becomes
+`Is(EnvRef(("self", "_blow_out_air_volume")), negated=False)` and its reason is predicted to **change
+to `guard_env_dependent`** — a prediction that would be a *regression* if `EnvRef` were merely
+cosmetic, and that is instead the `Var("self") ∈ K_params` defect being fixed. (3) `n_findings_decided`
+is predicted **unchanged** by the amendment alone.
+
+> **Normative (two measurement fix-ups that must land BEFORE the re-measured numbers are cited;
+> 260907). Neither changes the NO-GO that was recorded, and that is why they are fix-ups rather than
+> corrections.**
+>
+> 1. **The population.** `t30_measure.py`'s own row loop is a *"deliberately MINIMAL
+>    re-implementation"* of `run_row`'s skip/no_call gating
+>    (`plr-sema/eval/t30_measure.py:18-24`), and it counts **923** operations —
+>    `pick_up_tips` **361** (`outputs/plr-sema/t30_measured_260905.json:1045-1051`,
+>    `:1067`) — where the ledger's frozen benchmark population is **544** and 223
+>    (§15.0). T30c must **import and call `oracle_replay.run_row`'s own gating** rather than
+>    re-implement it, and the re-measured report must reproduce 544/223 or publish the difference with
+>    a named cause. The per-site classification in block (3) is population-independent, which is why
+>    the NO-GO stands as recorded; every *ratio* and every per-op count in block (4) is not, and no
+>    delta between the two reports may be published until this lands.
+> 2. **Family dispatch in blocks (3) and (4).** The classifier assigns a predicate reason to guards the
+>    tip and volume families own, contradicting §15.2's dispatch rule: it reported a predicate reason
+>    for `volume_tracker.py:92` and `:105` — `guard_predicate_unparsed` — where the ledger's own reason
+>    is `volume_state_unknown` (`outputs/plr-sema/t30_measured_260905.json:733-742`). T30c must skip
+>    family-claimed guards and report the family's own reason, exactly as T31's evaluator will. Without
+>    this, `aspirate`/`dispense` residuals name a blocker the predicate evaluator never owned.
+>
+> **A third number will move for a stated reason, and it is not a fix-up.** Block (2)'s
+> `name_coincidence_exposure_count` is **936**, and its published examples include entries whose
+> exposed name is literally `self`
+> (`outputs/plr-sema/t30_measured_260905.json:86-103`) — the same `Var("self")` defect §15.2's
+> invariant closes. After the amendment those occurrences cease to exist, so the count is **predicted
+> to fall**, and the fall must be attributed to the invariant rather than read as E-CALL(depth)'s
+> forbiddance having narrowed.
 
 **So the gate rests on `pick_up_tips` alone, and it now has three points of failure, not one.** All
 three are measurable in T30 **before** T31 constructs a single verdict, which is exactly what the
@@ -1318,6 +1690,17 @@ ordering gate above exists for:
    `:502` for a reason unrelated to the grammar, and without this block §15.9 would have misattributed
    it to O1.
 3. **`tip_spots` must lower as an `ir.Seq`**, which (2) depends on and which block (2) also exposes.
+
+**Measured (T30): all three points of failure held, and the gate failed on none of them.**
+`channels_for_call` returned non-`None` on **every** executed `pick_up_tips` operation the script
+counted (`outputs/plr-sema/t30_measured_260905.json:64-68`, `d2`), `tip_spots` lowered as an `ir.Seq`
+on all of them, and with O1 the `guard_operand_unknown` count is **0** everywhere, the O1 delta
+differing on 389 operations (`outputs/plr-sema/t30_measured_260905.json:1143-1146`). **The gate failed
+on a fourth thing this list did not contain** — two guards whose conditions the grammar could not read
+at all — which is the amendment's subject and is why the list is left standing rather than rewritten:
+it was a correct list of the risks that were foreseen, and the one that fired was not among them. D2's
+floor `== 223` is reported as 361/361 under the script's own population, which is fix-up (1) above,
+not a second failure.
 
 **On `:522` surviving C6 and C14 together, explicitly, because round 1 disputed it.** `offsets` is
 written **exactly once** in `pick_up_tips` — the β assignment at
@@ -1429,6 +1812,25 @@ nothing".
   mechanism); `IsInstance(declared="Well", (Container,))` is **`T`** (not ½ — C4b); and a predicate
   whose top node parses but which contains an `Opaque` sub-node keeps `guard_predicate_unparsed` while
   still evaluating `F` when conjoined with an `F` conjunct (C15).
+  **Plus the 260907 amendment's fixture set, positive and negative, one apiece.** *Positive*:
+  `c not in self.head` parses to `Cmp(Var("c"), "not in", EnvRef(("self", "head"), None))` with
+  `contains_opaque` false and `contains_env_ref` true;
+  `not all(self.backend.can_pick_up_tip(channel, tip) for channel, tip in zip(use_channels, tips))`
+  parses to `Not(AllOf(Zip((Var("use_channels"), Var("tips"))), EnvRef(("self", "backend",
+  "can_pick_up_tip"), (Var("channel"), Var("tip")))))`, non-`Opaque`, and evaluates ½ against a call
+  supplying both kwargs; `self.setup_finished and (not self._resource_pickups)` parses to an `And` of
+  two `EnvRef` leaves **in predicate position**; and `self._resource_pickup is None` parses to
+  `Is(EnvRef(…), negated=False)` rather than to `Is(Attr(Var("self"), …), …)`, asserted as the
+  normalisation. *Negative — the closed list of §15.2 G7, one fixture per row*: a call whose callee is
+  not `self`-rooted; `self.head[channel].has_tip` (subscripted); `f(self)` (`self` as an argument);
+  `tip.tracker.get_used_volume()` (rooted at a local); `volume - self.get_used_volume() > 1e-06`
+  (arithmetic `BinOp`); a `zip(...)` under `Len` rather than as a `seq`; and a tuple-target
+  comprehension whose arity differs from its `Zip`'s. Every one yields `Opaque` and a
+  `guard_predicate_unparsed` finding **identical to the one emitted today**. **Two whole-table
+  assertions carry the invariant**: `n_var_self == 0` over the regenerated contract table, and
+  `n_findings_decided` unchanged by the amendment alone. **The stub-defeating halves are the negative
+  list and the `n_var_self` assertion**: an implementation that admitted any `self`-rooted text as an
+  `EnvRef` passes every positive fixture and fails these.
 - **AC-15.2 (the two idioms bind, are measured, and fail closed).** The complete
   `(K, x, idiom, term)` selection over the whole PLR surface is published with **≥ 3** α entries
   (`liquid_handler.py:496`, `:645`, `:873`) and **≥ 6** β entries — a floor **met by measurement, not
@@ -1449,7 +1851,9 @@ nothing".
   case, including **`offsets=[]` asserted to resolve to the β length and NOT to `Len == 0`** — the
   latter would be a false `WILL_FAIL` at `:522`, which is the stub-defeating half of this group.
 - **AC-15.3 (the measured sets are published and the gate is decided by them).**
-  `outputs/plr-sema/t30_measured_260904.json` carries all five blocks of §15.9, and the GO/NO-GO
+  The measured report carries all six blocks of §15.9 — the first as
+  `outputs/plr-sema/t30_measured_260905.json`, the amendment's re-measurement as
+  `outputs/plr-sema/t30_measured_260908.json` — and the GO/NO-GO
   decision is recorded against the published **per-op reason set** — GO iff ≥ 1 executed real
   operation carries zero `guard_predicate_unparsed` and zero `guard_operand_unknown` findings.
   **The gate number is asserted computable from the JSON alone, without reading this document.**
@@ -1457,6 +1861,16 @@ nothing".
   and the decision goes to the user before AC-15.5's work starts. Block (3) additionally publishes,
   per cluster, the reason each guard **actually** carries against §15.1's predicted tier, and any
   divergence is recorded rather than absorbed.
+  **Plus the 260907 amendment's publication requirements, each asserted present and non-null in the
+  re-measured JSON**: `n_env_ref` and `env_ref_paths` per cluster (block 3); `n_env_ref` and
+  `n_decided_via_env_ref_shortcircuit` per executed operation (block 4); and block (6)'s whole-table
+  set — the **top-10 `EnvRef` paths with counts**, `n_env_ref_guards`, `n_env_ref_nodes`, `n_zip`,
+  `n_membership_cmp`, `n_var_self` and `n_opaque_only_by_var_self`. The two measurement fix-ups of
+  §15.9 are asserted landed: the population is **544 / `pick_up_tips` 223** (or the difference is
+  published with a named cause), and no guard the tip or volume family claims carries a predicate
+  reason. **The stub-defeating half is the top-10 path list**: a `n_env_ref` count alone cannot show
+  what the production absorbed, and an implementation that widened `EnvRef` beyond §15.2 G7 is visible
+  in that list and nowhere else.
 - **AC-15.4 (the operand observation, its fail-closed rule, and the counterfactual).** After O1,
   `resources_from_example`'s output carries a non-`None` `type` for **≥ 90%** of the resources
   referenced by the benchmark's planned kwargs, and a non-`None` `element_type` for every `Ref`
@@ -1499,17 +1913,20 @@ nothing".
   list or condition-text match; `join`'s input multiset **is** asserted to contain it; and
   `check_graph`'s two-positional-argument call form returns a report whose `schema_version` is still 1.
   The `else of:` case, the `:117` case and the depth-1 case are the stub-defeating halves.
-- **AC-15.7 (the vocabulary and registry arithmetic is exactly as specified, under the user's answers).**
+- **AC-15.7 (the vocabulary and registry arithmetic is exactly as specified, under the user's 260907 answers).**
   `len(REASON_VOCABULARY) == 12` against HM-14's unchanged `declared == 12`
   (`plr-sema/src/plr_sema/_hand_maintained.py:613-631`); the commit's parent has 10, so the diff is
   visibly 10 → 12; `len(live_rows()) == 24` and `BUDGET_CAP == 24`; **HM-25's `declared` is 9 and
   HM-24's is 3**, asserted directly, so a spend on the wrong row fails;
   `test_no_surface_exceeds_its_declared_size`, `test_total_declared_within_budget` and
   `test_reason_vocabulary_closed_forward` all pass, the last with both new members reachable from ≥ 1
-  construction site. **Conditional on the two pending user decisions (§15.14 Q4, Q5).** If the user
-  declines the HM-25 spend, this criterion asserts HM-25 `declared == 8` and α/β ship unregistered; if
-  the user declines the second reason, it asserts `len(REASON_VOCABULARY) == 11`. Either way the
-  assertion is exact and a silent divergence fails.
+  construction site. **No longer conditional: the user approved both §15.14 Q4 and Q5 on 260907**
+  (`.praxia/docs/plans/260904_plr-sema-sprint127-predicates.md:262-265`), so the assertions are
+  `len(REASON_VOCABULARY) == 12` and HM-25 `declared == 9` **unconditionally** — the declined branches
+  (11 members, `declared == 8`) are dead and a silent divergence in either direction fails.
+  The 260907 amendment adds **no** vocabulary member and **no** registry row (§15.8), so this
+  criterion's arithmetic is unchanged by it — which is itself asserted, as the amendment's cheapest
+  falsification.
 - **AC-15.8 (tier 1 — 0 unsound under the unmodified predicate, and the decided-findings floor).** The
   sidecar-gated replay reports `unsound == 0` under the **unmodified** predicate
   (`plr-sema/eval/oracle_common.py:645-647`, unchanged by this increment), `rows_setup_error == 0`,
@@ -1560,14 +1977,19 @@ nothing".
 ## 15.12 Task rows
 
 > Ordering is forced by §15.9's gate: **T30 must land and publish its measured sets, and the GO/NO-GO
-> must be recorded, before T31 constructs any `SAFE` or `WILL_FAIL`.** This is the same normative gate
+> must be recorded, before T31 constructs any `SAFE` or `WILL_FAIL`.** T30 landed and recorded
+> **NO-GO** (§15.15); **T30c inherits the whole of that gate condition** — it is the amendment plus a
+> re-measure, and T31 waits on *its* recorded GO, not on T30's. A T30c that landed the grammar without
+> re-running the measurement would be the exact configuration this box exists to prevent, with the
+> added hazard that the amendment moves a reason the gate reads. This is the same normative gate
 > increment 5 §14.0 imposes for the same reason: a landed evaluator without a published coverage
 > measurement can construct a definite verdict whose basis nobody has inspected.
 
 | task | scope | files | gate | ~LOC | depends on | model |
 |---|---|---|---|---|---|---|
 | **T30** | Derive + measure (§15.2, §15.3, §15.4's O1 and `param_defaults`, §15.9). The typed mini-AST and the total `parse`; `InlinedGuard.predicate` as an additive field with `condition` retained; **`param_defaults` per contract entry** from `ast.arguments.defaults`/`kw_defaults` restricted to `ast.Constant`, fail-closed (D1); the α and β idioms with the scope clause, the **iterand** single-write clause and the **β-preserving-rebinding** exception; O1's **new element walk** with the **heterogeneous-parent singleton rule**; all five measured blocks published — including **D2's `channels_for_call` non-`None` count on executed `pick_up_tips` ops (floor `== 223`)** and the **name-coincidence exposure count** for depth-≥1 guards — and the GO/NO-GO recorded against the reason-based gate | modify `plr-sema/src/plr_sema/derive/__init__.py`, `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/src/plr_sema/derive/__main__.py`, `plr-sema/eval/oracle_common.py`, `plr-sema/data/derived_contracts.json` (regenerated — this moves `contracts_sha` and cools the whole cache by design, §15.8), `plr-sema/tests/test_derive.py`; create `plr-sema/eval/t30_measure.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_derive.py -q`; **`uv run pytest plr-sema/tests/test_cache.py -q`** (no test may pin a literal `cache_key`); then regenerate the contract table and run `t30_measure.py` into `outputs/plr-sema/t30_measured_260904.json` — satisfying **AC-15.1**, **AC-15.2**, **AC-15.3**, **AC-15.4** | ~530 | — | Sonnet — six selections, each measured and published rather than asserted; the gate lives here, and three of its preconditions (O1's element type, D2's channel set, `tip_spots` lowering as a `Seq`) are measurable only in this row |
-| **T31** | The evaluator and the reasons (§15.4, §15.5, §15.7): `plr-sema/src/plr_sema/check/predicate.py` with E-CALL (incl. **`param_defaults` step (2)**, **E-CALL(5)** parameter-rebinding, **E-CALL(β)** truthiness, **E-CALL(depth)** forbiddance) / **restated E-TYPE** / E-SCOPE over `scope_trail[1:]` / E-VERDICT / E-UNCOND **(1)–(3) plus (4) depth, (5) empty trail, (6) self-entry**; **tier (iii) derived from `guard.is_dynamic_raise`, emitting one `UNKNOWN`/`guard_env_dependent` `Finding` plus an `excludes_sites` entry**; the **nested-`Opaque`** reason rule; dispatch that skips guards the tip and volume families already claim; `SoundnessScope` (one field, `excludes_sites`) and `AnalysisReport.scope`; `REASON_VOCABULARY` 10 → 12 | create `plr-sema/src/plr_sema/check/predicate.py`; modify `plr-sema/src/plr_sema/check/__init__.py`, `plr-sema/src/plr_sema/verdict.py`, `plr-sema/tests/test_check_graph.py`, `plr-sema/tests/test_verdict.py`, `plr-sema/tests/test_hand_maintained_ratchet.py`, and the fixtures under `plr-sema/tests/fixtures/` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_verdict.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q`; `uv run pytest plr-sema/tests/test_tip_typestate.py -q` — satisfying **AC-15.5**, **AC-15.6**, **AC-15.7** | ~560 | T30 + a recorded GO + the user's answers to §15.14 Q4/Q5 | Sonnet — **E-UNCOND(4)/(5) and the restated E-TYPE are the three clauses standing between this row and a false `WILL_FAIL` on ~256 clean operations**, and the shipped precedent (`volume_guard_is_unconditional`) implements the wrong reading of (5) |
+| **T30c** | **The 260907 amendment (§15.2 G7/G8, §15.4 E-ENV, §15.7's reason rule) plus the two measurement fix-ups, then a re-measure.** Add `EnvRef`, `Zip` and the `in`/`not in` comparators to the mini-AST and to `parse`, admissible in the positions §15.2 G7/G8 name and no others; add `contains_env_ref` beside `contains_opaque`; enforce the `Var("self")` invariant fail-closed; extend `to_json`/`from_json` for the two new node kinds; regenerate `plr-sema/data/derived_contracts.json` (this moves `contracts_sha` again — §15.8's cold-cache-by-design property is unchanged); fix `t30_measure.py` to call `oracle_replay.run_row`'s own gating instead of re-implementing it, and to respect §15.2's tip/volume family dispatch; publish blocks (3)/(4)'s `n_env_ref` and block (6). Satisfies the amended halves of **AC-15.1** (the positive/negative fixture set and the `n_var_self` invariant) and **AC-15.3** (the amendment's publication requirements and the two fix-ups), both of which stay gated on T30's row. **No evaluator, no verdict, no `check_ir`** — T31's boundary is unmoved | modify `plr-sema/src/plr_sema/derive/predicate_ast.py`, `plr-sema/src/plr_sema/derive/bindings.py`, `plr-sema/src/plr_sema/derive/__main__.py`, `plr-sema/data/derived_contracts.json` (regenerated), `plr-sema/eval/t30_measure.py`, `plr-sema/tests/test_derive.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_derive.py -q`; `uv run pytest plr-sema/tests/test_cache.py -q`; then regenerate the contract table and re-run `t30_measure.py` into `outputs/plr-sema/t30_measured_260908.json`, recording GO/NO-GO against the unchanged reason-based gate | ~120 | T30 + the user's 260907 approvals + the amendment's adversarial pass | Sonnet — the amendment relaxes the gate's own zero-condition, so every published count in §15.9 block (6) is what makes the relaxation inspectable |
+| **T31** | The evaluator and the reasons (§15.4, §15.5, §15.7): `plr-sema/src/plr_sema/check/predicate.py` with E-CALL (incl. **`param_defaults` step (2)**, **E-CALL(5)** parameter-rebinding, **E-CALL(β)** truthiness, **E-CALL(depth)** forbiddance) / **restated E-TYPE** / E-SCOPE over `scope_trail[1:]` / E-VERDICT / E-UNCOND **(1)–(3) plus (4) depth, (5) empty trail, (6) self-entry**; **tier (iii) derived from `guard.is_dynamic_raise`, emitting one `UNKNOWN`/`guard_env_dependent` `Finding` plus an `excludes_sites` entry**; the **nested-`Opaque`** reason rule; **E-ENV — every `EnvRef` at ½ in predicate position and ⊤ in term position, unconditionally, with `Len` of a `Zip` at ⊤ and a membership `Cmp` decided only over a concrete `Seq` of `Lit`s — and §15.7's `EnvRef` reason rule (`contains_opaque` first, then `contains_env_ref` ⇒ `guard_env_dependent`)**; dispatch that skips guards the tip and volume families already claim; `SoundnessScope` (one field, `excludes_sites`) and `AnalysisReport.scope`; `REASON_VOCABULARY` 10 → 12 and **the approved HM-25 `declared` 8 → 9 spend for α+β, filed as one entry** | create `plr-sema/src/plr_sema/check/predicate.py`; modify `plr-sema/src/plr_sema/check/__init__.py`, `plr-sema/src/plr_sema/verdict.py`, `plr-sema/tests/test_check_graph.py`, `plr-sema/tests/test_verdict.py`, `plr-sema/tests/test_hand_maintained_ratchet.py`, and the fixtures under `plr-sema/tests/fixtures/` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_verdict.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q`; `uv run pytest plr-sema/tests/test_tip_typestate.py -q` — satisfying **AC-15.5**, **AC-15.6**, **AC-15.7** | ~560 | **T30c** + a GO recorded in the re-measured report (the user's §15.14 Q4/Q5 answers landed 260907) | Sonnet — **E-UNCOND(4)/(5) and the restated E-TYPE are the three clauses standing between this row and a false `WILL_FAIL` on ~256 clean operations**, and the shipped precedent (`volume_guard_is_unconditional`) implements the wrong reading of (5) |
 | **T32** | The oracle (§15.10): tier-1 re-run under the **UNMODIFIED** unsoundness predicate, with `rows_excused_by_scope` published as an annotation and **no `exc_class` reference anywhere in the comparison path**; `n_findings_decided` per PLR site with its ≥ 223 floor; m1/m2/v1/tier-2b non-regression; the after-ledger with `consistency.ok == true` and its published delta; `plr-sema/eval/predicate_mutants.py` with p1's three mutators | create `plr-sema/eval/predicate_mutants.py`; modify `plr-sema/eval/oracle_replay.py`, `plr-sema/eval/tip_mutants.py`, `plr-sema/eval/tier2_extractor.bth.toml`, `plr-sema/tests/test_oracle_replay.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_oracle_replay.py -q`; then the tier-1 replay with its three standard flags, `unknown_ledger.py` into `unknown_ledger_260904_after.json`, `predicate_mutants.py`, `tip_mutants.py`, `volume_mutants.py` and `region_oracle.py` — satisfying **AC-15.8**, **AC-15.9**, **AC-15.10** | ~300 | T31 | Sonnet — every published number is a measurement; this row shrank because the narrowed-predicate comparison path was deleted |
 | **T33** | Lint and index: add `SPEC_INCREMENT_6` to `plr-sema/tests/test_spec_lint.py:28-37`'s constants and parametrise it into both live-spec tests (`plr-sema/tests/test_spec_lint.py:212-255`); regenerate `.praxia/docs/INDEX.md`; **actually run the lint and record the result** — AC-15.11 was a prediction no one in round 1 could execute | modify `plr-sema/tests/test_spec_lint.py`; regenerate `.praxia/docs/INDEX.md` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_spec_lint.py -q` — satisfying **AC-15.11** | ~6 | — | Haiku |
 | **T34** | **CONDITIONAL — do not start. Q2's round-1 disposition is DEFER (§15.6, reaffirmed with a corrected cost argument), so this row belongs to increment 7.** Tier (ii) (#4981): `get_strictness` as an `env` member; the observation record for backend class and signature, deck membership, head channel count and lid topology; the backend-signature derivation with its measured selection; `cache_key` partitioning | modify `plr-sema/src/plr_sema/check/__init__.py`, `plr-sema/src/plr_sema/check/ir.py`, `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/eval/oracle_common.py`, `training/verify/verifier.py`, `plr-sema/tests/test_cache.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_cache.py -q`; `uv run pytest training/tests/test_verify_postconditions.py -q` — satisfying **AC-15.12** | ~300 | increment 7 | Sonnet |
@@ -1583,6 +2005,11 @@ published count. **T30 at ~530 is past one session and splits cleanly** at the g
 with its own fixtures) versus the idioms plus `param_defaults` plus O1 plus the measurement script.
 **Do not split T30 from T31 across a sprint boundary in the other direction**: a landed T31 without
 T30's published measurement is the configuration §15.9's gate exists to prevent.
+**T30c is ~120**: roughly 55 for the three productions plus `contains_env_ref`, the `Var("self")`
+invariant and the JSON round-trip; ~25 for the two measurement fix-ups; ~40 for block (6) and the
+per-cluster/per-op `n_env_ref` fields. It does **not** grow T31, which gains E-ENV as a two-line
+evaluation rule and the §15.7 reason rule as a one-line branch — the amendment's cost is concentrated
+in the derive side and in what gets published, which is where its inspectability lives.
 
 **One item this document deliberately does NOT budget: the delegate→caller argument map.** §15.4's
 E-CALL(depth) forbids the resolution rather than building it. Building it — a `delegate_arg_binding`
@@ -1614,6 +2041,29 @@ and `:117`, and it belongs in increment 7 with the tier-(ii) work.
   `external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:653-658`) and for
   `n = len(<param>)` (`:819`). Both are real, both are needed by `drop_tips`/`discard_tips`, and both
   are a general dataflow pass by another name.
+- **Four productions the 260907 amendment CONSIDERED and did NOT adopt, named individually because
+  each would have flipped a further method's residual and that is precisely why they are refused.**
+  The amendment's mandate was the two `self`-rooted blockers on the gate candidate; adopting a
+  production *because* it moves some other method's residual is the anti-gaming failure §15.9's box
+  exists to prevent, and each of these is a real production with its own soundness argument to make in
+  its own increment.
+  - **A general `Identity(Term, Term)` for `x is y`.** `:116`'s `lidded is resource`
+    (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:116`) is the single blocker
+    keeping `aspirate` (77 ops), `dispense` (40), `transfer` (19) and `stamp` (27) — 163 operations,
+    30% of the benchmark — from `{decidable, guard_env_dependent}`. `Is` deliberately admits only the
+    constant `None` on its right
+    (`plr-sema/src/plr_sema/derive/predicate_ast.py:251-259`). Generalising it is ~15 LOC and would
+    make four more methods GO candidates, which is exactly the reason to refuse it here: it is not an
+    environment-read recognition, it decides object identity — a relation the IR models nowhere — and
+    it belongs with increment 7's lid topology, which is what `:116` actually needs.
+  - **Tuple-display comparison** (`:2030`'s
+    `(source.num_items_x, source.num_items_y) == (target.num_items_x, target.num_items_y)`) — a
+    `Term` for `ast.Tuple` displays, elementwise `Cmp`. Increment 7.
+  - **Arithmetic `BinOp` terms** — `:2211`'s modulo, and the subtraction at `volume_tracker.py`'s
+    `:91`. This is
+    Open decision 2's territory (G5) and the volume family's; unchanged.
+  - **`EnvRef` path lookup against an observation.** Forbidden outright by §15.4 E-ENV in this
+    increment; it *is* increment 7's tier (ii) and T34's row.
 - **Numeric `Cmp` outside the volume bridge.** Open decision 2's resolution stands unchanged (G5).
 - **A `pred`-aware `BRANCH`** (increment 3 §12.3.6 B2). The same evaluator serves it and it is the
   natural increment 7 alongside tier (ii).
@@ -1638,13 +2088,16 @@ and `:117`, and it belongs in increment 7 with the tier-(ii) work.
 
 ---
 
-## 15.14 The six questions, and their round-1 dispositions
+## 15.14 The eight questions, and their dispositions
 
-**Four of the six are now disposed by argument or measurement. Two remain open only because they are
-the user's, not the round's, and one further user decision (Q7) was raised by the round itself.**
+**All seven are now closed. Four were disposed by argument or measurement in round 1; the three that
+were the user's — Q4, Q5 and Q7 — were answered on 260907, together with Q3's confirmation and one new
+question the measurement raised (Q8, the amendment)
+(`.praxia/docs/plans/260904_plr-sema-sprint127-predicates.md:262-265`). Nothing in this section is
+pending.**
 
 1. **Q1 — is the coupling in §15.5 real, and does the sprint's headline move? DISPOSED: the coupling
-   holds; the substitution is PENDING USER APPROVAL, recommended.** The stated refutation criterion
+   holds; the substitution was APPROVED BY THE USER 260907 (Q7).** The stated refutation criterion
    was *"name one executed operation whose non-(iii) residual is empty."* The re-run ledger answers it
    by measurement: `_check_args`'s two tier-(ii) guards carry `n_ops_blocked` 544 with `per_method`
    summing to 544 (§15.0), so **no such operation exists**. The challenger's proposed refutation — 12
@@ -1659,20 +2112,21 @@ the user's, not the round's, and one further user decision (Q7) was raised by th
    **The corrected disposition is "deferred because the general derivation is a new class surface with
    its own measured selection, and because the increment already carries more soundness risk than it
    can absorb"** — not "because the specific case is expensive" (§15.6).
-3. **Q3 — does γ (§15.13) belong in this increment? DISPOSED: no. Deferred to increment 7, to be
+3. **Q3 — does γ (§15.13) belong in this increment? DISPOSED: no — and CONFIRMED by the user 260907
+   (decision 3, "γ not adopted"). Deferred to increment 7, to be
    revisited alongside the `pred`-aware `BRANCH`.** Without it `aspirate` and `dispense` — 117 of 544
    operations — keep a `guard_predicate_unparsed` residual and the gate rests on `pick_up_tips` alone,
    which is a real cost and is stated as one. Against it: γ is a loop-recognition rule in increment 5
    R1's territory, this round already conceded eight blocking items, and D1's `param_defaults`
    restores `transfer`'s three guards at lower risk.
-4. **Q4 — two new reasons, or one? PENDING USER APPROVAL; recommended: two.** Shipping both exhausts
+4. **Q4 — two new reasons, or one? APPROVED BY THE USER 260907: two.** Shipping both exhausts
    HM-14 at 12 of 12 (`plr-sema/src/plr_sema/verdict.py:133-168`). §15.7's mechanical
    distinguishability test — *did every free name resolve?* — survived round 1, and item 3's widening
    of `guard_env_dependent` to cover unestablished reachability makes that member carry strictly more
    traffic than the draft anticipated. **The one-member fallback is described in §15.7 and costs the
    distinction that scopes increment 7 plus one of the GO gate's two zero-conditions.**
-5. **Q5 — is §15.8's "neither HM-24 nor HM-25" position sound? DISPOSED: no. HM-25 `declared` 8 → 9 is
-   PENDING USER APPROVAL; recommended: spend it.** The position rested on reason 1, and round 1 broke
+5. **Q5 — is §15.8's "neither HM-24 nor HM-25" position sound? DISPOSED: no. HM-25 `declared` 8 → 9,
+   APPROVED BY THE USER 260907.** The position rested on reason 1, and round 1 broke
    reason 1 two ways (the unconstrained iterand, and the unspecified delegate→caller substitution).
    Both are repaired by new normative clauses in this revision, which is not the same as reason 1
    having held. The correct row is **HM-25**, not HM-24 — loud, exact-count-gated, same idiom family
@@ -1687,9 +2141,21 @@ the user's, not the round's, and one further user decision (Q7) was raised by th
    also purchased nothing, because §15.5 proves no joined `SAFE` is reachable for it to protect. The
    fence is now the unmodified `plr-sema/eval/oracle_common.py:645-647` and
    `rows_excused_by_scope` is a pure annotation.
-7. **Q7 (raised by round 1) — the headline substitution itself. PENDING USER APPROVAL; recommended:
-   substitute.** Formally distinct from Q1, which is the technical claim; Q7 is what the sprint may
-   say it delivered. See §15.5's pending-decision box.
+7. **Q7 (raised by round 1) — the headline substitution itself. APPROVED BY THE USER 260907:
+   substituted.** Formally distinct from Q1, which is the technical claim; Q7 is what the sprint may
+   say it delivered. The sprint's deliverable is per-finding `SAFE`, a `WILL_FAIL` on a decidable and
+   reachable violation, and a residual that names the missing observation per guard; **the first
+   joined `SAFE` on a real operation is increment 7's.** See §15.5's decision box.
+8. **Q8 (raised by the T30 measurement, not by round 1) — the NO-GO: accept it, or amend the grammar?
+   APPROVED BY THE USER 260907: amend, narrowly, as spec_version 18, with a short adversarial pass.**
+   The two blockers on the only GO candidate are `self`-rooted environment reads the grammar had no
+   production for, so the residual was being charged to `guard_predicate_unparsed` — "the grammar
+   failed here" — when the true residual is a missing observation. The amendment is §15.2 G7/G8,
+   §15.4 E-ENV and §15.7's reason rule; its anti-gaming argument is §15.9's box; its registry
+   disposition is §15.8's; and its own falsification set is §15.9's re-prediction table plus block
+   (6). **What was NOT approved and is not taken here**: any production that would flip a *second*
+   method's residual (§15.13's four), any environment *read* (§15.4 E-ENV), and any further ceiling or
+   vocabulary spend (§15.8).
 
 ---
 
@@ -1699,7 +2165,8 @@ the user's, not the round's, and one further user decision (Q7) was raised by th
 
 | row | commit | what landed | measured vs the spec's expectation | divergences |
 |---|---|---|---|---|
-| T30 | `58e5c3fc` (T30a), `7c0fe59a` (T30b-1), `6cbbe442` (T30b-2) | Typed mini-AST + total `parse`; `InlinedGuard.predicate` (`condition` retained); `param_defaults`; α/β bindings with the iterand single-write and β-preserving rebinding; O1 element types (default-off); `t30_measure.py` with the five blocks and the reason-based gate | Parse: 7,528 guards, 6,295 non-`Opaque`, 1,233 `Opaque`, 925 nested-`Opaque`. Bindings: α **5** (predicted ≥ 3), β **11** (predicted 8 — extras at transfer line 1353 and two in VantageBackend). `param_defaults`: transfer's target_vols/ratios/source_vol and pick_up_tips' offsets/use_channels all `null`, as D1 requires. Heterogeneous parents: **0**. D2: `channels_for_call` non-`None` on **every** executed pick_up_tips op (floor met); tip_spots lowers as `ir.Seq` on all. Name-coincidence exposure: 936 depth≥1 occurrences. O1 delta: 389 ops differ; with O1 `guard_operand_unknown` is **0** everywhere (§15.4's O1 claim holds). **GATE: NO-GO** — no executed op reaches zero `guard_predicate_unparsed`; pick_up_tips' residual is {decidable, guard_env_dependent, guard_predicate_unparsed}, the last carried by two guards: line 409 (α binds invalid_channels but the filter `c not in self.head` is `Opaque` ⇒ §15.7's nested-`Opaque` rule) and line 514 (`zip(...)` is not a G1 `Term` ⇒ `Opaque`). Per §15.9: derive code kept, T31 not started, decision to the user | (1) §15.9's prediction table called line 409 `guard_env_dependent`; §15.7's nested-`Opaque` rule, whose worked example is that very site, assigns `guard_predicate_unparsed` — an internal §15.7/§15.9 inconsistency the measurement exposed. Both blockers are expressions rooted at `self.` (head, backend): tier (ii) by §15.1's definition, but the grammar has no production that recognises an environment read as such. Proposed amendment for the user (spec_version 18): an `EnvRef` leaf (expression rooted at `self.`, optionally called with `Term` args) that evaluates ½ and carries `guard_env_dependent`, plus `zip(Term, Term)` as a `Term`. (2) `t30_measure.py` re-implements `run_row`'s gating and counts 923 ops (pick_up_tips 361) against the ledger's 544 (223); per-site classification is population-independent so the verdict stands, but the script must reuse `oracle_replay.run_row` before any published delta (T32 fix-up). (3) The measured report is `outputs/plr-sema/t30_measured_260905.json` (the text above says 260904). |
+| T30 | `58e5c3fc` (T30a), `7c0fe59a` (T30b-1), `6cbbe442` (T30b-2) | Typed mini-AST + total `parse`; `InlinedGuard.predicate` (`condition` retained); `param_defaults`; α/β bindings with the iterand single-write and β-preserving rebinding; O1 element types (default-off); `t30_measure.py` with the five blocks and the reason-based gate | Parse: 7,528 guards, 6,295 non-`Opaque`, 1,233 `Opaque`, 925 nested-`Opaque`. Bindings: α **5** (predicted ≥ 3), β **11** (predicted 8 — extras at transfer line 1353 and two in VantageBackend). `param_defaults`: transfer's target_vols/ratios/source_vol and pick_up_tips' offsets/use_channels all `null`, as D1 requires. Heterogeneous parents: **0**. D2: `channels_for_call` non-`None` on **every** executed pick_up_tips op (floor met); tip_spots lowers as `ir.Seq` on all. Name-coincidence exposure: 936 depth≥1 occurrences. O1 delta: 389 ops differ; with O1 `guard_operand_unknown` is **0** everywhere (§15.4's O1 claim holds). **GATE: NO-GO** — no executed op reaches zero `guard_predicate_unparsed`; pick_up_tips' residual is {decidable, guard_env_dependent, guard_predicate_unparsed}, the last carried by two guards: line 409 (α binds invalid_channels but the filter `c not in self.head` is `Opaque` ⇒ §15.7's nested-`Opaque` rule) and line 514 (`zip(...)` is not a G1 `Term` ⇒ `Opaque`). Per §15.9: derive code kept, T31 not started, decision to the user | (1) §15.9's prediction table called line 409 `guard_env_dependent`; §15.7's nested-`Opaque` rule, whose worked example is that very site, assigns `guard_predicate_unparsed` — an internal §15.7/§15.9 inconsistency the measurement exposed. Both blockers are expressions rooted at `self.` (head, backend): tier (ii) by §15.1's definition, but the grammar has no production that recognises an environment read as such. Proposed amendment for the user (spec_version 18): an `EnvRef` leaf (expression rooted at `self.`, optionally called with `Term` args) that evaluates ½ and carries `guard_env_dependent`, plus `zip(Term, Term)` as a `Term`. **APPROVED by the user 260907 and now normative as §15.2 G7/G8, §15.4 E-ENV and §15.7's reason rule; T30c re-measures.** (2) `t30_measure.py` re-implements `run_row`'s gating and counts 923 ops (pick_up_tips 361) against the ledger's 544 (223); per-site classification is population-independent so the verdict stands, but the script must reuse `oracle_replay.run_row` before any published delta (T32 fix-up). (3) The measured report is `outputs/plr-sema/t30_measured_260905.json` (the text above says 260904). |
+| T30c | — | — | — | — |
 | T31 | — | — | — | — |
 | T32 | — | — | — | — |
 | T33 | — | — | — | — |
@@ -1730,7 +2197,7 @@ did not change on the merits.
 | **C10** | conceded, all four parts | `SoundnessScope` has exactly one field, `excludes_sites: tuple[PlrSite, ...]`; the `excludes`/`harness_internal` sentence is deleted; the type is stated as **new in this increment**; the two non-definitional citations are replaced by a motivation reference | §15.5 |
 | **C11** | (a) fact conceded / sizing rebutted; (b) conceded; (c) conceded as disclosure | O1 restated as a **new element walk** (~40 LOC, not ~25 "over data the harness already computes"); **heterogeneous-parent singleton rule** with `element_type = None` fail-closed and a published count; the tier-(ii)-dependence of the GO is stated plainly in this document's own words | §15.4 O1, §15.9, AC-15.4 |
 | **C12** | **REBUTTED on the merits, but the instrument was fixed anyway** | The 93/81 and 544/532 gaps were `(row_id, op_id)` set dedup under content-digest collisions, not unaccounted operations. Item 17 re-keyed the ledger positionally (`ca756bce`); every field now closes at 544/93, `consistency.ok` is `true`, and the 12 collisions are published and are all `move_*`. §15.0's note 2 wording corrected | §15.0 (notes 1–2 + new correction box) |
-| **C13** | (1) conceded with a clause; (2) conceded outright; registry **HM-25, not HM-24** | The single-write requirement now ranges over **the iterand** as well as `x`. The delegate→caller substitution is forbidden (E-CALL(depth)) rather than assumed. §15.8's "neither row" position is withdrawn: **HM-25 8 → 9**, pending user approval | §15.3, §15.4 E-CALL(depth), §15.8, AC-15.7, §15.14 Q5 |
+| **C13** | (1) conceded with a clause; (2) conceded outright; registry **HM-25, not HM-24** | The single-write requirement now ranges over **the iterand** as well as `x`. The delegate→caller substitution is forbidden (E-CALL(depth)) rather than assumed. §15.8's "neither row" position is withdrawn: **HM-25 8 → 9**, approved by the user 260907 | §15.3, §15.4 E-CALL(depth), §15.8, AC-15.7, §15.14 Q5 |
 | **C14** | (a) rebutted (and exposes D1); (b) conceded | β is **not** dead: E-CALL step (2) had no data source at all, so resolution fell through to the β binding. **E-CALL(β)** models truthiness in four cases, with `Lit(None)` routed to β rather than to ⊤. `:522` survives C6 and C14 together, so the gate keeps a GO candidate | §15.4 E-CALL(β), §15.9, AC-15.2 |
 | **C15** | conceded | **Nested-`Opaque` rule**: a predicate containing any `Opaque` node is `Opaque` for reason assignment, still Kleene-evaluated. Restores §15.7's legibility claim; `:409`'s 384 findings keep `guard_predicate_unparsed` | §15.2 G1, §15.7 |
 | **C16** | conceded, textual | The contract-table regeneration moves `contracts_sha`, so the whole cache is **cold after T30 by design**; `env` is untouched, which is the property that matters. T30's gate adds a check that no test pins a literal key | §15.8, §15.12 T30 |
@@ -1744,6 +2211,30 @@ did not change on the merits.
 orchestrator's. Item 17 (the ledger `row_id` fix and re-run) landed as `ca756bce`; its results are
 folded into §15.0. Item 18's lint execution is T33's, and is the one AC in this document that no one in
 round 1 could execute.
+
+### 15.16.1 Amendment record — spec_version 17 → 18 (260907)
+
+**Source: the T30 measurement, not an adversarial round.** Band B landed T30a/T30b, the reason-based
+gate measured **NO-GO** (§15.15), and the user approved a narrow grammar amendment plus the four
+outstanding decisions (§15.14 Q3–Q8). This table records what the measurement showed and what changed
+in the text. **The amendment has not yet had its adversarial pass**, which is why `status` stays
+`reviewed-round-1`; A1–A6 are written to be attacked individually.
+
+| id | what the measurement showed | what changed in the text | § touched |
+|---|---|---|---|
+| **A1** | **An internal inconsistency this document shipped in spec_version 17.** §15.9's prediction table said `liquid_handler.py:409` would carry `guard_env_dependent`; §15.7's nested-`Opaque` rule — whose *own* worked example is that site — said `guard_predicate_unparsed`. The measurement reported the latter (`outputs/plr-sema/t30_measured_260905.json:473-482`), correctly, because that is what the normative text said, and the gate turned on the difference. **The inconsistency existed and was not caught by round 1** | §15.7 gains a normative `EnvRef` reason rule that makes the two agree **by rule**: `contains_opaque` first (unchanged), then `contains_env_ref` ⇒ `guard_env_dependent`. The nested-`Opaque` rule is untouched; what changed is that the filter at `:409` no longer contains an `Opaque` node | §15.7, §15.9 |
+| **A2** | Both of `pick_up_tips`'s residual blockers are expressions **rooted at the literal name `self`** — the receiver's head and backend, tier (ii) by §15.1's own definition — that the grammar could not recognise as environment reads and therefore charged to the reason meaning "the grammar failed" | **G7, `EnvRef(path, args)`**: two enumerated shapes, admissible in predicate and term position, with a closed negative list and the `Var("self")` invariant; **E-ENV**: ½/⊤ unconditionally, no environment read, no path table; §15.8's registry argument (a grammar production, not hand-maintained surface) and its fallback; §15.9's anti-gaming box and block (6) | §15.2, §15.4, §15.7, §15.8, §15.9, §15.11, §15.12 |
+| **A3** | `:514`'s condition is `not all(<expr> for channel, tip in zip(use_channels, tips))`; `zip(...)` is not a G1 `Term`, so the whole guard was `Opaque` **even though its body would have parsed** once `EnvRef` existed | **G8**: `Zip(items)` as a `Term` admissible **only** as an `AllOf`/`AnyOf` `seq`, with a positional tuple-target arity check; and `_CMP_OPS` widened by `in`/`not in` only. Explicitly recorded: `Zip` does **not** reopen §15.3's β exclusions, because α/β test the `ast.Assign` shape and still require a bare-`ast.Name` iterand | §15.2, §15.4, §15.11 |
+| **A4** | **The population caveat.** `t30_measure.py` re-implements `run_row`'s gating (`plr-sema/eval/t30_measure.py:19-37`) and counts 923 operations against the ledger's 544. The per-site classification is population-independent, so the NO-GO stands; every ratio and per-op count is not | §15.9 gains a normative fix-up box: T30c must call `oracle_replay.run_row`'s own gating and reproduce 544 / `pick_up_tips` 223, or publish the difference with a named cause, **before any delta between the two reports is published**. AC-15.3 asserts it | §15.9, §15.11, §15.12 |
+| **A5** | **A family-dispatch violation in the measurement, not in the analyzer.** Blocks (3)/(4) assigned a predicate reason to `volume_tracker.py:92` and `:105` — `guard_predicate_unparsed` — where the ledger's own reason is `volume_state_unknown` (`outputs/plr-sema/t30_measured_260905.json:733-742`) — §15.2's dispatch rule says the predicate evaluator never sees them. This mis-attributed `aspirate`/`dispense`'s blocker set | The same fix-up box: T30c skips family-claimed guards and reports the family's own reason. §15.2 G7 additionally records that the dispatch rule, not the grammar, is what keeps family ownership stable — `EnvRef` is receiver-agnostic and `self.get_used_volume()` would otherwise match its shape | §15.2, §15.9 |
+| **A6** | **`Var("self")` was being treated as a resolvable parameter.** `self` is a parameter of every PLR method, so the shipped classifier's *"is this name a parameter of `K`?"* test (`plr-sema/eval/t30_measure.py:856-866`) accepted it: `self.<x>` guards were reported `decidable_or_operand_dependent` (e.g. `:1185`, `outputs/plr-sema/t30_measured_260905.json:803-812`), and block (2)'s name-coincidence exposure list contains entries whose exposed name is literally `self` (`outputs/plr-sema/t30_measured_260905.json:86-103`) | The `Var("self")` invariant (§15.2 G7): after the amendment no parsed predicate may contain `Var("self")`, fail-closed, asserted as `n_var_self == 0` over the whole contract table (AC-15.1) with `n_opaque_only_by_var_self` published. §15.9 predicts `name_coincidence_exposure_count` **falls** for this reason and requires the fall to be attributed to it | §15.2, §15.9, §15.11 |
+
+**What this amendment deliberately did not do, recorded here because each was available and would have
+moved a published number.** It adopted no production that flips a second method's residual (§15.13's
+four, of which a general `x is y` would alone have made `aspirate`/`dispense`/`transfer`/`stamp` — 163
+operations — GO candidates); it read no environment; it spent no registry row, no per-row ceiling and
+no vocabulary slot; and it edited neither §15.3's idioms nor §15.9's gate condition, which is still
+zero `guard_predicate_unparsed` and zero `guard_operand_unknown` on ≥ 1 executed operation.
 
 ---
 
@@ -1780,3 +2271,16 @@ round 1 could execute.
   prediction, verdict `needs_revision`).
 - Exception taxonomy consulted for §15.5's fence argument and found to cover the wrong population:
   `training/verify/data/plr_exception_taxonomy.json` (132 PLR-defined classes at the same pin).
+- **Band B's landed code and measurement, read in full for the 260907 amendment** — the shipped
+  grammar `plr-sema/src/plr_sema/derive/predicate_ast.py` (the node set §15.2 G1 is now reconciled
+  against, `parse`'s term/predicate dispatch at `:518-539` and `:350-362`, `_parse_quantifier` at
+  `:408-421`, `_CMP_OPS` at `:298-305`, `contains_opaque` at `:566-593`); `free_var_names`
+  (`plr-sema/src/plr_sema/derive/bindings.py:150-182`); the measurement script's own scope statement
+  and structural classifier (`plr-sema/eval/t30_measure.py:18-24`, `:699-745`); and the measured
+  report `outputs/plr-sema/t30_measured_260905.json` (block 1 at `:3-62`, block 3's 54 clusters at
+  `:452-993`, block 4 at `:994-1142`, the O1 delta at `:1143-1146`, the `gate` block at `:1149-1162`,
+  `scope_notes` at `:1164-1168`).
+- **The user's five decisions of 260907**, recorded in the sprint plan's execution log:
+  `.praxia/docs/plans/260904_plr-sema-sprint127-predicates.md:198-265` — the band-B NO-GO at `:237-250`,
+  the measurement caveat at `:247-250`, decision 5 and its two options at `:252-260`, and the approvals
+  at `:262-265`.
