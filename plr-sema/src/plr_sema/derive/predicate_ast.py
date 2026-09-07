@@ -94,6 +94,38 @@ round-trip: every node becomes ``{"node": <class name>, ...fields}``, never a
 Python ``repr()`` string. This is independent of ``InlinedGuard``'s own JSON
 shape (``derive/__main__.py``'s ``_guard_to_json``), which calls ``to_json``
 on the ``predicate`` field it adds.
+
+**G7/G8 -- the 260907 amendment (spec 260904 S15.2, T35).** Three additive
+productions, all this module's business except the PLR-layer index test
+(below): ``EnvRef(path, args)`` -- a self-rooted attribute chain
+(``args is None``) or the call of one (``args`` a tuple, possibly empty),
+admissible in BOTH ``Predicate`` and ``Term`` position -- the one node
+inhabiting both unions, a deliberate one-element overlap in the otherwise
+disjoint partition; ``Zip(items)`` -- ``zip(<e1>, ..., <en>)``, ``n >= 2``,
+admissible ONLY as the ``seq`` of ``AllOf``/``AnyOf``; and the membership
+comparators ``in``/``not in`` added to ``Cmp``'s op set. All three are
+purely SYNTACTIC here -- evaluating them (E-ENV: 1/2 in predicate position,
+TOP in term position, unconditionally, this increment) is T31's job.
+
+**The PLR-layer test on a shape-(2) `self.<name>(...)` call with
+``len(path) == 2`` is NOT this module's job.** ``parse`` sees one
+self-contained condition string and no context (no receiver class, no
+function index), so it admits EVERY syntactically-valid self-rooted call as
+an ``EnvRef`` candidate. The index-gated refusal -- demoting a `self.<name>`
+call to `Opaque` when `<name>` IS an indexed PLR-layer method of the
+receiver class -- is applied POST-parse, in `plr_sema.derive.bindings`,
+against `receiver_state.build_plr_function_index` (spec 260904 S15.2's
+normative box, round 2 A-C1).
+
+**The `Var("self")` invariant IS this module's job**, because it needs no
+external context: after the amendment, no parsed predicate may contain a
+bare `Var` node named `"self"` -- `self` is meaningful ONLY as the root of
+an `EnvRef` path. `_parse_term` therefore refuses a bare `ast.Name("self")`
+unconditionally (returns `None`, an ordinary term-parse failure that
+propagates via the existing totality machinery to `Opaque` at the smallest
+enclosing predicate construction) -- self-rooted attribute/call chains are
+intercepted BEFORE reaching that branch, via `_self_rooted_path`, so a
+legitimate `self.<x>` never touches it.
 """
 
 from __future__ import annotations
@@ -114,6 +146,7 @@ __all__ = [
     "AnyOf",
     "IsInstance",
     "Opaque",
+    "EnvRef",
     # Term nodes
     "Len",
     "SetOf",
@@ -121,14 +154,20 @@ __all__ = [
     "Lit",
     "Attr",
     "Filtered",
+    "Zip",
     # type aliases
     "Predicate",
     "Term",
     # API
     "parse",
+    "walk",
     "contains_opaque",
+    "contains_env_ref",
+    "count_env_ref_nodes",
+    "count_var_self",
     "to_json",
     "from_json",
+    "MEMBERSHIP_OPS",
 ]
 
 
@@ -192,7 +231,45 @@ class Filtered:
     predicate: "Predicate"
 
 
-Term = Union[Len, SetOf, Var, Lit, Attr, Filtered]
+@dataclass(frozen=True, slots=True)
+class Zip:
+    """G8 (260907 amendment, T35): ``zip(<e1>, ..., <en>)``, ``n >= 2`` --
+    admissible ONLY as the ``seq`` of ``AllOf``/``AnyOf`` (constructed only
+    by the quantifier parser, never by the general ``_parse_term``
+    dispatch, so a ``zip(...)`` anywhere else -- under ``Len``, as a bare
+    ``Cmp`` operand -- is simply unrecognised and collapses its enclosing
+    predicate to ``Opaque``, exactly like any other unsupported shape).
+    Resolves to TOP unless every item resolves to a concrete ``Seq``
+    (S15.4 E-ENV, T31's job). The comprehension target's bound names are
+    never recorded as a field here -- same rationale as ``AllOf``/``AnyOf``
+    not recording their own bound name."""
+
+    items: tuple["Term", ...]
+
+
+@dataclass(frozen=True, slots=True)
+class EnvRef:
+    """G7 (260907 amendment, T35): an expression rooted at the literal name
+    ``self`` -- an attribute chain (``args is None``, e.g. ``self.head`` ->
+    ``EnvRef(("self", "head"), None)``) or the CALL of such a chain whose
+    arguments all parse as ``Term``s (``args`` a tuple, possibly empty --
+    that is what distinguishes a zero-argument call from a bare read).
+    Admissible in BOTH ``Predicate`` and ``Term`` position -- the one node
+    inhabiting both unions (a deliberate one-element overlap; round 2,
+    A-C12). This module constructs the SYNTACTIC candidate only: the
+    PLR-layer index test on a shape-(2) call with ``len(path) == 2`` (does
+    ``<name>`` name an indexed PLR-layer method of the receiver class?) is
+    applied post-parse, in ``plr_sema.derive.bindings``, against
+    ``receiver_state.build_plr_function_index`` -- this module has no
+    access to that context and never guesses it. Evaluates to 1/2 in
+    predicate position and TOP in term position, unconditionally, this
+    increment (S15.4 E-ENV, T31's job)."""
+
+    path: tuple[str, ...]
+    args: tuple["Term", ...] | None
+
+
+Term = Union[Len, SetOf, Var, Lit, Attr, Filtered, Zip, EnvRef]
 
 
 # ---------------------------------------------------------------------------
@@ -288,7 +365,7 @@ class AnyOf:
     predicate: "Predicate"
 
 
-Predicate = Union[TRUE, Not, And, Or, Cmp, Is, AllOf, AnyOf, IsInstance, Opaque]
+Predicate = Union[TRUE, Not, And, Or, Cmp, Is, AllOf, AnyOf, IsInstance, Opaque, EnvRef]
 
 
 # ---------------------------------------------------------------------------
@@ -302,7 +379,20 @@ _CMP_OPS: dict[type[ast.cmpop], str] = {
     ast.LtE: "<=",
     ast.Gt: ">",
     ast.GtE: ">=",
+    # G8(2), 260907 amendment: membership comparators. Every membership
+    # `Cmp` evaluates 1/2 unconditionally this increment (S15.4 E-ENV) --
+    # that is T31's business, not this module's; parsing them is purely
+    # representational, exactly like every other Cmp op.
+    ast.In: "in",
+    ast.NotIn: "not in",
 }
+
+#: G8(2)'s op set -- the two ops that are never a decidable Cmp this
+#: increment (S15.4 E-ENV: "every membership Cmp evaluates 1/2
+#: unconditionally"). Not consulted by this module (parsing is polarity/
+#: value agnostic); published for T31/t30_measure's convenience so neither
+#: has to hand-type the pair a second time.
+MEMBERSHIP_OPS = frozenset({"in", "not in"})
 
 # G3: op/int-literal combos over a Filtered term that ARE an emptiness test.
 _ANY_OF_COMBOS = frozenset({(">", 0), (">=", 1)})
@@ -359,10 +449,62 @@ def _parse_predicate(node: ast.expr) -> Predicate:
         result = _parse_call_predicate(node)
         if result is not None:
             return result
+    if isinstance(node, ast.Attribute):
+        # G7 shape (1) used bare, in predicate position -- e.g.
+        # `self.setup_finished` as a standalone truthiness test.
+        self_path = _self_rooted_path(node)
+        if self_path is not None:
+            return EnvRef(self_path, None)
     return Opaque(_unparse(node))
 
 
+def _self_rooted_path(node: ast.expr) -> tuple[str, ...] | None:
+    """G7's shape test: the attribute-chain path if ``node`` is a chain of
+    plain ``ast.Attribute``s bottoming out at ``ast.Name("self")`` -- e.g.
+    ``self.head`` -> ``("self", "head")``; ``self._resource_pickup.direction``
+    -> ``("self", "_resource_pickup", "direction")``. ``None`` for anything
+    else: a non-``self`` base, or a ``Subscript``/``Call`` anywhere in the
+    chain (the closed negative list: subscripted ``self`` stays ``Opaque``
+    because the chain simply never reaches ``ast.Name("self")`` through
+    pure ``Attribute`` hops alone)."""
+    parts: list[str] = []
+    cur: ast.expr = node
+    while isinstance(cur, ast.Attribute):
+        parts.append(cur.attr)
+        cur = cur.value
+    if isinstance(cur, ast.Name) and cur.id == "self":
+        parts.reverse()
+        return ("self", *parts)
+    return None
+
+
+def _parse_env_ref_call(node: ast.Call) -> "EnvRef | None":
+    """G7 shape (2)'s SYNTACTIC half only (no PLR-layer index test here --
+    see the module docstring). Admits ``self.<attr>...(...)``: no
+    ``keywords``, no ``Starred``, every argument parses as a ``Term``. A
+    bare ``self`` as an argument already fails via ``_parse_term``'s own
+    refusal of a standalone ``Name("self")`` (the ``Var("self")``
+    invariant), so no separate check is needed here."""
+    path = _self_rooted_path(node.func)
+    if path is None or len(path) < 2:
+        return None
+    if node.keywords:
+        return None
+    if any(isinstance(a, ast.Starred) for a in node.args):
+        return None
+    args: list[Term] = []
+    for a in node.args:
+        t = _parse_term(a)
+        if t is None:
+            return None
+        args.append(t)
+    return EnvRef(path=path, args=tuple(args))
+
+
 def _parse_call_predicate(node: ast.Call) -> Predicate | None:
+    env_ref = _parse_env_ref_call(node)
+    if env_ref is not None:
+        return env_ref
     if not isinstance(node.func, ast.Name):
         return None
     name = node.func.id
@@ -405,6 +547,35 @@ def _parse_isinstance_types(node: ast.expr) -> tuple[str, ...] | None:
     return None if name is None else (name,)
 
 
+def _parse_zip(node: ast.expr) -> "Zip | None":
+    """G8(1): ``zip(<e1>, ..., <en>)``, ``n >= 2``, no ``keywords``, no
+    ``Starred``, every item parsing as a ``Term``. Constructed ONLY here --
+    never by the general ``_parse_term`` dispatch -- so a ``zip(...)``
+    anywhere else in a condition (under ``Len``, as a bare ``Cmp`` operand)
+    is simply an unrecognised ``ast.Call`` and collapses its enclosing
+    predicate to ``Opaque`` via the ordinary term-parse-failure path."""
+    if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "zip"):
+        return None
+    if node.keywords or len(node.args) < 2:
+        return None
+    if any(isinstance(a, ast.Starred) for a in node.args):
+        return None
+    items: list[Term] = []
+    for a in node.args:
+        t = _parse_term(a)
+        if t is None:
+            return None
+        items.append(t)
+    return Zip(tuple(items))
+
+
+def _tuple_target_matches(target: ast.expr, n: int) -> bool:
+    """G8(1)'s tuple-target correspondence: every element a bare
+    ``ast.Name``, arity exactly ``n`` -- else the whole quantifier is
+    ``Opaque`` (no partial admission)."""
+    return isinstance(target, ast.Tuple) and len(target.elts) == n and all(isinstance(e, ast.Name) for e in target.elts)
+
+
 def _parse_quantifier(node: ast.Call, kind: str) -> Predicate:
     if len(node.args) != 1 or node.keywords:
         return Opaque(_unparse(node))
@@ -414,7 +585,18 @@ def _parse_quantifier(node: ast.Call, kind: str) -> Predicate:
     comp = arg.generators[0]
     if comp.ifs or comp.is_async:
         return Opaque(_unparse(node))
-    seq = _parse_term(comp.iter)
+    zip_seq = _parse_zip(comp.iter)
+    seq: "Term | None"
+    if zip_seq is not None:
+        # G8(1): a Zip iterand REQUIRES a matching tuple target -- the
+        # positional correspondence `target[i] <-> items[i]` is what makes
+        # the Zip readable at all; anything else is Opaque, no partial
+        # admission (round 2, A-C13's comprehension-bound-name rule is
+        # about what the names RESOLVE to, T31's job -- this is only the
+        # syntactic gate on whether the Zip is admitted at all).
+        seq = zip_seq if _tuple_target_matches(comp.target, len(zip_seq.items)) else None
+    else:
+        seq = _parse_term(comp.iter)
     if seq is None:
         return Opaque(_unparse(node))
     body = _parse_predicate(arg.elt)
@@ -522,17 +704,34 @@ def _parse_term(node: ast.expr) -> "Term | None":
             return Lit(value)
         return None
     if isinstance(node, ast.Name):
+        if node.id == "self":
+            # The Var("self") invariant (S15.2's normative box): bare
+            # `self` is meaningful ONLY as the root of an EnvRef path, and
+            # every legitimate self-rooted chain/call is intercepted BEFORE
+            # reaching this branch (the Attribute/Call cases below try
+            # `_self_rooted_path` first). An ordinary term-parse failure --
+            # propagates via the existing totality machinery to `Opaque` at
+            # the smallest enclosing predicate construction, exactly like
+            # any other unrecognised term.
+            return None
         return Var(node.id)
     if isinstance(node, ast.Attribute):
+        self_path = _self_rooted_path(node)
+        if self_path is not None:
+            return EnvRef(self_path, None)
         base = _parse_term(node.value)
         return None if base is None else Attr(base, node.attr)
-    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and not node.keywords:
-        if node.func.id == "len" and len(node.args) == 1:
-            inner = _parse_term(node.args[0])
-            return None if inner is None else Len(inner)
-        if node.func.id == "set" and len(node.args) == 1:
-            inner = _parse_term(node.args[0])
-            return None if inner is None else SetOf(inner)
+    if isinstance(node, ast.Call):
+        env_ref = _parse_env_ref_call(node)
+        if env_ref is not None:
+            return env_ref
+        if isinstance(node.func, ast.Name) and not node.keywords:
+            if node.func.id == "len" and len(node.args) == 1:
+                inner = _parse_term(node.args[0])
+                return None if inner is None else Len(inner)
+            if node.func.id == "set" and len(node.args) == 1:
+                inner = _parse_term(node.args[0])
+                return None if inner is None else SetOf(inner)
         return None
     if isinstance(node, ast.ListComp):
         return _parse_filtered(node)
@@ -590,7 +789,108 @@ def contains_opaque(node: "Predicate | Term") -> bool:
         return contains_opaque(node.term)
     if isinstance(node, Filtered):
         return contains_opaque(node.seq) or contains_opaque(node.predicate)
+    if isinstance(node, (Zip, EnvRef)):
+        # Neither can hold an Opaque sub-node: every Zip item and every
+        # EnvRef arg is a Term that, on parse failure, causes the WHOLE
+        # Zip/EnvRef construction to be rejected (returning None up to the
+        # caller) rather than embedding a partial/Opaque child -- "no
+        # partial admission and no fallback" (S15.2 G7/G8).
+        return False
     raise TypeError(f"contains_opaque: unrecognized node type {type(node)!r}")
+
+
+def contains_env_ref(node: "Predicate | Term") -> bool:
+    """``True`` iff some reachable ``Predicate``- or ``Term``-typed slot in
+    ``node`` is an ``EnvRef`` node -- the total sibling of ``contains_opaque``
+    §15.7's reason rule reads (round 2, A-C4: BOTH walks range over the
+    alpha/beta-SUBSTITUTED tree, never the raw ``predicate`` field --
+    :func:`plr_sema.derive.bindings.substitute` builds that tree)."""
+    if isinstance(node, EnvRef):
+        return True
+    if isinstance(node, (TRUE, Opaque, Var, Lit)):
+        return False
+    if isinstance(node, Not):
+        return contains_env_ref(node.predicate)
+    if isinstance(node, (And, Or)):
+        return any(contains_env_ref(p) for p in node.predicates)
+    if isinstance(node, Cmp):
+        return contains_env_ref(node.left) or contains_env_ref(node.right)
+    if isinstance(node, Is):
+        return contains_env_ref(node.term)
+    if isinstance(node, IsInstance):
+        return contains_env_ref(node.term)
+    if isinstance(node, (AllOf, AnyOf)):
+        return contains_env_ref(node.seq) or contains_env_ref(node.predicate)
+    if isinstance(node, (Len, SetOf)):
+        return contains_env_ref(node.term)
+    if isinstance(node, Attr):
+        return contains_env_ref(node.term)
+    if isinstance(node, Filtered):
+        return contains_env_ref(node.seq) or contains_env_ref(node.predicate)
+    if isinstance(node, Zip):
+        return any(contains_env_ref(i) for i in node.items)
+    raise TypeError(f"contains_env_ref: unrecognized node type {type(node)!r}")
+
+
+def walk(node: "Predicate | Term") -> "list[Predicate | Term]":
+    """Every node reachable from ``node``, ``node`` itself included --
+    the general-purpose traversal §15.9 block (6)'s whole-table counts
+    (``n_zip``, ``n_membership_cmp``, ``n_env_ref_nodes``, ``n_var_self``)
+    are built from, so each of those is a one-line filter over ONE
+    recursion rather than a fourth hand-written walk."""
+    out: list["Predicate | Term"] = [node]
+    if isinstance(node, (TRUE, Opaque, Var, Lit)):
+        pass
+    elif isinstance(node, Not):
+        out.extend(walk(node.predicate))
+    elif isinstance(node, (And, Or)):
+        for p in node.predicates:
+            out.extend(walk(p))
+    elif isinstance(node, Cmp):
+        out.extend(walk(node.left))
+        out.extend(walk(node.right))
+    elif isinstance(node, Is):
+        out.extend(walk(node.term))
+    elif isinstance(node, IsInstance):
+        out.extend(walk(node.term))
+    elif isinstance(node, (AllOf, AnyOf)):
+        out.extend(walk(node.seq))
+        out.extend(walk(node.predicate))
+    elif isinstance(node, (Len, SetOf, Attr)):
+        out.extend(walk(node.term))
+    elif isinstance(node, Filtered):
+        out.extend(walk(node.seq))
+        out.extend(walk(node.predicate))
+    elif isinstance(node, Zip):
+        for i in node.items:
+            out.extend(walk(i))
+    elif isinstance(node, EnvRef):
+        if node.args is not None:
+            for a in node.args:
+                out.extend(walk(a))
+    else:
+        raise TypeError(f"walk: unrecognized node type {type(node)!r}")
+    return out
+
+
+def count_env_ref_nodes(node: "Predicate | Term") -> int:
+    """The number of ``EnvRef`` NODES reachable from ``node`` -- block (3)'s
+    ``n_env_ref_nodes``, a NODE count (e.g. two for one guard containing
+    ``self.a and self.b``), never a per-guard boolean (that is
+    :func:`contains_env_ref`) nor the per-guard-COUNT block (4) publishes
+    under the SAME name in a different unit (round 2, A-C8's own point --
+    the two are deliberately different functions with different names)."""
+    return sum(1 for n in walk(node) if isinstance(n, EnvRef))
+
+
+def count_var_self(node: "Predicate | Term") -> int:
+    """The number of ``Var("self")`` occurrences reachable from ``node`` --
+    always 0 by construction on anything this module's own ``parse``
+    produced (the ``Var("self")`` invariant is enforced AT parse time, in
+    ``_parse_term``'s refusal of a bare ``ast.Name("self")``); published as
+    a measured whole-table count rather than merely asserted true by
+    reading the code (S15.9 block (6), ``n_var_self``)."""
+    return sum(1 for n in walk(node) if isinstance(n, Var) and n.name == "self")
 
 
 # ---------------------------------------------------------------------------
@@ -631,11 +931,22 @@ def to_json(node: "Predicate | Term") -> dict[str, Any]:
         return {"node": "Attr", "term": to_json(node.term), "name": node.name}
     if isinstance(node, Filtered):
         return {"node": "Filtered", "seq": to_json(node.seq), "predicate": to_json(node.predicate)}
+    if isinstance(node, Zip):
+        return {"node": "Zip", "items": [to_json(i) for i in node.items]}
+    if isinstance(node, EnvRef):
+        return {
+            "node": "EnvRef",
+            "path": list(node.path),
+            "args": None if node.args is None else [to_json(a) for a in node.args],
+        }
     raise TypeError(f"to_json: unrecognized predicate/term node type {type(node)!r}")
 
 
-_TERM_KINDS = {"Len", "SetOf", "Var", "Lit", "Attr", "Filtered"}
-_PREDICATE_KINDS = {"TRUE", "Opaque", "Not", "And", "Or", "Cmp", "Is", "AllOf", "AnyOf", "IsInstance"}
+_TERM_KINDS = {"Len", "SetOf", "Var", "Lit", "Attr", "Filtered", "Zip", "EnvRef"}
+#: EnvRef is deliberately in BOTH sets -- the one node inhabiting both
+#: `Term` and `Predicate` (round 2, A-C12: a break of the previously
+#: disjoint partition, recorded so it is not discovered as a surprise).
+_PREDICATE_KINDS = {"TRUE", "Opaque", "Not", "And", "Or", "Cmp", "Is", "AllOf", "AnyOf", "IsInstance", "EnvRef"}
 
 
 def from_json(data: dict[str, Any]) -> "Predicate | Term":
@@ -676,4 +987,10 @@ def from_json(data: dict[str, Any]) -> "Predicate | Term":
         return Attr(from_json(data["term"]), data["name"])
     if kind == "Filtered":
         return Filtered(from_json(data["seq"]), from_json(data["predicate"]))
+    if kind == "Zip":
+        return Zip(tuple(from_json(i) for i in data["items"]))
+    if kind == "EnvRef":
+        args_json = data.get("args")
+        args = None if args_json is None else tuple(from_json(a) for a in args_json)
+        return EnvRef(tuple(data["path"]), args)
     raise ValueError(f"from_json: unrecognized node kind {kind!r} in {data!r}")

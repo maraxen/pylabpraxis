@@ -53,7 +53,11 @@ from typing import Any
 
 from plr_sema._provenance import SurveyStamp, survey_stamp
 from plr_sema.check._supported_tools import SUPPORTED_TOOLS
-from plr_sema.derive.bindings import compute_local_bindings_for_guard
+from plr_sema.derive.bindings import (
+    build_qualname_index,
+    compute_local_bindings_for_guard,
+    demote_refused_env_refs,
+)
 from plr_sema.derive.predicate_ast import Predicate, parse as parse_predicate
 from plr_sema.telemetry import FAILURE_CATEGORIES
 from plr_sema.verdict import PlrSite
@@ -547,9 +551,20 @@ def derive_contract(
     running ``bindings.compute_local_bindings_for_guard`` against the real
     function body. Omitting it (the default) reproduces T30a's exact
     behaviour: every guard's ``bindings`` is ``()``.
+
+    260907 amendment (T35, spec 260904 §15.2's normative box, round 2
+    A-C1): the SAME ``function_index`` also gates G7's PLR-layer test on a
+    shape-(2) ``EnvRef`` (``self.<name>(...)`` with ``len(path) == 2``) --
+    reduced once, per call, to a ``(module, qualname)`` set via
+    ``bindings.build_qualname_index`` and applied per guard via
+    ``bindings.demote_refused_env_refs`` against the guard's OWN receiver
+    class (``rec.class_name``). Omitting ``function_index`` refuses EVERY
+    such candidate (fail-closed, identical in spirit to the ``bindings``
+    default above).
     """
     if stamp is None:
         stamp = survey_stamp()
+    qualname_index = None if function_index is None else build_qualname_index(function_index)
     guards: list[InlinedGuard] = []
     gaps: list[Gap] = []
     for rec, key, depth in _walk_closure((module, qualname), index):
@@ -559,6 +574,12 @@ def derive_contract(
         K = None if function_index is None else function_index.get((rec.module, rec.qualname, rec.lineno))
         for finding in rec.findings:
             predicate = parse_predicate(finding.condition)
+            predicate = demote_refused_env_refs(
+                predicate,
+                module=rec.module,
+                class_name=rec.class_name,
+                qualname_index=qualname_index,
+            )
             bindings: tuple[dict[str, Any], ...] = ()
             if K is not None:
                 bindings = compute_local_bindings_for_guard(K, predicate, finding.lineno)

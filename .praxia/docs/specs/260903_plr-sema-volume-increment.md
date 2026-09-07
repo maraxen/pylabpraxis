@@ -594,7 +594,7 @@ accessor reads the cell's running interval. With `used ∈ [lo, hi]`:
 with `category = "precondition_state"` and, for `½`, `reason = "volume_state_unknown"`.
 
 **The `1e-06` tolerance is read from the guard, not typed.** It is a literal in the derived
-`condition` string (`plr-sema/data/derived_contracts.json:86499`) and is evaluated as part of the
+`condition` string (`plr-sema/data/derived_contracts.json:87187`) and is evaluated as part of the
 `Cmp`; nothing in `plr_sema`'s source names it.
 
 ---

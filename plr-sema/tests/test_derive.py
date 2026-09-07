@@ -46,12 +46,30 @@ from plr_sema.derive import (
 )
 from plr_sema.derive.__main__ import build_derived_contracts_payload, _guard_to_json
 from plr_sema.derive.bindings import (
+    build_qualname_index,
     compute_all_local_bindings,
     compute_local_bindings_for_guard,
+    demote_refused_env_refs,
     free_var_names,
+    is_plr_layer_method,
     param_defaults_from_function,
+    substitute,
 )
-from plr_sema.derive.predicate_ast import Opaque, TRUE, parse as parse_predicate
+from plr_sema.derive.predicate_ast import (
+    Cmp,
+    EnvRef,
+    Filtered,
+    Len,
+    Lit,
+    Not,
+    Opaque,
+    TRUE,
+    Var,
+    contains_env_ref,
+    contains_opaque,
+    count_var_self,
+    parse as parse_predicate,
+)
 from plr_sema.derive.receiver_state import (
     build_plr_class_index,
     build_plr_function_index,
@@ -2211,12 +2229,14 @@ def test_param_defaults_real_transfer_and_pick_up_tips(plr_function_index) -> No
 
 
 def test_free_var_names_walks_predicate_and_term_positions() -> None:
-    # `self.head.has_tip` is an Attr-chain TERM (Attr(Attr(Var(self), head),
-    # has_tip)), walked all the way down to its root Var -- exercising the
-    # Attr branch, not just the top-level Cmp/BoolOp dispatch a shallower
-    # test would.
+    # 260907 amendment (G7, T35): `self.head.has_tip` is now ONE `EnvRef`
+    # leaf (`EnvRef(("self", "head", "has_tip"), None)`, shape (1) subsuming
+    # the whole chain) rather than `Attr(Attr(Var("self"), "head"),
+    # "has_tip")` -- so "self" is no longer a free var at all (it is the
+    # EnvRef's own path root, never exposed as a bare `Var`). This exercises
+    # `free_var_names`'s EnvRef branch (args is None -> no free names).
     pred = parse_predicate("len(not_tip_spots) > 0 and self.head.has_tip == other")
-    assert free_var_names(pred) == {"not_tip_spots", "self", "other"}
+    assert free_var_names(pred) == {"not_tip_spots", "other"}
 
 
 # ---- alpha/beta AC-15.2 fixtures (synthetic, one per named shape) --------
@@ -2419,10 +2439,16 @@ def test_two_writes_to_beta_iterand_binds_nothing() -> None:
 # -- nested-Opaque binding (invalid_channels) -------------------------------
 
 
-def test_alpha_binds_even_when_inner_filter_is_opaque() -> None:
-    """The `if` clause `c not in self.head` parses to `Opaque` -- alpha
-    still binds the TERM (a binding rule, not a decision rule, §15.3's own
-    'that asymmetry is the point')."""
+def test_alpha_binds_the_now_g7_g8_readable_filter() -> None:
+    """The `if` clause `c not in self.head` used to parse to `Opaque`;
+    after the 260907 amendment (G7 `EnvRef`, G8 `in`/`not in`, T35) it
+    parses to `Cmp(Var("c"), "not in", EnvRef(("self", "head"), None))` --
+    alpha still binds the TERM regardless (a binding rule, not a decision
+    rule, §15.3's own 'that asymmetry is the point'), but the bound term's
+    OWN inner predicate is no longer `Opaque`. §15.7's worked example
+    (`:409`) turns on exactly this: the guard moves from
+    `guard_predicate_unparsed` to `guard_env_dependent` because this
+    filter is now readable, not because its truth value changed."""
     node = _func_node(
         "def m(self, channels):\n"
         "    invalid_channels = [c for c in channels if c not in self.head]\n"
@@ -2432,7 +2458,12 @@ def test_alpha_binds_even_when_inner_filter_is_opaque() -> None:
     pred = parse_predicate("not len(invalid_channels) == 0")
     (binding,) = compute_local_bindings_for_guard(node, pred, guard_lineno=3)
     assert binding["idiom"] == "alpha"
-    assert binding["pred"] == {"node": "Opaque", "text": "c not in self.head"}
+    assert binding["pred"] == {
+        "node": "Cmp",
+        "left": {"node": "Var", "name": "c"},
+        "op": "not in",
+        "right": {"node": "EnvRef", "path": ["self", "head"], "args": None},
+    }
 
 
 # ---- the measured population against the real, pinned PLR surface --------
@@ -2456,8 +2487,13 @@ def test_real_alpha_population_meets_ac_15_2_floor(plr_function_index) -> None:
     assert seen["LiquidHandler.pick_up_tips"][0]["x"] == "not_tip_spots"
     assert seen["LiquidHandler.drop_tips"][0]["x"] == "not_tip_spots"
     assert seen["LiquidHandler._check_containers"][0]["x"] == "not_containers"
-    # :407's invalid_channels -- alpha binds it WITH an Opaque inner filter.
-    assert seen["LiquidHandler._make_sure_channels_exist"][0]["pred"]["node"] == "Opaque"
+    # :407's invalid_channels -- alpha binds it; after the 260907 amendment
+    # (G7 EnvRef, G8 in/not in, T35) its inner filter `c not in self.head`
+    # is a `Cmp` containing an `EnvRef`, no longer `Opaque`.
+    inner = seen["LiquidHandler._make_sure_channels_exist"][0]["pred"]
+    assert inner["node"] == "Cmp"
+    assert inner["op"] == "not in"
+    assert inner["right"] == {"node": "EnvRef", "path": ["self", "head"], "args": None}
 
 
 def test_real_beta_population_meets_ac_15_2_floor(plr_function_index) -> None:
@@ -2565,3 +2601,212 @@ def test_build_derived_contracts_payload_omits_param_defaults_without_function_i
     contracts = payload["contracts"]
     key = next(k for k in contracts if k.startswith("LiquidHandler.transfer"))
     assert "param_defaults" not in contracts[key]
+
+
+# ---------------------------------------------------------------------------
+# T35 (260907 amendment, spec 260904 S15.2's normative box, round 2 A-C1):
+# G7's PLR-layer test on a shape-(2) EnvRef, applied post-parse in
+# derive.bindings against `receiver_state.build_plr_function_index`.
+# ---------------------------------------------------------------------------
+
+
+def _synthetic_index_and_function_index(with_helper: bool):
+    """A synthetic `Foo.bar` whose guard reads `self._helper()` -- a
+    length-2 `self.<name>(...)` EnvRef candidate. `with_helper=True` puts
+    `_helper` in the function index (an indexed PLR-layer method of the
+    SAME receiver class -- refused); `with_helper=False` omits it (an
+    unindexed read -- admitted)."""
+    bar_src = "def bar(self):\n    if self._helper():\n        raise ValueError('x')\n"
+    bar_node = _func_node(bar_src)
+    finding = SurveyFinding(
+        kind="raise_guard",
+        condition="self._helper()",
+        raises="ValueError",
+        scope_trail=(),
+        mentions_params=(),
+        lineno=2,
+    )
+    rec = SurveyRecord(
+        qualname="Foo.bar",
+        class_name="Foo",
+        module="synthetic_mod",
+        file="synthetic_mod.py",
+        lineno=1,
+        params=("self",),
+        findings=(finding,),
+        delegates_to=(),
+        unresolved_calls=(),
+    )
+    index = {("synthetic_mod", "Foo.bar"): rec}
+    function_index = {("synthetic_mod", "Foo.bar", 1): bar_node}
+    if with_helper:
+        helper_node = _func_node("def _helper(self):\n    return True\n")
+        function_index[("synthetic_mod", "Foo._helper", 5)] = helper_node
+    return index, function_index
+
+
+def test_g7_index_refusal_indexed_method_becomes_opaque() -> None:
+    """`self._helper()` where `_helper` IS an indexed method of `Foo` (the
+    receiver class) is refused -- a coverage gap the closure could have
+    inlined, not a missing observation."""
+    index, function_index = _synthetic_index_and_function_index(with_helper=True)
+    contract = derive_contract("synthetic_mod", "Foo.bar", index, function_index=function_index)
+    (guard,) = contract.guards
+    assert isinstance(guard.predicate, Opaque)
+    assert count_var_self(guard.predicate) == 0
+
+
+def test_g7_index_absent_method_stays_env_ref() -> None:
+    """The same shape, but `_helper` is ABSENT from the function index --
+    admitted as an `EnvRef` (an environment read the grammar recognises)."""
+    index, function_index = _synthetic_index_and_function_index(with_helper=False)
+    contract = derive_contract("synthetic_mod", "Foo.bar", index, function_index=function_index)
+    (guard,) = contract.guards
+    assert guard.predicate == EnvRef(("self", "_helper"), ())
+
+
+def test_g7_no_function_index_refuses_every_k1_candidate() -> None:
+    """Fail-closed default: omitting `function_index` entirely (T30a's
+    exact calling convention) refuses EVERY k==1 shape-(2) candidate,
+    exactly like `InlinedGuard.bindings`'s own no-index default -- even
+    though `_helper` is not defined anywhere in this synthetic index."""
+    index, _function_index = _synthetic_index_and_function_index(with_helper=False)
+    contract = derive_contract("synthetic_mod", "Foo.bar", index)
+    (guard,) = contract.guards
+    assert isinstance(guard.predicate, Opaque)
+
+
+def test_g7_shape2_len3_never_refused_regardless_of_index() -> None:
+    """A read THROUGH a receiver attribute (`len(path) >= 3`,
+    `self.backend.can_pick_up_tip(...)`) is never this test's business --
+    it stays an `EnvRef` even when an entry matching its OWN name exists in
+    the index (the index test only ever looks at length-2 paths)."""
+    bar_src = "def bar(self):\n    if self.backend.can_pick_up_tip(x):\n        raise ValueError('x')\n"
+    bar_node = _func_node(bar_src)
+    finding = SurveyFinding(
+        kind="raise_guard",
+        condition="self.backend.can_pick_up_tip(x)",
+        raises="ValueError",
+        scope_trail=(),
+        mentions_params=(),
+        lineno=2,
+    )
+    rec = SurveyRecord(
+        qualname="Foo.bar",
+        class_name="Foo",
+        module="synthetic_mod",
+        file="synthetic_mod.py",
+        lineno=1,
+        params=("self", "x"),
+        findings=(finding,),
+        delegates_to=(),
+        unresolved_calls=(),
+    )
+    index = {("synthetic_mod", "Foo.bar"): rec}
+    # An entry for "Foo.can_pick_up_tip" exists, but the EnvRef's path is
+    # ("self", "backend", "can_pick_up_tip") -- length 3, never checked.
+    function_index = {
+        ("synthetic_mod", "Foo.bar", 1): bar_node,
+        ("synthetic_mod", "Foo.can_pick_up_tip", 9): _func_node("def can_pick_up_tip(self, x):\n    pass\n"),
+    }
+    contract = derive_contract("synthetic_mod", "Foo.bar", index, function_index=function_index)
+    (guard,) = contract.guards
+    assert guard.predicate == EnvRef(("self", "backend", "can_pick_up_tip"), (Var("x"),))
+
+
+def test_build_qualname_index_drops_lineno() -> None:
+    function_index = {
+        ("mod", "Foo.bar", 1): object(),
+        ("mod", "Foo.bar", 50): object(),  # a second def at a different line, same qualname
+        ("mod", "Foo.baz", 2): object(),
+    }
+    idx = build_qualname_index(function_index)
+    assert idx == frozenset({("mod", "Foo.bar"), ("mod", "Foo.baz")})
+
+
+def test_is_plr_layer_method_none_class_name_never_matches() -> None:
+    idx = frozenset({("mod", "Foo.bar")})
+    assert is_plr_layer_method(idx, "mod", None, "bar") is False
+    assert is_plr_layer_method(idx, "mod", "Foo", "bar") is True
+    assert is_plr_layer_method(idx, "mod", "Foo", "other") is False
+
+
+def test_n_var_self_is_zero_over_the_real_regenerated_table(
+    survey_records: list[SurveyRecord], survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index
+) -> None:
+    """S15.9 block (6)'s whole-table invariant, published rather than
+    assumed: no guard anywhere in the real, regenerated contract table
+    contains a bare `Var("self")`."""
+    stamp = survey_stamp()
+    payload = build_derived_contracts_payload(survey_records, survey_index, stamp, function_index=plr_function_index)
+    total = 0
+    for entry in payload["contracts"].values():
+        for g in entry.get("guards", ()):
+            from plr_sema.derive.predicate_ast import from_json
+
+            total += count_var_self(from_json(g["predicate"]))
+    assert total == 0
+
+
+# ---------------------------------------------------------------------------
+# T35: `substitute` -- the alpha/beta-SUBSTITUTED tree contains_opaque/
+# contains_env_ref must range over (round 2, A-C4).
+# ---------------------------------------------------------------------------
+
+
+def test_substitute_alpha_binding_exposes_nested_env_ref() -> None:
+    """The amendment's own worked example: `:409`'s guard predicate itself
+    has no `EnvRef`/`Opaque` node at all (`invalid_channels` is a plain
+    `Var`) -- only the alpha-SUBSTITUTED tree does."""
+    pred = parse_predicate("not len(invalid_channels) == 0")
+    assert not contains_env_ref(pred)
+    bindings_by_name = {
+        "invalid_channels": {
+            "idiom": "alpha",
+            "x": "invalid_channels",
+            "iter": "channels",
+            "pred": {
+                "node": "Cmp",
+                "left": {"node": "Var", "name": "c"},
+                "op": "not in",
+                "right": {"node": "EnvRef", "path": ["self", "head"], "args": None},
+            },
+        }
+    }
+    substituted = substitute(pred, bindings_by_name)
+    assert not contains_opaque(substituted)
+    assert contains_env_ref(substituted)
+    assert substituted == Not(
+        Cmp(
+            Len(Filtered(Var("channels"), Cmp(Var("c"), "not in", EnvRef(("self", "head"), None)))),
+            "==",
+            Lit(0),
+        )
+    )
+
+
+def test_substitute_leaves_unbound_and_beta_bound_names_alone() -> None:
+    """A beta binding (a LENGTH fact, not a term) and a wholly unbound name
+    are both left untouched -- substitution can only ever introduce a
+    `Filtered` term for an ALPHA-bound name."""
+    pred = parse_predicate("len(offsets) == len(unbound)")
+    substituted = substitute(pred, {"offsets": {"idiom": "beta", "x": "offsets", "param": "tip_spots", "default_shape": "repeat"}})
+    assert substituted == pred
+
+
+def test_substitute_recurses_into_env_ref_args() -> None:
+    """A bound name appearing as an EnvRef CALL argument is substituted
+    too -- `substitute` recurses into `EnvRef.args`, not just top-level
+    Cmp/Is/IsInstance operands."""
+    pred = parse_predicate("self.backend.f(bound_name)")
+    bindings_by_name = {
+        "bound_name": {
+            "idiom": "alpha",
+            "x": "bound_name",
+            "iter": "items",
+            "pred": {"node": "TRUE"},
+        }
+    }
+    substituted = substitute(pred, bindings_by_name)
+    assert isinstance(substituted, EnvRef)
+    assert substituted.args == (Filtered(Var("items"), TRUE()),)

@@ -68,6 +68,7 @@ from plr_sema.derive.predicate_ast import (
     AnyOf,
     Attr,
     Cmp,
+    EnvRef,
     Filtered,
     Is,
     IsInstance,
@@ -81,6 +82,8 @@ from plr_sema.derive.predicate_ast import (
     TRUE,
     Term,
     Var,
+    Zip,
+    from_json as predicate_from_json,
     parse as parse_predicate,
     to_json as predicate_to_json,
 )
@@ -92,6 +95,10 @@ __all__ = [
     "free_var_names",
     "compute_local_bindings_for_guard",
     "compute_all_local_bindings",
+    "substitute",
+    "build_qualname_index",
+    "is_plr_layer_method",
+    "demote_refused_env_refs",
 ]
 
 
@@ -179,7 +186,229 @@ def free_var_names(node: "Predicate | Term") -> frozenset[str]:
         return free_var_names(node.term)
     if isinstance(node, Filtered):
         return free_var_names(node.seq) | free_var_names(node.predicate)
+    if isinstance(node, Zip):
+        out = set()
+        for i in node.items:
+            out |= free_var_names(i)
+        return frozenset(out)
+    if isinstance(node, EnvRef):
+        # `self` (the path root) is never a free LOCAL -- it is a
+        # parameter of every PLR method and, post-amendment, is only ever
+        # legitimately spelled as an EnvRef's own path, never as a bare
+        # Var; only the CALL's own arguments (shape (2)) can mention a
+        # genuine free name (e.g. `channel`, `tip` at `:514`).
+        if node.args is None:
+            return frozenset()
+        out = set()
+        for a in node.args:
+            out |= free_var_names(a)
+        return frozenset(out)
     raise TypeError(f"free_var_names: unrecognized node type {type(node)!r}")
+
+
+# ---------------------------------------------------------------------------
+# substitute -- the alpha/beta-SUBSTITUTED tree (round 2, A-C4).
+# ---------------------------------------------------------------------------
+
+
+def substitute(node: "Predicate | Term", bindings_by_name: dict[str, dict[str, Any]]) -> "Predicate | Term":
+    """Replaces every free ``Var(name)`` whose name has an ALPHA binding in
+    ``bindings_by_name`` with the bound term
+    (``Filtered(seq=Var(iter), predicate=<the alpha idiom's own parsed `if`
+    clause>)``), recursively -- the tree ``contains_opaque``/``contains_env_ref``
+    must range over for reason-assignment purposes (S15.2 G7's normative
+    box, round 2 A-C4), not the raw ``predicate`` field a guard carries on
+    the wire. A BETA binding is left untouched: beta binds only a LENGTH
+    fact (``Len(x) == Len(param)``), never a term ``x`` could be replaced
+    by, so it can neither introduce nor hide an ``Opaque``/``EnvRef`` node.
+    A name with no binding at all is also left untouched -- ordinary,
+    unresolved free ``Var``.
+
+    ``bindings_by_name`` is the same ``{x: <binding JSON>}`` map every
+    other function in this module keys guard bindings by (``b["idiom"]``,
+    ``b["iter"]``/``b["param"]``, ``b["pred"]`` for alpha).
+    """
+    if isinstance(node, Var):
+        b = bindings_by_name.get(node.name)
+        if b is not None and b["idiom"] == "alpha":
+            inner = predicate_from_json(b["pred"])
+            return Filtered(seq=Var(b["iter"]), predicate=substitute(inner, bindings_by_name))
+        return node
+    if isinstance(node, (TRUE, Opaque, Lit)):
+        return node
+    if isinstance(node, EnvRef):
+        if node.args is None:
+            return node
+        return EnvRef(node.path, tuple(substitute(a, bindings_by_name) for a in node.args))
+    if isinstance(node, Not):
+        return Not(substitute(node.predicate, bindings_by_name))
+    if isinstance(node, And):
+        return And(tuple(substitute(p, bindings_by_name) for p in node.predicates))
+    if isinstance(node, Or):
+        return Or(tuple(substitute(p, bindings_by_name) for p in node.predicates))
+    if isinstance(node, Cmp):
+        return Cmp(substitute(node.left, bindings_by_name), node.op, substitute(node.right, bindings_by_name))
+    if isinstance(node, Is):
+        return Is(substitute(node.term, bindings_by_name), node.negated)
+    if isinstance(node, IsInstance):
+        return IsInstance(substitute(node.term, bindings_by_name), node.types)
+    if isinstance(node, (AllOf, AnyOf)):
+        cls = type(node)
+        return cls(seq=substitute(node.seq, bindings_by_name), predicate=substitute(node.predicate, bindings_by_name))
+    if isinstance(node, Len):
+        return Len(substitute(node.term, bindings_by_name))
+    if isinstance(node, SetOf):
+        return SetOf(substitute(node.term, bindings_by_name))
+    if isinstance(node, Attr):
+        return Attr(substitute(node.term, bindings_by_name), node.name)
+    if isinstance(node, Filtered):
+        return Filtered(substitute(node.seq, bindings_by_name), substitute(node.predicate, bindings_by_name))
+    if isinstance(node, Zip):
+        return Zip(tuple(substitute(i, bindings_by_name) for i in node.items))
+    raise TypeError(f"substitute: unrecognized node type {type(node)!r}")
+
+
+# ---------------------------------------------------------------------------
+# G7's PLR-layer test on a shape-(2) EnvRef (round 2, A-C1) -- applied
+# POST-parse, here, where `function_index` already lives (S15.2's normative
+# box).
+# ---------------------------------------------------------------------------
+
+
+def build_qualname_index(function_index: dict[tuple[str, str, int], Any]) -> frozenset[tuple[str, str]]:
+    """Reduces ``receiver_state.build_plr_function_index``'s own
+    ``(module, qualname, lineno) -> AST`` map to the ``(module, qualname)``
+    pairs alone, dropping ``lineno`` -- G7's PLR-layer test asks "does a key
+    ``(module, f'{class_name}.{name}', *)`` exist?", a question about
+    qualname alone, over potentially many linenos (overloads, redefinitions)
+    that all answer it identically."""
+    return frozenset((module, qualname) for module, qualname, _lineno in function_index)
+
+
+def is_plr_layer_method(
+    qualname_index: frozenset[tuple[str, str]], module: str, class_name: str | None, name: str
+) -> bool:
+    """``True`` iff ``self.<name>(...)`` names an indexed PLR-layer method
+    of the receiver class -- the refusal test G7 shape (2) applies to a
+    length-2 ``EnvRef`` path (``k == 1``). ``class_name is None`` (a
+    module-level guard with no receiver) can never match a
+    ``f"{class_name}.{name}"`` qualname, so it is unconditionally NOT an
+    indexed method -- fails open toward EnvRef only because there is no
+    receiver CLASS for the call to be a coverage gap of."""
+    if class_name is None:
+        return False
+    return (module, f"{class_name}.{name}") in qualname_index
+
+
+def demote_refused_env_refs(
+    predicate: Predicate,
+    *,
+    module: str,
+    class_name: str | None,
+    qualname_index: frozenset[tuple[str, str]] | None,
+) -> Predicate:
+    """G7's PLR-layer test, applied post-parse: a shape-(2) ``EnvRef`` with
+    ``len(path) == 2`` (``self.<name>(...)``) is REFUSED -- demoted to
+    ``Opaque`` at its smallest enclosing predicate construction, the SAME
+    propagation ``predicate_ast``'s own totality mechanism already uses for
+    an ordinary term-parse failure -- when ``<name>`` IS an indexed
+    PLR-layer method of the receiver class (``self._is_error_tail``,
+    ``self._check_96_head_fits_in_container``: coverage gaps the closure
+    could have inlined, not missing observations).
+
+    **Fail-closed default.** ``qualname_index is None`` (no
+    ``function_index`` was supplied to ``derive_contract``) refuses EVERY
+    ``k == 1`` candidate unconditionally -- the same fail-closed default
+    ``InlinedGuard.bindings`` already takes when no index is available.
+    Shape (1) (a bare attribute read, ``args is None``) and shape (2) with
+    ``len(path) >= 3`` (a read THROUGH a receiver attribute, e.g.
+    ``self.backend.can_pick_up_tip(...)``) are NEVER refused by this
+    function -- they are not this test's business at all.
+    """
+
+    def is_refused(name: str) -> bool:
+        if qualname_index is None:
+            return True
+        return is_plr_layer_method(qualname_index, module, class_name, name)
+
+    return _demote_predicate(predicate, is_refused)
+
+
+def _opaque_text(node: "Predicate | Term") -> str:
+    """Best-effort diagnostic text for a node this pass demotes -- never
+    load-bearing (mirrors ``predicate_ast._unparse``'s own disclaimer):
+    there is no original AST text available here (we are rewriting an
+    ALREADY-PARSED tree, not re-walking source), so this is the node's own
+    JSON encoding rendered as text, not ``ast.unparse`` of anything."""
+    try:
+        return repr(predicate_to_json(node))
+    except Exception:  # noqa: BLE001 -- diagnostic text only, never load-bearing.
+        return "<refused-env-ref>"
+
+
+def _demote_term(term: "Term", is_refused) -> "Term | None":
+    if isinstance(term, (Var, Lit)):
+        return term
+    if isinstance(term, EnvRef):
+        if term.args is not None and len(term.path) == 2 and is_refused(term.path[1]):
+            return None
+        return term
+    if isinstance(term, Len):
+        inner = _demote_term(term.term, is_refused)
+        return None if inner is None else Len(inner)
+    if isinstance(term, SetOf):
+        inner = _demote_term(term.term, is_refused)
+        return None if inner is None else SetOf(inner)
+    if isinstance(term, Attr):
+        inner = _demote_term(term.term, is_refused)
+        return None if inner is None else Attr(inner, term.name)
+    if isinstance(term, Filtered):
+        seq = _demote_term(term.seq, is_refused)
+        if seq is None:
+            return None
+        return Filtered(seq, _demote_predicate(term.predicate, is_refused))
+    if isinstance(term, Zip):
+        items: list[Term] = []
+        for it in term.items:
+            si = _demote_term(it, is_refused)
+            if si is None:
+                return None
+            items.append(si)
+        return Zip(tuple(items))
+    raise TypeError(f"_demote_term: unrecognized node type {type(term)!r}")
+
+
+def _demote_predicate(pred: "Predicate", is_refused) -> "Predicate":
+    if isinstance(pred, (TRUE, Opaque)):
+        return pred
+    if isinstance(pred, EnvRef):
+        sanitized = _demote_term(pred, is_refused)
+        return sanitized if sanitized is not None else Opaque(_opaque_text(pred))
+    if isinstance(pred, Not):
+        return Not(_demote_predicate(pred.predicate, is_refused))
+    if isinstance(pred, And):
+        return And(tuple(_demote_predicate(p, is_refused) for p in pred.predicates))
+    if isinstance(pred, Or):
+        return Or(tuple(_demote_predicate(p, is_refused) for p in pred.predicates))
+    if isinstance(pred, Cmp):
+        left = _demote_term(pred.left, is_refused)
+        right = _demote_term(pred.right, is_refused)
+        if left is None or right is None:
+            return Opaque(_opaque_text(pred))
+        return Cmp(left, pred.op, right)
+    if isinstance(pred, Is):
+        term = _demote_term(pred.term, is_refused)
+        return Opaque(_opaque_text(pred)) if term is None else Is(term, pred.negated)
+    if isinstance(pred, IsInstance):
+        term = _demote_term(pred.term, is_refused)
+        return Opaque(_opaque_text(pred)) if term is None else IsInstance(term, pred.types)
+    if isinstance(pred, (AllOf, AnyOf)):
+        seq = _demote_term(pred.seq, is_refused)
+        if seq is None:
+            return Opaque(_opaque_text(pred))
+        cls = type(pred)
+        return cls(seq=seq, predicate=_demote_predicate(pred.predicate, is_refused))
+    raise TypeError(f"_demote_predicate: unrecognized node type {type(pred)!r}")
 
 
 # ---------------------------------------------------------------------------
