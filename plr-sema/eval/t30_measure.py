@@ -14,14 +14,28 @@ evaluator, `plr_sema.check.predicate`) does not exist yet; this is a STATIC
 classification of what E-CALL WOULD resolve for a guard against a real call
 -- built from the contract table's own `predicate`/`bindings`/`depth`
 fields (T30's own derive-side output) plus the frozen benchmark's REAL
-lowered IR `Call` instructions (via `oracle_common.lower_row_calls`, which
-never touches `check_ir`). Its own row loop is a deliberately MINIMAL
-re-implementation of `oracle_replay.run_row`'s skip/no_call gating (never
-its Runtime+Static sections) -- see the module's own top-level docstring
-in `oracle_replay.py` for why sidecar/crosscheck join is irrelevant here:
-neither gates which rows count as "executed", they only feed
-ambiguity-class reporting and the crosscheck-agreement metric, which this
-script does not compute.
+lowered IR `Call` instructions.
+
+**(#4978, T32 fix-up) The executed-op population is sourced from
+`oracle_replay.main()` ITSELF** (`collect_executed_population`, via the
+`FINDINGS_SINK`/`LOWERED_SINK` seams `oracle_common.run_static_calls`
+fires) -- the SAME technique `unknown_ledger.py` already uses, and for the
+same reason: never re-implement `row_to_verifier_inputs`/`run_runtime`/
+`lower_row_calls`'s own skip/no_call/sidecar gating a second time. An
+earlier version of this script DID re-implement that gating directly and
+called `row_to_verifier_inputs` WITHOUT the sidecar's `ambiguity_class`/
+`provenance` (the earlier docstring here claimed sidecar/crosscheck join
+"neither gates which rows count as executed" -- FALSE: `ambiguity_class`
+directly sets `skip_reason` in `row_to_verifier_inputs` whenever it is not
+`"clean_parse"`), so every non-`"clean_parse"` row (`missing_slot`/
+`ambiguous_referent`/`out_of_surface`) that `run_row` would have skipped
+was silently admitted instead -- 923 executed ops (361 `pick_up_tips`,
+260905) measured against the correct 544 (223 `pick_up_tips`) the ledger's
+own `FINDINGS_SINK`-derived population reports for the identical corpus/
+sidecar/crosscheck inputs. `--sidecar`/`--crosscheck` are now REQUIRED
+(pass-through to `oracle_replay.main()`) to reproduce that population; see
+`collect_executed_population`'s own docstring for the fix and this
+script's `population` JSON key for the measured before/after counts.
 
 **Honesty about scope, stated up front rather than discovered by a
 reader.** The per-call operand-resolution model below is NOT the general
@@ -42,9 +56,12 @@ Usage::
 
     uv run python plr-sema/eval/t30_measure.py \\
         --corpus training/assemble/out/corpus_p25.jsonl \\
+        --sidecar training/assemble/out/corpus_p25_sidecar.jsonl \\
+        --crosscheck training/out/corpus_p23_floor.jsonl \\
+        --crosscheck training/overlay_gen/out/overlay_full.jsonl \\
         --contracts plr-sema/data/derived_contracts.json \\
         --ledger outputs/plr-sema/unknown_ledger_260904_before.json \\
-        --out outputs/plr-sema/t30_measured_260905.json \\
+        --out outputs/plr-sema/t30_measured_260907.json \\
         [--limit 50]
 """
 
@@ -52,6 +69,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import dataclasses
 import json
 import logging
 import sys
@@ -441,105 +459,208 @@ def measure_binding_coverage(
     }
 
 
-def measure_d2(
-    corpus_path: Path,
-    contracts: dict[str, Any],
-    contracts_json: str,
-    receiver_state: dict[str, Any],
-    limit: int | None,
-) -> dict[str, Any]:
+def measure_d2(ops: list[ExecutedOp], receiver_state: dict[str, Any]) -> dict[str, Any]:
     """D2: the number of EXECUTED `pick_up_tips` operations for which
     `channels_for_call` (imported, read-only) returns non-`None`.
+
+    ``ops`` is the authoritative executed-op population from
+    :func:`collect_executed_population` (#4978, T32 fix-up) -- the SAME
+    population `unknown_ledger.py`'s own `FINDINGS_SINK`-derived
+    `n_ops_executed` counts, never a locally re-derived row loop. `call`
+    (the without-O1 view) is used: `channels_for_call` reads only
+    `call.kwargs`, which does not vary between the with-O1 and without-O1
+    lowerings of the same operation (O1 only changes RESOURCE typing).
     """
     lh_state = receiver_state.get("LiquidHandler", {})
     channel_default_param = lh_state.get("channel_default_param", {})
     channel_kwarg = lh_state.get("channel_kwarg")
     n_pick_up_tips_ops = 0
     n_non_none = 0
-    for _row_idx, _record_id, real_calls, _slot_to_resource, _rt in iter_executed_rows(
-        corpus_path, contracts_json, limit=limit
-    ):
-        for _real_idx, call in real_calls:
-            if call.method != "pick_up_tips":
-                continue
-            n_pick_up_tips_ops += 1
-            channels = tipstate.channels_for_call(call, channel_default_param, channel_kwarg)
-            if channels is not None:
-                n_non_none += 1
+    for op in ops:
+        if op.method != "pick_up_tips":
+            continue
+        n_pick_up_tips_ops += 1
+        channels = tipstate.channels_for_call(op.call, channel_default_param, channel_kwarg)
+        if channels is not None:
+            n_non_none += 1
     return {"n_pick_up_tips_ops": n_pick_up_tips_ops, "n_channels_for_call_non_none": n_non_none}
 
 
 # ---------------------------------------------------------------------------
-# The row loop -- reuses row_to_verifier_inputs/run_runtime/lower_row_calls,
-# NEVER run_static_calls/check_ir.
+# The executed-op population (#4978, T32 fix-up) -- sourced from
+# oracle_replay.main() ITSELF, via the FINDINGS_SINK (#4976) + LOWERED_SINK
+# (#4978) seams oracle_common.run_static_calls fires, never from a local
+# re-implementation of row_to_verifier_inputs/run_runtime/lower_row_calls's
+# own skip/no_call/sidecar gating. See the module docstring above for why
+# the pre-#4978 version of this file (which DID re-implement that gating,
+# omitting the sidecar's ambiguity_class/provenance) measured 923 executed
+# ops (361 pick_up_tips) instead of the correct 544 (223 pick_up_tips) --
+# unknown_ledger.py's own FINDINGS_SINK-derived population, which this
+# script's population is now REQUIRED to match exactly (population parity
+# is asserted, not merely hoped for -- see `collect_executed_population`'s
+# own positional-correlation check, mirroring `unknown_ledger.build_ledger`'s
+# identical invariant).
 # ---------------------------------------------------------------------------
 
 
-def iter_executed_rows(corpus_path: Path, contracts_json: str, *, limit: int | None = None):
-    """Yields (row_idx, record_id, real_calls, slot_to_resource, rt) for
-    every corpus row that reaches oracle_replay's "Static" section (i.e.
-    `skip_reason is None and no_call_reason is None`) -- the SAME
-    population `unknown_ledger.py`'s own FINDINGS_SINK correlation
-    describes, reached here WITHOUT ever calling `run_static_calls`/
-    `check_ir`. `real_calls` is `[(real_call_sequence_index, ir.Call), ...]`
-    lowered WITH O1 (`observe_element_types=True`'s own resource dict) --
-    callers that need the pre-O1 view re-lower with `resources_from_example(example)`
-    (no kwargs) themselves; see `measure_o1_delta`.
+@dataclasses.dataclass(frozen=True)
+class ExecutedOp:
+    """One real, executed operation -- i.e. one that carried >=1 real
+    `Finding` through the FINDINGS_SINK seam on this run, the same
+    membership test `unknown_ledger.cluster_unknown_findings` uses for its
+    own `n_ops_executed`. `call`/`slot_to_resource` are the WITHOUT-O1 view
+    (byte-identical to what every existing `run_static_calls` caller sees
+    today); `call_with_o1`/`slot_to_resource_with_o1` are the WITH-O1 view
+    `LOWERED_SINK` additionally provides. `receiver_type`/`method` do not
+    vary between the two views (O1 only changes RESOURCE typing, never
+    which method was called on which receiver).
     """
-    param_names = oc.param_names_from_contracts(contracts_json)
-    with open(corpus_path, encoding="utf-8") as f:
-        for row_idx, line in enumerate(f):
-            if limit is not None and row_idx >= limit:
-                break
+
+    row_idx: int
+    record_id: str
+    op_id: str
+    real_idx: int
+    method: str
+    call: Any  # plr_sema.check.ir.Call
+    call_with_o1: Any  # plr_sema.check.ir.Call
+    slot_to_resource: dict[int, Any]
+    slot_to_resource_with_o1: dict[int, Any]
+
+
+def _real_calls_by_index(bc, planned_indices: list[int]) -> dict[int, Any]:
+    """`bc.instructions`'s own CALLs, keyed by their REAL `call_sequence`
+    index -- the exact transformation `oracle_common.run_static_calls`
+    performs internally to build its `real_origin` map (never a second,
+    independently-derived gating decision: `planned_indices`/`bc` both come
+    straight from the SAME `LOWERED_SINK` firing this function's caller
+    already correlated against `FINDINGS_SINK`).
+    """
+    origin = bc.sideband.get("origin", {})
+    out: dict[int, Any] = {}
+    for pc, instr in enumerate(bc.instructions):
+        if not isinstance(instr, _ir.Call):
+            continue
+        local_idx = origin.get(pc)
+        if local_idx is None or local_idx == "setup":
+            continue
+        out[planned_indices[int(local_idx)]] = instr
+    return out
+
+
+def collect_executed_population(
+    *,
+    corpus: list[str],
+    sidecar: str | None,
+    crosscheck: list[str],
+    contracts: Path,
+    limit: int | None,
+    replay_report_path: Path,
+) -> tuple[list[ExecutedOp], dict[str, Any]]:
+    """Runs `oracle_replay.main()` UNMODIFIED -- the SAME technique
+    `unknown_ledger.py.build_ledger` already uses for the identical reason
+    (never re-implement `run_row`'s own gating) -- installing FINDINGS_SINK
+    and LOWERED_SINK side by side so both fire, in lockstep, exactly once
+    per row that reaches `run_static_calls` (`oracle_replay.run_row`'s
+    "Static" section). Returns `(ops, diagnostics)`.
+    """
+    collected_findings: list[tuple[str, tuple[Any, ...]]] = []
+    collected_lowered: list[tuple[str, Any, Any, list[int], dict[str, Any]]] = []
+
+    def _findings_sink(row_id: str, findings: tuple[Any, ...]) -> None:
+        collected_findings.append((row_id, findings))
+
+    def _lowered_sink(row_id: str, bc: Any, bc_with_o1: Any, not_planned: list[int], element_types: dict[str, Any]) -> None:
+        collected_lowered.append((row_id, bc, bc_with_o1, not_planned, element_types))
+
+    argv: list[str] = []
+    for c in corpus:
+        argv += ["--corpus", str(c)]
+    if sidecar:
+        argv += ["--sidecar", str(sidecar)]
+    for cc in crosscheck:
+        argv += ["--crosscheck", str(cc)]
+    argv += ["--contracts", str(contracts)]
+    if limit is not None:
+        argv += ["--limit", str(limit)]
+    argv += ["--report", str(replay_report_path)]
+
+    prior_findings_sink, prior_lowered_sink = oc.FINDINGS_SINK, oc.LOWERED_SINK
+    oc.FINDINGS_SINK = _findings_sink
+    oc.LOWERED_SINK = _lowered_sink
+    try:
+        oracle_replay.main(argv)
+    finally:
+        oc.FINDINGS_SINK = prior_findings_sink
+        oc.LOWERED_SINK = prior_lowered_sink
+
+    replay_report = json.loads(replay_report_path.read_text(encoding="utf-8"))
+    static_eligible_rows = [
+        r for r in replay_report["rows"]
+        if r.get("no_call_reason") is None and r.get("skip_reason") is None
+    ]
+    if not (len(static_eligible_rows) == len(collected_findings) == len(collected_lowered)):
+        raise RuntimeError(
+            "positional correlation invariant broken (mirrors unknown_ledger.build_ledger's "
+            f"identical check): {len(static_eligible_rows)} rows reached oracle_replay's "
+            f"Static section, FINDINGS_SINK fired {len(collected_findings)} times, "
+            f"LOWERED_SINK fired {len(collected_lowered)} times -- all three must match 1:1 "
+            "in row order; oracle_replay.py's own row-processing order must have changed "
+            "under this script."
+        )
+
+    ops: list[ExecutedOp] = []
+    n_heterogeneous_parent_observations = 0
+    for row_idx, (report_row, (_fid, findings), (_lid, bc, bc_with_o1, not_planned, element_types)) in enumerate(
+        zip(static_eligible_rows, collected_findings, collected_lowered)
+    ):
+        record_id = report_row.get("record_id", "")
+        methods = report_row.get("calls", [])
+        planned_indices = [i for i in range(len(methods)) if i not in set(not_planned)]
+        real_calls = _real_calls_by_index(bc, planned_indices)
+        real_calls_with_o1 = _real_calls_by_index(bc_with_o1, planned_indices)
+        slot_to_resource = {instr.slot: instr for instr in bc.instructions if isinstance(instr, _ir.Resource)}
+        slot_to_resource_with_o1 = {
+            instr.slot: instr for instr in bc_with_o1.instructions if isinstance(instr, _ir.Resource)
+        }
+        n_heterogeneous_parent_observations += sum(1 for v in element_types.values() if v is None)
+
+        per_op_findings: dict[str, list[Any]] = collections.defaultdict(list)
+        for f in findings:
+            per_op_findings[f.operation_id].append(f)
+        for op_id in per_op_findings:
             try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
+                real_idx = int(op_id.split("_", 1)[1])
+            except (IndexError, ValueError):
                 continue
-            try:
-                call_sequence, intent_record, deck_layout, skip_reason, no_call_reason = (
-                    oracle_replay.row_to_verifier_inputs(
-                        row, source_file=Path(corpus_path).stem, line=row_idx
-                    )
+            if real_idx not in real_calls or real_idx not in real_calls_with_o1:
+                # Should not occur: every op_id FINDINGS_SINK saw is a real
+                # (non-setup) op that run_static_calls itself relabelled;
+                # published defensively rather than assumed.
+                log.warning("row %d op %s has findings but no lowered Call (real_idx=%d)", row_idx, op_id, real_idx)
+                continue
+            method = methods[real_idx] if real_idx < len(methods) else "<unknown>"
+            ops.append(
+                ExecutedOp(
+                    row_idx=row_idx,
+                    record_id=record_id,
+                    op_id=op_id,
+                    real_idx=real_idx,
+                    method=method,
+                    call=real_calls[real_idx],
+                    call_with_o1=real_calls_with_o1[real_idx],
+                    slot_to_resource=slot_to_resource,
+                    slot_to_resource_with_o1=slot_to_resource_with_o1,
                 )
-            except Exception as e:
-                log.debug("row %d parse failed: %s", row_idx, e)
-                continue
-            if skip_reason is not None or no_call_reason is not None:
-                continue
-            example = {"call_sequence": call_sequence, "intent_record": intent_record, "deck_layout": deck_layout}
-            try:
-                rt = oc.run_runtime(example)
-            except Exception as e:
-                log.debug("row %d run_runtime failed: %s", row_idx, e)
-                continue
-            if not rt.plr_kwargs:
-                continue
-            record_id = (intent_record or {}).get("record_id", f"{Path(corpus_path).stem}:{row_idx}")
-            resources_on = oc.resources_from_example(
-                example, resource_types=rt.resource_types, element_types=rt.element_types
             )
-            try:
-                bc, not_planned = oc.lower_row_calls(
-                    example, rt.plr_kwargs, resources=resources_on, param_names=param_names
-                )
-            except Exception as e:
-                log.debug("row %d lower_row_calls failed: %s", row_idx, e)
-                continue
-            planned_indices = [i for i in range(len(call_sequence)) if i not in set(not_planned)]
-            origin = bc.sideband.get("origin", {})
-            slot_to_resource = {instr.slot: instr for instr in bc.instructions if isinstance(instr, _ir.Resource)}
-            real_calls: list[tuple[int, _ir.Call]] = []
-            for pc, instr in enumerate(bc.instructions):
-                if not isinstance(instr, _ir.Call):
-                    continue
-                local_idx = origin.get(pc)
-                if local_idx is None or local_idx == "setup":
-                    continue
-                real_idx = planned_indices[int(local_idx)]
-                real_calls.append((real_idx, instr))
-            if not real_calls:
-                continue
-            yield row_idx, record_id, real_calls, slot_to_resource, rt
+    diagnostics = {
+        "n_rows_static_eligible": len(static_eligible_rows),
+        "n_ops_executed": len(ops),
+        "n_ops_executed_by_method": dict(
+            sorted(collections.Counter(op.method for op in ops).items(), key=lambda kv: (-kv[1], kv[0]))
+        ),
+        "n_heterogeneous_parent_observations": n_heterogeneous_parent_observations,
+    }
+    return ops, diagnostics
 
 
 # ---------------------------------------------------------------------------
@@ -809,131 +930,86 @@ def measure_per_cluster(
 
 
 def measure_per_op(
-    corpus_path: Path,
+    ops: list[ExecutedOp],
     contracts: dict[str, Any],
-    contracts_json: str,
-    guard_index: dict[tuple[str, int, str], dict[str, Any]],
     channel_names: set[str],
     receiver_state: dict[str, Any],
-    limit: int | None,
 ) -> dict[str, Any]:
-    param_names = oc.param_names_from_contracts(contracts_json)
+    """Blocks 4/5's per-executed-operation residuals, with and without O1 --
+    now driven entirely by the authoritative `ops` population
+    (`collect_executed_population`, #4978) instead of a second local row
+    loop: `guard_index`/`contracts_json`/`corpus_path`/`limit` are no longer
+    needed here (the lowering and row/op gating already happened once,
+    inside `oracle_replay.main()`, to build `ops`). The per-call
+    classification logic itself (`classify_guard_for_call`, tier-family
+    exclusion, predicted-tier lookup) is UNCHANGED from before this fix --
+    only its data source is.
+    """
     per_op: list[dict[str, Any]] = []
     per_op_without_o1: list[dict[str, Any]] = []
-    n_ops = 0
-    n_heterogeneous_parents_total = 0
-    with open(corpus_path, encoding="utf-8") as f:
-        for row_idx, line in enumerate(f):
-            if limit is not None and row_idx >= limit:
-                break
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            try:
-                call_sequence, intent_record, deck_layout, skip_reason, no_call_reason = (
-                    oracle_replay.row_to_verifier_inputs(row, source_file=Path(corpus_path).stem, line=row_idx)
-                )
-            except Exception:
-                continue
-            if skip_reason is not None or no_call_reason is not None:
-                continue
-            example = {"call_sequence": call_sequence, "intent_record": intent_record, "deck_layout": deck_layout}
-            try:
-                rt = oc.run_runtime(example)
-            except Exception:
-                continue
-            if not rt.plr_kwargs:
-                continue
-            n_heterogeneous_parents_total += sum(1 for v in rt.element_types.values() if v is None)
-            record_id = (intent_record or {}).get("record_id", f"{Path(corpus_path).stem}:{row_idx}")
+    channel_kwarg = receiver_state.get("LiquidHandler", {}).get("channel_kwarg")
+    param_defaults_cache: dict[str, dict[str, Any]] = {}
 
-            for observe, sink in ((True, per_op), (False, per_op_without_o1)):
-                if observe:
-                    resources = oc.resources_from_example(
-                        example, resource_types=rt.resource_types, element_types=rt.element_types
-                    )
-                else:
-                    resources = oc.resources_from_example(example)
-                try:
-                    bc, not_planned = oc.lower_row_calls(
-                        example, rt.plr_kwargs, resources=resources, param_names=param_names
-                    )
-                except Exception:
+    for op in ops:
+        method = op.method
+        contract_key = f"{op.call.receiver_type}.{method}"
+        entry = contracts.get(contract_key)
+        if entry is None:
+            entry = next(
+                (
+                    v
+                    for k, v in contracts.items()
+                    if k.startswith(f"{op.call.receiver_type}.{method}") and "@" not in k
+                ),
+                None,
+            )
+        if entry is None:
+            continue
+        if method not in param_defaults_cache:
+            param_defaults_cache[method] = entry.get("param_defaults", {})
+        param_defaults = param_defaults_cache[method]
+
+        for observe, sink, call, slot_to_resource in (
+            (True, per_op, op.call_with_o1, op.slot_to_resource_with_o1),
+            (False, per_op_without_o1, op.call, op.slot_to_resource),
+        ):
+            reasons_this_op: set[str] = set()
+            n_parsed_but_operand_unknown = 0
+            n_tip_family_owned = 0
+            applicable_guards = []
+            for g in entry.get("guards", ()):
+                if is_tip_family_owned(g, receiver_state):
+                    n_tip_family_owned += 1
                     continue
-                planned_indices = [i for i in range(len(call_sequence)) if i not in set(not_planned)]
-                origin = bc.sideband.get("origin", {})
-                slot_to_resource = {
-                    instr.slot: instr for instr in bc.instructions if isinstance(instr, _ir.Resource)
+                applicable_guards.append(g)
+                reason = classify_guard_for_call(g, call, slot_to_resource, param_defaults, channel_names, channel_kwarg)
+                reasons_this_op.add(reason)
+                if reason == REASON_OPERAND:
+                    n_parsed_but_operand_unknown += 1
+            if not applicable_guards:
+                reasons_this_op.add("no_contract_derived")
+            predicted_tiers = sorted(
+                {
+                    PREDICTED_TIER.get((Path(g["site"]["file"]).stem + ".py", g["site"]["lineno"]), "?")
+                    for g in applicable_guards
                 }
-                param_defaults_cache: dict[str, dict[str, Any]] = {}
-                for pc, instr in enumerate(bc.instructions):
-                    if not isinstance(instr, _ir.Call):
-                        continue
-                    local_idx = origin.get(pc)
-                    if local_idx is None or local_idx == "setup":
-                        continue
-                    real_idx = planned_indices[int(local_idx)]
-                    method = instr.method
-                    contract_key = f"{instr.receiver_type}.{method}"
-                    entry = contracts.get(contract_key)
-                    if entry is None:
-                        entry = next(
-                            (
-                                v
-                                for k, v in contracts.items()
-                                if k.startswith(f"{instr.receiver_type}.{method}") and "@" not in k
-                            ),
-                            None,
-                        )
-                    if entry is None:
-                        continue
-                    if method not in param_defaults_cache:
-                        param_defaults_cache[method] = entry.get("param_defaults", {})
-                    param_defaults = param_defaults_cache[method]
-                    reasons_this_op: set[str] = set()
-                    n_parsed_but_operand_unknown = 0
-                    n_tip_family_owned = 0
-                    applicable_guards = []
-                    for g in entry.get("guards", ()):
-                        if is_tip_family_owned(g, receiver_state):
-                            n_tip_family_owned += 1
-                            continue
-                        applicable_guards.append(g)
-                        channel_kwarg = receiver_state.get("LiquidHandler", {}).get("channel_kwarg")
-                        reason = classify_guard_for_call(
-                            g, instr, slot_to_resource, param_defaults, channel_names, channel_kwarg
-                        )
-                        reasons_this_op.add(reason)
-                        if reason == REASON_OPERAND:
-                            n_parsed_but_operand_unknown += 1
-                    if not applicable_guards:
-                        reasons_this_op.add("no_contract_derived")
-                    predicted_tiers = sorted(
-                        {
-                            PREDICTED_TIER.get((Path(g["site"]["file"]).stem + ".py", g["site"]["lineno"]), "?")
-                            for g in applicable_guards
-                        }
-                    )
-                    sink.append(
-                        {
-                            "row_idx": row_idx,
-                            "record_id": record_id,
-                            "op_id": f"op_{real_idx}",
-                            "method": method,
-                            "reasons": sorted(reasons_this_op),
-                            "predicted_tiers": predicted_tiers,
-                            "n_parsed_but_operand_unknown": n_parsed_but_operand_unknown,
-                            "n_tip_family_owned_guards": n_tip_family_owned,
-                        }
-                    )
-                    if observe:
-                        n_ops += 1
+            )
+            sink.append(
+                {
+                    "row_idx": op.row_idx,
+                    "record_id": op.record_id,
+                    "op_id": op.op_id,
+                    "method": method,
+                    "reasons": sorted(reasons_this_op),
+                    "predicted_tiers": predicted_tiers,
+                    "n_parsed_but_operand_unknown": n_parsed_but_operand_unknown,
+                    "n_tip_family_owned_guards": n_tip_family_owned,
+                }
+            )
     return {
         "per_op": per_op,
         "per_op_without_o1": per_op_without_o1,
-        "n_ops": n_ops,
-        "n_heterogeneous_parent_observations": n_heterogeneous_parents_total,
+        "n_ops": len(per_op),
     }
 
 
@@ -976,11 +1052,25 @@ def compute_gate(per_op: list[dict[str, Any]]) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--corpus", type=Path, default=REPO_ROOT / "training" / "assemble" / "out" / "corpus_p25.jsonl")
+    ap.add_argument(
+        "--sidecar", type=str, default=None,
+        help="assemble sidecar JSONL (record_id, ambiguity_class, provenance); pass-through to "
+             "oracle_replay.main() -- REQUIRED to reproduce the frozen tier1-sidecar-gated benchmark's "
+             "own population (#4978: omitting it silently admits non-clean_parse rows run_row would skip)",
+    )
+    ap.add_argument(
+        "--crosscheck", type=str, action="append", default=[],
+        help="floor/overlay crosscheck file (repeatable); pass-through to oracle_replay.main()",
+    )
     ap.add_argument("--contracts", type=Path, default=DEFAULT_CONTRACTS)
     ap.add_argument(
         "--ledger", type=Path, default=REPO_ROOT / "outputs" / "plr-sema" / "unknown_ledger_260904_before.json"
     )
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument(
+        "--replay-report", type=Path, default=None,
+        help="where to write oracle_replay's OWN report (default: <out>.oracle_replay.json, alongside --out)",
+    )
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args(argv)
@@ -989,7 +1079,6 @@ def main(argv: list[str] | None = None) -> int:
     contracts_payload = json.loads(args.contracts.read_text(encoding="utf-8"))
     contracts = contracts_payload["contracts"]
     receiver_state = contracts_payload.get("receiver_state", {})
-    contracts_json = args.contracts.read_text(encoding="utf-8")
     ledger = json.loads(args.ledger.read_text(encoding="utf-8"))
 
     lh_state = receiver_state.get("LiquidHandler", {})
@@ -1006,8 +1095,27 @@ def main(argv: list[str] | None = None) -> int:
 
     log.info("block 2: binding coverage")
     block2 = measure_binding_coverage(contracts, param_names_by_qualname, receiver_state, function_index)
+
+    replay_report_path = args.replay_report or args.out.with_name(args.out.stem + ".oracle_replay.json")
+    replay_report_path.parent.mkdir(parents=True, exist_ok=True)
+    log.info(
+        "collecting the executed-op population via oracle_replay.main() (FINDINGS_SINK + LOWERED_SINK, #4978)"
+    )
+    ops, population_diagnostics = collect_executed_population(
+        corpus=[str(args.corpus)],
+        sidecar=args.sidecar,
+        crosscheck=args.crosscheck,
+        contracts=args.contracts,
+        limit=args.limit,
+        replay_report_path=replay_report_path,
+    )
+    log.info(
+        "population: n_ops_executed=%d by_method=%s",
+        population_diagnostics["n_ops_executed"], population_diagnostics["n_ops_executed_by_method"],
+    )
+
     log.info("D2: channels_for_call over executed pick_up_tips ops")
-    d2 = measure_d2(args.corpus, contracts, contracts_json, receiver_state, args.limit)
+    d2 = measure_d2(ops, receiver_state)
     block2["d2"] = d2
 
     guard_index = build_guard_index(contracts, prefer_public_entry=True)
@@ -1016,9 +1124,7 @@ def main(argv: list[str] | None = None) -> int:
     block3 = measure_per_cluster(ledger, guard_index, param_names_by_qualname, channel_names, receiver_state)
 
     log.info("blocks 4/5: per-executed-operation residuals, with and without O1")
-    per_op_result = measure_per_op(
-        args.corpus, contracts, contracts_json, guard_index, channel_names, receiver_state, args.limit
-    )
+    per_op_result = measure_per_op(ops, contracts, channel_names, receiver_state)
     block4 = summarize_by_method(per_op_result["per_op"])
     block4_without_o1 = summarize_by_method(per_op_result["per_op_without_o1"])
 
@@ -1034,8 +1140,11 @@ def main(argv: list[str] | None = None) -> int:
     result = {
         "benchmark": BENCHMARK_NAME,
         "corpus": str(args.corpus),
+        "sidecar": args.sidecar,
+        "crosscheck": args.crosscheck,
         "contracts": str(args.contracts),
         "limit": args.limit,
+        "population": population_diagnostics,
         "block1_parse_coverage": block1,
         "block2_binding_coverage": block2,
         "block3_per_cluster": block3,
@@ -1048,7 +1157,7 @@ def main(argv: list[str] | None = None) -> int:
         },
         "block5_o1_delta": {
             "n_ops_differing": o1_delta_ops,
-            "n_heterogeneous_parent_observations": per_op_result["n_heterogeneous_parent_observations"],
+            "n_heterogeneous_parent_observations": population_diagnostics["n_heterogeneous_parent_observations"],
         },
         "gate": {
             "with_o1": gate_with_o1,
@@ -1063,6 +1172,16 @@ def main(argv: list[str] | None = None) -> int:
             "are not (chained-Cmp short-circuit truth, G4 set-value comparison, numeric interval folding).",
             "predicted_tier is transcribed from spec 260904's own SS15.1 tables for the sites it names; every "
             "other cluster is published as 'not individually tabulated', never guessed.",
+            "(#4978, T32 fix-up) The executed-op population is now sourced from oracle_replay.main() itself "
+            "(FINDINGS_SINK + LOWERED_SINK), the SAME technique unknown_ledger.py uses -- never a local "
+            "re-implementation of row_to_verifier_inputs/run_runtime/lower_row_calls's own skip/no_call/sidecar "
+            "gating. The PRE-#4978 version of this script re-implemented that gating directly and never threaded "
+            "the sidecar's ambiguity_class/provenance through row_to_verifier_inputs, so it silently admitted "
+            "every non-'clean_parse' row (missing_slot/ambiguous_referent/out_of_surface) run_row would have "
+            "skipped -- 923 executed ops (361 pick_up_tips) measured 260905 against the correct 544 (223 "
+            "pick_up_tips) unknown_ledger.py's own FINDINGS_SINK-derived population reports for the identical "
+            "corpus/sidecar/crosscheck inputs. See `population` above for this run's own population and "
+            "`collect_executed_population`'s docstring for the fix.",
         ],
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)

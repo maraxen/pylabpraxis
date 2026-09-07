@@ -712,7 +712,7 @@ def run_static_calls(
 
     env = frozenset({does_volume_tracking.__name__}) if volume_tracking_observed else frozenset()
 
-    bc, not_planned = lower_row_calls(example, plr_kwargs, resources=resources, param_names=param_names)
+    bc, not_planned = _lower_row_calls_notified(example, plr_kwargs, resources, param_names, resource_types, element_types)
     raw_findings = check_ir(bc, contracts, receiver_states, env=env)
 
     planned_indices = [i for i in range(len(example["call_sequence"])) if i not in set(not_planned)]
@@ -1185,3 +1185,109 @@ def row_to_verifier_inputs(
     }
 
     return call_sequence, intent_record, deck_layout, skip_reason, no_call_reason
+
+
+# --------------------------------------------------------------------------
+# LOWERED_SINK (#4978, T32 fix-up): a second additive observer, alongside
+# FINDINGS_SINK above, over `run_static_calls`'s own per-row pipeline.
+# APPENDED here, at the very end of the module, rather than beside
+# FINDINGS_SINK or inline inside `run_static_calls` -- every increment spec
+# (260901, 260902 x2, 260903 x3, 260904) cites exact `oracle_common.py:N-M`
+# line ranges throughout this file, and inserting new lines anywhere in the
+# MIDDLE would have shifted every citation below the insertion point. This
+# hook therefore touches exactly ONE existing line elsewhere in the module
+# (the `lower_row_calls(...)` call inside `run_static_calls`, rewritten to
+# call `_lower_row_calls_notified` below -- a 1-line-for-1-line
+# substitution, so no other line moves) plus this purely-appended block.
+#
+# Motivation (#4978): `plr-sema/eval/t30_measure.py`'s OWN row loop used to
+# re-implement `row_to_verifier_inputs`/`run_runtime`/`lower_row_calls`
+# directly, calling `row_to_verifier_inputs` WITHOUT the sidecar-derived
+# `ambiguity_class`/`provenance` `oracle_replay.main()` computes per row --
+# so every non-"clean_parse" row (missing_slot/ambiguous_referent/
+# out_of_surface) that `run_row` skips was silently ADMITTED instead,
+# inflating its measured population from the correct 544 executed real ops
+# (223 `pick_up_tips`, matching `unknown_ledger.py`'s own FINDINGS_SINK-
+# derived population) to 923 (361 `pick_up_tips`). Rather than have
+# `t30_measure.py` re-derive that gating a second time (and risk drifting
+# from it again), this hook lets it reuse `oracle_replay.main()` itself --
+# unmodified, exactly like `unknown_ledger.py` already does via
+# FINDINGS_SINK -- as its OWN source of "which rows/ops are executed",
+# while still getting back the lowered `_ir.Call` instructions a per-call
+# classifier needs (which `FINDINGS_SINK`'s `Finding` objects alone do not
+# carry).
+#
+# Fired with ``(row_id, bc, bc_with_o1, not_planned, element_types)``
+# immediately after `_lower_row_calls_notified`'s own (unmodified)
+# `lower_row_calls` call returns, i.e. for every row that reaches
+# `run_static_calls` at all (the SAME population `FINDINGS_SINK` is fired
+# for, from the SAME call), regardless of what `check_ir` later decides:
+#
+# * ``bc`` is `lower_row_calls`'s own return value, lowered under exactly
+#   the ``resources`` this `run_static_calls` invocation was actually
+#   given -- i.e. WITH O1's element-type observation iff the caller's own
+#   ``observe_element_types`` was ``True`` for this call (every existing
+#   caller through `oracle_replay.py`'s `run_row` passes ``False``, so this
+#   is the "without O1" view for every caller today).
+# * ``bc_with_o1`` is a SECOND, independent `lower_row_calls` call over the
+#   SAME ``example``/``plr_kwargs``/``param_names``, differing only in
+#   using ``resources_from_example(example, resource_types=resource_types,
+#   element_types=element_types)`` -- the WITH-O1 view -- built from the
+#   ``resource_types``/``element_types`` parameters `run_static_calls`
+#   already receives regardless of its own ``observe_element_types``
+#   setting (`oracle_replay.run_row` always passes
+#   `RuntimeOutcome.resource_types`/`.element_types` through). This gives a
+#   sink observer BOTH views for every row unconditionally, rather than
+#   only whichever one the caller's own flag happened to select -- exactly
+#   what a block-4/5-style with/without-O1 comparison (T30b, spec 260904
+#   §15.4) needs, without that comparison ever having to re-run
+#   `row_to_verifier_inputs`/`run_runtime` itself.
+# * ``not_planned`` is `calls_from_plr_kwargs`'s own not-planned index list
+#   (identical for both lowerings -- it depends only on ``plr_kwargs``, not
+#   on ``resources``, see `lower_row_calls`'s own body).
+# * ``element_types`` is `run_static_calls`'s own ``element_types``
+#   parameter, forwarded verbatim (as a defensive shallow copy) so a caller
+#   can compute a heterogeneous-parent count (values that reduced to
+#   ``None``, §15.4 C11b) without needing `RuntimeOutcome` itself.
+#
+# Default `None` (no observer): every existing caller of `run_static_calls`
+# (`oracle_replay.py`, `tip_mutants.py`, `scripts/oracle_spike.py`, this
+# module's own doctests, and every test in this repo) is therefore
+# byte-identical in behaviour and return value whether or not this hook has
+# ever been installed -- purely an additive observation seam, like
+# FINDINGS_SINK, never a control-flow change; it does not monkeypatch
+# `check_ir`, `lower_calls`, or anything else, and `lower_row_calls` itself
+# stays untouched and still callable directly (as
+# `plr-sema/eval/unknown_ledger.py` and every test that calls it directly
+# still does).
+LoweredSink = Callable[[str, Any, Any, "list[int]", "dict[str, str | None]"], None]
+LOWERED_SINK: LoweredSink | None = None
+
+
+def _lower_row_calls_notified(
+    example: dict[str, Any],
+    plr_kwargs: dict[int, dict[str, Any]],
+    resources: dict[str, dict[str, Any]],
+    param_names: dict[str, tuple[str, ...]] | None,
+    resource_types: Mapping[str, str] | None,
+    element_types: Mapping[str, str | None] | None,
+):
+    """`run_static_calls`'s own call site for `lower_row_calls`, wrapped
+    only to additionally fire `LOWERED_SINK` (see this block's own header
+    comment above) when one is installed. `lower_row_calls` is called here
+    with EXACTLY the same arguments `run_static_calls` always passed it
+    directly before this hook existed, so `(bc, not_planned)` -- this
+    function's return value -- is byte-identical to the pre-hook call site
+    in every case; the sink's own with-O1 lowering is a SEPARATE, additional
+    `lower_row_calls` call that exists purely for the sink's benefit and
+    whose result is never returned to `run_static_calls` itself.
+    """
+    bc, not_planned = lower_row_calls(example, plr_kwargs, resources=resources, param_names=param_names)
+    if LOWERED_SINK is not None:
+        row_id = (example.get("intent_record") or {}).get("record_id", "") or ""
+        o1_resources = resources_from_example(example, resource_types=resource_types, element_types=element_types)
+        bc_with_o1, _not_planned_o1 = lower_row_calls(
+            example, plr_kwargs, resources=o1_resources, param_names=param_names
+        )
+        LOWERED_SINK(row_id, bc, bc_with_o1, not_planned, dict(element_types or {}))
+    return bc, not_planned
