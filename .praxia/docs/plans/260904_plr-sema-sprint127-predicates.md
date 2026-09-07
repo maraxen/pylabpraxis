@@ -263,3 +263,17 @@ nothing, and its count is published under `guard_env_dependent`, which the gate 
 (2) headline substituted (per-finding `SAFE` + legible residual now; first joined `SAFE` in increment 7);
 (3) γ not adopted; (4) `REASON_VOCABULARY` 10 → 12; (5) the `EnvRef` grammar amendment (spec_version 18,
 short adversarial pass), after which the gate is re-measured and, on GO, T31–T33 proceed.
+
+**Amendment round and re-measure (260907–260908):** population fix `15b84d31` (t30_measure now drives
+`oracle_replay.main` via `FINDINGS_SINK` + `LOWERED_SINK`; 544 / 223; cause: sidecar `ambiguity_class`
+not passed to `row_to_verifier_inputs`); amendment `f441d27e` (spec_version 18); challenger `aaa00f8a`
+(A-C1–A-C13: not gaming, GO prediction survives, needs_revision revise-and-advance); remediation
+`15ae7c45` (spec_version 19, `reviewed-round-2`: G7 shape (2) gated by the derive function index,
+`Zip` ⊤ unless every item concrete and never vacuously T, membership always ½, α/β-substituted walks,
+reason clauses reordered, HM-25 fallback normative with `_measure_hm25` symbols, T30c → T35). Scope
+note for the user: the `in`/`not in` comparator widening was not named in decision 5's text but is what
+makes `:409`'s filter readable; treated as in scope by necessity, to confirm at close. **T35** `a2cd0499`
++ `100ab273`: **GATE GO** — `pick_up_tips` clears on 223/223 executed ops with O1 (residual
+{decidable, guard_env_dependent}); every method's residual matches §15.9's re-prediction table exactly;
+12 PLR-layer `self.<name>(...)` calls refused; `n_var_self` 0; 386 guard sites carry `EnvRef`. Band C
+(T31 evaluator → T32 oracle → T33 lint/INDEX) dispatched.
