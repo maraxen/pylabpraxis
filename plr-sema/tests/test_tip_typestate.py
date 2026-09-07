@@ -52,6 +52,46 @@ _PICK_UP_TIPS_SITE = PlrSite(
 _GET_TIP_SITE = PlrSite(
     file="external/pylabrobot/pylabrobot/resources/tip_tracker.py", lineno=65, qualname="TipTracker.get_tip"
 )
+# 260904 (increment 6, T31): plr_sema.check.predicate now correctly
+# DECIDES a handful of non-tip-family guards whose only operand is a
+# literal kwarg -- most commonly the uniqueness assert `len(set(
+# use_channels)) == len(use_channels)`, sited at pick_up_tips:502 and
+# aspirate:959 -- SAFE whenever the fixture's `use_channels` kwarg is a
+# literal list with no duplicates (every fixture in this file that
+# supplies one). This is correct, expected T31 behaviour, unrelated to
+# tip TYPESTATE (it depends only on the kwarg's own value, never on
+# `TipWalk`'s state), so tests below that assert "no SAFE"/"no WILL_FAIL
+# anywhere on this operation/report" are scoped past it via
+# `_excluding_now_decided_non_tip_guards` rather than by widening the
+# claim to include a site this module's own family never touches.
+_UNIQUE_CHANNELS_SITES = frozenset(
+    {
+        PlrSite(
+            file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            lineno=502,
+            qualname="LiquidHandler.pick_up_tips",
+        ),
+        PlrSite(
+            file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            lineno=959,
+            qualname="LiquidHandler.aspirate",
+        ),
+        PlrSite(
+            file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            lineno=1153,
+            qualname="LiquidHandler.dispense",
+        ),
+        PlrSite(
+            file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            lineno=651,
+            qualname="LiquidHandler.drop_tips",
+        ),
+    }
+)
+
+
+def _excluding_now_decided_non_tip_guards(findings: list) -> list:
+    return [f for f in findings if f.plr_site not in _UNIQUE_CHANNELS_SITES]
 
 
 @pytest.fixture(scope="module")
@@ -103,7 +143,7 @@ def test_ac_10_1_will_fail_on_repeated_pickup(contracts_json: str) -> None:
     # WILL_FAIL from the bridged TipTracker.add_tip guard -- disclosed, not
     # a defect.
     assert len(will_fail) == 2
-    assert not [f for f in op2 if f.verdict is Verdict.SAFE]
+    assert not [f for f in _excluding_now_decided_non_tip_guards(op2) if f.verdict is Verdict.SAFE]
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +155,7 @@ def test_ac_10_2_safe_after_pickup_no_operation_level_safe(contracts_json: str) 
     report = _check("pickup_then_aspirate_graph", contracts_json)
     op2 = _findings_for(report, "op_2")
 
-    safe = [f for f in op2 if f.verdict is Verdict.SAFE]
+    safe = [f for f in _excluding_now_decided_non_tip_guards(op2) if f.verdict is Verdict.SAFE]
     assert len(safe) == 1, "exactly one SAFE finding on the aspirate, per AC-10.2"
     assert safe[0].plr_site == _GET_TIP_SITE
 
@@ -184,7 +224,7 @@ def test_ac_10_4_shipped_fixture_unchanged(contracts_json: str) -> None:
 
 
 def _assert_widened(report: AnalysisReport) -> None:
-    op2 = _findings_for(report, "op_2")
+    op2 = _excluding_now_decided_non_tip_guards(_findings_for(report, "op_2"))
     assert not any(f.verdict is Verdict.WILL_FAIL for f in op2)
     assert not any(f.verdict is Verdict.SAFE for f in op2)
     assert report.verdict is Verdict.UNKNOWN
@@ -538,8 +578,9 @@ def test_ac_12_2_b_no_setup_stays_unknown(contracts_json: str) -> None:
     (a) and fail this.
     """
     report = _check("aspirate_no_setup_graph", contracts_json)
-    assert not [f for f in report.findings if f.verdict is Verdict.WILL_FAIL]
-    assert not [f for f in report.findings if f.verdict is Verdict.SAFE]
+    non_tip = _excluding_now_decided_non_tip_guards(report.findings)
+    assert not [f for f in non_tip if f.verdict is Verdict.WILL_FAIL]
+    assert not [f for f in non_tip if f.verdict is Verdict.SAFE]
     assert report.verdict is Verdict.UNKNOWN
 
 
@@ -662,7 +703,7 @@ def test_ac_12_10_bounded_unroll_precise_on_repeated_pickup(contracts_json: str)
 
 def test_ac_12_11_fixpoint_emits_final_pass_only(contracts_json: str) -> None:
     report = _check("while_alternating_graph", contracts_json)
-    op3 = _findings_for(report, "op_3")  # pick_up_tips, inside a real LOOP(trip=None)
+    op3 = _excluding_now_decided_non_tip_guards(_findings_for(report, "op_3"))  # pick_up_tips, inside a real LOOP(trip=None)
 
     assert not any(f.verdict is Verdict.WILL_FAIL for f in op3), (
         "a pass-1 finding (evaluated against NO_TIP alone, before the head state "
@@ -817,7 +858,16 @@ def test_ac_13_15_ii_transfer_safe_then_following_call_widens(contracts_json: st
         "transfer must carry exactly one SAFE finding for the bridged NoTipError guard, "
         "sited at TipTracker.get_tip:65 -- the P9 bound_channels evaluation"
     )
-    assert not any(f.verdict is Verdict.WILL_FAIL for f in op3)
+    # 260904 (increment 6, T31): scoped to the tip-family's own bridged
+    # site, not "no WILL_FAIL anywhere on this operation" -- the fixture's
+    # `transfer(...)` call passes neither `source_vol` nor `target_vols`,
+    # which `plr_sema.check.predicate`'s evaluator now correctly reports as
+    # a genuine, decidable WILL_FAIL at `:1340` (`transfer` really would
+    # raise `TypeError("Must specify either source_vol or target_vols")`
+    # against this exact call) -- a fact about `transfer`'s OWN argument
+    # guard this fixture never exercised before T31, unrelated to tip
+    # typestate, which this test is scoped to.
+    assert not any(f.verdict is Verdict.WILL_FAIL for f in op3 if f.plr_site == _GET_TIP_SITE)
 
     unknown_at_get_tip = [
         f for f in op4 if f.verdict is Verdict.UNKNOWN and f.reason == "channel_state_unknown" and f.plr_site == _GET_TIP_SITE
@@ -828,7 +878,7 @@ def test_ac_13_15_ii_transfer_safe_then_following_call_widens(contracts_json: st
         "the HAS_TIP state pick_up_tips left behind and emit SAFE here, which is exactly "
         "the stub this sub-assertion defeats"
     )
-    assert not any(f.verdict is Verdict.WILL_FAIL for f in op4)
+    assert not any(f.verdict is Verdict.WILL_FAIL for f in op4 if f.plr_site == _GET_TIP_SITE)
 
 
 def test_ac_13_15_i_disabler_checked_after_rules_2_and_3(contracts_json: str) -> None:
@@ -873,4 +923,8 @@ def test_ac_13_15_i_disabler_checked_after_rules_2_and_3(contracts_json: str) ->
         "guard (channels_for_call also poisoned -> None, same as a guard with no "
         "bound_channels) -- not a SAFE, and not a WILL_FAIL"
     )
-    assert not any(f.verdict is Verdict.WILL_FAIL for f in op3)
+    # 260904 (increment 6, T31): scoped to the tip-family's own bridged
+    # site -- see the sibling test above for why a WILL_FAIL elsewhere on
+    # this same operation (transfer's own `:1340` argument guard) is a
+    # correct, unrelated finding this fixture's call genuinely earns.
+    assert not any(f.verdict is Verdict.WILL_FAIL for f in op3 if f.plr_site == _GET_TIP_SITE)

@@ -283,7 +283,7 @@ correspondingly smaller.
 > the cheap direction.
 
 **The non-obvious half: the cache must store the *pre-relabel* findings.** `_check` calls `check_ir`
-and then `ir.relabel_findings(raw_findings, origin)` (`check/__init__.py:748-761`), mapping each
+and then `ir.relabel_findings(raw_findings, origin)` (`check/__init__.py:941`), mapping each
 finding's `operation_id` from `str(pc)` to the graph's own operation id through `sideband["origin"]`.
 **`sideband` is excluded from `bytecode_hash`** (§11.3.2). Therefore two different graphs — the same
 program with different `OperationNode` ids — share a `bytecode_hash` and have *different* origin maps.
@@ -297,7 +297,7 @@ silently wrong report, not a cache miss.
 > pre-relabel findings specifically.**
 
 **Telemetry is part of the observable behaviour and must not be skipped.** `check_graph` "emits every
-finding via `plr_sema.telemetry`" (`check/__init__.py:781-793`). A hit that returned findings without
+finding via `plr_sema.telemetry`" (`check/__init__.py:955-964`). A hit that returned findings without
 emitting them would make the cache observable, which would falsify the purity claim the cache rests
 on. The emit therefore happens on the cached findings, on the hit path, unchanged.
 
@@ -330,7 +330,7 @@ on. The emit therefore happens on the cached findings, on the hit path, unchange
 >   not either the key or the payload.
 > - **`findings[].reason` is validated on read, not trusted.** Deserialisation
 >   (`plr-sema/src/plr_sema/check/cache.py:102-108`) passes each stored `reason` through
->   `vocabulary_reason` (`plr-sema/src/plr_sema/verdict.py:171-184`) — the one dynamic form §3.3's
+>   `vocabulary_reason` (`plr-sema/src/plr_sema/verdict.py:202-215`) — the one dynamic form §3.3's
 >   forward scan admits — so a corrupt or foreign cache entry raises `ValueError` and becomes a miss
 >   rather than a `Finding` carrying a reason nobody registered.
 > - **No eviction policy.** Entries are removed only by `invalidate_by_methods` or by deleting the
@@ -338,7 +338,7 @@ on. The emit therefore happens on the cached findings, on the hit path, unchange
 >   corpus, and it is deferred (§13.12) rather than guessed at.
 
 > **Normative (the hook, and it is `check_graph` — round-1 O5).** The read-through lives in
-> **`check_graph`** (`plr-sema/src/plr_sema/check/__init__.py:781`), which gains a keyword-only
+> **`check_graph`** (`plr-sema/src/plr_sema/check/__init__.py:967`), which gains a keyword-only
 > `cache: CacheStore | None = None`. `check_graph` computes the key from **its own `contracts_json`
 > parameter**, consults the store, and on a miss calls into `_check`'s body and stores the result.
 >
@@ -737,7 +737,7 @@ working as designed.
 > only its stated *reason* was wrong.**]**
 
 **`REASON_VOCABULARY` (HM-14): unchanged at 8 of cap 12** (`plr-sema/src/plr_sema/verdict.py:129-154`;
-the row is `CAPPED` at declared 12, `_hand_maintained.py:561-565`). The draft added
+the row is `CAPPED` at declared 12, `_hand_maintained.py:650-654`). The draft added
 `volume_state_unknown` and `volume_tracking_unasserted`; both belong to the deferred volume family and
 **both move to increment 5**. Round 1's Q6 made the argument that decided it: a vocabulary member
 whose producer does not work on ship day is the same "dead data" problem §13.7 already raises for

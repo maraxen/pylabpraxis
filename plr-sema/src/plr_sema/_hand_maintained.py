@@ -322,8 +322,30 @@ def _measure_hm25() -> int:
     atom-kind branches inside `check/tipstate.py`'s shared parser, proven
     live via `TipState`'s two atom-bearing members plus the bool-view
     branch) -- fails loudly, ImportError/AttributeError, if any is deleted.
+
+    260904 (spec §15.8, increment 6, T31, round 2 A-C6, user-approved
+    260907): PLUS a NINTH unit -- one collective probe importing the
+    symbols for the local-binding idiom (alpha: the filtered-comprehension
+    binding shape; beta: the or-chain default length binding, §15.3) and
+    the 260907 amendment's three additive grammar productions (`EnvRef`,
+    `Zip`, the `in`/`not in` membership comparators, §15.2 G7/G8) -- all
+    NAMED inside this ONE row's `what` per the round-2 disposition, rather
+    than spending a second row or a further per-row ceiling. `declared`
+    moves 8 -> 9, exactly ONE unit of headroom, so these five newly-named
+    productions are measured as ONE collective unit (not five separately
+    counted ones) -- five separate units would push the measured count to
+    13, past `declared == 9`, which would be exactly the STOP-and-ask
+    contingency §15.8 describes rather than a silent registry violation.
+    The probe still fails loudly (ImportError/AttributeError) if ANY of
+    the five is deleted or renamed, which is what keeps this collective
+    unit from being HM-24's silent-collapse failure mode in disguise: the
+    measure moves (from 8 to 9) exactly when the `what` it tracks does.
     """
+    import ast
+
     from plr_sema.check.tipstate import TipState, atom_truth
+    from plr_sema.derive.bindings import _match_alpha, _match_beta
+    from plr_sema.derive.predicate_ast import _CMP_OPS, EnvRef, Zip
     from plr_sema.derive.receiver_state import (
         _channel_default_idiom,
         _typestate_anchor,
@@ -332,12 +354,25 @@ def _measure_hm25() -> int:
         operand_pairing_idiom,
     )
 
+    def _predicate_amendment_group_probe() -> bool:
+        """One probe standing in for FIVE production symbols (alpha, beta,
+        `EnvRef`, `Zip`, the membership comparators) -- see this function's
+        own docstring for why they are measured as a single collective
+        unit rather than five separately-counted ones."""
+        assert _match_alpha is not None
+        assert _match_beta is not None
+        assert EnvRef is not None
+        assert Zip is not None
+        assert ast.In in _CMP_OPS and ast.NotIn in _CMP_OPS
+        return True
+
     shape_matchers = (
         _typestate_anchor,  # P2
         _channel_default_idiom,  # P3a
         compute_delegate_channel_bindings,  # P9
         _volume_anchor,  # P7
         operand_pairing_idiom,  # P8
+        _predicate_amendment_group_probe,  # alpha + beta + EnvRef + Zip + membership (A-C6)
     )
     # atom_truth's three productions: BoolView, NullCheck(is_none=True),
     # NullCheck(is_none=False) -- proven live by actually exercising all
@@ -348,6 +383,7 @@ def _measure_hm25() -> int:
         atom_truth(("null_check", True), TipState.HAS_TIP),
         atom_truth(("null_check", False), TipState.HAS_TIP),
     )
+    assert _predicate_amendment_group_probe()
     return len(shape_matchers) + len(productions)
 
 
@@ -919,17 +955,32 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "zip-comprehension operand-pairing idiom (an `ast.ListComp`/"
             "`GeneratorExp` over a `zip(...)`-bound element call). Split "
             "out of the original single 6-pattern HM-24 per the user's "
-            "260902 Q7 decision (option B); P7/P8 added 260903."
+            "260902 Q7 decision (option B); P7/P8 added 260903. 260904 "
+            "(spec §15.3/§15.8, increment 6, T31, round 2 A-C6, "
+            "user-approved 260907): PLUS the local-binding idiom -- alpha "
+            "(the filtered-comprehension binding, `[<e> for <e> in <p> if "
+            "<pred>]` matching PLR's identity-map 'reject the wrongly-"
+            "typed elements' shape) and beta (the two-operand `or`-chain "
+            "default, `<x> = <x> or list(range(len(<p>)))` / `<x> = <x> or "
+            "[<expr>] * len(<p>)`, length-only) -- and the 260907 "
+            "amendment's three additive grammar productions named inside "
+            "this SAME entry rather than a second row (round 2, A-C6): "
+            "`EnvRef` (a `self`-rooted attribute chain or call, §15.2 G7), "
+            "`Zip` (`zip(<e1>,...,<en>)` as an `AllOf`/`AnyOf` seq, §15.2 "
+            "G8(1)), and the `in`/`not in` membership comparators (§15.2 "
+            "G8(2))."
         ),
         metric="patterns",
-        declared=8,
+        declared=9,
         status="CAPPED",
         why_not_derived=(
             "Syntactic patterns over how PLR/its own analyzer is written "
             "(a property-body shape, two argument-default idioms, three "
             "condition-string grammars, an accessor-pair-plus-AugAssign-"
-            "sign shape, a zip-comprehension shape), not facts PLR records "
-            "anywhere -- same argument HM-3/HM-24 make."
+            "sign shape, a zip-comprehension shape, a filtered-"
+            "comprehension binding shape, a `self`-rooted-attribute/call "
+            "shape, a widened comparator-operator set), not facts PLR "
+            "records anywhere -- same argument HM-3/HM-24 make."
         ),
         breaks_when=(
             "PLR stops writing the `has_tip`-style boolean-view property "
@@ -940,14 +991,21 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "at the call site (P9, e.g. `transfer` computes `use_channels` "
             "into a local first), the volume accessor pair stops matching "
             "P7's zero-argument-return shape (or the `AugAssign` sign on "
-            "the anchored field goes ambiguous), or `aspirate`/`dispense` "
+            "the anchored field goes ambiguous), `aspirate`/`dispense` "
             "stop building their operand lists via a `zip(...)`-bound "
-            "comprehension (P8). Fails LOUDLY here (unlike HM-24): "
-            "AC-10.1/AC-10.2/AC-10.3/AC-13.15(iv)/AC-14.1/AC-14.2's exact-"
-            "count/gate assertions on the shipped fixtures go red; P9/P7/P8 "
-            "themselves fail CLOSED (`bound_channels` reverts to `⊤`; the "
+            "comprehension (P8), the alpha/beta selection's own published "
+            "floor moves (AC-15.2's exact-count assertions -- alpha >= 3, "
+            "beta == 8 at this pin), or the amendment's own whole-table "
+            "counts move (`n_env_ref_guards`/`n_env_ref_nodes`/`n_zip`/"
+            "`n_membership_cmp`, §15.9 block (6)). Fails LOUDLY here "
+            "(unlike HM-24): AC-10.1/AC-10.2/AC-10.3/AC-13.15(iv)/AC-14.1/"
+            "AC-14.2/AC-15.1/AC-15.2/AC-15.3's exact-count/gate assertions "
+            "on the shipped fixtures go red; P9/P7/P8/alpha/beta themselves "
+            "fail CLOSED (`bound_channels`/a binding reverts to `⊤`; the "
             "volume family disables for the affected class/method), never "
-            "wrong."
+            "wrong -- and an unrecognised `EnvRef`/`Zip`/membership shape "
+            "is simply `Opaque`, exactly today's behaviour (§15.2's own "
+            "fail-closed argument), never wrong either."
         ),
         measure="plr_sema._hand_maintained:_measure_hm25",
     ),

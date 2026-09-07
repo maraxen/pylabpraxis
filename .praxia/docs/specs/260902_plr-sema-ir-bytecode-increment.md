@@ -463,7 +463,7 @@ sha1/sha256 buys nothing.
 **Excluding `protocol_fqn` is a deliberate, attackable choice.** Two protocols with identical bodies
 and different names hash identically, which is what makes the hash a *program* identity and the cache
 useful across renames. Its consequence is that a cached artifact must not be an `AnalysisReport`,
-whose `protocol_fqn` field (`plr-sema/src/plr_sema/verdict.py:250`) would then be wrong for the second protocol.
+whose `protocol_fqn` field (`plr-sema/src/plr_sema/verdict.py:298`) would then be wrong for the second protocol.
 **Design position:** #4922 caches the `Finding` tuple, and the caller reassembles the report with its
 own `protocol_fqn` and its own `stamp`. This is recorded as open question Q3 (§11.12) because it
 constrains #4922's interface, and a reviewer may prefer the opposite trade.
@@ -501,14 +501,14 @@ def check_graph(graph_json: str, contracts_json: str) -> AnalysisReport      # u
 ```
 
 `check_graph` keeps its signature, its docstring's promises (no `libcst`, no `pylabrobot`, never
-shells out) and its telemetry emission (`_check`, `plr-sema/src/plr_sema/check/__init__.py:748-776`). Its body becomes:
+shells out) and its telemetry emission (`_check`, `plr-sema/src/plr_sema/check/__init__.py:919-964`). Its body becomes:
 `json.loads` both inputs → build `param_names` from the contract table → `lower_graph` →
-`check_ir` → relabel (§11.4.3) → `join` (`verdict.py:244-253`) → `AnalysisReport`. **Every existing
+`check_ir` → relabel (§11.4.3) → `join` (`verdict.py:313-322`) → `AnalysisReport`. **Every existing
 acceptance criterion that names `check_graph` continues to name `check_graph`**; AC-6.1 through
 AC-6.7 are untouched, and AC-11.6 pins that the shipped fixture's report does not move.
 
 `check_ir` is a single left-to-right pass with a program counter. In *this* increment its per-`CALL`
-body is exactly today's `_findings_for_call` (renamed from `_findings_for_operation` in b640f194, `plr-sema/src/plr_sema/check/__init__.py:325-388`), re-keyed from an
+body is exactly today's `_findings_for_call` (renamed from `_findings_for_operation` in b640f194, `plr-sema/src/plr_sema/check/__init__.py:472-564`), re-keyed from an
 `OperationNode` to a `CALL` instruction: `op.receiver_type`/`op.method_name` become
 `CALL.receiver_type`/`CALL.method`; the loop test `op.foreach_source is not None or op.foreach_body`
 becomes "this `pc` is inside an open `LOOP` region". No verdict changes. Increment 1's tip walk is
@@ -807,7 +807,7 @@ by a stub, the stub-defeating half is named.
   into the checker, and §8's comparison would be comparing the analyzer against its own input. No
   existing criterion catches that: AC-11.1 is key-set equality and passes unchanged; AC-11.2 read
   live off `DISPOSITIONS` becomes vacuous by construction; AC-11.6 cannot see it because
-  `_findings_for_call` (renamed from `_findings_for_operation`, `plr-sema/src/plr_sema/check/__init__.py:325-388`) never reads call-level `preconditions` or
+  `_findings_for_call` (renamed from `_findings_for_operation`, `plr-sema/src/plr_sema/check/__init__.py:472-564`) never reads call-level `preconditions` or
   `op.creates_state`, so the findings stay bit-identical. **HM-21's redefined metric cannot substitute
   for this test either, and in fact points the wrong way:** it counts `X` dispositions, so moving a
   field *out* of `X` **decreases** the count, which a ratchet that guards against growth reads as

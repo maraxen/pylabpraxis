@@ -74,7 +74,7 @@ sources: "Round-1 adversarial reports read in full and dispositioned in section 
 > (§15.9), and no guard at `depth >= 1` may emit `WILL_FAIL` at all (§15.4 E-UNCOND(4)).
 >
 > **Registry arithmetic this increment carries, with the one spend it now proposes.**
-> `REASON_VOCABULARY` **10 → 12 of cap 12** (`plr-sema/src/plr_sema/_hand_maintained.py:613-631`,
+> `REASON_VOCABULARY` **10 → 12 of cap 12** (`plr-sema/src/plr_sema/_hand_maintained.py:650-667`,
 > HM-14 `declared=12`), which **exhausts HM-14's headroom** — **approved 260907**
 > (§15.14 Q4; the one-member fallback in §15.7 is dead). No registry **row** is added; `live_rows()` stays 24
 > against `BUDGET_CAP = 24` (`plr-sema/src/plr_sema/_hand_maintained.py:43`). §15.8's draft position
@@ -1386,7 +1386,7 @@ backend's *method body*, not just its signature.
 
 > **Normative — APPROVED BY THE USER 260907 (§15.14 Q4). `REASON_VOCABULARY` 10 → 12, of cap 12**
 > (`plr-sema/src/plr_sema/verdict.py:133-168` enumerates the current ten; HM-14 is `CAPPED` at
-> `declared=12`, `plr-sema/src/plr_sema/_hand_maintained.py:613-631`, so live 12 ≤ 12 and **no
+> `declared=12`, `plr-sema/src/plr_sema/_hand_maintained.py:650-667`, so live 12 ≤ 12 and **no
 > `declared` edit is needed**). This exhausts HM-14's headroom, which is why it is the user's call and
 > not the sprint's. Two members:
 >
@@ -2198,7 +2198,7 @@ nothing".
   The `else of:` case, the `:117` case and the depth-1 case are the stub-defeating halves.
 - **AC-15.7 (the vocabulary and registry arithmetic is exactly as specified, under the user's 260907 answers).**
   `len(REASON_VOCABULARY) == 12` against HM-14's unchanged `declared == 12`
-  (`plr-sema/src/plr_sema/_hand_maintained.py:613-631`); the commit's parent has 10, so the diff is
+  (`plr-sema/src/plr_sema/_hand_maintained.py:650-667`); the commit's parent has 10, so the diff is
   visibly 10 → 12; `len(live_rows()) == 24` and `BUDGET_CAP == 24`; **HM-25's `declared` is 9 and
   HM-24's is 3**, asserted directly, so a spend on the wrong row fails;
   `test_no_surface_exceeds_its_declared_size`, `test_total_declared_within_budget` and

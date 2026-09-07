@@ -129,7 +129,21 @@ class Verdict(str, Enum):
 # volume increment 5) added `volume_tracking_unasserted` and
 # `volume_state_unknown` -- 8 -> 10 of the same cap 12 -- both with working
 # producers under `plr_sema.check.volumestate`'s guard-evaluation table
-# (§14.5) gated by §14.6's conditional-guard rule.
+# (§14.5) gated by §14.6's conditional-guard rule. 260904 (spec §15.7,
+# increment 6, T31, user-approved 260907) added `guard_operand_unknown` and
+# `guard_env_dependent` -- 10 -> 12, EXHAUSTING HM-14's headroom (`declared`
+# stays 12, unchanged -- the cap itself was already 12; this spend fills it).
+# Both are producers of `plr_sema.check.predicate`'s evaluator: the former
+# fires when a guard's condition parses AND every free name resolves, but an
+# operand OF THIS CALL is Top (a non-literal kwarg, a renamed `?<j>` kwarg,
+# or a RESOURCE whose declared type/element_type cannot decide an
+# `IsInstance`); the latter fires when >=1 free name never resolves to a
+# call operand or a binding at all (instance state, a module global, an
+# `EnvRef`), OR the guard's reachability itself is unestablished
+# (depth >= 1, or a depth-0 empty scope_trail in a function with an earlier
+# Return/Try/Raise/Break/Continue), OR the guard is a derived tier-(iii)
+# re-raise (`InlinedGuard.is_dynamic_raise`). Any FUTURE give-up point needs
+# the cap conversation -- REASON_VOCABULARY is now at 12 of 12.
 REASON_VOCABULARY: frozenset[str] = frozenset(
     {
         # the target method has no entry in the derived contract table at all
@@ -164,6 +178,23 @@ REASON_VOCABULARY: frozenset[str] = frozenset(
         # for the over-fill half, the capacity itself) is Top -- the ½
         # case of §14.5's guard-evaluation table.
         "volume_state_unknown",
+        # 260904 (spec §15.7, increment 6, T31, user-approved 260907): the
+        # condition parsed to a non-Opaque predicate and every free name
+        # resolved, but an OPERAND of this call is Top (a non-literal
+        # kwarg, a kwarg lower_calls renamed to "?<j>", or a RESOURCE whose
+        # declared type/element_type cannot decide an IsInstance).
+        "guard_operand_unknown",
+        # 260904 (spec §15.7, increment 6, T31, user-approved 260907): the
+        # condition parsed, but >=1 free name does not resolve to a call
+        # operand or an alpha/beta binding at all -- instance state
+        # (self.<x>, incl. an EnvRef), a module global, a backend
+        # attribute, or a local the idioms decline -- OR the guard's
+        # reachability is not established (depth >= 1, E-UNCOND(4); or a
+        # depth-0 empty scope_trail in a K containing an earlier
+        # Return/Try/Raise, E-UNCOND(5)) -- OR the guard is a derived
+        # tier-(iii) re-raise (guard.is_dynamic_raise, §15.5). Tiers (ii)
+        # and (iii) together, plus the two reachability give-up points.
+        "guard_env_dependent",
     }
 )
 
@@ -228,6 +259,23 @@ class Finding:
 
 
 @dataclass(frozen=True, slots=True)
+class SoundnessScope:
+    """260904 (spec §15.5, increment 6, T31). NEW this increment -- there is
+    no such type anywhere in `plr_sema.src/` before it. Exactly ONE field:
+    `excludes_sites`, the tier-(iii) guard sites (a derived re-raise,
+    `InlinedGuard.is_dynamic_raise`) folded out of the PLR-precondition
+    claim for this report. A pure annotation: `join` never sees it and
+    never will (its own docstring is the argument for why aggregation stays
+    a single function over the flat finding multiset). Main spec Open
+    decision 2 is this type's MOTIVATION, not its definition -- round-1
+    C10/C18 rejected the draft's two-different-single-field version of this
+    same dataclass and its `harness_internal` confusion with
+    `FAILURE_CATEGORIES`."""
+
+    excludes_sites: "tuple[PlrSite, ...]"
+
+
+@dataclass(frozen=True, slots=True)
 class AnalysisReport:
     """The wire-contract record for one protocol's analysis. Pinned by
     schema_version -- see this module's failure-mode note in spec §3.5.
@@ -253,6 +301,13 @@ class AnalysisReport:
     stamp: SurveyStamp  # spec §2.2 -- pins the contract-BUILD-time PLR+analyzer SHA
     schema_version: int = SCHEMA_VERSION
     analyzer_stamp: SurveyStamp | None = None  # the check-run's own provenance; None in round 1 (see docstring)
+    # 260904 (spec §15.5, increment 6, T31): additive, optional --
+    # `schema_version` stays 1 (an additive field, old readers unaffected,
+    # per §Open-decisions-3's additive direction). `None` for every report
+    # that never constructed a tier-(iii) Finding (every pre-increment-6
+    # report, and any report `check_ir` is called on without threading an
+    # `excludes_sites` collector -- see that function's own docstring).
+    scope: "SoundnessScope | None" = None
 
 
 def join(findings: tuple[Finding, ...]) -> Verdict:

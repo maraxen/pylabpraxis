@@ -136,10 +136,10 @@ from typing import Any
 from plr_sema._provenance import SurveyStamp
 from plr_sema._provenance.git_state import GitState
 from plr_sema.check import cache as cache_mod
-from plr_sema.check import ir, tipstate, volumestate
+from plr_sema.check import ir, predicate, tipstate, volumestate
 from plr_sema.check._supported_tools import SUPPORTED_TOOLS
 from plr_sema.telemetry import emit_finding
-from plr_sema.verdict import AnalysisReport, Finding, PlrSite, Verdict, join
+from plr_sema.verdict import AnalysisReport, Finding, PlrSite, SoundnessScope, Verdict, join
 
 __all__ = ["SUPPORTED_TOOLS", "check_graph", "check_ir"]
 
@@ -258,6 +258,88 @@ def _loop_bounds_unknown(operation_id: str) -> Finding:
     )
 
 
+#: 260904 (spec §15.4/§15.5/§15.7, increment 6, T31-2): the per-guard
+#: evaluator's own Finding constructors -- same §3.3/§3.4 AST-resolvable-
+#: reason discipline as every constructor above (a literal string at each
+#: `Finding(...)` call site, never a shared `reason: str` parameter).
+
+
+def _guard_safe(operation_id: str, *, plr_site: PlrSite | None, detail: str) -> Finding:
+    return Finding(
+        verdict=Verdict.SAFE,
+        operation_id=operation_id,
+        category="",
+        plr_site=plr_site,
+        reason="",
+        detail=detail,
+    )
+
+
+def _guard_will_fail(operation_id: str, *, plr_site: PlrSite | None, detail: str) -> Finding:
+    return Finding(
+        verdict=Verdict.WILL_FAIL,
+        operation_id=operation_id,
+        category="precondition_state",
+        plr_site=plr_site,
+        reason="",
+        detail=detail,
+    )
+
+
+def _guard_operand_unknown(operation_id: str, *, plr_site: PlrSite | None, detail: str) -> Finding:
+    return Finding(
+        verdict=Verdict.UNKNOWN,
+        operation_id=operation_id,
+        category="",
+        plr_site=plr_site,
+        reason="guard_operand_unknown",
+        detail=detail,
+    )
+
+
+def _guard_env_dependent(operation_id: str, *, plr_site: PlrSite | None, detail: str) -> Finding:
+    return Finding(
+        verdict=Verdict.UNKNOWN,
+        operation_id=operation_id,
+        category="",
+        plr_site=plr_site,
+        reason="guard_env_dependent",
+        detail=detail,
+    )
+
+
+def _finding_from_guard_result(
+    operation_id: str,
+    guard: dict[str, Any],
+    result: "predicate.GuardResult",
+) -> Finding:
+    """Wraps a :func:`plr_sema.check.predicate.evaluate_guard` result into
+    the `Finding` its verdict/reason pair calls for -- one of the tiny
+    literal-reason constructors, dispatched by `(result.verdict,
+    result.reason)`. `("unknown", "guard_predicate_unparsed")` reuses the
+    SAME `_guard_predicate_unparsed` constructor `_finding_from_guard`
+    (the pre-T31 blanket path) uses -- `nested Opaque` still means exactly
+    what it always meant, just now reached through the evaluator's own
+    §15.7 clause 1 rather than unconditionally."""
+    plr_site = _plr_site_from_dict(guard.get("site"))
+    condition = guard.get("condition")
+    detail = condition if condition is not None else "<unconditional>"
+    key = (result.verdict, result.reason)
+    if key == ("safe", ""):
+        return _guard_safe(operation_id, plr_site=plr_site, detail=detail)
+    if key == ("will_fail", ""):
+        return _guard_will_fail(operation_id, plr_site=plr_site, detail=detail)
+    if key == ("unknown", "guard_operand_unknown"):
+        return _guard_operand_unknown(operation_id, plr_site=plr_site, detail=detail)
+    if key == ("unknown", "guard_env_dependent"):
+        return _guard_env_dependent(operation_id, plr_site=plr_site, detail=detail)
+    if key == ("unknown", "guard_predicate_unparsed"):
+        return _guard_predicate_unparsed(operation_id, plr_site=plr_site, detail=detail)
+    return _internal_error(
+        operation_id, detail=f"predicate.evaluate_guard returned unrecognized {key!r}"
+    )
+
+
 #: 260902 (spec §10.3.3/§10.8, tip typestate increment): the
 #: `channel_state_unknown`/`SAFE`/`WILL_FAIL` `Finding`s this increment adds
 #: are constructed by `plr_sema.check.tipstate._finding_for_atom` -- its own
@@ -324,6 +406,69 @@ def _findings_for_gap(operation_id: str, gap: Any) -> Finding:
     )
 
 
+def _findings_for_guards(
+    operation_id: str,
+    call: ir.Call,
+    contract: dict[str, Any],
+    consumed: frozenset[int],
+    *,
+    receiver_state: dict[str, Any] | None,
+    resources_by_slot: dict[int, ir.Resource],
+    env: frozenset[str],
+    class_hierarchy: dict[str, frozenset[str]] | None,
+    poisoned: bool,
+    excludes_sites: list[PlrSite] | None,
+) -> list[Finding]:
+    """260904 (spec §15.4/§15.5/§15.7, increment 6, T31-2): every guard in
+    ``contract["guards"]`` the tip family did not already consume is
+    evaluated by :mod:`plr_sema.check.predicate` -- the pre-increment-6
+    blanket ``guard_predicate_unparsed`` emission (``_finding_from_guard``,
+    still used verbatim by nothing downstream of this function) is
+    REPLACED, one-for-one, by the evaluator's own verdict/reason. A guard
+    the volume family claims is never a `contract["guards"]` entry at all
+    (it lives in the separate ``volume_guards`` list, §14.4's own
+    ``derive/__main__.py`` disposition), so no additional dispatch/skip
+    logic is needed for it here -- the family-dispatch rule §15.2 states is
+    already structurally true of this loop.
+
+    ``channel_kwarg``/``channels`` are computed ONCE per call (mirroring
+    ``tipstate.evaluate_call``'s own poisoned-gating, §15.3's P3a hook) and
+    threaded into every guard's evaluation rather than re-derived per
+    guard. A tier-(iii) guard's site is folded into ``excludes_sites``
+    (deduplicated) when a collector list was supplied (``None`` -- the
+    default -- means "don't bother collecting", #4922's own additive-
+    keyword-only precedent).
+    """
+    channel_kwarg: str | None = None
+    channels: tuple[int, ...] | None = None
+    if receiver_state is not None and not poisoned:
+        channel_kwarg = receiver_state.get("channel_kwarg")
+        channels = tipstate.channels_for_call(
+            call, receiver_state.get("channel_default_param", {}), channel_kwarg
+        )
+
+    findings: list[Finding] = []
+    for idx, guard in enumerate(contract.get("guards", ())):
+        if idx in consumed:
+            continue
+        result = predicate.evaluate_guard(
+            guard,
+            call,
+            contract,
+            resources_by_slot,
+            env=env,
+            channel_kwarg=channel_kwarg,
+            channels=channels,
+            class_hierarchy=class_hierarchy,
+        )
+        findings.append(_finding_from_guard_result(operation_id, guard, result))
+        if result.tier_iii and excludes_sites is not None:
+            site = _plr_site_from_dict(guard.get("site"))
+            if site is not None and site not in excludes_sites:
+                excludes_sites.append(site)
+    return findings
+
+
 def _findings_for_call(
     operation_id: str,
     call: ir.Call,
@@ -331,10 +476,13 @@ def _findings_for_call(
     *,
     inside_loop: bool,
     receiver_states: dict[str, Any],
+    resources_by_slot: dict[int, ir.Resource],
     walk: tipstate.TipWalk,
     vwalk: volumestate.VolumeWalk,
     env: frozenset[str],
     poisoned: bool,
+    class_hierarchy: dict[str, frozenset[str]] | None = None,
+    excludes_sites: list[PlrSite] | None = None,
 ) -> list[Finding]:
     """The per-``CALL`` body: exactly today's (pre-IR) per-operation logic
     (§11.4.1), re-keyed from an ``OperationNode`` to a ``CALL`` instruction
@@ -386,9 +534,18 @@ def _findings_for_call(
         _findings_for_gap(operation_id, gap) for gap in contract.get("gaps", ())
     ]
     findings.extend(
-        _finding_from_guard(operation_id, guard)
-        for idx, guard in enumerate(contract.get("guards", ()))
-        if idx not in consumed
+        _findings_for_guards(
+            operation_id,
+            call,
+            contract,
+            consumed,
+            receiver_state=receiver_states.get(call.receiver_type),
+            resources_by_slot=resources_by_slot,
+            env=env,
+            class_hierarchy=class_hierarchy,
+            poisoned=poisoned,
+            excludes_sites=excludes_sites,
+        )
     )
     findings.extend(tip_findings)
     findings.extend(volume_findings)
@@ -461,6 +618,8 @@ def check_ir(
     receiver_states: dict[str, Any] | None = None,
     *,
     env: frozenset[str] = frozenset(),
+    class_hierarchy: dict[str, frozenset[str]] | None = None,
+    excludes_sites: list[PlrSite] | None = None,
 ) -> tuple[Finding, ...]:
     """Spec §11.4.1 (260902) / §12.3 (260903, "region semantics for a
     region with a proved trip"): the analysis core. A structured,
@@ -544,6 +703,15 @@ def check_ir(
     findings: list[Finding] = []
     instructions = bytecode.instructions
     n_instr = len(instructions)
+    # 260904 (spec §15.4, increment 6, T31-2): the slot -> RESOURCE map
+    # E-TYPE's `IsInstance` needs (declared `type`/`element_type` per
+    # `Ref.slot`, §15.4's own citation of `ir.py:178-192`) -- built ONCE
+    # here, over the same `bytecode.instructions` every RESOURCE op lives
+    # in at the front of the stream (`lower_graph`/`lower_calls`), never
+    # per-guard.
+    resources_by_slot: dict[int, ir.Resource] = {
+        instr.slot: instr for instr in instructions if isinstance(instr, ir.Resource)
+    }
 
     def process_call(pc: int, instr: ir.Call, *, inside_loop: bool) -> list[Finding]:
         return list(
@@ -553,9 +721,12 @@ def check_ir(
                 contracts,
                 inside_loop=inside_loop,
                 receiver_states=receiver_states,
+                resources_by_slot=resources_by_slot,
                 walk=walk,
                 vwalk=vwalk,
                 env=env,
+                class_hierarchy=class_hierarchy,
+                excludes_sites=excludes_sites,
                 poisoned=instr.receiver in poisoned_slots,
             )
         )
@@ -751,12 +922,21 @@ def _check(
     contracts_payload: dict[str, Any],
     *,
     env: frozenset[str] = frozenset(),
+    class_hierarchy: dict[str, frozenset[str]] | None = None,
 ) -> AnalysisReport:
     contracts = contracts_payload.get("contracts", {})
     receiver_states = contracts_payload.get("receiver_state", {})
     stamp = _stamp_from_dict(contracts_payload["stamp"])
 
-    raw_findings = check_ir(bytecode, contracts, receiver_states, env=env)
+    excludes_sites: list[PlrSite] = []
+    raw_findings = check_ir(
+        bytecode,
+        contracts,
+        receiver_states,
+        env=env,
+        class_hierarchy=class_hierarchy,
+        excludes_sites=excludes_sites,
+    )
     origin = bytecode.sideband.get("origin", {})
     findings = ir.relabel_findings(raw_findings, origin)
 
@@ -765,6 +945,12 @@ def _check(
         verdict=join(findings),
         findings=findings,
         stamp=stamp,
+        # 260904 (spec §15.5, increment 6, T31-2): a pure annotation --
+        # `join` above already ran over the flat finding multiset and never
+        # reads this. `None` (not an empty `SoundnessScope`) when nothing
+        # this analysis run visited was tier (iii), so an old reader that
+        # never heard of `scope` sees exactly what it always saw.
+        scope=SoundnessScope(excludes_sites=tuple(excludes_sites)) if excludes_sites else None,
     )
     # Round-4 remediation (M2): check_graph now actually emits telemetry --
     # previously nothing under check/ ever called plr_sema.telemetry.emit*,
@@ -784,6 +970,7 @@ def check_graph(
     *,
     cache: cache_mod.CacheStore | None = None,
     env: frozenset[str] = frozenset(),
+    class_hierarchy: dict[str, frozenset[str]] | None = None,
 ) -> AnalysisReport:
     """Round-1 entry point (spec §6.2), signature additive since #4922
     (§13.3.3, ``cache=`` keyword-only, defaulting to ``None``).
@@ -826,7 +1013,9 @@ def check_graph(
     bytecode = ir.lower_graph(payload, param_names=param_names)
 
     if cache is None:
-        return _check(bytecode, payload["protocol_fqn"], contracts_payload, env=env)
+        return _check(
+            bytecode, payload["protocol_fqn"], contracts_payload, env=env, class_hierarchy=class_hierarchy
+        )
 
     receiver_states = contracts_payload.get("receiver_state", {})
     stamp = _stamp_from_dict(contracts_payload["stamp"])
@@ -845,8 +1034,24 @@ def check_graph(
     key = ir.cache_key(bc_hash, contracts_json, stamp, env=env)
 
     raw_findings = cache.get(key)
+    # 260904 (spec §15.5, increment 6, T31-2): `SoundnessScope` is NOT
+    # threaded through `CacheStore` (its value shape is `tuple[Finding,
+    # ...]` only, §13.3's own cache-key/value contract, unchanged by this
+    # increment) -- a cache HIT therefore reports `scope=None`, a
+    # documented gap in the ANNOTATION only. `join`'s own verdict is
+    # unaffected (computed from `findings`, which the cache faithfully
+    # preserves either way); no soundness claim depends on `scope`.
+    excludes_sites: list[PlrSite] | None = None
     if raw_findings is None:
-        raw_findings = check_ir(bytecode, contracts, receiver_states, env=env)
+        excludes_sites = []
+        raw_findings = check_ir(
+            bytecode,
+            contracts,
+            receiver_states,
+            env=env,
+            class_hierarchy=class_hierarchy,
+            excludes_sites=excludes_sites,
+        )
         methods = frozenset(
             instr.method for instr in bytecode.instructions if isinstance(instr, ir.Call)
         )
@@ -859,6 +1064,7 @@ def check_graph(
         verdict=join(findings),
         findings=findings,
         stamp=stamp,
+        scope=SoundnessScope(excludes_sites=tuple(excludes_sites)) if excludes_sites else None,
     )
     for finding in report.findings:
         emit_finding(finding, protocol_fqn=report.protocol_fqn, stamp=report.stamp)

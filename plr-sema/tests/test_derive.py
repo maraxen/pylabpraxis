@@ -1332,7 +1332,9 @@ def test_ac_13_3_no_lidstate_no_receiver_state_entry_no_reason_vocabulary_member
     gains no lid-related member. Was "still exactly 8" (§13.7/§13.13 item
     6) through increment 4; 260903 (spec §14.6/§14.16 Q4, T26) bumped it
     8 -> 10 for the volume family's `volume_tracking_unasserted`/
-    `volume_state_unknown` -- unrelated to lid, which is what the
+    `volume_state_unknown`; 260904 (spec §15.7, increment 6, T31,
+    user-approved 260907) bumped it 10 -> 12 for `guard_operand_unknown`/
+    `guard_env_dependent` -- both unrelated to lid, which is what the
     no-"lid"-substring assertion below re-confirms independently of the
     exact count.
     """
@@ -1353,7 +1355,7 @@ def test_ac_13_3_no_lidstate_no_receiver_state_entry_no_reason_vocabulary_member
 
     from plr_sema.verdict import REASON_VOCABULARY
 
-    assert len(REASON_VOCABULARY) == 10
+    assert len(REASON_VOCABULARY) == 12
     assert not any("lid" in reason.lower() for reason in REASON_VOCABULARY)
 
 

@@ -29,7 +29,7 @@ from pathlib import Path
 import pytest
 
 from plr_sema.check import SUPPORTED_TOOLS, check_graph, ir
-from plr_sema.verdict import AnalysisReport, Finding, PlrSite, Verdict
+from plr_sema.verdict import AnalysisReport, Finding, PlrSite, SoundnessScope, Verdict
 
 PLR_SEMA_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = PLR_SEMA_ROOT.parent
@@ -297,6 +297,12 @@ def _finding_from_dict(d: dict) -> Finding:
     )
 
 
+def _scope_from_dict(d: dict | None) -> "SoundnessScope | None":
+    if d is None:
+        return None
+    return SoundnessScope(excludes_sites=tuple(_plr_site_from_dict(s) for s in d["excludes_sites"]))
+
+
 def _report_from_dict(d: dict) -> AnalysisReport:
     return AnalysisReport(
         protocol_fqn=d["protocol_fqn"],
@@ -304,6 +310,7 @@ def _report_from_dict(d: dict) -> AnalysisReport:
         findings=tuple(_finding_from_dict(f) for f in d["findings"]),
         stamp=_stamp_from_dict(d["stamp"]),
         schema_version=d["schema_version"],
+        scope=_scope_from_dict(d.get("scope")),
     )
 
 
@@ -472,14 +479,25 @@ def test_lid_family_findings_identical_to_graph_without_the_plate(contracts_json
 def test_lid_family_null_condition_guard_is_unknown_not_will_fail(contracts_json: str) -> None:
     """AC-13.4, second half -- the stub-defeating one: the Finding for the
     `:117` guard (whose derived `condition` is `null`) is
-    `Verdict.UNKNOWN` with `reason == "guard_predicate_unparsed"`, NOT
-    `Verdict.WILL_FAIL`. `null` reads, on its face, as "raises
-    unconditionally"; it is not -- `:117`'s raise is reachable only when
-    the early `return` at `liquid_handler.py:113-114` did not fire, and
-    the precondition survey's `scope_trail` does not model early returns
-    (§13.1.3), so no evaluator today or in this fixture can construct that
-    fact. An evaluator that treated a `null` condition as "always true"
+    `Verdict.UNKNOWN`, NOT `Verdict.WILL_FAIL`. `null` reads, on its face,
+    as "raises unconditionally"; it is not -- `:117`'s raise is reachable
+    only when the early `return` at `liquid_handler.py:113-114` did not
+    fire, and the precondition survey's `scope_trail` does not model early
+    returns (§13.1.3), so no evaluator today or in this fixture can
+    construct that fact. An evaluator that treated a `null` condition as
+    "always true" AND treated this inlined (depth-1) guard as reachable
     would emit `WILL_FAIL` here and fail this assertion.
+
+    260904 (increment 6, T31): `reason` is now `"guard_env_dependent"`, not
+    the pre-increment-6 blanket `"guard_predicate_unparsed"` -- `:117`'s
+    predicate parses cleanly to `TRUE()` (`plr_sema.derive.predicate_ast
+    .parse(None) == TRUE()`) and evaluates `T`, so `guard_predicate_unparsed`
+    (§15.7 clause 1, "the grammar failed here") would be a FALSE statement
+    about this guard. What blocks `WILL_FAIL` is E-UNCOND(4): `_check_no_lid`
+    is a delegate, so this guard's `depth == 1`, and no guard at depth >= 1
+    may emit `WILL_FAIL` this increment (its reachability from the entry
+    point's own call site is not established) -- `guard_env_dependent` is
+    exactly the reason §15.7 assigns to that give-up point.
     """
     graph_json = LIDDED_PLATE_ASPIRATE_FIXTURE.read_text(encoding="utf-8")
     report = check_graph(graph_json, contracts_json)
@@ -496,7 +514,7 @@ def test_lid_family_null_condition_guard_is_unknown_not_will_fail(contracts_json
     )
     finding = null_condition_findings[0]
     assert finding.verdict is Verdict.UNKNOWN
-    assert finding.reason == "guard_predicate_unparsed"
+    assert finding.reason == "guard_env_dependent"
     assert finding.verdict is not Verdict.WILL_FAIL
 
 
