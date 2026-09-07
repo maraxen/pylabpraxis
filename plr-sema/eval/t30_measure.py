@@ -68,6 +68,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import ast
 import collections
 import dataclasses
 import json
@@ -84,23 +85,36 @@ import oracle_common as oc  # noqa: E402
 import oracle_replay  # noqa: E402
 from plr_sema.check import ir as _ir  # noqa: E402
 from plr_sema.check import tipstate  # noqa: E402
-from plr_sema.derive.bindings import free_var_names  # noqa: E402
+from plr_sema.derive.bindings import (  # noqa: E402
+    build_qualname_index,
+    free_var_names,
+    is_plr_layer_method,
+    substitute,
+)
 from plr_sema.derive.predicate_ast import (  # noqa: E402
     TRUE,
     AllOf,
     And,
     AnyOf,
     Cmp,
+    EnvRef,
     Filtered,
     Is,
     IsInstance,
     Len,
+    MEMBERSHIP_OPS,
     Not,
     Opaque,
     Or,
     Predicate,
     SetOf,
+    Zip,
+    contains_env_ref,
     contains_opaque,
+    count_env_ref_nodes,
+    count_var_self,
+    parse as parse_predicate_raw,
+    walk as walk_predicate,
     from_json,
 )
 from plr_sema.derive.receiver_state import build_plr_function_index
@@ -221,6 +235,30 @@ def is_tip_family_owned(g: dict[str, Any], receiver_state: dict[str, Any]) -> bo
     return atom is not None
 
 
+def build_volume_guard_sites(contracts: dict[str, Any]) -> frozenset[tuple[str, int, str]]:
+    """S15.2's family-dispatch rule, the volume half: "a guard the volume
+    family claims (a `volume_guards` entry) is skipped by the predicate
+    evaluator entirely". `volume_guards` is an ADDITIVE per-entry field
+    (`derive/receiver_state.py:1937-2040`), never a hand-typed site list --
+    this reduces every entry's `volume_guards` across the WHOLE contract
+    table to the `(file, lineno, qualname)` sites it names, once, so
+    `is_volume_family_owned` below is a set lookup rather than a per-guard
+    re-scan (fix-up (2), S15.9: T35 must skip family-claimed guards and
+    report the family's own reason -- `volume_tracker.py:92`/`:105` must
+    NOT carry a predicate reason)."""
+    sites: set[tuple[str, int, str]] = set()
+    for entry in contracts.values():
+        for vg in entry.get("volume_guards", ()):
+            site = vg["site"]
+            sites.add((site["file"], site["lineno"], site["qualname"]))
+    return frozenset(sites)
+
+
+def is_volume_family_owned(g: dict[str, Any], volume_guard_sites: frozenset[tuple[str, int, str]]) -> bool:
+    site = g["site"]
+    return (site["file"], site["lineno"], site["qualname"]) in volume_guard_sites
+
+
 def build_guard_index(
     contracts: dict[str, Any], *, prefer_public_entry: bool = False
 ) -> dict[tuple[str, int, str], dict[str, Any]]:
@@ -325,12 +363,17 @@ def atom_kind(pred: Predicate) -> str:
     return "other"
 
 
-def measure_parse_coverage(contracts: dict[str, Any], receiver_state: dict[str, Any]) -> dict[str, Any]:
+def measure_parse_coverage(
+    contracts: dict[str, Any],
+    receiver_state: dict[str, Any],
+    volume_guard_sites: frozenset[tuple[str, int, str]] = frozenset(),
+) -> dict[str, Any]:
     by_kind: collections.Counter = collections.Counter()
     opaque_shapes: collections.Counter = collections.Counter()
     total = 0
     non_opaque = 0
     n_tip_family_owned = 0
+    n_volume_family_owned = 0
     seen_sites: set[tuple[str, int, str]] = set()
     for entry in contracts.values():
         for g in entry.get("guards", ()):
@@ -341,6 +384,12 @@ def measure_parse_coverage(contracts: dict[str, Any], receiver_state: dict[str, 
             seen_sites.add(key)
             if is_tip_family_owned(g, receiver_state):
                 n_tip_family_owned += 1
+                continue
+            if is_volume_family_owned(g, volume_guard_sites):
+                # fix-up (2), S15.9: a guard the volume family claims keeps
+                # `volume_state_unknown`, never a predicate reason -- excluded
+                # here for the identical reason the tip family already is.
+                n_volume_family_owned += 1
                 continue
             total += 1
             pred = from_json(g["predicate"])
@@ -353,6 +402,7 @@ def measure_parse_coverage(contracts: dict[str, Any], receiver_state: dict[str, 
     return {
         "n_guards_distinct_sites": total,
         "n_tip_family_owned_excluded": n_tip_family_owned,
+        "n_volume_family_owned_excluded": n_volume_family_owned,
         "n_non_opaque": non_opaque,
         "n_opaque": by_kind.get("Opaque", 0),
         "by_atom_kind": dict(sorted(by_kind.items())),
@@ -370,6 +420,7 @@ def measure_binding_coverage(
     param_names_by_qualname: dict[tuple[str, str], frozenset[str]],
     receiver_state: dict[str, Any],
     function_index,
+    volume_guard_sites: frozenset[tuple[str, int, str]] = frozenset(),
 ) -> dict[str, Any]:
     guard_index = build_guard_index(contracts, prefer_public_entry=True)
 
@@ -408,7 +459,7 @@ def measure_binding_coverage(
     # actually populates), not from the wider catalog above.
     all_free_local_count = collections.Counter()  # "all" | "some" | "none" -> n guards
     for (file, lineno, qualname), g in sorted(guard_index.items()):
-        if is_tip_family_owned(g, receiver_state):
+        if is_tip_family_owned(g, receiver_state) or is_volume_family_owned(g, volume_guard_sites):
             continue
         module = module_from_plr_file(file)
         pred = from_json(g["predicate"])
@@ -435,7 +486,11 @@ def measure_binding_coverage(
     for key, entry in contracts.items():
         entry_params = set(entry.get("params", ()))
         for g in entry.get("guards", ()):
-            if g["depth"] < 1 or is_tip_family_owned(g, receiver_state):
+            if (
+                g["depth"] < 1
+                or is_tip_family_owned(g, receiver_state)
+                or is_volume_family_owned(g, volume_guard_sites)
+            ):
                 continue
             pred = from_json(g["predicate"])
             bound_names = {b["x"] for b in g.get("bindings", ())}
@@ -751,20 +806,32 @@ def classify_guard_for_call(
     """A STATIC classification of what E-CALL WOULD resolve for `g` against
     `call` -- never an evaluation of truth (§15.9's own framing). See the
     module docstring for what this model does and does not implement.
+
+    §15.7's REORDERED reason rule (round 2, A-C5, T35): (1) `contains_opaque`
+    over the alpha/beta-SUBSTITUTED tree -> `guard_predicate_unparsed`;
+    (2) an operand of THIS call is Top -> `guard_operand_unknown`, checked
+    BEFORE (3) so the amendment cannot relax the gate's OTHER zero-condition;
+    (3) `contains_env_ref` over the substituted tree, still undecided ->
+    `guard_env_dependent`; (4) otherwise the pre-amendment rule stands (an
+    unresolved free name -> `guard_env_dependent`; everything resolved and
+    no Top operand -> `decidable`).
     """
     pred = from_json(g["predicate"])
     bindings_by_name = {b["x"]: b for b in g.get("bindings", ())}
-    if _effective_unparsed(pred, bindings_by_name):
+    substituted = substitute(pred, bindings_by_name)
+    if contains_opaque(substituted):
         return REASON_UNPARSED
     if g.get("raises") and str(g["raises"]).startswith("<dynamic:"):
         return REASON_ENV
     depth = g["depth"]
     free_names = free_var_names(pred)
     resolved_how: dict[str, str] = {}
+    any_unresolved = False
     for name in free_names:
         ok, how = _resolve_name(name, call, param_defaults, bindings_by_name, depth, channel_names, channel_kwarg)
         if not ok:
-            return REASON_ENV
+            any_unresolved = True
+            continue
         resolved_how[name] = how
 
     operand_unknown = False
@@ -796,23 +863,13 @@ def classify_guard_for_call(
                     elif isinstance(item, _ir.Ref):
                         if _element_ref_type(item, slot_to_resource) is None:
                             operand_unknown = True
-    return REASON_OPERAND if operand_unknown else REASON_DECIDABLE
-
-
-def _effective_unparsed(pred: Predicate, bindings_by_name: dict[str, dict[str, Any]]) -> bool:
-    """§15.7's nested-Opaque rule, extended to the SUBSTITUTED tree: a
-    predicate is unparsed-for-reason-purposes if its own tree contains an
-    `Opaque`, OR if any free name it mentions is bound to an alpha term
-    whose OWN inner predicate contains one (`invalid_channels`'s `c not in
-    self.head`, §15.7's own worked example).
-    """
-    if contains_opaque(pred):
-        return True
-    for name in free_var_names(pred):
-        b = bindings_by_name.get(name)
-        if b is not None and b["idiom"] == "alpha" and contains_opaque(from_json(b["pred"])):
-            return True
-    return False
+    if operand_unknown:
+        return REASON_OPERAND
+    if contains_env_ref(substituted):
+        return REASON_ENV
+    if any_unresolved:
+        return REASON_ENV
+    return REASON_DECIDABLE
 
 
 def classify_guard_structural(
@@ -837,11 +894,12 @@ def classify_guard_structural(
     pred = from_json(g["predicate"])
     parsed = not contains_opaque(pred)
     bindings_by_name = {b["x"]: b for b in g.get("bindings", ())}
+    substituted = substitute(pred, bindings_by_name)
     free_names = free_var_names(pred)
     free_locals = [n for n in free_names if n not in K_params]
     bound = all(n in bindings_by_name for n in free_locals) if free_locals else True
 
-    if _effective_unparsed(pred, bindings_by_name):
+    if contains_opaque(substituted):
         return parsed, bound, REASON_UNPARSED
     if g.get("raises") and str(g["raises"]).startswith("<dynamic:"):
         return parsed, bound, REASON_ENV
@@ -863,6 +921,15 @@ def classify_guard_structural(
         if name in K_params or name in channel_names:
             continue
         return parsed, bound, REASON_ENV
+    # §15.7's reordered clause (3), round 2 A-C5: no concrete call exists at
+    # this block's own granularity, so `guard_operand_unknown` (clause 2)
+    # cannot be assessed here at all -- the terminal
+    # "decidable_or_operand_dependent" already covers "clause 2 might fire
+    # once a real call is known" (block (4)'s job). `contains_env_ref` is
+    # therefore checked LAST among the reasons this function CAN assign,
+    # ahead only of that catch-all.
+    if contains_env_ref(substituted):
+        return parsed, bound, REASON_ENV
     return parsed, bound, "decidable_or_operand_dependent"
 
 
@@ -871,12 +938,26 @@ def classify_guard_structural(
 # ---------------------------------------------------------------------------
 
 
+def _env_ref_nodes_and_paths(g: dict[str, Any]) -> tuple[int, list[str]]:
+    """S15.9 block (3)'s amendment additions for ONE guard: `n_env_ref_nodes`
+    (the number of `EnvRef` NODES in its alpha/beta-SUBSTITUTED predicate)
+    and the dotted paths themselves (round 2, A-C4: both range over the
+    substituted tree, never the raw `predicate` field)."""
+    pred = from_json(g["predicate"])
+    bindings_by_name = {b["x"]: b for b in g.get("bindings", ())}
+    substituted = substitute(pred, bindings_by_name)
+    n_nodes = count_env_ref_nodes(substituted)
+    paths = [".".join(n.path) for n in walk_predicate(substituted) if isinstance(n, EnvRef)]
+    return n_nodes, paths
+
+
 def measure_per_cluster(
     ledger: dict[str, Any],
     guard_index: dict[tuple[str, int, str], dict[str, Any]],
     param_names_by_qualname: dict[tuple[str, str], frozenset[str]],
     channel_names: set[str],
     receiver_state: dict[str, Any],
+    volume_guard_sites: frozenset[tuple[str, int, str]] = frozenset(),
 ) -> list[dict[str, Any]]:
     out = []
     for cluster in ledger["clusters"]:
@@ -892,6 +973,8 @@ def measure_per_cluster(
             row["parsed"] = None
             row["bound"] = None
             row["reason_measured"] = "n/a (not a guard)"
+            row["n_env_ref_nodes"] = 0
+            row["env_ref_paths"] = []
             out.append(row)
             continue
         file, lineno_s, qualname = site.split(":")
@@ -905,12 +988,24 @@ def measure_per_cluster(
             row["parsed"] = None
             row["bound"] = None
             row["reason_measured"] = "guard not found in contract table (unexpected)"
+            row["n_env_ref_nodes"] = 0
+            row["env_ref_paths"] = []
             out.append(row)
             continue
         if is_tip_family_owned(g, receiver_state):
             row["parsed"] = None
             row["bound"] = None
             row["reason_measured"] = "tip_family_owned (already resolved by the shipped tipstate family, not this increment's business)"
+            row["n_env_ref_nodes"] = 0
+            row["env_ref_paths"] = []
+            out.append(row)
+            continue
+        if is_volume_family_owned(g, volume_guard_sites):
+            row["parsed"] = None
+            row["bound"] = None
+            row["reason_measured"] = "volume_family_owned (already resolved by increment 5's volume bridge, not this increment's business)"
+            row["n_env_ref_nodes"] = 0
+            row["env_ref_paths"] = []
             out.append(row)
             continue
         module = module_from_plr_file(file)
@@ -920,6 +1015,9 @@ def measure_per_cluster(
         row["parsed"] = parsed
         row["bound"] = bound
         row["reason_measured"] = reason
+        n_env_ref_nodes, env_ref_paths = _env_ref_nodes_and_paths(g)
+        row["n_env_ref_nodes"] = n_env_ref_nodes
+        row["env_ref_paths"] = env_ref_paths
         out.append(row)
     return out
 
@@ -934,6 +1032,7 @@ def measure_per_op(
     contracts: dict[str, Any],
     channel_names: set[str],
     receiver_state: dict[str, Any],
+    volume_guard_sites: frozenset[tuple[str, int, str]] = frozenset(),
 ) -> dict[str, Any]:
     """Blocks 4/5's per-executed-operation residuals, with and without O1 --
     now driven entirely by the authoritative `ops` population
@@ -976,16 +1075,32 @@ def measure_per_op(
             reasons_this_op: set[str] = set()
             n_parsed_but_operand_unknown = 0
             n_tip_family_owned = 0
+            n_volume_family_owned = 0
+            n_env_ref_guards = 0
             applicable_guards = []
             for g in entry.get("guards", ()):
                 if is_tip_family_owned(g, receiver_state):
                     n_tip_family_owned += 1
+                    continue
+                if is_volume_family_owned(g, volume_guard_sites):
+                    n_volume_family_owned += 1
                     continue
                 applicable_guards.append(g)
                 reason = classify_guard_for_call(g, call, slot_to_resource, param_defaults, channel_names, channel_kwarg)
                 reasons_this_op.add(reason)
                 if reason == REASON_OPERAND:
                     n_parsed_but_operand_unknown += 1
+                # S15.9 block (4)'s amendment addition: `n_env_ref` is a
+                # PER-GUARD count -- the number of guards on this operation
+                # whose alpha/beta-SUBSTITUTED predicate contains >= 1
+                # EnvRef node (round 2, A-C8: this block's `n_env_ref` and
+                # block (3)'s `n_env_ref_nodes` are deliberately different
+                # names in different units -- `:2055` is one guard, two
+                # nodes).
+                pred = from_json(g["predicate"])
+                bindings_by_name = {b["x"]: b for b in g.get("bindings", ())}
+                if contains_env_ref(substitute(pred, bindings_by_name)):
+                    n_env_ref_guards += 1
             if not applicable_guards:
                 reasons_this_op.add("no_contract_derived")
             predicted_tiers = sorted(
@@ -1004,12 +1119,177 @@ def measure_per_op(
                     "predicted_tiers": predicted_tiers,
                     "n_parsed_but_operand_unknown": n_parsed_but_operand_unknown,
                     "n_tip_family_owned_guards": n_tip_family_owned,
+                    "n_volume_family_owned_guards": n_volume_family_owned,
+                    "n_env_ref": n_env_ref_guards,
+                    # An evaluator number (S15.4 E-ENV's Kleene short-circuit
+                    # path) -- this script builds NO evaluator and calls
+                    # check_ir nowhere (module docstring); publishing it
+                    # honestly as not-computable-here rather than a fabricated
+                    # 0, per the T35 task brief's own instruction. T31 is
+                    # where a real value can be measured.
+                    "n_decided_via_env_ref_shortcircuit": None,
                 }
             )
     return {
         "per_op": per_op,
         "per_op_without_o1": per_op_without_o1,
         "n_ops": len(per_op),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Block 6 -- the amendment's own whole-table surface (S15.9, new 260907;
+# n_env_ref_refused_plr_layer new in round 2, A-C1).
+# ---------------------------------------------------------------------------
+
+
+def measure_env_ref_surface(
+    contracts: dict[str, Any],
+    receiver_state: dict[str, Any],
+    qualname_index: frozenset[tuple[str, str]] | None,
+    volume_guard_sites: frozenset[tuple[str, int, str]],
+) -> dict[str, Any]:
+    """S15.9 block (6): the amendment's own surface, over the WHOLE contract
+    table (each DISTINCT guard site counted once, tip/volume-family-owned
+    guards excluded -- not this increment's business either way).
+
+    `n_env_ref_refused_plr_layer` is measured by RE-PARSING each guard's raw
+    `condition` through the pure grammar (`predicate_ast.parse`, which knows
+    nothing about the index and therefore admits every syntactically-valid
+    self-rooted call), then re-running the SAME index test
+    `derive.bindings.demote_refused_env_refs` applied at derive time against
+    every length-2 shape-(2) `EnvRef` candidate found -- never a diff against
+    the shipped (already-demoted) `predicate` field, which cannot
+    distinguish "refused" from "never admitted at all".
+    """
+    n_zip = 0
+    n_membership_cmp = 0
+    n_var_self = 0
+    n_opaque_only_by_var_self = 0
+    n_env_ref_guards = 0
+    n_env_ref_nodes = 0
+    n_env_ref_refused_plr_layer = 0
+    path_counts: collections.Counter = collections.Counter()
+    seen_sites: set[tuple[str, int, str]] = set()
+
+    for entry in contracts.values():
+        for g in entry.get("guards", ()):
+            site = g["site"]
+            key = (site["file"], site["lineno"], site["qualname"])
+            if key in seen_sites:
+                continue
+            seen_sites.add(key)
+            if is_tip_family_owned(g, receiver_state) or is_volume_family_owned(g, volume_guard_sites):
+                continue
+
+            shipped_pred = from_json(g["predicate"])
+            n_var_self += count_var_self(shipped_pred)
+            nodes = walk_predicate(shipped_pred)
+            n_zip += sum(1 for n in nodes if isinstance(n, Zip))
+            n_membership_cmp += sum(1 for n in nodes if isinstance(n, Cmp) and n.op in MEMBERSHIP_OPS)
+            env_refs = [n for n in nodes if isinstance(n, EnvRef)]
+            if env_refs:
+                n_env_ref_guards += 1
+            n_env_ref_nodes += len(env_refs)
+            for er in env_refs:
+                path_counts[".".join(er.path)] += 1
+
+            # n_opaque_only_by_var_self: this guard is Opaque only BECAUSE
+            # the Var("self") invariant fired -- detected by comparing the
+            # shipped (invariant-enforcing) parse against the CLOSED
+            # negative list otherwise excluding it; a guard whose raw
+            # condition round-trips through the same shape but for a
+            # different reason (a genuinely unrecognised construct) would
+            # ALSO be Opaque with or without the invariant, so this only
+            # counts the guard when re-parsing shows the ONLY difference is
+            # a bare `self` occurrence outside an EnvRef path. Predicted 0
+            # at this pin (S15.9 block (6)).
+            if isinstance(shipped_pred, Opaque) and _opaque_only_because_of_var_self(g.get("condition")):
+                n_opaque_only_by_var_self += 1
+
+            # n_env_ref_refused_plr_layer: re-parse the RAW condition (no
+            # index knowledge at all) and re-apply the SAME index test.
+            module = module_from_plr_file(site["file"])
+            qualname = site["qualname"]
+            class_name = qualname.split(".", 1)[0] if "." in qualname else None
+            raw_pred = parse_predicate_raw(g.get("condition"))
+            for n in walk_predicate(raw_pred):
+                if not (isinstance(n, EnvRef) and n.args is not None and len(n.path) == 2):
+                    continue
+                name = n.path[1]
+                refused = (
+                    True
+                    if qualname_index is None
+                    else is_plr_layer_method(qualname_index, module, class_name, name)
+                    if module is not None
+                    else False
+                )
+                if refused:
+                    n_env_ref_refused_plr_layer += 1
+
+    top10 = [{"path": p, "n": n} for p, n in path_counts.most_common(10)]
+    return {
+        "n_zip": n_zip,
+        "n_membership_cmp": n_membership_cmp,
+        "n_var_self": n_var_self,
+        "n_opaque_only_by_var_self": n_opaque_only_by_var_self,
+        "n_env_ref_guards": n_env_ref_guards,
+        "n_env_ref_nodes": n_env_ref_nodes,
+        "n_env_ref_refused_plr_layer": n_env_ref_refused_plr_layer,
+        "top10_env_ref_paths": top10,
+    }
+
+
+def _opaque_only_because_of_var_self(condition: str | None) -> bool:
+    """Best-effort, conservative check for `n_opaque_only_by_var_self`: a
+    reparse-based diagnostic, not a full dual-parse (this module's `parse`
+    bakes the Var("self") invariant in unconditionally, so there is no
+    "permissive" mode to diff against without duplicating the whole grammar
+    module) -- narrowed to the one syntactic shape the invariant actually
+    intercepts that nothing else already rejects: a bare `self` token used
+    as a `Cmp`/`Is`/`IsInstance` OPERAND (not inside a `self.<attr>` chain
+    and not as a call argument, which is already Opaque for an independent
+    reason -- an unrecognised callee -- in every real case on this
+    benchmark). Never load-bearing: predicted 0 at this pin and published
+    as a diagnostic, not gated on.
+    """
+    if condition is None:
+        return False
+    try:
+        tree = ast.parse(condition, mode="eval")
+    except (SyntaxError, ValueError):
+        return False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Compare):
+            operands = [node.left, *node.comparators]
+            for i, operand in enumerate(operands):
+                if isinstance(operand, ast.Name) and operand.id == "self":
+                    return True
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "isinstance":
+            if node.args and isinstance(node.args[0], ast.Name) and node.args[0].id == "self":
+                return True
+    return False
+
+
+def summarize_n_env_ref_by_method(per_op: list[dict[str, Any]]) -> dict[str, Any]:
+    """S15.9 block (4)'s `n_env_ref` (per-guard count) and
+    `n_decided_via_env_ref_shortcircuit`, aggregated per method for the
+    re-prediction table's own cross-check -- every op of a given method
+    carries the SAME guard set (O1 only changes RESOURCE typing, never
+    which guards apply), so `n_env_ref` is expected constant per method;
+    published as the observed set (never collapsed to a single number
+    silently) so a real divergence is visible rather than averaged away."""
+    by_method: dict[str, set[int]] = collections.defaultdict(set)
+    shortcircuit_by_method: dict[str, set[Any]] = collections.defaultdict(set)
+    for op in per_op:
+        by_method[op["method"]].add(op["n_env_ref"])
+        shortcircuit_by_method[op["method"]].add(op["n_decided_via_env_ref_shortcircuit"])
+    return {
+        method: {
+            "n_env_ref_observed": sorted(vals),
+            "n_decided_via_env_ref_shortcircuit_observed": sorted(shortcircuit_by_method[method], key=str),
+        }
+        for method, vals in by_method.items()
     }
 
 
@@ -1089,12 +1369,20 @@ def main(argv: list[str] | None = None) -> int:
     log.info("building whole-tree function index (param names by qualname)...")
     function_index = build_plr_function_index(oc.REPO_ROOT / "external" / "pylabrobot" / "pylabrobot")
     param_names_by_qualname = build_param_names_by_qualname(function_index)
+    # G7's PLR-layer test (round 2, A-C1) -- the SAME reduced index
+    # derive_contract built at contract-regeneration time; re-derived here
+    # (never persisted on the wire) so block 6's refusal count is measured
+    # against the identical rule, not assumed to match it.
+    qualname_index = build_qualname_index(function_index)
+    volume_guard_sites = build_volume_guard_sites(contracts)
 
     log.info("block 1: parse coverage")
-    block1 = measure_parse_coverage(contracts, receiver_state)
+    block1 = measure_parse_coverage(contracts, receiver_state, volume_guard_sites)
 
     log.info("block 2: binding coverage")
-    block2 = measure_binding_coverage(contracts, param_names_by_qualname, receiver_state, function_index)
+    block2 = measure_binding_coverage(
+        contracts, param_names_by_qualname, receiver_state, function_index, volume_guard_sites
+    )
 
     replay_report_path = args.replay_report or args.out.with_name(args.out.stem + ".oracle_replay.json")
     replay_report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1121,12 +1409,17 @@ def main(argv: list[str] | None = None) -> int:
     guard_index = build_guard_index(contracts, prefer_public_entry=True)
 
     log.info("block 3: per-cluster classification (%d clusters)", len(ledger["clusters"]))
-    block3 = measure_per_cluster(ledger, guard_index, param_names_by_qualname, channel_names, receiver_state)
+    block3 = measure_per_cluster(
+        ledger, guard_index, param_names_by_qualname, channel_names, receiver_state, volume_guard_sites
+    )
 
     log.info("blocks 4/5: per-executed-operation residuals, with and without O1")
-    per_op_result = measure_per_op(ops, contracts, channel_names, receiver_state)
+    per_op_result = measure_per_op(ops, contracts, channel_names, receiver_state, volume_guard_sites)
     block4 = summarize_by_method(per_op_result["per_op"])
     block4_without_o1 = summarize_by_method(per_op_result["per_op_without_o1"])
+
+    log.info("block 6: the amendment's own whole-table surface (EnvRef/Zip/membership/Var(self))")
+    block6 = measure_env_ref_surface(contracts, receiver_state, qualname_index, volume_guard_sites)
 
     gate_with_o1 = compute_gate(per_op_result["per_op"])
     gate_without_o1 = compute_gate(per_op_result["per_op_without_o1"])
@@ -1151,14 +1444,25 @@ def main(argv: list[str] | None = None) -> int:
         "block4_per_op_with_o1": {
             "n_ops": per_op_result["n_ops"],
             "by_method": block4,
+            # Per-guard n_env_ref and the (unbuilt-evaluator) shortcircuit
+            # count, published per operation -- AC-15.3 requires these
+            # present and non-null (the latter is null BY DESIGN: no
+            # evaluator exists in this script, S15.4 E-ENV's Kleene
+            # short-circuit path is T31's number, see per_op's own field
+            # docstring in measure_per_op).
+            "per_op": per_op_result["per_op"],
+            "n_env_ref_by_method": summarize_n_env_ref_by_method(per_op_result["per_op"]),
         },
         "block4_per_op_without_o1": {
             "by_method": block4_without_o1,
+            "per_op": per_op_result["per_op_without_o1"],
+            "n_env_ref_by_method": summarize_n_env_ref_by_method(per_op_result["per_op_without_o1"]),
         },
         "block5_o1_delta": {
             "n_ops_differing": o1_delta_ops,
             "n_heterogeneous_parent_observations": population_diagnostics["n_heterogeneous_parent_observations"],
         },
+        "block6_env_ref_surface": block6,
         "gate": {
             "with_o1": gate_with_o1,
             "without_o1": gate_without_o1,

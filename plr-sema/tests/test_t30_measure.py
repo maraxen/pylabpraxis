@@ -27,11 +27,14 @@ from t30_measure import (  # noqa: E402
     REASON_OPERAND,
     REASON_UNPARSED,
     _real_calls_by_index,
+    build_volume_guard_sites,
     classify_guard_for_call,
     classify_guard_structural,
     collect_executed_population,
     compute_gate,
     is_tip_family_owned,
+    is_volume_family_owned,
+    measure_env_ref_surface,
 )
 
 CONTRACTS_PATH = REPO_ROOT / "plr-sema" / "data" / "derived_contracts.json"
@@ -51,6 +54,14 @@ def _cmp(left: dict, op: str, right: dict) -> dict:
 
 def _len(term: dict) -> dict:
     return {"node": "Len", "term": term}
+
+
+def _env_ref(path: tuple[str, ...], args: list[dict] | None) -> dict:
+    return {"node": "EnvRef", "path": list(path), "args": args}
+
+
+def _not(pred: dict) -> dict:
+    return {"node": "Not", "predicate": pred}
 
 
 def _guard(
@@ -219,6 +230,73 @@ def test_classify_env_dependent_depth1_binding_iterand_not_channel() -> None:
 
 
 # ---------------------------------------------------------------------------
+# T35 (260907 amendment, spec 260904 S15.7's REORDERED reason rule, round 2
+# A-C5/A-C4): the operand-unknown test precedes contains_env_ref, and both
+# range over the alpha/beta-SUBSTITUTED tree.
+# ---------------------------------------------------------------------------
+
+
+def test_classify_env_ref_call_with_top_operand_is_operand_unknown_not_env() -> None:
+    """S15.7's reordered clause 2 wins over clause 3: an `EnvRef` call whose
+    OWN argument is a real kwarg of this call but its VALUE is Top is
+    `guard_operand_unknown`, never `guard_env_dependent` -- the amendment
+    must not relax the gate's OTHER zero-condition (A-C5)."""
+    pred = _env_ref(("self", "backend", "f"), [_var("x")])
+    g = _guard(pred, depth=0)
+    call = _call({"x": _ir.Top()})
+    assert classify_guard_for_call(g, call, {}, {}, set()) == REASON_OPERAND
+
+
+def test_classify_env_ref_bare_is_env_dependent() -> None:
+    """A bare `EnvRef` used directly as the predicate (e.g.
+    `self.setup_finished`) has no free names to resolve at all -- no
+    operand-unknown path fires, and `contains_env_ref` alone decides
+    `guard_env_dependent`."""
+    pred = _env_ref(("self", "setup_finished"), None)
+    g = _guard(pred, depth=0)
+    call = _call({})
+    assert classify_guard_for_call(g, call, {}, {}, set()) == REASON_ENV
+
+
+def test_classify_substituted_409_shaped_guard_is_env_dependent() -> None:
+    """The amendment's own worked example, in classifier form: the RAW
+    predicate mentions only `invalid_channels` (no EnvRef at all); its
+    alpha binding's inner filter is `Cmp(Var("c"), "not in",
+    EnvRef(("self","head"), None))`. `:409`'s own iterand ("channels") is a
+    depth-1 free name that can never resolve (E-CALL(depth)) -- so this
+    clears clause 1 (substituted tree is not Opaque), clears clause 2
+    (nothing resolves to an operand at all, so nothing can be Top), and
+    clause 3 (`contains_env_ref` over the SUBSTITUTED tree) decides
+    `guard_env_dependent`."""
+    pred = _cmp(_len(_var("invalid_channels")), "==", _lit(0))
+    binding = {
+        "idiom": "alpha",
+        "x": "invalid_channels",
+        "iter": "channels",
+        "pred": {"node": "Cmp", "left": _var("c"), "op": "not in", "right": _env_ref(("self", "head"), None)},
+    }
+    g = _guard(pred, depth=1, bindings=(binding,))
+    call = _call({})
+    assert classify_guard_for_call(g, call, {}, {}, set()) == REASON_ENV
+
+
+def test_classify_structural_substituted_env_ref_is_env_dependent() -> None:
+    """The no-call block (3) classifier reaches the identical conclusion
+    from the substituted tree, as its own (last-resort) reason."""
+    pred = _cmp(_len(_var("invalid_channels")), "==", _lit(0))
+    binding = {
+        "idiom": "alpha",
+        "x": "invalid_channels",
+        "iter": "channels",
+        "pred": {"node": "Cmp", "left": _var("c"), "op": "not in", "right": _env_ref(("self", "head"), None)},
+    }
+    g = _guard(pred, depth=1, bindings=(binding,))
+    parsed, bound, reason = classify_guard_structural(g, frozenset(), set())
+    assert parsed  # the RAW top-level predicate has no Opaque node
+    assert reason == REASON_ENV
+
+
+# ---------------------------------------------------------------------------
 # classify_guard_structural -- the no-specific-call block(3) classifier.
 # ---------------------------------------------------------------------------
 
@@ -300,6 +378,101 @@ def test_is_tip_family_owned_false_when_no_receiver_state() -> None:
     g = _guard({"node": "TRUE"}, qualname="Unrelated.method")
     g["condition"] = "self.head[channel].has_tip"
     assert is_tip_family_owned(g, {}) is False
+
+
+# ---------------------------------------------------------------------------
+# T35 fix-up (2), S15.9: the volume family's own dispatch exclusion, the
+# volume half of S15.2's family-dispatch rule.
+# ---------------------------------------------------------------------------
+
+
+def test_build_volume_guard_sites_and_is_volume_family_owned() -> None:
+    contracts = {
+        "LiquidHandler.aspirate": {
+            "guards": [],
+            "volume_guards": [
+                {
+                    "condition": "volume - self.get_used_volume() > 1e-06",
+                    "site": {
+                        "file": "external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+                        "lineno": 92,
+                        "qualname": "VolumeTracker.remove_liquid",
+                    },
+                }
+            ],
+        },
+    }
+    sites = build_volume_guard_sites(contracts)
+    assert sites == frozenset(
+        {("external/pylabrobot/pylabrobot/resources/volume_tracker.py", 92, "VolumeTracker.remove_liquid")}
+    )
+    g = _guard(
+        {"node": "TRUE"},
+        lineno=92,
+        qualname="VolumeTracker.remove_liquid",
+        condition="volume - self.get_used_volume() > 1e-06",
+    )
+    g["site"]["file"] = "external/pylabrobot/pylabrobot/resources/volume_tracker.py"
+    assert is_volume_family_owned(g, sites) is True
+    assert is_volume_family_owned(g, frozenset()) is False
+
+
+# ---------------------------------------------------------------------------
+# T35 block (6): measure_env_ref_surface -- the amendment's own whole-table
+# surface (n_env_ref_guards/nodes, n_zip, n_membership_cmp, n_var_self,
+# n_env_ref_refused_plr_layer, top-10 paths).
+# ---------------------------------------------------------------------------
+
+
+def test_measure_env_ref_surface_counts_and_refusal() -> None:
+    """A synthetic two-guard table: one `self.backend.f(...)` EnvRef (never
+    refused, length-3 path) and one `self._helper()` call (length-2,
+    refused because `_helper` IS in the qualname index for `Widget`)."""
+    contracts = {
+        "Widget.frobnicate": {
+            "guards": [
+                _guard(
+                    _env_ref(("self", "backend", "f"), [_var("x")]),
+                    lineno=10,
+                    qualname="Widget.frobnicate",
+                    condition="self.backend.f(x)",
+                ),
+                _guard(
+                    {"node": "Opaque", "text": "self._helper()"},
+                    lineno=20,
+                    qualname="Widget.other",
+                    condition="self._helper()",
+                ),
+            ],
+        },
+    }
+    for g in contracts["Widget.frobnicate"]["guards"]:
+        g["site"]["file"] = "external/pylabrobot/pylabrobot/synthetic_widget.py"
+    qualname_index = frozenset({("pylabrobot.synthetic_widget", "Widget._helper")})
+    result = measure_env_ref_surface(contracts, {}, qualname_index, frozenset())
+    assert result["n_env_ref_guards"] == 1  # only the length-3 EnvRef survives as shipped
+    assert result["n_env_ref_nodes"] == 1
+    assert result["top10_env_ref_paths"] == [{"path": "self.backend.f", "n": 1}]
+    assert result["n_env_ref_refused_plr_layer"] == 1  # self._helper() was refused
+    assert result["n_var_self"] == 0
+
+
+def test_measure_env_ref_surface_no_index_refuses_every_k1_candidate() -> None:
+    contracts = {
+        "Widget.frobnicate": {
+            "guards": [
+                _guard(
+                    {"node": "Opaque", "text": "self._unindexed_helper()"},
+                    lineno=30,
+                    qualname="Widget.frobnicate",
+                    condition="self._unindexed_helper()",
+                ),
+            ],
+        },
+    }
+    contracts["Widget.frobnicate"]["guards"][0]["site"]["file"] = "external/pylabrobot/pylabrobot/synthetic_widget.py"
+    result = measure_env_ref_surface(contracts, {}, None, frozenset())
+    assert result["n_env_ref_refused_plr_layer"] == 1
 
 
 # ---------------------------------------------------------------------------
