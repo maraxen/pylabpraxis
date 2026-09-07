@@ -219,10 +219,10 @@ proceeds meanwhile because it is an information gain either way and spends no ce
 
 | # | question | round-1 recommendation | status |
 |---|---|---|---|
-| 1 | Spend HM-25 `declared` 8 → 9 to file α+β (one entry; `live_rows()` stays 24/24)? If no, α/β ship unregistered and AC-15.7 asserts 8. | **yes** | pending |
-| 2 | Substitute the sprint headline: per-finding `SAFE` + a legible residual now; the first *joined* `SAFE` in increment 7 (needs tier (ii))? | **yes** | pending |
-| 3 | Adopt γ (bounded literal-display loop) this increment? Without it `aspirate`/`dispense` (117 ops) stay NO-GO and the gate rests on `pick_up_tips` alone. | **no** | pending |
-| 4 | Ship both new reasons, `REASON_VOCABULARY` 10 → 12 of cap 12 (exhausts HM-14 headroom)? Fallback: `guard_env_dependent` alone, 10 → 11. | **yes** | pending |
+| 1 | Spend HM-25 `declared` 8 → 9 to file α+β (one entry; `live_rows()` stays 24/24)? If no, α/β ship unregistered and AC-15.7 asserts 8. | **yes** | **approved by the user 260907** |
+| 2 | Substitute the sprint headline: per-finding `SAFE` + a legible residual now; the first *joined* `SAFE` in increment 7 (needs tier (ii))? | **yes** | **approved by the user 260907** |
+| 3 | Adopt γ (bounded literal-display loop) this increment? Without it `aspirate`/`dispense` (117 ops) stay NO-GO and the gate rests on `pick_up_tips` alone. | **no** | **approved by the user 260907** |
+| 4 | Ship both new reasons, `REASON_VOCABULARY` 10 → 12 of cap 12 (exhausts HM-14 headroom)? Fallback: `guard_env_dependent` alone, 10 → 11. | **yes** | **approved by the user 260907** |
 
 **#4923 re-evaluation (§3.5):** check-only 35.8 s < 60 s threshold → NO-GO stands. **#4924:** NO-GO stands (§3.6).
 
@@ -258,3 +258,8 @@ args) that the grammar *recognises* as an environment read, evaluates to ½, and
 and T31 proceeds. Anti-gaming check for (b): `EnvRef` is syntactically narrow (rooted at `self`), decides
 nothing, and its count is published under `guard_env_dependent`, which the gate already excludes from
 "converted". Orchestrator's recommendation: **(b)**, with a short adversarial pass on the amendment.
+
+**Decisions taken (user, 260907): all five recommendations approved** — (1) HM-25 `declared` 8 → 9 for α+β;
+(2) headline substituted (per-finding `SAFE` + legible residual now; first joined `SAFE` in increment 7);
+(3) γ not adopted; (4) `REASON_VOCABULARY` 10 → 12; (5) the `EnvRef` grammar amendment (spec_version 18,
+short adversarial pass), after which the gate is re-measured and, on GO, T31–T33 proceed.
