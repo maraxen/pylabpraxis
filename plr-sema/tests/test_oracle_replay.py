@@ -1262,3 +1262,163 @@ class TestO1ElementTypes:
             element_types={"tip_rack": "TipSpot"},
         )
         assert baseline == with_ignored_data
+
+
+# ---------------------------------------------------------------------------
+# #4979 (T32, spec 260904 §15.10): additive report fields -- excludes_sites
+# threading, n_findings_decided/n_findings_by_reason, rows_excused_by_scope
+# (annotation only), residual_reason_sets_by_method, and
+# n_decided_via_env_ref_shortcircuit's documented null.
+# ---------------------------------------------------------------------------
+
+
+class TestExcludesSitesThreading:
+    """`run_static_calls`'s new `excludes_sites` kwarg (oracle_common.py),
+    threaded verbatim to `check_ir`'s own collector."""
+
+    def test_default_none_byte_identical_to_omitting_it(self):
+        """A caller that never knew the parameter existed (every pre-T32
+        caller) must see byte-identical behaviour -- mirrors the O1
+        default-off test above."""
+        example = {
+            "call_sequence": [
+                {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1"]}},
+            ],
+            "deck_layout": {"resources": {"tip_rack": "TipRack"}},
+        }
+        plr_kwargs = {
+            0: {
+                "tip_spots": {"k": "seq", "items": [{"k": "ref", "name": "tip_rack", "cell": "A1"}]},
+            },
+        }
+        contracts_json = json.dumps(
+            {
+                "contracts": {
+                    "LiquidHandler.pick_up_tips": {
+                        "guards": [],
+                        "gaps": [],
+                        "params": ["tip_spots"],
+                    }
+                }
+            }
+        )
+        param_names = param_names_from_contracts(contracts_json)
+
+        baseline = run_static_calls(example, plr_kwargs, contracts_json, param_names=param_names)
+        explicit_none = run_static_calls(
+            example, plr_kwargs, contracts_json, param_names=param_names, excludes_sites=None,
+        )
+        assert baseline == explicit_none
+
+    def test_tier_iii_guard_populates_the_passed_list(self):
+        """A guard with `raises` starting `"<dynamic:"` (tier (iii),
+        `is_dynamic_raise`) folds its site into whatever list the caller
+        passed -- one list per `run_static_calls` invocation (one per ROW),
+        never per operation, matching `AnalysisReport.scope`'s own shape."""
+        example = {
+            "call_sequence": [
+                {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1"]}},
+            ],
+            "deck_layout": {"resources": {"tip_rack": "TipRack"}},
+        }
+        plr_kwargs = {
+            0: {
+                "tip_spots": {"k": "seq", "items": [{"k": "ref", "name": "tip_rack", "cell": "A1"}]},
+            },
+        }
+        contracts_json = json.dumps(
+            {
+                "contracts": {
+                    "LiquidHandler.pick_up_tips": {
+                        "guards": [
+                            {
+                                "site": {
+                                    "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+                                    "lineno": 576,
+                                    "qualname": "LiquidHandler.pick_up_tips",
+                                },
+                                "condition": "error is not None",
+                                "predicate": {"node": "TRUE"},
+                                "kind": "raise_guard",
+                                "raises": "<dynamic:error>",
+                                "depth": 0,
+                                "scope_trail": [],
+                                "free_vars": [],
+                                "bindings": [],
+                            }
+                        ],
+                        "gaps": [],
+                        "params": ["tip_spots"],
+                    }
+                }
+            }
+        )
+        param_names = param_names_from_contracts(contracts_json)
+        collected: list = []
+        st, _not_planned = run_static_calls(
+            example, plr_kwargs, contracts_json, param_names=param_names, excludes_sites=collected,
+        )
+        assert st["op_0"]["verdict"] == "unknown"
+        assert "guard_env_dependent" in st["op_0"]["reasons"]
+        assert len(collected) == 1
+        assert collected[0].lineno == 576
+        assert collected[0].qualname == "LiquidHandler.pick_up_tips"
+
+
+class TestT32AdditiveReportFields:
+    """End-to-end: `oracle_replay.main()`'s new report fields
+    (#4979, T32, spec 260904 §15.10)."""
+
+    def _run_main(self, tmp_path, rows):
+        import oracle_replay
+
+        corpus_path = tmp_path / "corpus.jsonl"
+        corpus_path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+        report_path = tmp_path / "report.json"
+        rc = oracle_replay.main(["--corpus", str(corpus_path), "--report", str(report_path)])
+        return rc, json.loads(report_path.read_text())
+
+    def test_new_fields_present_and_well_typed(self, tmp_path):
+        row = _chat_row(
+            "pick_up_tips",
+            {"tip_spots": ["tip_rack.A1"]},
+            utterance="pick up a tip",
+        )
+        rc, report = self._run_main(tmp_path, [row])
+
+        assert "n_findings_decided" in report
+        assert isinstance(report["n_findings_decided"], int)
+        assert isinstance(report["n_findings_decided_by_site"], dict)
+        assert isinstance(report["n_findings_by_reason"], dict)
+        # §15.9 block (4): null -- GuardResult exposes no
+        # decided_via_shortcircuit field this increment (documented, not
+        # a placeholder oversight).
+        assert report["n_decided_via_env_ref_shortcircuit"] is None
+        assert isinstance(report["rows_excused_by_scope"], dict)
+        assert isinstance(report["rows_excused_by_scope"]["count"], int)
+        assert isinstance(report["rows_excused_by_scope"]["examples"], list)
+        assert isinstance(report["residual_reason_sets_by_method"], dict)
+
+        # summary_flat carries the two gate-relevant scalars too.
+        assert report["summary_flat"]["n_findings_decided"] == report["n_findings_decided"]
+        assert report["summary_flat"]["rows_excused_by_scope"] == report["rows_excused_by_scope"]["count"]
+
+        # Every row dict publishes its own excludes_sites annotation.
+        for r in report["rows"]:
+            assert "excludes_sites" in r
+            assert isinstance(r["excludes_sites"], list)
+
+    def test_rows_excused_by_scope_is_annotation_only_no_gate_effect(self, tmp_path):
+        """A pure annotation: `unsound`/exit code are computed exactly as
+        before (`oracle_common.compare`, unmodified predicate) regardless
+        of what `rows_excused_by_scope` measures."""
+        row = _chat_row(
+            "pick_up_tips",
+            {"tip_spots": ["tip_rack.A1"]},
+            utterance="pick up a tip",
+        )
+        rc, report = self._run_main(tmp_path, [row])
+        # rc is decided solely by unsound/check_graph_exceptions -- verify
+        # the documented formula still holds with the new fields present.
+        expected_rc = 1 if (report["summary_flat"]["unsound"] > 0 or report["summary_flat"]["check_graph_exceptions"] > 0) else 0
+        assert rc == expected_rc

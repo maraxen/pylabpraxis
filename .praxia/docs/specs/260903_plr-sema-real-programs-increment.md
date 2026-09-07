@@ -818,7 +818,7 @@ The tier-1 replay loses 40 golden rows to unparseable underscore references such
 268 rows executed, 426 operations, 0 unsound, 189 of 189 crosscheck agreement
 (`outputs/plr-sema/oracle_replay_260902.json:2-17`).
 
-> **Normative.** `row_to_verifier_inputs` (`plr-sema/eval/oracle_common.py:1021-1029`) normalises a
+> **Normative.** `row_to_verifier_inputs` (`plr-sema/eval/oracle_common.py:1038-1046`) normalises a
 > reference of the form `<base>_<Row><Col>` to `<base>.<Row><Col>` **if and only if `<base>` is a
 > declared resource of the row's own deck layout** — the layout it has already computed, not a name
 > pattern. `<Row>` is a single `A`–`H`, `<Col>` one or two digits, matching the regex shape

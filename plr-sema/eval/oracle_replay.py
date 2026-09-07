@@ -73,6 +73,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "eval"))
 
+import oracle_common as oc  # noqa: E402 -- module handle, needed to install/restore FINDINGS_SINK (#4979, T32)
 from oracle_common import (
     DEFAULT_CONTRACTS,
     RuntimeOutcome,
@@ -152,6 +153,18 @@ def _extract_utterance_and_call(row: dict[str, Any]) -> tuple[str, str]:
     return utterance, call_name
 
 
+def _site_key(plr_site: Any) -> str:
+    """``"file:line:qualname"`` for a :class:`plr_sema.verdict.PlrSite`, or
+    the literal string ``"<none>"`` for a Finding with no site -- same
+    format as ``unknown_ledger.py``'s own ``_site_key`` (#4979, T32), kept
+    as an independent copy rather than an import so this module's own
+    report format never depends on that script's internals.
+    """
+    if plr_site is None:
+        return "<none>"
+    return f"{plr_site.file}:{plr_site.lineno}:{plr_site.qualname}"
+
+
 @dataclasses.dataclass
 class RowResult:
     """Result for one row."""
@@ -198,6 +211,16 @@ class RowResult:
     #: meaning changes.
     check_elapsed_s: float = 0.0
     runtime_elapsed_s: float = 0.0
+    #: #4979 (T32, spec 260904 §15.10): tier-(iii) guard sites
+    #: (``guard.is_dynamic_raise``) visited anywhere in THIS row's lowered
+    #: graph, threaded from ``run_static_calls``'s new ``excludes_sites``
+    #: collector (one list per ROW, never per operation -- see that
+    #: function's own docstring). Empty for every row before this field
+    #: existed and for every row with zero tier-(iii) guards. Published as
+    #: a pure annotation (``rows_excused_by_scope`` in the report) with NO
+    #: gate effect: it never changes ``compare()``'s ``unsound`` computation,
+    #: which stays exactly `oracle_common.py`'s unmodified predicate.
+    excludes_sites: list[str] = dataclasses.field(default_factory=list)
 
 
 def run_row(
@@ -363,6 +386,12 @@ def run_row(
     tool_params_dict = {}
     not_planned_indices: list[int] = []
     check_elapsed_s = 0.0
+    #: #4979 (T32, spec 260904 §15.10): one collector per row, threaded to
+    #: `run_static_calls`'s new `excludes_sites` kwarg. Populated with raw
+    #: `PlrSite` objects during the call below; reduced to `_site_key`
+    #: strings for `RowResult` right after, so this function's own return
+    #: value stays JSON-friendly like every other field.
+    row_excludes_sites: list[Any] = []
     _check_start = time.perf_counter()
     try:
         param_names = param_names_from_contracts(contracts_json)
@@ -374,6 +403,7 @@ def run_row(
             observe_element_types=observe_element_types,
             resource_types=rt.resource_types,
             element_types=rt.element_types,
+            excludes_sites=row_excludes_sites,
         )
         static_verdicts = {oid: sdata["verdict"] for oid, sdata in st.items()}
         n_findings = sum(sdata["n_findings"] for sdata in st.values())
@@ -429,6 +459,7 @@ def run_row(
         normalized_refs=intent_record.get("normalized_refs", []),
         check_elapsed_s=check_elapsed_s,
         runtime_elapsed_s=runtime_elapsed_s,
+        excludes_sites=sorted({_site_key(s) for s in row_excludes_sites}),
     )
 
 
@@ -571,51 +602,77 @@ def main(argv: list[str] | None = None) -> int:
     # thread it through this side dict rather than overloading record_id.
     record_id_to_sidecar_id: dict[str, str] = {}
 
-    for corpus_file in args.corpus:
-        try:
-            with open(corpus_file) as f:
-                corpus_file_lines = f.readlines()
-            exact_eligible = len(sidecar_rows) > 0 and len(corpus_file_lines) == len(sidecar_rows)
-            for line_no, line in enumerate(corpus_file_lines, 1):
-                    if args.limit and n_rows_total >= args.limit:
-                        break
-                    if not line.strip():
-                        continue
-                    try:
-                        row = json.loads(line)
-                    except Exception as e:
-                        log.warning("Failed to parse JSON at %s:%d: %s", corpus_file, line_no, e)
-                        continue
-                    srow, join_method = _sidecar_for(corpus_file, line_no, row, exact_eligible)
-                    ambiguity_class = srow.get("ambiguity_class") if srow else None
-                    sidecar_record_id = srow.get("record_id") if srow else None
-                    provenance = srow.get("provenance") if srow else None
-                    sidecar_join_counts[provenance or "no_sidecar"][join_method] += 1
-                    result = run_row(
-                        row, corpus_file, line_no, contracts_json,
-                        ambiguity_class=ambiguity_class,
-                        sidecar_record_id=sidecar_record_id,
-                        provenance=provenance,
-                    )
-                    results.append(result)
-                    if sidecar_record_id:
-                        record_id_to_sidecar_id[result.record_id] = sidecar_record_id
-                    n_rows_total += 1
-                    if result.normalized_refs:
-                        n_rows_normalised += 1
-                    if result.no_call_reason == "parse_error":
-                        n_rows_parse_error += 1
-                    elif result.no_call_reason:
-                        n_rows_no_call += 1
-                    elif result.skip_reason:
-                        n_rows_skipped += 1
-                    else:
-                        n_rows_executed += 1
-                    if n_rows_total % 100 == 0:
-                        log.info("Processed %d rows (no_call=%d, parse_error=%d, skipped=%d, executed=%d)...",
-                                 n_rows_total, n_rows_no_call, n_rows_parse_error, n_rows_skipped, n_rows_executed)
-        except Exception as e:
-            log.warning("Failed to process corpus file %s: %s", corpus_file, e)
+    _collected_findings: list[tuple[str, tuple[Any, ...]]] = []
+    _prior_findings_sink = oc.FINDINGS_SINK
+
+    def _t32_findings_sink(row_id: str, findings: tuple[Any, ...]) -> None:
+        """#4979 (T32, spec 260904 §15.10): chain-compose with whatever
+        FINDINGS_SINK was already installed (e.g. unknown_ledger.py's own,
+        which calls THIS module's main() with its own sink active) rather
+        than clobbering it -- a caller that wraps oracle_replay.main() in
+        its own sink must keep seeing every row, unmodified."""
+        _collected_findings.append((row_id, findings))
+        if _prior_findings_sink is not None:
+            _prior_findings_sink(row_id, findings)
+
+    oc.FINDINGS_SINK = _t32_findings_sink
+    try:
+        for corpus_file in args.corpus:
+            try:
+                with open(corpus_file) as f:
+                    corpus_file_lines = f.readlines()
+                exact_eligible = len(sidecar_rows) > 0 and len(corpus_file_lines) == len(sidecar_rows)
+                for line_no, line in enumerate(corpus_file_lines, 1):
+                        if args.limit and n_rows_total >= args.limit:
+                            break
+                        if not line.strip():
+                            continue
+                        try:
+                            row = json.loads(line)
+                        except Exception as e:
+                            log.warning("Failed to parse JSON at %s:%d: %s", corpus_file, line_no, e)
+                            continue
+                        srow, join_method = _sidecar_for(corpus_file, line_no, row, exact_eligible)
+                        ambiguity_class = srow.get("ambiguity_class") if srow else None
+                        sidecar_record_id = srow.get("record_id") if srow else None
+                        provenance = srow.get("provenance") if srow else None
+                        sidecar_join_counts[provenance or "no_sidecar"][join_method] += 1
+                        result = run_row(
+                            row, corpus_file, line_no, contracts_json,
+                            ambiguity_class=ambiguity_class,
+                            sidecar_record_id=sidecar_record_id,
+                            provenance=provenance,
+                            # #4979 (T32, spec 260904 §15.4/O1): oracle_common.
+                            # run_static_calls's own docstring names THIS
+                            # module as "the first REPLAY caller expected to"
+                            # turn O1 on -- run_row's own default stays False
+                            # for every other caller (tips_dirty_cost.py,
+                            # tier2_extractor.py, test_t30_measure.py), so
+                            # this is set explicitly here rather than by
+                            # flipping run_row's own default.
+                            observe_element_types=True,
+                        )
+                        results.append(result)
+                        if sidecar_record_id:
+                            record_id_to_sidecar_id[result.record_id] = sidecar_record_id
+                        n_rows_total += 1
+                        if result.normalized_refs:
+                            n_rows_normalised += 1
+                        if result.no_call_reason == "parse_error":
+                            n_rows_parse_error += 1
+                        elif result.no_call_reason:
+                            n_rows_no_call += 1
+                        elif result.skip_reason:
+                            n_rows_skipped += 1
+                        else:
+                            n_rows_executed += 1
+                        if n_rows_total % 100 == 0:
+                            log.info("Processed %d rows (no_call=%d, parse_error=%d, skipped=%d, executed=%d)...",
+                                     n_rows_total, n_rows_no_call, n_rows_parse_error, n_rows_skipped, n_rows_executed)
+            except Exception as e:
+                log.warning("Failed to process corpus file %s: %s", corpus_file, e)
+    finally:
+        oc.FINDINGS_SINK = _prior_findings_sink
 
     log.info("Sidecar join counts by provenance: %s", {k: dict(v) for k, v in sidecar_join_counts.items()})
 
@@ -779,6 +836,115 @@ def main(argv: list[str] | None = None) -> int:
     )
     global_unknown_rate = total_unknown_ops / n_operations_executed if n_operations_executed > 0 else 0.0
 
+    # #4979 (T32, spec 260904 §15.10): n_findings_decided (SAFE/WILL_FAIL
+    # findings) and n_findings_by_reason (UNKNOWN findings' own reason),
+    # computed over every Finding this run's FINDINGS_SINK saw -- the same
+    # population unknown_ledger.py's own sink sees when IT wraps this
+    # module's main() (every row that reaches run_row's Static section; a
+    # rows_setup_error row reaches that section too but its plr_kwargs is
+    # {} so it contributes no real per-op Finding there either, per
+    # unknown_ledger.py's own note on this exact point -- see its
+    # "rows_executed (positionally correlated...)" note).
+    n_findings_decided_total = 0
+    n_findings_decided_by_site: collections.Counter = collections.Counter()
+    n_findings_by_reason: collections.Counter = collections.Counter()
+    for _row_id, _findings in _collected_findings:
+        for f in _findings:
+            if f.verdict.value in ("safe", "will_fail"):
+                n_findings_decided_total += 1
+                n_findings_decided_by_site[_site_key(f.plr_site)] += 1
+            elif f.verdict.value == "unknown" and f.reason:
+                n_findings_by_reason[f.reason] += 1
+
+    # #4979 (T32, spec 260904 §15.9 block (4)/AC-15.5(iii)): whether the
+    # evaluator's own per-guard result type exposes a shortcircuit flag at
+    # all. `plr_sema.check.predicate.GuardResult` has exactly three fields
+    # -- `verdict`, `reason`, `tier_iii` (re-verified this pass) -- and no
+    # `decided_via_shortcircuit`, so this is published `null` rather than
+    # guessed at 0, per the deliverable's own instruction for exactly this
+    # case. Computing the real count would require an analyzer change
+    # (a fourth `GuardResult` field), which is out of scope for a
+    # measurement-only task.
+    n_decided_via_env_ref_shortcircuit = None
+
+    # #4979 (T32, spec 260904 §15.10): rows_excused_by_scope, a PURE
+    # ANNOTATION with NO gate effect -- never read by `compare()`'s own
+    # unsound computation, which stays byte-identical to
+    # `oracle_common.compare` (unmodified predicate, no `exc_class`
+    # reference anywhere in this comparison path). A row counts iff (a) the
+    # runtime raised at some op i, (b) the static verdict AT op i is
+    # "safe" (i.e. `compare()` would score this row unsound), and (c) the
+    # ROW's own `excludes_sites` (>=1 tier-(iii) guard visited ANYWHERE in
+    # this row's call sequence -- `excludes_sites` is a one-list-per-row
+    # fact, never per-operation, exactly like `AnalysisReport.scope`,
+    # `oracle_common.run_static_calls`'s own docstring) is non-empty.
+    rows_excused_by_scope_examples: list[dict[str, Any]] = []
+    n_rows_excused_by_scope = 0
+    for r in analyzable_results:
+        if not r.excludes_sites:
+            continue
+        raised_comp = next((c for c in r.compare_rows if c["runtime"].startswith("raised:")), None)
+        if raised_comp is not None and raised_comp["static"] == "safe":
+            n_rows_excused_by_scope += 1
+            if len(rows_excused_by_scope_examples) < 20:
+                rows_excused_by_scope_examples.append({
+                    "record_id": r.record_id,
+                    "op_index": raised_comp["index"],
+                    "method": raised_comp["method"],
+                    "runtime": raised_comp["runtime"],
+                    "excludes_sites": r.excludes_sites,
+                })
+
+    # #4979 (T32, spec 260904 §15.9 block (4)): per-method residual reason
+    # sets, in the SAME "decidable+reason1+reason2" string-key shape
+    # `plr-sema/eval/t30_measure.py`'s own `block4_per_op_with_o1.by_method`
+    # publishes -- so a reader (or a follow-up script) can diff the two
+    # JSON files directly without reshaping either one. "decidable" is
+    # t30_measure's own pseudo-member (not a REASON_VOCABULARY member,
+    # never a real `Finding.reason`): prepended here under the identical
+    # rule -- >=1 finding on the op has verdict SAFE or WILL_FAIL -- so the
+    # two files' keys compare like-for-like. Built from the SAME
+    # `_collected_findings` positional correlation `unknown_ledger.py`
+    # itself relies on (one FINDINGS_SINK call per row that reaches the
+    # Static section, in `executed_results` order), restricted to
+    # `analyzable_results` (excludes rows_setup_error, matching every other
+    # per-op aggregate in this report).
+    _analyzable_ids = {id(r) for r in analyzable_results}
+    residual_reason_sets_by_method: dict[str, dict[str, Any]] = {}
+    if len(executed_results) == len(_collected_findings):
+        for _row, (_sink_row_id, _row_findings) in zip(executed_results, _collected_findings):
+            if id(_row) not in _analyzable_ids:
+                continue
+            _by_op: dict[str, list[Any]] = collections.defaultdict(list)
+            for f in _row_findings:
+                _by_op[f.operation_id].append(f)
+            for _op_id, _flist in _by_op.items():
+                try:
+                    _idx = int(_op_id.split("_", 1)[1])
+                except (IndexError, ValueError):
+                    continue
+                _method = _row.call_names[_idx] if 0 <= _idx < len(_row.call_names) else "<unknown>"
+                _decided = any(f.verdict.value in ("safe", "will_fail") for f in _flist)
+                _unknown_reasons = sorted({f.reason for f in _flist if f.verdict.value == "unknown" and f.reason})
+                _key_parts = (["decidable"] if _decided else []) + _unknown_reasons
+                _key = "+".join(_key_parts) if _key_parts else "<none>"
+                _entry = residual_reason_sets_by_method.setdefault(
+                    _method, {"n_ops": 0, "residual_reason_sets": collections.Counter()}
+                )
+                _entry["n_ops"] += 1
+                _entry["residual_reason_sets"][_key] += 1
+    else:
+        log.warning(
+            "residual_reason_sets_by_method SKIPPED: positional correlation invariant broken "
+            "(%d executed_results vs %d FINDINGS_SINK calls) -- do not trust a diff against "
+            "t30_measure.py's block4 without investigating",
+            len(executed_results), len(_collected_findings),
+        )
+    for _m, _e in residual_reason_sets_by_method.items():
+        _e["residual_reason_sets"] = dict(
+            sorted(_e["residual_reason_sets"].items(), key=lambda kv: (-kv[1], kv[0]))
+        )
+
     # Crosscheck agreement rate
     cc_joined = crosscheck_result["joined"]
     cc_agreement_rate = (
@@ -821,6 +987,8 @@ def main(argv: list[str] | None = None) -> int:
         "crosscheck_joined_content_fallback": crosscheck_result["joined_content_fallback"],
         "crosscheck_agreement": cc_agreement_rate,
         "check_only_elapsed_s": check_only_elapsed_s,
+        "n_findings_decided": n_findings_decided_total,
+        "rows_excused_by_scope": n_rows_excused_by_scope,
     }
 
     # Build report
@@ -863,6 +1031,36 @@ def main(argv: list[str] | None = None) -> int:
         "exception_ranking": exception_ranking,
         "precondition_state_ranking": precondition_ranking,
         "crosscheck": crosscheck_result,
+        # #4979 (T32, spec 260904 §15.10/§15.11 AC-15.8): findings whose
+        # emitted verdict is SAFE or WILL_FAIL, per PLR site -- the gated
+        # number (floor >= 223, AC-15.8), broken down by site rather than
+        # published as a bare total only.
+        "n_findings_decided": n_findings_decided_total,
+        "n_findings_decided_by_site": dict(
+            sorted(n_findings_decided_by_site.items(), key=lambda kv: (-kv[1], kv[0]))
+        ),
+        # #4979 (T32, spec 260904 §15.9 block (1)/AC-15.8): UNKNOWN
+        # findings' own reason, published separately from
+        # n_findings_decided and explicitly excluded from "converted"
+        # (guard_env_dependent/guard_operand_unknown counts included here
+        # for completeness, not folded into n_findings_decided).
+        "n_findings_by_reason": dict(
+            sorted(n_findings_by_reason.items(), key=lambda kv: (-kv[1], kv[0]))
+        ),
+        # #4979 (T32, spec 260904 §15.9 block (4)): null -- GuardResult
+        # exposes no `decided_via_shortcircuit` field this increment; see
+        # this variable's own assignment above for the full explanation.
+        "n_decided_via_env_ref_shortcircuit": n_decided_via_env_ref_shortcircuit,
+        # #4979 (T32, spec 260904 §15.10): pure annotation, no gate effect
+        # -- see this block's own assignment above.
+        "rows_excused_by_scope": {
+            "count": n_rows_excused_by_scope,
+            "examples": rows_excused_by_scope_examples,
+        },
+        # #4979 (T32, spec 260904 §15.9 block (4)/static-vs-evaluator
+        # agreement): same shape as t30_measure.py's own
+        # block4_per_op_with_o1.by_method, for direct comparison.
+        "residual_reason_sets_by_method": residual_reason_sets_by_method,
         "rows": [
             {
                 "record_id": r.record_id,
@@ -889,6 +1087,7 @@ def main(argv: list[str] | None = None) -> int:
                 "check_graph_raised": r.check_graph_raised,
                 "check_graph_exception": r.check_graph_exception,
                 "unsound": r.unsound_count,
+                "excludes_sites": r.excludes_sites,
             }
             for r in results
         ],
@@ -906,7 +1105,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Log summary
     log.info(
-        "summary: rows_total=%d no_call=%d parse_error=%d normalised=%d skipped=%d setup_error=%d executed=%d ops=%d unsound=%d check_graph_exc=%d totality_vio=%d unknown_rate=%.3f crosscheck_joined=%d (exact=%d fallback=%d) agree=%.3f check_only_elapsed_s=%.3f runtime_elapsed_s=%.3f wall_elapsed_s=%.3f",
+        "summary: rows_total=%d no_call=%d parse_error=%d normalised=%d skipped=%d setup_error=%d executed=%d ops=%d unsound=%d check_graph_exc=%d totality_vio=%d unknown_rate=%.3f crosscheck_joined=%d (exact=%d fallback=%d) agree=%.3f check_only_elapsed_s=%.3f runtime_elapsed_s=%.3f wall_elapsed_s=%.3f n_findings_decided=%d rows_excused_by_scope=%d",
         n_rows_total,
         n_rows_no_call,
         n_rows_parse_error,
@@ -926,6 +1125,8 @@ def main(argv: list[str] | None = None) -> int:
         check_only_elapsed_s,
         runtime_elapsed_s_total,
         wall_elapsed_s,
+        n_findings_decided_total,
+        n_rows_excused_by_scope,
     )
 
     return 1 if n_unsound > 0 or n_check_graph_exceptions > 0 else 0

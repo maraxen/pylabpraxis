@@ -630,6 +630,7 @@ def run_static_calls(
     observe_element_types: bool = False,
     resource_types: Mapping[str, str] | None = None,
     element_types: Mapping[str, str | None] | None = None,
+    excludes_sites: "list[Any] | None" = None,
 ) -> tuple[dict[str, dict[str, Any]], list[int]]:
     """The ``lower_calls`` path (§11.2.2/§11.10 tier 1) -- ``adapt_graph``'s
     replacement. Lowers ``example["call_sequence"]``'s PLANNED subset
@@ -689,6 +690,22 @@ def run_static_calls(
     resource_types`/``.element_types`` from the SAME row's ``run_runtime``
     call). T30b's own measurement script is the only caller that turns
     this on; T32 is expected to be the first REPLAY caller that does.
+
+    ``excludes_sites`` (#4979, T32, spec 260904 §15.10): an OPTIONAL mutable
+    list, threaded verbatim to :func:`plr_sema.check.check_ir`'s own
+    ``excludes_sites`` collector -- this function never reads or clears it,
+    only forwards the reference. ``None`` (the default) reproduces every
+    pre-T32 caller's behaviour byte-identical, since ``check_ir``'s own
+    default is also ``None``. A caller that passes a list gets it back
+    populated, after the call, with one ``PlrSite`` per tier-(iii)
+    (``guard.is_dynamic_raise``) guard visited anywhere in THIS call's
+    lowered graph -- i.e. one list per ``run_static_calls`` invocation
+    (one per ROW in every caller today), never per individual ``CALL``/
+    operation; ``AnalysisReport.scope`` is the same one-list-per-report
+    shape (`plr_sema/src/plr_sema/verdict.py`'s ``SoundnessScope``
+    docstring). ``oracle_replay.py`` is the first caller that passes one,
+    to publish ``rows_excused_by_scope`` as a pure annotation (no gate
+    effect, §15.10's own normative box).
     """
     sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "src"))
     from plr_sema.check import check_ir
@@ -713,7 +730,7 @@ def run_static_calls(
     env = frozenset({does_volume_tracking.__name__}) if volume_tracking_observed else frozenset()
 
     bc, not_planned = _lower_row_calls_notified(example, plr_kwargs, resources, param_names, resource_types, element_types)
-    raw_findings = check_ir(bc, contracts, receiver_states, env=env)
+    raw_findings = check_ir(bc, contracts, receiver_states, env=env, excludes_sites=excludes_sites)
 
     planned_indices = [i for i in range(len(example["call_sequence"])) if i not in set(not_planned)]
     origin = bc.sideband.get("origin", {})
