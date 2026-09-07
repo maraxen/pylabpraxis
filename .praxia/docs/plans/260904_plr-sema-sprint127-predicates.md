@@ -277,3 +277,32 @@ makes `:409`'s filter readable; treated as in scope by necessity, to confirm at 
 {decidable, guard_env_dependent}); every method's residual matches §15.9's re-prediction table exactly;
 12 PLR-layer `self.<name>(...)` calls refused; `n_var_self` 0; 386 guard sites carry `EnvRef`. Band C
 (T31 evaluator → T32 oracle → T33 lint/INDEX) dispatched.
+
+## 9. Outcome (260909)
+
+**Sprint 127 closed. Increment 6 `implemented-round-2` (spec_version 20).** Headline, as the user
+approved it 260907: **per-finding `SAFE` and `WILL_FAIL` on real executed operations, plus a legible
+residual — no joined `SAFE` this increment** (every op carries `_check_args` `:375`/`:383`, tier (ii),
+deferred to increment 7 with #4981).
+
+| Band | Item | Commits | Numbers |
+|---|---|---|---|
+| B0 | #4976 | `67194770`, fix `ca756bce` | Ledger: 544 executed ops all UNKNOWN, 54 clusters, 6,036 findings; three reason-set combos; `consistency.ok` |
+| D | #4982 | `55b84dc4`, `f6a77baa` | check-only 35.8 s (< 60 s ⇒ #4923 NO-GO stands); `tips_dirty` cost tier 1 0/194, tier 2b 1/34 |
+| A | #4977 | `6407d92a`, audits `4d75b386`/`2fa228e8`, remediation `c9f4779e` | Round 1: six blockers conceded (C1 false WILL_FAIL on ~244 clean ops; C3 fence narrowing; C4 E-TYPE; C5 floor; C6 β; D1 param_defaults); gate restated over reasons |
+| B | #4978 | T30a `58e5c3fc`, T30b `7c0fe59a`/`6cbbe442`, population fix `15b84d31`, amendment `f441d27e`→`15ae7c45` (+ audit `aaa00f8a`), T35 `a2cd0499`/`100ab273` | 7,528 guards, 6,295 parse; α 5 / β 11; first gate **NO-GO** (`:409` `self.head` filter, `:514` zip/backend call), then **GO** after the `EnvRef`/`Zip` amendment: `pick_up_tips` 223/223, residual {decidable, guard_env_dependent}; 12 PLR-layer calls refused |
+| C | #4979 | T31 `1a58b337`/`436c0edb`, T32 `e3970b3a`/`f63b3ff8`, T36 `f82ce87d` | Tier 1 **0 unsound**, 343/548/191 held; `n_findings_decided` **1,563** (floor 223); `guard_predicate_unparsed` **5,656 → 495**; `REASON_VOCABULARY` 12/12; HM-25 9, `live_rows()` 24; m1 199/199, m2 289/289, v1 67/67, tier 2b 16/0/7/3 exact; p1 predicate mutants (a) 288/288, (b) 16/16 WILL_FAIL at the raised index, (c) 0 as asserted, 0 unsound |
+| — | #4981 | — | Tier (ii): increment 7 (round-1 Q2 DEFER) |
+
+**Decisions taken (user, 260907):** HM-25 8 → 9; headline substitution; γ not adopted; reasons 10 → 12;
+the `EnvRef` amendment. **Scope note to confirm:** the `in`/`not in` comparator widening rode with the
+amendment (it is what makes `:409`'s filter readable) — recorded in spec §15.16.1 A3.
+**Not adversarially reviewed:** spec §15.16.3 R1, the E-UNCOND(5) refinement (an earlier `raise` does
+not block WILL_FAIL) — soundness argued in the spec, evidenced by 0 unsound on tier 1 and on all three
+mutant classes; first candidate for the next pass.
+
+**Increment 7 candidates (not scheduled):** tier (ii) observation record + `strictness` env (#4981);
+the delegate→caller argument map (~90 LOC); γ (bounded literal-display loop); the `pred`-aware
+`BRANCH`; a PLR class hierarchy on the wire (E-TYPE subclass cases); `for_span` on `InlinedGuard`
+(E-UNCOND way (3)); the site-keyed fence narrowing via `traceback.extract_tb` when a joined `SAFE`
+first becomes possible.
