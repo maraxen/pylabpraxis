@@ -104,6 +104,15 @@ def _guard_to_json(guard: InlinedGuard) -> dict[str, Any]:
     # key at all" (the latter a reader tolerates via `.get("bindings", ())`,
     # same additive-field discipline as `predicate` in T30a).
     payload["bindings"] = [dict(b) for b in guard.bindings]
+    # 260907 (spec §15.4/§15.10, T36): additive `reachability_clear` --
+    # E-UNCOND(5)'s refined K-body fact. Always present (key still there
+    # even when `False`), same "computed, found nothing" vs. "field never
+    # existed" discipline as `bindings` above -- a reader tolerates absence
+    # via `.get("reachability_clear")` returning `None`, which
+    # `check.predicate.evaluate_guard`'s `k_reachability_clear` parameter
+    # already treats as fail-closed (unchanged from before this field
+    # existed).
+    payload["reachability_clear"] = guard.reachability_clear
     return payload
 
 

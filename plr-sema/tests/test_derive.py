@@ -49,6 +49,7 @@ from plr_sema.derive.bindings import (
     build_qualname_index,
     compute_all_local_bindings,
     compute_local_bindings_for_guard,
+    compute_reachability_clear,
     demote_refused_env_refs,
     free_var_names,
     is_plr_layer_method,
@@ -2579,6 +2580,147 @@ def test_guard_to_json_emits_bindings_key(
             },
         }
     ]
+
+
+# ---------------------------------------------------------------------------
+# T36 (260907, spec 260904 §15.4/§15.10 refined): E-UNCOND(5)'s K-body fact,
+# `compute_reachability_clear` + its wiring into `InlinedGuard`/the JSON
+# writer. Synthetic fixtures, one per named shape, then the real corpus.
+# ---------------------------------------------------------------------------
+
+
+def test_reachability_clear_true_after_a_conditional_raise() -> None:
+    """An earlier RAISE does not block (the refined clause's own point) --
+    only Return/Try/With/Break/Continue do."""
+    node = _func_node(
+        "def m(self, x):\n"
+        "    if x < 0:\n"
+        "        raise ValueError('neg')\n"
+        "    assert x < 100\n"
+    )
+    assert compute_reachability_clear(node, guard_lineno=4) is True
+
+
+def test_reachability_clear_false_after_a_conditional_return() -> None:
+    node = _func_node(
+        "def m(self, x):\n"
+        "    if x < 0:\n"
+        "        return\n"
+        "    assert x < 100\n"
+    )
+    assert compute_reachability_clear(node, guard_lineno=4) is False
+
+
+def test_reachability_clear_false_inside_try() -> None:
+    node = _func_node(
+        "def m(self, x):\n"
+        "    try:\n"
+        "        assert x < 100\n"
+        "    except Exception:\n"
+        "        pass\n"
+    )
+    assert compute_reachability_clear(node, guard_lineno=3) is False
+
+
+def test_reachability_clear_false_inside_with() -> None:
+    node = _func_node(
+        "def m(self, x):\n"
+        "    with open('f') as fh:\n"
+        "        assert x < 100\n"
+    )
+    assert compute_reachability_clear(node, guard_lineno=3) is False
+
+
+def test_reachability_clear_false_after_break_inside_a_loop() -> None:
+    """Conservative, per spec text: the guard need not be lexically inside
+    the loop the `break` belongs to -- ANY earlier `Break`/`Continue`
+    anywhere in `K` blocks it."""
+    node = _func_node(
+        "def m(self, xs):\n"
+        "    for x in xs:\n"
+        "        if x < 0:\n"
+        "            break\n"
+        "    assert len(xs) > 0\n"
+    )
+    assert compute_reachability_clear(node, guard_lineno=5) is False
+
+
+def test_reachability_clear_false_when_guard_lineno_absent_from_k() -> None:
+    """Defensive fail-closed default, mirroring
+    `compute_local_bindings_for_guard`'s identical fallback -- should not
+    occur for a `finding.lineno` that genuinely came from `K`'s own body."""
+    node = _func_node("def m(self, x):\n    assert x < 100\n")
+    assert compute_reachability_clear(node, guard_lineno=999) is False
+
+
+def test_real_reachability_clear_pick_up_tips_502_and_522(plr_function_index) -> None:
+    """The task brief's own named assertion: `pick_up_tips`'s duplicate-
+    `use_channels` guard (`:502`) and its `tip_spots`/`offsets`/
+    `use_channels` length-triple guard (`:522`) both resolve `True` --
+    `pick_up_tips` has no Return/Try/With/Break/Continue anywhere in its
+    own body before either line (T32's measured defect: these two sites
+    produced 0 WILL_FAIL on their own mutants because the pre-T36 default
+    fails closed on `None`)."""
+    key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
+    lineno = next(ln for (mod, qn, ln) in plr_function_index if (mod, qn) == key)
+    node = plr_function_index[(*key, lineno)]
+    assert compute_reachability_clear(node, guard_lineno=502) is True
+    assert compute_reachability_clear(node, guard_lineno=522) is True
+
+
+def test_real_reachability_clear_check_no_lid_117_is_false(plr_function_index) -> None:
+    """`_check_no_lid`'s own (depth-0) `:117` resolves `False` -- blocked
+    by the earlier `return` at `liquid_handler.py:114` (`if lidded is
+    None: return`). At depth >= 1 (inlined into `aspirate`/`dispense`)
+    E-UNCOND(4) already disposes of this site before clause (5) is ever
+    reached (`test_check_no_lid_117_by_name_is_unknown_via_depth`,
+    `tests/test_predicate.py`); this is the standalone entry where clause
+    (5) is the one doing the work, and it agrees with the depth-1 outcome
+    for an unrelated reason."""
+    key = ("pylabrobot.liquid_handling.liquid_handler", "_check_no_lid")
+    lineno = next(ln for (mod, qn, ln) in plr_function_index if (mod, qn) == key)
+    node = plr_function_index[(*key, lineno)]
+    assert compute_reachability_clear(node, guard_lineno=117) is False
+
+
+def test_derive_contract_populates_reachability_clear_from_function_index(
+    survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index
+) -> None:
+    contract = derive_contract(
+        "pylabrobot.liquid_handling.liquid_handler",
+        "LiquidHandler.pick_up_tips",
+        survey_index,
+        function_index=plr_function_index,
+    )
+    by_lineno = {g.site.lineno: g for g in contract.guards}
+    assert by_lineno[502].reachability_clear is True
+    assert by_lineno[522].reachability_clear is True
+
+
+def test_derive_contract_without_function_index_leaves_reachability_clear_false(
+    survey_index: dict[tuple[str, str], SurveyRecord],
+) -> None:
+    """Backward compatibility, identical in spirit to `bindings`'s own
+    default-off fixture: every pre-T36 caller of `derive_contract` (no
+    `function_index=`) gets `reachability_clear is False` on every guard."""
+    contract = derive_contract(
+        "pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips", survey_index
+    )
+    assert all(g.reachability_clear is False for g in contract.guards)
+
+
+def test_guard_to_json_emits_reachability_clear_key(
+    survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index
+) -> None:
+    contract = derive_contract(
+        "pylabrobot.liquid_handling.liquid_handler",
+        "LiquidHandler.pick_up_tips",
+        survey_index,
+        function_index=plr_function_index,
+    )
+    (guard_502,) = [g for g in contract.guards if g.site.lineno == 502]
+    payload = _guard_to_json(guard_502)
+    assert payload["reachability_clear"] is True
 
 
 def test_build_derived_contracts_payload_adds_param_defaults(

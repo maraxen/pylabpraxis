@@ -460,6 +460,7 @@ def _findings_for_guards(
             channel_kwarg=channel_kwarg,
             channels=channels,
             class_hierarchy=class_hierarchy,
+            k_reachability_clear=guard.get("reachability_clear"),
         )
         findings.append(_finding_from_guard_result(operation_id, guard, result))
         if result.tier_iii and excludes_sites is not None:

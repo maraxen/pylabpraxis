@@ -495,14 +495,61 @@ def test_uncond_5_depth_0_empty_trail_k_containing_earlier_try_blocks() -> None:
 def test_uncond_5_depth_0_empty_trail_k_with_no_earlier_control_flow_yields_will_fail() -> None:
     """The positive branch AC-15.6 requires: a guard evaluating `T` at
     depth 0 with an empty `scope_trail` in a `K` containing NO earlier
-    `Return`/`Try`/`Raise`/`Break`/`Continue` yields `WILL_FAIL`. This
-    module has no wire signal for that K-body fact (see its own module
-    docstring point 2); the fact is supplied directly here, exactly as a
-    real caller with one WOULD supply it."""
+    `Return`/`Try`/`Break`/`Continue` (an earlier `Raise` does not block,
+    260907 T36's refinement) yields `WILL_FAIL`. This module still has no
+    wire signal of its own for that K-body fact (`check/` cannot read PLR
+    source, ever); the fact is supplied directly here via the keyword,
+    exactly as `check/__init__.py::_findings_for_guards` now supplies it
+    from `guard["reachability_clear"]` for a real caller (see
+    `test_wire_reachability_clear_field_flows_through_findings_for_guards`
+    below for that dict-based plumbing, exercised end to end)."""
     guard = _guard(None, depth=0, scope_trail=())
     guard["predicate"] = pa.to_json(pa.TRUE())
     result = evaluate_guard(guard, _call(), {}, {}, k_reachability_clear=True)
     assert result == GuardResult(verdict="will_fail")
+
+
+def test_wire_reachability_clear_field_flows_through_findings_for_guards() -> None:
+    """260907 (T36, spec 260904 §15.4/§15.10): the WIRE plumbing itself --
+    not just `evaluate_guard`'s own keyword, which the two fixtures above
+    exercise directly. `plr_sema.check._findings_for_guards` (T31-2's own
+    per-guard dispatch loop, `check/__init__.py`) reads
+    `guard["reachability_clear"]` straight off the guard dict -- the SAME
+    shape `derive/__main__.py::_guard_to_json` now publishes -- and threads
+    it into `evaluate_guard`'s `k_reachability_clear` parameter via
+    `guard.get("reachability_clear")`. A `True` field value on a depth-0,
+    empty-scope-trail, always-firing `raise_guard` flips the verdict to
+    `WILL_FAIL`; an explicit `False` keeps it `UNKNOWN`/
+    `guard_env_dependent`; an ABSENT key (an un-regenerated pre-T36
+    contract, or a hand-built fixture that never carried it) degrades
+    identically to `False` via `dict.get`'s own `None` default -- the exact
+    fail-closed behaviour the field's absence had before T36 existed."""
+    from plr_sema.check import _findings_for_guards
+    from plr_sema.verdict import Verdict
+
+    def _one_verdict(*, set_field: bool, value: bool = False) -> "tuple[Verdict, str]":
+        guard = _guard(None, depth=0, scope_trail=())
+        guard["predicate"] = pa.to_json(pa.TRUE())
+        if set_field:
+            guard["reachability_clear"] = value
+        findings = _findings_for_guards(
+            "op-1",
+            _call(),
+            {"guards": [guard]},
+            frozenset(),
+            receiver_state=None,
+            resources_by_slot={},
+            env=frozenset(),
+            class_hierarchy=None,
+            poisoned=False,
+            excludes_sites=None,
+        )
+        assert len(findings) == 1
+        return findings[0].verdict, findings[0].reason
+
+    assert _one_verdict(set_field=True, value=True) == (Verdict.WILL_FAIL, "")
+    assert _one_verdict(set_field=True, value=False) == (Verdict.UNKNOWN, "guard_env_dependent")
+    assert _one_verdict(set_field=False) == (Verdict.UNKNOWN, "guard_env_dependent")
 
 
 def test_tier_iii_dynamic_raise_is_one_unknown_finding_marked_for_excludes_sites() -> None:

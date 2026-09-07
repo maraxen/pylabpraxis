@@ -128,40 +128,34 @@ class TestRunOnePredicateMutantEndToEnd:
     calls, 2 tip spots each -- `plr-sema/eval/fixtures/tip_mutant_probe.
     json`, already used by `tip_mutants.py`'s own tests/regression run).
 
-    **Why `achieved` (a `WILL_FAIL` at the raised index) is asserted
-    `False` for ALL THREE mutators here, not just (c).** Measured at full
-    corpus scale (T32, #4979, `outputs/plr-sema/predicate_mutants_
-    260908_inc6.json`): (a) 288/288 and (c) 288/288 raised the expected
-    exception with 0 achieved; (b) 16/16 (rows with >= 2 tip_spots) raised
-    with 0 achieved. **This is NOT the C4 false-`WILL_FAIL` mechanism and
-    NOT an unsoundness regression** -- `n_unsound` is 0 in every case, both
-    directions, at every scale this module has been run at. The root
-    cause, traced directly against the shipped evaluator this pass: EVERY
-    real caller of `predicate.evaluate_guard` (`plr_sema/check/__init__.
-    py`'s `_findings_for_call`, the ONLY production call site) omits the
-    keyword-only `k_reachability_clear` argument, so it is always `None`.
-    `guard_is_unconditional`'s clause (5) (`plr_sema/src/plr_sema/check/
-    predicate.py`'s own `if not scope_entries: return
-    bool(k_reachability_clear)`) therefore ALWAYS returns `False` for
-    every depth-0, empty-`scope_trail` guard -- which is exactly what
-    `:498`/`:502`/`:522` (`pick_up_tips`'s three grammar-decidable guards)
-    all are. A guard in this shape can therefore decide `SAFE` (the
-    `fires is False` branch, which never consults
-    `guard_is_unconditional` at all -- this is how :502/:522 decide SAFE
-    on 223/223 real corpus operations) but can NEVER decide `WILL_FAIL`
-    through `plr_sema.check.predicate` as currently wired, regardless of
-    how a caller mutates the call: `guard_is_unconditional` fails closed
-    on the SAME missing fact every time. This is a documented,
-    IN-SCOPE-ACKNOWLEDGED gap of `predicate.py` itself (its own module
-    docstring, "What this module does NOT have data for", item 2), not a
-    T32 defect -- and T32's mandate is measurement-only (no analyzer
-    changes), so this test PINS the current, measured, SOUND-but-
-    incomplete behaviour rather than asserting the spec's originally
-    predicted >= 1 floor, which this measurement pass falsified for a
-    documented, non-unsoundness reason. A future increment that threads a
-    real `k_reachability_clear` fact through `check/__init__.py` should
-    make this test's `achieved is False` assertions start failing --
-    that is the intended trip-wire for when this becomes reachable again.
+    **260907 (T36, spec §15.4/§15.10 refined) FIXED the (a)/(b) floor-miss
+    this class used to pin.** T32 (#4979) measured 0 achieved on ALL THREE
+    mutators at full corpus scale (`outputs/plr-sema/predicate_mutants_
+    260908_inc6.json`: (a) 288/288 and (c) 288/288 raised with 0 achieved;
+    (b) 16/16 raised with 0 achieved) and traced the root cause to
+    `plr_sema.derive.bindings.compute_reachability_clear` not existing yet
+    -- EVERY real caller of `predicate.evaluate_guard` therefore always
+    passed `k_reachability_clear=None`, so `guard_is_unconditional`'s
+    clause (5) failed closed on EVERY depth-0, empty-`scope_trail` guard,
+    including `pick_up_tips`'s `:502`/`:522`. T36 derives the fact from
+    `K`'s own AST at derive time (an earlier `ast.Raise` does not block;
+    `Return`/`Try`/`With`/`Break`/`Continue` do), wires it onto
+    `InlinedGuard.reachability_clear` and the JSON guard record, and reads
+    it in `check/__init__.py::_findings_for_guards` via
+    `guard.get("reachability_clear")`. `:502`/`:522` both resolve `True`
+    (`pick_up_tips` has no Return/Try/With/Break/Continue anywhere in its
+    own body before either line) -- so (a) and (b), whose mutated
+    `use_channels`/`offsets` fire exactly those two guards, now correctly
+    achieve `WILL_FAIL` at the raised index. (c) is UNAFFECTED by this fix
+    and correctly stays `unknown`: its `TypeError` comes from E-TYPE's
+    `IsInstance` check on a non-`TipSpot` element (`:498`'s `not_tip_spots`
+    guard, which fires through `fires is True` the same as before, but
+    `_ZERO_ACHIEVED_EXPECTED` already documents that E-TYPE's own subclass
+    relation is a separate, still-open gap, unrelated to E-UNCOND(5)/
+    `reachability_clear`). `unsound_safe`/`unsound_will_fail_elsewhere` are
+    `False` for every mutator both before and after this fix -- the defect
+    T36 closes was a SOUND under-approximation (missed floor), never an
+    unsoundness bug.
     """
 
     @pytest.fixture(scope="class")
@@ -200,19 +194,28 @@ class TestRunOnePredicateMutantEndToEnd:
         assert result.unsound_safe is False
         assert result.unsound_will_fail_elsewhere is False
 
-    def test_achieved_is_false_pinning_the_k_reachability_clear_gap(self, probe_example, contracts_and_params):
-        """Pins the measured (a)/(b)/(c) `static_verdict_at_index` as
-        `"unknown"`, per this class's own docstring. If this starts
-        failing, `guard_is_unconditional` has gained a real
-        `k_reachability_clear` fact somewhere -- update this test, don't
-        just relax it."""
+    def test_achieved_after_t36_matches_the_ac_15_10_floor(self, probe_example, contracts_and_params):
+        """260907 (T36): (a)/(b) now achieve `WILL_FAIL` at the raised
+        index -- `reachability_clear` resolves `True` for `pick_up_tips`'s
+        `:502`/`:522` on the real corpus (`tests/test_derive.py::
+        test_real_reachability_clear_pick_up_tips_502_and_522`). (c) stays
+        `unknown`, per this class's own docstring: its gap is E-TYPE's
+        subclass relation, not E-UNCOND(5), and `_ZERO_ACHIEVED_EXPECTED`
+        already documents it separately. If (a)/(b) regress to `unknown`,
+        `reachability_clear` has stopped reaching the evaluator somewhere
+        -- update this test only after confirming that is intentional."""
         contracts_json, param_names = contracts_and_params
-        for mutant_class in ("p1a_duplicate_use_channels", "p1b_short_offsets", "p1c_non_tipspot_element"):
+        expected_verdict = {
+            "p1a_duplicate_use_channels": "will_fail",
+            "p1b_short_offsets": "will_fail",
+            "p1c_non_tipspot_element": "unknown",
+        }
+        for mutant_class, expected in expected_verdict.items():
             result = run_one_predicate_mutant(
                 "tip_mutant_probe", mutant_class, probe_example, contracts_json, param_names,
                 _MUTATORS[mutant_class], _EXPECTED_EXC[mutant_class],
             )
-            assert result.static_verdict_at_index == "unknown", (mutant_class, result)
+            assert result.static_verdict_at_index == expected, (mutant_class, result)
 
     def test_mutation_declines_gracefully_when_no_pick_up_tips(self, contracts_and_params):
         """A base example with no `pick_up_tips` call at all: the mutator

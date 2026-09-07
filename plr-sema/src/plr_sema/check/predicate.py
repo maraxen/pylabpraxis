@@ -44,23 +44,34 @@ guessed).**
    guards (`:498`, `:502`, `:522`) is affected: `:498`'s free name resolves
    via an ALPHA binding, and `:502`/`:522`'s `use_channels`/`offsets` are
    both in the measured BETA population.
-2. **E-UNCOND(5)'s K-body fact** ("`K`'s body contains no earlier
-   `ast.Return`/`Try`/`Raise`/`Break`/`Continue` at a lower `lineno`").
-   Deriving this requires PLR source access (`ast` over the defining
-   function's whole body), which this increment's file list does not grant
-   `plr_sema.derive` a new field for and which `check/` structurally cannot
-   compute itself (no PLR source, ever -- module docstring of
-   `plr_sema.check`). `evaluate_guard` accepts an explicit
-   `k_reachability_clear: bool | None` parameter for exactly this fact;
-   every real production caller (there is no wire field to read it from)
-   passes `None`, which this module treats as "not established" --
-   fail-closed, per E-UNCOND(5)'s own text ("Otherwise ½ and
-   `guard_env_dependent`"). `_check_no_lid`'s `:117` -- the fixture AC-15.6
-   names by site -- is already disposed of at DEPTH (E-UNCOND(4), `depth ==
-   1`) before clause (5) is even reached, so this default costs nothing
-   observable on the real corpus; `tests/test_predicate.py` exercises
+2. **E-UNCOND(5)'s K-body fact** -- REFINED and WIRED, 260907, T36 (spec
+   §15.4/§15.10): `True` iff `K`'s body has no earlier `ast.Return`, is not
+   lexically inside an `ast.Try`/`ast.With`/`ast.AsyncWith`, and has no
+   earlier `ast.Break`/`ast.Continue` (an earlier `ast.Raise` does NOT
+   block -- clause (5) is a claim about the operation, scored at the
+   failing call's own index, not about the raise site). This module still
+   cannot compute the fact itself (no PLR source access, ever -- module
+   docstring of `plr_sema.check`); `plr_sema.derive.bindings
+   .compute_reachability_clear` computes it at DERIVE time against the SAME
+   `K` `bindings` already uses, and `derive/__main__.py::_guard_to_json`
+   publishes it as the additive `guard["reachability_clear"]` wire field.
+   `evaluate_guard`'s `k_reachability_clear: bool | None` parameter is now
+   fed from that field (`check/__init__.py`'s call site); an
+   un-regenerated pre-T36 artifact or a hand-built fixture with no such key
+   still degrades to `None` -- "not established", fail-closed, per
+   E-UNCOND(5)'s own text ("Otherwise ½ and `guard_env_dependent`") --
+   UNCHANGED from before this field existed. `_check_no_lid`'s `:117` --
+   the fixture AC-15.6 names by site -- resolves `reachability_clear=False`
+   on the real corpus (an earlier `return` at `:114` blocks it) when
+   inlined at depth >= 1 it is already disposed of at DEPTH (E-UNCOND(4))
+   before clause (5) is even reached, so this is observable only via its
+   own standalone (depth-0) contract entry, never via `aspirate`/
+   `dispense`'s inlined view of it. `tests/test_predicate.py` exercises
    clause (5) directly, at depth 0, with the fact supplied explicitly, to
-   prove the positive branch is implemented and not merely defaulted away.
+   prove the positive branch is implemented and not merely defaulted away;
+   `tests/test_derive.py` exercises `compute_reachability_clear` itself
+   against synthetic `K` bodies and the real `pick_up_tips`/`_check_no_lid`
+   sites.
 3. **E-TYPE's subclass relation.** `RESOURCE.type`/`element_type` are
    PLR class-name strings; deciding `IsInstance` beyond bare string equality
    needs the PLR class hierarchy, which `plr_sema.derive.receiver_state

@@ -95,6 +95,7 @@ __all__ = [
     "free_var_names",
     "compute_local_bindings_for_guard",
     "compute_all_local_bindings",
+    "compute_reachability_clear",
     "substitute",
     "build_qualname_index",
     "is_plr_layer_method",
@@ -766,3 +767,63 @@ def compute_all_local_bindings(K: FunctionNode) -> tuple[dict[str, Any], ...]:
         if matched is not None:
             bindings.append(matched[0])
     return tuple(bindings)
+
+
+# ---------------------------------------------------------------------------
+# E-UNCOND(5)'s K-body fact (increment 6, spec 260904 §15.4/§15.10 refined,
+# T36): `reachability_clear`.
+# ---------------------------------------------------------------------------
+
+
+def compute_reachability_clear(K: FunctionNode, guard_lineno: int) -> bool:
+    """The refined E-UNCOND(5) fact for ONE guard, derived from ``K``'s own
+    AST at guard-construction time (``derive_contract``'s job, never
+    ``check/``'s -- module docstring of ``plr_sema.check`` forbids it PLR
+    source access). ``True`` iff ALL THREE hold:
+
+    * ``not has_return_before`` -- no ``ast.Return`` anywhere in ``K``'s
+      body (any nesting, reusing :func:`_walk_statements`'s own scope
+      boundary -- never descending into a nested ``FunctionDef``/
+      ``AsyncFunctionDef``/``Lambda``/``ClassDef``) with ``lineno <
+      guard_lineno``;
+    * ``not enclosed_by_try_or_with`` -- the guard's OWN statement is not
+      lexically inside any ``ast.Try`` (``body``/``handlers``/``orelse``/
+      ``finalbody``) or ``ast.With``/``ast.AsyncWith`` within ``K``, tested
+      against its own ancestor chain (the same ``_walk_statements`` chain
+      :func:`compute_local_bindings_for_guard` uses for its scope-position
+      tests);
+    * ``not has_break_continue_before`` -- no ``ast.Break``/``ast.Continue``
+      with ``lineno < guard_lineno`` ANYWHERE in ``K`` (conservative: not
+      scoped to whether the break/continue's own loop actually encloses the
+      guard).
+
+    An earlier ``ast.Raise`` does NOT block -- the refined clause (5) is a
+    claim about the OPERATION failing, scored by ``oracle_common.compare``
+    at the failing call's own index, not about the raise site; an earlier,
+    unconditional raise elsewhere in ``K`` has no bearing on whether THIS
+    guard's own claim is safe to emit as ``WILL_FAIL``.
+
+    ``False`` (fail-closed, never guessed) when ``guard_lineno`` names no
+    statement anywhere in ``K``'s body at all -- defensive, mirroring
+    :func:`compute_local_bindings_for_guard`'s identical fallback; should
+    not occur for a ``finding.lineno`` that genuinely came from ``K``'s own
+    body.
+    """
+    all_stmts = _walk_statements(K.body, [])
+    guard_entry = next((entry for entry in all_stmts if entry[0].lineno == guard_lineno), None)
+    if guard_entry is None:
+        return False
+
+    _, guard_chain = guard_entry
+    ancestors = guard_chain[:-1]
+    if any(isinstance(ancestor, (ast.Try, ast.With, ast.AsyncWith)) for ancestor in ancestors):
+        return False
+
+    for stmt, _ in all_stmts:
+        if stmt.lineno >= guard_lineno:
+            continue
+        if isinstance(stmt, ast.Return):
+            return False
+        if isinstance(stmt, (ast.Break, ast.Continue)):
+            return False
+    return True

@@ -56,6 +56,7 @@ from plr_sema.check._supported_tools import SUPPORTED_TOOLS
 from plr_sema.derive.bindings import (
     build_qualname_index,
     compute_local_bindings_for_guard,
+    compute_reachability_clear,
     demote_refused_env_refs,
 )
 from plr_sema.derive.predicate_ast import Predicate, parse as parse_predicate
@@ -490,6 +491,15 @@ class InlinedGuard:
     to "no binding known", identical to every guard's behaviour before this
     field existed) or when no free name binds. See
     ``plr_sema.derive.bindings`` for the JSON shape of one entry.
+
+    ``reachability_clear`` (260907, T36, additive): E-UNCOND(5)'s refined
+    K-body fact (spec 260904 §15.4/§15.10), computed against the SAME ``K``
+    as ``bindings`` via
+    ``plr_sema.derive.bindings.compute_reachability_clear``. ``False`` --
+    fail closed, identical in spirit to ``bindings``'s ``()`` default --
+    when no ``function_index`` was supplied to ``derive_contract``. See
+    that function's own docstring for the exact three-clause test (an
+    earlier ``ast.Raise`` never blocks).
     """
 
     condition: str | None
@@ -501,6 +511,7 @@ class InlinedGuard:
     site: PlrSite  # the DEFINING site -- the delegate's own file/line, never the entry point's
     depth: int  # 0 = own body, >0 = inlined from a delegate
     bindings: tuple[dict[str, Any], ...] = ()
+    reachability_clear: bool = False
 
     @property
     def is_dynamic_raise(self) -> bool:
@@ -581,8 +592,10 @@ def derive_contract(
                 qualname_index=qualname_index,
             )
             bindings: tuple[dict[str, Any], ...] = ()
+            reachability_clear = False
             if K is not None:
                 bindings = compute_local_bindings_for_guard(K, predicate, finding.lineno)
+                reachability_clear = compute_reachability_clear(K, finding.lineno)
             guards.append(
                 InlinedGuard(
                     condition=finding.condition,
@@ -594,6 +607,7 @@ def derive_contract(
                     site=PlrSite(file=rec.file, lineno=finding.lineno, qualname=rec.qualname),
                     depth=depth,
                     bindings=bindings,
+                    reachability_clear=reachability_clear,
                 )
             )
         for name in rec.delegates_to:

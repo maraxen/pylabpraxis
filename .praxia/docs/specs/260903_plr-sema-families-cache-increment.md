@@ -283,7 +283,7 @@ correspondingly smaller.
 > the cheap direction.
 
 **The non-obvious half: the cache must store the *pre-relabel* findings.** `_check` calls `check_ir`
-and then `ir.relabel_findings(raw_findings, origin)` (`check/__init__.py:941`), mapping each
+and then `ir.relabel_findings(raw_findings, origin)` (`check/__init__.py:942`), mapping each
 finding's `operation_id` from `str(pc)` to the graph's own operation id through `sideband["origin"]`.
 **`sideband` is excluded from `bytecode_hash`** (§11.3.2). Therefore two different graphs — the same
 program with different `OperationNode` ids — share a `bytecode_hash` and have *different* origin maps.
@@ -338,7 +338,7 @@ on. The emit therefore happens on the cached findings, on the hit path, unchange
 >   corpus, and it is deferred (§13.12) rather than guessed at.
 
 > **Normative (the hook, and it is `check_graph` — round-1 O5).** The read-through lives in
-> **`check_graph`** (`plr-sema/src/plr_sema/check/__init__.py:967`), which gains a keyword-only
+> **`check_graph`** (`plr-sema/src/plr_sema/check/__init__.py:968`), which gains a keyword-only
 > `cache: CacheStore | None = None`. `check_graph` computes the key from **its own `contracts_json`
 > parameter**, consults the store, and on a miss calls into `_check`'s body and stores the result.
 >
